@@ -647,10 +647,10 @@ class DynamicGraphAdapter(object):
         labels = [to_variable(l) for l in to_list(labels)]
 
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
         else:
             outputs = self.model.network.forward(
-                * [to_variable(x) for x in inputs])
+                *[to_variable(x) for x in inputs])
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
@@ -663,7 +663,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -677,7 +677,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -708,7 +708,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss and len(metrics):
@@ -808,7 +808,7 @@ class Model(object):
     """
     An Model object is network with training and inference features.
     Dynamic graph and static graph are supported at the same time,
-    switched by `paddle.disable_static()`. The usage is as follows.
+    switched by `paddle.enable_static()`. The usage is as follows.
     But note, the switching between dynamic and static should be before
     instantiating a Model. The input description, i.e, paddle.static.InputSpec,
     must be required for static graph.
@@ -829,36 +829,36 @@ class Model(object):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import paddle.nn as nn
-        import paddle.vision.transforms as T
-        from paddle.static import InputSpec
-
-        device = paddle.set_device('cpu') # or 'gpu'
-
-        net = nn.Sequential(
-            nn.Flatten(1),
-            nn.Linear(784, 200),
-            nn.Tanh(),
-            nn.Linear(200, 10))
-
-        # inputs and labels are not required for dynamic graph.
-        input = InputSpec([None, 784], 'float32', 'x')
-        label = InputSpec([None, 1], 'int64', 'label')
-        
-        model = paddle.Model(net, input, label)
-        optim = paddle.optimizer.SGD(learning_rate=1e-3,
-            parameters=model.parameters())
-        model.prepare(optim,
-                      paddle.nn.CrossEntropyLoss(),
-                      paddle.metric.Accuracy())
-        
-        transform = T.Compose([
-            T.Transpose(),
-            T.Normalize([127.5], [127.5])
-        ])
-        data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
-        model.fit(data, epochs=2, batch_size=32, verbose=1)
+          import paddle
+          import paddle.nn as nn
+          import paddle.vision.transforms as T
+          from paddle.static import InputSpec
+  
+          device = paddle.set_device('cpu') # or 'gpu'
+  
+          net = nn.Sequential(
+              nn.Flatten(1),
+              nn.Linear(784, 200),
+              nn.Tanh(),
+              nn.Linear(200, 10))
+  
+          # inputs and labels are not required for dynamic graph.
+          input = InputSpec([None, 784], 'float32', 'x')
+          label = InputSpec([None, 1], 'int64', 'label')
+          
+          model = paddle.Model(net, input, label)
+          optim = paddle.optimizer.SGD(learning_rate=1e-3,
+              parameters=model.parameters())
+          model.prepare(optim,
+                        paddle.nn.CrossEntropyLoss(),
+                        paddle.metric.Accuracy())
+          
+          transform = T.Compose([
+              T.Transpose(),
+              T.Normalize([127.5], [127.5])
+          ])
+          data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+          model.fit(data, epochs=2, batch_size=32, verbose=1)
     """
 
     def __init__(self, network, inputs=None, labels=None):
@@ -1052,9 +1052,9 @@ class Model(object):
         If `training` is set to False, only inference model will be saved.
 
         Args:
-            path (str): The file prefix to save model. The format is
-                'dirname/file_prefix' or 'file_prefix'. if empty str. A exception
-                 will be raised.
+            path (str): The file prefix to save model. The format
+                is 'dirname/file_prefix' or 'file_prefix'. if empty str.
+                A exception will be raised.
             training (bool, optional): Whether to save for training. If not, save
                 for inference only. Default: True.
 
@@ -1084,9 +1084,9 @@ class Model(object):
                         return self.net(x)
 
                 dynamic = True  # False
-                device = paddle.set_device('cpu')
                 # if use static graph, do not set
-                paddle.disable_static(device) if dynamic else None
+                if not dynamic:
+                    paddle.enable_static()
 
                 input = InputSpec([None, 784], 'float32', 'x')
                 label = InputSpec([None, 1], 'int64', 'label')
@@ -1361,18 +1361,19 @@ class Model(object):
 
               import paddle
               import paddle.vision.transforms as T
+              from paddle.vision.datasets import MNIST
               from paddle.static import InputSpec
 
               dynamic = True
-              device = paddle.set_device('cpu') # or 'gpu'
-              paddle.disable_static(device) if dynamic else None
-              
+              if not dynamic:
+                  paddle.enable_static()
+
               transform = T.Compose([
                   T.Transpose(),
                   T.Normalize([127.5], [127.5])
               ])
-              train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
-              val_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
+              train_dataset = MNIST(mode='train', transform=transform)
+              val_dataset = MNIST(mode='test', transform=transform)
            
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
@@ -1399,22 +1400,23 @@ class Model(object):
 
               import paddle
               import paddle.vision.transforms as T
+              from paddle.vision.datasets import MNIST
               from paddle.static import InputSpec
 
               dynamic = True
-              device = paddle.set_device('cpu') # or 'gpu'
-              paddle.disable_static(device) if dynamic else None
+              if not dynamic:
+                  paddle.enable_static()
               
               transform = T.Compose([
                     T.Transpose(),
                     T.Normalize([127.5], [127.5])
                 ])
-              train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+              train_dataset = MNIST(mode='train', transform=transform)
               train_loader = paddle.io.DataLoader(train_dataset,
-                  places=device, batch_size=64)
-              val_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
+                  batch_size=64)
+              val_dataset = MNIST(mode='test', transform=transform)
               val_loader = paddle.io.DataLoader(val_dataset,
-                  places=device, batch_size=64)
+                  batch_size=64)
            
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
@@ -1540,7 +1542,8 @@ class Model(object):
                 value is a scalar or numpy.array.
 
         Examples:
-        .. code-block:: python
+
+          .. code-block:: python
 
             import paddle
             import paddle.vision.transforms as T
@@ -1559,14 +1562,6 @@ class Model(object):
             model.prepare(metrics=paddle.metric.Accuracy())
             result = model.evaluate(val_dataset, batch_size=64)
             print(result)
-
-            # imperative mode
-            paddle.disable_static()
-            model = paddle.Model(paddle.vision.models.LeNet(), input, label)
-            model.prepare(metrics=paddle.metric.Accuracy())
-            result = model.evaluate(val_dataset, batch_size=64)
-            print(result)
-                
         """
 
         if eval_data is not None and isinstance(eval_data, Dataset):
@@ -1637,7 +1632,8 @@ class Model(object):
             list: output of models.
 
         Examples:
-        .. code-block:: python
+
+          .. code-block:: python
 
             import numpy as np
             import paddle

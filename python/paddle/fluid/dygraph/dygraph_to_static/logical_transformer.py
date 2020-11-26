@@ -20,7 +20,13 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
 class LogicalTransformer(gast.NodeTransformer):
     """
-    Transform python boolean op into Paddle logical op
+    Transform python boolean op into Paddle logical op.
+
+    For example:
+        a = x > 1 and y < 1
+
+    Transformed code:
+        a = paddle.jit.dy2static.convert_logical_and(lambda:x>1, lambda:y<1)
     """
 
     def __init__(self, wrapper_root):
@@ -53,6 +59,12 @@ class LogicalTransformer(gast.NodeTransformer):
         return new_node
 
     def _create_bool_op_node(self, nodes, api_type):
+        '''
+        NOTE(liym27):
+           The arguments of function convert_logical_XX should be callable so that they can be run
+          according to the actual order. In `convert_logical_and(lambda:x>1, lambda:y<1)`, `lambda:y<1`
+          must be run after `lambda:x>1`, If `x>1` is False, `y<1` should NOT be run.
+        '''
         assert len(
             nodes
         ) > 1, "The length of BoolOp should be at least 2, but received {}.".format(
@@ -67,7 +79,7 @@ class LogicalTransformer(gast.NodeTransformer):
             nodes = [pre_logic_node] + [post_logic_node]
 
         args = [ast_to_source_code(child) for child in nodes]
-        new_node_str = "paddle.jit.dy2static.convert_logical_{}(x={}, y={})".format(
+        new_node_str = "paddle.jit.dy2static.convert_logical_{}(lambda:{}, lambda:{})".format(
             api_type, args[0], args[1])
         # NOTE: gast.parse return Module(body=[expr(...)])
         new_node = gast.parse(new_node_str).body[0].value

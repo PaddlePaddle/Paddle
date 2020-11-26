@@ -162,10 +162,8 @@ class Callback(object):
           - 'batch_size': an integer. Number of samples per batch.
           - 'epochs': an integer. Number of epochs.
           - 'steps': an integer. Number of steps of one epoch.
-          - 'verbose': an integer. Verbose mode is 0, 1 or 2.
-             0 = silent, 1 = progress bar, 2 = one line per epoch.
-          - 'metrics': a list of str. Names of metrics, including 'loss'
-              and the names of paddle.metric.Metric.
+          - 'verbose': an integer. Verbose mode is 0, 1 or 2. 0 = silent, 1 = progress bar, 2 = one line per epoch.
+          - 'metrics': a list of str. Names of metrics, including 'loss' and the names of paddle.metric.Metric.
         """
         self.params = params
 
@@ -299,20 +297,23 @@ class Callback(object):
 
 
 class ProgBarLogger(Callback):
-    """Logger callback function
+    """
+    Logger callback function.
+
     Args:
-        log_freq (int): The frequency, in number of steps, the logs such as `loss`, 
-                `metrics` are printed. Default: 1.
+        log_freq (int): The frequency, in number of steps,
+            the logs such as loss, metrics are printed. Default: 1.
         verbose (int): The verbosity mode, should be 0, 1, or 2.
-                0 = silent, 1 = progress bar, 2 = one line per epoch, 3 = 2 + 
-                time counter, such as average reader cost, samples per second. 
-                Default: 2.
+            0 = silent, 1 = progress bar, 2 = one line per epoch, 3 = 2 + 
+            time counter, such as average reader cost, samples per second. 
+            Default: 2.
 
     Examples:
         .. code-block:: python
 
             import paddle
             import paddle.vision.transforms as T
+            from paddle.vision.datasets import MNIST
             from paddle.static import InputSpec
 
             inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
@@ -322,7 +323,7 @@ class ProgBarLogger(Callback):
                 T.Transpose(),
                 T.Normalize([127.5], [127.5])
             ])
-            train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+            train_dataset = MNIST(mode='train', transform=transform)
 
             lenet = paddle.vision.LeNet()
             model = paddle.Model(lenet,
@@ -529,18 +530,21 @@ class ProgBarLogger(Callback):
 
 
 class ModelCheckpoint(Callback):
-    """Model checkpoint callback function
+    """
+    Model checkpoint callback function.
+
     Args:
-        save_freq(int): The frequency, in number of epochs, the model checkpoint 
-                        are saved. Default: 1.
+        save_freq(int): The frequency, in number of epochs, the model checkpoint
+            are saved. Default: 1.
         save_dir(str|None): The directory to save checkpoint during training.
-                If None, will not save checkpoint. Default: None.
+            If None, will not save checkpoint. Default: None.
 
     Examples:
         .. code-block:: python
 
             import paddle
             import paddle.vision.transforms as T
+            from paddle.vision.datasets import MNIST
             from paddle.static import InputSpec
 
             inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
@@ -550,7 +554,7 @@ class ModelCheckpoint(Callback):
                 T.Transpose(),
                 T.Normalize([127.5], [127.5])
             ])
-            train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+            train_dataset = MNIST(mode='train', transform=transform)
 
             lenet = paddle.vision.LeNet()
             model = paddle.Model(lenet,
@@ -830,7 +834,9 @@ class EarlyStopping(Callback):
 
 
 class VisualDL(Callback):
-    """VisualDL callback function
+    """
+    VisualDL callback function.
+
     Args:
         log_dir (str): The directory to save visualdl log file.
 

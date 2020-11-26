@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 fleetrun is a module that spawns multiple distributed
 process on each training node for gpu training and cpu training.
 Usage:
@@ -68,7 +68,9 @@ import copy
 from argparse import ArgumentParser, REMAINDER
 import paddle
 import paddle.fluid as fluid
+from paddle.distributed.fleet import launch_utils
 
+# TODO(danleifeng): Don't import * from a module
 from paddle.distributed.fleet.launch_utils import *
 import paddle.distributed.fleet.cloud_utils as cloud_utils
 
@@ -99,11 +101,20 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     )
 
     base_group.add_argument(
+        "--nproc_per_node",
+        type=int,
+        default=None,
+        help="The number of processes to launch on a node."
+        "In gpu training, it should be less or equal to the gpus number of you system(or you set by --gpus). And so each process can"
+        " bound to one or average number of gpus.")
+
+    base_group.add_argument(
         "--gpus",
         type=str,
         default=None,
-        help="It's for gpu training and the training process will run on the gpus,"
-        "each process is bound to a single GPU. And if it's not set, this module will use all the gpu cards for training."
+        help="It's for gpu training."
+        "For example:"
+        "--gpus=\"0,1,2,3\" will launch four training processes each bound to one gpu."
     )
 
     base_group.add_argument(
@@ -146,14 +157,13 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     return parser.parse_args()
 
 
-def get_cluster_from_args(args, gpus):
+def get_cluster_from_args(args, device_mode, devices_per_proc):
     node_ips = [x.strip() for x in args.ips.split(',')]
     if len(node_ips) == 1:
         node_ip = node_ips[0]
     else:
         _, node_ip = get_host_name_ip()
 
-    # node_ip = args.node_ip
     assert node_ip in node_ips, "Can't find your local ip {%s} in node_ips: {%s}" \
         % (node_ip, node_ips)
     node_rank = node_ips.index(node_ip)
@@ -164,7 +174,7 @@ def get_cluster_from_args(args, gpus):
     free_ports = None
     if not cloud_utils.use_paddlecloud() and len(
             node_ips) <= 1 and os.environ.get('FLAGS_START_PORT') is None:
-        free_ports = find_free_ports(len(gpus))
+        free_ports = find_free_ports(len(devices_per_proc))
         if free_ports is not None:
             free_ports = list(free_ports)
     else:
@@ -172,20 +182,23 @@ def get_cluster_from_args(args, gpus):
         if os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
 
-        free_ports = [x for x in range(start_port, start_port + len(gpus))]
+        free_ports = [
+            x for x in range(start_port, start_port + len(devices_per_proc))
+        ]
 
     trainer_endpoints = []
     for ip in node_ips:
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
-    return get_cluster(node_ips, node_ip, trainer_endpoints, gpus)
+    return get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
+                       devices_per_proc)
 
 
 def launch_collective(args):
     # parse arguments, used for cloud-single-machine and local
-    gpus = get_gpus(args.gpus)
+    (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)
     trainers_num = cloud_utils.get_trainers_num()
-    logger.debug("parsed from args trainerss_num:{} gpus:{}".format(
-        trainers_num, gpus))
+    logger.debug("parsed from args trainerss_num:{} mode:{} devices:{}".format(
+        trainers_num, device_mode, devices_per_proc))
 
     cluster = None
     pod = None
@@ -194,11 +207,13 @@ def launch_collective(args):
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
     if cloud_utils.use_paddlecloud() and trainers_num != 1:
-        cluster, pod = cloud_utils.get_cloud_cluster(args.ips, gpus, start_port)
+        cluster, pod = cloud_utils.get_cloud_cluster(
+            args.ips, device_mode, devices_per_proc, start_port)
         logger.debug("get cluster from cloud:{}".format(cluster))
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
-        cluster, pod = get_cluster_from_args(args, gpus)
+        cluster, pod = get_cluster_from_args(args, device_mode,
+                                             devices_per_proc)
         logger.debug("get cluster from args:{}".format(cluster))
 
     global_envs = copy.copy(os.environ.copy())

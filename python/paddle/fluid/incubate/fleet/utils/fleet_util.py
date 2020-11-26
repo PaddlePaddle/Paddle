@@ -153,7 +153,7 @@ class FleetUtil(object):
                          stat_pos="_generated_var_2",
                          stat_neg="_generated_var_3",
                          print_prefix=""):
-        """
+        r"""
         Print global auc of all distributed workers.
 
         Args:
@@ -1073,7 +1073,7 @@ class FleetUtil(object):
                                 hadoop_fs_name,
                                 hadoop_fs_ugi,
                                 hadoop_home="$HADOOP_HOME"):
-        """
+        r"""
         get last saved base xbox info from xbox_base_done.txt
 
         Args:
@@ -1118,7 +1118,7 @@ class FleetUtil(object):
                            hadoop_fs_name,
                            hadoop_fs_ugi,
                            hadoop_home="$HADOOP_HOME"):
-        """
+        r"""
         get last saved xbox info from xbox_patch_done.txt
 
         Args:
@@ -1164,7 +1164,7 @@ class FleetUtil(object):
                             hadoop_fs_name,
                             hadoop_fs_ugi,
                             hadoop_home="$HADOOP_HOME"):
-        """
+        r"""
         get last saved model info from donefile.txt
 
         Args:
@@ -1279,7 +1279,7 @@ class FleetUtil(object):
                            q_name="q",
                            pos_ins_num_name="pos",
                            total_ins_num_name="total"):
-        """
+        r"""
         get global metrics, including auc, bucket_error, mae, rmse,
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
 
@@ -1469,7 +1469,7 @@ class FleetUtil(object):
                              pos_ins_num_name="pos",
                              total_ins_num_name="total",
                              print_prefix=""):
-        """
+        r"""
         print global metrics, including auc, bucket_error, mae, rmse,
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
 

@@ -172,12 +172,12 @@ def pow(x, y, name=None):
             x = paddle.to_tensor([1, 2, 3])
             y = 2
             res = paddle.pow(x, y)
-            print(res.numpy()) # [1 4 9]
+            print(res) # [1 4 9]
             
             # example 2: y is a Tensor
             y = paddle.full(shape=[1], fill_value=2, dtype='float32')
             res = paddle.pow(x, y)
-            print(res.numpy()) # [1 4 9]
+            print(res) # [1 4 9]
 
     """
     # in dynamic graph mode
@@ -185,14 +185,9 @@ def pow(x, y, name=None):
         if isinstance(y, (int, float)):
             return core.ops.pow(x, 'factor', y)
         elif isinstance(y, (paddle.Tensor, Variable)):
-
             if x.dtype != y.dtype:
                 y = cast(y, dtype='float64')
                 x = cast(x, dtype='float64')
-                out_dygraph = _elementwise_op_in_dygraph(
-                x, y, axis=-1, act=None, op_name='elementwise_pow')
-                return out_dygraph
-
             return _elementwise_op_in_dygraph(
                 x, y, axis=-1, act=None, op_name='elementwise_pow')
         else:
@@ -213,9 +208,7 @@ def pow(x, y, name=None):
             if x.dtype != y.dtype:
                 y = cast(y, dtype='float64')
                 x = cast(x, dtype='float64')
-                out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            else:
-                out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
             return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
         else:
             raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
@@ -379,7 +372,7 @@ def floor_divide(x, y, name=None):
 
 
 def remainder(x, y, name=None):
-    """
+    r"""
     Mod two tensors element-wise. The equation is:
 
     .. math::
@@ -421,7 +414,7 @@ mod = remainder  #DEFINE_ALIAS
 floor_mod = remainder  #DEFINE_ALIAS
 
 
-def multiply(x, y, axis=-1, name=None):
+def multiply(x, y, name=None):
     """
     multiply two tensors element-wise. The equation is:
 
@@ -445,20 +438,20 @@ def multiply(x, y, axis=-1, name=None):
 
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([[1, 2], [3, 4]])
             y = paddle.to_tensor([[5, 6], [7, 8]])
             res = paddle.multiply(x, y)
-            print(res.numpy()) # [[5, 12], [21, 32]]
+            print(res) # [[5, 12], [21, 32]]
 
             x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
-            y = paddle.to_tensor([1, 2])
-            res = paddle.multiply(x, y, axis=1)
-            print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
+            y = paddle.to_tensor([2])
+            res = paddle.multiply(x, y)
+            print(res) # [[[2, 4, 6], [2, 4, 6]]]
 
     """
     op_type = 'elementwise_mul'
     act = None
+    axis = -1
 
     if x.dtype != y.dtype:
         raise TypeError(
@@ -467,19 +460,12 @@ def multiply(x, y, axis=-1, name=None):
 
     if in_dygraph_mode():
         if not isinstance(x, (paddle.Tensor)):
-            x = paddle.to_tensor(x)
-        if not isinstance(y, (paddle.Tensor)):
-            y = paddle.to_tensor(y)
+            raise TypeError(
+                    'Input x must tensor type, but received type of x: %s'
+                    % (x.dtype))
+
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
-
-    if not isinstance(x, (paddle.Tensor, Variable)):
-        x = paddle.static.data(
-            name='x', shape=x.shape, dtype=x.dtype)
-    if not isinstance(y, (paddle.Tensor, Variable)):
-        y = paddle.static.data(
-            name='y', shape=y.shape, dtype=y.dtype)
-
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 def maximum(x, y, axis=-1, name=None):
@@ -981,7 +967,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
 
 def logsumexp(x, axis=None, keepdim=False, name=None):
-    """
+    r"""
     This OP calculates the log of the sum of exponentials of ``x`` along ``axis`` .
 
     .. math::
@@ -1281,7 +1267,7 @@ def min(x, axis=None, keepdim=False, name=None):
 
 
 def log1p(x, name=None):
-    """
+    r"""
     Calculates the natural log of the given input tensor, element-wise.
     .. math::
         Out = \\ln(x+1)
@@ -1315,7 +1301,7 @@ def log1p(x, name=None):
     return out
 
 def log2(x, name=None):
-    """
+    r"""
     Calculates the log to the base 2 of the given input tensor, element-wise.
 
     .. math::
@@ -1365,7 +1351,7 @@ def log2(x, name=None):
 
 
 def log10(x, name=None):
-    """
+    r"""
     Calculates the log to the base 10 of the given input tensor, element-wise.
 
     .. math::
@@ -1947,7 +1933,7 @@ def sign(x, name=None):
 
 
 def tanh(x, name=None):
-    """
+    r"""
     Tanh Activation Operator.
 
     .. math::

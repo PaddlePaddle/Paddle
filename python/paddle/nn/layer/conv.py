@@ -123,8 +123,17 @@ class _ConvNd(layers.Layer):
             filter_shape = [out_channels, in_channels // groups
                             ] + self._kernel_size
 
+        def _get_default_param_initializer():
+            if transposed:
+                return None
+            filter_elem_num = np.prod(self._kernel_size) * self._in_channels
+            std = (2.0 / filter_elem_num)**0.5
+            return Normal(0.0, std, 0)
+
         self.weight = self.create_parameter(
-            shape=filter_shape, attr=self._param_attr)
+            shape=filter_shape,
+            attr=self._param_attr,
+            default_initializer=_get_default_param_initializer())
         self.bias = self.create_parameter(
             attr=self._bias_attr, shape=[self._out_channels], is_bias=True)
 
@@ -141,7 +150,7 @@ class _ConvNd(layers.Layer):
 
 
 class Conv1D(_ConvNd):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Conv1D`` class.
     For more details, refer to code examples.
     The convolution1D layer calculates the output based on the input, filter
@@ -294,7 +303,7 @@ class Conv1D(_ConvNd):
 
 
 class Conv1DTranspose(_ConvNd):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Conv1DTranspose`` class.
     For more details, refer to code examples.
     The 1-D convolution transpose layer calculates the output based on the input,
@@ -469,7 +478,7 @@ class Conv1DTranspose(_ConvNd):
 
 
 class Conv2D(_ConvNd):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Conv2D`` class.
     For more details, refer to code examples.
     The convolution2D layer calculates the output based on the input, filter
@@ -626,7 +635,7 @@ class Conv2D(_ConvNd):
 
 
 class Conv2DTranspose(_ConvNd):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Conv2DTranspose`` class.
     For more details, refer to code examples.
     The convolution2D transpose layer calculates the output based on the input,
@@ -786,7 +795,7 @@ class Conv2DTranspose(_ConvNd):
 
 
 class Conv3D(_ConvNd):
-    """
+    r"""
     **Convlution3d Layer**
     The convolution3d layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
@@ -943,7 +952,7 @@ class Conv3D(_ConvNd):
 
 
 class Conv3DTranspose(_ConvNd):
-    """
+    r"""
     **Convlution3D transpose layer**
     The convolution3D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)

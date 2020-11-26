@@ -210,7 +210,7 @@ class ParamAttr(object):
 
 
 class WeightNormParamAttr(ParamAttr):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Note:

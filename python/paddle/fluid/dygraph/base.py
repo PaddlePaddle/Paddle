@@ -593,7 +593,7 @@ def grad(outputs,
 
 @framework.dygraph_only
 def to_variable(value, name=None, zero_copy=None, dtype=None):
-    """
+    r"""
     :api_attr: imperative
 
     The API will create a ``Variable`` or ``ComplexVariable`` object from 
