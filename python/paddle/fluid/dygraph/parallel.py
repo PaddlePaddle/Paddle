@@ -359,6 +359,12 @@ class DataParallel(layers.Layer):
         layers(Layer): The module that should be executed by data parallel.
         strategy(ParallelStrategy, optional): (deprecated) The strategy of data parallelism, 
             contains environment configuration related to parallel execution. Default: None.
+        group_size_limits(int, optional): It is up limited memory size(MB) of one group 
+                                          parameters' gradient which is the input of communication 
+                                          calling(e.g NCCLAllReduce). Default: 25.
+        small_group_size(int, optional): It is up limited memory size(MB) of last group in communication
+                                         calling. Making the last group small is useful to 
+                                         improve performance. Default: 1.
             
     Returns:
         Layer: The data paralleled module.

@@ -594,6 +594,12 @@ class Fleet(object):
 
         Args:
             model (Layer): the user-defind model which inherits Layer.
+            group_size_limits(int, optional): It is up limited memory size(MB) of one group 
+                                          parameters' gradient which is the input of communication 
+                                          calling(e.g NCCLAllReduce). Default: 25.
+            small_group_size(int, optional): It is up limited memory size(MB) of last group in communication
+                                         calling. Making the last group small is useful to 
+                                         improve performance. Default: 1.
 
         Returns:
             distributed data parallel model which inherits Layer.
