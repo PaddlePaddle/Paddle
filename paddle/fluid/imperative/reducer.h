@@ -40,11 +40,11 @@ namespace imperative {
 template <typename T>
 void ConcatTensorsForAllReduce(
     const platform::CUDADeviceContext& context,
-    const std::vector<framework::Tensor>& dense_tensors,
+    const std::vector<framework::Tensor>& dense_tensors_,
     framework::Variable* p_dense_contents) {
   operators::math::ConcatFunctor<platform::CUDADeviceContext, T>
       concat_functor_;
-  concat_functor_(context, dense_tensors, 0,
+  concat_functor_(context, dense_tensors_, 0,
                   p_dense_contents->GetMutable<framework::LoDTensor>());
 }
 
@@ -73,16 +73,17 @@ void SplitTensorsForAllReduce(const platform::CUDADeviceContext& context,
   }
 }
 
-struct Group {
-  // Here, we use dense_contents & sparse_contents to
-  // achieve the tensor fuse. When is_sparse_ is true, sparse_contents work,
-  // conversely, dense_contents works. It is mutex relationship.
-  framework::Variable dense_contents;
-  framework::Variable* sparse_contents = nullptr;
+class Group {
+ public:
+  // Here, we use dense_contents_ & sparse_contents_ to
+  // achieve the tensor fuse. When is_sparse_ is true, sparse_contents_ work,
+  // conversely, dense_contents_ works. It is mutex relationship.
+  framework::Variable dense_contents_;
+  framework::Variable* sparse_contents_ = nullptr;
   bool is_sparse_ = false;
 
   // for concat kernel
-  std::vector<framework::Tensor> dense_tensors;
+  std::vector<framework::Tensor> dense_tensors_;
 
   std::vector<size_t> length_;
   // Global indices of participating variables in the group
@@ -90,54 +91,54 @@ struct Group {
 
   // Number of params that haven't been ready. When it is 0, it means
   // the group is ready.
-  size_t pending = -1;
+  size_t pending_ = -1;
 
   // external message of group
-  framework::proto::VarType::Type dtype;
+  framework::proto::VarType::Type dtype_;
 
   // context is used to select the stream for concat
   void ConcatTensors(const platform::CUDADeviceContext& context) {
-    switch (dtype) {
+    switch (dtype_) {
       case framework::proto::VarType::FP16:
-        ConcatTensorsForAllReduce<platform::float16>(context, dense_tensors,
-                                                     &dense_contents);
+        ConcatTensorsForAllReduce<platform::float16>(context, dense_tensors_,
+                                                     &dense_contents_);
         break;
       case framework::proto::VarType::FP32:
-        ConcatTensorsForAllReduce<float>(context, dense_tensors,
-                                         &dense_contents);
+        ConcatTensorsForAllReduce<float>(context, dense_tensors_,
+                                         &dense_contents_);
         break;
       case framework::proto::VarType::FP64:
-        ConcatTensorsForAllReduce<double>(context, dense_tensors,
-                                          &dense_contents);
+        ConcatTensorsForAllReduce<double>(context, dense_tensors_,
+                                          &dense_contents_);
         break;
       default:
         PADDLE_THROW(platform::errors::Unimplemented(
             "Data type (%s) is not supported when it concats tensors for "
             "allreduce.",
-            framework::DataTypeToString(dtype)));
+            framework::DataTypeToString(dtype_)));
     }
   }
 
   // context is used to select the stream for split
   void SplitTensors(const platform::CUDADeviceContext& context) {
-    switch (dtype) {
+    switch (dtype_) {
       case framework::proto::VarType::FP16:
-        SplitTensorsForAllReduce<platform::float16>(context, &dense_contents,
-                                                    &dense_tensors);
+        SplitTensorsForAllReduce<platform::float16>(context, &dense_contents_,
+                                                    &dense_tensors_);
         break;
       case framework::proto::VarType::FP32:
-        SplitTensorsForAllReduce<float>(context, &dense_contents,
-                                        &dense_tensors);
+        SplitTensorsForAllReduce<float>(context, &dense_contents_,
+                                        &dense_tensors_);
         break;
       case framework::proto::VarType::FP64:
-        SplitTensorsForAllReduce<double>(context, &dense_contents,
-                                         &dense_tensors);
+        SplitTensorsForAllReduce<double>(context, &dense_contents_,
+                                         &dense_tensors_);
         break;
       default:
         PADDLE_THROW(platform::errors::Unimplemented(
             "Data type (%s) is not supported when it splits tensors for "
             "allreduce.",
-            framework::DataTypeToString(dtype)));
+            framework::DataTypeToString(dtype_)));
     }
   }
 };
