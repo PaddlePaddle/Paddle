@@ -24,11 +24,9 @@ from .datasets import *
 from . import image
 from .image import *
 
-from . import layers
-from .layers import *
+from . import ops
 
 __all__ = models.__all__ \
         + transforms.__all__ \
         + datasets.__all__ \
-        + image.__all__ \
-        + layers.__all__
+        + image.__all__
