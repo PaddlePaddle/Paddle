@@ -515,9 +515,6 @@ class LeakyReLU(layers.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            paddle.disable_static()
 
             m = paddle.nn.LeakyReLU()
             x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
