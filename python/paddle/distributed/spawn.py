@@ -21,8 +21,8 @@ import six
 import sys
 import warnings
 
-from paddle.distributed.launch import get_cluster_and_pod, _print_arguments
-from paddle.distributed.utils import _prepare_trainer_env
+from paddle.distributed.utils import _print_arguments, _prepare_trainer_env
+from paddle.distributed.cloud_utils import get_cluster_and_pod
 from paddle.device import get_device
 
 # deprecated module import
@@ -30,10 +30,6 @@ from paddle.fluid import core
 from paddle.fluid.framework import _cpu_num
 
 
-# NOTE(chenweihang): The existence of this class leads to 
-# the maintenance of two arguments. When the launch.py arguments 
-# is updated, the arguments here also need to be updated, 
-# but I have not thought of a better way here
 class ParallelEnvArgs(object):
     def __init__(self):
         # Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..
@@ -136,7 +132,6 @@ def _get_subprocess_env_list(nprocs, options):
     args.use_paddlecloud = options.get('use_paddlecloud', False)
     args.print_config = options.get('print_config', False)
 
-    # reuse code of launch.py
     cluster, pod = get_cluster_and_pod(args)
 
     # prepare subprocess env list
@@ -151,7 +146,7 @@ def _get_subprocess_env_list(nprocs, options):
 
 
 def _remove_risky_env():
-    # remove useless env vars, same as launch.py
+    # remove useless env vars
     # no copy, each process will hold env vars itself
     os.environ.pop("http_proxy", None)
     os.environ.pop("https_proxy", None)
