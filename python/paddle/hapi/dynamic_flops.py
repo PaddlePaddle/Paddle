@@ -16,8 +16,7 @@ import paddle
 import warnings
 import paddle.nn as nn
 import numpy as np
-from prettytable import PrettyTable
-from .static_flops import static_flops
+from .static_flops import static_flops, _verify_dependent_package
 
 __all__ = ['flops']
 
@@ -265,7 +264,7 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         model.train()
     for handler in handler_collection:
         handler.remove()
-
+    _verify_dependent_package()
     table = PrettyTable(
         ["Layer Name", "Input Shape", "Output Shape", "Params", "Flops"])
 
