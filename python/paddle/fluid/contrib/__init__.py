@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,7 +36,6 @@ from .mixed_precision import *
 from . import layers
 from .layers import *
 from . import optimizer
-from .optimizer import *
 
 __all__ = []
 __all__ += decoder.__all__

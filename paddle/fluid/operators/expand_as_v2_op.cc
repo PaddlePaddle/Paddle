@@ -45,7 +45,7 @@ class ExpandAsV2Op : public framework::OperatorWithKernel {
             "The rank of Input(target_tensor) must not be less than or equal "
             "to %d. But received: input rank %u, input shape [%s].",
             MAX_RANK_SUPPORTED, x_dims.size(), x_dims));
-    std::vector<int64_t> out_shape(target_tensor_dims.size());
+    std::vector<int> out_shape = framework::vectorize<int>(target_tensor_dims);
     ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
   }
 };

@@ -68,7 +68,7 @@ struct CPUDenseUpdater {
 template <typename T>
 using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 
-enum class RegularizationFlag {
+enum class RegularizationType {
   kNONE = 0,
   kL1DECAY = 1,  // do not need support right now
   kL2DECAY = 2,
@@ -161,14 +161,14 @@ class CPUDenseMomentumFunctor {
   void operator()(const Tensor* param, const Tensor* grad,
                   const Tensor* velocity, const Tensor* learning_rate,
                   const T mu, const bool use_nesterov,
-                  const RegularizationFlag regularization_flag,
+                  const RegularizationType regularization_flag,
                   const T regularization_coeff, Tensor* param_out,
                   Tensor* velocity_out) {
     auto grad_vec = framework::EigenVector<T>::Flatten(*grad);
     auto* lr = learning_rate->data<MultiPrecisionType<T>>();
 
     details::CPUDenseUpdater<T> updater;
-    if (regularization_flag == RegularizationFlag::kL2DECAY) {
+    if (regularization_flag == RegularizationType::kL2DECAY) {
       auto param_vec = framework::EigenVector<T>::Flatten(*param);
       updater(*param, *velocity, mu, static_cast<T>(lr[0]), use_nesterov,
               param_vec * regularization_coeff + grad_vec, param_out,
@@ -200,7 +200,7 @@ class DenseMomentumFunctor<T, MT, UseNesterov> {
   T* param_out_;
   MT* velocity_out_;
   MT* master_param_out_;
-  const RegularizationFlag regularization_flag_;
+  const RegularizationType regularization_flag_;
   const MT regularization_coeff_;
 
  public:
@@ -208,7 +208,7 @@ class DenseMomentumFunctor<T, MT, UseNesterov> {
                        const MultiPrecisionType<MT>* learning_rate,
                        const MT* master_param, const MT mu,
                        const MT rescale_grad, const int64_t num,
-                       const RegularizationFlag regularization_flag,
+                       const RegularizationType regularization_flag,
                        const MT regularization_coeff, T* param_out,
                        MT* velocity_out, MT* master_param_out)
       : param_(param),
@@ -232,7 +232,7 @@ class DenseMomentumFunctor<T, MT, UseNesterov> {
     const MT lr = static_cast<MT>(lr_[0]);
     const MT velocity = velocity_[i];
 
-    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+    grad = regularization_flag_ == RegularizationType::kL2DECAY
                ? grad + regularization_coeff_ * param
                : grad;
 
@@ -261,7 +261,7 @@ class DenseMomentumFunctor<T, MT, NoNesterov> {
   T* param_out_;
   MT* velocity_out_;
   MT* master_param_out_;
-  const RegularizationFlag regularization_flag_;
+  const RegularizationType regularization_flag_;
   const MT regularization_coeff_;
 
  public:
@@ -269,7 +269,7 @@ class DenseMomentumFunctor<T, MT, NoNesterov> {
                        const MultiPrecisionType<MT>* learning_rate,
                        const MT* master_param, const MT mu,
                        const MT rescale_grad, const int64_t num,
-                       const RegularizationFlag regularization_flag,
+                       const RegularizationType regularization_flag,
                        const MT regularization_coeff, T* param_out,
                        MT* velocity_out, MT* master_param_out)
       : param_(param),
@@ -293,7 +293,7 @@ class DenseMomentumFunctor<T, MT, NoNesterov> {
     const MT lr = static_cast<MT>(lr_[0]);
     const MT velocity = velocity_[i];
 
-    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+    grad = regularization_flag_ == RegularizationType::kL2DECAY
                ? grad + regularization_coeff_ * param
                : grad;
 
@@ -327,7 +327,7 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
   T* param_out_;
   MT* velocity_out_;
   MT* master_param_out_;
-  const RegularizationFlag regularization_flag_;
+  const RegularizationType regularization_flag_;
   const MT regularization_coeff_;
 
  public:
@@ -336,7 +336,7 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
                         const MT* master_param, const MT mu,
                         const MT rescale_grad, const int64_t* rows,
                         int64_t row_numel, int64_t row_height,
-                        const RegularizationFlag regularization_flag,
+                        const RegularizationType regularization_flag,
                         const MT regularization_coeff, T* param_out,
                         MT* velocity_out, MT* master_param_out)
       : param_(param),
@@ -369,7 +369,7 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
     const MT lr = static_cast<MT>(lr_[0]);
     const MT velocity = velocity_[i];
 
-    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+    grad = regularization_flag_ == RegularizationType::kL2DECAY
                ? grad + regularization_coeff_ * param
                : grad;
 
@@ -400,7 +400,7 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
   T* param_out_;
   MT* velocity_out_;
   MT* master_param_out_;
-  const RegularizationFlag regularization_flag_;
+  const RegularizationType regularization_flag_;
   const MT regularization_coeff_;
 
  public:
@@ -409,7 +409,7 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
                         const MT* master_param, const MT mu,
                         const MT rescale_grad, const int64_t* rows,
                         int64_t row_numel, int64_t row_height,
-                        const RegularizationFlag regularization_flag,
+                        const RegularizationType regularization_flag,
                         const MT regularization_coeff, T* param_out,
                         MT* velocity_out, MT* master_param_out)
       : param_(param),
@@ -442,7 +442,7 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
     const MT lr = static_cast<MT>(lr_[0]);
     const MT velocity = velocity_[i];
 
-    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+    grad = regularization_flag_ == RegularizationType::kL2DECAY
                ? grad + regularization_coeff_ * param
                : grad;
 
@@ -479,10 +479,10 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         ctx.Attr<std::string>("regularization_method");
     MT regularization_coeff =
         static_cast<MT>(ctx.Attr<float>("regularization_coeff"));
-    RegularizationFlag regularization_flag{
-        RegularizationFlag::kNONE};  // disable regularization
+    RegularizationType regularization_flag{
+        RegularizationType::kNONE};  // disable regularization
     if (regularization_method == "l2_decay") {
-      regularization_flag = RegularizationFlag::kL2DECAY;
+      regularization_flag = RegularizationType::kL2DECAY;
     }
 
     MT mu = static_cast<MT>(ctx.Attr<float>("mu"));
@@ -494,6 +494,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     auto param_out = ctx.Output<framework::Tensor>("ParamOut");
     auto velocity = ctx.Input<framework::Tensor>("Velocity");
     auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
+
     const framework::Tensor* master_param = nullptr;
     framework::Tensor* master_param_out = nullptr;
     if (multi_precision) {
