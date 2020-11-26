@@ -60,6 +60,7 @@ TEST(paddle_inference_api, demo) {
   auto predictor = CreatePaddlePredictor(config);
   std::vector<PaddleTensor> outputs;
   predictor->Run({}, &outputs);
+  predictor->TryShrinkMemory();
 }
 
 TEST(paddle_inference_api, get_version) {
@@ -74,6 +75,20 @@ TEST(paddle_inference_api, UpdateDllFlag) {
     UpdateDllFlag("paddle_num_threads2", "10");
   } catch (std::exception &e) {
     LOG(INFO) << e.what();
+  }
+}
+
+TEST(paddle_inference_api, AnalysisConfigCopyCtor) {
+  AnalysisConfig cfg1;
+  cfg1.EnableUseGpu(10);
+  cfg1.EnableTensorRtEngine();
+  std::string delete_pass("skip_layernorm_fuse_pass");
+  cfg1.pass_builder()->DeletePass(delete_pass);
+  AnalysisConfig cfg2(cfg1);
+
+  auto passes = cfg2.pass_builder()->AllPasses();
+  for (auto ps : passes) {
+    CHECK_NE(ps, delete_pass);
   }
 }
 }  // namespace paddle

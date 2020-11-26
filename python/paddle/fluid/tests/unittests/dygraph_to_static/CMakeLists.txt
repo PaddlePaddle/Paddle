@@ -1,6 +1,9 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
+# disable for cuda11
+list(REMOVE_ITEM TEST_OPS test_mnist)
+
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
@@ -14,9 +17,15 @@ set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 120)
 set_tests_properties(test_lac PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bert PROPERTIES TIMEOUT 120)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 120)
-set_tests_properties(test_resnet PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
 set_tests_properties(test_transformer PROPERTIES TIMEOUT 200)
-set_tests_properties(test_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 120)
-set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 120)
+#set_tests_properties(test_mnist PROPERTIES TIMEOUT 120)
+
+if(NOT WIN32)
+    set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_resnet PROPERTIES TIMEOUT 120)
+endif()
+if(WIN32)
+    set_tests_properties(test_resnet PROPERTIES TIMEOUT 300)
+endif()

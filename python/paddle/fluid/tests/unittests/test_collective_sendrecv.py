@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,23 +13,22 @@
 # limitations under the License.
 
 from __future__ import print_function
-
-import paddle.dataset.mq2007
 import unittest
+import numpy as np
+import paddle
+
+from test_collective_base import TestDistBase
+
+paddle.enable_static()
 
 
-class TestMQ2007(unittest.TestCase):
-    def test_pairwise(self):
-        for label, query_left, query_right in paddle.dataset.mq2007.test(
-                format="pairwise"):
-            self.assertEqual(query_left.shape(), (46, ))
-            self.assertEqual(query_right.shape(), (46, ))
+class TestSendRecvOp(TestDistBase):
+    def _setup_config(self):
+        pass
 
-    def test_listwise(self):
-        for label_array, query_array in paddle.dataset.mq2007.test(
-                format="listwise"):
-            self.assertEqual(len(label_array), len(query_array))
+    def test_sendrecv(self):
+        self.check_with_place("collective_sendrecv_op.py", "sendrecv")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

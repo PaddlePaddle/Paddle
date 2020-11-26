@@ -356,7 +356,9 @@ def _get_input_var_names(inputs, input_spec):
         "in input_spec is the same as the name of InputSpec in " \
         "`to_static` decorated on the Layer.forward method."
     result_list = []
-    input_var_names = [var.name for var in inputs if isinstance(var, Variable)]
+    input_var_names = [
+        var.name for var in flatten(inputs) if isinstance(var, Variable)
+    ]
     if input_spec is None:
         # no prune
         result_list = input_var_names
@@ -606,7 +608,7 @@ def save(layer, path, input_spec=None, **configs):
                 "The input input_spec should be 'list', but received input_spec's type is %s."
                 % type(input_spec))
         inner_input_spec = []
-        for var in input_spec:
+        for var in flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
             elif isinstance(var, (core.VarBase, Variable)):
@@ -1051,7 +1053,7 @@ class TracedLayer(object):
         model and convert it into a static graph model.
 
         Args:
-            layer (dygraph.Layer): the layer object to be traced.
+            layer (paddle.nn.Layer): the layer object to be traced.
             inputs (list(Tensor)|tuple(Tensor)|Tensor): the input tensors of
                 the layer object.
 
@@ -1063,32 +1065,30 @@ class TracedLayer(object):
         Examples:
             .. code-block:: python:
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph import Linear, to_variable, TracedLayer
-                import numpy as np
+                import paddle
 
-                class ExampleLayer(fluid.dygraph.Layer):
+                class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
                         super(ExampleLayer, self).__init__()
-                        self._fc = Linear(3, 10)
+                        self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
                         return self._fc(input)
 
-                with fluid.dygraph.guard():
-                    layer = ExampleLayer()
-                    in_np = np.random.random([2, 3]).astype('float32')
-                    in_var = to_variable(in_np)
-                    out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
+                
+                layer = ExampleLayer()
+                in_var = paddle.uniform(shape=[2, 3], dtype='float32')
+                out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
 
-                    # run the static graph model using Executor inside
-                    out_static_graph = static_layer([in_var])
+                # run the static graph model using Executor inside
+                out_static_graph = static_layer([in_var])
 
-                    print(len(out_static_graph)) # 1
-                    print(out_static_graph[0].shape) # (2, 10)
+                print(len(out_static_graph)) # 1
+                print(out_static_graph[0].shape) # (2, 10)
 
-                    # save the static graph model for inference
-                    static_layer.save_inference_model(dirname='./saved_infer_model')
+                # save the static graph model for inference
+                static_layer.save_inference_model(dirname='./saved_infer_model')
+
         """
         assert isinstance(
             layer, Layer
@@ -1114,33 +1114,30 @@ class TracedLayer(object):
         Examples:
             .. code-block:: python:
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph import Linear, to_variable, TracedLayer
-                import numpy as np
+                import paddle
 
-                class ExampleLayer(fluid.dygraph.Layer):
+                class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
                         super(ExampleLayer, self).__init__()
-                        self._fc = Linear(3, 10)
+                        self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
                         return self._fc(input)
 
-                with fluid.dygraph.guard():
-                    layer = ExampleLayer()
-                    in_np = np.random.random([2, 3]).astype('float32')
-                    in_var = to_variable(in_np)
+                layer = ExampleLayer()
+                in_var = paddle.uniform(shape=[2, 3], dtype='float32')
 
-                    out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
+                out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
 
-                    build_strategy = fluid.BuildStrategy()
-                    build_strategy.enable_inplace = True
+                build_strategy = paddle.static.BuildStrategy()
+                build_strategy.enable_inplace = True
 
-                    exec_strategy = fluid.ExecutionStrategy()
-                    exec_strategy.num_threads = 2
+                exec_strategy = paddle.static.ExecutionStrategy()
+                exec_strategy.num_threads = 2
 
-                    static_layer.set_strategy(build_strategy=build_strategy, exec_strategy=exec_strategy)
-                    out_static_graph = static_layer([in_var])
+                static_layer.set_strategy(build_strategy=build_strategy, exec_strategy=exec_strategy)
+                out_static_graph = static_layer([in_var])
+
         """
         assert self._compiled_program is None, "Cannot set strategy after run"
         assert isinstance(
@@ -1212,30 +1209,29 @@ class TracedLayer(object):
         Examples:
             .. code-block:: python:
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph import Linear, to_variable, TracedLayer
                 import numpy as np
+                import paddle
 
-                class ExampleLayer(fluid.dygraph.Layer):
+                class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
                         super(ExampleLayer, self).__init__()
-                        self._fc = Linear(3, 10)
+                        self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
                         return self._fc(input)
 
                 save_dirname = './saved_infer_model'
                 in_np = np.random.random([2, 3]).astype('float32')
+                in_var = paddle.to_tensor(in_np)
+                layer = ExampleLayer()
 
-                with fluid.dygraph.guard():
-                    layer = ExampleLayer()
-                    in_var = to_variable(in_np)
-                    out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
-                    static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
+                out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
+                static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
 
-                place = fluid.CPUPlace()
-                exe = fluid.Executor(place)
-                program, feed_vars, fetch_vars = fluid.io.load_inference_model(save_dirname,
+                paddle.enable_static()
+                place = paddle.CPUPlace()
+                exe = paddle.static.Executor(place)
+                program, feed_vars, fetch_vars = paddle.static.load_inference_model(save_dirname,
                                                     exe)
 
                 fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)

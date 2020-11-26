@@ -33,6 +33,8 @@ from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
+import paddle.vision.models as models
+import paddle.fluid.dygraph.jit as jit
 from paddle.io import DistributedBatchSampler, Dataset
 from paddle.hapi.model import prepare_distributed_context
 from paddle.fluid.dygraph.jit import declarative
@@ -295,6 +297,12 @@ class TestModel(unittest.TestCase):
         np.testing.assert_equal(output[0].shape[0], len(self.test_dataset))
         fluid.disable_dygraph()
 
+    def test_summary_gpu(self):
+        paddle.disable_static(self.device)
+        rnn = paddle.nn.LSTM(16, 32, 2)
+        params_info = paddle.summary(
+            rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
+
 
 class MyModel(paddle.nn.Layer):
     def __init__(self):
@@ -512,14 +520,51 @@ class TestModelFunction(unittest.TestCase):
             model.summary(input_size=(20), dtype='float32')
 
     def test_summary_nlp(self):
-        paddle.enable_static()
+        def _get_param_from_state_dict(state_dict):
+            params = 0
+            for k, v in state_dict.items():
+                params += np.prod(v.numpy().shape)
+            return params
+
         nlp_net = paddle.nn.GRU(input_size=2,
                                 hidden_size=3,
                                 num_layers=3,
                                 direction="bidirectional")
         paddle.summary(nlp_net, (1, 1, 2))
+
         rnn = paddle.nn.LSTM(16, 32, 2)
-        paddle.summary(rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
+        params_info = paddle.summary(
+            rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
+        gt_params = _get_param_from_state_dict(rnn.state_dict())
+        np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
+
+        rnn = paddle.nn.GRU(16, 32, 2, direction='bidirectional')
+        params_info = paddle.summary(rnn, (4, 23, 16))
+        gt_params = _get_param_from_state_dict(rnn.state_dict())
+        np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
+
+        rnn = paddle.nn.SimpleRNN(16, 32, 2, direction='bidirectional')
+        params_info = paddle.summary(rnn, (4, 23, 16))
+        gt_params = _get_param_from_state_dict(rnn.state_dict())
+        np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
+
+    def test_static_flops(self):
+        paddle.disable_static()
+        net = models.__dict__['mobilenet_v2'](pretrained=False)
+        inputs = paddle.randn([1, 3, 224, 224])
+        static_program = jit._trace(net, inputs=[inputs])[1]
+        paddle.flops(static_program, [1, 3, 224, 224], print_detail=True)
+
+    def test_dynamic_flops(self):
+        net = models.__dict__['mobilenet_v2'](pretrained=False)
+
+        def customize_dropout(m, x, y):
+            m.total_ops += 0
+
+        paddle.flops(
+            net, [1, 3, 224, 224],
+            custom_ops={paddle.nn.Dropout: customize_dropout},
+            print_detail=True)
 
     def test_summary_dtype(self):
         input_shape = (3, 1)
@@ -566,8 +611,8 @@ class TestModelFunction(unittest.TestCase):
             with fluid.scope_guard(new_scope):
                 exe = fluid.Executor(place)
                 [inference_program, feed_target_names, fetch_targets] = (
-                    fluid.io.load_inference_model(
-                        dirname=save_dir, executor=exe))
+                    paddle.static.io.load_inference_model(
+                        path_prefix=save_dir, executor=exe))
                 results = exe.run(inference_program,
                                   feed={feed_target_names[0]: tensor_img},
                                   fetch_list=fetch_targets)
@@ -620,12 +665,13 @@ class TestModelFunction(unittest.TestCase):
 
 
 class TestModelWithLRScheduler(unittest.TestCase):
-    def test_fit(self):
+    def test_fit_by_step(self):
+        base_lr = 1e-3
+        boundaries = [5, 8]
+
         def make_optimizer(parameters=None):
-            base_lr = 1e-3
             momentum = 0.9
             weight_decay = 5e-4
-            boundaries = [5, 8]
             values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
             learning_rate = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=boundaries, values=values)
@@ -655,6 +701,8 @@ class TestModelWithLRScheduler(unittest.TestCase):
         dataset = MyDataset()
         model.fit(dataset, dataset, batch_size=4, epochs=10, num_workers=0)
 
+        np.testing.assert_allclose(model._optimizer._learning_rate.last_lr,
+                                   base_lr * (0.1**len(boundaries)))
         # static test
         paddle.enable_static()
 
@@ -668,11 +716,97 @@ class TestModelWithLRScheduler(unittest.TestCase):
         dataset = MyDataset()
         model.fit(dataset, dataset, batch_size=4, epochs=10, num_workers=0)
 
+        np.testing.assert_allclose(model._optimizer._learning_rate.last_lr,
+                                   base_lr * (0.1**len(boundaries)))
+
+    def test_fit_by_epoch(self):
+        base_lr = 1e-3
+        boundaries = [5, 8]
+        epochs = 10
+        wamup_epochs = 4
+
+        def make_optimizer(parameters=None):
+            momentum = 0.9
+            weight_decay = 5e-4
+            values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
+            learning_rate = paddle.optimizer.lr.PiecewiseDecay(
+                boundaries=boundaries, values=values)
+            learning_rate = paddle.optimizer.lr.LinearWarmup(
+                learning_rate=learning_rate,
+                warmup_steps=wamup_epochs,
+                start_lr=base_lr / 5.,
+                end_lr=base_lr,
+                verbose=True)
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                momentum=momentum,
+                parameters=parameters)
+            return optimizer
+
+        # dynamic test
+        device = paddle.set_device('cpu')
+        fluid.enable_dygraph(device)
+        net = MyModel()
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+        optim = make_optimizer(net.parameters())
+        model = Model(net, inputs, labels)
+        model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+
+        dataset = MyDataset()
+
+        lr_scheduler_callback = paddle.callbacks.LRScheduler(
+            by_step=False, by_epoch=True)
+
+        model.fit(dataset,
+                  dataset,
+                  batch_size=4,
+                  epochs=epochs,
+                  num_workers=0,
+                  callbacks=lr_scheduler_callback)
+
+        cnt = 0
+        for b in boundaries:
+            if b + wamup_epochs <= epochs:
+                cnt += 1
+
+        np.testing.assert_allclose(model._optimizer._learning_rate.last_lr,
+                                   base_lr * (0.1**cnt))
+        # static test
+        paddle.enable_static()
+
+        net = MyModel()
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+        optim = make_optimizer(net.parameters())
+        model = Model(net, inputs, labels)
+        model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+
+        dataset = MyDataset()
+
+        lr_scheduler_callback = paddle.callbacks.LRScheduler(
+            by_step=False, by_epoch=True)
+
+        model.fit(dataset,
+                  dataset,
+                  batch_size=4,
+                  epochs=epochs,
+                  num_workers=0,
+                  callbacks=lr_scheduler_callback)
+
+        cnt = 0
+        for b in boundaries:
+            if b + wamup_epochs <= epochs:
+                cnt += 1
+
+        np.testing.assert_allclose(model._optimizer._learning_rate.last_lr,
+                                   base_lr * (0.1**cnt))
+
 
 class TestRaiseError(unittest.TestCase):
     def test_input_without_name(self):
         net = MyModel()
-
         inputs = [InputSpec([None, 10], 'float32')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         with self.assertRaises(ValueError):
@@ -694,6 +828,18 @@ class TestRaiseError(unittest.TestCase):
             model = Model(net)
             model.save(save_dir, training=False)
         paddle.enable_static()
+
+    def test_save_infer_model_without_file_prefix(self):
+        paddle.enable_static()
+        net = LeNet()
+        inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
+        model = Model(net, inputs)
+        model.prepare()
+        path = ""
+        tensor_img = np.array(
+            np.random.random((1, 1, 28, 28)), dtype=np.float32)
+        with self.assertRaises(ValueError):
+            model.save(path, training=False)
 
 
 if __name__ == '__main__':

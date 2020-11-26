@@ -494,10 +494,7 @@ def sort(x, axis=-1, descending=False, name=None):
 
 
 def where(condition, x, y, name=None):
-    """
-	:alias_main: paddle.where
-	:alias: paddle.where,paddle.tensor.where,paddle.tensor.search.where
-
+    r"""
     Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
 
     .. math::
@@ -510,28 +507,27 @@ def where(condition, x, y, name=None):
 
 
     Args:
-        condition(Variable): The condition to choose x or y.
-        x(Variable): x is a Tensor Variable with data type float32, float64, int32, int64.
-        y(Variable): y is a Tensor Variable with data type float32, float64, int32, int64.
+        condition(Tensor): The condition to choose x or y.
+        x(Tensor): x is a Tensor with data type float32, float64, int32, int64.
+        y(Tensor): y is a Tensor with data type float32, float64, int32, int64.
 
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A Tensor with the same data dype as x. 
+        Tensor: A Tensor with the same data dype as x. 
 
     Examples:
         .. code-block:: python
 
           import paddle
 
-          paddle.disable_static()
           x = paddle.to_tensor([0.9383, 0.1983, 3.2, 1.2])
           y = paddle.to_tensor([1.0, 1.0, 1.0, 1.0])
           out = paddle.where(x>1, x, y)
 
-          print(out.numpy())
+          print(out)
           #out: [1.0, 1.0, 3.2, 1.2]
     """
     if not in_dygraph_mode():
