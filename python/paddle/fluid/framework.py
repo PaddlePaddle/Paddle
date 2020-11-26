@@ -463,7 +463,6 @@ def cpu_places(device_count=None):
     return [core.CPUPlace()] * device_count
 
 
-@static_only
 def cuda_pinned_places(device_count=None):
     """
     This function creates a list of :code:`fluid.CUDAPinnedPlace` objects.
