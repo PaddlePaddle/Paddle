@@ -302,6 +302,9 @@ def grid_sample(x,
     if (cudnn_version is not None
         ) and align_corners and mode == 'bilinear' and padding_mode == 'zeros':
         use_cudnn = True
+        # CUDNN always computes gradients for all inputs
+        x.stop_gradient = False
+        grid.stop_gradient = False
     ipts = {'X': x, 'Grid': grid}
     attrs = {
         'mode': mode,

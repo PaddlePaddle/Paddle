@@ -294,6 +294,10 @@ function cmake_gen() {
     cmake_base $1
 }
 
+function cmake_gen_in_current_dir() {
+    cmake_base $1
+}
+
 function abort(){
     echo "Your change doesn't follow PaddlePaddle's code style." 1>&2
     echo "Please use pre-commit to check what is wrong." 1>&2
@@ -1776,6 +1780,9 @@ function main() {
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
+        ;;
+      cmake_gen_in_current_dir)
+        cmake_gen_in_current_dir ${PYTHON_ABI:-""}
         ;;
       gen_fluid_lib)
         gen_fluid_lib ${parallel_number}
