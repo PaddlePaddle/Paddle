@@ -3,6 +3,7 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 # disable for cuda11
 list(REMOVE_ITEM TEST_OPS test_mnist)
+list(REMOVE_ITEM TEST_OPS test_resnet)
 
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
@@ -24,8 +25,8 @@ set_tests_properties(test_bmn PROPERTIES TIMEOUT 120)
 
 if(NOT WIN32)
     set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_resnet PROPERTIES TIMEOUT 120)
+    #set_tests_properties(test_resnet PROPERTIES TIMEOUT 120)
 endif()
-if(WIN32)
-    set_tests_properties(test_resnet PROPERTIES TIMEOUT 300)
-endif()
+#if(WIN32)
+#    set_tests_properties(test_resnet PROPERTIES TIMEOUT 300)
+#endif()
