@@ -30,8 +30,6 @@ from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, ReLU6
 from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
 from paddle.fluid.log_helper import get_logger
 
-paddle.enable_static()
-
 os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
@@ -133,48 +131,47 @@ class TestImperativeOutSclae(unittest.TestCase):
 
         imperative_out_scale = ImperativeQuantAware()
 
-        with fluid.dygraph.guard():
-            np.random.seed(seed)
-            reader = paddle.batch(
-                paddle.dataset.mnist.test(), batch_size=32, drop_last=True)
-            lenet = ImperativeLenet()
-            fixed_state = {}
-            for name, param in lenet.named_parameters():
-                p_shape = param.numpy().shape
-                p_value = param.numpy()
-                if name.endswith("bias"):
-                    value = np.zeros_like(p_value).astype('float32')
-                else:
-                    value = np.random.normal(
-                        loc=0.0, scale=0.01, size=np.product(p_shape)).reshape(
-                            p_shape).astype('float32')
-                fixed_state[name] = value
-            lenet.set_dict(fixed_state)
-            imperative_out_scale.quantize(lenet)
-            adam = AdamOptimizer(
-                learning_rate=lr, parameter_list=lenet.parameters())
-            dynamic_loss_rec = []
-            lenet.train()
-            for batch_id, data in enumerate(reader()):
-                x_data = np.array([x[0].reshape(1, 28, 28)
-                                   for x in data]).astype('float32')
-                y_data = np.array(
-                    [x[1] for x in data]).astype('int64').reshape(-1, 1)
+        np.random.seed(seed)
+        reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=32, drop_last=True)
+        lenet = ImperativeLenet()
+        fixed_state = {}
+        for name, param in lenet.named_parameters():
+            p_shape = param.numpy().shape
+            p_value = param.numpy()
+            if name.endswith("bias"):
+                value = np.zeros_like(p_value).astype('float32')
+            else:
+                value = np.random.normal(
+                    loc=0.0, scale=0.01,
+                    size=np.product(p_shape)).reshape(p_shape).astype('float32')
+            fixed_state[name] = value
+        lenet.set_dict(fixed_state)
+        imperative_out_scale.quantize(lenet)
+        adam = AdamOptimizer(
+            learning_rate=lr, parameter_list=lenet.parameters())
+        dynamic_loss_rec = []
+        lenet.train()
+        for batch_id, data in enumerate(reader()):
+            x_data = np.array([x[0].reshape(1, 28, 28)
+                               for x in data]).astype('float32')
+            y_data = np.array(
+                [x[1] for x in data]).astype('int64').reshape(-1, 1)
 
-                img = fluid.dygraph.to_variable(x_data)
-                label = fluid.dygraph.to_variable(y_data)
+            img = fluid.dygraph.to_variable(x_data)
+            label = fluid.dygraph.to_variable(y_data)
 
-                out = lenet(img)
-                loss = fluid.layers.cross_entropy(out, label)
-                avg_loss = fluid.layers.mean(loss)
-                avg_loss.backward()
-                adam.minimize(avg_loss)
-                lenet.clear_gradients()
-                dynamic_loss_rec.append(avg_loss.numpy()[0])
-                if batch_id % 100 == 0:
-                    _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
+            out = lenet(img)
+            loss = fluid.layers.cross_entropy(out, label)
+            avg_loss = fluid.layers.mean(loss)
+            avg_loss.backward()
+            adam.minimize(avg_loss)
+            lenet.clear_gradients()
+            dynamic_loss_rec.append(avg_loss.numpy()[0])
+            if batch_id % 100 == 0:
+                _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
 
-            lenet.eval()
+        lenet.eval()
 
         path = "./save_dynamic_quant_infer_model/lenet"
         save_dir = "./save_dynamic_quant_infer_model"
@@ -186,6 +183,8 @@ class TestImperativeOutSclae(unittest.TestCase):
                 paddle.static.InputSpec(
                     shape=[None, 1, 28, 28], dtype='float32')
             ])
+
+        paddle.enable_static()
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
