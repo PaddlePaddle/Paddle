@@ -1392,7 +1392,7 @@ def conv2d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-        input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type
+        input (Tensor): The input is 4-D Tensor with shape [N, C, H, W], the data type
             of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -1445,9 +1445,9 @@ def conv2d(input,
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv2d, whose data type is the
-        same with input. If act is None, the tensor variable storing the convolution
-        result, and if act is not None, the tensor variable storing convolution
+        A Tensor representing the conv2d, whose data type is the
+        same with input. If act is None, the tensor storing the convolution
+        result, and if act is not None, the tensor storing convolution
         and non-linearity activation result.
 
     Raises:
@@ -3826,7 +3826,7 @@ def conv2d_transpose(input,
           conv2d_transpose can compute the kernel size automatically.
 
     Args:
-        input(Variable): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
+        input(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
                          its data type is float32 or float64.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
@@ -3889,11 +3889,11 @@ def conv2d_transpose(input,
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv2d_transpose, whose
+        A Tensor representing the conv2d_transpose, whose
         data type is the same with input and shape is (num_batches, channels, out_h,
-        out_w) or (num_batches, out_h, out_w, channels). If act is None, the tensor variable
+        out_w) or (num_batches, out_h, out_w, channels). If act is None, the tensor 
         storing the transposed convolution result, and if act is not None, the
-        tensor variable storing transposed convolution and non-linearity activation
+        tensor storing transposed convolution and non-linearity activation
         result.
 
     Raises:
