@@ -587,18 +587,20 @@ class Fleet(object):
         return self
 
     @dygraph_only
-    def distributed_model(self, model, group_size_limits=25,
-                          small_group_size=1):
+    def distributed_model(self,
+                          model,
+                          comm_buffer_size=25,
+                          last_comm_buffer_size=1):
         """
         Return distributed data parallel model (Only work in dygraph mode)
 
         Args:
             model (Layer): the user-defind model which inherits Layer.
-            group_size_limits(int, optional): It is up limited memory size(MB) of one group 
+            comm_buffer_size(float, optional):  It limits the memory size(MB) of one buffer 
                                           parameters' gradient which is the input of communication 
                                           calling(e.g NCCLAllReduce). Default: 25.
-            small_group_size(int, optional): It is up limited memory size(MB) of last group in communication
-                                         calling. Making the last group small is useful to 
+            last_comm_buffer_size(float, optional): It limits memory size(MB) of last buffer in communication
+                                         calling. Making the last communication buffer size small is useful to 
                                          improve performance. Default: 1.
 
         Returns:
@@ -655,8 +657,8 @@ class Fleet(object):
         assert model is not None
         self.model = paddle.DataParallel(
             model,
-            group_size_limits=group_size_limits,
-            small_group_size=small_group_size)
+            comm_buffer_size=comm_buffer_size,
+            last_comm_buffer_size=last_comm_buffer_size)
         return self.model
 
     @dygraph_only
