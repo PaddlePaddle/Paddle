@@ -77,12 +77,12 @@ class PRChecker(object):
                 ut_list.append(ut.rstrip('\r\n'))
 
         if check_added_ut:
-            cmd = 'bash {}/tools/check_added_ut.sh'.format(PADDLE_ROOT)
+            cmd = 'bash {}/tools/check_added_ut.sh >/tmp/pre_ut 2>&1'.format(
+                PADDLE_ROOT)
             os.system(cmd)
-
-        with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
-            for ut in utfile:
-                ut_list.append(ut.rstrip('\r\n'))
+            with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
+                for ut in utfile:
+                    ut_list.append(ut.rstrip('\r\n'))
 
         return ' '.join(ut_list)
 
