@@ -111,6 +111,7 @@ __all__ = [
         'floor_mod',
         'multiply',
         'add',
+        'subtract',
         'atan',
         'logsumexp',
         'inverse',
@@ -286,6 +287,67 @@ def add(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+def subtract(x, y, name=None):
+    """
+    Substract two tensors element-wise. The equation is: 
+
+    .. math::
+        out = x - y
+
+    **Note**:
+    ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+        
+            import numpy as np
+            import paddle
+
+            x = paddle.to_tensor([[1, 2], [7, 8]])
+            y = paddle.to_tensor([[5, 6], [3, 4]])
+            res = paddle.subtract(x, y)
+            print(res)
+            #       [[-4, -4],
+            #        [4, 4]]
+
+            x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            y = paddle.to_tensor([1, 0, 4])
+            res = paddle.subtract(x, y)
+            print(res)
+            #       [[[ 0,  2, -1],
+            #         [ 0,  2, -1]]]
+
+            x = paddle.to_tensor([2, np.nan, 5], dtype='float32')
+            y = paddle.to_tensor([1, 4, np.nan], dtype='float32')
+            res = paddle.subtract(x, y)
+            print(res)
+            #       [ 1., nan, nan]
+
+            x = paddle.to_tensor([5, np.inf, -np.inf], dtype='float64')
+            y = paddle.to_tensor([1, 4, 5], dtype='float64')
+            res = paddle.subtract(x, y)
+            print(res)
+            #       [   4.,  inf., -inf.]
+
+    """
+    op_type = 'elementwise_sub'
+    axis = -1
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
 def divide(x, y, name=None):
     """
     Divide two tensors element-wise. The equation is:
@@ -302,7 +364,7 @@ def divide(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
 
     Examples:
 
@@ -382,7 +444,7 @@ def remainder(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
 
     Examples:
 
@@ -425,7 +487,7 @@ def multiply(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. Its dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
 
     Examples:
 
@@ -463,84 +525,118 @@ def multiply(x, y, name=None):
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
-def maximum(x, y, axis=-1, name=None):
+def maximum(x, y, name=None):
     """
-Examples:
+    Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is: 
 
-    .. code-block:: python
+    .. math::
+        out = max(x, y)
 
-        import paddle
-        import numpy as np
+    **Note**:
+    ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
-        x = paddle.to_tensor([[1, 2], [3, 4]])
-        y = paddle.to_tensor([[5, 6], [7, 8]])
-        res = paddle.maximum(x, y)
-        print(res)
-        #[[5. 6.]
-        # [7. 8.]]
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-        x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
-        y = paddle.to_tensor([1, 2])
-        res = paddle.maximum(x, y, axis=1)
-        print(res)
-        #[[[1. 2. 3.]
-        #  [2. 2. 3.]]]
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
 
-        x = paddle.to_tensor([2, 3, 5], dtype='float32')
-        y = paddle.to_tensor([1, 4, np.nan], dtype='float32')
-        res = paddle.maximum(x, y)
-        print(res)
-        #[ 2.  4. nan]
+    Examples:
 
-        x = paddle.to_tensor([5, 3, np.inf], dtype='float32')
-        y = paddle.to_tensor([1, 4, 5], dtype='float32')
-        res = paddle.maximum(x, y)
-        print(res)
-        #[ 5.  4. inf]
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = paddle.to_tensor([[1, 2], [7, 8]])
+            y = paddle.to_tensor([[3, 4], [5, 6]])
+            res = paddle.maximum(x, y)
+            print(res)
+            #    [[3, 4],
+            #     [7, 8]]
+
+            x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            y = paddle.to_tensor([3, 0, 4])
+            res = paddle.maximum(x, y)
+            print(res)
+            #    [[3, 2, 4],
+            #     [3, 2, 4]]
+
+            x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            y = paddle.to_tensor([1, np.nan, np.nan], dtype='float32')
+            res = paddle.maximum(x, y)
+            print(res)
+            #    [ 2., nan, nan]
+
+            x = paddle.to_tensor([5, 3, np.inf], dtype='float32')
+            y = paddle.to_tensor([1, -np.inf, 5], dtype='float32')
+            res = paddle.maximum(x, y)
+            print(res)
+            #    [  5.,   3., inf.]
     """
     op_type = 'elementwise_max'
+    axis = -1
     act = None
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
-def minimum(x, y, axis=-1, name=None):
+def minimum(x, y, name=None):
     """
-Examples:
+    Compare two tensors and returns a new tensor containing the element-wise minima. The equation is: 
 
-    .. code-block:: python
+    .. math::
+        out = min(x, y)
 
-        import paddle
-        import numpy as np
-  
-        x = paddle.to_tensor([[1, 2], [3, 4]], dtype='float32')
-        y = paddle.to_tensor([[5, 6], [7, 8]], dtype='float32')
-        res = paddle.minimum(x, y)
-        print(res)
-        #[[1. 2.]
-        # [3. 4.]]
+    **Note**:
+    ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
-        x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]], dtype='float32')
-        y = paddle.to_tensor([1, 2], dtype='float32')
-        res = paddle.minimum(x, y, axis=1)
-        print(res)
-        #[[[1. 1. 1.]
-        #  [2. 2. 2.]]]
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-        x = paddle.to_tensor([2, 3, 5], dtype='float32')
-        y = paddle.to_tensor([1, 4, np.nan], dtype='float32')
-        res = paddle.minimum(x, y)
-        print(res)
-        #[ 1.  3. nan]
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
 
-        x = paddle.to_tensor([5, 3, np.inf], dtype='float32')
-        y = paddle.to_tensor([1, 4, 5], dtype='float32')
-        res = paddle.minimum(x, y)
-        print(res)
-        #[1. 3. 5.]
+    Examples:
+
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = paddle.to_tensor([[1, 2], [7, 8]])
+            y = paddle.to_tensor([[3, 4], [5, 6]])
+            res = paddle.minimum(x, y)
+            print(res)
+            #       [[1, 2],
+            #        [5, 6]]
+
+            x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            y = paddle.to_tensor([3, 0, 4])
+            res = paddle.minimum(x, y)
+            print(res)
+            #       [[[1, 0, 3],
+            #         [1, 0, 3]]]
+
+            x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            y = paddle.to_tensor([1, np.nan, np.nan], dtype='float32')
+            res = paddle.minimum(x, y)
+            print(res)
+            #       [ 1., nan, nan]
+
+            x = paddle.to_tensor([5, 3, np.inf], dtype='float64')
+            y = paddle.to_tensor([1, -np.inf, 5], dtype='float64')
+            res = paddle.minimum(x, y)
+            print(res)
+            #       [   1., -inf.,    5.]
     """
     op_type = 'elementwise_min'
+    axis = -1
     act = None
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
@@ -549,11 +645,9 @@ Examples:
 
 for func in [
         add,
-        maximum,
-        minimum,
         multiply
 ]:
-    proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div', 'maximum': 'elementwise_max', 'minimum': 'elementwise_min', 'multiply': 'elementwise_mul'}
+    proto_dict = {'add': 'elementwise_add', 'multiply': 'elementwise_mul'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
 
     additional_args_lines = [
@@ -790,8 +884,10 @@ def mm(input, mat2, name=None):
     nontransposed, the prepended or appended dimension :math:`1` will be
     removed after matrix multiplication.
 
+    This op does not support broadcasting. See paddle.matmul.
+
     Args:
-        x (Tensor): The input tensor which is a Tensor.
+        input (Tensor): The input tensor which is a Tensor.
         mat2 (Tensor): The input tensor which is a Tensor.
         name(str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
@@ -802,31 +898,16 @@ def mm(input, mat2, name=None):
     Examples:
         .. code-block:: python
 
-            # Examples to clarify shapes of the inputs and output
-            # x: [B, ..., M, K], mat2: [B, ..., K, N]
-            # paddle.matmul(x, mat2)  # out: [B, ..., M, N]
-
-            # x: [B, M, K], mat2: [B, K, N]
-            # paddle.matmul(x, mat2)  # out: [B, M, N]
-
-            # x: [B, M, K], mat2: [K, N]
-            # paddle.matmul(x, mat2)  # out: [B, M, N]
-
-            # x: [M, K], mat2: [K, N]
-            # paddle.matmul(x, mat2)  # out: [M, N]
-
-            # x: [B, M, K], mat2: [K]
-            # paddle.matmul(x, mat2)  # out: [B, M]
-
-            # x: [K], mat2: [K]
-            # paddle.matmul(x, mat2)  # out: [1]
-
             import paddle
+            input = paddle.arange(1, 7).reshape((3, 2)).astype('float32')
+            mat2 = paddle.arange(1, 9).reshape((2, 4)).astype('float32')
+            out = paddle.mm(input, mat2)
+            print(out)
+            #        [[11., 14., 17., 20.],
+            #         [23., 30., 37., 44.],
+            #         [35., 46., 57., 68.]])
 
-            x = paddle.rand(shape=[2, 3], dtype='float32')
-            y = paddle.rand(shape=[3, 2], dtype='float32')
-            out = paddle.mm(x, y)
-            print(out.shape) # [2, 2]
+
     """
     if in_dygraph_mode():
         out = _varbase_creator(dtype=input.dtype)
@@ -1407,7 +1488,7 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
         out(Tensor): The output result. A Tensor with the same data type as input's.
     Examples:
         .. code-block:: python
-          
+
           import paddle
           input = paddle.ones([2,2])
           tensor1 = paddle.ones([2,2])
@@ -1609,8 +1690,6 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 @templatedoc(op_type="kron")
 def kron(x, y, name=None):
     """
-	:alias_main: paddle.kron
-	:alias: paddle.kron,paddle.tensor.kron,paddle.tensor.math.kron
 
 ${comment}
 
@@ -1630,28 +1709,17 @@ ${comment}
     Examples:
         .. code-block:: python
 
-          import paddle
-          from paddle import fluid
-          import paddle.fluid.dygraph as dg
-          import numpy as np
-
-          a = np.arange(1, 5).reshape(2, 2).astype(np.float32)
-          b = np.arange(1, 10).reshape(3, 3).astype(np.float32)
-
-          place = fluid.CPUPlace()
-          with dg.guard(place):
-              a_var = dg.to_variable(a)
-              b_var = dg.to_variable(b)
-              c_var = paddle.kron(a_var, b_var)
-              c_np = c_var.numpy()
-          print(c_np)
-
-          #[[ 1.  2.  3.  2.  4.  6.]
-          # [ 4.  5.  6.  8. 10. 12.]
-          # [ 7.  8.  9. 14. 16. 18.]
-          # [ 3.  6.  9.  4.  8. 12.]
-          # [12. 15. 18. 16. 20. 24.]
-          # [21. 24. 27. 28. 32. 36.]]
+            import paddle
+            x = paddle.to_tensor([[1, 2], [3, 4]], dtype='int64')
+            y = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
+            out = paddle.kron(x, y)
+            print(out)
+            #        [[1, 2, 3, 2, 4, 6],
+            #         [ 4,  5,  6,  8, 10, 12],
+            #         [ 7,  8,  9, 14, 16, 18],
+            #         [ 3,  6,  9,  4,  8, 12],
+            #         [12, 15, 18, 16, 20, 24],
+            #         [21, 24, 27, 28, 32, 36]])
     """
     if in_dygraph_mode():
         return core.ops.kron(x, y)

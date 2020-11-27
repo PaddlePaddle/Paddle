@@ -151,6 +151,10 @@ if (WITH_NCCL)
     endif()
 endif()
 
+if(NOT WITH_NCCL)
+    list(REMOVE_ITEM TEST_OPS test_imperative_group)
+endif()
+
 if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
 endif()
