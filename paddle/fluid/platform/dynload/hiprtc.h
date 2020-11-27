@@ -23,19 +23,19 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-extern std::once_flag nvrtc_dso_flag;
-extern void* nvrtc_dso_handle;
-extern bool HasNVRTC();
+extern std::once_flag hiprtc_dso_flag;
+extern void* hiprtc_dso_handle;
+extern bool HasHIPRTC();
 
-#define DECLARE_DYNAMIC_LOAD_NVRTC_WRAP(__name)                            \
+#define DECLARE_DYNAMIC_LOAD_HIPRTC_WRAP(__name)                            \
   struct DynLoad__##__name {                                               \
     template <typename... Args>                                            \
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
       using hiprtc_func = decltype(&::__name);                              \
-      std::call_once(nvrtc_dso_flag, []() {                                \
-        nvrtc_dso_handle = paddle::platform::dynload::GetNVRTCDsoHandle(); \
+      std::call_once(hiprtc_dso_flag, []() {                                \
+        hiprtc_dso_handle = paddle::platform::dynload::GetHIPRTCDsoHandle(); \
       });                                                                  \
-      static void* p_##__name = dlsym(nvrtc_dso_handle, #__name);          \
+      static void* p_##__name = dlsym(hiprtc_dso_handle, #__name);          \
       return reinterpret_cast<hiprtc_func>(p_##__name)(args...);            \
     }                                                                      \
   };                                                                       \
@@ -45,7 +45,7 @@ extern bool HasNVRTC();
 /**
  * include all needed hiprtc functions
  **/
-#define NVRTC_ROUTINE_EACH(__macro) \
+#define HIPRTC_ROUTINE_EACH(__macro) \
   __macro(hiprtcGetErrorString);     \
   __macro(hiprtcCompileProgram);     \
   __macro(hiprtcCreateProgram);      \
@@ -55,9 +55,9 @@ extern bool HasNVRTC();
   __macro(hiprtcGetProgramLog);      \
   __macro(hiprtcGetProgramLogSize)
 
-NVRTC_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NVRTC_WRAP);
+HIPRTC_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_HIPRTC_WRAP);
 
-#undef DECLARE_DYNAMIC_LOAD_NVRTC_WRAP
+#undef DECLARE_DYNAMIC_LOAD_HIPRTC_WRAP
 
 }  // namespace dynload
 }  // namespace platform

@@ -23,24 +23,24 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 namespace dynload {
-extern std::once_flag curand_dso_flag;
-extern void *curand_dso_handle;
+extern std::once_flag hiprand_dso_flag;
+extern void *hiprand_dso_handle;
 
 #define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                             \
   struct DynLoad__##__name {                                                 \
     template <typename... Args>                                              \
     hiprandStatus_t operator()(Args... args) {                                \
-      using curandFunc = decltype(&::__name);                                \
-      std::call_once(curand_dso_flag, []() {                                 \
-        curand_dso_handle = paddle::platform::dynload::GetCurandDsoHandle(); \
+      using hiprandFunc = decltype(&::__name);                                \
+      std::call_once(hiprand_dso_flag, []() {                                 \
+        hiprand_dso_handle = paddle::platform::dynload::GetHiprandDsoHandle(); \
       });                                                                    \
-      static void *p_##__name = dlsym(curand_dso_handle, #__name);           \
-      return reinterpret_cast<curandFunc>(p_##__name)(args...);              \
+      static void *p_##__name = dlsym(hiprand_dso_handle, #__name);           \
+      return reinterpret_cast<hiprandFunc>(p_##__name)(args...);              \
     }                                                                        \
   };                                                                         \
   extern DynLoad__##__name __name
 
-#define CURAND_RAND_ROUTINE_EACH(__macro)      \
+#define HIPRAND_RAND_ROUTINE_EACH(__macro)      \
   __macro(hiprandCreateGenerator);              \
   __macro(hiprandSetStream);                    \
   __macro(hiprandSetPseudoRandomGeneratorSeed); \
@@ -49,7 +49,7 @@ extern void *curand_dso_handle;
   __macro(hiprandGenerateNormal);               \
   __macro(hiprandDestroyGenerator);
 
-CURAND_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CURAND_WRAP);
+HIPRAND_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CURAND_WRAP);
 
 }  // namespace dynload
 }  // namespace platform

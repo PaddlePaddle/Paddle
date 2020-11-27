@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,18 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/dynload/hiprand.h"
+#include "paddle/fluid/platform/dynload/hiprtc.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
-std::once_flag hiprand_dso_flag;
-void *hiprand_dso_handle;
+std::once_flag hiprtc_dso_flag;
+void* hiprtc_dso_handle = nullptr;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-HIPRAND_RAND_ROUTINE_EACH(DEFINE_WRAP);
+HIPRTC_ROUTINE_EACH(DEFINE_WRAP);
+
+bool HasHIPRTC() {
+  std::call_once(hiprtc_dso_flag,
+                 []() { hiprtc_dso_handle = GetHIPRTCDsoHandle(); });
+  return hiprtc_dso_handle != nullptr;
+}
 
 }  // namespace dynload
 }  // namespace platform

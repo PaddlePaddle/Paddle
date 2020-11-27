@@ -17,23 +17,23 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 namespace dynload {
-std::once_flag cublas_dso_flag;
-void *cublas_dso_handle = nullptr;
+std::once_flag rocblas_dso_flag;
+void *rocblas_dso_handle = nullptr;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-CUBLAS_BLAS_ROUTINE_EACH(DEFINE_WRAP);
+ROCBLAS_BLAS_ROUTINE_EACH(DEFINE_WRAP);
 
-#ifdef CUBLAS_BLAS_ROUTINE_EACH_R2
-CUBLAS_BLAS_ROUTINE_EACH_R2(DEFINE_WRAP);
+#ifdef ROCBLAS_BLAS_ROUTINE_EACH_R2
+ROCBLAS_BLAS_ROUTINE_EACH_R2(DEFINE_WRAP);
 #endif
 
-#ifdef CUBLAS_BLAS_ROUTINE_EACH_R3
-CUBLAS_BLAS_ROUTINE_EACH_R3(DEFINE_WRAP);
+#ifdef ROCBLAS_BLAS_ROUTINE_EACH_R3
+ROCBLAS_BLAS_ROUTINE_EACH_R3(DEFINE_WRAP);
 #endif
 
-#ifdef CUBLAS_BLAS_ROUTINE_EACH_R4
-CUBLAS_BLAS_ROUTINE_EACH_R4(DEFINE_WRAP);
+#ifdef ROCBLAS_BLAS_ROUTINE_EACH_R4
+ROCBLAS_BLAS_ROUTINE_EACH_R4(DEFINE_WRAP);
 #endif
 }  // namespace dynload
 }  // namespace platform

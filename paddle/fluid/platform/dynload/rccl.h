@@ -23,24 +23,24 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-extern std::once_flag nccl_dso_flag;
-extern void* nccl_dso_handle;
+extern std::once_flag rccl_dso_flag;
+extern void* rccl_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                           \
+#define DECLARE_DYNAMIC_LOAD_RCCL_WRAP(__name)                           \
   struct DynLoad__##__name {                                             \
     template <typename... Args>                                          \
     auto operator()(Args... args) -> decltype(__name(args...)) {         \
       using nccl_func = decltype(&::__name);                             \
-      std::call_once(nccl_dso_flag, []() {                               \
-        nccl_dso_handle = paddle::platform::dynload::GetNCCLDsoHandle(); \
+      std::call_once(rccl_dso_flag, []() {                               \
+        rccl_dso_handle = paddle::platform::dynload::GetRCCLDsoHandle(); \
       });                                                                \
-      static void* p_##__name = dlsym(nccl_dso_handle, #__name);         \
+      static void* p_##__name = dlsym(rccl_dso_handle, #__name);         \
       return reinterpret_cast<nccl_func>(p_##__name)(args...);           \
     }                                                                    \
   };                                                                     \
   extern DynLoad__##__name __name
 
-#define NCCL_RAND_ROUTINE_EACH(__macro) \
+#define RCCL_RAND_ROUTINE_EACH(__macro) \
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
@@ -57,7 +57,7 @@ extern void* nccl_dso_handle;
   __macro(ncclReduceScatter);           \
   __macro(ncclGetErrorString);
 
-NCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+RCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 
 }  // namespace dynload
 }  // namespace platform

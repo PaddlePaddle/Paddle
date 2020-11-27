@@ -12,12 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvrtc.h"
-#endif
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/hiprtc.h"
-#endif
 
 namespace paddle {
 namespace platform {
