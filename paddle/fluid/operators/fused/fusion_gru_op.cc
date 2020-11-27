@@ -133,7 +133,7 @@ framework::OpKernelType FusionGRUOp::GetExpectedKernelType(
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-  if (platform::CanMKLDNNBeUsed(ctx)) {
+  if (this->CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }

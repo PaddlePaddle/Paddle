@@ -235,7 +235,7 @@ def avg_pool1d(x,
 
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
@@ -346,7 +346,7 @@ def avg_pool2d(x,
 
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
@@ -461,7 +461,7 @@ def avg_pool3d(x,
 
     op_type = "pool3d"
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out}
 
@@ -534,6 +534,7 @@ def max_pool1d(x,
 
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn.functional as F
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
@@ -581,7 +582,7 @@ def max_pool1d(x,
 
     op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     mask = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out, "Mask": mask}
@@ -655,6 +656,7 @@ def max_pool2d(x,
         ShapeError: If the output's shape calculated is not greater than 0.
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn.functional as F
           import numpy as np
@@ -714,7 +716,7 @@ def max_pool2d(x,
 
     op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     mask = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out, "Mask": mask}
@@ -784,6 +786,7 @@ def max_pool3d(x,
         ShapeError: If the output's shape calculated is not greater than 0.
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn.functional as F
           import numpy as np
@@ -840,7 +843,7 @@ def max_pool3d(x,
 
     op_type = "max_pool3d_with_index" if return_mask else "pool3d"
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     mask = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out, "Mask": mask}
@@ -887,6 +890,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
             ValueError: 'output_size' should be an integer.
     Examples:
         .. code-block:: python
+
               # average adaptive pool1d
               # suppose input data in shape of [N, C, L], `output_size` is m or [m],
               # output shape is [N, C, m], adaptive pool divide L dimension
@@ -921,7 +925,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
         return squeeze(pool_out, [2])
 
     helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     outputs = {"Out": pool_out}
@@ -961,6 +965,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         ValueError: If `data_format` is not "NCHW" or "NHWC".
     Examples:
         .. code-block:: python
+
             # adaptive avg pool2d
             # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
             # output shape is [N, C, m, n], adaptive pool divide H and W dimensions
@@ -1020,7 +1025,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     l_type = 'pool2d'
 
     helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     outputs = {"Out": pool_out}
@@ -1062,6 +1067,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         ValueError: If `data_format` is not "NCDHW" or "NDHWC".
     Examples:
         .. code-block:: python
+
             # adaptive avg pool3d
             # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
             # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
@@ -1082,7 +1088,6 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
             import numpy as np
-
             input_data = np.random.rand(2, 3, 8, 32, 32)
             x = paddle.to_tensor(input_data)
             # x.shape is [2, 3, 8, 32, 32]
@@ -1126,7 +1131,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     l_type = 'pool3d'
 
     helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out}
 
@@ -1208,7 +1213,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
             pool_out[1], [2])) if return_mask else squeeze(pool_out[0], [2])
 
     helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     mask = helper.create_variable_for_type_inference(dtype)
@@ -1296,7 +1301,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
     l_type = 'max_pool2d_with_index'
 
     helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     mask = helper.create_variable_for_type_inference(dtype)
@@ -1389,7 +1394,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
     l_type = 'max_pool3d_with_index'
 
     helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     mask = helper.create_variable_for_type_inference(dtype)
