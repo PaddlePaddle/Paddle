@@ -88,8 +88,8 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
                  "in scope for operator 'squared_l2_distance_grad'.",
                  framework::GradVarName("Y")));
 
-    auto sub_result = framework::EigenMatrix<T>::From(*in0);
-    auto out_grad = framework::EigenMatrix<T>::From(*in1);
+    auto sub_result = EigenMatrix<T>::From(*in0);
+    auto out_grad = EigenMatrix<T>::From(*in1);
 
     auto x_dims = x_g->dims();
     auto y_dims = y_g->dims();
