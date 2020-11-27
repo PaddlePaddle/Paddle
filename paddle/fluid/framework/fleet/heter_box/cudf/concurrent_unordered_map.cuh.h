@@ -61,10 +61,10 @@ __inline__ __device__ int64_t atomicCAS(int64_t* address, int64_t compare, int64
                             (unsigned long long)val);
 }
 
-// __inline__ __device__ uint64_t atomicCAS(uint64_t* address, uint64_t compare, uint64_t val) {
-//   return (uint64_t)atomicCAS((unsigned long long*)address, (unsigned long long)compare,
-//                              (unsigned long long)val);
-// }
+ __inline__ __device__ uint64_t atomicCAS(uint64_t* address, uint64_t compare, uint64_t val) {
+   return (uint64_t)atomicCAS((unsigned long long*)address, (unsigned long long)compare,
+                              (unsigned long long)val);
+ }
 
 __inline__ __device__ long long int atomicCAS(long long int* address, long long int compare,
                                               long long int val) {

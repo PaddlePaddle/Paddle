@@ -27,7 +27,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_PSLIB
-#include "hashtable.h"
 
 namespace paddle {
 namespace framework {
@@ -73,6 +72,11 @@ HashTable<KeyType, ValType>::HashTable(size_t capacity) {
 template<typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::~HashTable() {
   delete container_;
+}
+
+template<typename KeyType, typename ValType>
+void HashTable<KeyType, ValType>::show() {
+  container_->print();
 }
 
 template<typename KeyType, typename ValType>

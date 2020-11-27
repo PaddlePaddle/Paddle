@@ -49,7 +49,7 @@ class HeterBoxResource {
   HeterBoxResource(const std::vector<int>& dev_ids);
   HeterBoxResource(const HeterBoxResource&) = delete;
   HeterBoxResource& operator=(const HeterBoxResource&) = delete;
-  ~HeterBoxResource();
+  ~HeterBoxResource() {}
   void enable_p2p();
   int total_gpu();
   cudaStream_t stream(int num);

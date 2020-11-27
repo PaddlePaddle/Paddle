@@ -27,8 +27,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_PSLIB
-#include "hashtable.h"
-#include "gpu_ps.h"
 namespace paddle {
 namespace framework {
 
@@ -78,6 +76,16 @@ __global__ void fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys, T* idx, s
   }
 }
 
+template <typename KeyType, typename GradType, typename T>
+__global__ void fill_shard_vals(KeyType* d_shard_keys, KeyType* d_keys, GradType* d_shard_grads, GradType d_grads, T* idx, size_t len) {
+
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    d_shard_keys[i] = d_keys[idx[i]];
+    d_shard_grads[i] = d_grads[idx[i]];
+  }
+}
+
 template <typename ValType, typename T>
 __global__ void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx, size_t len) {
 
@@ -92,7 +100,7 @@ GpuPs<KeyType, ValType, GradType>::GpuPs(size_t capacity, std::shared_ptr<HeterB
   resource_ = resource;
   for (int i = 0; i < resource_->total_gpu(); ++i) {
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
-    auto table = new Table(capacity);
+    auto table = new Table(capacity / load_factor_);
     tables_.push_back(table);
   }
 }
@@ -106,7 +114,12 @@ GpuPs<KeyType, ValType, GradType>::~GpuPs() {
 }
 
 template<typename KeyType, typename ValType, typename GradType>
-int GpuPs<KeyType, ValType, GradType>::log2i(unsigned x) {
+void GpuPs<KeyType, ValType, GradType>::show_one_table(int gpu_num) {
+  tables_[gpu_num]->show();
+}
+
+template<typename KeyType, typename ValType, typename GradType>
+int GpuPs<KeyType, ValType, GradType>::log2i(int x) {
   unsigned res = 0;
   while (x >>= 1) {
       ++res;
@@ -158,27 +171,93 @@ void GpuPs<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys, ValTy
 }
 
 template<typename KeyType, typename ValType, typename GradType>
-void GpuPs<KeyType, ValType, GradType>::get(int num, KeyType* d_keys, ValType* d_vals, size_t len) {
-  if (len == 0) {
-    return ;
-  }
+void GpuPs<KeyType, ValType, GradType>::merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len) {
   
-  int total_gpu = resource_->total_gpu();
-  int dev_id = resource_->dev_id(num);
+  int dev_id = resource_->dev_id(gpu_num);
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
-  auto stream = resource_->stream(num);
+  auto stream = resource_->stream(gpu_num);
+  
+  size_t temp_storage_bytes;
+  
+  auto d_merge_keys = memory::AllocShared(place, len * sizeof(KeyType));
+  KeyType* d_merge_keys_ptr = reinterpret_cast<int*>(d_merge_keys->ptr());
+  
+  auto d_merge_grads = memory::AllocShared(place, len * sizeof(GradType));
+  KeyType* d_merge_grads_ptr = reinterpret_cast<int*>(d_merge_grads->ptr());
 
-  int* left = NULL;
-  int* right = NULL;
-  cudaMallocManaged(&left, total_gpu * sizeof(int));
-  cudaMallocManaged(&right, total_gpu * sizeof(int));
-  cudaMemPrefetchAsync(left, total_gpu * sizeof(int), dev_id, stream);
-  cudaMemPrefetchAsync(right, total_gpu * sizeof(int), dev_id, stream);
+  PADDLE_ENFORCE_CUDA_SUCCESS(cub::DeviceRadixSort::SortPairs(
+          NULL,
+          temp_storage_bytes,
+          d_keys,
+          d_merge_keys_ptr,
+          d_grads,
+          d_merge_grads_ptr,
+          len,
+          0,
+          8 * sizeof(KeyType),
+          stream,
+          false));
+  
+  void *d_buff = NULL;
+  auto d_temp_storage = memory::AllocShared(place, temp_storage_bytes);
 
-  // 
-  auto d_idx = memory::AllocShared(place, len * sizeof(int));
-  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
+  PADDLE_ENFORCE_CUDA_SUCCESS(cub::DeviceRadixSort::SortPairs(
+          d_temp_storage->ptr(),
+          temp_storage_bytes,
+          d_keys,
+          d_merge_keys_ptr,
+          d_grads,
+          d_merge_grads_ptr,
+          len,
+          0,
+          8 * sizeof(KeyType),
+          stream,
+          false));
+  
+  temp_storage_bytes = 0;
+  int d_num_runs_out = 0;
+  PADDLE_ENFORCE_CUDA_SUCCESS(cub::DeviceReduce::ReduceByKey(
+          NULL,
+          temp_storage_bytes,
+          d_merge_keys_ptr,
+          d_keys,
+          d_merge_grads_ptr,
+          d_grads,
+          &d_num_runs_out,
+          merger_,
+          len,
+          stream,
+          false));
+  
+  if (d_temp_storage->size() < temp_storage_bytes) {
+      d_temp_storage = NULL;
+      d_temp_storage = memory::AllocShared(place, temp_storage_bytes);
+  }
+  
+  PADDLE_ENFORCE_CUDA_SUCCESS(cub::DeviceReduce::ReduceByKey(
+          d_temp_storage->ptr(),
+          temp_storage_bytes,
+          d_merge_keys_ptr,
+          d_keys,
+          d_merge_grads_ptr,
+          d_grads,
+          &d_num_runs_out,
+          merger_,
+          len,
+          stream,
+          false));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+}
+
+template<typename KeyType, typename ValType, typename GradType>
+void GpuPs<KeyType, ValType, GradType>::split_input_to_shard(KeyType* d_keys, int* d_idx_ptr, size_t len, int* left, int* right, int gpu_num) {
+  int total_gpu = resource_->total_gpu();
+  int dev_id = resource_->dev_id(gpu_num);
+  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+  platform::CUDADeviceGuard guard(dev_id);
+  auto stream = resource_->stream(gpu_num);
+  
   auto d_idx_tmp = memory::AllocShared(place, len * sizeof(int));
   int* d_idx_tmp_ptr = reinterpret_cast<int*>(d_idx_tmp->ptr());
   
@@ -187,12 +266,6 @@ void GpuPs<KeyType, ValType, GradType>::get(int num, KeyType* d_keys, ValType* d
   
   auto d_shard_index_tmp = memory::AllocShared(place, len * sizeof(int));
   int* d_shard_index_tmp_ptr = reinterpret_cast<int*>(d_shard_index_tmp->ptr());
-  
-  auto d_shard_keys = memory::AllocShared(place, len * sizeof(KeyType));
-  KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
-  auto d_shard_vals = memory::AllocShared(place, len * sizeof(ValType));
-  ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
-  
   
   int grid_size = (len - 1) / block_size_ + 1;
   fill_idx<<<grid_size, block_size_, 0, stream>>>(d_idx_tmp_ptr, len);
@@ -216,25 +289,115 @@ void GpuPs<KeyType, ValType, GradType>::get(int num, KeyType* d_keys, ValType* d
                                              0,
                                              num_bits,
                                              stream));
-  
   calc_shard_offset<<<grid_size, block_size_, 0, stream>>>(d_shard_index_ptr, left, right, len);
-  fill_shard_key<<<grid_size, block_size_, 0, stream>>>(d_shard_keys_ptr, d_keys, d_idx, len);
+  
+}
+
+template<typename KeyType, typename ValType, typename GradType>
+void GpuPs<KeyType, ValType, GradType>::pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len) {
+  if (len == 0) {
+    return ;
+  }
+  
+  int total_gpu = resource_->total_gpu();
+  int dev_id = resource_->dev_id(num);
+  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+  platform::CUDADeviceGuard guard(dev_id);
+  auto stream = resource_->stream(num);
+
+  int* left = NULL;
+  int* right = NULL;
+  cudaMallocManaged(&left, total_gpu * sizeof(int));
+  cudaMallocManaged(&right, total_gpu * sizeof(int));
+  cudaMemPrefetchAsync(left, total_gpu * sizeof(int), dev_id, stream);
+  cudaMemPrefetchAsync(right, total_gpu * sizeof(int), dev_id, stream);
+
+  // 
+  auto d_idx = memory::AllocShared(place, len * sizeof(int));
+  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
+  
+  auto d_shard_keys = memory::AllocShared(place, len * sizeof(KeyType));
+  KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
+  auto d_shard_vals = memory::AllocShared(place, len * sizeof(ValType));
+  ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
+  
+  
+  int grid_size = (len - 1) / block_size_ + 1;
+  
+  split_input_to_shard(d_keys, d_idx_ptr, len, left, right, num);
+  
+  fill_shard_key<<<grid_size, block_size_, 0, stream>>>(d_shard_keys_ptr, d_keys, d_idx_ptr, len);
 
   cudaStreamSynchronize(stream); 
-  
+
   for (int i = 0; i < total_gpu; ++i) {
     if (left[i] == -1) {
       continue;
     }
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
-    tables_[i]->get(d_shard_keys_ptr + left[i], d_shard_vals_ptr + left[i], right[i] - left[i] + 1, resource_->dev_id(i));
+    tables_[i]->get(d_shard_keys_ptr + left[i], d_shard_vals_ptr + left[i], right[i] - left[i] + 1, resource_->stream(i));
   }
   for (int i = 0; i < total_gpu; ++i) {
     cudaStreamSynchronize(resource_->stream(i));
   }
   
   fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals_ptr, d_vals, d_idx, len);
+  cudaStreamSynchronize(stream);
+  cudaFree(left);
+  cudaFree(right);
+}
+
+template <typename KeyType, typename ValType, typename GradType>
+template <typename Sgd>
+void GpuPs<KeyType, ValType, GradType>::push_sparse(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len, Sgd& sgd) {
+  if (len == 0) {
+    return ;
+  }
+  
+  int total_gpu = resource_->total_gpu();
+  int dev_id = resource_->dev_id(gpu_num);
+  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+  platform::CUDADeviceGuard guard(dev_id);
+  auto stream = resource_->stream(gpu_num);
+  
+  int* left = NULL;
+  int* right = NULL;
+  cudaMallocManaged(&left, total_gpu * sizeof(int));
+  cudaMallocManaged(&right, total_gpu * sizeof(int));
+  cudaMemPrefetchAsync(left, total_gpu * sizeof(int), dev_id, stream);
+  cudaMemPrefetchAsync(right, total_gpu * sizeof(int), dev_id, stream);
+
+  // 
+  auto d_idx = memory::AllocShared(place, len * sizeof(int));
+  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
+  
+  auto d_shard_keys = memory::AllocShared(place, len * sizeof(KeyType));
+  KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
+  auto d_shard_grads = memory::AllocShared(place, len * sizeof(GradType));
+  GradType* d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads->ptr());
+
+  int grid_size = (len - 1) / block_size_ + 1;
+  
+  merge_grad(gpu_num, d_keys, d_grads, len);
+  split_input_to_shard(d_keys, d_idx_ptr, len, left, right, gpu_num);
+  
+  fill_shard_grads<<<grid_size, block_size_, 0, stream>>>(d_shard_keys_ptr, d_keys, d_shard_grads_ptr, d_grads, d_idx_ptr, len);
+
   cudaStreamSynchronize(stream); 
+
+  for (int i = 0; i < total_gpu; ++i) {
+    if (left[i] == -1) {
+      continue;
+    }
+    platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    tables_[i]->update(d_shard_keys_ptr + left[i], d_shard_grads_ptr + left[i], right[i] - left[i] + 1, sgd, resource_->stream(i));
+  }
+  for (int i = 0; i < total_gpu; ++i) {
+    cudaStreamSynchronize(resource_->stream(i));
+  }
+  
+  cudaFree(left);
+  cudaFree(right);
 }
 
 }  // end namespace framework

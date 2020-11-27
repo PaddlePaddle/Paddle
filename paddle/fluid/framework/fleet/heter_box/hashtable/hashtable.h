@@ -42,7 +42,7 @@ class HashTable {
   HashTable& operator=(const HashTable&) = delete;
   void insert(const KeyType* d_keys, const ValType* d_vals, size_t len, cudaStream_t stream);
   void get(const KeyType* d_keys, ValType* d_vals, size_t len, cudaStream_t stream);
-
+  void show();
  private:
 
   TableContainer<KeyType, ValType>* container_;
@@ -50,7 +50,7 @@ class HashTable {
   float LOAD_FACTOR{0.75f};
   size_t capacity_;
 };
-
 }  // end namespace framework
 }  // end namespace paddle
+#include "hashtable.tpp"
 #endif
