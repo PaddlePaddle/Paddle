@@ -207,6 +207,7 @@ class ParameterServerRuntime(RuntimeBase):
             SyncStrategy, GeoStrategy
 
         trainer_config = self.async_strategy.get_trainer_runtime_config()
+        print(trainer_config)
 
         dist_strategy = self.context["valid_strategy"]
         launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]

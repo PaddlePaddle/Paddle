@@ -35,10 +35,12 @@ def deprecated(update_to="", since="", reason=""):
            - The docstring of the API will be modified to include a notice
              about deprecation."
            - Raises a :class:`~exceptions.DeprecatedWarning` when old API is called.
+
        Args:
            since(str): The version at which the decorated method is considered deprecated.
            update_to(str): The new API users should use.
            reason(str): The reason why the API is deprecated.
+           
        Returns:
            decorator: decorated function or class.
     """

@@ -25,11 +25,11 @@ std::string InsertIndentationIntoEachLine(const std::string &str) {
   std::ostringstream sout;
   size_t start_pos = 0;
   size_t end_pos = 0;
-  while ((end_pos = str.find("\n", start_pos)) != std::string::npos) {
-    sout << "    " << str.substr(start_pos, end_pos + 1);
+  while ((end_pos = str.find_first_of("\n", start_pos)) != std::string::npos) {
+    sout << "    " << str.substr(start_pos, end_pos - start_pos + 1);
     start_pos = end_pos + 1;
   }
-  sout << "    " << str.substr(start_pos, end_pos);
+  sout << "    " << str.substr(start_pos, end_pos - start_pos + 1);
   return sout.str();
 }
 
@@ -58,6 +58,7 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
       sout << "\n  " << line;
     }
   }
+  VLOG(1) << exception->error_str();
   // Step 2. Construct final call stack & append error op name
   if (FLAGS_call_stack_level > 1) {
     sout << exception->what();

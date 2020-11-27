@@ -101,10 +101,11 @@ class _DatasetKind(object):
     ITER = 1
 
     @staticmethod
-    def create_fetcher(kind, dataset, auto_collate_batch, collate_fn, drop_last):
+    def create_fetcher(kind, dataset, auto_collate_batch, collate_fn,
+                       drop_last):
         if kind == _DatasetKind.MAP:
-            return _MapDatasetFetcher(dataset, auto_collate_batch,
-                                      collate_fn, drop_last)
+            return _MapDatasetFetcher(dataset, auto_collate_batch, collate_fn,
+                                      drop_last)
         elif kind == _DatasetKind.ITER:
             return _IterableDatasetFetcher(dataset, auto_collate_batch,
                                            collate_fn, drop_last)
@@ -240,7 +241,8 @@ class _DataLoaderIterBase(object):
             if self._dataset_kind == _DatasetKind.MAP:
                 self._sampler_iter = iter(list(range(len(self._dataset))))
             else:
-                self._sampler_iter = iter(_InfiniteIterableSampler(self._dataset, 1))
+                self._sampler_iter = iter(
+                    _InfiniteIterableSampler(self._dataset, 1))
             self._collate_fn = loader.collate_fn
 
         # LoDTensorBlockingQueue instance for create_py_reader and a thread
@@ -380,8 +382,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
 # NOTE(chenweihang): _worker_loop must be top level method to be pickled
 def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
-                 auto_collate_batch, collate_fn, init_fn, worker_id, num_workers,
-                 use_shared_memory):
+                 auto_collate_batch, collate_fn, init_fn, worker_id,
+                 num_workers, use_shared_memory):
     try:
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
         # some shared memory objects may have been applied for but have not yet
@@ -400,8 +402,8 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
         try:
             if init_fn is not None:
                 init_fn(worker_id)
-            fetcher = _DatasetKind.create_fetcher(dataset_kind, dataset,
-                                    auto_collate_batch, collate_fn, True)
+            fetcher = _DatasetKind.create_fetcher(
+                dataset_kind, dataset, auto_collate_batch, collate_fn, True)
         except:
             init_exception = Exception("init_fn failed in worker {}: " \
                                     "{}".format(worker_id, sys.exc_info()))

@@ -166,7 +166,7 @@ def conv1d(x,
            groups=1,
            data_format='NCL',
            name=None):
-    """
+    r"""
     The convolution1D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
     Output are in NCL format, where N is batch size, C is the number of
@@ -182,7 +182,7 @@ def conv1d(x,
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -209,7 +209,7 @@ def conv1d(x,
 
         .. math::
 
-            L_{out}&= \\frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
+            L_{out} = \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
     Args:
         x (Tensor): The input is 3-D Tensor with shape [N, C, L], the data type 
@@ -392,7 +392,7 @@ def conv2d(x,
            groups=1,
            data_format="NCHW",
            name=None):
-    """
+    r"""
 
     The convolution2D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
@@ -568,7 +568,7 @@ def conv1d_transpose(x,
                      output_size=None,
                      data_format="NCL",
                      name=None):
-    """
+    r"""
     The 1-D convolution transpose layer calculates the output based on the input,
     filter, and dilation, stride, padding. Input(Input) and output(Output)
     are in 'NCL' format or 'NLC' where N is batch size, C is the number of channels,
@@ -583,7 +583,7 @@ def conv1d_transpose(x,
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -693,13 +693,12 @@ def conv1d_transpose(x,
           x=np.array([[[4, 0, 9, 7],
                        [8, 0, 9, 2,]]]).astype(np.float32)
           # shape: (2, 1, 2)
-          y=np.array([[[7, 0]],
+          w=np.array([[[7, 0]],
                       [[4, 2]]]).astype(np.float32)
           x_var = paddle.to_tensor(x)
           w_var = paddle.to_tensor(w)
           y_var = F.conv1d_transpose(x_var, w_var)
-          y_np = y_var.numpy()
-          print y_np
+          print(y_var)
           
           # [[[60. 16. 99. 75.  4.]]]
     """
@@ -828,7 +827,7 @@ def conv2d_transpose(x,
                      output_size=None,
                      data_format='NCHW',
                      name=None):
-    """
+    r"""
 
     The convolution2D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
@@ -1068,7 +1067,7 @@ def conv3d(x,
            groups=1,
            data_format="NCDHW",
            name=None):
-    """
+    r"""
 
     The convolution3D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
@@ -1233,7 +1232,7 @@ def conv3d_transpose(x,
                      output_size=None,
                      data_format='NCDHW',
                      name=None):
-    """
+    r"""
     The convolution3d transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
     are in NCDHW or NDHWC format. Where N is batch size, C is the number of channels,
