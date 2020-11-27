@@ -94,29 +94,20 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         self.assertIn('check_finite_and_unscale', ops)
 
     def test_amp_distributed_optimizer(self):
-        """ test amp use fp16 allreduce when distributed """
+        """ test amp when distributed """
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-
-        with fluid.program_guard(train_prog, startup_prog):
-            with fluid.unique_name.guard():
-                input_z = fluid.data(name='z', shape=[4, 1], dtype='int64')
-                emb = fluid.layers.embedding(input=input_z, size=(10, 64))
-                mean = paddle.fluid.layers.mean(x=emb)
-                avg_cost = avg_cost + mean
         self.set_strategy(strategy, 'amp')
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
 
         ops = [op.type for op in avg_cost.block.ops]
-        outs = [
-            op.output('Out')[0] for op in avg_cost.block.ops
-            if op.type == 'cast'
-        ]
         self.assertIn('cast', ops)
         self.assertIn('check_finite_and_unscale', ops)
-
-        # fp32->fp16--allreduce--fp16-->fp32
-        self.assertIn('cast_fp16.cast_fp32', ''.join(outs))
+        check_count = 0
+        for name in ops:
+            if name == 'check_finite_and_unscale':
+                check_count += 1
+        self.assertEqual(check_count, len(train_prog.all_parameters()))
 
     def test_amp_recompute_optimizer(self):
         """ test amp + recompute """

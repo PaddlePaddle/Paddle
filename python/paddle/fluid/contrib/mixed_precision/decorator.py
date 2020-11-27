@@ -75,6 +75,9 @@ class OptimizerWithMixedPrecision(object):
             self._num_bad_steps = None
 
     def _set_distributed(self, flag):
+        # if distributed, all cards will communication with each other,
+        # overlap communication and computation by split the
+        # check_finite_and_unscale op.
         self._is_distributed = flag
 
     def get_loss_scaling(self):
@@ -156,8 +159,7 @@ class OptimizerWithMixedPrecision(object):
                 callbacks)
             # Change the op_role_var attr for some ops, so that gradients
             # transferred across GPUs can be FP16.
-            params_grads = update_role_var_grad(train_program, params_grads,
-                                                self._is_distributed)
+            update_role_var_grad(train_program, params_grads)
         return params_grads
 
     def apply_gradients(self, params_grads):
@@ -178,11 +180,11 @@ class OptimizerWithMixedPrecision(object):
                 grads, found_inf = check_finite_and_unscale(
                     grads, self._loss_scaling, name="find_infinite_scale")
         else:
-            # if distributed, overlap unscale with communication
+            # if distributed, split check_finite_and_unscale to overlap
+            # unscale with communication
             found_infs = []
             for p, g in params_grads:
                 with self._train_program._optimized_guard([p, g]):
-                    # if found inf, grad will be set to zero
                     _, found_inf = check_finite_and_unscale(
                         [g, ], self._loss_scaling, name="find_infinite_scale")
                     found_infs.append(found_inf)
