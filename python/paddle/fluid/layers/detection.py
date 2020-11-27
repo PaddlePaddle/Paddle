@@ -999,7 +999,7 @@ def polygon_box_transform(input, name=None):
     return output
 
 
-@deprecated(since="2.0.0", update_to="paddle.vision.yolo_loss")
+@deprecated(since="2.0.0", update_to="paddle.vision.ops.yolo_loss")
 @templatedoc(op_type="yolov3_loss")
 def yolov3_loss(x,
                 gt_box,
@@ -1129,7 +1129,7 @@ def yolov3_loss(x,
     return loss
 
 
-@deprecated(since="2.0.0", update_to="paddle.vision.yolo_box")
+@deprecated(since="2.0.0", update_to="paddle.vision.ops.yolo_box")
 @templatedoc(op_type="yolo_box")
 def yolo_box(x,
              img_size,
