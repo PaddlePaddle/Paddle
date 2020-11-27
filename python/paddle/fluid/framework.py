@@ -1309,12 +1309,15 @@ class Variable(object):
                                                     dtype='float32')
                 print(new_variable._to_readable_code())
         """
+        type_str = str(self.type).split('.')[
+            1]  # VarType.LOD_TENSOR -> LOD_TENSOR
+        dtype_str = str(self.dtype).split('.')[1]
         if self.type == core.VarDesc.VarType.SELECTED_ROWS or self.type == core.VarDesc.VarType.LOD_TENSOR:
-            var_str = "{name} : paddle.{type}.shape{shape}.astype({dtype})".\
-                format(i="{", e="}", name=self.name, type=self.type, shape=self.shape, dtype=self.dtype)
+            var_str = "{name} : {type}.shape{shape}.dtype({dtype}).stop_gradient({stop_gradient})".\
+                format(name=self.name, type=type_str, shape=self.shape, dtype=dtype_str, stop_gradient=self.stop_gradient)
         else:
-            var_str = "{name} : paddle.{type})".\
-                format(i="{", e="}", name=self.name, type=self.type)
+            var_str = "{name} : {type})".\
+                format(name=self.name, type=type_str)
 
         if type(self) == Parameter:
             if self.trainable:
