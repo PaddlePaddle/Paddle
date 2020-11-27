@@ -50,11 +50,11 @@ class BasicEngine : public Engine {
       accumulators_;
   std::vector<std::pair<GradientAccumulator*, std::shared_ptr<VariableWrapper>>>
       need_accu_var_list_;
-  // out_accumulators_ is only for leaf tensor(hooks/accumulate grad)
-  std::unordered_set<GradientAccumulator*> out_accumulators_;
+  // leaf_accumulators_ is only for leaf tensor(hooks/accumulate grad)
+  std::unordered_set<GradientAccumulator*> leaf_accumulators_;
 
-  // TODO(zhouwei): in_accumulators_ is only for non-leaf tensor
-  // std::unordered_set<GradientAccumulator*> in_accumulators_;
+  // TODO(zhouwei): non_leaf_accumulators_ is only for non-leaf tensor
+  // std::unordered_set<GradientAccumulator*> non_leaf_accumulators_;
   bool retain_graph_;
 };
 

@@ -74,7 +74,7 @@ class TestSimpleNet(unittest.TestCase):
                     self.assertTrue(emb.weight.gradient() is None)
 
                     input_emb.clear_gradient()
-                    self.assertTrue(input_emb.gradient() is None)
+                    self.assertTrue(input_emb.gradient() is not None)
                     paddle.enable_static()
 
     def test_selectedrows_gradient2(self):
@@ -111,7 +111,7 @@ class TestSimpleNet(unittest.TestCase):
                     self.assertTrue(emb.weight.gradient() is None)
 
                     input_emb.clear_gradient()
-                    self.assertTrue(input_emb.gradient() is None)
+                    self.assertTrue(input_emb.gradient() is not None)
 
 
 if __name__ == '__main__':

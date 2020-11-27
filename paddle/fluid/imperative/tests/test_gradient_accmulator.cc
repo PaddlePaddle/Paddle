@@ -291,20 +291,20 @@ static void TestGradientAccumulatorTestUnchangeInput(
       CopyVar(var2, var_wrapper1_2->MutableVar());
       CopyVar(var2, var_wrapper2_2->MutableVar());
 
-      // g_accum1: interior_var_ = var1 + var2
+      // g_accum1: inner_var_ = var1 + var2
       g_accum1->SumGrad(var_wrapper1_1, 0, false);
       g_accum1->SumGrad(var_wrapper1_2, 1, false);
       ASSERT_EQ(g_accum1->CurCnt(), g_accum1->RefCnt());
       ASSERT_TRUE(g_accum1->SumGradCompleted());
-      // g_accum1: interior_vars -> var_
+      // g_accum1: inner_var_ -> var_
       g_accum1->AccumulateGrad();
 
-      // g_accum2: interior_var_ = var1 + var2
+      // g_accum2: inner_var_ = var1 + var2
       g_accum2->SumGrad(var_wrapper2_1, 0, true);
       g_accum2->SumGrad(var_wrapper2_2, 1, true);
       ASSERT_EQ(g_accum2->CurCnt(), g_accum2->RefCnt());
       ASSERT_TRUE(g_accum2->SumGradCompleted());
-      // g_accum2: interior_vars -> var_
+      // g_accum2: inner_var_ -> var_
       g_accum2->AccumulateGrad();
 
       ASSERT_TRUE(IsEqualVar(var_wrapper2_1->Var(), var1));
@@ -335,12 +335,12 @@ static void TestGradientAccumulatorTestUnchangeInput(
 
       g_accum3->SumGrad(var_wrapper3_4, 0, false);
       ASSERT_TRUE(g_accum3->SumGradCompleted());
-      // g_accum4: var_(var_wrapper3_3) + interior_vars -> var_
+      // g_accum4: var_(var_wrapper3_3) + inner_var_ -> var_
       g_accum3->AccumulateGrad();
 
       g_accum4->SumGrad(var_wrapper4_4, 0, false);
       ASSERT_TRUE(g_accum4->SumGradCompleted());
-      // g_accum4: var_(var_wrapper4_3) + interior_vars -> var_
+      // g_accum4: var_(var_wrapper4_3) + inner_var_ -> var_
       g_accum4->AccumulateGrad();
 
       ASSERT_TRUE(IsEqualVar(var_wrapper3_3->Var(), var_wrapper4_3->Var()));

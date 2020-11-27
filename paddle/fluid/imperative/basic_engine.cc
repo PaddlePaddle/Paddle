@@ -38,14 +38,13 @@ namespace imperative {
 void BasicEngine::Init(VarBase* var, bool retain_graph) {
   retain_graph_ = retain_graph;
   init_node_ = var->GradVarBase()->GradNode();
-  PADDLE_ENFORCE_EQ(
-      var->GradVarBase()->GraphIsFree(), false,
-      platform::errors::Unavailable(
-          "%s Trying to backward through the same graph a second time, but "
-          "this "
-          "graph have already been freed. Please specify retain_graph=True "
-          "when calling backward the first time.",
-          var->Name()));
+  PADDLE_ENFORCE_EQ(var->GradVarBase()->GraphIsFree(), false,
+                    platform::errors::Unavailable(
+                        "%s Trying to backward through the same graph a second "
+                        "time, but this graph have already been freed. Please "
+                        "specify Tensor.backward(retain_graph=True) when "
+                        "calling backward the first time.",
+                        var->Name()));
 
   if (!retain_graph) {
     VLOG(5) << "Clear the auto-grad graph from grad var " << var->Name()
@@ -127,8 +126,6 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
       }
 
       accumulator->IncreaseRefCnt();
-
-      VLOG(3) << "Prepare acccumulator for grad variable " << var->Name();
 
       if (var->HasLeafHooks()) {
         VLOG(3) << "Grad variable wrapper (" << var->Name()
@@ -226,16 +223,16 @@ void BasicEngine::Execute() {
               platform::errors::NotFound("Cannot find gradient of variable %s",
                                          var->Name()));
 
-          // out_accumulators_ : hooks and accumulate-grad for leaf tensor
+          // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor
           if (var->IsLeafGrad()) {
-            out_accumulators_.insert(iter->second.get());
+            leaf_accumulators_.insert(iter->second.get());
 
             PADDLE_ENFORCE_EQ(
-                iter->second->HasInteriorVar(), true,
+                iter->second->HasInnerVar(), true,
                 platform::errors::NotFound("Cannot find interior gradient of "
                                            "leaf tensor's grad var %s",
                                            var->Name()));
-            var = iter->second->InteriorVar();
+            var = iter->second->InnerVar();
           }
 
           if (var->OverridedStopGradient() || iter->second->RefCnt() > 1) {
@@ -244,9 +241,8 @@ void BasicEngine::Execute() {
             var = tmp_var;
             need_accu_var_list_.emplace_back(iter->second.get(), var);
             VLOG(10) << "create temporary var of " << var->Name()
-                     << " for sum gradient within this graph !";
+                     << " for sum gradient within this graph!";
           }
-          VLOG(5) << "Real calculate var " << var;
         }
       }
 
@@ -262,23 +258,23 @@ void BasicEngine::Execute() {
       }
 
       // Step 3: Call Hooks && Sum Gradient with Pre-Graph && Call BackwardHooks
-      for (auto* accumulator : out_accumulators_) {
+      for (auto* accumulator : leaf_accumulators_) {
         if (!accumulator->SumGradCompleted()) {
           continue;
         }
-        // 1. Call Hooks for **interior_var_**
+        // 1. Call Hooks for **inner_var_**
 
         // 2. Sum Gradient with Previous Graph
         accumulator->AccumulateGrad();
 
-        // 3. Call backward Hooks
+        // 3. Call backward Hooks for **var_**
         if (accumulator->HasPostHooks()) {
           accumulator->CallBackwardPostHooks();
         }
       }
 
       need_accu_var_list_.clear();
-      out_accumulators_.clear();
+      leaf_accumulators_.clear();
 
       if (!retain_graph_) {
         VLOG(3) << "Remove op after op " << cur_op.Type() << " runs";
@@ -311,7 +307,7 @@ void BasicEngine::Clear() {
   node_deps_.clear();
   accumulators_.clear();
   need_accu_var_list_.clear();
-  out_accumulators_.clear();
+  leaf_accumulators_.clear();
 }
 
 }  // namespace imperative
