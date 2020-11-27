@@ -117,6 +117,7 @@ __all__ = [
         'log1p',
         'erf',
         'addmm',
+        'addcmul',
         'clip',
         'trace',
         'kron',
@@ -1374,11 +1375,13 @@ def log10(x, name=None):
 
 def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     """
+
     Calculate the element-wise multiplication of tensor1 and tensor2,
     then multiply the result by value, and add it to input. The shape of input,
     tensor1, tensor2 should be broadcastable.
     The equation is:
     ..  math::
+
         out = input + value * tensor1 * tensor2
     Args:
         input(Tensor): The input to be added. A Tensor with type float32, float64, int32, int64.
