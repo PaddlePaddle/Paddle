@@ -147,7 +147,7 @@ class SumOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
       if (library == framework::LibraryType::kPlain &&
-          platform::CanMKLDNNBeUsed(ctx) &&
+          this->CanMKLDNNBeUsed(ctx) &&
           (static_cast<framework::proto::VarType::Type>(dtype) ==
                framework::proto::VarType::FP32 ||
            static_cast<framework::proto::VarType::Type>(dtype) ==

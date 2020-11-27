@@ -103,6 +103,7 @@ class TestCollectiveRunnerBase(object):
         nranks = 2
         self.initCommunicator(startup_prog, rank, nranks, True,
                               current_endpoint, endpoints)
+        self.rank = rank
         result = self.get_model(train_prog, startup_prog)
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         place = fluid.CUDAPlace(
@@ -268,6 +269,11 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out, need_result2, rtol=1e-05, atol=1e-05))
+        elif col_type == "sendrecv":
+            need_result = input1
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
         elif col_type == "reduce_slicegather":
             slicesize = input1.shape[0] // 2
             tmp10 = input1[0:slicesize]

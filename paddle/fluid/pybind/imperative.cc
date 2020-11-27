@@ -69,9 +69,12 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::XPUPlace>();
   } else if (py::isinstance<platform::CUDAPinnedPlace>(place_obj)) {
     return place_obj.cast<platform::CUDAPinnedPlace>();
+  } else if (py::isinstance<platform::Place>(place_obj)) {
+    return place_obj.cast<platform::Place>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place should be one of CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
+        "Place should be one of "
+        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
   }
 }
 
@@ -640,44 +643,82 @@ void BindImperative(py::module *m_ptr) {
              return TensorToPyArray(tensor, true);
            },
            R"DOC(
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
 
-        Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
-
+        Returns a numpy array shows the value of current Tensor.
+        
         Returns:
-            ndarray: The numpy value of current Variable.
+            ndarray: The numpy value of current Tensor.
 
         Returns type:
-            ndarray: dtype is same as current Variable
+            ndarray: dtype is same as current Tensor
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
+                import paddle
                 import numpy as np
-
                 data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    linear = Linear(32, 64)
-                    data = to_variable(data)
-                    x = linear(data)
-                    print(x.numpy())
+                linear = paddle.nn.Linear(32, 64)
+                data = paddle.to_tensor(data)
+                x = linear(data)
+                print(x.numpy())
 
        )DOC")
       .def("detach",
-           [](const imperative::VarBase &self) {
-             const auto &tensor = self.Var().Get<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(tensor.IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "%s has not been initialized", self.Name()));
-             return self.NewVarBase(tensor.place(), false);
+           [](const imperative::VarBase
+                  &self) -> std::shared_ptr<imperative::VarBase> {
+             PADDLE_ENFORCE_EQ(
+                 self.Var().IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self.Name()));
+             PADDLE_ENFORCE_EQ(
+                 self.Var().IsType<framework::LoDTensor>() ||
+                     self.Var().IsType<framework::SelectedRows>(),
+                 true,
+                 platform::errors::InvalidArgument(
+                     "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
+                     self.Name()));
+             auto detach_var = std::make_shared<imperative::VarBase>(
+                 true, "detach_" + self.Name());
+             detach_var->SetPersistable(self.Persistable());
+             detach_var->SetType(self.Type());
+             detach_var->SetDataType(self.DataType());
+             if (self.Var().IsType<framework::LoDTensor>()) {
+               const auto &origin_tensor =
+                   self.Var().Get<framework::LoDTensor>();
+               PADDLE_ENFORCE_EQ(
+                   origin_tensor.IsInitialized(), true,
+                   platform::errors::InvalidArgument(
+                       "Tensor %s has not been initialized!", self.Name()));
+
+               auto *detach_tensor =
+                   detach_var->MutableVar()->GetMutable<framework::LoDTensor>();
+               detach_tensor->ShareDataWith(origin_tensor);
+             } else {
+               const auto &origin_selected_rows =
+                   self.Var().Get<framework::SelectedRows>();
+               PADDLE_ENFORCE_EQ(
+                   origin_selected_rows.value().IsInitialized(), true,
+                   platform::errors::InvalidArgument(
+                       "Tensor %s has not been initialized!", self.Name()));
+
+               auto *detach_selected_rows =
+                   detach_var->MutableVar()
+                       ->GetMutable<framework::SelectedRows>();
+               detach_selected_rows->set_height(origin_selected_rows.height());
+               detach_selected_rows->set_rows(origin_selected_rows.rows());
+               detach_selected_rows->mutable_value()->ShareDataWith(
+                   origin_selected_rows.value());
+             }
+             VLOG(3) << "The detached Tensor(" << detach_var->Name()
+                     << ") share data with " << self.Name();
+             return detach_var;
            },
-           py::return_value_policy::copy, R"DOC(
+           py::return_value_policy::take_ownership, R"DOC(
 
         Returns a new Tensor, detached from the current graph.
+        It will share data with origin Tensor and always doesn't have a Tensor copy.
+        In addition, the detached Tensor doesn't provide gradient propagation.
 
         Returns: The detached Tensor.
 
@@ -685,12 +726,31 @@ void BindImperative(py::module *m_ptr) {
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
 
-                linear = Linear(32, 64)
-                data = paddle.uniform(shape=[30, 10, 32], -1, 1)
-                x = linear(data)
-                y = x.detach()
+                x = paddle.to_tensor(1.0, stop_gradient=False)
+                detach_x = x.detach()
+                detach_x[:] = 10.0
+                print(x)  # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=False,
+                          #        [10.])
+                y = x**2
+                y.backward()
+                print(x.grad)         # [20.0]
+                print(detach_x.grad)  # None, 'stop_gradient=True' by default
+
+                detach_x.stop_gradient = False # Set stop_gradient to be False, supported auto-grad
+                z = detach_x**3
+                z.backward()
+
+                print(x.grad)         # [20.0], detach_x is detached from x's graph, not affect each other
+                print(detach_x.grad)  # [300.0], detach_x has its own graph
+
+                # Due to sharing of data with origin Tensor, There are some unsafe operations:
+                y = 2 * x
+                detach_x[:] = 5.0
+                y.backward() 
+                # It will raise Error:
+                #   one of the variables needed for gradient computation has been modified by an inplace operation.
+             
        )DOC")
       .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
 
@@ -704,19 +764,13 @@ void BindImperative(py::module *m_ptr) {
              .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
-
-                inputs = []
-                for _ in range(10):
-                    tmp = paddle.ones([2, 2])
-                    tmp.stop_gradient=False
-                    inputs.append(tmp)
-                ret = paddle.sums(inputs2)
-                loss = paddle.sum(ret)
-                loss.backward()
-                print("Before clear_gradient {}".format(loss.grad))
-                loss.clear_gradient()
-                print("After clear_gradient {}".format(loss.grad))
+                input = paddle.uniform([10, 2])
+                linear = paddle.nn.Linear(2, 3)
+                out = linear(input)
+                out.backward()
+                print("Before clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+                linear.weight.clear_gradient()
+                print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
       )DOC")
       .def("clone",
            [](std::shared_ptr<imperative::VarBase> &self) {
@@ -1033,7 +1087,7 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::Tracer::SetEnableProgramDescTracing)
       .def_property("_enable_autocast", &imperative::Tracer::IsAutoCastEnabled,
                     &imperative::Tracer::SetEnableAutoCast)
-      .def_property("_train_mode", &imperative::Tracer::HasGrad,
+      .def_property("_has_grad", &imperative::Tracer::HasGrad,
                     &imperative::Tracer::SetHasGrad)
       .def_property(
           "_expected_place",

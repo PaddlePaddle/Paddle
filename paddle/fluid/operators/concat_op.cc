@@ -83,7 +83,7 @@ class ConcatOp : public framework::OperatorWithKernel {
           "All Inputs of Concat OP are Empty!"));
     }
 #ifdef PADDLE_WITH_MKLDNN
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);

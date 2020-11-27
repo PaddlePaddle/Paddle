@@ -306,7 +306,7 @@ class ImageFolder(Dataset):
             index (int): Index
 
         Returns:
-            tuple: (sample, target) where target is class_index of the target class.
+            sample of specific index.
         """
         path = self.samples[index]
         sample = self.loader(path)

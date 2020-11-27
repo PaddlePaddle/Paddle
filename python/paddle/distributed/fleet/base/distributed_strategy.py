@@ -615,12 +615,15 @@ class DistributedStrategy(object):
     def sharding(self):
         """
         Indicating whether we are using sharding Optimizer for memory
-        optimization
+        optimization. We implement the sharding optimizer following the ZeRO-DP 
+        idea from [ZeRO: Memory Optimizations Toward Training Trillion Parameter Models](https://arxiv.org/abs/1910.02054).
+        Model parameters and Optimizer State are sharded into different ranks allowing to fit larger model.
 
         Default value: False
 
         Examples:
           .. code-block:: python
+          
             import paddle.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.sharding = True
@@ -638,10 +641,12 @@ class DistributedStrategy(object):
     @property
     def sharding_configs(self):
         """
-        Set sharding configurations.
+        Set sharding configurations. 
 
         **Note**:
-            fuse_broadcast_MB(float): size of a fused group of broadcasted parameters.
+            fuse_broadcast_MB(float): size of a fused group of broadcasted parameters. 
+            This configuration will affect the communication speed in sharding training, 
+            and should be an empirical value decided by your model size and network topology.
 
         Examples:
           .. code-block:: python
@@ -862,7 +867,7 @@ class DistributedStrategy(object):
 
     @property
     def dgc_configs(self):
-        """
+        r"""
         Set Deep Gradient Compression training configurations. In general, dgc has serveral configurable
         settings that can be configured through a dict.
 

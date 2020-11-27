@@ -22,10 +22,18 @@ template <typename DeviceContext, typename T>
 class ElementwiseMulXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    XPUElementwise<T, XPUMulFunctor<T>>(ctx);
+    XPUElementwise<T>(ctx, xpu::mul<T>);
   }
 };
-DEFINE_XPU_GRAD_KERNEL(Mul, mul, true);
+// DEFINE_XPU_GRAD_KERNEL(Mul, mul, true);
+template <typename DeviceContext, typename T>
+class ElementwiseMulGradXPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    XPUElementwiseGrad<T>(ctx, xpu::mul_grad<T>, true);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 

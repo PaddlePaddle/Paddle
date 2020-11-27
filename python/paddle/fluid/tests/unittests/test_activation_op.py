@@ -180,10 +180,12 @@ class TestLogSigmoidAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.log_sigmoid, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[11, 17], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[11, 17], dtype='int32')
             self.assertRaises(TypeError, F.log_sigmoid, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[11, 17], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[11, 17], dtype='float16')
             F.log_sigmoid(x_fp16)
 
 
@@ -260,10 +262,12 @@ class TestTanhAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.tanh, 1)
             # The input dtype must be float16, float32.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.tanh, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.tanh(x_fp16)
 
 
@@ -519,10 +523,12 @@ class TestTanhshrinkAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.tanhshrink, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.tanhshrink, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.tanhshrink(x_fp16)
 
 
@@ -616,10 +622,12 @@ class TestHardShrinkAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardshrink, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.hardshrink, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.hardshrink(x_fp16)
 
 
@@ -676,10 +684,12 @@ class TestHardtanhAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardtanh, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.hardtanh, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.hardtanh(x_fp16)
 
 
@@ -759,13 +769,16 @@ class TestSoftshrinkAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.softshrink, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.softshrink, x_int32)
             # The threshold must be no less than zero
-            x_fp32 = paddle.fluid.data(name='x_fp32', shape=[12, 10], dtype='float32')
+            x_fp32 = paddle.fluid.data(
+                name='x_fp32', shape=[12, 10], dtype='float32')
             self.assertRaises(ValueError, F.softshrink, x_fp32, -1.0)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.softshrink(x_fp16)
 
 
@@ -1010,10 +1023,12 @@ class TestReluAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.relu, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[10, 12], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[10, 12], dtype='int32')
             self.assertRaises(TypeError, F.relu, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[10, 12], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[10, 12], dtype='float16')
             F.relu(x_fp16)
 
 
@@ -1119,10 +1134,12 @@ class TestLeakyReluAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.leaky_relu, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.leaky_relu, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.leaky_relu(x_fp16)
 
 
@@ -1218,10 +1235,12 @@ class TestGELUAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.gelu, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[11, 17], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[11, 17], dtype='int32')
             self.assertRaises(TypeError, F.gelu, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[11, 17], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[11, 17], dtype='float16')
             F.gelu(x_fp16)
 
 
@@ -1368,10 +1387,12 @@ class TestRelu6API(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.relu6, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.relu6, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.relu6(x_fp16)
 
 
@@ -1455,10 +1476,12 @@ class TestHardswishAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardswish, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.hardswish, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.hardswish(x_fp16)
 
 
@@ -1572,10 +1595,12 @@ class TestELUAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.elu, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[10, 12], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[10, 12], dtype='int32')
             self.assertRaises(TypeError, F.elu, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[10, 12], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[10, 12], dtype='float16')
             F.elu(x_fp16)
 
 
@@ -1622,6 +1647,104 @@ class TestLog(TestActivation):
 
         self.assertRaises(TypeError, fluid.layers.log, in1)
         self.assertRaises(TypeError, fluid.layers.log, in2)
+
+
+class TestLog2(TestActivation):
+    def setUp(self):
+        self.op_type = "log2"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.log2(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+    def test_error(self):
+        in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
+        in2 = paddle.static.data(name="in2", shape=[11, 17], dtype="int64")
+
+        self.assertRaises(TypeError, paddle.log2, in1)
+        self.assertRaises(TypeError, paddle.log2, in2)
+
+    def test_api(self):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            data_x = paddle.static.data(
+                name="data_x", shape=[11, 17], dtype="float64")
+
+            out1 = paddle.log2(data_x)
+            exe = paddle.static.Executor(place=fluid.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            res1 = exe.run(paddle.static.default_main_program(),
+                           feed={"data_x": input_x},
+                           fetch_list=[out1])
+        expected_res = np.log2(input_x)
+        self.assertTrue(np.allclose(res1, expected_res))
+
+        # dygraph
+        with fluid.dygraph.guard():
+            np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            data_x = paddle.to_tensor(np_x)
+            z = paddle.log2(data_x)
+            np_z = z.numpy()
+            z_expected = np.array(np.log2(np_x))
+        self.assertTrue(np.allclose(np_z, z_expected))
+
+
+class TestLog10(TestActivation):
+    def setUp(self):
+        self.op_type = "log10"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.log10(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+    def test_error(self):
+        in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
+        in2 = paddle.static.data(name="in2", shape=[11, 17], dtype="int64")
+
+        self.assertRaises(TypeError, paddle.log10, in1)
+        self.assertRaises(TypeError, paddle.log10, in2)
+
+    def test_api(self):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            data_x = paddle.static.data(
+                name="data_x", shape=[11, 17], dtype="float64")
+
+            out1 = paddle.log10(data_x)
+            exe = paddle.static.Executor(place=paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            res1 = exe.run(paddle.static.default_main_program(),
+                           feed={"data_x": input_x},
+                           fetch_list=[out1])
+        expected_res = np.log10(input_x)
+        self.assertTrue(np.allclose(res1, expected_res))
+
+        # dygraph
+        with fluid.dygraph.guard():
+            np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            data_x = paddle.to_tensor(np_x)
+            z = paddle.log10(data_x)
+            np_z = z.numpy()
+            z_expected = np.array(np.log10(np_x))
+        self.assertTrue(np.allclose(np_z, z_expected))
 
 
 class TestLog1p(TestActivation):
@@ -1895,10 +2018,12 @@ class TestSoftplusAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.softplus, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.softplus, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.softplus(x_fp16)
 
 
@@ -1972,10 +2097,12 @@ class TestSoftsignAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.softsign, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.softsign, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.softsign(x_fp16)
 
 
@@ -2055,10 +2182,12 @@ class TestThresholdedReluAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.thresholded_relu, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.thresholded_relu, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.thresholded_relu(x_fp16)
 
 
@@ -2154,10 +2283,12 @@ class TestHardsigmoidAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardsigmoid, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.hardsigmoid, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.hardsigmoid(x_fp16)
 
 
@@ -2232,10 +2363,12 @@ class TestSwishAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.swish, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.swish, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
             F.swish(x_fp16)
 
 
@@ -2347,6 +2480,8 @@ create_test_act_fp16_class(TestSoftRelu)
 create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestReciprocal)
 create_test_act_fp16_class(TestLog)
+create_test_act_fp16_class(TestLog2, atol=5e-2)
+create_test_act_fp16_class(TestLog10, atol=5e-2)
 create_test_act_fp16_class(TestLog1p, grad_atol=0.9)
 create_test_act_fp16_class(TestSquare)
 create_test_act_fp16_class(TestPow, atol=5e-2)

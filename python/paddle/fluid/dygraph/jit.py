@@ -356,7 +356,9 @@ def _get_input_var_names(inputs, input_spec):
         "in input_spec is the same as the name of InputSpec in " \
         "`to_static` decorated on the Layer.forward method."
     result_list = []
-    input_var_names = [var.name for var in inputs if isinstance(var, Variable)]
+    input_var_names = [
+        var.name for var in flatten(inputs) if isinstance(var, Variable)
+    ]
     if input_spec is None:
         # no prune
         result_list = input_var_names
@@ -579,6 +581,16 @@ def save(layer, path, input_spec=None, **configs):
             "The input layer of paddle.jit.save should be 'Layer', but received layer type is %s."
             % type(layer))
 
+    # NOTE(chenweihang): If the input layer be wrapped by DataParallel,
+    # the args and kwargs of forward method will can't be parsed by
+    # function_spec, so here we save DataParallel._layers instead 
+    # DataParallel it self
+    # NOTE(chenweihang): using inner_layer, do not change input layer
+    if isinstance(layer, paddle.DataParallel):
+        inner_layer = layer._layers
+    else:
+        inner_layer = layer
+
     # path check
     file_prefix = os.path.basename(path)
     if file_prefix == "":
@@ -594,8 +606,8 @@ def save(layer, path, input_spec=None, **configs):
     # avoid change user given input_spec
     inner_input_spec = None
     if input_spec is not None:
-        for attr_func in dir(layer):
-            static_func = getattr(layer, attr_func, None)
+        for attr_func in dir(inner_layer):
+            static_func = getattr(inner_layer, attr_func, None)
             if isinstance(static_func,
                           StaticFunction) and 'forward' != attr_func:
                 raise ValueError(
@@ -606,7 +618,7 @@ def save(layer, path, input_spec=None, **configs):
                 "The input input_spec should be 'list', but received input_spec's type is %s."
                 % type(input_spec))
         inner_input_spec = []
-        for var in input_spec:
+        for var in flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
             elif isinstance(var, (core.VarBase, Variable)):
@@ -621,14 +633,14 @@ def save(layer, path, input_spec=None, **configs):
     configs = _parse_save_configs(configs)
     scope = core.Scope()
     extra_var_info = dict()
-    for attr_func in dir(layer):
-        static_func = getattr(layer, attr_func, None)
+    for attr_func in dir(inner_layer):
+        static_func = getattr(inner_layer, attr_func, None)
         if isinstance(static_func, StaticFunction):
             concrete_program = static_func.concrete_program
         elif 'forward' == attr_func:
             # transform in jit.save, if input_spec is incomplete, declarative will throw error
             static_forward = declarative(
-                layer.forward, input_spec=inner_input_spec)
+                inner_layer.forward, input_spec=inner_input_spec)
             concrete_program = static_forward.concrete_program
             # the input_spec has been used in declarative, which is equal to 
             # @declarative with input_spec and jit.save without input_spec,
@@ -661,7 +673,7 @@ def save(layer, path, input_spec=None, **configs):
         # saved to inference program may not need by dygraph Layer, 
         # we only record the state_dict variable's structured name
         state_names_dict = dict()
-        for structured_name, var in six.iteritems(layer.state_dict()):
+        for structured_name, var in six.iteritems(inner_layer.state_dict()):
             state_names_dict[var.name] = structured_name
 
         # 4. share parameters from Layer to scope & record var info        
@@ -1051,7 +1063,7 @@ class TracedLayer(object):
         model and convert it into a static graph model.
 
         Args:
-            layer (dygraph.Layer): the layer object to be traced.
+            layer (paddle.nn.Layer): the layer object to be traced.
             inputs (list(Tensor)|tuple(Tensor)|Tensor): the input tensors of
                 the layer object.
 
@@ -1063,32 +1075,30 @@ class TracedLayer(object):
         Examples:
             .. code-block:: python:
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph import Linear, to_variable, TracedLayer
-                import numpy as np
+                import paddle
 
-                class ExampleLayer(fluid.dygraph.Layer):
+                class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
                         super(ExampleLayer, self).__init__()
-                        self._fc = Linear(3, 10)
+                        self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
                         return self._fc(input)
 
-                with fluid.dygraph.guard():
-                    layer = ExampleLayer()
-                    in_np = np.random.random([2, 3]).astype('float32')
-                    in_var = to_variable(in_np)
-                    out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
+                
+                layer = ExampleLayer()
+                in_var = paddle.uniform(shape=[2, 3], dtype='float32')
+                out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
 
-                    # run the static graph model using Executor inside
-                    out_static_graph = static_layer([in_var])
+                # run the static graph model using Executor inside
+                out_static_graph = static_layer([in_var])
 
-                    print(len(out_static_graph)) # 1
-                    print(out_static_graph[0].shape) # (2, 10)
+                print(len(out_static_graph)) # 1
+                print(out_static_graph[0].shape) # (2, 10)
 
-                    # save the static graph model for inference
-                    static_layer.save_inference_model(dirname='./saved_infer_model')
+                # save the static graph model for inference
+                static_layer.save_inference_model(dirname='./saved_infer_model')
+
         """
         assert isinstance(
             layer, Layer
@@ -1114,33 +1124,30 @@ class TracedLayer(object):
         Examples:
             .. code-block:: python:
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph import Linear, to_variable, TracedLayer
-                import numpy as np
+                import paddle
 
-                class ExampleLayer(fluid.dygraph.Layer):
+                class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
                         super(ExampleLayer, self).__init__()
-                        self._fc = Linear(3, 10)
+                        self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
                         return self._fc(input)
 
-                with fluid.dygraph.guard():
-                    layer = ExampleLayer()
-                    in_np = np.random.random([2, 3]).astype('float32')
-                    in_var = to_variable(in_np)
+                layer = ExampleLayer()
+                in_var = paddle.uniform(shape=[2, 3], dtype='float32')
 
-                    out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
+                out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
 
-                    build_strategy = fluid.BuildStrategy()
-                    build_strategy.enable_inplace = True
+                build_strategy = paddle.static.BuildStrategy()
+                build_strategy.enable_inplace = True
 
-                    exec_strategy = fluid.ExecutionStrategy()
-                    exec_strategy.num_threads = 2
+                exec_strategy = paddle.static.ExecutionStrategy()
+                exec_strategy.num_threads = 2
 
-                    static_layer.set_strategy(build_strategy=build_strategy, exec_strategy=exec_strategy)
-                    out_static_graph = static_layer([in_var])
+                static_layer.set_strategy(build_strategy=build_strategy, exec_strategy=exec_strategy)
+                out_static_graph = static_layer([in_var])
+
         """
         assert self._compiled_program is None, "Cannot set strategy after run"
         assert isinstance(
@@ -1212,30 +1219,29 @@ class TracedLayer(object):
         Examples:
             .. code-block:: python:
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph import Linear, to_variable, TracedLayer
                 import numpy as np
+                import paddle
 
-                class ExampleLayer(fluid.dygraph.Layer):
+                class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
                         super(ExampleLayer, self).__init__()
-                        self._fc = Linear(3, 10)
+                        self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
                         return self._fc(input)
 
                 save_dirname = './saved_infer_model'
                 in_np = np.random.random([2, 3]).astype('float32')
+                in_var = paddle.to_tensor(in_np)
+                layer = ExampleLayer()
 
-                with fluid.dygraph.guard():
-                    layer = ExampleLayer()
-                    in_var = to_variable(in_np)
-                    out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
-                    static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
+                out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
+                static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
 
-                place = fluid.CPUPlace()
-                exe = fluid.Executor(place)
-                program, feed_vars, fetch_vars = fluid.io.load_inference_model(save_dirname,
+                paddle.enable_static()
+                place = paddle.CPUPlace()
+                exe = paddle.static.Executor(place)
+                program, feed_vars, fetch_vars = paddle.static.load_inference_model(save_dirname,
                                                     exe)
 
                 fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)

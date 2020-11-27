@@ -60,7 +60,7 @@ function main() {
       ;;
     cuda11cudnn8)
       make_cuda11cudnn8
-      ;;
+     ;;
     *)
       echo "Make dockerfile error, Without this paramet."
       exit 1
