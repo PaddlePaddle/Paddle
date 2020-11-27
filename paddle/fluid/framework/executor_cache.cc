@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor_cache.h"
+
+#include <string>
 #include <unordered_set>
 #include <vector>
 
@@ -62,6 +64,9 @@ static void AppendSafeEagerDeletionSkipVars(
 }
 }  // namespace details
 
+// C++11 removes the need for manual locking. Concurrent execution shall wait if
+// a static local variable is already being initialized.
+// https://stackoverflow.com/questions/11711920/how-to-implement-multithread-safe-singleton-in-c11-without-using-mutex
 ExecutorInfoCache &ExecutorInfoCache::Instance() {
   static ExecutorInfoCache g_info_map;
   return g_info_map;
@@ -77,7 +82,8 @@ std::shared_ptr<framework::ExecutorPrepareContext> GetExecutorInfoFromCache(
   auto cache_key = framework::ExecutorInfoCache::KeyType(program, is_grad);
 
   if (!cached_exe_info.Has(cache_key)) {
-    VLOG(1) << "create exe_info for program: " << program;
+    VLOG(1) << "create exe_info for program: " << program
+            << " is_grad: " << is_grad;
     // skip delete vars
     std::vector<std::string> skip_vars;
     for (auto &output_names : ctx_output_names) {
