@@ -39,6 +39,9 @@ struct ParallelStrategy;
 void AllReduce(const framework::Variable &src, framework::Variable *dst,
                const ParallelStrategy &strategy);
 
+void AllReduce(const framework::Variable &src, framework::Variable *dst,
+               const ParallelStrategy &strategy, cudaStream_t stream);
+
 }  // namespace imperative
 }  // namespace paddle
 
