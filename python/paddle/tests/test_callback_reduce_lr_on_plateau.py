@@ -49,13 +49,14 @@ class TestReduceLROnPlateau(unittest.TestCase):
         labels = [InputSpec([None, 1], 'int64', 'label')]
         model = Model(net, inputs=inputs, labels=labels)
         model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy()])
-        callbacks = paddle.callbacks.ReduceLROnPlateau(patience=1, verbose=1)
+        callbacks = paddle.callbacks.ReduceLROnPlateau(
+            patience=1, verbose=1, cooldown=1)
         model.fit(train_dataset,
                   val_dataset,
                   batch_size=8,
                   log_freq=1,
                   save_freq=10,
-                  epochs=3,
+                  epochs=10,
                   callbacks=[callbacks])
 
     def test_warn_or_error(self):
