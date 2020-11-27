@@ -1162,9 +1162,6 @@ def softmax_with_cross_entropy(logits,
                                return_softmax=False,
                                axis=-1):
     r"""
-    :alias_main: paddle.nn.functional.softmax_with_cross_entropy
-	:alias: paddle.nn.functional.softmax_with_cross_entropy,paddle.nn.functional.loss.softmax_with_cross_entropy
-	:old_api: paddle.fluid.layers.softmax_with_cross_entropy
 
     This operator implements the cross entropy loss function with softmax. This function 
     combines the calculation of the softmax operation and the cross entropy loss function 
@@ -1209,8 +1206,8 @@ def softmax_with_cross_entropy(logits,
     and then cross entropy loss is calculated by softmax and label.
 
     Args:
-        logits (Variable): A multi-dimension ``Tensor`` , and the data type is float32 or float64. The input tensor of unscaled log probabilities.
-        label (Variable): The ground truth  ``Tensor`` , data type is the same
+        logits (Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64. The input tensor of unscaled log probabilities.
+        label (Tensor): The ground truth  ``Tensor`` , data type is the same
             as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`, 
             Label is a ``Tensor``  in the same shape with :attr:`logits`. 
             If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor`` 
@@ -1236,7 +1233,7 @@ def softmax_with_cross_entropy(logits,
                               is the rank of input :attr:`logits`. Default: -1.
 
     Returns:
-        ``Variable`` or Tuple of two ``Variable`` : Return the cross entropy loss if \
+        ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
                                                     `return_softmax` is False, otherwise the tuple \
                                                     (loss, softmax), softmax is in the same shape \
                                                     with input logits and cross entropy loss is in \
@@ -1246,13 +1243,17 @@ def softmax_with_cross_entropy(logits,
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import numpy as np
 
-            data = fluid.data(name='data', shape=[-1, 128], dtype='float32')
-            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-            fc = fluid.layers.fc(input=data, size=100)
-            out = fluid.layers.softmax_with_cross_entropy(
-                logits=fc, label=label)
+            data = np.random.rand(128).astype("float32")
+            label = np.random.rand(1).astype("int64")
+            data = paddle.to_tensor(data)
+            label = paddle.to_tensor(label)
+            linear = paddle.nn.Linear(128, 100)
+            x = linear(data)
+            out = paddle.nn.functional.softmax_with_cross_entropy(logits=x, label=label)
+            print(out)
     """
     if in_dygraph_mode():
         softmax, loss = core.ops.softmax_with_cross_entropy(
