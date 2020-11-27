@@ -36,6 +36,21 @@ class ExecutorInfoCache {
    */
   using KeyType = std::pair<const framework::ProgramDesc*, /*is_grad*/ bool>;
 
+  struct HashPair {
+    template <class T1, class T2>
+    size_t operator()(const std::pair<T1, T2>& p) const noexcept {
+      size_t seed = 10;
+      hash_combine(&seed, p.first);
+      hash_combine(&seed, p.second);
+      return seed;
+    }
+    template <typename T>
+    void hash_combine(size_t* seed, const T& val) const {
+      std::hash<T> hasher;
+      (*seed) ^= hasher(val) + 0x9e3779b9 + ((*seed) << 6) + ((*seed >> 2));
+    }
+  };
+
   static ExecutorInfoCache& Instance();
 
   std::shared_ptr<framework::ExecutorPrepareContext> Get(
@@ -64,20 +79,6 @@ class ExecutorInfoCache {
   }
 
  private:
-  struct HashPair {
-    template <class T1, class T2>
-    size_t operator()(const std::pair<T1, T2>& p) const noexcept {
-      size_t seed = 10;
-      hash_combine(&seed, p.first);
-      hash_combine(&seed, p.second);
-      return seed;
-    }
-    template <typename T>
-    void hash_combine(size_t* seed, const T& val) const {
-      std::hash<T> hasher;
-      (*seed) ^= hasher(val) + 0x9e3779b9 + ((*seed) << 6) + ((*seed >> 2));
-    }
-  };
   ExecutorInfoCache() = default;
 
   std::unordered_map<
