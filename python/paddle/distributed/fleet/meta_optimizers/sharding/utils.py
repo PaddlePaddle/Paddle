@@ -155,19 +155,42 @@ def insert_sync_calc_op(block, insert_idx, calc_dep_vars):
     return
 
 
-def insert_sync_comm_ops(block, insert_idx, nrings, comm_dep_vars):
+def insert_sync_comm_op(block, insert_idx, nrings, comm_dep_vars):
     """
-    _insert_sync_comm_ops
+    insert sync_comm_op for single var
     """
     op_role = get_valid_op_role(block, insert_idx)
-    for i in range(nrings):
+    block._insert_op_without_sync(
+        insert_idx,
+        type='c_sync_comm_stream',
+        inputs={'X': comm_dep_vars},
+        outputs={'Out': comm_dep_vars},
+        attrs={'ring_id': 0,
+               OP_ROLE_KEY: op_role})
+
+    assert nrings >= 1
+
+    return 1
+
+
+def insert_sync_comm_ops(block, insert_idx, nrings, comm_dep_vars, ringid2vars):
+    """
+    insert sync_comm_op for vars
+    """
+    check_vars = []
+    op_role = get_valid_op_role(block, insert_idx)
+    for i in ringid2vars.keys():
+        check_vars += ringid2vars[i]
         block._insert_op_without_sync(
             insert_idx,
             type='c_sync_comm_stream',
-            inputs={'X': comm_dep_vars},
-            outputs={'Out': comm_dep_vars},
-            attrs={'ring_id': i,
+            inputs={'X': ringid2vars[i]},
+            outputs={'Out': ringid2vars[i]},
+            attrs={'ring_id': int(i),
                    OP_ROLE_KEY: op_role})
+
+    assert (sorted(check_vars) == sorted(comm_dep_vars))
+
     return nrings
 
 
@@ -210,13 +233,13 @@ def insert_cast_ops(block, insert_idx, cast_ops):
     return
 
 
-def insert_allreduce_ops(block, insert_idx, nrings, allreduce_vars):
+def insert_allreduce_ops(block, insert_idx, nrings, allreduce_vars, var2ringid):
     """
     _add_allreduce_ops
     """
-    ring_id = -1
     for var in allreduce_vars:
-        ring_id = (ring_id + 1) % nrings
+        ring_id = var2ringid[var]
+
         block._insert_op_without_sync(
             insert_idx,
             type='c_allreduce_sum',
@@ -224,17 +247,18 @@ def insert_allreduce_ops(block, insert_idx, nrings, allreduce_vars):
             outputs={'Out': var},
             attrs={'ring_id': ring_id,
                    OP_ROLE_KEY: OpRole.Backward})
+
     return
 
 
-def insert_broadcast_ops(block, insert_idx, nrings, broadcast2root):
+def insert_broadcast_ops(block, insert_idx, nrings, broadcast2root, var2ringid):
     """
     _add_broadcast_ops
     """
-    ring_id = -1
+
     op_role = get_valid_op_role(block, insert_idx)
     for broadcast_name, root_device in broadcast2root:
-        ring_id = (ring_id + 1) % nrings
+        ring_id = var2ringid[broadcast_name]
         block._insert_op_without_sync(
             insert_idx,
             type='c_broadcast',
@@ -245,7 +269,44 @@ def insert_broadcast_ops(block, insert_idx, nrings, broadcast2root):
                 'root': root_device,
                 OP_ROLE_KEY: op_role
             })
+
     return
+
+
+def calc_vars_to_ringids(nring, varnames):
+    """
+    map varname to ring and ring to varname
+    nring: int
+    varnames: list
+    """
+
+    var2ringid = {}
+    ringid2vars = {}
+    assert nring >= 1
+    if nring == 1:
+        ringid2vars[0] = varnames
+        for varname in varnames:
+            var2ringid[varname] = 0
+    else:
+        ring_id = -1
+        for varname in varnames:
+            ring_id = (ring_id + 1) % nring
+
+            if ring_id in ringid2vars:
+                ringid2vars[ring_id].append(varname)
+            else:
+                ringid2vars[ring_id] = [varname]
+
+            assert varname not in var2ringid
+            var2ringid[varname] = ring_id
+
+    check_vars = []
+    for i in ringid2vars.keys():
+        check_vars += ringid2vars[i]
+
+    assert sorted(check_vars) == sorted(varnames)
+
+    return var2ringid, ringid2vars
 
 
 DtypeToSize = {

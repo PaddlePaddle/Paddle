@@ -139,8 +139,8 @@ class FP16Utils(object):
             outputs={'Out': inf_var_fp32},
             attrs={'ring_id': 0,
                    OP_ROLE_KEY: OpRole.Optimize})
-        comm_op_num = insert_sync_comm_ops(
-            block, update_loss_scaling_op_idx + 3, nrings, [inf_var_fp32])
+        comm_op_num = insert_sync_comm_op(block, update_loss_scaling_op_idx + 3,
+                                          nrings, [inf_var_fp32])
         block._insert_op_without_sync(
             update_loss_scaling_op_idx + 3 + comm_op_num,
             type='cast',

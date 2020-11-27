@@ -122,7 +122,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         for ring_id in range(self._nrings):
             self._collective_helper._init_communicator(
                 self._startup_program, current_endpoint, endpoints, worker_idx,
-                ring_id, None)
+                ring_id, True)
         startup_block = self._startup_program.global_block()
         startup_block._sync_with_cpp()
 
@@ -287,13 +287,16 @@ class ShardingOptimizer(MetaOptimizerBase):
         if len(self._segments) < 1:
             return
 
+        var2ring, ringid2vars = calc_vars_to_ringids(
+            self._nrings, self._segments[-1]._allreduce_vars)
+
         if self._segments[-1]._allreduce_vars:
-            insert_sync_comm_ops(block, self._segments[-1]._end_idx,
-                                 self._nrings,
-                                 self._segments[-1]._allreduce_vars)
+            insert_sync_comm_ops(
+                block, self._segments[-1]._end_idx, self._nrings,
+                self._segments[-1]._allreduce_vars, ringid2vars)
             insert_allreduce_ops(block, self._segments[-1]._end_idx,
                                  self._nrings,
-                                 self._segments[-1]._allreduce_vars)
+                                 self._segments[-1]._allreduce_vars, var2ring)
 
         for idx, segment in reversed(list(enumerate(self._segments))):
             allreduce_vars = self._segments[
@@ -332,12 +335,11 @@ class ShardingOptimizer(MetaOptimizerBase):
 
             # step2: add Sync ops
             comm_dep_vars = allreduce_vars + [x[0] for x in broadcast_vars]
+            var2ring, ringid2vars = calc_vars_to_ringids(self._nrings,
+                                                         comm_dep_vars)
             if len(comm_dep_vars) > 0:
-                insert_sync_comm_ops(
-                    block,
-                    segment._end_idx,
-                    self._nrings,
-                    comm_dep_vars, )
+                insert_sync_comm_ops(block, segment._end_idx, self._nrings,
+                                     comm_dep_vars, ringid2vars)
             calc_dep_vars = fill_constant_vars + [
                 k for k, v in cast_ops.items()
             ] + self._segments[idx]._allreduce_vars
@@ -355,21 +357,23 @@ class ShardingOptimizer(MetaOptimizerBase):
 
             # step5: add broadcast ops
             insert_broadcast_ops(block, segment._start_idx, self._nrings,
-                                 broadcast_vars)
+                                 broadcast_vars, var2ring)
 
             # step6: add all_reduce ops
             insert_allreduce_ops(block, segment._start_idx, self._nrings,
-                                 allreduce_vars)
+                                 allreduce_vars, var2ring)
 
             block._sync_with_cpp()
 
         if self._segments[0]._broadcast_vars:
-            insert_sync_comm_ops(
-                block, self._segments[0]._start_idx, self._nrings,
-                [x[0] for x in self._segments[0]._broadcast_vars])
+            broadcast_vars = [x[0] for x in self._segments[0]._broadcast_vars]
+            var2ring, ringid2vars = calc_vars_to_ringids(self._nrings,
+                                                         broadcast_vars)
+            insert_sync_comm_ops(block, self._segments[0]._start_idx,
+                                 self._nrings, broadcast_vars, ringid2vars)
             insert_broadcast_ops(block, self._segments[0]._start_idx,
                                  self._nrings,
-                                 self._segments[0]._broadcast_vars)
+                                 self._segments[0]._broadcast_vars, var2ring)
 
         fill_constant_vars = []
         for x in self._segments[:2]:

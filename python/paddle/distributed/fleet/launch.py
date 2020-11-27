@@ -204,7 +204,8 @@ def launch_collective(args):
     global_envs = copy.copy(os.environ.copy())
     gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
-    global_envs["PADDLE_WITH_GLOO"] = "1"
+    global_envs["PADDLE_WITH_GLOO"] = str(
+        os.environ.get("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
     global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
 
