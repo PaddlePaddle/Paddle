@@ -203,7 +203,7 @@ def create_global_var(shape,
 def cast(x, dtype):
     """
 
-    This OP takes in the Variable :attr:`x` with :attr:`x.dtype` and casts it
+    This OP takes in the Tensor :attr:`x` with :attr:`x.dtype` and casts it
     to the output with :attr:`dtype`. It's meaningless if the output dtype
     equals the input dtype, but it's fine if you do so.
 
@@ -539,13 +539,13 @@ def assign(input, output=None):
     The OP copies the :attr:`input` to the :attr:`output`.
 
     Parameters:
-        input (Variable|numpy.ndarray): A tensor or numpy ndarray, its data type supports
+        input (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
             float16, float32, float64, int32 and int64.
-        output (Variable, optional): A tensor. If :attr:`output` is None, a new tensor will
+        output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
 
     Returns:
-        Variable: A tensor with the same shape, data type and value as :attr:`input`.
+        Tensor: A tensor with the same shape, data type and value as :attr:`input`.
 
     Examples:
         .. code-block:: python
