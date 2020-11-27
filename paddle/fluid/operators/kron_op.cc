@@ -19,6 +19,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/kron_op.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex128.h"
 
 namespace paddle {
 namespace operators {
@@ -162,5 +164,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::KronGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::KronGradKernel<paddle::platform::CPUDeviceContext,
                         paddle::platform::float16>,
+    ops::KronGradKernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex64>,
+    ops::KronGradKernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex128>,
     ops::KronGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::KronGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
