@@ -120,11 +120,10 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
 
             import paddle
 
-            paddle.disable_static()
             input = paddle.to_tensor([0.5, 0.6, 0.7], 'float32')
             label = paddle.to_tensor([1.0, 0.0, 1.0], 'float32')
             output = paddle.nn.functional.binary_cross_entropy(input, label)
-            print(output.numpy())  # [0.65537095]
+            print(output)  # [0.65537095]
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -200,16 +199,16 @@ def binary_cross_entropy_with_logits(logit,
     .. math::
            Out = -Labels * \\log(\\sigma(Logit)) - (1 - Labels) * \\log(1 - \\sigma(Logit))
 
-    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + \\e^{-Logit}}`. By substituting this we get:
+    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + e^{-Logit}}`. By substituting this we get:
 
     .. math::
-           Out = Logit - Logit * Labels + \\log(1 + \\e^{-Logit})
+           Out = Logit - Logit * Labels + \\log(1 + e^{-Logit})
 
-    For stability and to prevent overflow of :math:`\\e^{-Logit}` when Logit < 0,
+    For stability and to prevent overflow of :math:`e^{-Logit}` when Logit < 0,
     we reformulate the loss as follows:
 
     .. math::
-           Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + \\e^{-\|Logit\|})
+           Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + e^{-\|Logit\|})
 
     Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
@@ -254,11 +253,11 @@ def binary_cross_entropy_with_logits(logit,
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
+
             logit = paddle.to_tensor([5.0, 1.0, 3.0])
             label = paddle.to_tensor([1.0, 0.0, 1.0])
             output = paddle.nn.functional.binary_cross_entropy_with_logits(logit, label)
-            print(output.numpy())  # [0.45618808]
+            print(output)  # [0.45618808]
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -469,14 +468,14 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
 
     .. math::
 
-         loss(x,y)=\\frac{1}{n}\\sum_{i}z_i
+         loss(x,y) = \\frac{1}{n}\\sum_{i}z_i
 
 
     where z_i is given by:
 
     .. math::
 
-         \\mathop{z_i}=\\left\\{\\begin{array}{rcl}
+         \\mathop{z_i} = \\left\\{\\begin{array}{rcl}
         0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\\\
         delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
         \\end{array} \\right.
@@ -511,13 +510,12 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             input_data = np.random.rand(3,3).astype("float32")
             label_data = np.random.rand(3,3).astype("float32")
             input = paddle.to_tensor(input_data)
             label = paddle.to_tensor(label_data)
             output = paddle.nn.functioanl.smooth_l1_loss(input, label)
-            print(output.numpy())
+            print(output)
     """
     fluid.data_feeder.check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'smooth_l1_loss')
@@ -578,13 +576,12 @@ def margin_ranking_loss(input,
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             input = paddle.to_tensor([[1, 2], [3, 4]], dtype='float32')
             other = paddle.to_tensor([[2, 1], [2, 4]], dtype='float32')
             label = paddle.to_tensor([[1, -1], [-1, -1]], dtype='float32')
             loss = paddle.nn.functional.margin_ranking_loss(input, other, label)
-            print(loss.numpy()) # [0.75]
+            print(loss) # [0.75]
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -652,22 +649,22 @@ def l1_loss(input, label, reduction='mean', name=None):
     If `reduction` set to ``'none'``, the loss is:
 
     .. math::
-        Out = \lvert input - label\rvert
+        Out = \\lvert input - label \\rvert
 
     If `reduction` set to ``'mean'``, the loss is:
 
     .. math::
-        Out = MEAN(\lvert input - label\rvert)
+        Out = MEAN(\\lvert input - label \\rvert)
 
     If `reduction` set to ``'sum'``, the loss is:
 
     .. math::
-        Out = SUM(\lvert input - label\rvert)
+        Out = SUM(\\lvert input - label\\rvert)
 
 
     Parameters:
-        input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
-        label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
+        input (Tensor): The input tensor. The shapes is [N, `*`], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
+        label (Tensor): label. The shapes is [N, `*`], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
         reduction (str, optional): Indicate the reduction to apply to the loss,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'none'``, the unreduced loss is returned;
@@ -675,12 +672,15 @@ def l1_loss(input, label, reduction='mean', name=None):
             If `reduction` is ``'sum'``, the reduced sum loss is returned.
             Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor, the L1 Loss of Tensor ``input`` and ``label``.
             If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
             If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+
     Examples:
         .. code-block:: python
+
             import paddle
 
             paddle.disable_static()
