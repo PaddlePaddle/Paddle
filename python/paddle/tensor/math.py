@@ -1570,7 +1570,7 @@ ${comment}
     Examples:
         .. code-block:: python
 
-          import paddle
+            import paddle
             x = paddle.to_tensor([[1, 2], [3, 4]], dtype='int64')
             y = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
             out = paddle.kron(x, y)
