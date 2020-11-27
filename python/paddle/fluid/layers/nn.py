@@ -2701,13 +2701,13 @@ def batch_norm(input,
         `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
 
     Args:
-        input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type
+        input(Tensor): The rank of input Tensor can be 2, 3, 4, 5. The data type
             is float16 or float32 or float64.
         act(string, Default None): Activation type, linear|relu|prelu|...
         is_test (bool, Default False): A flag indicating whether it is in
             test phrase or not.
-        momentum(float|Variable, Default 0.9): The value used for the moving_mean and
-            moving_var computation. This should be a float number or a Variable with
+        momentum(float|Tensor, Default 0.9): The value used for the moving_mean and
+            moving_var computation. This should be a float number or a Tensor with
             shape [1] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
@@ -2745,48 +2745,23 @@ def batch_norm(input,
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
     Returns:
-        A Variable holding Tensor which is the result after applying batch normalization on the input,
+        A Tensor which is the result after applying batch normalization on the input,
         has same shape and data type with input.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import paddle
+            
             paddle.enable_static()
-            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
-            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
-            hidden2 = fluid.layers.batch_norm(input=hidden1)
-
-        .. code-block:: python
-
-            # batch_norm with momentum as Variable
-            import paddle.fluid as fluid
-            import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler
-            import paddle
-            paddle.enable_static()
-
-            def get_decay_momentum(momentum_init, decay_steps, decay_rate):
-                global_step = lr_scheduler._decay_step_counter()
-                momentum = fluid.layers.create_global_var(
-		    shape=[1],
-		    value=float(momentum_init),
-		    dtype='float32',
-		    # set persistable for save checkpoints and resume
-		    persistable=True,
-		    name="momentum")
-                div_res = global_step / decay_steps
-                decayed_momentum = momentum_init * (decay_rate**div_res)
-                fluid.layers.assign(decayed_momentum, momentum)
-
-                return momentum
-
-            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
-            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
-            momentum = get_decay_momentum(0.9, 1e5, 0.9)
-            hidden2 = fluid.layers.batch_norm(input=hidden1, momentum=momentum)
-
+            x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            hidden1 = paddle.static.nn.fc(x=x, size=200)
+            print(hidden1.shape)
+            # [3, 200]
+            hidden2 = paddle.static.nn.batch_norm(input=hidden1)
+            print(hidden2.shape)
+            # [3, 200]
     """
     assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('batch_norm', **locals())
