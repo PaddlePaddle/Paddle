@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 import warnings
-from .framework import Variable, in_dygraph_mode
+from .framework import Variable, in_dygraph_mode, static_only
 from .layer_helper import LayerHelper
 from .data_feeder import check_variable_and_dtype, check_dtype
 from ..utils import deprecated
@@ -129,6 +129,7 @@ def one_hot(input, depth, allow_out_of_range=False):
     return one_hot_out
 
 
+@static_only
 @deprecated(since='2.0.0', update_to='paddle.nn.functional.embedding')
 def embedding(input,
               size,

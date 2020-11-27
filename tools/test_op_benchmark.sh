@@ -26,6 +26,9 @@ PADDLE_FILENAME_OP_MAP=(
   ["activation_op.cu"]="leaky_relu elu sqrt square pow exp abs log"
   ["activation_op.h"]="relu leaky_relu elu sqrt square pow exp abs log"
   ["activation_op.cc"]="relu leaky_relu elu sqrt square pow exp abs log"
+  ["interpolate_op.h"]="bilinear_interp nearest_interp trilinear_interp bicubic_interp linear_interp"
+  ["interpolate_op.cc"]="bilinear_interp nearest_interp trilinear_interp bicubic_interp linear_interp"
+  ["interpolate_op.cu"]="bilinear_interp nearest_interp trilinear_interp bicubic_interp linear_interp"
 )
 
 # Benchmark repo name -> op name
@@ -33,6 +36,14 @@ declare -A BENCHMARK_APINAME_OP_MAP
 BENCHMARK_APINAME_OP_MAP=(
   ["argmin"]="arg_min"
   ["argmax"]="arg_max"
+  ["cos_sim"]="cosine_similarity"
+  ["elementwise_max"]="maximum"
+  ["elementwise_min"]="minimum"
+  ["bilinear_interp"]="interp_bilinear"
+  ["nearest_interp"]="interp_nearest"
+  ["trilinear_interp"]="interp_trilinear"
+  ["bicubic_interp"]="interp_bicubic"
+  ["linear_interp"]="interp_linear"
 )
 
 # ops that will run benchmark test
@@ -55,6 +66,8 @@ function load_CHANGE_OP_MAP {
   do
     # match directory limit
     [[ "$change_file" =~ "paddle/fluid/operators/" ]] || continue
+    # match file name limit
+    [[ "$change_file" =~ "_op." ]] || continue
     LOG "[INFO] Found \"${change_file}\" changed."
     change_file_name=${change_file#*paddle/fluid/operators/}
     if [ -n "${PADDLE_FILENAME_OP_MAP[$change_file_name]}" ]
@@ -62,11 +75,12 @@ function load_CHANGE_OP_MAP {
       for op_name in ${PADDLE_FILENAME_OP_MAP[$change_file_name]}
       do
         LOG "[INFO] Load op: \"${op_name}\"."
-        CHANGE_OP_MAP[${op_name}]="dummy"
+        CHANGE_OP_MAP[${op_name}]="$change_file"
       done
     else
+      change_file_name=${change_file_name##*/}
       LOG "[INFO] Load op: \"${change_file_name%_op*}\"."
-      CHANGE_OP_MAP[${change_file_name%_op*}]="dummy"
+      CHANGE_OP_MAP[${change_file_name%_op*}]="$change_file"
     fi
   done
   [ ${#CHANGE_OP_MAP[*]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && exit 0
@@ -107,7 +121,7 @@ function load_BENCHMARK_OP_MAP {
 
 # compile and install paddlepaddle
 function compile_install_paddlepaddle {
-  LOG "[DEBUG] Compiling install package ..."
+  LOG "[INFO] Compiling install package ..."
   export WITH_GPU=ON
   export WITH_AVX=ON
   export WITH_MKL=ON
@@ -119,16 +133,17 @@ function compile_install_paddlepaddle {
   export PYTHON_ABI=cp37-cp37m
   export CMAKE_BUILD_TYPE=Release
   [ -d build ] && rm -rf build
-  bash paddle/scripts/paddle_build.sh build
+  bash paddle/scripts/paddle_build.sh build $(nproc)
   [ $? -ne 0 ] && LOG "[FATAL] compile fail." && exit 7
-  LOG "[DEBUG] Uninstall Paddle ..."
+  LOG "[INFO] Uninstall Paddle ..."
   pip uninstall -y paddlepaddle paddlepaddle_gpu
-  LOG "[DEBUG] Install Paddle ..."
+  LOG "[INFO] Install Paddle ..."
   pip install build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
 }
 
 # run op benchmark test
 function run_op_benchmark_test {
+  [ ${#BENCHMARK_OP_MAP[*]} -eq 0 ] && return
   local logs_dir op_name branch_name api_info_file
   api_info_file="$(pwd)/api_info.txt"
   [ -f "$api_info_file" ] && rm -f $api_info_file
@@ -136,11 +151,10 @@ function run_op_benchmark_test {
   do
     echo "$api_info" >> $api_info_file
   done
-  LOG "[INFO] Uninstall "
   for branch_name in "develop" "test_pr"
   do
     git checkout $branch_name
-    [ $? -ne 0 ] && LOG "[FATAL] Missing branh ${branch_name}." && exit 7
+    [ $? -ne 0 ] && LOG "[FATAL] Missing branch ${branch_name}." && exit 7
     LOG "[INFO] Now branch name is ${branch_name}."
     compile_install_paddlepaddle
     logs_dir="$(pwd)/logs-${branch_name}"
@@ -171,7 +185,7 @@ function summary_problems {
     if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
     then
       exit_code=8
-      LOG "[WARNING] Missing test script of \"${op_name}\" in benchmark."
+      LOG "[WARNING] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
     fi
   done
   [ $exit_code -ne 0 ] && exit $exit_code
