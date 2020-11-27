@@ -85,27 +85,33 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
 endif()
 
-if(NOT WITH_DISTRIBUTE OR WIN32)
-    # DISTRIBUTE related
+if(WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
-    LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
     LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
-    LIST(REMOVE_ITEM TEST_OPS test_distributed_strategy)
     LIST(REMOVE_ITEM TEST_OPS test_downpoursgd)
     LIST(REMOVE_ITEM TEST_OPS test_fleet)
-    LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1)
-    LIST(REMOVE_ITEM TEST_OPS test_fleet_ps)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
-    LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_3)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_unitaccessor)
-    LIST(REMOVE_ITEM TEST_OPS test_fleet_utils)
-    LIST(REMOVE_ITEM TEST_OPS test_lookup_sparse_table_split_op)
     LIST(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
 
     # TODO: Fix these unittests failed on Windows
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
+endif()
+
+if(NOT WITH_DISTRIBUTE OR WIN32)
+    # DISTRIBUTE related
+    LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
+    LIST(REMOVE_ITEM TEST_OPS test_distributed_strategy)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_ps)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_utils)
+    LIST(REMOVE_ITEM TEST_OPS test_lookup_sparse_table_split_op)
+
+    # TODO: Fix these unittests failed on Windows
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
     list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
     list(REMOVE_ITEM TEST_OPS test_split_ids_op)
