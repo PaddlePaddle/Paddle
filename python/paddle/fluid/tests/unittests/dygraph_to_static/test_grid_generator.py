@@ -64,27 +64,24 @@ class GridGenerator(nn.Layer):
         ctrl_pts_top = paddle.stack([ctrl_pts_x, ctrl_pts_y_top], axis=1)
         ctrl_pts_bottom = paddle.stack([ctrl_pts_x, ctrl_pts_y_bottom], axis=1)
         C = paddle.concat([ctrl_pts_top, ctrl_pts_bottom], axis=0)
-        return C  # F x 2
+        return C
 
     def build_P_paddle(self, I_r_size):
         I_r_width, I_r_height = I_r_size
         I_r_grid_x = paddle.divide(
             (paddle.arange(-I_r_width, I_r_width, 2).astype('float32') + 1.0),
-            paddle.to_tensor(I_r_width).astype(
-                'float32'))  # self.I_r_width 这里和np产生精度差
+            paddle.to_tensor(I_r_width).astype('float32'))
         I_r_grid_y = paddle.divide(
             (paddle.arange(-I_r_height, I_r_height, 2).astype('float32') + 1.0),
-            paddle.to_tensor(I_r_height).astype('float32'))  # self.I_r_height
-        # P: self.I_r_width x self.I_r_height x 2
+            paddle.to_tensor(I_r_height).astype('float32'))
         P = paddle.stack(paddle.meshgrid(I_r_grid_x, I_r_grid_y), axis=2)
         P = paddle.transpose(P, perm=[1, 0, 2])
-        # n (= self.I_r_width x self.I_r_height) x 2
         return P.reshape([-1, 2])
 
     def build_inv_delta_C_paddle(self, C):
         """ Return inv_delta_C which is needed to calculate T """
         F = self.F
-        hat_C = paddle.zeros((F, F), dtype='float32')  # F x F
+        hat_C = paddle.zeros((F, F), dtype='float32')
         for i in range(0, F):
             for j in range(i, F):
                 if i == j:
@@ -94,38 +91,33 @@ class GridGenerator(nn.Layer):
                     hat_C[i, j] = r
                     hat_C[j, i] = r
         hat_C = (hat_C**2) * paddle.log(hat_C)
-        delta_C = paddle.concat(  # F+3 x F+3
+        delta_C = paddle.concat(
             [
                 paddle.concat(
-                    [paddle.ones((F, 1)), C, hat_C], axis=1),  # F x F+3
+                    [paddle.ones((F, 1)), C, hat_C], axis=1),
                 paddle.concat(
                     [paddle.zeros((2, 3)), paddle.transpose(
                         C, perm=[1, 0])],
-                    axis=1),  # 2 x F+3
-                paddle.concat(
-                    [paddle.zeros((1, 3)), paddle.ones((1, F))],
-                    axis=1)  # 1 x F+3
+                    axis=1), paddle.concat(
+                        [paddle.zeros((1, 3)), paddle.ones((1, F))], axis=1)
             ],
             axis=0)
         inv_delta_C = paddle.inverse(delta_C)
-        return inv_delta_C  # F+3 x F+3
+        return inv_delta_C
 
     def build_P_hat_paddle(self, C, P):
         F = self.F
         eps = self.eps
-        n = P.shape[0]  # n (= self.I_r_width x self.I_r_height)
-        # P_tile: n x 2 -> n x 1 x 2 -> n x F x 2
+        n = P.shape[0]
         P_tile = paddle.tile(paddle.unsqueeze(P, axis=1), (1, F, 1))
-        C_tile = paddle.unsqueeze(C, axis=0)  # 1 x F x 2
-        P_diff = P_tile - C_tile  # n x F x 2
-        # rbf_norm: n x F
+        C_tile = paddle.unsqueeze(C, axis=0)
+        P_diff = P_tile - C_tile
         rbf_norm = paddle.norm(P_diff, p=2, axis=2, keepdim=False)
 
-        # rbf: n x F
         rbf = paddle.multiply(
             paddle.square(rbf_norm), paddle.log(rbf_norm + eps))
         P_hat = paddle.concat([paddle.ones((n, 1)), P, rbf], axis=1)
-        return P_hat  # n x F+3
+        return P_hat
 
     def get_expand_tensor(self, batch_C_prime):
         B, H, C = batch_C_prime.shape
