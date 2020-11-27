@@ -386,7 +386,26 @@ namespace Eigen {
 using complex64 = paddle::platform::complex64;
 
 template <>
-struct NumTraits<complex64> : public NumTraits<std::complex<float>> {};
+struct NumTraits<complex64> : GenericNumTraits<std::complex<float>> {
+  typedef float Real;
+  typedef typename NumTraits<float>::Literal Literal;
+  enum {
+    IsComplex = 1,
+    RequireInitialization = NumTraits<float>::RequireInitialization,
+    ReadCost = 2 * NumTraits<float>::ReadCost,
+    AddCost = 2 * NumTraits<Real>::AddCost,
+    MulCost = 4 * NumTraits<Real>::MulCost + 2 * NumTraits<Real>::AddCost
+  };
+
+  EIGEN_DEVICE_FUNC
+  static inline Real epsilon() { return NumTraits<Real>::epsilon(); }
+  EIGEN_DEVICE_FUNC
+  static inline Real dummy_precision() {
+    return NumTraits<Real>::dummy_precision();
+  }
+  EIGEN_DEVICE_FUNC
+  static inline int digits10() { return NumTraits<Real>::digits10(); }
+};
 
 namespace numext {
 
