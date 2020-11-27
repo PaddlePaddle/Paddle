@@ -44,6 +44,9 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
 }
 
 void NaiveExecutor::Run() {
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;

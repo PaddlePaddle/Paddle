@@ -35,20 +35,20 @@ __all__ = [
 
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
-    """
+    r"""
     This op normalizes ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
 
     .. math::
 
-        y = \frac{x}{ \max\left( \lvert \lvert x \rvert \rvert_p, epsilon\right) }
+        y = \\frac{x}{ \\max\\left( \\lvert \\lvert x \\rvert \\rvert_p, epsilon\\right) }
     
     .. math::
-        \lvert \lvert x \rvert \rvert_p = \left(\sum_i {\lvert x_i\rvert^p}  \right)^{1/p}
+        \\lvert \\lvert x \\rvert \\rvert_p = \\left( \\sum_i {\\lvert x_i \\rvert^p}  \\right)^{1/p}
 
-    where, :math:`\sum_i{\lvert x_i\rvert^p}` is calculated along the ``axis`` dimension.
+    where, :math:`\\sum_i{\\lvert x_i \\rvert^p}` is calculated along the ``axis`` dimension.
 
 
-    Args:
+    Parameters:
         x (Tensor): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
         p (float|int, optional): The exponent value in the norm formulation. Default: 2
         axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension. 
@@ -412,7 +412,7 @@ def local_response_norm(x,
                         k=1.,
                         data_format="NCHW",
                         name=None):
-    """
+    r"""
         Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
         For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
 

@@ -1714,8 +1714,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("load_op_library", framework::LoadOpLib);
-  m.def("init_devices",
-        []() { framework::InitDevices(); });
+  m.def("init_devices", []() { framework::InitDevices(); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
@@ -2280,7 +2279,7 @@ All parameter, weight, gradient are variables in Paddle.
                                   "configured again."));
             self.gradient_scale_ = strategy;
           },
-          R"DOC((fluid.BuildStrategy.GradientScaleStrategy, optional): there are three
+          R"DOC((paddle.static.BuildStrategy.GradientScaleStrategy, optional): there are three
                 ways of defining :math:`loss@grad` in ParallelExecutor, that is, CoeffNumDevice,
                 One and Customized. By default, ParallelExecutor sets the :math:`loss@grad`
                 according to the number of devices. If you want to customize :math:`loss@grad`,
