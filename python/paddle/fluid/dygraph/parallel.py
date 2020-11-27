@@ -69,7 +69,7 @@ class ParallelEnv(object):
     This class is used to obtain the environment variables required for 
     the parallel execution of ``paddle.nn.Layer`` in dynamic mode.
 
-    The parallel execution in dynamic mode needs to be started using ``paddle.distributed.launch`` 
+    The parallel execution in dynamic mode needs to be started using ``paddle.distributed.launch``
     or ``paddle.distributed.spawn`` .
 
     Examples:
@@ -104,7 +104,11 @@ class ParallelEnv(object):
     def __init__(self):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-        self._device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+
+        # imperative only support one gpu
+        selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
+        self._device_id = int(selected_gpus[0])
+
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
@@ -347,7 +351,7 @@ class DataParallel(layers.Layer):
     
     2. start by ``paddle.distributed.launch`` module, for example:
     
-        ``python -m paddle.distributed.launch --selected_gpus=0,1 demo.py`` .
+        ``python -m paddle.distributed.launch --gpus=0,1 demo.py`` .
 
     And the content of `demo.py` is the code of examples.
 

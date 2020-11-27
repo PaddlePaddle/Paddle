@@ -909,7 +909,7 @@ class LayerLoadFinetune(fluid.dygraph.Layer):
             y = self._load_l1(y)
         else:
             y += self._linear_1_1(x + self._scale)
-            self._load_l2(y)
+            y = self._load_l2(y)
         y = self._linear_1_0(y)
         y = self._load_l1(y)
         y = self._linear_1_0(y)
@@ -950,6 +950,40 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
 
         self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
         self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
+
+
+class TestJitSaveLoadDataParallel(unittest.TestCase):
+    def verify_inference_correctness(self, layer, path):
+        layer.eval()
+        loaded_layer = paddle.jit.load(path)
+        loaded_layer.eval()
+        # inference & compare
+        x = paddle.to_tensor(np.random.random((1, 784)).astype('float32'))
+        pred = layer(x).numpy()
+        loaded_pred = loaded_layer(x).numpy()
+        self.assertTrue(
+            np.array_equal(pred, loaded_pred),
+            msg="Result diff when load and inference:\nlayer result:\n{}\n" \
+                "loaded layer result:\n{}".format(pred, loaded_pred))
+
+    def test_jit_save_data_parallel_with_inputspec(self):
+        layer = LinearNetNotDeclarative(784, 1)
+        layer = paddle.DataParallel(layer)
+
+        path = "jit_save_data_parallel_with_inputspec/model"
+        paddle.jit.save(
+            layer=layer, path=path, input_spec=[InputSpec(shape=[None, 784])])
+
+        self.verify_inference_correctness(layer, path)
+
+    def test_jit_save_data_parallel_with_to_static(self):
+        layer = LinearNetWithInputSpec(784, 1)
+        layer = paddle.DataParallel(layer)
+
+        path = "jit_save_data_parallel_with_to_static/model"
+        paddle.jit.save(layer, path)
+
+        self.verify_inference_correctness(layer, path)
 
 
 if __name__ == '__main__':

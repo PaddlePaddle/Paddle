@@ -838,9 +838,13 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input: N-D Tensor, the shape is [N, *], N is batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
+    
+        input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+
         other: N-D Tensor, `other` have the same shape and dtype as `input`.
+
         label: N-D Tensor, label have the same shape and dtype as `input`.
+
         output: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
 
     Returns:
@@ -851,14 +855,13 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             input = paddle.to_tensor([[1, 2], [3, 4]]), dtype="float32")
             other = paddle.to_tensor([[2, 1], [2, 4]]), dtype="float32")
             label = paddle.to_tensor([[1, -1], [-1, -1]], dtype="float32")
             margin_rank_loss = paddle.nn.MarginRankingLoss()
             loss = margin_rank_loss(input, other, label)
-            print(loss.numpy()) # [0.75]
+            print(loss) # [0.75]
     """
 
     def __init__(self, margin=0.0, reduction='mean', name=None):
@@ -971,13 +974,13 @@ class SmoothL1Loss(fluid.dygraph.Layer):
 
     .. math::
 
-         loss(x,y)=\\frac{1}{n}\\sum_{i}z_i
+         loss(x,y) = \\frac{1}{n}\\sum_{i}z_i
 
     where z_i is given by:
 
     .. math::
 
-         \\mathop{z_i}=\\left\\{\\begin{array}{rcl}
+         \\mathop{z_i} = \\left\\{\\begin{array}{rcl}
         0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\\\
         delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
         \\end{array} \\right.
@@ -1004,7 +1007,7 @@ class SmoothL1Loss(fluid.dygraph.Layer):
             is the same as the shape of input.
 
     Returns:
-        The tensor variable storing the smooth_l1_loss of input and label.
+        The tensor storing the smooth_l1_loss of input and label.
 
     Return type: Tensor.
 
@@ -1013,14 +1016,13 @@ class SmoothL1Loss(fluid.dygraph.Layer):
 
             import paddle
             import numpy as np
-            paddle.disable_static()
             input_data = np.random.rand(3,3).astype("float32")
             label_data = np.random.rand(3,3).astype("float32")
             input = paddle.to_tensor(input_data)
             label = paddle.to_tensor(label_data)
             loss = paddle.nn.SmoothL1Loss()
             output = loss(input, label)
-            print(output.numpy())
+            print(output)
     """
 
     def __init__(self, reduction='mean', delta=1.0, name=None):
