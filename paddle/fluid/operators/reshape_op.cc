@@ -627,29 +627,36 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                paddle::platform::complex128, ops::ReshapeKernel,
                                paddle::platform::bfloat16, ops::ReshapeKernel);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(
-    reshape2_grad, float, ops::ReshapeGradKernel, double,
-    ops::ReshapeGradKernel, int, ops::ReshapeGradKernel, int64_t,
-    ops::ReshapeGradKernel, bool, ops::ReshapeGradKernel,
-    paddle::platform::complex64, ops::ReshapeGradKernel,
-    paddle::platform::complex128, ops::ReshapeGradKernel);
-REGISTER_OP_CPU_KERNEL_FUNCTOR(
-    reshape2_grad_grad, float, ops::ReshapeDoubleGradKernel, double,
-    ops::ReshapeDoubleGradKernel, int, ops::ReshapeDoubleGradKernel, int64_t,
-    ops::ReshapeDoubleGradKernel, bool, ops::ReshapeDoubleGradKernel,
-    paddle::platform::complex64, ops::ReshapeDoubleGradKernel,
-    paddle::platform::complex128, ops::ReshapeDoubleGradKernel);
+REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
+                               double, ops::ReshapeGradKernel, int,
+                               ops::ReshapeGradKernel, uint8_t,
+                               ops::ReshapeGradKernel, int64_t,
+                               ops::ReshapeGradKernel, bool,
+                               ops::ReshapeGradKernel, paddle::platform::complex64,
+                               ops::ReshapeGradKernel, paddle::platform::complex128,
+                               ops::ReshapeGradKernel);
+REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2_grad_grad, float,
+                               ops::ReshapeDoubleGradKernel, double,
+                               ops::ReshapeDoubleGradKernel, int,
+                               ops::ReshapeDoubleGradKernel, uint8_t,
+                               ops::ReshapeDoubleGradKernel, int64_t,
+                               ops::ReshapeDoubleGradKernel, bool,
+                               ops::ReshapeDoubleGradKernel, paddle::platform::complex64,
+                               ops::ReshapeDoubleGradKernel, paddle::platform::complex128,
+                               ops::ReshapeDoubleGradKernel);
 
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
                                 ops::ReshapeKernel, int, ops::ReshapeKernel,
-                                int64_t, ops::ReshapeKernel, plat::float16,
+                                uint8_t, ops::ReshapeKernel, int64_t,
+                                ops::ReshapeKernel, plat::float16,
                                 ops::ReshapeKernel, plat::complex64,
                                 ops::ReshapeKernel, plat::complex128,
                                 ops::ReshapeKernel);
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
                                 double, ops::ReshapeGradKernel, int,
                                 ops::ReshapeGradKernel, int64_t,
+                                ops::ReshapeGradKernel, uint8_t,
                                 ops::ReshapeGradKernel, plat::float16,
                                 ops::ReshapeGradKernel, plat::complex64,
                                 ops::ReshapeGradKernel, plat::complex128,
@@ -657,10 +664,12 @@ REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
                                 ops::ReshapeGradKernel);
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                 ops::ReshapeKernel, int, ops::ReshapeKernel,
-                                int64_t, ops::ReshapeKernel, plat::float16,
+                                uint8_t, ops::ReshapeKernel, int64_t,
+                                ops::ReshapeKernel, plat::float16,
                                 ops::ReshapeKernel, bool, ops::ReshapeKernel);
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                 double, ops::ReshapeGradKernel, int,
+                                ops::ReshapeGradKernel, uint8_t,
                                 ops::ReshapeGradKernel, int64_t,
                                 ops::ReshapeGradKernel, plat::float16,
                                 ops::ReshapeGradKernel, plat::complex64,
@@ -668,12 +677,16 @@ REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                 ops::ReshapeGradKernel, bool,
                                 ops::ReshapeGradKernel);
 
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(
-    reshape2_grad_grad, float, ops::ReshapeDoubleGradKernel, double,
-    ops::ReshapeDoubleGradKernel, int, ops::ReshapeDoubleGradKernel, int64_t,
-    ops::ReshapeDoubleGradKernel, plat::float16, ops::ReshapeDoubleGradKernel,
-    plat::complex64, ops::ReshapeDoubleGradKernel, plat::complex128,
-    ops::ReshapeDoubleGradKernel, bool, ops::ReshapeDoubleGradKernel);
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2_grad_grad, float,
+                                ops::ReshapeDoubleGradKernel, double,
+                                ops::ReshapeDoubleGradKernel, int,
+                                ops::ReshapeDoubleGradKernel, uint8_t,
+                                ops::ReshapeDoubleGradKernel, int64_t,
+                                ops::ReshapeDoubleGradKernel, plat::float16,
+                                ops::ReshapeDoubleGradKernel, plat::complex64,
+                                ops::ReshapeDoubleGradKernel, plat::complex128,
+                                ops::ReshapeDoubleGradKernel, bool,
+                                ops::ReshapeDoubleGradKernel);
 #endif
 
 #ifdef PADDLE_WITH_XPU

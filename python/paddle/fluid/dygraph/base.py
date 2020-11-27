@@ -79,8 +79,12 @@ def param_guard(parameters):
                     # `mask` Tensor or `hidden_0` in RNN layers, which is equivalent to a Parameter
                     # and necessary for inferring. It will be pruned if it's not necessary for inferring.
                     else:
+                        # But if its shape is empty while created from `create_variable()`, we consider this buffer
+                        # non-persistable. See case of `drop_state` in lstm api.
+                        is_persistable = len(var_base.shape) > 0
+
                         new_var = var_base._to_static_var(
-                            to_parameter=False, persistable=True)
+                            to_parameter=False, persistable=is_persistable)
                 parameters[name] = new_var
         yield
         parameters.update(origin_parameters)
@@ -186,12 +190,12 @@ def disable_dygraph():
 def _switch_tracer_mode_guard_(is_train=True):
     tracer = framework._dygraph_tracer()
     if tracer:
-        mode = tracer._train_mode
-        tracer._train_mode = is_train
+        has_grad = tracer._has_grad
+        tracer._has_grad = is_train
         try:
             yield
         finally:
-            tracer._train_mode = mode
+            tracer._has_grad = has_grad
     else:
         yield
 
@@ -589,7 +593,7 @@ def grad(outputs,
 
 @framework.dygraph_only
 def to_variable(value, name=None, zero_copy=None, dtype=None):
-    """
+    r"""
     :api_attr: imperative
 
     The API will create a ``Variable`` or ``ComplexVariable`` object from 

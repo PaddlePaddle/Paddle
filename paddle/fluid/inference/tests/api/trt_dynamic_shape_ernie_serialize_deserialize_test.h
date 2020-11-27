@@ -11,19 +11,23 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
+#pragma once
 #include <dirent.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <unistd.h>
+#include <functional>
+#include <map>
+#include <string>
+#include <vector>
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
 namespace inference {
 
-int DeleteCache(std::string path) {
+static int DeleteCache(std::string path) {
   DIR* dir = opendir(path.c_str());
   if (dir == NULL) return 0;
   struct dirent* ptr;
@@ -39,7 +43,7 @@ int DeleteCache(std::string path) {
   return 0;
 }
 
-void run(const AnalysisConfig& config, std::vector<float>* out_data) {
+static void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   auto predictor = CreatePaddlePredictor(config);
   auto input_names = predictor->GetInputNames();
 
@@ -101,7 +105,7 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   output_t->copy_to_cpu(out_data->data());
 }
 
-void trt_ernie(bool with_fp16, std::vector<float> result) {
+static void trt_ernie(bool with_fp16, std::vector<float> result) {
   AnalysisConfig config;
   std::string model_dir = FLAGS_infer_model;
   // Delete serialization cache to perform serialization first rather than
@@ -155,15 +159,5 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
   }
 }
 
-TEST(AnalysisPredictor, no_fp16) {
-  std::vector<float> result = {0.597841, 0.219972, 0.182187};
-  trt_ernie(false, result);
-}
-#ifdef SUPPORTS_CUDA_FP16
-TEST(AnalysisPredictor, fp16) {
-  std::vector<float> result = {0.59923654, 0.21923761, 0.18152587};
-  trt_ernie(true, result);
-}
-#endif  // SUPPORTS_CUDA_FP16
 }  // namespace inference
 }  // namespace paddle

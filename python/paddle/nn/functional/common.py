@@ -209,8 +209,8 @@ def interpolate(x,
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
-             If a Tensor Variable, its dimensions size should be a 1.
+             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             If a Tensor, its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is either a list or a tuple or a Tensor.
@@ -258,7 +258,6 @@ def interpolate(x,
 	    import paddle
 	    import numpy as np
             import paddle.nn.functional as F
-            paddle.disable_static()
             
             # given out size
             input_data = np.random.rand(2,3,6,10).astype("float32")
@@ -641,8 +640,8 @@ def upsample(x,
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
-             If a Tensor Variable, its dimensions size should be a 1.
+             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if 
@@ -689,10 +688,10 @@ def upsample(x,
             import paddle
             import numpy as np
             import paddle.nn.functional as F
-            paddle.disable_static()
 
+            input_data = np.random.rand(2,3,6,10).astype("float32")
             input = paddle.to_tensor(input_data)
-            output = F.upsample(input=input, size=[12,12])
+            output = F.upsample(x=input, size=[12,12])
             print(output.shape)
             # [2L, 3L, 12L, 12L]
 
@@ -725,7 +724,6 @@ def bilinear(x1, x2, weight, bias=None, name=None):
         import numpy
         import paddle.nn.functional as F
 
-        paddle.disable_static()
         x1 = numpy.random.random((5, 5)).astype('float32')
         x2 = numpy.random.random((5, 4)).astype('float32')
         w = numpy.random.random((1000, 5, 4)).astype('float32')
@@ -1414,7 +1412,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
 
 def linear(x, weight, bias=None, name=None):
-    """
+    r"""
 
     Fully-connected linear transformation operator. For each input :math:`X` ,
     the equation is:
@@ -1501,7 +1499,7 @@ def linear(x, weight, bias=None, name=None):
 
 
 def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
-    """
+    r"""
     Label smoothing is a mechanism to regularize the classifier layer and is called
     label-smoothing regularization (LSR).
 

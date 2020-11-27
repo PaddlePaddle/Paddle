@@ -54,7 +54,7 @@ __all__ = [
 
 @dygraph_only
 def to_tensor(data, dtype=None, place=None, stop_gradient=True):
-    """
+    r"""
     Constructs a ``paddle.Tensor`` or ``paddle.ComplexTensor`` from ``data`` , 
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor, paddle\.ComplexTensor.
 
@@ -604,7 +604,7 @@ def _tril_triu_op(helper):
 
 
 def tril(x, diagonal=0, name=None):
-    """
+    r"""
 	:alias_main: paddle.tril
 	:alias: paddle.tril,paddle.tensor.tril,paddle.tensor.creation.tril
 
@@ -675,7 +675,7 @@ def tril(x, diagonal=0, name=None):
 
 
 def triu(x, diagonal=0, name=None):
-    """
+    r"""
 	:alias_main: paddle.triu
 	:alias: paddle.triu,paddle.tensor.triu,paddle.tensor.creation.triu
 
