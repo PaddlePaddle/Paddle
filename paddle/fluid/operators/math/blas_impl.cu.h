@@ -536,8 +536,8 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
           "but received %d",
           context_.GetComputeCapability()));
 
-  thrust::complex<float> c_alpha = static_cast<thrust::complex<float>>(alpha);
-  thrust::complex<float> c_beta = static_cast<thrust::complex<float>>(beta);
+  thrust::complex<float> c_alpha = thrust::complex<float>(alpha.real, alpha.imag);
+  thrust::complex<float> c_beta = thrust::complex<float>(beta.real, beta.imag);
 
 #if CUDA_VERSION >= 8000
   // cublasHgemm does true FP16 computation which is slow for non-Volta
@@ -583,8 +583,8 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
           "but received %d",
           context_.GetComputeCapability()));
 
-  thrust::complex<double> c_alpha = static_cast<thrust::complex<double>>(alpha);
-  thrust::complex<double> c_beta = static_cast<thrust::complex<double>>(beta);
+  thrust::complex<double> c_alpha = thrust::complex<double>(alpha.real, alpha.imag);
+  thrust::complex<double> c_beta = thrust::complex<double>(beta.real, alpha.imag);
 
 #if CUDA_VERSION >= 8000
   // cublasHgemm does true FP16 computation which is slow for non-Volta

@@ -141,7 +141,7 @@ struct PADDLE_ALIGN(16) complex128 {
     return *this;
   }
 
-  HOSTDEVICE inline explicit operator float() const {
+  HOSTDEVICE inline operator float() const {
     return static_cast<float>(this->real);
   }
 
@@ -185,15 +185,12 @@ struct PADDLE_ALIGN(16) complex128 {
     return static_cast<double>(this->real);
   }
 
-  HOSTDEVICE inline explicit operator complex64() const {
-    return complex64(static_cast<float>(this->real), static_cast<float>(this->imag));
-  }
 };
 
 HOSTDEVICE inline complex128 operator+(const complex128& a,
                                        const complex128& b) {
 #if defined(__CUDA_ARCH__)
-  return complex128(thrust::complex<double>(a) + thrust::complex<double>(b));
+  return complex128(thrust::complex<double>(a.real, a.imag) + thrust::complex<double>(b.real, b.imag));
 #else
   return complex128(a.real + b.real, a.imag + b.imag);
 #endif
@@ -202,7 +199,7 @@ HOSTDEVICE inline complex128 operator+(const complex128& a,
 HOSTDEVICE inline complex128 operator-(const complex128& a,
                                        const complex128& b) {
 #if defined(__CUDA_ARCH__)
-  return complex128(thrust::complex<double>(a) - thrust::complex<double>(b));
+  return complex128(thrust::complex<double>(a.real, a.imag) - thrust::complex<double>(b.real, b.imag));
 #else
   return complex128(a.real - b.real, a.imag - b.imag);
 #endif
@@ -211,7 +208,7 @@ HOSTDEVICE inline complex128 operator-(const complex128& a,
 HOSTDEVICE inline complex128 operator*(const complex128& a,
                                        const complex128& b) {
 #if defined(__CUDA_ARCH__)
-  return complex128(thrust::complex<double>(a) * thrust::complex<double>(b));
+  return complex128(thrust::complex<double>(a.real, a.imag) * thrust::complex<double>(b.real, b.imag));
 #else
   return complex128(a.real * b.real - a.imag * b.imag,
                     a.imag * b.real + b.imag * a.real);
@@ -221,7 +218,7 @@ HOSTDEVICE inline complex128 operator*(const complex128& a,
 HOSTDEVICE inline complex128 operator/(const complex128& a,
                                        const complex128& b) {
 #if defined(__CUDA_ARCH__)
-  return complex128(thrust::complex<double>(a) / thrust::complex<double>(b));
+  return complex128(thrust::complex<double>(a.real, a.imag) / thrust::complex<double>(b.real, b.imag));
 #else
   double denominator = b.real * b.real + b.imag * b.imag;
   return complex128((a.real * b.real + a.imag * b.imag) / denominator,
@@ -231,7 +228,7 @@ HOSTDEVICE inline complex128 operator/(const complex128& a,
 
 HOSTDEVICE inline complex128 operator-(const complex128& a) {
 #if defined(__CUDA_ARCH__)
-  return complex128(-thrust::complex<double>(a));
+  return complex128(-thrust::complex<double>(a.real, a.imag));
 #else
   complex128 res;
   res.real = -a.real;
@@ -243,7 +240,7 @@ HOSTDEVICE inline complex128 operator-(const complex128& a) {
 HOSTDEVICE inline complex128& operator+=(complex128& a,  // NOLINT
                                          const complex128& b) {
 #if defined(__CUDA_ARCH__)
-  a = complex128(thrust::complex<double>(a) += thrust::complex<double>(b));
+  a = complex128(thrust::complex<double>(a.real, a.imag) += thrust::complex<double>(b.real, b.imag));
   return a;
 #else
   a.real += b.real;
@@ -255,7 +252,7 @@ HOSTDEVICE inline complex128& operator+=(complex128& a,  // NOLINT
 HOSTDEVICE inline complex128& operator-=(complex128& a,  // NOLINT
                                          const complex128& b) {
 #if defined(__CUDA_ARCH__)
-  a = complex128(thrust::complex<double>(a) -= thrust::complex<double>(b));
+  a = complex128(thrust::complex<double>(a.real, a.imag) -= thrust::complex<double>(b.real, b.imag));
   return a;
 #else
   a.real -= b.real;
@@ -267,7 +264,7 @@ HOSTDEVICE inline complex128& operator-=(complex128& a,  // NOLINT
 HOSTDEVICE inline complex128& operator*=(complex128& a,  // NOLINT
                                          const complex128& b) {
 #if defined(__CUDA_ARCH__)
-  a = complex128(thrust::complex<double>(a) *= thrust::complex<double>(b));
+  a = complex128(thrust::complex<double>(a.real, a.imag) *= thrust::complex<double>(b.real, b.imag));
   return a;
 #else
   a.real = a.real * b.real - a.imag * b.imag;
@@ -279,7 +276,7 @@ HOSTDEVICE inline complex128& operator*=(complex128& a,  // NOLINT
 HOSTDEVICE inline complex128& operator/=(complex128& a,  // NOLINT
                                          const complex128& b) {
 #if defined(__CUDA_ARCH__)
-  a = complex128(thrust::complex<double>(a) /= thrust::complex<double>(b));
+  a = complex128(thrust::complex<double>(a.real, a.imag) /= thrust::complex<double>(b.real, b.imag));
   return a;
 #else
   double denominator = b.real * b.real + b.imag * b.imag;
