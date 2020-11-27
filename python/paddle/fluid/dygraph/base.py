@@ -480,7 +480,7 @@ def grad(outputs,
             import paddle
 
             def test_dygraph_grad(grad_outputs=None):
-                x = grad_value = paddle.to_tensor(4.0)
+                x = paddle.to_tensor(2.0)
                 x.stop_gradient = False
 
                 y1 = x * x
@@ -503,8 +503,7 @@ def grad(outputs,
 
                 return dx.numpy()
 
-            grad_value = grad_value = paddle.to_tensor(4.0)
-            
+            grad_value = paddle.to_tensor(4.0)
             # dy1 = [1], dy2 = [1]
             print(test_dygraph_grad(None)) # [7.]
 
@@ -515,7 +514,7 @@ def grad(outputs,
             print(test_dygraph_grad([grad_value, None])) # [19.]
 
             # dy1 = [3], dy2 = [4]
-            grad_y1 = grad_value = paddle.to_tensor(3.0)
+            grad_y1 = paddle.to_tensor(3.0)
             print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
 	'''
 
