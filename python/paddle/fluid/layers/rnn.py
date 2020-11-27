@@ -18,6 +18,7 @@ import sys
 from functools import partial, reduce
 
 import paddle
+from paddle.utils import deprecated
 from . import nn
 from . import tensor
 from . import control_flow
@@ -2418,6 +2419,10 @@ def dynamic_lstm(input,
     return hidden, cell
 
 
+@deprecated(
+    since='2.0.0',
+    update_to='paddle.nn.LSTM',
+    reason="This API may occur CUDNN errors.")
 def lstm(input,
          init_h,
          init_c,
