@@ -14714,9 +14714,9 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     Args:
         - input(Tensor): Input indices, last dimension must be 1. Its data type must be int64.
         - index_num(int32): An integer defining the range of the index.
-        - nshards(int32): The number of shards
-        - shard_id(int32): The index of the current shard
-        - ignore_value(int32): An integer value out of sharded index range
+        - nshards(int32): The number of shards.
+        - shard_id(int32): The index of the current shard.
+        - ignore_value(int32): An integer value out of sharded index range.
 
     Returns:
         Tensor: The sharded index of input.
