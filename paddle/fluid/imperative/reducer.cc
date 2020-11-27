@@ -29,6 +29,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       is_sparse_gradient_(is_sparse_gradient),
       parallel_ctx_(parallel_ctx) {
   VLOG(3) << "Start construct the Reducer ...";
+  nrings_ = parallel_ctx->GetNRings();
   // initialize groups
   InitializeGroups(group_indices);
 
@@ -55,14 +56,18 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
   compute_stream_ = static_cast<platform::CUDADeviceContext *>(
                         platform::DeviceContextPool::Instance().Get(place_))
                         ->stream();
-  comm_stream_ = platform::NCCLCommContext::Instance().Get(0, place_)->stream();
-  events_.resize(group_indices.size());
-  for (auto &event : events_) {
+  for (int i = 0; i < nrings_; ++i) {
+    comm_streams_.emplace_back(
+        platform::NCCLCommContext::Instance().Get(i, place_)->stream());
+    comm_events_.emplace_back(platform::CudaEventResourcePool::Instance().New(
+        BOOST_GET_CONST(platform::CUDAPlace, place_).device));
+  }
+
+  group_events_.resize(group_indices.size());
+  for (auto &event : group_events_) {
     event = platform::CudaEventResourcePool::Instance().New(
         BOOST_GET_CONST(platform::CUDAPlace, place_).device);
   }
-  comm_enent_ = platform::CudaEventResourcePool::Instance().New(
-      BOOST_GET_CONST(platform::CUDAPlace, place_).device);
 
   std::call_once(once_flag_, []() {
     std::atexit([]() { Reducer::GetInstance()->ReleaseReducer(); });
@@ -70,10 +75,12 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
 }
 
 void Reducer::ReleaseReducer() {
-  for (auto &event : events_) {
+  for (auto &event : group_events_) {
     event.reset();
   }
-  comm_enent_.reset();
+  for (auto &event : comm_events_) {
+    event.reset();
+  }
 }
 
 int64_t Reducer::InitializeDenseGroups(
@@ -230,37 +237,44 @@ void Reducer::MarkGroupReady(size_t group_index) {
   }
 
   PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaEventRecord(events_[group_index].get(), compute_stream_));
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaStreamWaitEvent(comm_stream_, events_[group_index].get(), 0));
+      cudaEventRecord(group_events_[group_index].get(), compute_stream_));
+  for (int i = 0; i < nrings_; ++i)
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(
+        comm_streams_[i], group_events_[group_index].get(), 0));
 
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
     auto &group = groups_[next_group_];
+    int run_order = next_group_ % nrings_;
     if (group.is_sparse_) {
       VLOG(3) << "sparse group [" << next_group_ << "] start allreduce...";
-      parallel_ctx_->AllReduceByStream(*group.sparse_contents_,
-                                       group.sparse_contents_, 0, false);
+      parallel_ctx_->AllReduceByStream(
+          *group.sparse_contents_, group.sparse_contents_, run_order, false);
     } else {
       VLOG(3) << "dense group [" << next_group_ << "] start allreduce...";
       // Select common commstream to concat tensors
       // group.dense_tensors ---> group.dense_contents_
-      group.ConcatTensors(*parallel_ctx_->GetDeviceContext(0));
+      group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
 
       // Start allreduce
-      parallel_ctx_->AllReduceByStream(group.dense_contents_,
-                                       &(group.dense_contents_), 0, false);
+      parallel_ctx_->AllReduceByStream(
+          group.dense_contents_, &(group.dense_contents_), run_order, false);
       // Select common commstream to split tensors
       // group.dense_contents_ ---> group.dense_tensors
-      group.SplitTensors(*parallel_ctx_->GetDeviceContext(0));
+      group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
     }
   }
 }
 
 void Reducer::FinalizeBackward() {
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(comm_enent_.get(), comm_stream_));
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaStreamWaitEvent(compute_stream_, comm_enent_.get(), 0));
+  for (int i = 0; i < nrings_; ++i) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaEventRecord(comm_events_[i].get(), comm_streams_[i]));
+  }
+  for (int i = 0; i < nrings_; ++i) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaStreamWaitEvent(compute_stream_, comm_events_[i].get(), 0));
+  }
   VLOG(3) << "In the batch, Reducer is finished...";
 }
 

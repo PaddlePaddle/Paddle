@@ -209,10 +209,11 @@ class Reducer {
   std::vector<bool> is_sparse_gradient_;
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;
 
-  std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
-  std::shared_ptr<platform::CudaEventObject> comm_enent_;
+  std::vector<std::shared_ptr<platform::CudaEventObject>> group_events_;
+  std::vector<std::shared_ptr<platform::CudaEventObject>> comm_events_;
   cudaStream_t compute_stream_;
-  cudaStream_t comm_stream_;
+  std::vector<cudaStream_t> comm_streams_;
+  int nrings_ = 1;
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(

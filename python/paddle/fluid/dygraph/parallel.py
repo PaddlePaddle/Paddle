@@ -114,6 +114,9 @@ class ParallelEnv(object):
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
+        self._nrings = int(os.getenv("FLAGS_nccl_nrings", "1"))
+        assert self._nrings > 0, \
+            "nccl_nrings must be an integer greater than 0."
 
     @property
     def rank(self):
@@ -210,6 +213,25 @@ class ParallelEnv(object):
             # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
         """
         return self._trainer_endpoints
+
+    @property
+    def nrings(self):
+        """
+        Nrings of current trainer.
+
+        Its value is equal to the value of the environment variable ``FLAGS_nccl_nrings`` . The default value is 1.
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export FLAGS_nccl_nrings=1
+            import paddle.distributed as dist
+            
+            env = dist.ParallelEnv()
+            print("The nrings is %d" % env.nrings)
+            # the number of ring is 1
+        """
+        return self._nrings
 
     # [aliases] Compatible with old method names
     local_rank = rank

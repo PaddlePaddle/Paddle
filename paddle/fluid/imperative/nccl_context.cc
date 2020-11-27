@@ -17,8 +17,10 @@
 namespace paddle {
 namespace imperative {
 #if defined(PADDLE_WITH_NCCL)
-void NCCLParallelContext::RecvNCCLID(const std::string &ep,
-                                     ncclUniqueId *nccl_id) {
+void NCCLParallelContext::RecvNCCLID(
+    const std::string &ep,
+    std::vector<ncclUniqueId> &nccl_ids) {  // NOLINT
+  int nrings = nccl_ids.size();
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(
       addr.size(), 2UL,
@@ -85,14 +87,20 @@ void NCCLParallelContext::RecvNCCLID(const std::string &ep,
   }
 
   VLOG(3) << "recevived the ncclUniqueId";
-  memcpy(nccl_id, buffer, NCCL_UNIQUE_ID_BYTES);
+
+  for (int i = 0; i < nrings; ++i) {
+    memcpy(&nccl_ids[i], buffer + i * NCCL_UNIQUE_ID_BYTES,
+           NCCL_UNIQUE_ID_BYTES);
+  }
 
   VLOG(3) << "closing the socket server: " << ep;
   close(server_fd);
 }
 
-void NCCLParallelContext::SendNCCLID(const std::string &ep,
-                                     ncclUniqueId *nccl_id) {
+void NCCLParallelContext::SendNCCLID(
+    const std::string &ep,
+    std::vector<ncclUniqueId> &nccl_ids) {  // NOLINT
+  int nrings = nccl_ids.size();
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(
       addr.size(), 2UL,
@@ -105,7 +113,12 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
   struct sockaddr_in serv_addr;
   char buffer[1024] = {0};
 
-  memcpy(buffer, nccl_id, NCCL_UNIQUE_ID_BYTES);
+  // memcpy(buffer, nccl_id, NCCL_UNIQUE_ID_BYTES);
+  for (int i = 0; i < nrings; ++i) {
+    memcpy(buffer + i * NCCL_UNIQUE_ID_BYTES, &nccl_ids[i],
+           NCCL_UNIQUE_ID_BYTES);
+  }
+
   if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     PADDLE_THROW(platform::errors::Unavailable("Create socket failed."));
   }
@@ -149,40 +162,48 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
       continue;
     }
     VLOG(3) << "sending the ncclUniqueId to " << ep;
-    send(sock, buffer, NCCL_UNIQUE_ID_BYTES, 0);
+    send(sock, buffer, NCCL_UNIQUE_ID_BYTES * nrings, 0);
     break;
   }
   close(sock);
 }
 
-void NCCLParallelContext::BcastNCCLId(ncclUniqueId *nccl_id, int root) {
+void NCCLParallelContext::BcastNCCLId(
+    std::vector<ncclUniqueId> &nccl_ids,  // NOLINT
+    int root) {
   if (strategy_.local_rank_ == root) {
     for (auto ep : strategy_.trainer_endpoints_) {
-      if (ep != strategy_.current_endpoint_) SendNCCLID(ep, nccl_id);
+      if (ep != strategy_.current_endpoint_) SendNCCLID(ep, nccl_ids);
     }
   } else {
-    RecvNCCLID(strategy_.current_endpoint_, nccl_id);
+    RecvNCCLID(strategy_.current_endpoint_, nccl_ids);
   }
 }
 
 void NCCLParallelContext::Init() {
-  for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
-    ncclUniqueId nccl_id;
-    if (strategy_.local_rank_ == 0) {
-      // generate the unique ncclid on the root worker
-      platform::dynload::ncclGetUniqueId(&nccl_id);
-      BcastNCCLId(&nccl_id, 0);
-    } else {
-      BcastNCCLId(&nccl_id, 0);
+  std::vector<ncclUniqueId> nccl_ids;
+  nccl_ids.resize(strategy_.nrings_);
+  // ncclUniqueId nccl_id;
+  if (strategy_.local_rank_ == 0) {
+    // generate the unique ncclid on the root worker
+    for (size_t i = 0; i < nccl_ids.size(); ++i) {
+      platform::dynload::ncclGetUniqueId(&nccl_ids[i]);
     }
-    int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+
+    BcastNCCLId(nccl_ids, 0);
+  } else {
+    BcastNCCLId(nccl_ids, 0);
+  }
+
+  int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+  for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
     VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
             << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
             << " ring id: " << ring_id;
-
     // it will assign nccl_comm in CUDADeviceContext within ring_id
     platform::NCCLCommContext::Instance().CreateNCCLComm(
-        &nccl_id, strategy_.nranks_, strategy_.local_rank_, gpu_id, ring_id);
+        &nccl_ids[ring_id], strategy_.nranks_, strategy_.local_rank_, gpu_id,
+        ring_id);
   }
 }
 
