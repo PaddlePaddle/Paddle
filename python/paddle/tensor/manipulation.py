@@ -1183,7 +1183,7 @@ def expand_as(x, y, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
-        return core.ops.expand_as_v2(x, y)
+        return core.ops.expand_as_v2(x, 'target_shape', y.shape)
 
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand_as')
@@ -1195,12 +1195,16 @@ def expand_as(x, y, name=None):
             "you must set its stop_gradient to be False by "
             "some_var.stop_gradient = True, supporting "
             "some_var as the input 'x'.")
-    inputs = {"X": [x], "target_tensor": [y]}
+    inputs = {"X": [x]}
 
     helper = LayerHelper('expand_as', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type='expand_as_v2', inputs=inputs, outputs={'Out': out})
+    helper.append_op(
+        type='expand_as_v2',
+        inputs=inputs,
+        attrs={'target_shape': y.shape},
+        outputs={'Out': out})
     return out
 
 
