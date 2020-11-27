@@ -116,7 +116,6 @@ where python
 where pip
 pip install --upgrade pip --user
 pip install wheel --user
-pip install gym --user
 pip install -U -r %work_dir%\python\requirements.txt --user
 pip install -U -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
