@@ -31,7 +31,7 @@ AllocationPtr Alloc(const platform::Place &place, size_t size) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size);
 }
 
-void Release(const platform::Place &place) {
+uint64_t Release(const platform::Place &place) {
   return allocation::AllocatorFacade::Instance().Release(place);
 }
 

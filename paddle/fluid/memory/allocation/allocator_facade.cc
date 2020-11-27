@@ -37,6 +37,7 @@
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -287,8 +288,8 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
   return m_->GetAllocator(place, size)->Allocate(size);
 }
 
-void AllocatorFacade::Release(const platform::Place& place) {
-  m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
+uint64_t AllocatorFacade::Release(const platform::Place& place) {
+  return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
       ->Release(place);
 }
 

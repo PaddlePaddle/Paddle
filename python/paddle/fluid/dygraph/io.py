@@ -150,6 +150,79 @@ def _append_loaded_suffix_to_var(program_desc):
 
 
 @switch_to_static_graph
+def _generate_unique_var_name_sync_with_main_program(prefix):
+    return unique_name.generate(prefix)
+
+
+def _get_loaded_var_new_old(program_desc, all_new_old_dict_all):
+    new_old_dict = dict()
+    persistable_vars = _get_persistable_vars(program_desc)
+    for var_desc in persistable_vars:
+        name_new = var_desc.name()
+        new_old_dict[name_new] = all_new_old_dict_all[name_new]
+    return new_old_dict
+
+
+def _rename_var_program_desc(program_desc):
+    """
+    Change the name of the loaded variables.Use 'unique_name.generate' to avoid duplication
+    e.g. x ==> x_0, x_0 ==> x_1
+    """
+    dict_rename_var_old_new = dict()
+    dict_rename_var_new_old = dict()
+    old_names = []
+    for b_idx in six.moves.range(program_desc.num_blocks()):
+        cur_block = program_desc.block(b_idx)
+        for var in cur_block.all_vars():
+            old_names.append(var.name())
+    persistable_vars = _get_persistable_vars(program_desc)
+    for b_idx in six.moves.range(program_desc.num_blocks()):
+        cur_block = program_desc.block(b_idx)
+        for var_idx, var in enumerate(cur_block.all_vars()):
+            if var not in persistable_vars:
+                continue
+            name_old = var.name()
+            while True:
+                temp_name = name_old.split('_')
+                if len(temp_name) > 1 and temp_name[-1].isnumeric():
+                    temp_name = "_".join(temp_name[:-1])
+                else:
+                    temp_name = "_".join(temp_name)
+
+                name_new = _generate_unique_var_name_sync_with_main_program(
+                    temp_name)
+                if name_new not in old_names[:var_idx] + old_names[var_idx +
+                                                                   1:]:
+                    break
+            if name_old != name_new:
+                cur_block._rename_var(
+                    cpt.to_bytes(name_old), cpt.to_bytes(name_new))
+            dict_rename_var_old_new[name_old] = name_new
+            dict_rename_var_new_old[name_new] = name_old
+
+    for b_idx in six.moves.range(program_desc.num_blocks()):
+        cur_block = program_desc.block(b_idx)
+        for op_idx in six.moves.range(cur_block.op_size()):
+            op = cur_block.op(op_idx)
+            for input_arg_name in op.input_arg_names():
+                if input_arg_name in dict_rename_var_old_new:
+                    if input_arg_name != dict_rename_var_old_new[
+                            input_arg_name]:
+                        op._rename_input(
+                            input_arg_name,
+                            dict_rename_var_old_new[input_arg_name])
+            for output_arg_name in op.output_arg_names():
+                if output_arg_name in dict_rename_var_old_new:
+                    if output_arg_name != dict_rename_var_old_new[
+                            output_arg_name]:
+                        op._rename_output(
+                            output_arg_name,
+                            dict_rename_var_old_new[output_arg_name])
+    program_desc.flush()
+    return dict_rename_var_new_old, dict_rename_var_old_new
+
+
+@switch_to_static_graph
 def _build_program_by_desc(program_desc):
     prog = framework.Program()
     prog.desc = program_desc
@@ -227,6 +300,8 @@ class _ProgramHolder(object):
         return self._inner_scope
 
     def _preprocess(self, program_desc):
+        # rename variables of 'program_desc'
+        rename_new_old_dict, _ = _rename_var_program_desc(program_desc)
         # 1. Prune original program
         # remove feed, fetch and scale-1 op, remove op_callstack attr
         ops_to_remove = []
@@ -291,7 +366,9 @@ class _ProgramHolder(object):
         # and later after loading, a new linear is added. At this time, 
         # there will be a problem of duplicate names, so here is unified 
         # to add the LOADED suffix to the parameters of the model loaded
-        self._suffix_varname_dict = _append_loaded_suffix_to_var(program_desc)
+        self._suffix_varname_dict = _get_loaded_var_new_old(program_desc,
+                                                            rename_new_old_dict)
+
         # - get persistable var
         self._persistable_names = _get_persistable_var_names(program_desc)
 
@@ -397,8 +474,12 @@ def _load_persistable_vars_by_program(model_path,
 
     if params_filename is not None:
         load_var_list = []
-        for name in sorted(load_var_dict.keys()):
-            load_var_list.append(load_var_dict[name])
+        dict_name_old_new = {
+            v: k
+            for k, v in program_holder._suffix_varname_dict.items()
+        }
+        for name in sorted(dict_name_old_new.keys()):
+            load_var_list.append(load_var_dict[dict_name_old_new[name]])
 
         framework._dygraph_tracer().trace_op(
             type='load_combine',
@@ -500,8 +581,21 @@ def _construct_program_holders(model_path, model_filename=None):
         # [compatible] if assign model_filename, only can load one program as Layer.forward
         model_filename = os.path.basename(model_filename)
         model_file_path = os.path.join(model_path, model_filename)
-        program_holder_dict['forward'] = _ProgramHolder(
-            _load_program_desc(model_file_path))
+        model_name = model_filename[:-len(INFER_MODEL_SUFFIX)]
+        #Load every file that meets the requirements in the directory model_path.
+        for filename in os.listdir(model_path):
+            if model_filename == filename:
+                func_name = 'forward'
+                model_file_path = os.path.join(model_path, model_filename)
+            elif filename.endswith(INFER_MODEL_SUFFIX) and filename.startswith(
+                    model_name):
+                func_name = filename[len(model_name) + 1:-len(
+                    INFER_MODEL_SUFFIX)]
+                model_file_path = os.path.join(model_path, filename)
+            else:
+                continue
+            program_holder_dict[func_name] = _ProgramHolder(
+                _load_program_desc(model_file_path))
     else:
         for _, _, file_names in os.walk(model_path):
             for name in file_names:
@@ -524,9 +618,23 @@ def _construct_params_and_buffers(model_path,
                                   append_suffix=True):
     var_info_filename = str(params_filename) + ".info"
     var_info_path = os.path.join(model_path, var_info_filename)
+
     if os.path.exists(var_info_path):
         var_dict = _load_persistable_vars(model_path, var_info_path,
                                           programs['forward'], params_filename)
+        model_name = params_filename[:-len(INFER_PARAMS_SUFFIX)]
+        #Load every file that meets the requirements in the directory model_path.
+        for file_name in os.listdir(model_path):
+            if file_name.endswith(INFER_PARAMS_SUFFIX) and file_name.startswith(
+                    model_name) and file_name != params_filename:
+                func_name = file_name[len(model_name) + 1:-len(
+                    INFER_PARAMS_SUFFIX)]
+            else:
+                continue
+            var_info_path = os.path.join(model_path, var_info_filename)
+            var_dict.update(
+                _load_persistable_vars(model_path, var_info_path, programs[
+                    func_name], file_name))
     else:
         var_dict = _load_persistable_vars_by_program(
             model_path, programs['forward'], params_filename)
@@ -539,12 +647,12 @@ def _construct_params_and_buffers(model_path,
 
 class TranslatedLayer(layers.Layer):
     """
-    TranslatedLayer is a imperative Layer for holding the model loaded by 
-    :ref:`api_imperative_jit_load` . It can be used like a general Layer 
-    object in eval or train mode.
+    TranslatedLayer is a ``paddle.nn.Layer`` for holding the model 
+    loaded by :ref:`api_paddle_jit_load` . It can be used like a 
+    general Layer object in eval or train mode.
     
     .. note:
-        The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_imperative_jit_load` .
+        The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_paddle_jit_load` .
 
     Examples:
         .. code-block:: python
@@ -594,10 +702,6 @@ class TranslatedLayer(layers.Layer):
                         print("Epoch {} batch {}: loss = {}".format(
                             epoch_id, batch_id, np.mean(loss.numpy())))
 
-            # enable dygraph mode
-            place = paddle.CPUPlace()
-            paddle.disable_static(place) 
-
             # 1. train & save model.
 
             # create network
@@ -608,7 +712,6 @@ class TranslatedLayer(layers.Layer):
             # create data loader
             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
             loader = paddle.io.DataLoader(dataset,
-                places=place,
                 batch_size=BATCH_SIZE,
                 shuffle=True,
                 drop_last=True,
@@ -869,10 +972,6 @@ class TranslatedLayer(layers.Layer):
                             print("Epoch {} batch {}: loss = {}".format(
                                 epoch_id, batch_id, np.mean(loss.numpy())))
 
-                # enable dygraph mode
-                place = paddle.CPUPlace()
-                paddle.disable_static(place) 
-
                 # create network
                 layer = LinearNet()
                 loss_fn = nn.CrossEntropyLoss()
@@ -881,7 +980,6 @@ class TranslatedLayer(layers.Layer):
                 # create data loader
                 dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
                 loader = paddle.io.DataLoader(dataset,
-                    places=place,
                     batch_size=BATCH_SIZE,
                     shuffle=True,
                     drop_last=True,
