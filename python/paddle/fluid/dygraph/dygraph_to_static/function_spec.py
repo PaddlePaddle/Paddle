@@ -50,10 +50,10 @@ class FunctionSpec(object):
         """
         Moves kwargs with default value into arguments list to keep `args` contain the same length
         value as function definition.
-        
-        For example: 
-        
-            Given function definition: `def foo(x, a=1, b=2)`, 
+
+        For example:
+
+            Given function definition: `def foo(x, a=1, b=2)`,
             when calling it by `foo(23)`, the args is `[23]`, kwargs is `{a=1, b=2}`.
             In this function, it will return args with `[23, 1, 2]`, kwargs with `{}`
 
@@ -91,10 +91,23 @@ class FunctionSpec(object):
 
         return tuple(args), kwargs
 
+    def _replace_value_with_input_spec(self, args):
+        args_with_spec = []
+        for idx, input_var in enumerate(flatten(args)):
+            if isinstance(input_var, np.ndarray):
+                input_var = paddle.static.InputSpec.from_numpy(input_var)
+            elif isinstance(input_var, core.VarBase):
+                input_var = paddle.static.InputSpec.from_tensor(input_var)
+
+            args_with_spec.append(input_var)
+
+        args_with_spec = pack_sequence_as(args, args_with_spec)
+        return args_with_spec
+
     def args_to_input_spec(self, args, kwargs):
         """
         Converts input arguments into InputSpec.
-        
+
         1. If specific input_spec, use them to construct feed layers.
         2. If input_spec is None, consider all Tensor and Numpy.ndarray as feed layers
 
@@ -103,10 +116,11 @@ class FunctionSpec(object):
             kwargs(dict): kwargs arguments received by **kwargs.
 
         Return:
-            Same nest structure with args by replacing value with InputSpec.
+            Same nest structure with args and kwargs by replacing value with InputSpec.
         """
-        input_with_spec = []
 
+        args_with_spec = []
+        kwargs_with_spec = []
         if self._input_spec is not None:
             # Note: Because the value type and length of `kwargs` is uncertain.
             # So we don't support to deal this case while specificing `input_spec` currently.
@@ -124,24 +138,17 @@ class FunctionSpec(object):
                     format(len(args), len(self._input_spec)))
 
             # replace argument with corresponding InputSpec.
-            input_with_spec = convert_to_input_spec(args, self._input_spec)
+            args_with_spec = convert_to_input_spec(args, self._input_spec)
         else:
-            for idx, input_var in enumerate(flatten(args)):
-                if isinstance(input_var, np.ndarray):
-                    input_var = paddle.static.InputSpec.from_numpy(input_var)
-                elif isinstance(input_var, core.VarBase):
-                    input_var = paddle.static.InputSpec.from_tensor(input_var)
-
-                input_with_spec.append(input_var)
-
-            input_with_spec = pack_sequence_as(args, input_with_spec)
+            args_with_spec = self._replace_value_with_input_spec(args)
+            kwargs_with_spec = self._replace_value_with_input_spec(kwargs)
 
         # If without specificing name in input_spec, add default name
         # according to argument name from decorated function.
-        input_with_spec = replace_spec_empty_name(self._arg_names,
-                                                  input_with_spec)
+        args_with_spec = replace_spec_empty_name(self._arg_names,
+                                                 args_with_spec)
 
-        return input_with_spec
+        return args_with_spec, kwargs_with_spec
 
     @switch_to_static_graph
     def to_static_inputs_with_spec(self, input_with_spec, main_program):
