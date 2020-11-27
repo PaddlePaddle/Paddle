@@ -545,7 +545,7 @@ def assign(input, output=None):
 
           import paddle
           import numpy as np
-          data = paddle.fill_constant(shape=[3, 2], value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           array = np.array([[1, 1],
                             [3, 4],
                             [1, 3]]).astype(np.int64)
