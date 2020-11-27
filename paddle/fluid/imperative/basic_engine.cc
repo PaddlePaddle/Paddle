@@ -229,15 +229,10 @@ void BasicEngine::Execute() {
           // out_accumulators_ : hooks and accumulate-grad for leaf tensor
           if (var->IsLeafGrad()) {
             out_accumulators_.insert(iter->second.get());
-
-            PADDLE_ENFORCE_EQ(
-                iter->second->HasInteriorVar(), true,
-                platform::errors::NotFound("Cannot find interior gradient of "
-                                           "leaf tensor's grad var %s",
-                                           var->Name()));
-            var = iter->second->InteriorVar();
+            if (iter->second->HasInteriorVar()) {
+              var = iter->second->InteriorVar();
+            }
           }
-
           if (var->OverridedStopGradient() || iter->second->RefCnt() > 1) {
             auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
             tmp_var->SetType(var->Type());

@@ -584,6 +584,9 @@ EOF
         exec_times=0
         exec_time_array=('first' 'second' 'third')
         exec_retry_threshold=20
+        export GLOG_v=10
+        ctest -R "test_yolov3" --output-on-failure
+        export GLOG_v=0
         if [ -n "$failed_test_lists" ];then
             mactest_error=1
             read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )

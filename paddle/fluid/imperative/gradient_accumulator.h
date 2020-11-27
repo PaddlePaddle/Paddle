@@ -33,20 +33,39 @@ class GradientAccumulator {
     // var may be initialized, so Synchronous VariableWrapper with Variable
     if (var_->Var().IsType<framework::LoDTensor>()) {
       var_->SetType(framework::proto::VarType::LOD_TENSOR);
-    } else if (Var()->Var().IsType<framework::SelectedRows>()) {
+    } else if (var_->Var().IsType<framework::SelectedRows>()) {
       var_->SetType(framework::proto::VarType::SELECTED_ROWS);
     }
 
-    // Only generate interior var for leaf-tensor, which will record the grad of
-    // this auto-grad.
-    if (var_->IsLeafGrad()) {
-      interior_var_ = std::make_shared<VariableWrapper>(var_->Name());
-      interior_var_->SetType(var_->Type());
-      interior_var_->SetDataType(var_->DataType());
-      interior_var_->InnerSetOverridedStopGradient(
-          var_->InnerOverridedStopGradient());
-      VLOG(6) << " Create interior grad var for (" << var_->Name()
-              << ") to store result of this Graph";
+    bool is_initialized = false;
+    if (var_->Var().IsInitialized()) {
+      const framework::Tensor* tensor = nullptr;
+      if (var_->Var().IsType<framework::LoDTensor>()) {
+        tensor = &(var_->Var().Get<framework::LoDTensor>());
+      } else if (var_->Var().IsType<framework::SelectedRows>()) {
+        tensor = &(var_->Var().Get<framework::SelectedRows>()).value();
+      } else {
+        PADDLE_THROW(platform::errors::PermissionDenied(
+            "Only support LoDTensor and SelectedRows for gradient var"));
+      }
+      if (tensor && tensor->IsInitialized()) {
+        is_initialized = true;
+      }
+    }
+
+    if (is_initialized) {
+      // Only generate interior var for leaf-tensor, which will record the grad
+      // of
+      // this auto-grad.
+      if (var_->IsLeafGrad()) {
+        interior_var_ = std::make_shared<VariableWrapper>(var_->Name());
+        interior_var_->SetType(var_->Type());
+        interior_var_->SetDataType(var_->DataType());
+        interior_var_->InnerSetOverridedStopGradient(
+            var_->InnerOverridedStopGradient());
+        VLOG(6) << " Create interior grad var for (" << var_->Name()
+                << ") to store result of this Graph";
+      }
     }
   }
 
@@ -102,7 +121,7 @@ class GradientAccumulator {
     }
   }
   // void CallHooks(){}
-  //  ** interior_var_ **  PADDLE_ENFORCE_EQ(HasInteriorVar(), true)
+  //  ** interior_var_ **
 
   // Sum Gradient with Previous Graph
   void AccumulateGrad();

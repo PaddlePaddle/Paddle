@@ -368,14 +368,9 @@ void GradientAccumulator::AccumulateGrad() {
    * If the gradient has been calculated by previous graph,
    * it should be added to the previous graph result.
    */
-  if (!var_->IsLeafGrad() || !SumGradCompleted()) {
+  if (!var_->IsLeafGrad() || !SumGradCompleted() || !HasInteriorVar()) {
     return;
   }
-  PADDLE_ENFORCE_EQ(
-      HasInteriorVar(), true,
-      platform::errors::InvalidArgument(
-          "Leaf tensor should have interior var to store results of "
-          "this auto-grad"));
   PADDLE_ENFORCE_EQ(interior_var_->Var().IsInitialized(), true,
                     platform::errors::InvalidArgument(
                         "Interior var of Leaf tensor  should be initialized."));
@@ -397,11 +392,6 @@ void GradientAccumulator::AccumulateGrad() {
     }
   }
   if (is_initialized) {
-    /*PADDLE_ENFORCE_EQ(
-        src->Type(), dst->Type(),
-        platform::errors::InvalidArgument(
-            "interior_var (%s) should have the same data type with var (%s).",
-            interior_var_->Name(), var_->Name()));*/
     VLOG(5) << "Leaf Gradient Var(" << var_->Name()
             << ") has been calculated by previous graph, will accumulate on "
                "previous graph.";
