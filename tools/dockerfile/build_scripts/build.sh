@@ -1,4 +1,19 @@
 #!/bin/bash
+
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Top-level build script called from Dockerfile
 
 # Stop at any error, show all commands
@@ -35,16 +50,16 @@ MY_DIR=$(dirname "${BASH_SOURCE[0]}")
 source $MY_DIR/build_utils.sh
 
 # EPEL support
-yum -y install wget curl
-curl -sLO https://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-check_sha256sum epel-release-6-8.noarch.rpm $EPEL_RPM_HASH
+yum -y install wget curl epel-release
+#curl -sLO https://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+#check_sha256sum epel-release-6-8.noarch.rpm $EPEL_RPM_HASH
 
 # Dev toolset (for LLVM and other projects requiring C++11 support)
-curl -sLO http://people.centos.org/tru/devtools-2/devtools-2.repo
-check_sha256sum devtools-2.repo $DEVTOOLS_HASH
-mv devtools-2.repo /etc/yum.repos.d/devtools-2.repo
-rpm -Uvh --replacepkgs epel-release-6*.rpm
-rm -f epel-release-6*.rpm
+#curl -sLO http://people.centos.org/tru/devtools-2/devtools-2.repo
+#check_sha256sum devtools-2.repo $DEVTOOLS_HASH
+#mv devtools-2.repo /etc/yum.repos.d/devtools-2.repo
+#rpm -Uvh --replacepkgs epel-release-6*.rpm
+#rm -f epel-release-6*.rpm
 
 # Development tools and libraries
 yum -y install bzip2 make git patch unzip bison yasm diffutils \

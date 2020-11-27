@@ -12,7 +12,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include <set>
 #include <string>
-#include <thread>  //NOLINT
 #include <unordered_set>
 #include <vector>
 
@@ -24,7 +23,6 @@ limitations under the License. */
 #endif
 
 #include "glog/logging.h"
-#include "unsupported/Eigen/CXX11/ThreadPool"
 
 namespace paddle {
 namespace memory {
@@ -139,30 +137,14 @@ DeviceContextPool::DeviceContextPool(
 
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
-  InitPoolDevice();
 }
 
 CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::DefaultDevice());
-  InitPoolDevice();
-}
-
-void CPUDeviceContext::InitPoolDevice() {
-  using EigenEnv = Eigen::StlThreadEnvironment;
-  using EigenThreadPool = Eigen::ThreadPoolTempl<EigenEnv>;
-  // int num_threads = std::thread::hardware_concurrency();
-  int num_threads = 1;
-  eigen_threadpool_.reset(new EigenThreadPool(num_threads));
-  eigen_pool_device_.reset(
-      new Eigen::ThreadPoolDevice(eigen_threadpool_.get(), num_threads));
 }
 
 Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
   return eigen_device_.get();
-}
-
-Eigen::ThreadPoolDevice* CPUDeviceContext::eigen_pool_device() const {
-  return eigen_pool_device_.get();
 }
 
 Place CPUDeviceContext::GetPlace() const { return place_; }
@@ -342,7 +324,9 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   runtime_version_ = GetCUDARuntimeVersion(place_.device);
 
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
-                          << ", CUDA Capability: " << compute_capability_
+                          << ", GPU Compute Capability: "
+                          << compute_capability_ / 10 << "."
+                          << compute_capability_ % 10
                           << ", Driver API Version: " << driver_version_ / 1000
                           << "." << (driver_version_ % 100) / 10
                           << ", Runtime API Version: "

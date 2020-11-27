@@ -99,13 +99,7 @@ struct TransposeNormal<platform::CPUDeviceContext, T> {
         out_ptr[out_idx] = in_ptr[in_idx];
       }
     };
-    double cost_per_iteration =
-        rank * (Eigen::TensorOpCost::DivCost<int64_t>() +
-                2 * Eigen::TensorOpCost::MulCost<int64_t>() +
-                2 * Eigen::TensorOpCost::AddCost<int64_t>());
-    Eigen::TensorOpCost cost(sizeof(T), sizeof(T), cost_per_iteration);
-    auto* cpu_device = context.eigen_pool_device();
-    cpu_device->parallelFor(out->numel(), cost, std::move(transpose_helper));
+    transpose_helper(0, out->numel());
   }
 };
 
