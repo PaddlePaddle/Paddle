@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid.core as core
 
 
-class ApiMaximumTest(unittest.TestCase):
+class ApiSubtractTest(unittest.TestCase):
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -34,10 +34,10 @@ class ApiMaximumTest(unittest.TestCase):
         self.input_b = np.array([2, np.inf, -np.inf]).astype('int64')
         self.input_c = np.array([4, 1, 3]).astype('int64')
 
-        self.np_expected1 = np.maximum(self.input_x, self.input_y)
-        self.np_expected2 = np.maximum(self.input_x, self.input_z)
-        self.np_expected3 = np.maximum(self.input_a, self.input_c)
-        self.np_expected4 = np.maximum(self.input_b, self.input_c)
+        self.np_expected1 = np.subtract(self.input_x, self.input_y)
+        self.np_expected2 = np.subtract(self.input_x, self.input_z)
+        self.np_expected3 = np.subtract(self.input_a, self.input_c)
+        self.np_expected4 = np.subtract(self.input_b, self.input_c)
 
     def test_static_api(self):
         paddle.enable_static()
@@ -45,7 +45,7 @@ class ApiMaximumTest(unittest.TestCase):
                                          paddle.static.Program()):
             data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
             data_y = paddle.static.data("y", shape=[10, 15], dtype="float32")
-            result_max = paddle.maximum(data_x, data_y)
+            result_max = paddle.subtract(data_x, data_y)
             exe = paddle.static.Executor(self.place)
             res, = exe.run(feed={"x": self.input_x,
                                  "y": self.input_y},
@@ -56,7 +56,7 @@ class ApiMaximumTest(unittest.TestCase):
                                          paddle.static.Program()):
             data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
             data_z = paddle.static.data("z", shape=[15], dtype="float32")
-            result_max = paddle.maximum(data_x, data_z)
+            result_max = paddle.subtract(data_x, data_z)
             exe = paddle.static.Executor(self.place)
             res, = exe.run(feed={"x": self.input_x,
                                  "z": self.input_z},
@@ -67,7 +67,7 @@ class ApiMaximumTest(unittest.TestCase):
                                          paddle.static.Program()):
             data_a = paddle.static.data("a", shape=[3], dtype="int64")
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
-            result_max = paddle.maximum(data_a, data_c)
+            result_max = paddle.subtract(data_a, data_c)
             exe = paddle.static.Executor(self.place)
             res, = exe.run(feed={"a": self.input_a,
                                  "c": self.input_c},
@@ -78,7 +78,7 @@ class ApiMaximumTest(unittest.TestCase):
                                          paddle.static.Program()):
             data_b = paddle.static.data("b", shape=[3], dtype="int64")
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
-            result_max = paddle.maximum(data_b, data_c)
+            result_max = paddle.subtract(data_b, data_c)
             exe = paddle.static.Executor(self.place)
             res, = exe.run(feed={"b": self.input_b,
                                  "c": self.input_c},
@@ -95,19 +95,19 @@ class ApiMaximumTest(unittest.TestCase):
         b = paddle.to_tensor(self.input_b)
         c = paddle.to_tensor(self.input_c)
 
-        res = paddle.maximum(x, y)
+        res = paddle.subtract(x, y)
         res = res.numpy()
         self.assertTrue(np.allclose(res, self.np_expected1))
 
         # test broadcast
-        res = paddle.maximum(x, z)
+        res = paddle.subtract(x, z)
         res = res.numpy()
         self.assertTrue(np.allclose(res, self.np_expected2))
 
-        res = paddle.maximum(a, c)
+        res = paddle.subtract(a, c)
         res = res.numpy()
         self.assertTrue(np.allclose(res, self.np_expected3))
 
-        res = paddle.maximum(b, c)
+        res = paddle.subtract(b, c)
         res = res.numpy()
         self.assertTrue(np.allclose(res, self.np_expected4))
