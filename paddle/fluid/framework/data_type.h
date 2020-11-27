@@ -27,6 +27,8 @@ namespace paddle {
 namespace platform {
 struct bfloat16;
 struct float16;
+struct complex64;
+struct complex128;
 }  // namespace platform
 }  // namespace paddle
 
@@ -65,6 +67,8 @@ struct DataTypeTrait<void> {
 #define _ForEachDataTypeSmall_(callback)           \
   _ForEachDataTypeHelper_(callback, float, FP32);  \
   _ForEachDataTypeHelper_(callback, double, FP64); \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex64, COMPLEX64);   \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex128, COMPLEX128);   \
   _ForEachDataTypeHelper_(callback, int, INT32);   \
   _ForEachDataTypeHelper_(callback, int64_t, INT64);
 
