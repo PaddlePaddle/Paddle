@@ -128,9 +128,7 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
 
       accumulator->IncreaseRefCnt();
 
-      VLOG(3) << "Prepare acccumulator for grad variable " << var->Name() << "("
-              << var.get() << ")  with reference count "
-              << accumulator->RefCnt();
+      VLOG(3) << "Prepare acccumulator for grad variable " << var->Name();
 
       if (var->HasLeafHooks()) {
         VLOG(3) << "Grad variable wrapper (" << var->Name()
@@ -231,8 +229,6 @@ void BasicEngine::Execute() {
           // out_accumulators_ : hooks and accumulate-grad for leaf tensor
           if (var->IsLeafGrad()) {
             out_accumulators_.insert(iter->second.get());
-            // if (out_accumulators_.find(iter->second.get() !=
-            // out_accumulators_.end()) {
 
             PADDLE_ENFORCE_EQ(
                 iter->second->HasInteriorVar(), true,
@@ -255,8 +251,7 @@ void BasicEngine::Execute() {
       }
 
       {
-        VLOG(3) << "Start to execute grad op " << bwd_ins.size()
-                << cur_op.Type();
+        VLOG(3) << "Start to execute grad op " << cur_op.Type();
         OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
                     cur_op.place());
       }
@@ -268,8 +263,6 @@ void BasicEngine::Execute() {
 
       // Step 3: Call Hooks && Sum Gradient with Pre-Graph && Call BackwardHooks
       for (auto* accumulator : out_accumulators_) {
-        VLOG(3) << "out_accumulators_.size(): " << out_accumulators_.size()
-                << accumulator->Var()->Name();
         if (!accumulator->SumGradCompleted()) {
           continue;
         }

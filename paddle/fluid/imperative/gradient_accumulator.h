@@ -27,13 +27,18 @@ namespace imperative {
 class GradientAccumulator {
  public:
   explicit GradientAccumulator(VariableWrapper* var) {
+    VLOG(6) << " Create GradientAccumulator";
     var_ = var;
 
-    // Only generate interior var for leaf-tensor,
-    // Which will record the grad of this auto-grad.
-    VLOG(6) << var->Name() << "  " << var->Type() << "  " << var->DataType()
-            << "  " << var->InnerOverridedStopGradient();
+    // var may be initialized, so Synchronous VariableWrapper with Variable
+    if (var_->Var().IsType<framework::LoDTensor>()) {
+      var_->SetType(framework::proto::VarType::LOD_TENSOR);
+    } else if (Var()->Var().IsType<framework::SelectedRows>()) {
+      var_->SetType(framework::proto::VarType::SELECTED_ROWS);
+    }
 
+    // Only generate interior var for leaf-tensor, which will record the grad of
+    // this auto-grad.
     if (var_->IsLeafGrad()) {
       interior_var_ = std::make_shared<VariableWrapper>(var_->Name());
       interior_var_->SetType(var_->Type());
@@ -41,9 +46,7 @@ class GradientAccumulator {
       interior_var_->InnerSetOverridedStopGradient(
           var_->InnerOverridedStopGradient());
       VLOG(6) << " Create interior grad var for (" << var_->Name()
-              << ") to store result of this Graph. " << interior_var_ << "  "
-              << interior_var_->Type() << "  " << interior_var_->DataType()
-              << "  " << interior_var_->InnerOverridedStopGradient();
+              << ") to store result of this Graph";
     }
   }
 
@@ -55,13 +58,13 @@ class GradientAccumulator {
 
   inline void IncreaseRefCnt() {
     ++ref_cnt_;
-    VLOG(6) << var_->Name() << " Increase ref_cnt_ to " << ref_cnt_;
+    VLOG(6) << var_->Name() << " Increase total count to " << ref_cnt_;
   }
 
   inline void IncreaseCurCnt() {
     ++cur_cnt_;
-    VLOG(6) << var_->Name() << " Increase cur_cnt to " << cur_cnt_
-            << ", ref_cnt " << ref_cnt_;
+    VLOG(6) << var_->Name() << " Increase current count to " << cur_cnt_
+            << ", total count: " << ref_cnt_;
   }
 
   inline size_t CurCnt() const { return cur_cnt_; }

@@ -371,16 +371,16 @@ void GradientAccumulator::AccumulateGrad() {
   if (!var_->IsLeafGrad() || !SumGradCompleted()) {
     return;
   }
-  PADDLE_ENFORCE_EQ(HasInteriorVar(), true,
-                    "Leaf tensor should have interior var to store results of "
-                    "this auto-grad");
+  PADDLE_ENFORCE_EQ(
+      HasInteriorVar(), true,
+      platform::errors::InvalidArgument(
+          "Leaf tensor should have interior var to store results of "
+          "this auto-grad"));
+  PADDLE_ENFORCE_EQ(interior_var_->Var().IsInitialized(), true,
+                    platform::errors::InvalidArgument(
+                        "Interior var of Leaf tensor  should be initialized."));
   auto* src = interior_var_->MutableVar();
   auto* dst = var_->MutableVar();
-  VLOG(5) << interior_var_->Name() << " interior_var_" << interior_var_
-          << "interior_var_IsInitialized "
-          << interior_var_->MutableVar()->IsInitialized() << var_->Name()
-          << " var_" << var_ << "var_IsInitialized "
-          << var_->MutableVar()->IsInitialized();
   bool is_initialized = false;
   if (var_->Var().IsInitialized()) {
     const framework::Tensor* tensor = nullptr;
@@ -397,24 +397,32 @@ void GradientAccumulator::AccumulateGrad() {
     }
   }
   if (is_initialized) {
-    PADDLE_ENFORCE_EQ(
+    /*PADDLE_ENFORCE_EQ(
         src->Type(), dst->Type(),
         platform::errors::InvalidArgument(
             "interior_var (%s) should have the same data type with var (%s).",
-            interior_var_->Name(), var_->Name()));
+            interior_var_->Name(), var_->Name()));*/
     VLOG(5) << "Leaf Gradient Var(" << var_->Name()
             << ") has been calculated by previous graph, will accumulate on "
                "previous graph.";
     if (dst->IsType<framework::LoDTensor>()) {
-      TensorAdd(*src, dst);
+      if (src->IsType<framework::LoDTensor>()) {
+        TensorAdd(*src, dst);
+      } else if (src->IsType<framework::SelectedRows>()) {
+        SelectedRowsAddToTensor(*src, dst);
+      }
     } else if (dst->IsType<framework::SelectedRows>()) {
-      auto temp = SelectedRowsMerge(*src, *dst);
-      *dst = std::move(*(temp->MutableVar()));
+      if (src->IsType<framework::LoDTensor>()) {
+        SelectedRowsAddToTensor(*dst, src);
+        *dst = std::move(*src);
+      } else if (src->IsType<framework::SelectedRows>()) {
+        auto temp = SelectedRowsMerge(*src, *dst);
+        *dst = std::move(*(temp->MutableVar()));
+      }
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Only support LoDTensor and SelectedRows for gradient var"));
     }
-    interior_var_ = nullptr;
   } else {
     VLOG(8) << "Leaf Gradient Var(" << var_->Name()
             << ") has not been initialized, not accumulate. Just move";
@@ -422,6 +430,7 @@ void GradientAccumulator::AccumulateGrad() {
     var_->SetType(interior_var_->Type());
     var_->SetDataType(interior_var_->DataType());
   }
+  interior_var_ = nullptr;
 }
 
 void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
@@ -470,7 +479,7 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
     Var()->SetType(framework::proto::VarType::SELECTED_ROWS);
   }
 
-  // Increase count
+  // Increase curent count
   IncreaseCurCnt();
 }
 
@@ -480,12 +489,8 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
   platform::Place place = GetPlaceOfVar(var);
   if (!Var()->OverridedStopGradient()) {
     if (ref_cnt_ == 1) {
-      if (CurCnt() == 0) {
-        MoveOrCopyVar(dst_var, var->MutableVar(),
-                      unchange_input || var->HasGradNode());
-      } else {
-        VariableWrapperAdd(var, Var(), unchange_input || var->HasGradNode());
-      }
+      MoveOrCopyVar(dst_var, var->MutableVar(),
+                    unchange_input || var->HasGradNode());
     } else {
       if (tmp_grad_vars_.empty()) {
         tmp_grad_vars_.reserve(ref_cnt_);
