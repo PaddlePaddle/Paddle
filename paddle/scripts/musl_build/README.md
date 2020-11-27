@@ -67,7 +67,7 @@ cd ./Paddle
 BUILD_MAN=1 ../paddle/scripts/musl_build/build_paddle.sh
 ```
 
-2. Type commands to compile source manually
+2. type commands and compile source manually
 ```sh
 # compile paddle by commands
 # paddle is mount to /paddle directory
@@ -109,7 +109,6 @@ make -j8
     - WITH_PRUNE_CONTAINER: remove the container after building, default=0.
     - HTTP_PROXY: use http proxy.
     - HTTPS_PROXY: use https proxy.
-
 
 # Files
 - **build_docker.sh**: docker building script
