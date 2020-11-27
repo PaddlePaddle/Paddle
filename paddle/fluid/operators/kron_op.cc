@@ -155,6 +155,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::KronKernel<paddle::platform::CPUDeviceContext, double>,
     ops::KronKernel<paddle::platform::CPUDeviceContext,
                     paddle::platform::float16>,
+    ops::KronKernel<paddle::platform::CPUDeviceContext,
+                    paddle::platform::complex64>,
+    ops::KronKernel<paddle::platform::CPUDeviceContext,
+                    paddle::platform::complex128>,
     ops::KronKernel<paddle::platform::CPUDeviceContext, int>,
     ops::KronKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
