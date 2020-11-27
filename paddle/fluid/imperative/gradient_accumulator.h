@@ -33,7 +33,7 @@ class GradientAccumulator {
     // var may be initialized, so Synchronous VariableWrapper with Variable
     if (var_->Var().IsType<framework::LoDTensor>()) {
       var_->SetType(framework::proto::VarType::LOD_TENSOR);
-    } else if (Var()->Var().IsType<framework::SelectedRows>()) {
+    } else if (var_->Var().IsType<framework::SelectedRows>()) {
       var_->SetType(framework::proto::VarType::SELECTED_ROWS);
     }
 
@@ -102,7 +102,7 @@ class GradientAccumulator {
     }
   }
   // void CallHooks(){}
-  //  ** interior_var_ **  PADDLE_ENFORCE_EQ(HasInteriorVar(), true)
+  //  ** interior_var_ **
 
   // Sum Gradient with Previous Graph
   void AccumulateGrad();

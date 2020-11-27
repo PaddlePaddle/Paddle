@@ -397,11 +397,6 @@ void GradientAccumulator::AccumulateGrad() {
     }
   }
   if (is_initialized) {
-    /*PADDLE_ENFORCE_EQ(
-        src->Type(), dst->Type(),
-        platform::errors::InvalidArgument(
-            "interior_var (%s) should have the same data type with var (%s).",
-            interior_var_->Name(), var_->Name()));*/
     VLOG(5) << "Leaf Gradient Var(" << var_->Name()
             << ") has been calculated by previous graph, will accumulate on "
                "previous graph.";
