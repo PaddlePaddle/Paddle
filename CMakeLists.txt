@@ -75,13 +75,18 @@ if(WIN32)
     endif()
 
     # windows build turn off warnings, use parallel compiling.
+    if(${CPU_CORES} GREATER_EQUAL 8)
+        set(mutiple_processes "/MP8")
+    else()
+        set(mutiple_processes "/MP")
+    endif()
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        set(${flag_var} "${${flag_var}} /MP")
+        set(${flag_var} "${${flag_var}} ${mutiple_processes}")
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
         set(${flag_var} "${${flag_var}} /w")
