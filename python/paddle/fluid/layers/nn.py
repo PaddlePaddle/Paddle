@@ -14696,9 +14696,10 @@ def deformable_roi_pooling(input,
     return output
 
 
+@deprecated(since="2.0.0", update_to="paddle.shard_index")
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    This operator recomputes the `input` indices according to the offset of the
+    Recompute the `input` indices according to the offset of the
     shard. The length of the indices is evenly divided into N shards, and if
     the `shard_id` matches the shard with the input index inside, the index is
     recomputed on the basis of the shard offset, elsewise it is set to
@@ -14712,11 +14713,11 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     the size of the last shard will be less than the calculated `shard_size`
 
     Args:
-        - input(Tensor): Input indices, last dimension must be 1. Its data type must be int64.
-        - index_num(int32): An integer defining the range of the index.
-        - nshards(int32): The number of shards.
-        - shard_id(int32): The index of the current shard.
-        - ignore_value(int32): An integer value out of sharded index range.
+        input (Tensor): Input indices with data type int64. It's last dimension must be 1.
+        index_num (int): An integer defining the range of the index.
+        nshards (int): The number of shards.
+        shard_id (int): The index of the current shard.
+        ignore_value (int): An integer value out of sharded index range.
 
     Returns:
         Tensor: The sharded index of input.
