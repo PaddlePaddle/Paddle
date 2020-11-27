@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
+
 #include "paddle/fluid/platform/gpu_info.h"
 
 DECLARE_bool(enable_cublas_tensor_op_math);
@@ -536,7 +537,8 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
           "but received %d",
           context_.GetComputeCapability()));
 
-  thrust::complex<float> c_alpha = thrust::complex<float>(alpha.real, alpha.imag);
+  thrust::complex<float> c_alpha =
+      thrust::complex<float>(alpha.real, alpha.imag);
   thrust::complex<float> c_beta = thrust::complex<float>(beta.real, beta.imag);
 
 #if CUDA_VERSION >= 8000
@@ -583,8 +585,10 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
           "but received %d",
           context_.GetComputeCapability()));
 
-  thrust::complex<double> c_alpha = thrust::complex<double>(alpha.real, alpha.imag);
-  thrust::complex<double> c_beta = thrust::complex<double>(beta.real, alpha.imag);
+  thrust::complex<double> c_alpha =
+      thrust::complex<double>(alpha.real, alpha.imag);
+  thrust::complex<double> c_beta =
+      thrust::complex<double>(beta.real, alpha.imag);
 
 #if CUDA_VERSION >= 8000
   // cublasHgemm does true FP16 computation which is slow for non-Volta

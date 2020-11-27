@@ -18,9 +18,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/kron_op.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {

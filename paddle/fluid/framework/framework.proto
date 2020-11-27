@@ -119,7 +119,6 @@ message VarType {
     COMPLEX64 = 23;
     COMPLEX128 = 24;
 
-
     // Other types that may need additional descriptions
     LOD_TENSOR = 7;
     SELECTED_ROWS = 8;

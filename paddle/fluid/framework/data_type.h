@@ -64,12 +64,13 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, int16_t, INT16);                           \
   _ForEachDataTypeHelper_(callback, int8_t, INT8)
 
-#define _ForEachDataTypeSmall_(callback)           \
-  _ForEachDataTypeHelper_(callback, float, FP32);  \
-  _ForEachDataTypeHelper_(callback, double, FP64); \
-  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex64, COMPLEX64);   \
-  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex128, COMPLEX128);   \
-  _ForEachDataTypeHelper_(callback, int, INT32);   \
+#define _ForEachDataTypeSmall_(callback)                                       \
+  _ForEachDataTypeHelper_(callback, float, FP32);                              \
+  _ForEachDataTypeHelper_(callback, double, FP64);                             \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex64, COMPLEX64); \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex128,            \
+                          COMPLEX128);                                         \
+  _ForEachDataTypeHelper_(callback, int, INT32);                               \
   _ForEachDataTypeHelper_(callback, int64_t, INT64);
 
 // For the use of thrust, as index-type elements can be only integers.
@@ -138,6 +139,7 @@ inline void VisitDataTypeTiny(proto::VarType::Type type, Visitor visitor) {
 extern std::string DataTypeToString(const proto::VarType::Type type);
 extern size_t SizeOfType(proto::VarType::Type type);
 inline std::ostream& operator<<(std::ostream& out,
+
                                 const proto::VarType::Type& type) {
   out << DataTypeToString(type);
   return out;
