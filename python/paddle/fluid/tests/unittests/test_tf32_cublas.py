@@ -23,11 +23,11 @@ import paddle.fluid.core as core
 class TestTF32Switch(unittest.TestCase):
     def test_on_off(self):
         if core.is_compiled_with_cuda():
-            self.assertTrue(fluid.tf32_switch.allow_tf32())  # default
-            fluid.tf32_switch.set_tf32(0)
-            self.assertFalse(fluid.tf32_switch.allow_tf32())  # turn off
-            fluid.tf32_switch.set_tf32(1)
-            self.assertTrue(fluid.tf32_switch.allow_tf32())  # turn on
+            self.assertTrue(core.get_cublas_switch())  # default
+            core.CUDAContext.set_cublas_switch = 0
+            self.assertFalse(core.get_cublas_switch())  # turn off
+            core.CUDAContext.set_cublas_switch = 1
+            self.assertTrue(core.get_cublas_switch())  # turn on
         else:
             pass
 
@@ -38,7 +38,7 @@ class TestTF32OnMatmul(unittest.TestCase):
             device = core.CUDAPlace(0)
         else:
             device = core.CPUPlace()
-            fluid.tf32_switch.set_tf32(0)  # turn off
+            core.CUDAContext.set_cublas_switch = 0  # turn off
         with fluid.dygraph.guard(device):
             input_array1 = np.random.rand(4, 12, 64, 88).astype("float32")
             input_array2 = np.random.rand(4, 12, 88, 512).astype("float32")

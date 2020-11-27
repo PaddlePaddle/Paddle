@@ -57,9 +57,6 @@ struct GpuDevice;
 namespace paddle {
 namespace platform {
 
-void tf32_switch_on_off(bool active);
-bool get_tf32_switch();
-
 class DeviceContext {
  public:
   virtual ~DeviceContext() PADDLE_MAY_THROW {}
@@ -164,7 +161,8 @@ class CUDAContext {
   /*! \brief  Call cublas function safely. */
   template <typename Callback>
   inline void CublasCall(Callback&& callback) const {
-    if (cublas_tf32_tensor_core_handle_ && get_tf32_switch()) {
+    if (cublas_tf32_tensor_core_handle_ &&
+        AllowTF32Cublas()) {  //&& AllowTF32Cublas()
       cublas_tf32_tensor_core_handle_->Call(std::forward<Callback>(callback));
     } else {
       cublas_handle_->Call(std::forward<Callback>(callback));
@@ -184,6 +182,9 @@ class CUDAContext {
       cublas_handle_->Call(std::forward<Callback>(callback));
     }
   }
+
+  void SetTF32Cublas(bool active);
+  bool AllowTF32Cublas() const;
 
  private:
   void InitEigenContext();

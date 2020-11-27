@@ -76,7 +76,6 @@ from .transpiler import DistributeTranspiler, \
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
 from . import profiler
-from . import tf32_switch
 from . import unique_name
 from . import parallel_executor
 from .parallel_executor import *
@@ -131,7 +130,6 @@ __all__ = framework.__all__ + executor.__all__ + \
         'DataFeeder',
         'clip',
         'profiler',
-        'tf32_switch',
         'unique_name',
         'Scope',
         'install_check',

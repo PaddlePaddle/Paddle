@@ -56,10 +56,6 @@ namespace platform {
 
 static bool allow_tf32_cublas{true};
 
-void tf32_switch_on_off(bool active) { allow_tf32_cublas = active; }
-
-bool get_tf32_switch() { return allow_tf32_cublas; }
-
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
@@ -311,6 +307,10 @@ CUDAContext::~CUDAContext() {
   DestoryCuBlasContext();
   DestoryCuSolverContext();
 }
+
+void CUDAContext::SetTF32Cublas(bool active) { allow_tf32_cublas = active; }
+
+bool CUDAContext::AllowTF32Cublas() const { return allow_tf32_cublas; }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   CUDADeviceGuard guard(place_.device);
