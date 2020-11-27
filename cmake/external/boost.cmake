@@ -38,6 +38,10 @@ set(BOOST_INCLUDE_DIR "${BOOST_SOURCE_DIR}" CACHE PATH "boost include directory.
 set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 include_directories(${BOOST_INCLUDE_DIR})
 
+if(WIN32 AND MSVC_VERSION GREATER_EQUAL 1600)
+    add_definitions(-DBOOST_HAS_STATIC_ASSERT)
+endif()
+
 ExternalProject_Add(
     ${BOOST_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
