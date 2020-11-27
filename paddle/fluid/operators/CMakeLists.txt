@@ -64,6 +64,7 @@ if(WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
     SET(OP_MKL_DEPS ${OP_MKL_DEPS} pyramid_hash_op)
 endif()
 
+set(OPERATORS_SKIP_UNITY_BUILD "")
 if(WITH_UNITY_BUILD)
     register_unity_group(cc add_position_encoding_op.cc addmm_op.cc affine_channel_op.cc affine_grid_op.cc allclose_op.cc argsort_op.cc array_to_lod_tensor_op.cc assert_op.cc assign_op.cc assign_value_op.cc attention_lstm_op.cc average_accumulates_op.cc batch_fc_op.cc bce_loss_op.cc beam_search_op.cc beam_search_decode_op.cc bernoulli_op.cc bilateral_slice_op.cc)
     register_unity_group(cc mkldnn/batch_norm_mkldnn_op.cc bilinear_tensor_product_op.cc bmm_op.cc bpr_loss_op.cc cast_op.cc cholesky_op.cc chunk_eval_op.cc clip_by_norm_op.cc clip_op.cc coalesce_tensor_op.cc crop_tensor_op.cc)
@@ -107,10 +108,14 @@ if(WITH_UNITY_BUILD)
         register_unity_group(cu space_to_depth_op.cu spectral_norm_op.cu split_op.cu split_selected_rows_op.cu squared_l2_norm_op.cu stack_op.cu strided_slice_op.cu sum_op.cu temporal_shift_op.cu)
         register_unity_group(cu row_conv_op.cu tile_op.cu trace_op.cu transpose_op.cu tree_conv_op.cu tril_triu_op.cu truncated_gaussian_random_op.cu unfold_op.cu)
         register_unity_group(cu smooth_l1_loss_op.cu squared_l2_distance_op.cu uniform_random_op.cu unique_op.cu unstack_op.cu where_index_op.cu where_op.cu)
+        set(OPERATORS_SKIP_UNITY_BUILD activation_op arg_max_op arg_min_op dist_op batch_norm_op expand_as_op expand_as_v2_op gru_unit_op instance_norm_op kldiv_loss_op softmax_with_cross_entropy_op top_k_op eye_op)
+        foreach(op ${OPERATORS_SKIP_UNITY_BUILD})
+            op_library(${op} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+        endforeach()
     endif()
 endif()
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op lstm_op
-    sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+    sync_batch_norm_op ${OP_MKL_DEPS} ${OPERATORS_SKIP_UNITY_BUILD} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
