@@ -225,6 +225,56 @@ class HeterXpuTrainer : public TrainerBase {
   std::vector<cudaEvent_t> events_;
 #endif
 };
+
+class HeterBoxTrainer : public TrainerBase {
+ public:
+  HeterBoxTrainer() {}
+  virtual ~HeterBoxTrainer() {}
+  virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
+  virtual void InitTrainerEnv(const ProgramDesc& main_program,
+                              const platform::Place& place);
+  virtual void InitOtherEnv(const ProgramDesc& main_program);
+  virtual void Run();
+  virtual void Finalize();
+  virtual void RegisterHeterCallback();
+  virtual void DumpWork(int tid);
+  virtual Scope* GetWorkerScope(int thread_id);
+  virtual void CacheProgram(const ProgramDesc& main_program) {
+    new (&program_) ProgramDesc(main_program);
+  }
+  virtual std::string GetDumpPath(int tid) { return ""; }
+  virtual void InitDumpEnv() {}
+  template <typename T>
+#ifdef PADDLE_WITH_CUDA
+  void HeterMemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
+                   const paddle::platform::Place& thread_place,
+                   cudaStream_t stream);
+#endif
+  void CreateThreadParam(const ProgramDesc& program, int num);
+  template <typename T>
+  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+
+ protected:
+  DownpourWorkerParameter param_;
+  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  std::vector<std::string> need_merge_var_names_;
+  float scale_datanorm_;
+  paddle::platform::Place place_;
+  ProgramDesc program_;
+  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  std::vector<std::shared_ptr<DeviceWorker>> workers_;
+  std::vector<platform::Place> places_;
+  // ps-gpu
+  std::vector<std::thread> pull_threads_;
+  std::vector<std::thread> threads_;
+  int use_ps_gpu_;
+  int thread_num_;
+#ifdef PADDLE_WITH_CUDA
+  std::vector<cudaStream_t> copy_streams_;
+  std::vector<cudaEvent_t> events_;
+#endif
+};
 #endif
 
 #if defined(PADDLE_WITH_NCCL)
@@ -241,29 +291,22 @@ class PipelineTrainer : public TrainerBase {
   virtual Scope* GetWorkerScope(int thread_id);
   void InitDumpEnv() override;
   virtual std::string GetDumpPath(int tid);
-  void GetSkipVars(int section_id, const ProgramDesc& main_program);
+  void GetSkipVars(const ProgramDesc& main_program);
 
  protected:
-  int section_num_;
   int num_microbatches_;
-  int start_cpu_core_id_;
-  std::vector<std::string> feed_var_names_;
-  std::vector<platform::Place> places_;
-  std::vector<std::vector<std::string>> skip_vars_;
+  platform::Place place_;
+  std::vector<std::string> skip_vars_;
   TrainerDesc trainer_desc_;
 
-  std::vector<std::thread> section_threads_;
-  // worker: [section_id]
-  std::vector<std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
-  // minibatch_scopes_: [section_id]
-  std::vector<Scope*> minibatch_scopes_;
-  // microbatch_scopes_: [section_id][microbatch_id]
-  std::vector<std::vector<Scope*>> microbatch_scopes_;
+  std::future<void> section_thread_;
+  std::shared_ptr<paddle::framework::DeviceWorker> worker_;
+  Scope* minibatch_scope_;
+  // microbatch_scopes_: [microbatch_id]
+  std::vector<Scope*> microbatch_scopes_;
 
-  void CopyParameters(int section_id, int microbatch_id,
-                      const ProgramDesc& program, const platform::Place& place);
-  bool isPersistableVarGrad(std::string name);
-  bool isPersistable(VarDesc* var);
+  void CopyParameters(int microbatch_id, const ProgramDesc& program,
+                      const platform::Place& place);
 };
 #endif
 

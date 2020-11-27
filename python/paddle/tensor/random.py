@@ -59,17 +59,18 @@ def bernoulli(x, name=None):
 
             import paddle
 
-            paddle.seed(100) # on CPU device
-            x = paddle.rand([2,3])
-            print(x.numpy())
-            # [[0.5535528  0.20714243 0.01162981]
-            # [0.51577556 0.36369765 0.2609165 ]]
+            paddle.set_device('cpu')  # on CPU device
+            paddle.seed(100) 
 
-            paddle.seed(200) # on CPU device
+            x = paddle.rand([2,3])
+            print(x)
+            # [[0.55355281, 0.20714243, 0.01162981],
+            #  [0.51577556, 0.36369765, 0.26091650]]
+
             out = paddle.bernoulli(x)
-            print(out.numpy())
-            # [[0. 0. 0.]
-            # [1. 1. 0.]]
+            print(out)
+            # [[1., 0., 1.],
+            #  [0., 1., 0.]]
 
     """
 

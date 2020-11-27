@@ -21,7 +21,7 @@ from dist_mnist import cnn_model
 # from paddle.fluid.incubate.fleet.collective import fleet
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.distributed.fleet.meta_optimizers.sharding.utils import sharding_save_persistables
+import paddle.distributed.fleet.meta_optimizers.sharding as sharding
 
 import os
 import six
@@ -31,6 +31,7 @@ import pickle
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
+
 
 def runtime_main():
     import paddle.distributed.fleet as fleet
@@ -47,9 +48,7 @@ def runtime_main():
             input_y = paddle.fluid.layers.data(
                 name="y", shape=[1], dtype='int64')
 
-            fc_1 = paddle.fluid.layers.fc(input=input_x,
-                                            size=64,
-                                            act='tanh')
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
             fc_2 = paddle.fluid.layers.fc(input=fc_1, size=256, act='tanh')
             prediction = paddle.fluid.layers.fc(input=[fc_2],
                                                 size=2,
@@ -62,8 +61,10 @@ def runtime_main():
             strategy.sharding = True
             strategy.sharding_configs = {"fuse_broadcast_MB": 0.2}
 
-            optimizer = paddle.fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+            optimizer = paddle.fluid.optimizer.Momentum(
+                learning_rate=0.01, momentum=0.9)
+            optimizer = fleet.distributed_optimizer(
+                optimizer, strategy=strategy)
             optimizer.minimize(avg_cost)
 
     # execution
@@ -71,14 +72,16 @@ def runtime_main():
     place = fluid.CUDAPlace(device_id)
     exe = fluid.Executor(place)
     exe.run(startup_prog)
-    dirname="./ut_sharding_save_model"  
-    sharding_save_persistables(exe, dirname, main_program=train_prog, filename=None)
+    dirname = "./ut_sharding_save_model"
+    sharding.utils.save_persistables(
+        exe, dirname, main_program=train_prog, filename=None)
 
-    out_losses=[]
+    out_losses = []
     if six.PY2:
         print(pickle.dumps(out_losses))
     else:
         sys.stdout.buffer.write(pickle.dumps(out_losses))
+
 
 if __name__ == "__main__":
     #NOTE(liangjianzhong): dist unittest should be imlpement using runtime_main in test_dist_base.py
@@ -87,4 +90,3 @@ if __name__ == "__main__":
     # this should be update in future.
     # runtime_main(TestDistMnist2x2)
     runtime_main()
-   

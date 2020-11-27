@@ -174,7 +174,7 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices(false);
+    paddle::framework::InitDevices();
     scope_.reset(new paddle::framework::Scope(), [](framework::Scope *scope) {
       delete scope;
 #ifdef PADDLE_WITH_CUDA

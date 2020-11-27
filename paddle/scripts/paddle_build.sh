@@ -56,6 +56,9 @@ function init() {
     fi
 
     ENABLE_MAKE_CLEAN=${ENABLE_MAKE_CLEAN:-ON}
+
+    # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
+    export FLAGS_call_stack_level=2
 }
 
 function cmake_base() {
@@ -288,6 +291,10 @@ EOF
 function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
+    cmake_base $1
+}
+
+function cmake_gen_in_current_dir() {
     cmake_base $1
 }
 
@@ -1609,6 +1616,10 @@ function example() {
     fi
 }
 
+function test_op_benchmark() {
+    bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
+}
+
 function summary_check_problems() {
     set +x
     local check_style_code=$1
@@ -1770,6 +1781,9 @@ function main() {
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
         ;;
+      cmake_gen_in_current_dir)
+        cmake_gen_in_current_dir ${PYTHON_ABI:-""}
+        ;;
       gen_fluid_lib)
         gen_fluid_lib ${parallel_number}
         ;;
@@ -1783,6 +1797,9 @@ function main() {
         ;;
       api_example)
         example
+        ;;
+      test_op_benchmark)
+        test_op_benchmark
         ;;
       *)
         print_usage
