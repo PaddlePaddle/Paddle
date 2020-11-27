@@ -233,17 +233,35 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
-    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
-                                     "Y@GRAD of LayerNorm Op is not found."));
+    if (var == nullptr) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "can't find gradient variable of Y"));
+    }
     const Tensor *t = nullptr;
     if (var->IsType<Tensor>()) {
       t = &var->Get<Tensor>();
     } else if (var->IsType<LoDTensor>()) {
       t = &var->Get<LoDTensor>();
     }
-    PADDLE_ENFORCE_NOT_NULL(
-        t, platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
-    return framework::OpKernelType(t->type(), ctx.GetPlace());
+    if (t == nullptr) {
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("gradient variable of Y is empty"));
+    }
+
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+    }
+#endif
+
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout, library);
   }
 };
 

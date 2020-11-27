@@ -74,6 +74,7 @@ class AutoMixedPrecisionLists(object):
 white_list = {
     'conv2d',
     'matmul',
+    'matmul_v2',
     'mul',
 }
 
