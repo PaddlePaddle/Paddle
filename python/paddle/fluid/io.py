@@ -1715,10 +1715,10 @@ def save(program, model_path):
     """
     :api_attr: Static Graph
 
-    This function save parameters, optimizer information and network description to  model_path.
+    This function save parameters, optimizer information and network description to model_path.
 
-    The parameters contains all the trainable Variable, will save to a file with suffix ".pdparams".
-    The optimizer information contains all the variable used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. All the information will save to a file with suffix ".pdopt". (If the optimizer have no variable need to save (like SGD), the fill will not generated).
+    The parameters contains all the trainable Tensor, will save to a file with suffix ".pdparams".
+    The optimizer information contains all the Tensor used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. All the information will save to a file with suffix ".pdopt". (If the optimizer have no Tensor need to save (like SGD), the fill will not generated).
     The network description is the description of the program. It's only used for deployment. The description  will save to a file with a suffix ".pdmodel".
 
     Args:
@@ -1732,12 +1732,20 @@ def save(program, model_path):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.static as static
 
             paddle.enable_static()
-            prog = fluid.default_main_program()
-            fluid.save( prog, "./temp")
 
+            x = static.data(name="x", shape=[10, 10], dtype='float32')
+            y = static.nn.fc(x, 10)
+            z = static.nn.fc(y, 10)
+
+            place = paddle.CPUPlace()
+            exe = static.Executor(place)
+            exe.run(static.default_startup_program())
+            prog = static.default_main_program()
+
+            static.save(prog, "./temp")
     """
 
     base_name = os.path.basename(model_path)
@@ -1790,7 +1798,7 @@ def load(program, model_path, executor=None, var_list=None):
         model_path(str): The file prefix store the program
         executor(Executor, optional): The executor used for initialize the parameter
                                       When startup program is not run.
-        var_list(list, optional): The variable list to load single model file saved with
+        var_list(list, optional): The Tensor list to load single model file saved with
                                   [ save_params, save_persistables, save_vars ].
                                   Default: None
 
@@ -1801,14 +1809,21 @@ def load(program, model_path, executor=None, var_list=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.static as static
 
             paddle.enable_static()
-            prog = fluid.default_main_program()
-            fluid.save( prog, "./temp")
 
-            fluid.load( prog, "./temp")
+            x = static.data(name="x", shape=[10, 10], dtype='float32')
+            y = static.nn.fc(x, 10)
+            z = static.nn.fc(y, 10)
 
+            place = paddle.CPUPlace()
+            exe = static.Executor(place)
+            exe.run(static.default_startup_program())
+            prog = static.default_main_program()
+
+            static.save(prog, "./temp")
+            static.load(prog, "./temp")
     """
 
     assert executor is None or isinstance(executor, Executor)
@@ -1956,7 +1971,7 @@ def load_program_state(model_path, var_list=None):
 
     Args:
         model_path(str): The file prefix store the program
-        var_list(list, optional): The variable list to load saved with
+        var_list(list, optional): The Tensor list to load saved with
                                   [ save_params, save_persistables, save_vars ].
                                   Default: None.
                                   The var_list is only used to get name,
@@ -1968,21 +1983,21 @@ def load_program_state(model_path, var_list=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.static as static
 
             paddle.enable_static()
-            x = fluid.data( name="x", shape=[10, 10], dtype='float32')
-            y = fluid.layers.fc( x, 10)
-            z = fluid.layers.fc( y, 10)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run( fluid.default_startup_program() )
-            prog = fluid.default_main_program()
+            x = static.data(name="x", shape=[10, 10], dtype='float32')
+            y = static.nn.fc(x, 10)
+            z = static.nn.fc(y, 10)
 
-            fluid.save( prog, "./temp")
-            program_state = fluid.load_program_state( "./temp")
+            place = paddle.CPUPlace()
+            exe = static.Executor(place)
+            exe.run(static.default_startup_program())
+            prog = static.default_main_program()
 
+            static.save(prog, "./temp")
+            program_state = static.load_program_state("./temp")
     """
     model_prefix = model_path
     if model_prefix.endswith(".pdparams"):
@@ -2132,23 +2147,23 @@ def set_program_state(program, state_dict):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.static as static
 
             paddle.enable_static()
-            x = fluid.data( name="x", shape=[10, 10], dtype='float32')
-            y = fluid.layers.fc( x, 10)
-            z = fluid.layers.fc( y, 10)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run( fluid.default_startup_program() )
-            prog = fluid.default_main_program()
+            x = static.data(name="x", shape=[10, 10], dtype='float32')
+            y = static.nn.fc(x, 10)
+            z = static.nn.fc(y, 10)
 
-            fluid.save( prog, "./temp")
-            program_state = fluid.load_program_state( "./temp")
+            place = paddle.CPUPlace()
+            exe = static.Executor(place)
+            exe.run(static.default_startup_program())
+            prog = static.default_main_program()
 
-            fluid.set_program_state( prog, program_state)
+            static.save(prog, "./temp")
+            program_state = static.load_program_state("./temp")
 
+            static.set_program_state(prog, program_state)
     """
     parameter_list = list(filter(is_persistable, program.list_vars()))
 
