@@ -11253,25 +11253,24 @@ def shape(input):
 
 def rank(input):
     """
-    :alias_main: paddle.rank
-	:alias: paddle.rank,paddle.tensor.rank,paddle.tensor.attribute.rank
-	:old_api: paddle.fluid.layers.rank
 
     The OP returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
 
     Args:
-        input (Variable): The input N-D tensor with shape of :math:`[N_1, N_2, ..., N_k]`, the data type is arbitrary.
+        input (Tensor): The input N-D tensor with shape of :math:`[N_1, N_2, ..., N_k]`, the data type is arbitrary.
 
     Returns:
-        Variable, the output data type is int32.: The 0-D tensor with the dimensions of the input variable.
+        Tensor, the output data type is int32.: The 0-D tensor with the dimensions of the input Tensor.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
-            input = fluid.data(name="input", shape=[3, 100, 100], dtype="float32")
-            rank = fluid.layers.rank(input) # rank=(3,)
+            input = paddle.rand((3, 100, 100))
+            rank = paddle.rank(input)
+            print(rank)
+            # 3
     """
     check_type(input, 'input', (Variable), 'input')
     ndims = len(input.shape)

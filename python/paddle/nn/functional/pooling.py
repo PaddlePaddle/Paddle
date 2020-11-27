@@ -534,6 +534,7 @@ def max_pool1d(x,
 
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn.functional as F
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
@@ -655,6 +656,7 @@ def max_pool2d(x,
         ShapeError: If the output's shape calculated is not greater than 0.
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn.functional as F
           import numpy as np
@@ -784,6 +786,7 @@ def max_pool3d(x,
         ShapeError: If the output's shape calculated is not greater than 0.
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn.functional as F
           import numpy as np
