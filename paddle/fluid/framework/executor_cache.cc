@@ -96,11 +96,15 @@ std::shared_ptr<framework::ExecutorPrepareContext> GetExecutorInfoFromCache(
     VLOG(2) << "Prepare to skip " << skip_vars.size()
             << " var(s): " << string::join_strings(skip_vars, ' ');
     std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx =
-        std::move(exe.Prepare(*program, 0, skip_vars));
-    cached_exe_info.Insert(cache_key, exe_ctx);
-  }
+        std::move(exe.Prepare(*program, /*block_id=*/0, skip_vars));
 
-  return cached_exe_info.Get(cache_key);
+    cached_exe_info.Insert(cache_key, exe_ctx);
+    return exe_ctx;
+  } else {
+    VLOG(1) << "get exe_info from cache by program: " << program
+            << " is_grad: " << is_grad;
+    return cached_exe_info.Get(cache_key);
+  }
 }
 
 }  // namespace framework
