@@ -384,7 +384,7 @@ namespace Eigen {
 using complex128 = paddle::platform::complex128;
 
 template <>
-struct NumTraits<complex128> : NumTraits<std::complex<double>> {};
+struct NumTraits<complex128> : public NumTraits<std::complex<double>> {};
 
 namespace numext {
 
