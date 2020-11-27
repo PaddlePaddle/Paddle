@@ -287,13 +287,14 @@ class TestImperative(unittest.TestCase):
             with paddle.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
-                self.assertTrue(tmp.stop_gradient)
+                print(tmp)
+                self.assertFalse(tmp.stop_gradient)
             x = fluid.dygraph.to_variable(data)
             y = l0(x) + tmp
             o = l1(y)
             o.backward()
 
-            self.assertTrue(tmp._grad_ivar() is None)
+            self.assertTrue(tmp._grad_ivar() is not None)
             self.assertTrue(l0.weight._grad_ivar() is not None)
 
     def test_sum_op(self):
@@ -333,7 +334,7 @@ class TestImperative(unittest.TestCase):
             try:
                 new_variable.numpy()
             except Exception as e:
-                assert type(e) == core.EnforceNotMet
+                assert type(e) == ValueError
 
             try:
                 new_variable.backward()
@@ -689,4 +690,5 @@ class TestDygraphGuardWithError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

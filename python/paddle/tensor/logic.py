@@ -29,6 +29,8 @@ from ..fluid.layers import logical_and  #DEFINE_ALIAS
 from ..fluid.layers import logical_not  #DEFINE_ALIAS
 from ..fluid.layers import logical_or  #DEFINE_ALIAS
 from ..fluid.layers import logical_xor  #DEFINE_ALIAS
+from ..fluid.layers import reduce_all  #DEFINE_ALIAS
+from ..fluid.layers import reduce_any  #DEFINE_ALIAS
 
 __all__ = [
     'equal',
@@ -52,9 +54,6 @@ __all__ = [
 
 def equal_all(x, y, name=None):
     """
-	:alias_main: paddle.equal_all
-	:alias: paddle.equal_all,paddle.tensor.equal_all,paddle.tensor.logic.equal_all
-
     This OP returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
 
     **NOTICE**: The output of this OP has no gradient.
@@ -73,14 +72,13 @@ def equal_all(x, y, name=None):
 
           import paddle
 
-          paddle.disable_static()
           x = paddle.to_tensor([1, 2, 3])
           y = paddle.to_tensor([1, 2, 3])
           z = paddle.to_tensor([1, 4, 3])
           result1 = paddle.equal_all(x, y)
-          print(result1.numpy()) # result1 = [True ]
+          print(result1) # result1 = [True ]
           result2 = paddle.equal_all(x, z)
-          print(result2.numpy()) # result2 = [False ]
+          print(result2) # result2 = [False ]
     """
 
     helper = LayerHelper("equal_all", **locals())
@@ -119,8 +117,6 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         .. code-block:: python
 
           import paddle
-
-          paddle.disable_static()
 
           x = paddle.to_tensor([10000., 1e-07])
           y = paddle.to_tensor([10000.1, 1e-08])
@@ -187,10 +183,9 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
 @templatedoc()
 def equal(x, y, name=None):
     """
-	:alias_main: paddle.equal
-	:alias: paddle.equal,paddle.tensor.equal,paddle.tensor.logic.equal
 
     This layer returns the truth value of :math:`x == y` elementwise.
+
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
@@ -208,23 +203,33 @@ def equal(x, y, name=None):
 
           import paddle
 
-          paddle.disable_static()
           x = paddle.to_tensor([1, 2, 3])
           y = paddle.to_tensor([1, 3, 2])
           result1 = paddle.equal(x, y)
-          print(result1.numpy())  # result1 = [True False False]
+          print(result1)  # result1 = [True False False]
     """
-    out = fluid.layers.equal(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.equal(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    helper = LayerHelper("equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='equal', inputs={'X': [x],
+                              'Y': [y]}, outputs={'Out': [out]})
     return out
 
 
 @templatedoc()
 def greater_equal(x, y, name=None):
     """
-    :alias_main: paddle.greater_equal
-	:alias: paddle.greater_equal,paddle.tensor.greater_equal,paddle.tensor.logic.greater_equal
-
     This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
+
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
@@ -237,25 +242,38 @@ def greater_equal(x, y, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.greater_equal(x, y)
-            print(result1.numpy())  # result1 = [True False True]
+            print(result1)  # result1 = [True False True]
     """
-    out = fluid.layers.greater_equal(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.greater_equal(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    helper = LayerHelper("greater_equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='greater_equal',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [out]})
     return out
 
 
 @templatedoc()
 def greater_than(x, y, name=None):
     """
-    :alias_main: paddle.greater_than
-	:alias: paddle.greater_than,paddle.tensor.greater_than,paddle.tensor.logic.greater_than
-
     This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
+
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
@@ -268,25 +286,38 @@ def greater_than(x, y, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.greater_than(x, y)
-            print(result1.numpy())  # result1 = [False False True]
+            print(result1)  # result1 = [False False True]
     """
-    out = fluid.layers.greater_than(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.greater_than(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    helper = LayerHelper("greater_than", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='greater_than',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [out]})
     return out
 
 
 @templatedoc()
 def less_equal(x, y, name=None):
     """
-    :alias_main: paddle.less_equal
-	:alias: paddle.less_equal,paddle.tensor.less_equal,paddle.tensor.logic.less_equal
-
     This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
+
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
@@ -300,25 +331,36 @@ def less_equal(x, y, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.less_equal(x, y)
-            print(result1.numpy())  # result1 = [True True False]
+            print(result1)  # result1 = [True True False]
     """
-    out = fluid.layers.less_equal(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.less_equal(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    helper = LayerHelper("less_equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='less_equal', inputs={'X': [x],
+                                   'Y': [y]}, outputs={'Out': [out]})
     return out
 
 
 @templatedoc()
 def less_than(x, y, name=None):
     """
-    :alias_main: paddle.less_than
-	:alias: paddle.less_than,paddle.tensor.less_than,paddle.tensor.logic.less_than
-
     This OP returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
+
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
@@ -332,25 +374,36 @@ def less_than(x, y, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.less_than(x, y)
-            print(result1.numpy())  # result1 = [False True False]
+            print(result1)  # result1 = [False True False]
     """
-    out = fluid.layers.less_than(x, y, force_cpu=False, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.less_than(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    helper = LayerHelper("less_than", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='less_than', inputs={'X': [x],
+                                  'Y': [y]}, outputs={'Out': [out]})
     return out
 
 
 @templatedoc()
 def not_equal(x, y, name=None):
     """
-    :alias_main: paddle.not_equal
-	:alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
-
     This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
+    
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
@@ -367,13 +420,25 @@ def not_equal(x, y, name=None):
 
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.not_equal(x, y)
-            print(result1.numpy())  # result1 = [False True True]
+            print(result1)  # result1 = [False True True]
     """
-    out = fluid.layers.not_equal(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.not_equal(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    helper = LayerHelper("not_equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='not_equal', inputs={'X': [x],
+                                  'Y': [y]}, outputs={'Out': [out]})
     return out
 
 

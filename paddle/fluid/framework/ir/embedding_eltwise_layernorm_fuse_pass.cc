@@ -326,6 +326,9 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
 void EmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
   int fusion_count = patterns::BuildFusion(graph, name_scope_);
+  if (fusion_count > 0) {
+    graph->Set(kEmbEltwiseLayernormPass, new bool(true));
+  }
   AddStatis(fusion_count);
 }
 

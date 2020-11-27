@@ -17,6 +17,7 @@ from .profiler import Profiler
 from .profiler import get_profiler
 from .deprecated import deprecated
 from .lazy_import import try_import
+from .op_version import OpLastCheckpointChecker
 from .install_check import run_check
 from ..fluid.framework import unique_name
 from ..fluid.framework import load_op_library

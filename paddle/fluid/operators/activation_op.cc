@@ -203,7 +203,7 @@ $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
-.. math:: out=\\sqrt{x}=x^{1/2}
+$$out=\\sqrt{x}=x^{1/2}$$
 
 **Note**:
   input value must be greater than or equal to zero.
@@ -229,14 +229,14 @@ $$out = |x|$$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Operator. Computes ceil of x element-wise.
 
-$$out = \\left \\lceil x \\right \\rceil$$
+$$out = \\lceil x \\rceil$$
 
 )DOC";
 
 UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator. Computes floor of x element-wise.
 
-$$out = \\left \\lfloor x \\right \\rfloor$$
+$$out = \\lfloor x \\rfloor$$
 
 )DOC";
 
@@ -273,7 +273,7 @@ $$out = cosh(x)$$
 UNUSED constexpr char RoundDoc[] = R"DOC(
 The OP rounds the values in the input to the nearest integer value.
 
-.. code-block:: python
+.. code-block:: text
 
   input:
     x.shape = [4]
@@ -298,6 +298,24 @@ Log Activation Operator.
 $$out = \ln(x)$$
 
 Natural logarithm of x.
+
+)DOC";
+
+UNUSED constexpr char Log2Doc[] = R"DOC(
+Log2 Activation Operator.
+
+$$out = \log_2x$$
+
+logarithm of x base to 2.
+
+)DOC";
+
+UNUSED constexpr char Log10Doc[] = R"DOC(
+Log10 Activation Operator.
+
+$$out = \log_10_x$$
+
+logarithm of x base to 10.
 
 )DOC";
 
@@ -574,7 +592,7 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "Input of STanh operator."
-             " A LoDTensor or Tensor with type float32, float64.");
+             " A Tensor with type float32, float64.");
     AddOutput("Out", "Output of STanh operator. A Tensor with type float32.");
     AddAttr<float>("scale_a", "The scale parameter of a for the input. ")
         .SetDefault(0.67f);
@@ -697,6 +715,8 @@ REGISTER_ACTIVATION_OP_MAKER(Cosh, CoshDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
+REGISTER_ACTIVATION_OP_MAKER(Log2, Log2Doc);
+REGISTER_ACTIVATION_OP_MAKER(Log10, Log10Doc);
 REGISTER_ACTIVATION_OP_MAKER(Log1p, Log1pDoc);
 REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);

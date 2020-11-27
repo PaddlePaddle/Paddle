@@ -612,6 +612,60 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.recompute_configs, configs)
 
     @property
+    def sharding(self):
+        """
+        Indicating whether we are using sharding Optimizer for memory
+        optimization. We implement the sharding optimizer following the ZeRO-DP 
+        idea from [ZeRO: Memory Optimizations Toward Training Trillion Parameter Models](https://arxiv.org/abs/1910.02054).
+        Model parameters and Optimizer State are sharded into different ranks allowing to fit larger model.
+
+        Default value: False
+
+        Examples:
+          .. code-block:: python
+          
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.sharding = True
+        """
+        return self.strategy.sharding
+
+    @sharding.setter
+    @is_strict_auto
+    def sharding(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.sharding = flag
+        else:
+            print("WARNING: sharding should have value of bool type")
+
+    @property
+    def sharding_configs(self):
+        """
+        Set sharding configurations. 
+
+        **Note**:
+            fuse_broadcast_MB(float): size of a fused group of broadcasted parameters. 
+            This configuration will affect the communication speed in sharding training, 
+            and should be an empirical value decided by your model size and network topology.
+
+        Examples:
+          .. code-block:: python
+        
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.sharding = True
+            strategy.sharding_configs = {"fuse_broadcast_MB": 32}
+        """
+        return get_msg_dict(self.strategy.sharding_configs)
+
+    @sharding_configs.setter
+    @is_strict_auto
+    def sharding_configs(self, configs):
+        check_configs_key(self.strategy.sharding_configs, configs,
+                          "sharding_configs")
+        assign_configs_value(self.strategy.sharding_configs, configs)
+
+    @property
     def pipeline(self):
         """
         Indicating whether we are using pipeline parallelism for distributed training.
@@ -813,7 +867,7 @@ class DistributedStrategy(object):
 
     @property
     def dgc_configs(self):
-        """
+        r"""
         Set Deep Gradient Compression training configurations. In general, dgc has serveral configurable
         settings that can be configured through a dict.
 

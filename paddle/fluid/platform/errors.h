@@ -52,7 +52,7 @@ class ErrorSummary {
 
   const std::string& error_message() const { return msg_; }
 
-  std::string ToString() const;
+  std::string to_string() const;
 
  private:
   Code code_;

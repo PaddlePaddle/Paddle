@@ -50,6 +50,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
       // handle NaN/Inf first, which cannot be read from stream.
       if (str_value == "inf") {
         value = static_cast<T>(std::numeric_limits<double>::infinity());
+      } else if (str_value == "-inf") {
+        value = static_cast<T>(-std::numeric_limits<double>::infinity());
       } else if (str_value == "nan") {
         value = static_cast<T>(std::numeric_limits<double>::quiet_NaN());
       } else {

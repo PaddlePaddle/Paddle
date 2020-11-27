@@ -294,6 +294,12 @@ class GraphPatternDetector {
   // Remove duplicate patterns.
   void UniquePatterns(std::vector<subgraph_t>* subgraphs);
 
+  // Sort subgraphs, sort subgraphs by the specified node so that
+  // the removed forward and backward subgraphs are corresponding
+  // when two subgraphs are overlapped. Note: this function is
+  // currently only used for bn_add_act, refer to PR28196 for details.
+  void SortSubgraphs(std::vector<subgraph_t>* subgraphs);
+
   // Remove overlapped match subgraphs, when overlapped, keep the previous one.
   // The intermediate PDNodes will be removed, so can't shared by multiple
   // patterns.
@@ -653,6 +659,93 @@ struct BatchNormActGrad : public PatternBase {
   // declare variable node's name
   PATTERN_DECL_NODE(act_out);
   PATTERN_DECL_NODE(d_itermediate_out);
+  PATTERN_DECL_NODE(bn_x);
+  PATTERN_DECL_NODE(bn_scale);
+  PATTERN_DECL_NODE(bn_bias);
+  PATTERN_DECL_NODE(bn_saved_mean);
+  PATTERN_DECL_NODE(bn_saved_variance);
+  PATTERN_DECL_NODE(bn_reserve_space);
+  PATTERN_DECL_NODE(d_bn_x);
+  PATTERN_DECL_NODE(d_bn_scale);
+  PATTERN_DECL_NODE(d_bn_bias);
+};
+
+//
+// \brief   Pattern looking for batch_norm and a directly following activation
+// operator.
+//
+// \note    Currently only ReLU is supported as an activation function.
+//          Formula: act(bn(x))
+//          Op: batch_norm + act
+struct BatchNormActOneDNN : public PatternBase {
+  BatchNormActOneDNN(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bn_act_onednn") {}
+
+  PDNode* operator()(const std::string& act_type);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(bn_in);
+  PATTERN_DECL_NODE(batch_norm);
+  PATTERN_DECL_NODE(act);
+  PATTERN_DECL_NODE(bn_out);
+  PATTERN_DECL_NODE(act_out);
+};
+
+// The following pattern is used to fuse batch_norm, elewise_add, and act
+// formula: act(bn(x) + z)
+// op: batch_norm + elewise_add + act
+struct BatchNormAddAct : public PatternBase {
+  BatchNormAddAct(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bn_add_act") {}
+
+  PDNode* operator()(PDNode* x, std::unordered_set<std::string> acts);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(batch_norm);
+  PATTERN_DECL_NODE(elewise_add);
+  PATTERN_DECL_NODE(act);
+  // declare variable node's name
+  // BN inputs
+  PATTERN_DECL_NODE(bn_scale);
+  PATTERN_DECL_NODE(bn_bias);
+  // BN outputs
+  PATTERN_DECL_NODE(bn_mean_out);
+  PATTERN_DECL_NODE(bn_variance_out);
+  PATTERN_DECL_NODE(bn_saved_variance);
+  PATTERN_DECL_NODE(bn_saved_mean);
+  PATTERN_DECL_NODE(bn_reserve_space);
+  PATTERN_DECL_NODE(bn_out);
+  // Elewise_Add input
+  PATTERN_DECL_NODE(elewise_add_in);
+  // Elewise_Add output
+  PATTERN_DECL_NODE(elewise_add_out);
+  // ACT output
+  PATTERN_DECL_NODE(act_out);
+};
+
+// the backward of act(bn(x) + z)
+// op: batch_norm_grad + elewise_add_grad + act_grad
+struct BatchNormAddActGrad : public PatternBase {
+  BatchNormAddActGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bn_add_act_grad") {}
+
+  // act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
+  // elewise_add_grad: in["Out@GRAD"], out["X@GRAD", "Y@GRAD"]
+  // bn_grad: in["X", "Z", "Y@GRAD", "Scale", "Bias", "SavedMean",
+  // "SavedVariance",
+  // "ReserveSpace"],
+  // out["X@GRAD", "Z@GRAD", "Scale@GRAD", "Bias@GRAD"]
+  PDNode* operator()(PDNode* x, std::unordered_set<std::string> act_grad_types);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(act_grad);
+  PATTERN_DECL_NODE(elewise_add_grad);
+  PATTERN_DECL_NODE(batch_norm_grad);
+  // declare variable node's name
+  PATTERN_DECL_NODE(act_out);
+  PATTERN_DECL_NODE(d_act_x);
+  PATTERN_DECL_NODE(d_elewise_add_in);
+  PATTERN_DECL_NODE(d_bn_out);
   PATTERN_DECL_NODE(bn_x);
   PATTERN_DECL_NODE(bn_scale);
   PATTERN_DECL_NODE(bn_bias);
@@ -1180,6 +1273,26 @@ struct FirstBfloat16Ops : public PatternBase {
   PATTERN_DECL_NODE(op);
 };
 
+struct DuplicatedInputs : public PatternBase {
+  DuplicatedInputs(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "many_inputs_op") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(op);
+};
+
+struct UnnecessaryReorders : public PatternBase {
+  UnnecessaryReorders(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "unnecessary_reorders") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(quant_in);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(quant_out);
+};
+
 // Pattern used for enforcing inplace computation for in-place computation
 // supporting DNNL ops. softmax, batch_norm and layer_norm
 struct MKLDNNInPlace : public PatternBase {
@@ -1325,6 +1438,56 @@ struct FusionGru : public PatternBase {
   PATTERN_DECL_NODE(weight_h);
   PATTERN_DECL_NODE(weight_x);
   PATTERN_DECL_NODE(out);
+};
+
+// two concatenated fusion_gru ops
+// Forward pass for fusion of two concatenated fusion_gru ops.
+// concat_out is a result of the operator().
+struct TwoFusionGruConcat : public PatternBase {
+  TwoFusionGruConcat(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bi_fusion_gru") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(gru1);
+  PATTERN_DECL_NODE(gru2);
+  PATTERN_DECL_NODE(wh1);
+  PATTERN_DECL_NODE(wh2);
+  PATTERN_DECL_NODE(wx1);
+  PATTERN_DECL_NODE(wx2);
+  PATTERN_DECL_NODE(b1);
+  PATTERN_DECL_NODE(b2);
+  PATTERN_DECL_NODE(h1);
+  PATTERN_DECL_NODE(h2);
+  PATTERN_DECL_NODE(concat);
+  PATTERN_DECL_NODE(out);
+};
+
+// two subsequent bi_fusion_gru ops
+// Forward pass for fusion of two subsequent fusion_gru ops.
+// Hidden of the last fusion_gru op is a result of the operator().
+struct MultiGruSeq : public PatternBase {
+  MultiGruSeq(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multi_gru_seq") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(gru1);
+  PATTERN_DECL_NODE(wx11);
+  PATTERN_DECL_NODE(wx12);
+  PATTERN_DECL_NODE(wh11);
+  PATTERN_DECL_NODE(wh12);
+  PATTERN_DECL_NODE(b11);
+  PATTERN_DECL_NODE(b12);
+  PATTERN_DECL_NODE(h1);
+  PATTERN_DECL_NODE(gru2);
+  PATTERN_DECL_NODE(wx21);
+  PATTERN_DECL_NODE(wx22);
+  PATTERN_DECL_NODE(wh21);
+  PATTERN_DECL_NODE(wh22);
+  PATTERN_DECL_NODE(b21);
+  PATTERN_DECL_NODE(b22);
+  PATTERN_DECL_NODE(h2);
 };
 
 }  // namespace patterns

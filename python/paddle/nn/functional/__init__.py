@@ -73,12 +73,12 @@ from .common import interpolate  #DEFINE_ALIAS
 from .common import upsample  #DEFINE_ALIAS
 from .common import bilinear  #DEFINE_ALIAS
 from .conv import conv1d  #DEFINE_ALIAS
-from .conv import conv_transpose1d  #DEFINE_ALIAS
+from .conv import conv1d_transpose  #DEFINE_ALIAS
 from .common import linear  #DEFINE_ALIAS
 from .conv import conv2d  #DEFINE_ALIAS
-from .conv import conv_transpose2d  #DEFINE_ALIAS
+from .conv import conv2d_transpose  #DEFINE_ALIAS
 from .conv import conv3d  #DEFINE_ALIAS
-from .conv import conv_transpose3d  #DEFINE_ALIAS
+from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .extension import add_position_encoding  #DEFINE_ALIAS
 # from .extension import autoincreased_step_counter        #DEFINE_ALIAS
 # from .extension import continuous_value_model  #DEFINE_ALIAS
@@ -128,10 +128,10 @@ from .loss import binary_cross_entropy  #DEFINE_ALIAS
 from .loss import binary_cross_entropy_with_logits  #DEFINE_ALIAS
 # from .loss import bpr_loss  #DEFINE_ALIAS
 # from .loss import center_loss  #DEFINE_ALIAS
+#from .loss import cross_entropy  #DEFINE_ALIAS
 from .loss import cross_entropy  #DEFINE_ALIAS
 from .loss import dice_loss  #DEFINE_ALIAS
 from .loss import hsigmoid_loss  #DEFINE_ALIAS
-from .loss import iou_similarity  #DEFINE_ALIAS
 from .loss import kl_div  #DEFINE_ALIAS
 from .loss import l1_loss  #DEFINE_ALIAS
 from .loss import log_loss  #DEFINE_ALIAS
@@ -145,7 +145,6 @@ from .loss import sigmoid_focal_loss  #DEFINE_ALIAS
 from .loss import smooth_l1_loss  #DEFINE_ALIAS
 from .loss import softmax_with_cross_entropy  #DEFINE_ALIAS
 from .loss import square_error_cost  #DEFINE_ALIAS
-from .loss import ssd_loss  #DEFINE_ALIAS
 # from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 from .loss import ctc_loss  #DEFINE_ALIAS
 # from .norm import data_norm        #DEFINE_ALIAS

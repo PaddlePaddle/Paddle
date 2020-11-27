@@ -17,7 +17,7 @@ INCLUDE(ExternalProject)
 SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
-set(WARPCTC_REPOSITORY  https://github.com/baidu-research/warp-ctc.git)
+set(WARPCTC_REPOSITORY  ${GIT_URL}/baidu-research/warp-ctc.git)
 set(WARPCTC_TAG         95a461eddeabd51099ef059dcfada1117eb1bfb8)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"

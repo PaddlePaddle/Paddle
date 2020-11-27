@@ -293,8 +293,12 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 
     // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f;
-    ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
-    VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
+    ScalingParamType<T> beta = 0.0f;
+
+    // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
+    // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
+    // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
+
     for (int i = 0; i < groups; i++) {
       workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
@@ -387,6 +391,12 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       if (input_grad) {
         ResizeToChannelFirst<platform::CUDADeviceContext, T>(
             ctx, input_grad, &transformed_input_grad_channel);
+        // NOTE(zhiqiu): If inplace_addto strategy is enabled, we need to copy
+        // the data of input_grad to transformed_input_grad_channel.
+        if (ctx.Attr<bool>("use_addto")) {
+          TransToChannelFirst<platform::CUDADeviceContext, T>(
+              ctx, input_grad, &transformed_input_grad_channel);
+        }
       }
     } else {
       transformed_input_channel.ShareDataWith(*input);

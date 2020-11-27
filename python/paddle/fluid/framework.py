@@ -229,7 +229,7 @@ def _dygraph_only_(func):
 def _static_only_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
-        ), "We only support '%s()' in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
+        ), "In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '%s()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -1297,9 +1297,12 @@ class Variable(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                cur_program = fluid.Program()
+                paddle.enable_static()
+
+                cur_program = static.Program()
                 cur_block = cur_program.current_block()
                 new_variable = cur_block.create_var(name="X",
                                                     shape=[-1, 23, 48],
@@ -1307,10 +1310,10 @@ class Variable(object):
                 print(new_variable._to_readable_code())
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS or self.type == core.VarDesc.VarType.LOD_TENSOR:
-            var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
+            var_str = "{name} : paddle.{type}.shape{shape}.astype({dtype})".\
                 format(i="{", e="}", name=self.name, type=self.type, shape=self.shape, dtype=self.dtype)
         else:
-            var_str = "{name} : fluid.{type})".\
+            var_str = "{name} : paddle.{type})".\
                 format(i="{", e="}", name=self.name, type=self.type)
 
         if type(self) == Parameter:
@@ -1785,8 +1788,6 @@ class ComplexVariable(object):
     **Notes**:
         **The constructor of ComplexTensor should not be invoked directly.**
 
-        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph ComplexTensor with complex number data.**
-
     Args:
         real (Tensor): The Tensor holding real-part data.
         imag (Tensor): The Tensor holding imaginery-part data.
@@ -1795,14 +1796,14 @@ class ComplexVariable(object):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            paddle.enable_imperative()
             x = paddle.to_tensor([1.0+2.0j, 0.2])
             print(x.name, x.dtype, x.shape)
-            # ({'real': 'generated_tensor_0.real', 'imag': 'generated_tensor_0.imag'}, 'complex128', [2L])
-            print(x.numpy())
-            # [1. +2.j 0.2+0.j]
+            # ({'real': 'generated_tensor_0.real', 'imag': 'generated_tensor_0.imag'}, complex64, [2])
+            print(x)
+            # ComplexTensor[real](shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #                     [        1., 0.20000000])
+            # ComplexTensor[imag](shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #                     [2., 0.])
             print(type(x))
             # <class 'paddle.ComplexTensor'>
     """
@@ -1827,6 +1828,9 @@ class ComplexVariable(object):
         else:
             self._dtype = "complex128"
         self._shape = self.real.shape
+
+    def __getitem__(self, idx):
+        return ComplexVariable(self.real[idx], self.imag[idx])
 
     @property
     def dtype(self):
@@ -1858,9 +1862,10 @@ class ComplexVariable(object):
         return self.real.numpy() + 1j * self.imag.numpy()
 
     def __str__(self):
-        return "ComplexTensor[real]: %s\n%s\nComplexTensor[imag]: %s\n%s" % (
-            self.real.name, str(self.real.value().get_tensor()), self.imag.name,
-            str(self.imag.value().get_tensor()))
+        from paddle.tensor.to_string import to_string
+        return "ComplexTensor containing:\n{real}\n{imag}".format(
+            real=to_string(self.real, "[real part]Tensor"),
+            imag=to_string(self.imag, "[imag part]Tensor"))
 
     __repr__ = __str__
 
@@ -2100,10 +2105,16 @@ class Operator(object):
                             % (out_proto.name, len(out_args)))
                     out_arg_names = []
                     for arg in out_args:
-                        out_arg_names.append(cpt.to_text(arg.name))
+                        if isinstance(arg, six.string_types):
+                            out_arg_names.append(arg)
+                        else:
+                            out_arg_names.append(cpt.to_text(arg.name))
                         # TODO(minqiyang): could we remove variable's op in static mode?
                         if not in_dygraph_mode():
-                            arg.op = self
+                            if isinstance(arg, six.string_types):
+                                block.var(arg).op = self
+                            else:
+                                arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
             if op_attrs is not None:
@@ -2244,7 +2255,7 @@ class Operator(object):
         return self.desc.type()
 
     def input(self, name):
-        """
+        r"""
         Get the input arguments according to the input parameter name.
 
         Args:
@@ -2295,7 +2306,7 @@ class Operator(object):
         return self.desc.output_arg_names()
 
     def output(self, name):
-        """
+        r"""
         Get output arguments by the output parameter name.
 
         Args:
@@ -2837,8 +2848,9 @@ class Block(object):
         self._sync_with_cpp()
         return var
 
-    def _remove_var(self, name):
-        self._sync_with_cpp()
+    def _remove_var(self, name, sync=True):
+        if sync == True:
+            self._sync_with_cpp()
         self.desc._remove_var(cpt.to_bytes(name))
         del self.vars[name]
 
@@ -2849,6 +2861,12 @@ class Block(object):
             param = ParamBase(*args, **kwargs)
         else:
             param = Parameter(global_block, *args, **kwargs)
+            # NOTE: Why only set stop_gradient=False in static mode
+            # Because in dygraph mode, the `stop_gradient` and `trainable`
+            # are related, and `trainable` default vallue is `True` or
+            # it is specified by users, there is no need to set
+            # `stop_gradient` for ParamBase here.
+            param.stop_gradient = False
         if 'initializer' in kwargs:
 
             def _is_inited_by(block, var):
@@ -2875,7 +2893,6 @@ class Block(object):
                 pass
             else:
                 initializer(param, self)
-        param.stop_gradient = False
         return param
 
     def append_op(self, *args, **kwargs):
@@ -2936,7 +2953,23 @@ class Block(object):
         self.ops.insert(index, op)
         return op
 
-    def _remove_op(self, index):
+    def _insert_op_without_sync(self, index, *args, **kwargs):
+        """
+        Insert an Operator according to the giving arguments, 
+        without sync_with_cpp to meke the compilation faster.
+
+        Args:
+            index(int): the place that the operator to insert.
+
+        Returns:
+            Operator: the insert Operator.
+        """
+        op_desc = self.desc._insert_op(index)
+        op = Operator(block=self, desc=op_desc, *args, **kwargs)
+        self.ops.insert(index, op)
+        return op
+
+    def _remove_op(self, index, sync=True):
         """
         Remove the specific position operator.
 
@@ -2946,7 +2979,8 @@ class Block(object):
         Returns:
             None
         """
-        self._sync_with_cpp()
+        if sync == True:
+            self._sync_with_cpp()
         self.desc._remove_op(index, index + 1)
         del self.ops[index]
 
@@ -4239,9 +4273,12 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.static as static
 
-            cur_program = fluid.Program()
+            paddle.enable_static()
+
+            cur_program = static.Program()
             cur_block = cur_program.current_block()
             new_var = cur_block.create_var(name="X",
                                            shape=[-1, 23, 48],
@@ -4439,7 +4476,7 @@ class Program(object):
                     # Due to parameter sharing usage for train and test, so we need to use startup program of train
                     # instead of using test startup program, while nothing is in test's startup program
 
-                    # In Paddle Fluid we will share weights by using the same Variable name. In train and test program
+                    # In Paddle we will share weights by using the same Tensor name. In train and test program
                     # all parameters will have the same name and this can make train and test program sharing parameters,
                     # that's why we need to use startup program of train. And for startup program of test, it has nothing,
                     # since it is a new program.
@@ -4792,7 +4829,7 @@ class Program(object):
                 ## 0
                 ## the default random seed is 0
 
-                # Here we need to set random seed before we use fluid.layers.dropout
+                # Here we need to set random seed before we use paddle.nn.functional.dropout
                 prog.random_seed = 1
                 z_var = F.dropout(x_var, 0.7)
 
@@ -5067,8 +5104,8 @@ class Program(object):
                 for var in prog.list_vars():
                     print(var)
                 
-                # var img : fluid.VarType.LOD_TENSOR.shape(-1, 1, 28, 28).astype(VarType.FP32)
-                # var label : fluid.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)
+                # var img : paddle.VarType.LOD_TENSOR.shape(-1, 1, 28, 28).astype(VarType.FP32)
+                # var label : paddle.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)
         """
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
@@ -5101,8 +5138,8 @@ class Program(object):
                 # Here will print all parameters in current program, in this example,
                 # the result is like:
                 #
-                # persist trainable param fc_0.w_0 : fluid.VarType.LOD_TENSOR.shape(13, 10).astype(VarType.FP32)
-                # persist trainable param fc_0.b_0 : fluid.VarType.LOD_TENSOR.shape(10,).astype(VarType.FP32)
+                # persist trainable param fc_0.w_0 : paddle.VarType.LOD_TENSOR.shape(13, 10).astype(VarType.FP32)
+                # persist trainable param fc_0.b_0 : paddle.VarType.LOD_TENSOR.shape(10,).astype(VarType.FP32)
                 #
                 # Here print(param) will print out all the properties of a parameter,
                 # including name, type and persistable, you can access to specific
@@ -5311,16 +5348,13 @@ class ParamBase(core.VarBase):
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
-                conv = paddle.nn.Conv2D(3, 3, 5)
-                print(conv.weight)
-                # Parameter: conv2d_0.w_0
-                #   - place: CUDAPlace(0)
-                #   - shape: [3, 3, 5, 5]
-                #   - layout: NCHW
-                #   - dtype: float
-                #   - data: [...] 
-                paddle.enable_static()
+                linear = paddle.nn.Linear(3, 3)
+                print(linear.weight)
+                # Parameter containing:
+                # Tensor(shape=[3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #        [[ 0.48948765,  0.05829060, -0.25524026],
+                #         [-0.70368278,  0.52986908, -0.68742192],
+                #         [-0.54217887,  0.48439729,  0.34082305]])
         """
         return "Parameter containing:\n{tensor}".format(
             tensor=super(ParamBase, self).__str__())
@@ -5354,15 +5388,10 @@ def default_startup_program():
             import paddle
 
             paddle.enable_static()
-            main_program = paddle.static.Program()
-            startup_program = paddle.static.Program()
-            with paddle.static.program_guard(main_program=main_program, startup_program=startup_program):
-                x = paddle.static.data(name="x", shape=[-1, 784], dtype='float32')
-                y = paddle.static.data(name="y", shape=[-1, 1], dtype='int32')
-                z = paddle.static.nn.fc(name="fc", x=x, size=10, activation="relu")
-
-                print("main program is: {}".format(paddle.static.default_main_program()))
-                print("start up program is: {}".format(paddle.static.default_startup_program()))
+            x = paddle.static.data(name="x", shape=[-1, 784], dtype='float32')
+            out = paddle.static.nn.fc(name="fc", x=x, size=10, activation="relu")
+            print("main program is: {}".format(paddle.static.default_main_program()))
+            print("start up program is: {}".format(paddle.static.default_startup_program()))
     """
     return _startup_program_
 
@@ -5372,7 +5401,7 @@ def default_main_program():
     This API can be used to get ``default main program`` which store the 
     descriptions of Ops and tensors.
     
-    For example ``z = paddle.fluid.layers.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
+    For example ``z = paddle.add(x, y)`` will create a new ``add`` 
     Op and a new ``z`` tensor, and they will be recorded in ``default main program`` . 
 
     The ``default main program`` is the default value for ``Program`` parameter in 
@@ -5388,36 +5417,17 @@ def default_main_program():
         ..  code-block:: python
 
             import paddle
-            
+
             paddle.enable_static()
             # Sample Network:
-            data = paddle.static.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
-            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            
-            conv1 = paddle.static.nn.conv2d(data, 4, 5, 1, act=None)
-            bn1 = paddle.static.nn.batch_norm(conv1, act='relu')
-            pool1 = paddle.fluid.layers.pool2d(bn1, 2, 'max', 2)
-            conv2 = paddle.static.nn.conv2d(pool1, 16, 5, 1, act=None)
-            bn2 = paddle.static.nn.batch_norm(conv2, act='relu')
-            pool2 = paddle.fluid.layers.pool2d(bn2, 2, 'max', 2)
-            
-            fc1 = paddle.static.nn.fc(x=pool2, size=50, activation='relu')
-            fc2 = paddle.static.nn.fc(x=fc1, size=102, activation='softmax')
-            
-            loss = paddle.nn.functional.loss.cross_entropy(input=fc2, label=label)
-            loss = paddle.mean(loss)
-            opt = paddle.optimizer.Momentum(
-                learning_rate=0.1,
-                momentum=0.9,
-                weight_decay=paddle.regularizer.L2Decay(1e-4))
-            opt.minimize(loss)
-            
+            x = paddle.static.data(name='x', shape=[100, 100], dtype='float32')
+            y = paddle.static.data(name='x', shape=[100, 100], dtype='float32')
+            out = paddle.add(x, y)
+
             #print the number of blocks in the program, 1 in this case
-            print(paddle.static.default_main_program().num_blocks) #[1]
-
-            #print the description of variable 'image'
+            print(paddle.static.default_main_program().num_blocks) # 1
+            #print the default_main_program
             print(paddle.static.default_main_program())
-
     """
     return _main_program_
 

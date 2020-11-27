@@ -215,6 +215,14 @@ def rewrite_program(main_prog, amp_lists):
     white_op_set = set()
     black_op_set = set()
     for op in ops:
+
+        # NOTE(zhiqiu): 'create_py_reader' and 'read' is used in non-iterable DataLoder, 
+        # we don't need to handle reader op and the input of 'create_py_reader' is not 
+        # in block, which may result in errors.
+        # See GeneratorLoader._init_non_iterable() for details.
+        if op.type == 'create_py_reader' or op.type == 'read':
+            continue
+
         if amp_lists.black_varnames is not None and _is_in_black_varnames(
                 op, amp_lists):
             black_op_set.add(op)

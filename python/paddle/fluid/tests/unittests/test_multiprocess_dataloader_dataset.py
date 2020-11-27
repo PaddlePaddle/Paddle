@@ -19,8 +19,37 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.io import TensorDataset, DataLoader
+from paddle.io import Dataset, IterableDataset, TensorDataset, \
+        ComposeDataset, ChainDataset, DataLoader
 from paddle.fluid.dygraph.base import to_variable
+
+IMAGE_SIZE = 32
+
+
+class RandomDataset(Dataset):
+    def __init__(self, sample_num):
+        self.sample_num = sample_num
+
+    def __len__(self):
+        return self.sample_num
+
+    def __getitem__(self, idx):
+        np.random.seed(idx)
+        image = np.random.random([IMAGE_SIZE]).astype('float32')
+        label = np.random.randint(0, 9, (1, )).astype('int64')
+        return image, label
+
+
+class RandomIterableDataset(IterableDataset):
+    def __init__(self, sample_num):
+        self.sample_num = sample_num
+
+    def __iter__(self):
+        for i in range(self.sample_num):
+            np.random.seed(i)
+            image = np.random.random([IMAGE_SIZE]).astype('float32')
+            label = np.random.randint(0, 9, (1, )).astype('int64')
+            yield image, label
 
 
 class TestTensorDataset(unittest.TestCase):
@@ -55,8 +84,56 @@ class TestTensorDataset(unittest.TestCase):
 
     def test_main(self):
         for p in [fluid.CPUPlace(), fluid.CUDAPlace(0)]:
-            for num_workers in [0, 2]:
-                ret = self.run_main(num_workers=num_workers, places=p)
+            self.run_main(num_workers=0, places=p)
+
+
+class TestComposeDataset(unittest.TestCase):
+    def test_main(self):
+        fluid.default_startup_program().random_seed = 1
+        fluid.default_main_program().random_seed = 1
+
+        dataset1 = RandomDataset(10)
+        dataset2 = RandomDataset(10)
+        dataset = ComposeDataset([dataset1, dataset2])
+        assert len(dataset) == 10
+
+        for i in range(len(dataset)):
+            input1, label1, input2, label2 = dataset[i]
+            input1_t, label1_t = dataset1[i]
+            input2_t, label2_t = dataset2[i]
+            assert np.allclose(input1, input1_t)
+            assert np.allclose(label1, label1_t)
+            assert np.allclose(input2, input2_t)
+            assert np.allclose(label2, label2_t)
+
+
+class TestChainDataset(unittest.TestCase):
+    def run_main(self, num_workers, places):
+        fluid.default_startup_program().random_seed = 1
+        fluid.default_main_program().random_seed = 1
+
+        dataset1 = RandomIterableDataset(10)
+        dataset2 = RandomIterableDataset(10)
+        dataset = ChainDataset([dataset1, dataset2])
+
+        samples = []
+        for data in iter(dataset):
+            samples.append(data)
+        assert len(samples) == 20
+
+        idx = 0
+        for image, label in iter(dataset1):
+            assert np.allclose(image, samples[idx][0])
+            assert np.allclose(label, samples[idx][1])
+            idx += 1
+        for image, label in iter(dataset2):
+            assert np.allclose(image, samples[idx][0])
+            assert np.allclose(label, samples[idx][1])
+            idx += 1
+
+    def test_main(self):
+        for p in [fluid.CPUPlace(), fluid.CUDAPlace(0)]:
+            self.run_main(num_workers=0, places=p)
 
 
 if __name__ == '__main__':

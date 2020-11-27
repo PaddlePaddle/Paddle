@@ -40,6 +40,9 @@ class TestVarBase(unittest.TestCase):
                 self.assertTrue(np.array_equal(x.numpy(), [1]))
                 self.assertNotEqual(x.dtype, core.VarDesc.VarType.FP32)
 
+                y = paddle.to_tensor(2, place=x.place)
+                self.assertEqual(str(x.place), str(y.place))
+
                 # set_default_dtype should not take effect on numpy
                 x = paddle.to_tensor(
                     np.array([1.2]).astype('float16'),
@@ -64,6 +67,15 @@ class TestVarBase(unittest.TestCase):
                 y.backward()
                 self.assertTrue(
                     np.array_equal(x.grad, np.array([2.4]).astype('float32')))
+                y = x.cpu()
+                self.assertEqual(y.place.__repr__(), "CPUPlace")
+                if core.is_compiled_with_cuda():
+                    y = x.pin_memory()
+                    self.assertEqual(y.place.__repr__(), "CUDAPinnedPlace")
+                    y = x.cuda(blocking=False)
+                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    y = x.cuda(blocking=True)
+                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
 
                 # set_default_dtype take effect on complex
                 x = paddle.to_tensor(1 + 2j, place=place, stop_gradient=False)
@@ -187,6 +199,31 @@ class TestVarBase(unittest.TestCase):
             t.set(np.random.random((1024, 1024)), fluid.CPUPlace())
             var = fluid.dygraph.to_variable(t)
             self.assertTrue(np.array_equal(t, var.numpy()))
+
+    def test_detach(self):
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor(1.0, dtype="float64", stop_gradient=False)
+            detach_x = x.detach()
+            self.assertTrue(detach_x.stop_gradient, True)
+
+            detach_x[:] = 10.0
+            self.assertTrue(np.array_equal(x.numpy(), [10.0]))
+
+            y = x**2
+            y.backward()
+            self.assertTrue(np.array_equal(x.grad, [20.0]))
+            self.assertEqual(detach_x.grad, None)
+
+            detach_x.stop_gradient = False  # Set stop_gradient to be False, supported auto-grad
+            z = 3 * detach_x**2
+            z.backward()
+            self.assertTrue(np.array_equal(x.grad, [20.0]))
+            self.assertTrue(np.array_equal(detach_x.grad, [60.0]))
+            # Due to sharing of data with origin Tensor, There are some unsafe operations:
+            # with self.assertRaises(RuntimeError):
+            #     y = 2 * x
+            #     detach_x[:] = 5.0
+            #     y.backward()
 
     def test_write_property(self):
         with fluid.dygraph.guard():
@@ -421,8 +458,7 @@ class TestVarBase(unittest.TestCase):
         paddle.set_printoptions(4, 100, 3)
         a_str = str(a)
 
-        if six.PY2:
-            expected = '''Tensor(shape=[10L, 20L], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[10, 20], dtype=float32, place=CPUPlace, stop_gradient=True,
        [[0.2727, 0.5489, 0.8655, ..., 0.2916, 0.8525, 0.9000],
         [0.3806, 0.8996, 0.0928, ..., 0.9535, 0.8378, 0.6409],
         [0.1484, 0.4038, 0.8294, ..., 0.0148, 0.6520, 0.4250],
@@ -431,15 +467,40 @@ class TestVarBase(unittest.TestCase):
         [0.5561, 0.2081, 0.0676, ..., 0.9778, 0.3302, 0.9559],
         [0.2665, 0.8483, 0.5389, ..., 0.4956, 0.6862, 0.9178]])'''
 
-        else:
-            expected = '''Tensor(shape=[10, 20], dtype=float32, place=CPUPlace, stop_gradient=True,
-       [[0.2727, 0.5489, 0.8655, ..., 0.2916, 0.8525, 0.9000],
-        [0.3806, 0.8996, 0.0928, ..., 0.9535, 0.8378, 0.6409],
-        [0.1484, 0.4038, 0.8294, ..., 0.0148, 0.6520, 0.4250],
-        ...,
-        [0.3426, 0.1909, 0.7240, ..., 0.4218, 0.2676, 0.5679],
-        [0.5561, 0.2081, 0.0676, ..., 0.9778, 0.3302, 0.9559],
-        [0.2665, 0.8483, 0.5389, ..., 0.4956, 0.6862, 0.9178]])'''
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
+    def test_tensor_str2(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor([[1.5111111, 1.0], [0, 0]])
+        a_str = str(a)
+
+        expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
+       [[1.5111, 1.    ],
+        [0.    , 0.    ]])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
+    def test_tensor_str3(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor([[-1.5111111, 1.0], [0, -0.5]])
+        a_str = str(a)
+
+        expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
+       [[-1.5111,  1.    ],
+        [ 0.    , -0.5000]])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
+    def test_tensor_str_scaler(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor(np.array(False))
+        a_str = str(a)
+
+        expected = '''Tensor(shape=[], dtype=bool, place=CPUPlace, stop_gradient=True,
+       False)'''
 
         self.assertEqual(a_str, expected)
         paddle.enable_static()

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/clip_op.h"
 #include <memory>
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -122,3 +124,15 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     clip_grad, ops::ClipGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ClipGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(clip)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade clip add a new input [Min])ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput("Min",
+                      "Pass the mix, min value as input, not attribute. Min is "
+                      "dispensable.")
+            .NewInput("Max",
+                      "Pass the mix, min value as input, not attribute. Max is "
+                      "dispensable."));
