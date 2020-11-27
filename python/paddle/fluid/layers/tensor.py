@@ -231,7 +231,8 @@ def cast(x, dtype):
     ], 'cast')
 
     helper = LayerHelper('cast', **locals())
-    out = helper.create_variable_for_type_inference(dtype=dtype)
+    out = helper.create_variable_for_type_inference(
+        dtype=dtype, sop_gradient=x.stop_gradient)
     helper.append_op(
         type='cast',
         inputs={'X': [x]},
