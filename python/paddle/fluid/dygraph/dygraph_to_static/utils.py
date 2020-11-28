@@ -113,9 +113,9 @@ def parse_arg_and_kwargs(function):
     return arg_names, default_kwargs
 
 
-def parse_args(function):
+def parse_varargs_name(function):
     """
-    Returns args argument name. e.g: 'input'.
+    Returns varargs name string of function. e.g: 'input' from `foo(x, *input)`
     """
     fullargspec = getfullargspec(function)
     varargs = fullargspec.varargs

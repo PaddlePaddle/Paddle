@@ -864,7 +864,7 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
                 layer, model_path, input_spec=[InputSpec(shape=[None, 784])])
 
 
-class LayerSaved(fluid.dygraph.Layer):
+class LayerSaved(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
         super(LayerSaved, self).__init__()
         self.hidden = 100
@@ -885,7 +885,7 @@ class LayerSaved(fluid.dygraph.Layer):
         return self._linear_2(y)
 
 
-class LayerLoadFinetune(fluid.dygraph.Layer):
+class LayerLoadFinetune(paddle.nn.Layer):
     def __init__(self, in_size, out_size, load_path):
         super(LayerLoadFinetune, self).__init__()
         # Test duplicate name
@@ -921,7 +921,7 @@ class LayerLoadFinetune(fluid.dygraph.Layer):
 class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
-        fluid.enable_dygraph()
+        paddle.disable_static()
 
     def test_save_load_finetune_load(self):
         model_path = "test_jit_save_load_finetune_load/model"

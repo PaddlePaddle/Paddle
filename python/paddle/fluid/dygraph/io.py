@@ -167,9 +167,14 @@ def _get_loaded_var_new_old(program_desc, all_new_old_dict_all):
 def _rename_var_program_desc(program_desc, include=None, exclude=None):
     """
     Change the name of the loaded variables.Use 'unique_name.generate' to avoid duplication
-    e.g. x ==> x_0, x_0 ==> x_1.
+    e.g. linear_0.tmp_3 ==> linear_0.tmp_1, x ==> x_0.
     If 'include' is not `None`,variables that are not in include are not renamed.
     If 'exclude' is not `None`,variables that are in exclude will are not renamed.
+
+    Args:
+        program_desc(ProgramDesc):the variables in it will be modified.
+        include(List):list of names of variables.
+        exclude(List):list of names of variables.
     """
     dict_rename_var_old_new = dict()
     dict_rename_var_new_old = dict()
@@ -182,15 +187,15 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
         cur_block = program_desc.block(b_idx)
         for var_idx, var in enumerate(cur_block.all_vars()):
             name_old = var.name()
-            if (include is None or name_old in include) and (
-                    exclude is None or name_old not in exclude):
+            should_rename = (include is None or name_old in include) and (
+                exclude is None or name_old not in exclude)
+            if should_rename:
+                temp_name = name_old.split('_')
+                if len(temp_name) > 1 and temp_name[-1].isnumeric():
+                    temp_name = "_".join(temp_name[:-1])
+                else:
+                    temp_name = name_old
                 while True:
-                    temp_name = name_old.split('_')
-                    if len(temp_name) > 1 and temp_name[-1].isnumeric():
-                        temp_name = "_".join(temp_name[:-1])
-                    else:
-                        temp_name = "_".join(temp_name)
-
                     name_new = _generate_unique_var_name_sync_with_main_program(
                         temp_name)
                     if name_new not in old_names[:var_idx] + old_names[var_idx +
@@ -688,7 +693,7 @@ def _run_dygraph(instance, input, program_holder):
             persistable_vars.append(instance._buffers[dy_var_name])
         else:
             raise ValueError(
-                "The persistable variable %s is not exists in current TranslatedLayer."
+                "The persistable variable %s does not exist in current TranslatedLayer."
                 % var_name)
 
     output_vars = []
@@ -745,7 +750,6 @@ def _run_dygraph(instance, input, program_holder):
 def _run_static_graph(input, program_holder, trace_program):
     main_program = framework.default_main_program()
     param_var_names = _get_persistable_var_names(trace_program)
-    dict_rename_var_old_new = None
     _, dict_rename_var_old_new = _rename_var_program_desc(
         trace_program, exclude=param_var_names)
     trace_program.flush()
@@ -761,7 +765,7 @@ def _run_static_graph(input, program_holder, trace_program):
     return outs
 
 
-def _collect_parent_var(program, block_idx):
+def _collect_current_and_parent_var(program, block_idx):
     '''
     Get variables in current block and its parent block.
     
@@ -770,7 +774,7 @@ def _collect_parent_var(program, block_idx):
         block_idx(int): index of current block.
 
     Returns:
-        List: list of variable.
+        List: list of variables.
     '''
     vars = []
     if block_idx < 0:
@@ -779,50 +783,50 @@ def _collect_parent_var(program, block_idx):
         vars.append(var)
     parent_idx = program.block(block_idx).parent_idx
     if parent_idx > -1:
-        vars += _collect_parent_var(program, parent_idx)
+        vars += _collect_current_and_parent_var(program, parent_idx)
     return vars
 
 
 def _append_block(dest_program,
                   src_program_desc,
                   program_holder,
-                  input_names,
+                  input_variables,
                   dict_rename_var_old_new=None):
     '''
     Append Variables and Operators in 'src_program_desc' to dest_program.
     
     Args:
         dest_program(Program): Variables and Operators are appended to it.
-        src_program_desc(ProgramDesc): index of current block.
+        src_program_desc(ProgramDesc): Variables in it will be appended to 'dest_program'.
         program_holder(_ProgramHolder): program_holder of TranslatedLayer
-        input_names(list): list of input variables
+        input_variables(list): list of input variables
         dict_rename_var_old_new(None|dict): When using '_rename_var_program_desc', 
-        use it to map the variables in 'program_holder' and 'program_holder'.
+        use it to map the name of the variable before it was modified and the new name.
     '''
 
     origin_block_idx = dest_program.current_block_idx
-    param_var_names = _collect_parent_var(dest_program, origin_block_idx)
+    param_var_names = _collect_current_and_parent_var(dest_program,
+                                                      origin_block_idx)
     append_var_from_block_desc_static(
         dest_program.block(origin_block_idx),
         src_program_desc.block(0),
         exclude=param_var_names)
 
     name_inp_desc = [inp.name() for inp in program_holder.input_descs]
-    name_inp = [inp.name for inp in input_names]
-    if len(name_inp_desc) != len(name_inp):
+    input_names = [inp.name for inp in input_variables]
+    if len(name_inp_desc) != len(input_names):
         raise ValueError(
             "The number of input is invalid, expected {}, but received {}.".
-            format(len(name_inp_desc), len(name_inp)))
-    for i in range(len(name_inp_desc)):
-        out_name = name_inp_desc[i]
-        if dict_rename_var_old_new is not None:
+            format(len(name_inp_desc), len(input_names)))
+    for i, out_name in enumerate(name_inp_desc):
+        if dict_rename_var_old_new:
             out_name = dict_rename_var_old_new[out_name]
         dest_program.block(origin_block_idx).append_op(
             type='assign',
-            inputs={'X': [name_inp[i]]},
+            inputs={'X': [input_names[i]]},
             outputs={'Out': [out_name]})
 
-    ops_append = append_op_from_block_desc_static(
+    append_ops = append_op_from_block_desc_static(
         dest_program.block(origin_block_idx), src_program_desc.block(0))
     dest_program._sync_with_cpp()
 
@@ -839,11 +843,11 @@ def _append_block(dest_program,
             dest_block = dest_program._create_block(parent_idx=parent_idx)
             append_var_from_block_desc_static(
                 dest_block, src_block, exclude=param_var_names)
-            ops_append += append_op_from_block_desc_static(dest_block,
+            append_ops += append_op_from_block_desc_static(dest_block,
                                                            src_block)
 
     dest_program._sync_with_cpp()
-    for op in ops_append:
+    for op in append_ops:
         if op.has_attr('sub_block'):
             sub = op.attr('sub_block')
             if isinstance(sub, framework.core.BlockDesc):
@@ -867,7 +871,7 @@ def _get_output_from_program(program,
         for idx in range(program.num_blocks):
             vars = program.block(idx).vars
             var_name = var.name()
-            if dict_rename_var_old_new is not None:
+            if dict_rename_var_old_new:
                 var_name = dict_rename_var_old_new[var_name]
             if var_name in vars:
                 out = vars[var_name]
@@ -939,10 +943,9 @@ def append_var_from_block_desc_static(block,
     vars_append = []
     for var_desc in src_block_desc.all_vars():
         var_desc_name = var_desc.name()
-        if not block.has_var(var_desc_name) and (
-                include is None or var_desc_name in include) and (
-                    exclude is None or var_desc_name not in exclude):
-
+        should_append = (include is None or var_desc_name in include) and (
+            exclude is None or var_desc_name not in exclude)
+        if not block.has_var(var_desc_name) and should_append:
             var_type = var_desc.type()
             if var_type in [
                     core.VarDesc.VarType.SELECTED_ROWS,
@@ -1154,7 +1157,7 @@ class TranslatedLayer(layers.Layer):
             else:
                 # NOTE(weixin): [ why not use 'program_holder.infer_program' directly? ]
                 # When use '_run_static_graph(input, program_holder, program_holder.infer_program)',
-                # 'OpDesc.op_size()' will return a very large wrong number.
+                # because '_run_static_graph' modifies 'ProgramDesc', 'OpDesc.op_size()' will return a very large wrong number.
                 # A Segmentation fault error may occur if used 'p=ProgramDesc(program_holder.infer_program)'.
                 p = framework.Program._construct_from_desc(
                     core.ProgramDesc(program_holder.infer_program))
