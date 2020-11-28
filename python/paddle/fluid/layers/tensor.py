@@ -1477,6 +1477,8 @@ def linspace(start, stop, num, dtype=None, name=None):
                 'Num': tensor_num},
         attrs={'dtype': dtype},
         outputs={'Out': [out]})
+    if isinstance(num, int):
+        out.desc.set_shape((num, ))
     return out
 
 
