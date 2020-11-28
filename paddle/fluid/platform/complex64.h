@@ -380,6 +380,61 @@ inline bool isinf(const paddle::platform::complex64& a) {
   return paddle::platform::isinf(a);
 }
 
+template <>
+struct numeric_limits<paddle::platform::complex64> {
+  static const bool is_specialized = false;
+  static const bool is_signed = false;
+  static const bool is_integer = false;
+  static const bool is_exact = false;
+  static const bool has_infinity = false;
+  static const bool has_quiet_NaN = false;
+  static const bool has_signaling_NaN = false;
+  static const float_denorm_style has_denorm = denorm_absent;
+  static const bool has_denorm_loss = false;
+  static const std::float_round_style round_style = std::round_toward_zero;
+  static const bool is_iec559 = false;
+  static const bool is_bounded = false;
+  static const bool is_modulo = false;
+  static const int digits = 0;
+  static const int digits10 = 0;
+  static const int max_digits10 = 0;
+  static const int radix = 0;
+  static const int min_exponent = 0;
+  static const int min_exponent10 = 0;
+  static const int max_exponent = 0;
+  static const int max_exponent10 = 0;
+  static const bool traps = false;
+  static const bool tinyness_before = false;
+
+  static paddle::platform::complex64(min)() {
+    return paddle::platform::complex64(0.0, 0.0);
+  }
+  static paddle::platform::complex64 lowest() {
+    return paddle::platform::complex64(0.0, 0.0);
+  }
+  static paddle::platform::complex64(max)() {
+    return paddle::platform::complex64(0.0, 0.0);
+  }
+  static paddle::platform::complex64 epsilon() {
+    return paddle::platform::complex64(0.0, 0.0);
+  }
+  static paddle::platform::complex64 round_error() {
+    return paddle::platform::complex64(0.0, 0.0);
+  }
+  static paddle::platform::complex64 infinity() {
+    return paddle::platform::complex64(0.0, 0.0);
+  }
+  static paddle::platform::complex64 quiet_NaN() {
+    return paddle::platform::complex64(0.0, 0.0);
+  }
+  static paddle::platform::complex64 signaling_NaN() {
+    return paddle::platform::complex64(0.0, 0.0);
+  }
+  static paddle::platform::complex64 denorm_min() {
+    return paddle::platform::complex64(0.0, 0.0);
+  }
+};
+
 }  // namespace std
 namespace Eigen {
 
