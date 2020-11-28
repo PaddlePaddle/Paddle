@@ -23,11 +23,11 @@ import paddle.fluid.core as core
 class TestTF32Switch(unittest.TestCase):
     def test_on_off(self):
         if core.is_compiled_with_cuda():
-            self.assertTrue(core.CUDAContext.get_cublas_switch())  # default
+            self.assertTrue(core.CUDAContext.get_cublas_switch)  # default
             core.CUDAContext.set_cublas_switch = 0
-            self.assertFalse(core.CUDAContext.get_cublas_switch())  # turn off
+            self.assertFalse(core.CUDAContext.get_cublas_switch)  # turn off
             core.CUDAContext.set_cublas_switch = 1
-            self.assertTrue(core.CUDAContext.get_cublas_switch())  # turn on
+            self.assertTrue(core.CUDAContext.get_cublas_switch)  # turn on
         else:
             pass
 
@@ -36,18 +36,17 @@ class TestTF32OnMatmul(unittest.TestCase):
     def test_dygraph_without_out(self):
         if core.is_compiled_with_cuda():
             device = core.CUDAPlace(0)
-        else:
-            device = core.CPUPlace()
             core.CUDAContext.set_cublas_switch = 0  # turn off
-        with fluid.dygraph.guard(device):
-            input_array1 = np.random.rand(4, 12, 64, 88).astype("float32")
-            input_array2 = np.random.rand(4, 12, 88, 512).astype("float32")
-            data1 = fluid.dygraph.to_variable(input_array1)
-            data2 = fluid.dygraph.to_variable(input_array2)
-            out = paddle.matmul(data1, data2)
-            expected_result = np.matmul(input_array1, input_array2)
-
-        self.assertTrue(np.allclose(expected_result, out.numpy(), 1e-03))
+            with fluid.dygraph.guard(device):
+                input_array1 = np.random.rand(4, 12, 64, 88).astype("float32")
+                input_array2 = np.random.rand(4, 12, 88, 512).astype("float32")
+                data1 = fluid.dygraph.to_variable(input_array1)
+                data2 = fluid.dygraph.to_variable(input_array2)
+                out = paddle.matmul(data1, data2)
+                expected_result = np.matmul(input_array1, input_array2)
+            self.assertTrue(np.allclose(expected_result, out.numpy(), 1e-03))
+        else:
+            pass
 
 
 if __name__ == '__main__':
