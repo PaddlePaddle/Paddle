@@ -154,7 +154,6 @@ def get_worker_info():
 
             import math
             import numpy as np
-            import paddle.fluid as fluid
             from paddle.io import IterableDataset, DataLoader, get_worker_info
 
             class SplitedIterableDataset(IterableDataset):
@@ -178,18 +177,16 @@ def get_worker_info():
                     for i in range(iter_start, iter_end):
                         yield np.array([i])
 
-            place = fluid.CPUPlace()
-            with fluid.dygraph.guard(place):
-                dataset = SplitedIterableDataset(start=2, end=9)
-                dataloader = DataLoader(
-                    dataset,
-                    places=place,
-                    num_workers=2,
-                    batch_size=1,
-                    drop_last=True)
+            dataset = SplitedIterableDataset(start=2, end=9)
+            dataloader = DataLoader(
+                dataset,
+                places=place,
+                num_workers=2,
+                batch_size=1,
+                drop_last=True)
 
-                print(list(dataloader))
-                # outputs: [2, 5, 3, 6, 4, 7]
+            print(list(dataloader))
+            # outputs: [2, 5, 3, 6, 4, 7]
 
     """
     return _worker_info
