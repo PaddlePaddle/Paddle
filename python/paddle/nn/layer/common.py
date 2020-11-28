@@ -501,6 +501,7 @@ class Dropout(layers.Layer):
         - input: N-D tensor.
         - output: N-D tensor, the same shape as input.
 
+
     Examples:
         .. code-block:: python
 
@@ -551,15 +552,13 @@ class Dropout2D(layers.Layer):
 
     Parameters:
         p (float, optional): Probability of setting units to zero. Default: 0.5
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-                                     will be consistent with that of the input. An optional string from:
-                                    `NCHW`, `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is
-                                     stored in the order of: [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: 4-D tensor.
         - output: 4-D tensor, the same shape as input.
+
 
     Examples:
         .. code-block:: python
@@ -609,15 +608,13 @@ class Dropout3D(layers.Layer):
 
     Parameters:
         p (float | int): Probability of setting units to zero. Default: 0.5
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-                                     will be consistent with that of the input. An optional string from:
-                                    `NCDHW`, `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is
-                                     stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCDHW` or `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: 5-D tensor.
         - output: 5-D tensor, the same shape as input.
+
 
     Examples:
         .. code-block:: python
