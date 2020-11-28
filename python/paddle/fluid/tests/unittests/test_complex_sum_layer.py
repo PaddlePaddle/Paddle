@@ -33,7 +33,7 @@ class TestComplexSumLayer(unittest.TestCase):
         for place in self._places:
             with dg.guard(place):
                 var_x = dg.to_variable(input)
-                result = cpx.sum(var_x, dim=[1, 2]).numpy()
+                result = cpx.sum(var_x, axis=[1, 2]).numpy()
                 target = np.sum(input, axis=(1, 2))
                 self.assertTrue(np.allclose(result, target))
 

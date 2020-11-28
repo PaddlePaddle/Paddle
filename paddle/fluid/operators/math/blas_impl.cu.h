@@ -588,7 +588,7 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
   thrust::complex<double> c_alpha =
       thrust::complex<double>(alpha.real, alpha.imag);
   thrust::complex<double> c_beta =
-      thrust::complex<double>(beta.real, alpha.imag);
+      thrust::complex<double>(beta.real, beta.imag);
 
 #if CUDA_VERSION >= 8000
   // cublasHgemm does true FP16 computation which is slow for non-Volta

@@ -20,7 +20,6 @@ from .. import fluid
 from ..fluid.framework import in_dygraph_mode
 from paddle.common_ops_import import *
 from ..framework import VarBase as Tensor
-from ..framework import ComplexVariable as ComplexTensor
 
 # TODO: define logic functions of a tensor  
 from ..fluid.layers import is_empty  #DEFINE_ALIAS

@@ -13,8 +13,6 @@
 # limitations under the License.
 
 from paddle.common_ops_import import *
-from ..helper import is_complex, is_real, complex_variable_exists
-from ....fluid.framework import ComplexVariable
 from ....fluid import layers
 from ....tensor import math
 

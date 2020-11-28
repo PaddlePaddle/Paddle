@@ -663,6 +663,8 @@ REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                 ops::ReshapeKernel, int, ops::ReshapeKernel,
                                 uint8_t, ops::ReshapeKernel, int64_t,
                                 ops::ReshapeKernel, plat::float16,
+                                ops::ReshapeKernel, plat::complex64,
+                                ops::ReshapeKernel, plat::complex128,
                                 ops::ReshapeKernel, bool, ops::ReshapeKernel);
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(
     reshape2_grad, float, ops::ReshapeGradKernel, double,
