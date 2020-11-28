@@ -325,11 +325,19 @@ HOSTDEVICE inline bool operator>=(const complex128& a, const complex128& b) {
 }
 
 HOSTDEVICE inline bool(isnan)(const complex128& a) {
+#if defined(__CUDA_ARCH__)
+  return __isnan(a.real) || __isnan(a.imag);
+#else
   return std::isnan(a.real) || std::isnan(a.imag);
+#endif
 }
 
 HOSTDEVICE inline bool(isinf)(const complex128& a) {
+#if defined(__CUDA_ARCH__)
+  return __isinf(a.real) || __isinf(a.imag);
+#else
   return std::isinf(a.real) || std::isinf(a.imag);
+#endif
 }
 
 HOSTDEVICE inline bool(isfinite)(const complex128& a) {
@@ -463,17 +471,17 @@ namespace numext {
 
 template <>
 HOSTDEVICE inline bool(isnan)(const complex128& a) {
-  return (std::isnan)(a.real) || (std::isnan)(a.imag);
+  return (paddle::platform::isnan)(a);
 }
 
 template <>
 HOSTDEVICE inline bool(isinf)(const complex128& a) {
-  return (std::isinf)(a.real) || (std::isinf)(a.imag);
+  return (paddle::platform::isinf)(a);
 }
 
 template <>
 HOSTDEVICE inline bool(isfinite)(const complex128& a) {
-  return (std::isfinite)(a.real) || (std::isfinite)(a.imag);
+  return (paddle::platform::isfinite)(a);
 }
 
 template <>
@@ -526,7 +534,7 @@ HOSTDEVICE inline complex128 pow(const complex128& a, const complex128& b) {
 
 template <>
 HOSTDEVICE inline double abs(const complex128& a) {
-  return ::hypotf(a.real, a.imag);
+  return abs(std::complex<double>(a));
 }
 
 }  // namespace numext

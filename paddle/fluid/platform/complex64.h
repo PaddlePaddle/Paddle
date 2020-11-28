@@ -328,11 +328,19 @@ HOSTDEVICE inline bool operator>=(const complex64& a, const complex64& b) {
 }
 
 HOSTDEVICE inline bool(isnan)(const complex64& a) {
+#if defined(__CUDA_ARCH__)
+  return __isnanf(a.real) || __isnanf(a.imag);
+#else
   return std::isnan(a.real) || std::isnan(a.imag);
+#endif
 }
 
 HOSTDEVICE inline bool(isinf)(const complex64& a) {
+#if defined(__CUDA_ARCH__)
+  return __isinff(a.real) || __isinff(a.imag);
+#else
   return std::isinf(a.real) || std::isinf(a.imag);
+#endif
 }
 
 HOSTDEVICE inline bool(isfinite)(const complex64& a) {
@@ -466,17 +474,17 @@ namespace numext {
 
 template <>
 HOSTDEVICE inline bool(isnan)(const complex64& a) {
-  return (std::isnan)(a.real) || (std::isnan)(a.imag);
+  return (paddle::platform::isnan)(a);
 }
 
 template <>
 HOSTDEVICE inline bool(isinf)(const complex64& a) {
-  return (std::isinf)(a.real) || (std::isinf)(a.imag);
+  return (paddle::platform::isinf)(a);
 }
 
 template <>
 HOSTDEVICE inline bool(isfinite)(const complex64& a) {
-  return (std::isfinite)(a.real) || (std::isfinite)(a.imag);
+  return (paddle::platform::isfinite)(a);
 }
 
 template <>
@@ -529,7 +537,7 @@ HOSTDEVICE inline complex64 pow(const complex64& a, const complex64& b) {
 
 template <>
 HOSTDEVICE inline float abs(const complex64& a) {
-  return ::hypotf(a.real, a.imag);
+  return abs(std::complex<float>(a));
 }
 
 }  // namespace numext
