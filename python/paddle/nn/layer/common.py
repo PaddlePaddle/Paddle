@@ -30,6 +30,8 @@ __all__ = [
     'Pad1D',
     'Pad2D',
     'Pad3D',
+    'UpsamplingNearest2D',
+    'UpsamplingBilinear2D',
     'CosineSimilarity',
     'Dropout',
     'Dropout2D',
@@ -40,7 +42,7 @@ __all__ = [
 
 
 class Linear(layers.Layer):
-    """
+    r"""
 
     Fully-connected linear transformation layer. For each input :math:`X` ,
     the equation is:
@@ -289,8 +291,8 @@ class Upsample(layers.Layer):
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
-             If a Tensor Variable, its dimensions size should be a 1.
+             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`. Has to match input size if it is either a list or a tuple or a Tensor.
@@ -337,7 +339,6 @@ class Upsample(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             input_data = np.random.rand(2,3,6,10).astype("float32")
             upsample_out  = paddle.nn.Upsample(size=[12,12])
@@ -380,8 +381,161 @@ class Upsample(layers.Layer):
         return out
 
 
-class Bilinear(layers.Layer):
+class UpsamplingNearest2D(layers.Layer):
     """
+    This op upsamples a batch of images, using nearest neighbours' pixel values.
+    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w),
+    where in_w is width of the input tensor, in_h is the height of the input tensor.
+    And the upsampling only applies on the two dimensions(height and width).
+    Nearest neighbor interpolation is to perform nearest neighbor interpolation
+    in both the 3rd dimension(in height direction) and the 4th dimension(in width
+    direction) on input tensor.
+
+    For details of nearest neighbor interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
+
+    Parameters:
+        x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        size (list|tuple|Tensor|None): Output shape of image resize
+             layer, the shape is (out_h, out_w) when input is a 4-D Tensor.
+             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             If a Tensor , its dimensions size should be a 1.
+        scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
+             least one of :attr:`size` or :attr:`scale_factor` must be set.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.
+             Has to match input size if it is either a list or a tuple or a Tensor.
+             Default: None.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
+            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
+
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+
+            input_data = paddle.rand(2,3,6,10).astype("float32")
+            upsample_out  = paddle.nn.UpsamplingNearest2D(size=[12,12])
+            input = paddle.to_tensor(input_data)
+            output = upsample_out(x=input)
+            print(output.shape)
+            # [2L, 3L, 12L, 12L]
+    """
+
+    def __init__(self,
+                 size=None,
+                 scale_factor=None,
+                 data_format='NCHW',
+                 name=None):
+        super(UpsamplingNearest2D, self).__init__()
+        self.size = size
+        self.scale_factor = scale_factor
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, x):
+        out = F.interpolate(
+            x,
+            size=self.size,
+            scale_factor=self.scale_factor,
+            mode='nearest',
+            align_corners=False,
+            align_mode=0,
+            data_format=self.data_format,
+            name=self.name)
+
+        return out
+
+
+class UpsamplingBilinear2D(layers.Layer):
+    """
+    This op upsamples a batch of images, using bilinear' pixel values.
+    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w),
+    where in_w is width of the input tensor, in_h is the height of the input tensor.
+    And the upsampling only applies on the two dimensions(height and width).
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this op) on a rectilinear 2D grid. The key idea is
+    to perform linear interpolation first in one direction, and then
+    again in the other direction.
+
+    For details of bilinear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bilinear_interpolation.
+
+    Parameters:
+        x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        size (list|tuple|Tensor|None): Output shape of image resize
+             layer, the shape is (out_h, out_w) when input is a 4-D Tensor.
+             Default: None. If a list, each element can be an integer or a Tensor  of shape: [1].
+             If a Tensor , its dimensions size should be a 1.
+        scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
+             least one of :attr:`size` or :attr:`scale_factor` must be set.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.
+             Has to match input size if it is either a list or a tuple or a Tensor.
+             Default: None.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
+            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+
+            input_data = paddle.rand(2,3,6,10).astype("float32")
+            upsample_out  = paddle.nn.UpsamplingBilinear2D(size=[12,12])
+            input = paddle.to_tensor(input_data)
+            output = upsample_out(x=input)
+            print(output.shape)
+            # [2L, 3L, 12L, 12L]
+    """
+
+    def __init__(self,
+                 size=None,
+                 scale_factor=None,
+                 data_format='NCHW',
+                 name=None):
+        super(UpsamplingBilinear2D, self).__init__()
+        self.size = size
+        self.scale_factor = scale_factor
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, x):
+        out = F.interpolate(
+            x,
+            size=self.size,
+            scale_factor=self.scale_factor,
+            mode='bilinear',
+            align_corners=True,
+            align_mode=0,
+            data_format=self.data_format,
+            name=self.name)
+
+        return out
+
+
+class Bilinear(layers.Layer):
+    r"""
 
     This layer performs bilinear on two inputs.
 
@@ -425,7 +579,6 @@ class Bilinear(layers.Layer):
         import paddle
         import numpy
 
-        paddle.disable_static()
         layer1 = numpy.random.random((5, 5)).astype('float32')
         layer2 = numpy.random.random((5, 4)).astype('float32')
         bilinear = paddle.nn.Bilinear(
@@ -744,7 +897,6 @@ class Pad1D(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             input_shape = (1, 2, 3)
             pad = [1, 2]
@@ -752,7 +904,7 @@ class Pad1D(layers.Layer):
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad1D(padding=pad, mode=mode)
             result = my_pad(data)
-            print(result.numpy())
+            print(result)
             # [[[0. 1. 2. 3. 0. 0.]
             #   [0. 4. 5. 6. 0. 0.]]]
     """
@@ -821,14 +973,13 @@ class Pad2D(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
             input_shape = (1, 1, 2, 3)
             pad = [1, 0, 1, 2]
             mode = "constant"
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad2D(padding=pad, mode=mode)
             result = my_pad(data)
-            print(result.numpy())
+            print(result)
             # [[[[0. 0. 0. 0.]
             #    [0. 1. 2. 3.]
             #    [0. 4. 5. 6.]
@@ -906,7 +1057,7 @@ class Pad3D(layers.Layer):
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad3D(padding=pad, mode=mode)
             result = my_pad(data)
-            print(result.numpy())
+            print(result)
             # [[[[[0. 0. 0. 0.]
             #     [0. 1. 2. 3.]
             #     [0. 4. 5. 6.]
@@ -968,7 +1119,6 @@ class CosineSimilarity(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             np.random.seed(0)
             x1 = np.random.rand(2,3)
@@ -978,7 +1128,7 @@ class CosineSimilarity(layers.Layer):
 
             cos_sim_func = nn.CosineSimilarity(axis=0)
             result = cos_sim_func(x1, x2)
-            print(result.numpy())
+            print(result)
             # [0.99806249 0.9817672  0.94987036]
     """
 
@@ -992,7 +1142,7 @@ class CosineSimilarity(layers.Layer):
 
 
 class Embedding(layers.Layer):
-    """
+    r"""
     **Embedding Layer**
 
     This interface is used to construct a callable object of the ``Embedding`` class.
@@ -1106,8 +1256,7 @@ class Embedding(layers.Layer):
         self._embedding_dim = embedding_dim
         self._sparse = sparse
         self._is_distributed = False
-        self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-            num_embeddings + padding_idx)
+        self._padding_idx = padding_idx
 
         if self._num_embeddings <= 0:
             raise ValueError("num_embeddings must be gather than 0")
@@ -1115,7 +1264,10 @@ class Embedding(layers.Layer):
         if self._embedding_dim <= 0:
             raise ValueError("embedding_dim must be gather than 0")
 
-        if self._padding_idx >= num_embeddings or self._padding_idx < -num_embeddings:
+        padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+            num_embeddings + padding_idx)
+
+        if padding_idx >= num_embeddings or padding_idx < -num_embeddings:
             raise ValueError("padding_idx must be within [-{}, {})".format(
                 num_embeddings, num_embeddings))
 

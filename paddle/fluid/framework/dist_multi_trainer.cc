@@ -33,6 +33,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   mpi_rank_ = trainer_desc.mpi_rank();
   mpi_size_ = trainer_desc.mpi_size();
   dump_file_num_ = trainer_desc.dump_file_num();
+  user_define_dump_filename_ = trainer_desc.user_define_dump_filename();
   const std::vector<paddle::framework::DataFeed *> readers =
       dataset->GetReaders();
   RegisterHeterCallback();

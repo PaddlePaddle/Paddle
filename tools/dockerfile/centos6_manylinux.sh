@@ -38,6 +38,11 @@ function make_cuda102cudnn7() {
   sed -i "s#COPY build_scripts /build_scripts#COPY build_scripts /build_scripts \nRUN bash build_scripts/install_gcc.sh gcc82 \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH#g" Dockerfile.tmp
 }
 
+function make_cuda11cudnn8() {
+  sed 's/<baseimg>/11.0-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
+  sed -i "s#COPY build_scripts /build_scripts#COPY build_scripts /build_scripts \nRUN bash build_scripts/install_gcc.sh gcc82 \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH#g" Dockerfile.tmp
+}
+
 
 function main() {
   local CMD=$1 
@@ -54,6 +59,9 @@ function main() {
     cuda102cudnn7)
       make_cuda102cudnn7
       ;;
+    cuda11cudnn8)
+      make_cuda11cudnn8
+     ;;
     *)
       echo "Make dockerfile error, Without this paramet."
       exit 1

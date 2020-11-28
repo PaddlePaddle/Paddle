@@ -58,7 +58,7 @@ import paddle
 
 
 def elu(x, alpha=1.0, name=None):
-    """
+    r"""
     elu activation.
 
     .. math::
@@ -79,11 +79,8 @@ def elu(x, alpha=1.0, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
+            x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
             out = F.elu(x, alpha=0.2)
             # [[-0.12642411  6.        ]
             #  [ 1.          15.6      ]]
@@ -104,7 +101,7 @@ def elu(x, alpha=1.0, name=None):
 
 
 def gelu(x, approximate=False, name=None):
-    """
+    r"""
     gelu activation.
 
     if approximate is True
@@ -133,13 +130,14 @@ def gelu(x, approximate=False, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
-            out1 = F.gelu(x) # [-0.158655 0.345731 0.841345 1.39979]
-            out2 = F.gelu(x, True) # [-0.158808 0.345714 0.841192 1.39957]
+            x = paddle.to_tensor([[-1, 0.5], [1, 1.5]])
+            out1 = F.gelu(x)
+            # [[-0.15865529,  0.34573123],
+            #  [ 0.84134471,  1.39978933]]
+            out2 = F.gelu(x, True)
+            # [[-0.15880799,  0.34571400],
+            #  [ 0.84119201,  1.39957154]]
     """
 
     if in_dygraph_mode():
@@ -157,7 +155,7 @@ def gelu(x, approximate=False, name=None):
 
 
 def hardshrink(x, threshold=0.5, name=None):
-    """
+    r"""
     hard shrinkage activation
 
     .. math::
@@ -185,11 +183,8 @@ def hardshrink(x, threshold=0.5, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(np.array([-1, 0.3, 2.5]))
+            x = paddle.to_tensor([-1, 0.3, 2.5])
             out = F.hardshrink(x) # [-1., 0., 2.5]
 
     """
@@ -209,7 +204,7 @@ def hardshrink(x, threshold=0.5, name=None):
 
 
 def hardtanh(x, min=-1.0, max=1.0, name=None):
-    """
+    r"""
     hardtanh activation
 
     .. math::
@@ -237,8 +232,6 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
             out = F.hardtanh(x) # [-1., 0.3, 1.]
     """
@@ -261,7 +254,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 
 
 def hardsigmoid(x, name=None):
-    """
+    r"""
     hardsigmoid activation.
 
     A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
@@ -315,7 +308,7 @@ def hardsigmoid(x, name=None):
 
 
 def hardswish(x, name=None):
-    """
+    r"""
     hardswish activation
 
     hardswish is proposed in MobileNetV3, and performs better in computational stability
@@ -364,7 +357,7 @@ def hardswish(x, name=None):
 
 
 def leaky_relu(x, negative_slope=0.01, name=None):
-    """
+    r"""
     leaky_relu activation
 
     .. math::
@@ -391,11 +384,8 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
+            x = paddle.to_tensor([-2., 0., 1.])
             out = F.leaky_relu(x) # [-0.02, 0., 1.]
 
     """
@@ -438,8 +428,6 @@ def prelu(x, weight, name=None):
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-
-            paddle.disable_static()
 
             data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
                                [ 3.0, -4.0,  5.0, -6.0],
@@ -512,8 +500,6 @@ def relu(x, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
             out = F.relu(x) # [0., 0., 1.]
     """
@@ -529,7 +515,7 @@ def relu(x, name=None):
 
 
 def log_sigmoid(x, name=None):
-    """
+    r"""
     log_sigmoid activation.
 
     .. math::
@@ -550,8 +536,6 @@ def log_sigmoid(x, name=None):
             import paddle
             import paddle.nn.functional as F
 
-            paddle.disable_static()
-
             x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
             out = F.log_sigmoid(x) # [-0.313262 -0.126928 -0.0485874 -0.0181499]
     """
@@ -568,7 +552,7 @@ def log_sigmoid(x, name=None):
 
 
 def maxout(x, groups, axis=1, name=None):
-    """
+    r"""
     maxout activation.
 
     Assumed the input shape is (N, Ci, H, W).
@@ -687,7 +671,7 @@ def selu(x,
          scale=1.0507009873554804934193349852946,
          alpha=1.6732632423543772848170429916717,
          name=None):
-    """
+    r"""
     selu activation
 
     .. math::
@@ -742,7 +726,7 @@ def selu(x,
 
 
 def softmax(x, axis=-1, dtype=None, name=None):
-    """
+    r"""
     This operator implements the softmax layer. The calculation process is as follows:
 
     1. The dimension :attr:`axis` of ``x`` will be permuted to the last.
@@ -823,12 +807,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
             calculations. It should be in range [-D, D), where D is the
             dimensions of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
-        dtype (str|np.dtype|core.VarDesc.VarType, optional): The desired data
-            type of the output tensor. If dtype is specified, ``x`` is casted
-            to ``dtype`` before the operation is performed. This is useful for
-            preventing data type overflows. Supported dtype: float32, float64.
-            If ``dtype`` is None, the output Tensor has the same dtype as x.
-            Default is None.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -842,8 +821,6 @@ def softmax(x, axis=-1, dtype=None, name=None):
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-
-            paddle.disable_static()
 
             x = np.array([[[2.0, 3.0, 4.0, 5.0],
                         [3.0, 4.0, 5.0, 6.0],
@@ -866,7 +843,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    use_cudnn = True if axis is -1 else False
+    use_cudnn = True
 
     if in_dygraph_mode():
         outs_cast = x if dtype is None \
@@ -903,7 +880,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
 
 def softplus(x, beta=1, threshold=20, name=None):
-    """
+    r"""
     softplus activation
 
     .. math::
@@ -948,7 +925,7 @@ def softplus(x, beta=1, threshold=20, name=None):
 
 
 def softshrink(x, threshold=0.5, name=None):
-    """
+    r"""
     softshrink activation
 
     .. math::
@@ -999,7 +976,7 @@ def softshrink(x, threshold=0.5, name=None):
 
 
 def softsign(x, name=None):
-    """
+    r"""
     softsign activation
 
     .. math::
@@ -1036,7 +1013,7 @@ def softsign(x, name=None):
 
 
 def swish(x, name=None):
-    """
+    r"""
     swish activation.
 
     .. math::
@@ -1114,7 +1091,7 @@ def tanhshrink(x, name=None):
 
 
 def thresholded_relu(x, threshold=1.0, name=None):
-    """
+    r"""
     thresholded relu activation.
 
     .. math::
@@ -1160,14 +1137,16 @@ def thresholded_relu(x, threshold=1.0, name=None):
 
 
 def log_softmax(x, axis=-1, dtype=None, name=None):
-    """
+    r"""
     This operator implements the log_softmax layer. The calculation process is
     as follows:
 
     .. math::
 
-        log\\_softmax[i, j] = log(softmax(x))
-                            = log(\\frac{\exp(X[i, j])}{\\sum_j(exp(X[i, j])})
+        \\begin{aligned} 
+        log\\_softmax[i, j] &= log(softmax(x)) \\\\
+        &= log(\\frac{\\exp(X[i, j])}{\\sum_j(\\exp(X[i, j])})
+        \\end{aligned}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -1193,16 +1172,13 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = np.array([[[-2.0, 3.0, -4.0, 5.0],
-                            [3.0, -4.0, 5.0, -6.0],
-                            [-7.0, -8.0, 8.0, 9.0]],
-                            [[1.0, -2.0, -3.0, 4.0],
-                            [-5.0, 6.0, 7.0, -8.0],
-                            [6.0, 7.0, 8.0, 9.0]]], 'float32')
+            x = [[[-2.0, 3.0, -4.0, 5.0],
+                  [3.0, -4.0, 5.0, -6.0],
+                  [-7.0, -8.0, 8.0, 9.0]],
+                 [[1.0, -2.0, -3.0, 4.0],
+                  [-5.0, 6.0, 7.0, -8.0],
+                  [6.0, 7.0, 8.0, 9.0]]]
             x = paddle.to_tensor(x)
             out1 = F.log_softmax(x)
             out2 = F.log_softmax(x, dtype='float64')
