@@ -1979,9 +1979,11 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("size_of_dtype", framework::SizeOfType);
 
-  py::class_<CUDAContext>(m, "CUDAContext")
+#ifdef PADDLE_WITH_CUDA
+  py::class_<platform::CUDAContext>(m, "CUDAContext")
       .def("set_cublas_switch", &CUDAContext::SetTF32Cublas)
-      .def("get_cublas_switch", CUDAContext::AllowTF32Cublas);
+      .def("get_cublas_switch", &CUDAContext::AllowTF32Cublas);
+#endif  // PADDLE_WITH_CUDA
 
   using VarQuantScale =
       std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
