@@ -108,12 +108,15 @@ void NCCLParallelContext::SendNCCLID(
           "The endpoint should contain host and port, but got %s.", ep));
   std::string host = addr[0];
   int port = std::stoi(addr[1]);
-  // struct sockaddr_in address;
   int sock = 0;
   struct sockaddr_in serv_addr;
   char buffer[1024] = {0};
 
-  // memcpy(buffer, nccl_id, NCCL_UNIQUE_ID_BYTES);
+  PADDLE_ENFORCE_LE(nrings, 8,
+                    platform::errors::PreconditionNotMet(
+                        "The nrings of nccl should be less than or equal 8,"
+                        "but actual nrings is %d",
+                        nrings));
   for (int i = 0; i < nrings; ++i) {
     memcpy(buffer + i * NCCL_UNIQUE_ID_BYTES, &nccl_ids[i],
            NCCL_UNIQUE_ID_BYTES);
@@ -183,13 +186,11 @@ void NCCLParallelContext::BcastNCCLId(
 void NCCLParallelContext::Init() {
   std::vector<ncclUniqueId> nccl_ids;
   nccl_ids.resize(strategy_.nrings_);
-  // ncclUniqueId nccl_id;
   if (strategy_.local_rank_ == 0) {
     // generate the unique ncclid on the root worker
     for (size_t i = 0; i < nccl_ids.size(); ++i) {
       platform::dynload::ncclGetUniqueId(&nccl_ids[i]);
     }
-
     BcastNCCLId(nccl_ids, 0);
   } else {
     BcastNCCLId(nccl_ids, 0);

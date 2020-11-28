@@ -247,11 +247,13 @@ void Reducer::MarkGroupReady(size_t group_index) {
     auto &group = groups_[next_group_];
     int run_order = next_group_ % nrings_;
     if (group.is_sparse_) {
-      VLOG(3) << "sparse group [" << next_group_ << "] start allreduce...";
+      VLOG(3) << "sparse group [" << next_group_
+              << "] start allreduce in order[" << run_order << "]";
       parallel_ctx_->AllReduceByStream(
           *group.sparse_contents_, group.sparse_contents_, run_order, false);
     } else {
-      VLOG(3) << "dense group [" << next_group_ << "] start allreduce...";
+      VLOG(3) << "dense group [" << next_group_ << "] start allreduce in order["
+              << run_order << "]";
       // Select common commstream to concat tensors
       // group.dense_tensors ---> group.dense_contents_
       group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
@@ -259,6 +261,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
       // Start allreduce
       parallel_ctx_->AllReduceByStream(
           group.dense_contents_, &(group.dense_contents_), run_order, false);
+
       // Select common commstream to split tensors
       // group.dense_contents_ ---> group.dense_tensors
       group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
@@ -271,10 +274,14 @@ void Reducer::FinalizeBackward() {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaEventRecord(comm_events_[i].get(), comm_streams_[i]));
   }
-  for (int i = 0; i < nrings_; ++i) {
+  // End each stream in turn
+  for (int i = nrings_ - 2; i >= 0; --i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamWaitEvent(compute_stream_, comm_events_[i].get(), 0));
+        cudaStreamWaitEvent(comm_streams_[i], comm_events_[i + 1].get(), 0));
   }
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaStreamWaitEvent(compute_stream_, comm_events_[0].get(), 0));
+
   VLOG(3) << "In the batch, Reducer is finished...";
 }
 
