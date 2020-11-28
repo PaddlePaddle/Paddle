@@ -860,7 +860,7 @@ def _get_output_from_program(program,
                              program_holder,
                              dict_rename_var_old_new=None):
     """
-        Get output name of 'program' according to program_holder
+    Get output name of 'program' according to program_holder
     """
     outs = list()
     for var in program_holder.output_descs:
