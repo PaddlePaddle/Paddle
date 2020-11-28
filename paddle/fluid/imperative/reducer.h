@@ -211,7 +211,6 @@ class Reducer {
 
   std::vector<std::shared_ptr<platform::CudaEventObject>> group_events_;
   std::vector<std::shared_ptr<platform::CudaEventObject>> comm_events_;
-  std::shared_ptr<platform::CudaEventObject> compute_event_;
   cudaStream_t compute_stream_;
   std::vector<cudaStream_t> comm_streams_;
   int nrings_ = 1;

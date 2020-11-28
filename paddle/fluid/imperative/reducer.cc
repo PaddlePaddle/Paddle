@@ -69,8 +69,6 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
         BOOST_GET_CONST(platform::CUDAPlace, place_).device);
   }
 
-  compute_event_ = platform::CudaEventResourcePool::Instance().New(
-      BOOST_GET_CONST(platform::CUDAPlace, place_).device);
   std::call_once(once_flag_, []() {
     std::atexit([]() { Reducer::GetInstance()->ReleaseReducer(); });
   });
@@ -83,7 +81,6 @@ void Reducer::ReleaseReducer() {
   for (auto &event : comm_events_) {
     event.reset();
   }
-  compute_event_.reset();
 }
 
 int64_t Reducer::InitializeDenseGroups(
@@ -274,18 +271,18 @@ void Reducer::MarkGroupReady(size_t group_index) {
 
 void Reducer::FinalizeBackward() {
   // Must prevent compute_stream_ starting until all comm streams have finished
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaEventRecord(compute_event_.get(), compute_stream_));
-  for (int i = 0; i < nrings_; ++i) {
+  for (int i = 0; i < nrings_ - 1; ++i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaEventRecord(comm_events_[i].get(), comm_streams_[i]));
-  }
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaStreamWaitEvent(compute_stream_, compute_event_.get(), 0));
-  for (int i = 0; i < nrings_; ++i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamWaitEvent(comm_streams_[i], comm_events_[i].get(), 0));
+        cudaStreamWaitEvent(comm_streams_[i + 1], comm_events_[i].get(), 0));
   }
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(comm_events_[nrings_ - 1].get(),
+                                              comm_streams_[nrings_ - 1]));
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaStreamWaitEvent(compute_stream_, comm_events_[nrings_ - 1].get(), 0));
+
   VLOG(3) << "In the batch, Reducer is finished...";
 }
 
