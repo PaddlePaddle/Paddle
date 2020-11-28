@@ -498,19 +498,19 @@ HOSTDEVICE inline complex64 exp(const complex64& a) {
 template <>
 HOSTDEVICE inline complex64 log(const complex64& a) {
   std::complex<float> a_(a.real, a.imag);
-  return complex64(std::log(a_));
+  return complex64(::log(a_));
 }
 
 template <>
 HOSTDEVICE inline complex64 tanh(const complex64& a) {
   std::complex<float> a_(a.real, a.imag);
-  return complex64(std::tanh(a_));
+  return complex64(::tanh(a_));
 }
 
 template <>
 HOSTDEVICE inline complex64 sqrt(const complex64& a) {
   std::complex<float> a_(a.real, a.imag);
-  return complex64(std::sqrt(a_));
+  return complex64(::sqrt(a_));
 }
 
 template <>
@@ -532,7 +532,7 @@ template <>
 HOSTDEVICE inline complex64 pow(const complex64& a, const complex64& b) {
   std::complex<float> a_(a.real, a.imag);
   std::complex<float> b_(b.real, b.imag);
-  return complex64(std::pow(a_, b_));
+  return complex64(::pow(a_, b_));
 }
 
 template <>

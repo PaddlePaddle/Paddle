@@ -495,19 +495,19 @@ HOSTDEVICE inline complex128 exp(const complex128& a) {
 template <>
 HOSTDEVICE inline complex128 log(const complex128& a) {
   std::complex<double> a_(a.real, a.imag);
-  return complex128(std::log(a_));
+  return complex128(::log(a_));
 }
 
 template <>
 HOSTDEVICE inline complex128 tanh(const complex128& a) {
   std::complex<double> a_(a.real, a.imag);
-  return complex128(std::tanh(a_));
+  return complex128(::tanh(a_));
 }
 
 template <>
 HOSTDEVICE inline complex128 sqrt(const complex128& a) {
   std::complex<double> a_(a.real, a.imag);
-  return complex128(std::sqrt(a_));
+  return complex128(::sqrt(a_));
 }
 
 template <>
@@ -529,7 +529,7 @@ template <>
 HOSTDEVICE inline complex128 pow(const complex128& a, const complex128& b) {
   std::complex<double> a_(a.real, a.imag);
   std::complex<double> b_(b.real, b.imag);
-  return complex128(std::pow(a_, b_));
+  return complex128(::pow(a_, b_));
 }
 
 template <>
