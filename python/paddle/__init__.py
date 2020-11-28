@@ -152,6 +152,7 @@ from .tensor.math import floor  #DEFINE_ALIAS
 from .tensor.math import increment  #DEFINE_ALIAS
 from .tensor.math import log  #DEFINE_ALIAS
 from .tensor.math import log2  #DEFINE_ALIAS
+from .tensor.math import log10  #DEFINE_ALIAS
 from .tensor.math import multiplex  #DEFINE_ALIAS
 from .tensor.math import pow  #DEFINE_ALIAS
 from .tensor.math import reciprocal  #DEFINE_ALIAS
@@ -185,6 +186,7 @@ from .tensor.math import mod  #DEFINE_ALIAS
 from .tensor.math import floor_mod  #DEFINE_ALIAS
 from .tensor.math import multiply  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
+from .tensor.math import subtract  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
 from .tensor.math import logsumexp  #DEFINE_ALIAS
 from .tensor.math import inverse  #DEFINE_ALIAS

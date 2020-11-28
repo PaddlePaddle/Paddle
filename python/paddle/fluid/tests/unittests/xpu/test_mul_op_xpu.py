@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid.core as core
 import sys
 sys.path.append("..")
-from op_test import OpTest
+from op_test_xpu import XPUOpTest
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 import time
@@ -47,13 +47,12 @@ class TestMulOpError(unittest.TestCase):
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUMulOp1(OpTest):
+class TestXPUMulOp1(XPUOpTest):
     def setUp(self):
         self.op_type = "mul"
         self.dtype = np.float32
         self.use_xpu = True
         self.init_dtype_type()
-        np.random.seed((int)(time.time()))
         self.inputs = {
             'X': np.random.random((3, 4, 2, 9)).astype(self.dtype),
             'Y': np.random.random((3, 6, 1, 2, 3)).astype(self.dtype)
@@ -92,13 +91,12 @@ class TestXPUMulOp1(OpTest):
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUMulOp2(OpTest):
+class TestXPUMulOp2(XPUOpTest):
     def setUp(self):
         self.op_type = "mul"
         self.use_xpu = True
         self.dtype = np.float32
         self.init_dtype_type()
-        np.random.seed((int)(time.time()))
         self.inputs = {
             'X': np.random.random((20, 5)).astype(self.dtype),
             'Y': np.random.random((5, 21)).astype(self.dtype)

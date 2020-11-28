@@ -534,18 +534,27 @@ if(WITH_GPU AND TENSORRT_FOUND)
         inference_download_and_uncompress(${TEST_TRT_TRANSFORMER_PRUNE_MODEL} ${INFERENCE_URL}/tensorrt_test "transformer_prune.tar.gz")
     endif()
 
-    #inference_analysis_test(test_trt_dynamic_shape_transformer_prune SRCS trt_dynamic_shape_transformer_prune_test.cc
-    #        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
-    #        ARGS --infer_model=${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune)
+    inference_analysis_test(test_trt_dynamic_shape_transformer_prune SRCS trt_dynamic_shape_transformer_prune_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune)
 
     set(TEST_TRT_ERNIE_UNSER_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_unserialized/")
     if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_MODEL}/ernie_model_4_unserialized.tgz)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_unserialized.tgz")
     endif()
 
-    inference_analysis_test(test_trt_dynamic_shape_ernie_ser_deser SRCS trt_dynamic_shape_ernie_deserialize_test.cc
+    inference_analysis_test(test_trt_dynamic_shape_ernie_ser_deser SRCS trt_dynamic_shape_ernie_serialize_deserialize_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized)
+
+    set(TEST_TRT_ERNIE_UNSER_FP16_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_fp16_unserialized/")
+    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_FP16_MODEL}/ernie_model_4_unserialized.tgz)
+        inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_fp16_unserialized.tgz")
+    endif()
+
+    inference_analysis_test(test_trt_dynamic_shape_ernie_fp16_ser_deser SRCS trt_dynamic_shape_ernie_fp16_serialize_deserialize_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_fp16_unserialized)
 
 endif()
 
@@ -597,6 +606,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_resnet50_test PROPERTIES TIMEOUT 120)
     set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 120)
     set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser PROPERTIES TIMEOUT 120)
     set_tests_properties(test_trt_dynamic_shape_ernie PROPERTIES TIMEOUT 120)
 endif()
 

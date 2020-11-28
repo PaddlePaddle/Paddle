@@ -557,6 +557,7 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       }
     }
   }
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
 #else
   LOG(WARNING)
       << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
