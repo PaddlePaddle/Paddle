@@ -56,6 +56,8 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
 namespace paddle {
 namespace platform {
 
+bool allow_tf32_cudnn{true};
+
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
@@ -376,6 +378,10 @@ CUDADeviceContext::~CUDADeviceContext() {
   }
 #endif
 }
+
+void CUDADeviceContext::SetTF32Cudnn(bool active) { allow_tf32_cudnn = active; }
+
+bool CUDADeviceContext::AllowTF32Cudnn() const { return allow_tf32_cudnn; }
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
 

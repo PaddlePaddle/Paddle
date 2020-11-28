@@ -58,6 +58,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
@@ -1976,6 +1977,12 @@ All parameter, weight, gradient are variables in Paddle.
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_type);
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));
   });
+
+#ifdef PADDLE_WITH_CUDA
+  py::class_<platform::CUDADeviceContext>(m, "CUDADeviceContext")
+      .def("set_cudnn_switch", &platform::CUDADeviceContext::SetTF32Cudnn)
+      .def("get_cudnn_switch", &platform::CUDADeviceContext::AllowTF32Cudnn);
+#endif  // PADDLE_WITH_CUDA
 
   m.def("size_of_dtype", framework::SizeOfType);
 

@@ -153,6 +153,11 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(conv_desc[i],
                                                          CUDNN_DEFAULT_MATH));
+#if CUDNN_VERSION >= 11000
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnSetConvolutionMathType(conv_desc[i],
+                                                         CUDNN_FMA_MATH));
+#endif  // CUDA_VERSION >= 11000
     }
     in_dims[2][1] *= 2;
     in_strides[2][0] = oc * h * w;

@@ -358,6 +358,9 @@ class CUDADeviceContext : public DeviceContext {
     return thread_ctx_.at(this);
   }
 
+  void SetTF32Cudnn(bool active);
+  bool AllowTF32Cudnn() const;
+
  private:
   CUDAPlace place_;
   std::shared_ptr<CUDAContext> default_ctx_;
