@@ -36,7 +36,7 @@ class InterpolateMKLDNNHandler
       const dnnl::algorithm algo,
       const paddle::platform::MKLDNNDeviceContext& dev_ctx,
       const dnnl::engine engine, platform::Place cpu_place, const Tensor* x,
-      Tensor* z, const std::vector<float>& scale,
+      Tensor* z,                     /*const std::vector<float>& scale,*/
       const std::string& uniq_name)  // unique_name is ctx.OutputName("Out")
       : platform::MKLDNNHandlerT<T, dnnl::resampling_forward>(
             dev_ctx, engine, cpu_place,
@@ -106,16 +106,16 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
 
     const auto* x = ctx.Input<Tensor>("X");
     std::vector<float> scale_prior;
-    if (ctx.HasInput("Scale")) {
-      auto* tmp_tensor = ctx.Input<Tensor>("Scale");
-      auto scale_temp = *(tmp_tensor->data<float>());
-      scale_prior.push_back(scale_temp);
-      scale_prior.push_back(scale_temp);
-    } else {
-      auto scale_temp = ctx.Attr<float>("scale");
-      scale_prior.push_back(scale_temp);
-      scale_prior.push_back(scale_temp);
-    }
+    // if (ctx.HasInput("Scale")) {
+    //   auto* tmp_tensor = ctx.Input<Tensor>("Scale");
+    //   auto scale_temp = *(tmp_tensor->data<float>());
+    //   scale_prior.push_back(scale_temp);
+    //   scale_prior.push_back(scale_temp);
+    // } else {
+    //   auto scale_temp = ctx.Attr<float>("scale");
+    //   scale_prior.push_back(scale_temp);
+    //   scale_prior.push_back(scale_temp);
+    // }
     auto* z = ctx.Output<Tensor>("Out");
 
     auto interp_method = ctx.Attr<std::string>("interp_method");
@@ -123,9 +123,26 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     dnnl::algorithm algo = (interp_method == "nearest")
                                ? dnnl::algorithm::resampling_nearest
                                : dnnl::algorithm::resampling_linear;
+    // highest priority
+    if (ctx.HasInput("OutSize")) {
+      auto* out_size = ctx.Input<Tensor>("OutSize");
+      auto* out_size_data = out_size->data<int>();
+      framework::DDim dim_out;
+      const DataLayout data_layout =
+          framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+      auto dim_x = x->dims();
+      if (data_layout == DataLayout::kNCHW) {
+        dim_out = {dim_x[0], dim_x[1], out_size_data[0], out_size_data[1]};
+      } else {
+        dim_out = {dim_x[0], out_size_data[0], out_size_data[1], dim_x[3]};
+      }
+      z->Resize(dim_out);
+      std::cout << "dim_out " << dim_out << std::endl;
+      std::cout << "z->dims() is " << z->dims() << std::endl;
+    }
 
     InterpolateMKLDNNHandler<> handler(algo, dev_ctx, mkldnn_engine,
-                                       ctx.GetPlace(), x, z, scale_prior,
+                                       ctx.GetPlace(), x, z, /*scale_prior,*/
                                        ctx.OutputName("Out"));
 
     auto resampling_pd = handler.AcquireForwardPrimitiveDescriptor();
