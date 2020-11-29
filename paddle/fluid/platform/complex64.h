@@ -347,6 +347,47 @@ HOSTDEVICE inline bool(isfinite)(const complex64& a) {
   return !((isnan)(a)) && !((isinf)(a));
 }
 
+HOSTDEVICE inline float(abs)(const complex64& a) {
+#if defined(__CUDA_ARCH__)
+  return complex64(thrust::abs(thrust::complex<float>(a.real, a.imag)));
+#else
+  return std::abs(std::complex<float>(a));
+#endif
+}
+
+HOSTDEVICE inline complex64(pow)(const complex64& a, const complex64& b) {
+#if defined(__CUDA_ARCH__)
+  return complex64(thrust::pow(thrust::complex<float>(a.real, a.imag), thrust::complex<float>(b.real, b.imag)));
+#else
+  return std::pow(std::complex<float>(a), std::complex<float>(b));
+#endif
+}
+
+
+HOSTDEVICE inline complex64(sqrt)(const complex64& a) {
+#if defined(__CUDA_ARCH__)
+  return complex64(thrust::sqrt(thrust::complex<float>(a.real, a.imag)));
+#else
+  return std::sqrt(std::complex<float>(a));
+#endif
+}
+
+HOSTDEVICE inline complex64(tanh)(const complex64& a) {
+#if defined(__CUDA_ARCH__)
+  return complex64(thrust::tanh(thrust::complex<float>(a.real, a.imag)));
+#else
+  return std::tanh(std::complex<float>(a));
+#endif
+}
+
+HOSTDEVICE inline complex64(log)(const complex64& a) {
+#if defined(__CUDA_ARCH__)
+  return complex64(thrust::log(thrust::complex<float>(a.real, a.imag)));
+#else
+  return std::log(std::complex<float>(a));
+#endif
+}
+
 inline std::ostream& operator<<(std::ostream& os, const complex64& a) {
   os << "real:" << a.real << " imag:" << a.imag;
   return os;
@@ -497,20 +538,18 @@ HOSTDEVICE inline complex64 exp(const complex64& a) {
 
 template <>
 HOSTDEVICE inline complex64 log(const complex64& a) {
-  std::complex<float> a_(a.real, a.imag);
-  return complex64(::log(a_));
+  return paddle::platform::log(a);
 }
 
 template <>
 HOSTDEVICE inline complex64 tanh(const complex64& a) {
-  std::complex<float> a_(a.real, a.imag);
-  return complex64(::tanh(a_));
+  return paddle::platform::tanh(a);
 }
 
 template <>
 HOSTDEVICE inline complex64 sqrt(const complex64& a) {
-  std::complex<float> a_(a.real, a.imag);
-  return complex64(::sqrt(a_));
+  return paddle::platform::sqrt(a);
+
 }
 
 template <>
@@ -530,14 +569,12 @@ HOSTDEVICE inline complex64 round(const complex64& a) {
 
 template <>
 HOSTDEVICE inline complex64 pow(const complex64& a, const complex64& b) {
-  std::complex<float> a_(a.real, a.imag);
-  std::complex<float> b_(b.real, b.imag);
-  return complex64(::pow(a_, b_));
+  return paddle::platform::pow(a, b);
 }
 
 template <>
 HOSTDEVICE inline float abs(const complex64& a) {
-  return abs(std::complex<float>(a));
+  return paddle::platform::abs(a);
 }
 
 }  // namespace numext

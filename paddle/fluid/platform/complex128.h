@@ -344,6 +344,47 @@ HOSTDEVICE inline bool(isfinite)(const complex128& a) {
   return !((isnan)(a)) && !((isinf)(a));
 }
 
+HOSTDEVICE inline double(abs)(const complex128& a) {
+#if defined(__CUDA_ARCH__)
+  return thrust::abs(thrust::complex<double>(a.real, a.imag));
+#else
+  return std::abs(std::complex<double>(a));
+#endif
+}
+
+HOSTDEVICE inline complex128(pow)(const complex128& a, const complex128& b) {
+#if defined(__CUDA_ARCH__)
+  return complex128(thrust::pow(thrust::complex<double>(a.real, a.imag), thrust::complex<double>(b.real, b.imag)));
+#else
+  return std::pow(std::complex<double>(a), std::complex<float>(b));
+#endif
+}
+
+
+HOSTDEVICE inline complex128(sqrt)(const complex128& a) {
+#if defined(__CUDA_ARCH__)
+  return complex128(thrust::sqrt(thrust::complex<double>(a.real, a.imag)));
+#else
+  return std::sqrt(std::complex<double>(a));
+#endif
+}
+
+HOSTDEVICE inline complex128(tanh)(const complex128& a) {
+#if defined(__CUDA_ARCH__)
+  return complex128(thrust::tanh(thrust::complex<double>(a.real, a.imag)));
+#else
+  return std::tanh(std::complex<double>(a));
+#endif
+}
+
+HOSTDEVICE inline complex128(log)(const complex128& a) {
+#if defined(__CUDA_ARCH__)
+  return complex128(thrust::log(thrust::complex<double>(a.real, a.imag)));
+#else
+  return complex128(std::log(std::complex<double>(a)));
+#endif
+}
+
 inline std::ostream& operator<<(std::ostream& os, const complex128& a) {
   os << "real:" << a.real << " imag:" << a.imag;
   return os;
@@ -494,20 +535,17 @@ HOSTDEVICE inline complex128 exp(const complex128& a) {
 
 template <>
 HOSTDEVICE inline complex128 log(const complex128& a) {
-  std::complex<double> a_(a.real, a.imag);
-  return complex128(::log(a_));
+  return paddle::platform::log(a);
 }
 
 template <>
 HOSTDEVICE inline complex128 tanh(const complex128& a) {
-  std::complex<double> a_(a.real, a.imag);
-  return complex128(::tanh(a_));
+  return paddle::platform::tanh(a);
 }
 
 template <>
 HOSTDEVICE inline complex128 sqrt(const complex128& a) {
-  std::complex<double> a_(a.real, a.imag);
-  return complex128(::sqrt(a_));
+  return paddle::platform::sqrt(a);
 }
 
 template <>
@@ -527,14 +565,12 @@ HOSTDEVICE inline complex128 round(const complex128& a) {
 
 template <>
 HOSTDEVICE inline complex128 pow(const complex128& a, const complex128& b) {
-  std::complex<double> a_(a.real, a.imag);
-  std::complex<double> b_(b.real, b.imag);
-  return complex128(::pow(a_, b_));
+  return paddle::platform::pow(a, b);
 }
 
 template <>
 HOSTDEVICE inline double abs(const complex128& a) {
-  return abs(std::complex<double>(a));
+  return paddle::platform::abs(a);
 }
 
 }  // namespace numext
