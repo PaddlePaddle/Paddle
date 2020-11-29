@@ -246,7 +246,7 @@ class Fleet(object):
 
         Returns:
             int: worker numbers
-        
+
         Examples:
             .. code-block:: python
 
@@ -510,21 +510,21 @@ class Fleet(object):
     def save_persistables(self, executor, dirname, main_program=None, mode=1):
         """
 
-        saves all persistable variables from :code:`main_program` to
+        saves all persistable tensors from :code:`main_program` to
         the folder :code:`dirname`. You can refer to
 
-        The :code:`dirname` is used to specify the folder where persistable variables
-        are going to be saved. If you would like to save variables in separate
+        The :code:`dirname` is used to specify the folder where persistable tensors
+        are going to be saved. If you would like to save tensors in separate
         files, set :code:`filename` None.
 
         Args:
-            executor(Executor): The executor to run for saving persistable variables.
+            executor(Executor): The executor to run for saving persistable tensors.
                                 You can refer to :ref:`api_guide_executor_en` for
                                 more details.
 
             dirname(str, optional): The saving directory path.
                                 When you need to save the parameter to the memory, set it to None.
-            main_program(Program, optional): The program whose persistbale variables will
+            main_program(Program, optional): The program whose persistbale tensors will
                                              be saved. Default: None.
 
 
@@ -536,15 +536,14 @@ class Fleet(object):
             .. code-block:: text
 
                 import paddle.distributed.fleet as fleet
-                import paddle.fluid as fluid
 
                 fleet.init()
 
                 # build net
                 # fleet.distributed_optimizer(...)
 
-                exe = fluid.Executor(fluid.CPUPlace())
-                fleet.save_persistables(exe, "dirname", fluid.default_main_program())
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                fleet.save_persistables(exe, "dirname", paddle.static.default_main_program())
 
         """
 
@@ -614,23 +613,20 @@ class Fleet(object):
                     def forward(self, x):
                         return self._linear2(self._linear1(x))
 
-                # 1. enable dynamic mode
-                paddle.disable_static()
-
-                # 2. initialize fleet environment
+                # 1. initialize fleet environment
                 fleet.init(is_collective=True)
 
-                # 3. create layer & optimizer
+                # 2. create layer & optimizer
                 layer = LinearNet()
                 loss_fn = nn.MSELoss()
                 adam = paddle.optimizer.Adam(
                     learning_rate=0.001, parameters=layer.parameters())
 
-                # 4. get data_parallel model using fleet
+                # 3. get data_parallel model using fleet
                 adam = fleet.distributed_optimizer(adam)
                 dp_layer = fleet.distributed_model(layer)
 
-                # 5. run layer
+                # 4. run layer
                 inputs = paddle.randn([10, 10], 'float32')
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
@@ -665,11 +661,10 @@ class Fleet(object):
                 import paddle
                 from paddle.distributed import fleet
 
-                paddle.disable_static()
                 fleet.init(is_collective=True)
 
                 value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.fluid.dygraph.to_variable(value)
+                a = paddle.to_tensor(value)
 
                 layer = paddle.nn.Linear(13, 5)
                 adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
@@ -700,11 +695,10 @@ class Fleet(object):
                 import paddle
                 from paddle.distributed import fleet
 
-                paddle.disable_static()
                 fleet.init(is_collective=True)
 
                 value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.fluid.dygraph.to_variable(value)
+                a = paddle.to_tensor(value)
 
                 layer = paddle.nn.Linear(13, 5)
                 adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
@@ -738,11 +732,10 @@ class Fleet(object):
                 import paddle
                 from paddle.distributed import fleet
 
-                paddle.disable_static()
                 fleet.init(is_collective=True)
 
                 value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.fluid.dygraph.to_variable(value)
+                a = paddle.to_tensor(value)
 
                 layer = paddle.nn.Linear(13, 5)
                 adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
@@ -781,11 +774,10 @@ class Fleet(object):
                 import paddle
                 from paddle.distributed import fleet
 
-                paddle.disable_static()
                 fleet.init(is_collective=True)
 
                 value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.fluid.dygraph.to_variable(value)
+                a = paddle.to_tensor(value)
 
                 layer = paddle.nn.Linear(13, 5)
                 adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
@@ -824,23 +816,20 @@ class Fleet(object):
                     def forward(self, x):
                         return self._linear2(self._linear1(x))
 
-                # 1. enable dynamic mode
-                paddle.disable_static()
-
-                # 2. initialize fleet environment
+                # 1. initialize fleet environment
                 fleet.init(is_collective=True)
 
-                # 3. create layer & optimizer
+                # 2. create layer & optimizer
                 layer = LinearNet()
                 loss_fn = nn.MSELoss()
                 adam = paddle.optimizer.Adam(
                     learning_rate=0.001, parameters=layer.parameters())
 
-                # 4. get data_parallel model using fleet
+                # 3. get data_parallel model using fleet
                 adam = fleet.distributed_optimizer(adam)
                 dp_layer = fleet.distributed_model(layer)
 
-                # 5. run layer
+                # 4. run layer
                 inputs = paddle.randn([10, 10], 'float32')
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
@@ -883,23 +872,20 @@ class Fleet(object):
                     def forward(self, x):
                         return self._linear2(self._linear1(x))
 
-                # 1. enable dynamic mode
-                paddle.disable_static()
-
-                # 2. initialize fleet environment
+                # 1. initialize fleet environment
                 fleet.init(is_collective=True)
 
-                # 3. create layer & optimizer
+                # 2. create layer & optimizer
                 layer = LinearNet()
                 loss_fn = nn.MSELoss()
                 adam = paddle.optimizer.Adam(
                     learning_rate=0.001, parameters=layer.parameters())
 
-                # 4. get data_parallel model using fleet
+                # 3. get data_parallel model using fleet
                 adam = fleet.distributed_optimizer(adam)
                 dp_layer = fleet.distributed_model(layer)
 
-                # 5. run layer
+                # 4. run layer
                 inputs = paddle.randn([10, 10], 'float32')
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
@@ -952,19 +938,19 @@ class Fleet(object):
         Add distributed operations to minimize ``loss`` by updating ``parameter_list``.
 
         Args:
-            loss (Variable): A ``Variable`` containing the value to minimize.
+            loss (Tensor): A ``Tensor`` containing the value to minimize.
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (Iterable, optional): Iterable of ``Variable`` or ``Variable.name`` to update
+            parameter_list (Iterable, optional): Iterable of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
-            no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
+            no_grad_set (set, optional): Set of ``Tensor``  or ``Tensor.name`` that don't need
                 to be updated. The default value is None.
 
         Returns:
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
-            by minimize and a list of (param, grad) variable pairs, param is
+            by minimize and a list of (param, grad) tensor pairs, param is
             ``Parameter``, grad is the gradient value corresponding to the parameter.
             The returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to
             indicate program pruning. If so, the program will be pruned by ``feed`` and
@@ -975,12 +961,13 @@ class Fleet(object):
 
                 import paddle
                 import paddle.distributed.fleet as fleet
+                import paddle.nn.functional as F
 
-                fc_1 = paddle.fluid.layers.fc(input=input_x, size=hid_dim, act='tanh')
-                fc_2 = paddle.fluid.layers.fc(input=fc_1, size=hid_dim, act='tanh')
-                prediction = paddle.fluid.layers.fc(input=[fc_2], size=label_dim, act='softmax')
-                cost = paddle.fluid.layers.cross_entropy(input=prediction, label=input_y)
-                avg_cost = paddle.fluid.layers.mean(x=cost)
+                fc_1 = paddle.static.nn.fc(input=input_x, size=hid_dim, act='tanh')
+                fc_2 = paddle.static.nn.fc(input=fc_1, size=hid_dim, act='tanh')
+                prediction = paddle.static.nn.fc(input=[fc_2], size=label_dim, act='softmax')
+                cost = F.cross_entropy(input=prediction, label=input_y)
+                avg_cost = paddle.mean(x=cost)
 
                 role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
                 fleet.init(role)
