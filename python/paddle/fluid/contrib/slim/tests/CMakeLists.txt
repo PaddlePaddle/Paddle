@@ -239,7 +239,7 @@ if(LINUX AND WITH_MKLDNN)
 	set(QUANT2_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
 	set(QUANT2_GRU_MODEL_DIR "${QUANT_INSTALL_DIR}/GRU_quant2")
 	download_quant_model(${QUANT2_GRU_MODEL_DIR} ${QUANT2_GRU_MODEL_ARCHIVE})
-	set(QUANT2_MULTI_GRU_OPS_TO_QUANTIZE "multi_gru")
+	set(QUANT2_GRU_OPS_TO_QUANTIZE "multi_gru")
 
 	### Save FP32 model or INT8 model from Quant model
         
@@ -249,8 +249,8 @@ if(LINUX AND WITH_MKLDNN)
 	set(QUANT2_INT8_ERNIE_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_int8")
 	save_quant_nlp_model_test(save_quant2_model_ernie ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QUANT2_INT8_ERNIE_SAVE_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
 
-	set(QUANT2_INT8_MULTI_GRU_SAVE_PATH "${QUANT_INSTALL_DIR}/multi_GRU_quant2_int8")
-	save_quant_nlp_model_test(save_quant2_model_multi_gru ${QUANT2_GRU_MODEL_DIR}/GRU_quant_acc ${QUANT2_INT8_MULTI_GRU_SAVE_PATH} ${QUANT2_MULTI_GRU_OPS_TO_QUANTIZE})
+	set(QUANT2_INT8_GRU_SAVE_PATH "${QUANT_INSTALL_DIR}/GRU_quant2_int8")
+	save_quant_nlp_model_test(save_quant2_model_gru ${QUANT2_GRU_MODEL_DIR}/GRU_quant_acc ${QUANT2_INT8_GRU_SAVE_PATH} ${QUANT2_GRU_OPS_TO_QUANTIZE})
 
 	# Convert Quant2 model to dot and pdf files 
 	set(QUANT2_INT8_ERNIE_DOT_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_int8_dot_file")
