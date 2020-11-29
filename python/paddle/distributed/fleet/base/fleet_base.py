@@ -69,8 +69,10 @@ class Fleet(object):
         Fleet: A Fleet instance
 
     Example for collective training:
+
         .. code-block:: python
 
+            import paddle
             import paddle.distributed.fleet as fleet
 
             fleet.init(is_collective=True)
@@ -86,6 +88,7 @@ class Fleet(object):
 
         .. code-block:: python
 
+            import paddle
             import paddle.distributed.fleet as fleet
 
             fleet.init()
@@ -159,7 +162,7 @@ class Fleet(object):
             .. code-block:: python
 
                 import paddle.distributed.fleet as fleet
-                role = fleet.PaddleCloudRoleMaker
+                role = fleet.PaddleCloudRoleMaker()
                 fleet.init(role)
 
         """
@@ -233,6 +236,7 @@ class Fleet(object):
         Examples:
 
             .. code-block:: python
+
                 import paddle.distributed.fleet as fleet
                 fleet.init()
                 fleet.worker_index()
@@ -248,6 +252,7 @@ class Fleet(object):
             int: worker numbers
 
         Examples:
+
             .. code-block:: python
 
                 import paddle.distributed.fleet as fleet
@@ -266,6 +271,7 @@ class Fleet(object):
                   False if not.
 
         Examples:
+
             .. code-block:: python
 
                 import paddle.distributed.fleet as fleet
@@ -283,6 +289,7 @@ class Fleet(object):
             list/string: server endpoints
 
         Examples:
+
             .. code-block:: python
 
                 import paddle.distributed.fleet as fleet
@@ -303,10 +310,12 @@ class Fleet(object):
             int: server number
 
         Examples:
+
             .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            fleet.init()
-            fleet.server_num()
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.server_num()
         """
         return len(self._role_maker._get_pserver_endpoints())
 
@@ -318,6 +327,7 @@ class Fleet(object):
             int: node id
 
         Examples:
+
             .. code-block:: python
 
                 import paddle.distributed.fleet as fleet
@@ -335,6 +345,7 @@ class Fleet(object):
             list/string: server endpoints
 
         Examples:
+
             .. code-block:: python
 
                 import paddle.distributed.fleet as fleet
@@ -359,6 +370,7 @@ class Fleet(object):
         Examples:
 
             .. code-block:: python
+
                 import paddle.distributed.fleet as fleet
                 fleet.init()
                 fleet.is_server()
@@ -535,6 +547,7 @@ class Fleet(object):
 
             .. code-block:: text
 
+                import paddle
                 import paddle.distributed.fleet as fleet
 
                 fleet.init()
@@ -568,9 +581,9 @@ class Fleet(object):
 
             .. code-block:: python
 
+                import paddle
                 import paddle.distributed.fleet as fleet
-                role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
-                fleet.init(role)
+                fleet.init(is_collective=True)
                 strategy = fleet.DistributedStrategy()
                 optimizer = paddle.optimizer.SGD(learning_rate=0.001)
                 optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
@@ -706,9 +719,9 @@ class Fleet(object):
                 adam = fleet.distributed_optimizer(adam)
                 dp_layer = fleet.distributed_model(layer)
                 state_dict = adam.state_dict()
-                paddle.framework.save(state_dict, "paddle_dy")
-                para_state_dict, opti_state_dict = paddle.framework.load( "paddle_dy")
-                adam.set_state_dict(opti_state_dict)
+                paddle.save(state_dict, "paddle_dy")
+                para_state_dict = paddle.load("paddle_dy")
+                adam.set_state_dict(para_state_dict)
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.set_state_dict(state_dict)
@@ -768,6 +781,7 @@ class Fleet(object):
             float: The learning rate of the current step.
 
         Examples:
+
             .. code-block:: python
 
                 import numpy as np
@@ -801,6 +815,7 @@ class Fleet(object):
             None
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
@@ -857,6 +872,7 @@ class Fleet(object):
             None
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
@@ -957,20 +973,24 @@ class Fleet(object):
             ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
                 import paddle.distributed.fleet as fleet
                 import paddle.nn.functional as F
 
-                fc_1 = paddle.static.nn.fc(input=input_x, size=hid_dim, act='tanh')
-                fc_2 = paddle.static.nn.fc(input=fc_1, size=hid_dim, act='tanh')
-                prediction = paddle.static.nn.fc(input=[fc_2], size=label_dim, act='softmax')
+                hid_dim = 10
+                label_dim = 2
+                input_x = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
+                input_y = paddle.static.data(name='y', shape=[None, 1], dtype='int64')
+                fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim, activation='tanh')
+                fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim, activation='tanh')
+                prediction = paddle.static.nn.fc(x=[fc_2], size=label_dim, activation='softmax')
                 cost = F.cross_entropy(input=prediction, label=input_y)
                 avg_cost = paddle.mean(x=cost)
 
-                role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
-                fleet.init(role)
+                fleet.init(is_collective=True)
                 strategy = fleet.DistributedStrategy()
                 optimizer = paddle.optimizer.SGD(learning_rate=0.001)
                 optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)

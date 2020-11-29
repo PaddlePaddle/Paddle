@@ -128,6 +128,7 @@ class DistributedStrategy(object):
         Serialize current DistributedStrategy to string and save to output file
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -145,6 +146,7 @@ class DistributedStrategy(object):
         Load from prototxt file for DistributedStrategy initialization
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -161,6 +163,7 @@ class DistributedStrategy(object):
         Configure ExecutionStrategy for DistributedStrategy
 
         Examples:
+
           .. code-block:: python
 
             import paddle
@@ -195,6 +198,7 @@ class DistributedStrategy(object):
         only if the property is non-distributed strategy.
 
         Examples:
+
           .. code-block:: python
 
             import paddle
@@ -240,6 +244,7 @@ class DistributedStrategy(object):
         Default value: True
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -288,6 +293,7 @@ class DistributedStrategy(object):
             runtime_split_send_recv(bool): if we are using Tensor split for send and recv during runtime
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -319,6 +325,7 @@ class DistributedStrategy(object):
         Default Value: False
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -360,6 +367,7 @@ class DistributedStrategy(object):
             custom_black_list(list[str]): Users' custom black list which forbidden execution fp16.
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -384,6 +392,7 @@ class DistributedStrategy(object):
         Default value: False
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -401,6 +410,7 @@ class DistributedStrategy(object):
         We note that system overhead is usually lower when sync_nccl_allreduce = True
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -425,6 +435,7 @@ class DistributedStrategy(object):
         allreduce among the leaders of each group
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -450,6 +461,7 @@ class DistributedStrategy(object):
         Default value: number of GPU cards on each single GPU machine
 
         Example:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -476,6 +488,7 @@ class DistributedStrategy(object):
         Default value: False
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -500,6 +513,7 @@ class DistributedStrategy(object):
         Default value: True
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -524,6 +538,7 @@ class DistributedStrategy(object):
         Default value: 32
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -562,6 +577,7 @@ class DistributedStrategy(object):
         Default value: 1
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -594,6 +610,7 @@ class DistributedStrategy(object):
         implementation should have some manually assign checkpoints
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -622,6 +639,7 @@ class DistributedStrategy(object):
         Default value: False
 
         Examples:
+
           .. code-block:: python
 
             import paddle.fleet as fleet
@@ -649,6 +667,7 @@ class DistributedStrategy(object):
             and should be an empirical value decided by your model size and network topology.
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -674,6 +693,7 @@ class DistributedStrategy(object):
         device_guard information in user-defined program.
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -709,6 +729,7 @@ class DistributedStrategy(object):
             **micro_batch**: the number of small batches in each user defined batch
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -736,6 +757,7 @@ class DistributedStrategy(object):
 
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -764,6 +786,7 @@ class DistributedStrategy(object):
             begin_step(int) The step of begining training by localsgd. Default 1.
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -791,6 +814,7 @@ class DistributedStrategy(object):
 
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -821,6 +845,7 @@ class DistributedStrategy(object):
             begin_step(int) The step of begining training by adaptive localsgd. Default 1.
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -848,6 +873,7 @@ class DistributedStrategy(object):
         Default Value: False
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -884,6 +910,7 @@ class DistributedStrategy(object):
                     element will be transmitted.
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -906,6 +933,7 @@ class DistributedStrategy(object):
         Default Value: False
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -935,6 +963,7 @@ class DistributedStrategy(object):
         to model parameters.
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -963,6 +992,7 @@ class DistributedStrategy(object):
             avg(bool): whether to average the gradients of each mini-batch, the default value is `True`
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -989,6 +1019,7 @@ class DistributedStrategy(object):
         Default Value: False
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -1019,6 +1050,7 @@ class DistributedStrategy(object):
         will be exclude from weight decay in lars formula.
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -1050,6 +1082,7 @@ class DistributedStrategy(object):
         Default Value: False
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -1078,6 +1111,7 @@ class DistributedStrategy(object):
         will be exclude from weight decay in lamb formula.
 
         Examples:
+
           .. code-block:: python
 
             import paddle.distributed.fleet as fleet
@@ -1123,11 +1157,12 @@ class DistributedStrategy(object):
         Default Value: False
 
         Examples:
+
           .. code-block:: python
 
             import paddle
-            import paddle.distributed.fleet as fleet
             paddle.enable_static()
+            import paddle.distributed.fleet as fleet
 
             strategy = fleet.DistributedStrategy()
             strategy.auto = True
@@ -1156,8 +1191,11 @@ class DistributedStrategy(object):
         Default Value: True
 
         Examples:
+
           .. code-block:: python
 
+            import paddle
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.cudnn_exhaustive_search = False
@@ -1187,8 +1225,11 @@ class DistributedStrategy(object):
         Default Value: 4000
 
         Examples:
+
           .. code-block:: python
 
+            import paddle
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.conv_workspace_size_limit = 1024
@@ -1217,8 +1258,11 @@ class DistributedStrategy(object):
         Default Value: True
 
         Examples:
+
           .. code-block:: python
 
+            import paddle
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.cudnn_batchnorm_spatial_persistent = True
