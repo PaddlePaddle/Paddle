@@ -19,6 +19,7 @@ __all__ = ['convert_call']
 import collections
 import copy
 import functools
+import logging
 import inspect
 import pdb
 import re
@@ -35,7 +36,9 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_dec
 from paddle.fluid.dygraph.layers import Layer
 
 # TODO(liym27): A better way to do this.
-BUILTIN_LIKELY_MODULES = [collections, pdb, copy, inspect, re, six, numpy]
+BUILTIN_LIKELY_MODULES = [
+    collections, pdb, copy, inspect, re, six, numpy, logging
+]
 
 translator_logger = TranslatorLogger()
 
