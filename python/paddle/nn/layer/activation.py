@@ -536,7 +536,7 @@ class Sigmoid(layers.Layer):
 
     .. math::
 
-        Sigmoid(x) = \frac{1}{1 + e^{-x}}
+        Sigmoid(x) = \\frac{1}{1 + e^{-x}}
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -554,12 +554,9 @@ class Sigmoid(layers.Layer):
           import numpy as np
           import paddle
 
-          paddle.disable_static()
-          input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
           m = paddle.nn.Sigmoid()
-          x = paddle.to_tensor(input_data)
-          output = m(x)
-          print(output.numpy()) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+          x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0], 'float32'))
+          out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 
     def __init__(self, name=None):

@@ -9520,36 +9520,36 @@ def pow(x, factor=1.0, name=None):
 @templatedoc()
 def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
     """
+    stanh activation.
 
-    ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        scale_a(${scale_a_type}|2.0 / 3.0): ${scale_a_comment}
-        scale_b(${scale_b_type}|1.7159): ${scale_b_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+    .. math::
+
+        out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        scale_a (float, optional): The scale factor a of the input. Default is 0.67.
+        scale_b (float, optional): The scale factor b of the output. Default is 1.7159.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        output(Tensor): ${out_comment}.
+        A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-
         .. code-block:: python
 
             import paddle
+            import numpy as np
 
-            data = paddle.rand(shape=[3, 3], dtype='float32')
-            output = paddle.stanh(data, scale_a=0.67, scale_b=1.72)
-            print(data)
-            # [[0.19412413, 0.66871136, 0.77059180],
-            #  [0.89738929, 0.35827777, 0.60592669],
-            #  [0.66346580, 0.78424633, 0.46533889]]
-            print(output)
-            # [[0.22245567, 0.72288811, 0.81671900],
-            #  [0.92525512, 0.40512756, 0.66227961],
-            #  [0.71790355, 0.82885355, 0.51953089]]
+            x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0], 'float32'))
+            out = paddle.stanh(x, scale_a=0.67, scale_b=1.72) # [1.00616539, 1.49927628, 1.65933108, 1.70390463]
 
     """
+
+    if in_dygraph_mode():
+        return core.ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
+
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'stanh')
 
     helper = LayerHelper('stanh', **locals())
