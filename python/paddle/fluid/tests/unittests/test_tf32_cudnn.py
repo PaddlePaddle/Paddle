@@ -18,14 +18,13 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import CUDADeviceContext
 
 
 class TestTF32Switch(unittest.TestCase):
     def test_on_off(self):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            ctx = CUDADeviceContext(place)
+            ctx = core.CUDADeviceContext(place)
             self.assertTrue(ctx.get_cudnn_switch())  # default
             ctx.set_cudnn_switch(0)
             self.assertFalse(ctx.get_cudnn_switch())  # turn off
