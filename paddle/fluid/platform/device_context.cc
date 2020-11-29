@@ -54,8 +54,6 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
 namespace paddle {
 namespace platform {
 
-bool allow_tf32_cublas{true};
-
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
@@ -308,10 +306,6 @@ CUDAContext::~CUDAContext() {
   DestoryCuSolverContext();
 }
 
-void CUDAContext::SetTF32Cublas(bool active) { allow_tf32_cublas = active; }
-
-bool CUDAContext::AllowTF32Cublas() const { return allow_tf32_cublas; }
-
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
@@ -366,6 +360,12 @@ CUDADeviceContext::~CUDADeviceContext() {
   }
 #endif
 }
+
+void CUDADeviceContext::SetTF32Cublas(bool active) {
+  allow_tf32_cublas = active;
+}
+
+bool CUDADeviceContext::AllowTF32Cublas() const { return allow_tf32_cublas; }
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
