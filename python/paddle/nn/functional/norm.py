@@ -150,7 +150,6 @@ def batch_norm(x,
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           x = np.random.seed(123)
           x = np.random.random(size=(2, 1, 2, 3)).astype('float32')
           running_mean = np.random.random(size=1).astype('float32')
@@ -163,7 +162,7 @@ def batch_norm(x,
           w = paddle.to_tensor(weight_data)
           b = paddle.to_tensor(bias_data)
           batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv, w, b)
-          print(batch_norm_out.numpy())
+          print(batch_norm_out)
     """
 
     assert len(x.shape) >= 2, "input dim must be larger than 1"
@@ -269,14 +268,13 @@ def layer_norm(x,
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           layer_norm = paddle.nn.functional.layer_norm(x, x.shape[1:])
           layer_norm_out = layer_norm(x)
 
-          print(layer_norm_out.numpy())
+          print(layer_norm_out)
     """
     input_shape = list(x.shape)
     input_ndim = len(input_shape)
@@ -362,13 +360,12 @@ def instance_norm(x,
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           instance_norm_out = paddle.nn.functional.instancenorm(x)
 
-          print(instance_norm_out.numpy())
+          print(instance_norm_out)
 
     """
 
