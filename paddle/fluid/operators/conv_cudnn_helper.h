@@ -174,7 +174,6 @@ struct ConvArgs {
   platform::ConvolutionDescriptor cdesc;
   const framework::Tensor *x, *w, *o;
   cudnnDataType_t cudnn_dtype;
-  // bool allow_tf32;
 
   // strides
   std::vector<int> s;

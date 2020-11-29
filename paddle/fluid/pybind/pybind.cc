@@ -1979,6 +1979,7 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_CUDA
   py::class_<platform::CUDADeviceContext>(m, "CUDADeviceContext")
+      .def(py::init<platform::CUDAPlace &>())
       .def("set_cudnn_switch", &platform::CUDADeviceContext::SetTF32Cudnn)
       .def("get_cudnn_switch", &platform::CUDADeviceContext::AllowTF32Cudnn);
 #endif  // PADDLE_WITH_CUDA
