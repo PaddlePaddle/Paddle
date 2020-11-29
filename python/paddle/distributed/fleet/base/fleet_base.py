@@ -73,6 +73,7 @@ class Fleet(object):
         .. code-block:: python
 
             import paddle
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
 
             fleet.init(is_collective=True)
@@ -89,6 +90,7 @@ class Fleet(object):
         .. code-block:: python
 
             import paddle
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
 
             fleet.init()
@@ -548,6 +550,7 @@ class Fleet(object):
             .. code-block:: text
 
                 import paddle
+                paddle.enable_static()
                 import paddle.distributed.fleet as fleet
 
                 fleet.init()
@@ -977,6 +980,7 @@ class Fleet(object):
             .. code-block:: python
 
                 import paddle
+                paddle.enable_static()
                 import paddle.distributed.fleet as fleet
                 import paddle.nn.functional as F
 
