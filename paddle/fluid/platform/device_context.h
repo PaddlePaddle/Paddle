@@ -57,7 +57,9 @@ struct GpuDevice;
 namespace paddle {
 namespace platform {
 
+#ifdef PADDLE_WITH_CUDA
 static bool allow_tf32_cublas{true};
+#endif  // PADDLE_WITH_CUDA
 
 class DeviceContext {
  public:
