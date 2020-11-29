@@ -18,14 +18,13 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import CUDADeviceContext
 
 
 class TestTF32Switch(unittest.TestCase):
     def test_on_off(self):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            ctx = CUDADeviceContext(place)
+            ctx = core.CUDADeviceContext(place)
             self.assertTrue(ctx.get_cublas_switch())  # default
             ctx.set_cublas_switch(0)
             self.assertFalse(ctx.get_cublas_switch())  # turn off
@@ -41,7 +40,7 @@ class TestTF32OnMatmul(unittest.TestCase):
     def test_dygraph_without_out(self):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            tmp_ctx = CUDADeviceContext(place)
+            tmp_ctx = core.CUDADeviceContext(place)
             print(tmp_ctx.get_cublas_switch())
             tmp_ctx.set_cublas_switch(0)  # turn off
             print(tmp_ctx.get_cublas_switch())
