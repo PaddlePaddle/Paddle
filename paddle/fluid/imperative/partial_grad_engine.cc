@@ -367,7 +367,7 @@ class GradientAccumulationInfo {
                           "Reference count overflows, this may be a bug"));
 
     *is_finished = (cur_ref_cnt_ == total_ref_cnt_);
-    accumulator_->Add(grad_var_partial, trace_id, unchange_input);
+    accumulator_->SumGrad(grad_var_partial, trace_id, unchange_input);
 
     if (create_graph_) {
       VLOG(10) << "Store partial grad grad for double grad "

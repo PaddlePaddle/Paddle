@@ -207,12 +207,10 @@ void VarBase::ClearGradient() {
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {
-        auto* dev_ctx =
-            platform::DeviceContextPool::Instance().Get(grad_t->place());
-        operators::math::set_constant(*dev_ctx, grad_t, 0.0);
 #ifdef PADDLE_WITH_MKLDNN
         if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
 #endif
+        grad_t->clear();
       }
     }
   }

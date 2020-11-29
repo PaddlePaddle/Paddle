@@ -38,7 +38,21 @@ namespace imperative {
 void BasicEngine::Init(VarBase* var, bool retain_graph) {
   retain_graph_ = retain_graph;
   init_node_ = var->GradVarBase()->GradNode();
-  var->GradVarBase()->ClearGradNode();
+  PADDLE_ENFORCE_EQ(
+      var->GradVarBase()->GraphIsFree(), false,
+      platform::errors::Unavailable(
+          "%s Trying to backward through the same graph a second time, but "
+          "this "
+          "graph have already been freed. Please specify retain_graph=True "
+          "when calling backward the first time.",
+          var->Name()));
+
+  if (!retain_graph) {
+    VLOG(5) << "Clear the auto-grad graph from grad var " << var->Name()
+            << " because of retain_graph=False when calling backward";
+    var->GradVarBase()->SetGraphIsFree(true);
+    var->GradVarBase()->ClearGradNode();
+  }
 
   if (init_node_ == nullptr || var->OverridedStopGradient()) {
     VLOG(3) << "Skip auto grad since there is no grad op for var or loss is "
@@ -47,7 +61,7 @@ void BasicEngine::Init(VarBase* var, bool retain_graph) {
     return;
   }
 
-  VLOG(3) << "start backward";
+  VLOG(3) << "Init first node of backward";
 
   PADDLE_ENFORCE_EQ(
       var->HasGradVar(), true,
@@ -114,6 +128,8 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
 
       accumulator->IncreaseRefCnt();
 
+      VLOG(3) << "Prepare acccumulator for grad variable " << var->Name();
+
       if (var->HasLeafHooks()) {
         VLOG(3) << "Grad variable wrapper (" << var->Name()
                 << ") has leaf grad hooks.";
@@ -123,10 +139,6 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
                               "Gradientaccumulator."));
         accumulator->SetPostHooks(var->GetLeafHooks());
       }
-
-      VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
-              << var.get() << ")  with reference count "
-              << accumulator->RefCnt();
     }
   }
 }
@@ -195,8 +207,9 @@ void BasicEngine::Execute() {
       auto& bwd_outs = cur_op.GetOutsMap();
 
       NameVarMap<VariableWrapper> tmp_outs(bwd_outs);
-      // 1. construct the output map 2. replace the element in the map
-      // A var may be coresponding to several grad var in one op
+      // 1. construct the temp output map, avoid to disrupt graph
+      // 2. replace the element in the map by temp var, because a
+      // var may be coresponding to several grad var in one op
       for (auto& pair : tmp_outs) {
         if (!pair.second.IsGrad()) {
           continue;
@@ -213,15 +226,22 @@ void BasicEngine::Execute() {
               platform::errors::NotFound("Cannot find gradient of variable %s",
                                          var->Name()));
 
-          if (!var->OverridedStopGradient() && iter->second->RefCnt() == 1) {
-            no_need_run_accumulators_.emplace_back(iter->second.get());
-            continue;
+          // out_accumulators_ : hooks and accumulate-grad for leaf tensor
+          if (var->IsLeafGrad()) {
+            out_accumulators_.insert(iter->second.get());
+            if (iter->second->HasInteriorVar()) {
+              var = iter->second->InteriorVar();
+            }
           }
-
-          auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
-          tmp_var->SetType(var->Type());
-          var = tmp_var;
-          need_accu_var_list_.emplace_back(iter->second.get(), var);
+          if (var->OverridedStopGradient() || iter->second->RefCnt() > 1) {
+            auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
+            tmp_var->SetType(var->Type());
+            var = tmp_var;
+            need_accu_var_list_.emplace_back(iter->second.get(), var);
+            VLOG(10) << "create temporary var of " << var->Name()
+                     << " for sum gradient within this graph !";
+          }
+          VLOG(5) << "Real calculate var " << var;
         }
       }
 
@@ -231,22 +251,32 @@ void BasicEngine::Execute() {
                     cur_op.place());
       }
 
-      // Step 2: Sum Gradient & Call Accumulator Hooks
-      for (auto* accumulator : no_need_run_accumulators_) {
+      // Step 2: Sum Gradient of This graph
+      for (auto& pair : need_accu_var_list_) {
+        pair.first->SumGrad(std::move(pair.second), cur_op.id());
+      }
+
+      // Step 3: Call Hooks && Sum Gradient with Pre-Graph && Call BackwardHooks
+      for (auto* accumulator : out_accumulators_) {
+        if (!accumulator->SumGradCompleted()) {
+          continue;
+        }
+        // 1. Call Hooks for **interior_var_**
+
+        // 2. Sum Gradient with Previous Graph
+        accumulator->AccumulateGrad();
+
+        // 3. Call backward Hooks
         if (accumulator->HasPostHooks()) {
           accumulator->CallBackwardPostHooks();
         }
       }
 
-      for (auto& pair : need_accu_var_list_) {
-        pair.first->Add(std::move(pair.second), cur_op.id());
-      }
-
       need_accu_var_list_.clear();
-      no_need_run_accumulators_.clear();
+      out_accumulators_.clear();
 
-      VLOG(3) << "Remove op after op " << cur_op.Type() << " runs";
       if (!retain_graph_) {
+        VLOG(3) << "Remove op after op " << cur_op.Type() << " runs";
         cur_op.ClearBackwardTrace();
       }
     }
@@ -276,7 +306,7 @@ void BasicEngine::Clear() {
   node_deps_.clear();
   accumulators_.clear();
   need_accu_var_list_.clear();
-  no_need_run_accumulators_.clear();
+  out_accumulators_.clear();
 }
 
 }  // namespace imperative

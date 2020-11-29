@@ -26,16 +26,82 @@ namespace imperative {
 
 class GradientAccumulator {
  public:
-  explicit GradientAccumulator(VariableWrapper* var) : var_(var) {}
+  explicit GradientAccumulator(VariableWrapper* var) {
+    VLOG(6) << " Create GradientAccumulator";
+    var_ = var;
 
-  virtual void Add(std::shared_ptr<VariableWrapper> var, size_t trace_id,
-                   bool unchange_input = false) = 0;
+    // var may be initialized, so Synchronous VariableWrapper with Variable
+    if (var_->Var().IsType<framework::LoDTensor>()) {
+      var_->SetType(framework::proto::VarType::LOD_TENSOR);
+    } else if (var_->Var().IsType<framework::SelectedRows>()) {
+      var_->SetType(framework::proto::VarType::SELECTED_ROWS);
+    }
+
+    bool is_initialized = false;
+    if (var_->Var().IsInitialized()) {
+      const framework::Tensor* tensor = nullptr;
+      if (var_->Var().IsType<framework::LoDTensor>()) {
+        tensor = &(var_->Var().Get<framework::LoDTensor>());
+      } else if (var_->Var().IsType<framework::SelectedRows>()) {
+        tensor = &(var_->Var().Get<framework::SelectedRows>()).value();
+      } else {
+        PADDLE_THROW(platform::errors::PermissionDenied(
+            "Only support LoDTensor and SelectedRows for gradient var"));
+      }
+      if (tensor && tensor->IsInitialized()) {
+        is_initialized = true;
+      }
+    }
+
+    if (is_initialized) {
+      // Only generate interior var for leaf-tensor, which will record the grad
+      // of
+      // this auto-grad.
+      if (var_->IsLeafGrad()) {
+        interior_var_ = std::make_shared<VariableWrapper>(var_->Name());
+        interior_var_->SetType(var_->Type());
+        interior_var_->SetDataType(var_->DataType());
+        interior_var_->InnerSetOverridedStopGradient(
+            var_->InnerOverridedStopGradient());
+        VLOG(6) << " Create interior grad var for (" << var_->Name()
+                << ") to store result of this Graph";
+      }
+    }
+  }
+
+  // Sum Gradient with this Graph
+  virtual void SumGrad(std::shared_ptr<VariableWrapper> var, size_t trace_id,
+                       bool unchange_input = false) = 0;
 
   virtual ~GradientAccumulator() = default;
 
-  inline void IncreaseRefCnt() { ++ref_cnt_; }
+  inline void IncreaseRefCnt() {
+    ++ref_cnt_;
+    VLOG(6) << var_->Name() << " Increase total count to " << ref_cnt_;
+  }
+
+  inline void IncreaseCurCnt() {
+    ++cur_cnt_;
+    VLOG(6) << var_->Name() << " Increase current count to " << cur_cnt_
+            << ", total count: " << ref_cnt_;
+  }
+
+  inline size_t CurCnt() const { return cur_cnt_; }
 
   inline size_t RefCnt() const { return ref_cnt_; }
+
+  inline bool SumGradCompleted() const {
+    return cur_cnt_ == ref_cnt_ || ref_cnt_ == 1;
+  }
+
+  std::shared_ptr<VariableWrapper>& InteriorVar() { return interior_var_; }
+
+  // return the var that records result of this graph
+  VariableWrapper* Var() {
+    return interior_var_ != nullptr ? interior_var_.get() : var_;
+  }
+
+  inline bool HasInteriorVar() const { return interior_var_ != nullptr; }
 
   /* Hook related methods */
   inline bool HasPostHooks() const { return !post_hooks_.expired(); }
@@ -54,6 +120,11 @@ class GradientAccumulator {
       post_hooks_ = hooks;
     }
   }
+  // void CallHooks(){}
+  //  ** interior_var_ **
+
+  // Sum Gradient with Previous Graph
+  void AccumulateGrad();
 
   // call backward post hooks, such as reduce hook
   void CallBackwardPostHooks() {
@@ -71,8 +142,11 @@ class GradientAccumulator {
 
  protected:
   VariableWrapper* var_;
+  // NOTE: only gradient accumulater of leaf tensor
+  // should hold interior_var_, So not hold it by other
+  std::shared_ptr<VariableWrapper> interior_var_;
   size_t ref_cnt_{0};
-
+  size_t cur_cnt_{0};
   std::weak_ptr<LeafVarHookPipeline> post_hooks_;
 };
 
@@ -80,32 +154,16 @@ class EagerGradientAccumulator : public GradientAccumulator {
  public:
   using GradientAccumulator::GradientAccumulator;
 
-  void Add(std::shared_ptr<VariableWrapper> var, size_t trace_id,
-           bool unchange_input) override;
-
- private:
-  inline bool AccumulateCompleted() const { return cur_cnt_ == ref_cnt_; }
-
-  void IncreaseCurCnt() {
-    ++cur_cnt_;
-    VLOG(3) << "IncreaseCurCnt: cur_cnt " << cur_cnt_ << ", ref_cnt "
-            << ref_cnt_;
-    // After all tmp gradient being accumulated to grad var, run hooks
-    if (AccumulateCompleted() && HasPostHooks()) {
-      CallBackwardPostHooks();
-    }
-  }
-
- private:
-  size_t cur_cnt_{0};
+  void SumGrad(std::shared_ptr<VariableWrapper> var, size_t trace_id,
+               bool unchange_input) override;
 };
 
 class SortedGradientAccumulator : public GradientAccumulator {
  public:
   using GradientAccumulator::GradientAccumulator;
 
-  void Add(std::shared_ptr<VariableWrapper> var, size_t trace_id,
-           bool unchange_input) override;
+  void SumGrad(std::shared_ptr<VariableWrapper> var, size_t trace_id,
+               bool unchange_input) override;
 
  private:
   struct SavedVarInfo {

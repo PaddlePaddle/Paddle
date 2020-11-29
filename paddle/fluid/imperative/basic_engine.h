@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/imperative/engine.h"
@@ -49,9 +50,11 @@ class BasicEngine : public Engine {
       accumulators_;
   std::vector<std::pair<GradientAccumulator*, std::shared_ptr<VariableWrapper>>>
       need_accu_var_list_;
-  // Accumulators that does not need to perform accumulation operations,
-  // the ref_cnt_=1, corresponding to need_accu_var_list_
-  std::vector<GradientAccumulator*> no_need_run_accumulators_;
+  // out_accumulators_ is only for leaf tensor(hooks/accumulate grad)
+  std::unordered_set<GradientAccumulator*> out_accumulators_;
+
+  // TODO(zhouwei): in_accumulators_ is only for non-leaf tensor
+  // std::unordered_set<GradientAccumulator*> in_accumulators_;
   bool retain_graph_;
 };
 
