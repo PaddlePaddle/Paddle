@@ -199,7 +199,7 @@ void BasicEngine::Execute() {
       // CheckBackWardInput
       CheckBackwardInputs(cur_op);
 
-      // Step 1: Run Backward
+      // Step 1: Run Backward OP
       auto& bwd_ins = cur_op.GetInsMap();
       auto& bwd_outs = cur_op.GetOutsMap();
 

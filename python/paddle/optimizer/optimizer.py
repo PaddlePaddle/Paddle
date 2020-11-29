@@ -797,6 +797,8 @@ class Optimizer(object):
     def clear_grad(self):
         """
         Clear the gradients of all optimized parameters for model.
+
+        If not, new gradient will accumulat on previous gradient.
         
         Returns:
             None
