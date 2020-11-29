@@ -224,8 +224,6 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
-    if in_dygraph_mode():
-        return core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', x.dtype)
     check_variable_and_dtype(
         x, 'x',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
