@@ -39,9 +39,6 @@ class Node;
 using VarQuantScale =
     std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
 
-template <typename T>
-using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
-
 /*
  * Quantize all supported operators.
  */
