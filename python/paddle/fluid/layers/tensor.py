@@ -13,8 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
+
+import numpy
 import six
+import warnings
 from six.moves import reduce
+
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
@@ -27,8 +31,7 @@ from .layer_function_generator import templatedoc
 from . import utils
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.utils import deprecated
-import numpy
-import warnings
+
 from .utils import check_shape
 
 __all__ = [
@@ -556,6 +559,8 @@ def assign(input, output=None):
     """
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
+    is_inplace = True if output is not None else False
+
     if isinstance(input, Variable):
         check_dtype(
             input.dtype, 'input',
@@ -599,6 +604,9 @@ def assign(input, output=None):
                 'shape': list(input.shape),
                 value_name: values
             })
+
+    if is_inplace and in_dygraph_mode():
+        output._bump_inplace_version()
 
     return output
 
