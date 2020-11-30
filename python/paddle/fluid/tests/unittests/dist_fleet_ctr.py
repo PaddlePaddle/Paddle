@@ -102,7 +102,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 name="deep_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)),
             is_sparse=True,
-            padding_index=0)
+            padding_idx=0)
         dnn_pool = fluid.layers.sequence_pool(
             input=dnn_embedding, pool_type="sum")
         dnn_out = dnn_pool
