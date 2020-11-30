@@ -21,7 +21,7 @@ from paddle.fluid.op import Operator
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-"""
+
 
 def calculate_momentum_by_numpy(param,
                                 grad,
@@ -276,11 +276,11 @@ class TestSparseMomentumOp(unittest.TestCase):
 class TestSparseMomentumOp2(TestSparseMomentumOp):
     def init_kernel(self):
         self.use_nesterov = True
-"""
 
 
 class TestMomentumV2(unittest.TestCase):
     def test_momentum_dygraph(self):
+        paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
         linear = paddle.nn.Linear(13, 5)
