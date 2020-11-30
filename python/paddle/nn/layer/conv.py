@@ -145,7 +145,7 @@ class _ConvNd(layers.Layer):
         self._op_type = "conv" + str(dims) + 'd'
         if dims == 2 and (in_channels == groups and in_channels != 1 and
                           out_channels % in_channels == 0):
-            self.op_type = 'depthwise_conv2d'
+            self._op_type = 'depthwise_conv2d'
             self._use_cudnn = False
 
 
