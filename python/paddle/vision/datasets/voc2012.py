@@ -68,12 +68,11 @@ class VOC2012(Dataset):
                 def forward(self, image, label):
                     return paddle.sum(image), label
 
-            paddle.disable_static()
 
             normalize = Normalize(mean=[0.5, 0.5, 0.5],
                                   std=[0.5, 0.5, 0.5],
                                   data_format='HWC')
-            voc2012 = VOC2012(mode='train', transform=normalize, backend='cv2')
+            voc2012 = VOC2012(mode='train', transform=normalize)
 
             for i in range(10):
                 image, label= voc2012[i]
