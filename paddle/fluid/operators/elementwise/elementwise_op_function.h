@@ -60,8 +60,9 @@ inline static bool UseReduceColumn3To1(const framework::DDim &dout_dims,
                                        const framework::DDim &x_dims,
                                        const framework::DDim &y_dims,
                                        const int axis) {
+  VLOG(3) << "x_dims: " << x_dims << " y_dims: " << y_dims;
   if (x_dims == dout_dims && x_dims.size() == 3 && y_dims.size() == 1 &&
-      axis == 2 && x_dims[-1] && y_dims[-1]) {
+      axis == 2 && x_dims[2] == y_dims[0]) {
     return true;
   } else {
     return false;
@@ -72,12 +73,16 @@ inline static bool UseReduceColumn3To2(const framework::DDim &dout_dims,
                                        const framework::DDim &x_dims,
                                        const framework::DDim &y_dims,
                                        const int axis) {
+  VLOG(3) << "dout_dims: " << dout_dims << " x_dims: " << x_dims
+          << " y_dims: " << y_dims << " axis: " << axis;
   if (x_dims == dout_dims && x_dims.size() == 3 && y_dims.size() == 2 &&
-      axis == 1 && x_dims[1] && y_dims[1] && x_dims[2] && y_dims[2]) {
+      axis == 1 && x_dims[1] == y_dims[0] && x_dims[2] == y_dims[1]) {
+    VLOG(3) << "======= UseReduceColumn3To2 =====";
     return true;
   } else if (x_dims == dout_dims && x_dims.size() == 4 && y_dims.size() == 4 &&
              axis == 0 && y_dims[0] != 1 && y_dims[3] != 1 && y_dims[1] == 1 &&
              y_dims[2] == 1) {
+    VLOG(3) << "======= UseReduceColumn3To2 =====";
     return true;
   } else {
     return false;
@@ -1757,7 +1762,10 @@ static void ElemwiseYGradCUDA(const framework::ExecutionContext &ctx,
 
   if (dx && x_dims == dout.dims()) {
     VLOG(3) << "====== dx=dout =======";
-    dx->ShareDataWith(dout);
+    framework::TensorCopy(
+        dout, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), dx);
+    // dx->ShareDataWith(dout);
   }
   if (dy) {
     Sum<T> sum;
@@ -1823,7 +1831,10 @@ static void ElemwiseGrad2DYCUDA(const framework::ExecutionContext &ctx,
 
   if (dx && x_dims == dout.dims()) {
     VLOG(3) << "====== dx=dout =======";
-    dx->ShareDataWith(dout);
+    framework::TensorCopy(
+        dout, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), dx);
+    // dx->ShareDataWith(dout);
   }
   if (dy) {
     Sum<T> sum;
@@ -1959,6 +1970,8 @@ void ElemwiseGradComputeWithBroadcast(
       if (UseReduceColumn3To1(dout.dims(), x_dims, y_dims, axis)) {
         VLOG(3) << "=======use reduce column ========";
         ElemwiseYGradCUDA<DeviceContext, T>(ctx, dout, x_dims, dx, dy);
+      } else if (UseReduceColumn3To2(dout.dims(), x_dims, y_dims, axis)) {
+        ElemwiseGrad2DYCUDA<DeviceContext, T>(ctx, dout, x_dims, dx, dy);
       } else {
         ElemwiseGradBroadcast1CUDA(
             ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
