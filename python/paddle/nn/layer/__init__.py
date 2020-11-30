@@ -35,11 +35,11 @@ from .rnn import *
 from .vision import *
 
 from .transformer import *
-# from .activation import PReLU        #DEFINE_ALIAS
+from .activation import PReLU  #DEFINE_ALIAS
 from .activation import ReLU  #DEFINE_ALIAS
 from .activation import LeakyReLU  #DEFINE_ALIAS
 from .activation import Sigmoid  #DEFINE_ALIAS
-# from .activation import Softmax        #DEFINE_ALIAS
+from .activation import Softmax  #DEFINE_ALIAS
 from .activation import LogSoftmax  #DEFINE_ALIAS
 from .common import BilinearTensorProduct  #DEFINE_ALIAS
 from .common import Bilinear  #DEFINE_ALIAS
@@ -56,6 +56,9 @@ from .common import Dropout  #DEFINE_ALIAS
 from .common import Dropout2D  #DEFINE_ALIAS
 from .common import Dropout3D  #DEFINE_ALIAS
 from .common import AlphaDropout  #DEFINE_ALIAS
+from .common import Upsample  #DEFINE_ALIAS
+from .common import UpsamplingBilinear2D  #DEFINE_ALIAS
+from .common import UpsamplingNearest2D  #DEFINE_ALIAS
 from .pooling import AvgPool1D  #DEFINE_ALIAS
 from .pooling import AvgPool2D  #DEFINE_ALIAS
 from .pooling import AvgPool3D  #DEFINE_ALIAS

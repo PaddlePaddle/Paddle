@@ -115,6 +115,7 @@ class TestInputSpec(unittest.TestCase):
             self.assertTrue(len(net.forward.program_cache) == 1)
 
             # 2. test save load
+            net.inner_function(x)
             jit.save(net, './simple_net')
             infer_net = fluid.dygraph.jit.load('./simple_net')
             pred = infer_net(x)
@@ -263,8 +264,9 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             concrete_program_5 = foo.get_concrete_program(InputSpec([10]))
 
         # 6. specific unknown kwargs `e`=4
-        concrete_program_5 = foo.get_concrete_program(
-            InputSpec([10]), InputSpec([10]), e=4)
+        with self.assertRaises(TypeError):
+            concrete_program_5 = foo.get_concrete_program(
+                InputSpec([10]), InputSpec([10]), e=4)
 
     def test_concrete_program(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):

@@ -279,8 +279,15 @@ inline std::string GetErrorSumaryString(StrType&& what, const char* file,
             "Summary:\n----------------------\n";
   }
   sout << string::Sprintf("%s (at %s:%d)", std::forward<StrType>(what), file,
-                          line)
-       << std::endl;
+                          line);
+  if (FLAGS_call_stack_level < 2) {
+    // NOTE(chenweihang): if no C++ backtrace, give a hint to tell users
+    // how to show C++ backtrace, this hint only show in 2.0-rc verison,
+    // and will be removed in 2.0 official version
+    sout << "\n  [Hint: If you need C++ stacktraces for debugging, please set "
+            "`FLAGS_call_stack_level=2`.]";
+  }
+  sout << std::endl;
   return sout.str();
 }
 
@@ -902,6 +909,25 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
           ::paddle::platform::build_nvidia_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);                     \
     }                                                            \
+  } while (0)
+
+#define PADDLE_RETRY_CUDA_SUCCESS(COND)                                 \
+  do {                                                                  \
+    auto __cond__ = (COND);                                             \
+    int retry_count = 1;                                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                    \
+    constexpr auto __success_type__ =                                   \
+        ::paddle::platform::details::CudaStatusType<                    \
+            __CUDA_STATUS_TYPE__>::kSuccess;                            \
+    while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
+      __cond__ = (COND);                                                \
+      ++retry_count;                                                    \
+    }                                                                   \
+    if (UNLIKELY(__cond__ != __success_type__)) {                       \
+      auto __summary__ = ::paddle::platform::errors::External(          \
+          ::paddle::platform::build_nvidia_error_msg(__cond__));        \
+      __THROW_ERROR_INTERNAL__(__summary__);                            \
+    }                                                                   \
   } while (0)
 
 #undef DEFINE_CUDA_STATUS_TYPE

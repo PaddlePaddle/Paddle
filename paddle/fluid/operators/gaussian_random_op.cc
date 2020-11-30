@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -114,7 +115,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
@@ -197,3 +198,19 @@ REGISTER_OP_CPU_KERNEL(gaussian_random, ops::CPUGaussianRandomKernel<float>,
 REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
                        ops::CPUGaussianRandomBatchSizeLikeKernel<float>,
                        ops::CPUGaussianRandomBatchSizeLikeKernel<double>);
+REGISTER_OP_VERSION(gaussian_random)
+    .AddCheckpoint(
+        R"ROC(
+               Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList] 
+               and modify the attribute of [shape])ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput("ShapeTensor",
+                      "The output shape supports Tensor type. ShapeTensor is "
+                      "dispensable.")
+            .NewInput("ShapeTensorList",
+                      "The output shape supports list filled with Tensor. "
+                      "ShapeTensorList is dispensable.")
+            .ModifyAttr(
+                "shape",
+                "Add the default value of shape, the default value is {}.",
+                {}));

@@ -686,6 +686,8 @@ class Transpose(BaseTransform):
         if F._is_pil_image(img):
             img = np.asarray(img)
 
+        if len(img.shape) == 2:
+            img = img[..., np.newaxis]
         return img.transpose(self.order)
 
 

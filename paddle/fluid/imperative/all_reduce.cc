@@ -53,7 +53,7 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
 static void AllReduce(const framework::SelectedRows &src,
                       framework::SelectedRows *dst,
                       const ParallelStrategy &strategy, cudaStream_t stream) {
-  VLOG(0) << "SelectedRows AllReduce start";
+  VLOG(3) << "SelectedRows AllReduce start";
   const auto &src_tensor = src.value();
   const auto &place = src_tensor.place();
   PADDLE_ENFORCE_EQ(
@@ -72,7 +72,9 @@ static void AllReduce(const framework::SelectedRows &src,
   const auto &src_rows = src.rows();
   framework::Vector<int64_t> rows_num_vector(strategy.nranks_);
   rows_num_vector[strategy.local_rank_] = static_cast<int64_t>(src_rows.size());
+  // CUDAMutableData use CalStream
   auto *gpu_rows_num_ptr = rows_num_vector.CUDAMutableData(place);
+  if (stream != dev_ctx->stream()) dev_ctx->Wait();
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
       gpu_rows_num_ptr + strategy.local_rank_, gpu_rows_num_ptr, 1, ncclInt64,
       comm, stream));
@@ -87,17 +89,9 @@ static void AllReduce(const framework::SelectedRows &src,
                       static_cast<int64_t>(0));
   dst->set_height(src.height());
 
-  VLOG(0) << "Gather rows: " << string::join_strings(rows_num_vector, ',')
+  VLOG(3) << "Gather rows: " << string::join_strings(rows_num_vector, ',')
           << ", total rows number: " << rows_num
           << ", height: " << src.height();
-
-  PADDLE_ENFORCE_LE(
-      rows_num, src.height(),
-      platform::errors::Unimplemented(
-          "The gathered SelectedRows's rows number should less than or equal "
-          "to the SelectedRows's height, but the actual rows number is %d, the "
-          "SelectedRows's height is %d.",
-          rows_num, src.height()));
 
   auto *dst_rows = dst->mutable_rows();
   dst_rows->resize(rows_num);
@@ -114,6 +108,7 @@ static void AllReduce(const framework::SelectedRows &src,
 
   auto sizeof_dtype = framework::SizeOfType(dtype);
   int64_t row_offset = 0;
+  if (stream != dev_ctx->stream()) dev_ctx->Wait();
   for (int i = 0; i < strategy.nranks_; ++i) {
     if (cpu_rows_num_ptr[i] > 0) {
       // 2. Broadcast the rows of SelectedRows
@@ -130,9 +125,9 @@ static void AllReduce(const framework::SelectedRows &src,
     }
   }
 
-  VLOG(0) << "Original SelectedRows rows: "
+  VLOG(3) << "Original SelectedRows rows: "
           << string::join_strings(src_rows, ',');
-  VLOG(0) << "Result SelectedRows rows: "
+  VLOG(3) << "Result SelectedRows rows: "
           << string::join_strings(*dst_rows, ',');
 }
 #endif

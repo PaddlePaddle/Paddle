@@ -122,6 +122,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
+  CP_MEMBER(trt_use_oss_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -175,6 +176,20 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #undef CP_MEMBER
 
   Update();
+  if (use_tensorrt_) {
+    // Update() will reset all the passes, when some tensorRT pass is deleted in
+    // other.pass_builder(), it will set again, so we just remove the
+    // deleted_pass.
+    auto all_passes = kTRTSubgraphPasses;
+    auto other_passes = other.pass_builder()->AllPasses();
+    std::vector<std::string> deleted_passes;
+    std::set_difference(all_passes.begin(), all_passes.end(),
+                        other_passes.begin(), other_passes.end(),
+                        std::inserter(deleted_passes, deleted_passes.begin()));
+    for (auto ps : deleted_passes) {
+      pass_builder_->DeletePass(ps);
+    }
+  }
 }
 
 void AnalysisConfig::EnableCUDNN() {
@@ -279,6 +294,8 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   optim_input_shape_ = optim_input_shape;
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
+
+void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {

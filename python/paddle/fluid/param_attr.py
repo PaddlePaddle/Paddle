@@ -56,7 +56,7 @@ class ParamAttr(object):
                 no regularization.
         trainable (bool): Whether this parameter is trainable. Default True.
         do_model_average (bool): Whether this parameter should do model average
-                when model average is enabled. Default False.
+                when model average is enabled. Only used in ExponentialMovingAverage. Default True.
         need_clip (bool): Whether the parameter gradient need to be cliped in optimizer. Default is True.
 
     Examples:
@@ -210,7 +210,7 @@ class ParamAttr(object):
 
 
 class WeightNormParamAttr(ParamAttr):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Note:

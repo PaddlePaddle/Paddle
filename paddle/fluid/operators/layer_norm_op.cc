@@ -15,6 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/layer_norm_op.h"
 #include <memory>
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -91,6 +95,25 @@ class LayerNormOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Variance", {left});
     ctx->ShareLoD("X", "Y");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const {
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        this->CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+    }
+#endif
+
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout, library);
+  }
 };
 
 class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -134,6 +157,18 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "greater than zero. But received [%d].",
                                 begin_norm_axis));
         });
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "bfloat16"});
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Assume feature vectors exist on dimensions
