@@ -1239,6 +1239,8 @@ def cross_entropy(input,
             else:
                 return core.ops.mean(out)
         else:
+            if input_dims - 1 == label_dims:
+                out = paddle.squeeze(out, axis=axis)
             return out
 
     fluid.data_feeder.check_variable_and_dtype(
@@ -1270,6 +1272,9 @@ def cross_entropy(input,
         else:
             return paddle.mean(out, name=name)
     else:
+        if input_dims - 1 == label_dims:
+            out = paddle.squeeze(out, axis=axis)
+
         return out
 
 
