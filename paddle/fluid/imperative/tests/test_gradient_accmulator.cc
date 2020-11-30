@@ -282,8 +282,14 @@ static void TestGradientAccumulatorTestUnchangeInput(
       auto var1 = create_var(use_tensor1);
       auto var_wrapper1_1 = std::make_shared<VariableWrapper>("tmp1_1");
       auto var_wrapper2_1 = std::make_shared<VariableWrapper>("tmp2_1");
+
+      ASSERT_EQ(var_wrapper1_1->IsEmpty(), true);
       CopyVar(var1, var_wrapper1_1->MutableVar());
+      ASSERT_EQ(var_wrapper1_1->IsEmpty(), false);
+
+      ASSERT_EQ(var_wrapper2_1->IsEmpty(), true);
       CopyVar(var1, var_wrapper2_1->MutableVar());
+      ASSERT_EQ(var_wrapper2_1->IsEmpty(), false);
 
       auto var2 = create_var(use_tensor2);
       auto var_wrapper1_2 = std::make_shared<VariableWrapper>("tmp1_2");

@@ -485,12 +485,14 @@ class TestImperative(unittest.TestCase):
             for i in range(10):
                 y = paddle.pow(x, 4.0)
                 y.backward()
+                print(x.grad)
                 self.assertEqual(x.grad, (i + 1) * 500)
             x.clear_gradient()
             self.assertEqual(x.grad, 0.)
             for i in range(5):
                 y = paddle.pow(x, 4.0)
                 y.backward()
+                print(x.grad)
                 self.assertEqual(x.grad, (i + 1) * 500)
 
         def test_simple_net(sort_sum_gradient):

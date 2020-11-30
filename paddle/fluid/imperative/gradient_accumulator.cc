@@ -368,7 +368,7 @@ void GradientAccumulator::AccumulateGrad() {
    * If the gradient has been calculated by previous graph,
    * it should be added to the previous graph result.
    */
-  if (!var_->IsLeafGrad() || !SumGradCompleted()) {
+  if (!var_->IsLeafGrad() || !SumGradCompleted() || !HasInnerVar()) {
     return;
   }
   PADDLE_ENFORCE_EQ(HasInnerVar(), true,
@@ -409,7 +409,6 @@ void GradientAccumulator::AccumulateGrad() {
     var_->SetType(inner_var_->Type());
     var_->SetDataType(inner_var_->DataType());
   }
-  var_->SetIsEmpty(false);
   inner_var_.reset();
 }
 

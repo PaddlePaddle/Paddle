@@ -228,7 +228,7 @@ void BasicEngine::Execute() {
                                          var->Name()));
 
           // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor
-          if (var->IsLeafGrad()) {
+          if (var->IsLeafGrad() && iter->second->HasInnerVar()) {
             leaf_accumulators_.insert(iter->second.get());
 
             PADDLE_ENFORCE_EQ(

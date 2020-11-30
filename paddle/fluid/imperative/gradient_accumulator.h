@@ -37,8 +37,8 @@ class GradientAccumulator {
     }
 
     // inner_var_ record the grad of this auto-grad.
-    // Only generate inner var for leaf-tensor.
-    if (var->IsLeafGrad()) {
+    // Only need to generate inner var for non-empty leaf-tensor.
+    if (var->IsLeafGrad() && !var->IsEmpty()) {
       inner_var_ = std::make_shared<VariableWrapper>(var->Name());
       inner_var_->SetType(var->Type());
       inner_var_->SetDataType(var->DataType());
@@ -47,6 +47,9 @@ class GradientAccumulator {
       VLOG(6) << " Create inner grad var for (" << var->Name()
               << ") to store result of this Graph";
     }
+
+    // TODO(zhouwei): fix Tensor.clear_gradient() bug, remove this hard flag
+    var->SetIsEmpty(false);
 
     // var_ is the final grad, processed by hooks and grad accumulation
     var_ = var;

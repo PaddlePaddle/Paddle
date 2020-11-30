@@ -96,12 +96,13 @@ class VariableWrapper {
       if (var_.IsType<framework::LoDTensor>()) {
         tensor = &(var_.Get<framework::LoDTensor>());
       } else if (var_.IsType<framework::SelectedRows>()) {
-        tensor = &(var_.Get<framework::SelectedRows>()).value();
+        tensor = &(var_.Get<framework::SelectedRows>().value());
       } else {
         PADDLE_THROW(platform::errors::PermissionDenied(
             "Only support LoDTensor and SelectedRows for gradient var"));
       }
       if (tensor && tensor->IsInitialized()) {
+        VLOG(6) << "tensor has been initialized:  ========" << *(tensor);
         is_empty = false;
       }
     }
