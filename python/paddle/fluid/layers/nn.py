@@ -1755,6 +1755,7 @@ def conv3d(input,
           paddle.enable_static()
           data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
           conv3d = paddle.static.nn.conv3d(input=data, num_filters=2, filter_size=3, act="relu")
+	  print(conv3d.shape) # (-1, 2, 10, 30, 30)
     """
 
     l_type = 'conv3d'
@@ -4213,6 +4214,7 @@ def conv3d_transpose(input,
           paddle.enable_static()
           data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
           conv3d_transpose = paddle.static.nn.conv3d_transpose(input=data, num_filters=2, filter_size=3)
+	  print(conv3d.shape) # (-1, 2, 14, 34, 34)
     """
     assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
     if data_format not in ['NCDHW', 'NDHWC']:
