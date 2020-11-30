@@ -561,7 +561,6 @@ class DistributedStrategy(object):
 
     @last_comm_group_size_MB.setter
     @is_strict_auto
-    @dygraph_only
     def last_comm_group_size_MB(self, value):
         if value > 0:
             self.strategy.last_comm_group_size_MB = value
