@@ -54,6 +54,9 @@ template <typename Place>
 void Free(const Place &place, void *p, size_t size);
 
 template <typename Place>
+uint64_t Release(const Place &place);
+
+template <typename Place>
 size_t Used(const Place &place);
 
 struct Usage : public boost::static_visitor<size_t> {
@@ -97,6 +100,11 @@ void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p,
                               size_t size) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
+}
+
+template <>
+uint64_t Release<platform::CPUPlace>(const platform::CPUPlace &place) {
+  return GetCPUBuddyAllocator()->Release();
 }
 
 template <>
@@ -180,6 +188,17 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
                         "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
+#else
+  PADDLE_THROW(
+      platform::errors::PermissionDenied("'XPUPlace' is not supported."));
+#endif
+}
+
+template <>
+uint64_t Release<platform::XPUPlace>(const platform::XPUPlace &place) {
+#ifdef PADDLE_WITH_XPU
+  PADDLE_THROW(
+      platform::errors::PermissionDenied("Release XPU pool is not supported."));
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
@@ -313,6 +332,16 @@ void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
 #endif
 }
 
+template <>
+uint64_t Release<platform::CUDAPlace>(const platform::CUDAPlace &place) {
+#ifdef PADDLE_WITH_CUDA
+  return GetGPUBuddyAllocator(place.device)->Release();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CUDAPlace' is not supported in CPU only device."));
+#endif
+}
+
 #ifdef PADDLE_WITH_CUDA
 BuddyAllocator *GetCUDAPinnedBuddyAllocator() {
   static std::once_flag init_flag;
@@ -371,6 +400,17 @@ void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
 #endif
 }
 
+template <>
+uint64_t Release<platform::CUDAPinnedPlace>(
+    const platform::CUDAPinnedPlace &place) {
+#ifdef PADDLE_WITH_CUDA
+  return GetCUDAPinnedBuddyAllocator()->Release();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CUDAPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+
 struct AllocVisitor : public boost::static_visitor<void *> {
   inline explicit AllocVisitor(size_t size) : size_(size) {}
 
@@ -395,6 +435,13 @@ struct FreeVisitor : public boost::static_visitor<void> {
  private:
   void *ptr_;
   size_t size_;
+};
+
+struct ReleaseVisitor : public boost::static_visitor<uint64_t> {
+  template <typename Place>
+  inline uint64_t operator()(const Place &place) const {
+    return Release<Place>(place);
+  }
 };
 
 size_t Usage::operator()(const platform::CPUPlace &cpu) const {
@@ -437,6 +484,10 @@ void NaiveBestFitAllocator::FreeImpl(Allocation *allocation) {
   platform::MemEvenRecorder::Instance().PopMemRecord(
       static_cast<void *>(allocation), place_);
   delete allocation;
+}
+
+uint64_t NaiveBestFitAllocator::ReleaseImpl(const platform::Place &place) {
+  return boost::apply_visitor(legacy::ReleaseVisitor(), place);
 }
 
 }  // namespace allocation

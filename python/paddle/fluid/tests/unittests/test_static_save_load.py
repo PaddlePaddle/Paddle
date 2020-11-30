@@ -28,6 +28,7 @@ import numpy as np
 import six
 import pickle
 import os
+import errno
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -1153,20 +1154,49 @@ class TestProgramStateOldSave(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
+            # case 1: load basic
             program_state = fluid.load_program_state("test_program_1")
             fluid.set_program_state(main_program, program_state)
+            self.check_in_static(main_program, base_map)
 
-            for var in main_program.list_vars():
-                if isinstance(var, framework.Parameter) or var.persistable:
-                    new_t = np.array(fluid.global_scope().find_var(var.name)
-                                     .get_tensor())
-                    base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+            # case 2: load with no need file
+            def symlink_force(target, link_name):
+                try:
+                    os.symlink(target, link_name)
+                except OSError as e:
+                    if e.errno == errno.EEXIST:
+                        os.remove(link_name)
+                        os.symlink(target, link_name)
+                    else:
+                        raise e
 
+            orig_filepath = './test_program_1/fc_0.w_0'
+            symlink_filepath = './test_program_1/link_fc_0.w_0'
+            # create a needless link file for coverage
+            symlink_force(orig_filepath, symlink_filepath)
+            program_state = fluid.load_program_state("test_program_1")
+            fluid.set_program_state(main_program, program_state)
+            self.check_in_static(main_program, base_map)
+
+            # case 3: load with var_list
+            program_state = fluid.load_program_state(
+                "test_program_1", main_program.all_parameters())
+            fluid.set_program_state(main_program, program_state)
+            self.check_in_static(main_program, base_map)
+
+        # make sure `load_program_state` can be used in dynamic graph mode
         with fluid.dygraph.guard(place):
             load_state = fluid.load_program_state("test_program_1")
             for k, v in load_state.items():
                 self.assertTrue(np.array_equal(base_map[k], v))
+
+    def check_in_static(self, main_program, base_map):
+        for var in main_program.list_vars():
+            if isinstance(var, framework.Parameter) or var.persistable:
+                new_t = np.array(fluid.global_scope().find_var(var.name)
+                                 .get_tensor())
+                base_t = base_map[var.name]
+                self.assertTrue(np.array_equal(new_t, base_t))
 
 
 class TestProgramStateOldSaveSingleModel(unittest.TestCase):
@@ -1301,4 +1331,5 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

@@ -113,6 +113,15 @@ def parse_arg_and_kwargs(function):
     return arg_names, default_kwargs
 
 
+def parse_varargs_name(function):
+    """
+    Returns varargs name string of function. e.g: 'input' from `foo(x, *input)`
+    """
+    fullargspec = getfullargspec(function)
+    varargs = fullargspec.varargs
+    return varargs
+
+
 def type_name(v):
     return type(v).__name__
 
@@ -149,7 +158,14 @@ def _is_api_in_module_helper(obj, module_prefix):
 
 def is_api_in_module(node, module_prefix):
     assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
-    func_str = astor.to_source(gast.gast_to_ast(node.func))
+
+    # Python can have gast.Call as function, for example: covert_call(func)(x)
+    # We only check the most outside function
+    func_node = node.func
+    while isinstance(func_node, gast.Call):
+        func_node = func_node.func
+
+    func_str = astor.to_source(gast.gast_to_ast(func_node)).strip()
     try:
         # TODO(liym27):
         #  Consider a better to import modules like:
@@ -471,11 +487,17 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     else:
         module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
-    if not hasattr(module, func_name):
+    # The 'forward' or 'another_forward' of 'TranslatedLayer' cannot be obtained
+    # through 'func_name'. So set the special function name '__i_m_p_l__'.
+    if hasattr(module, '__i_m_p_l__'):
+        callable_func = getattr(module, '__i_m_p_l__')
+        callable_func.__name__ = func_name
+    elif hasattr(module, func_name):
+        callable_func = getattr(module, func_name)
+    else:
         raise ValueError(
             'Function: %s doesn\'t exist in the Module transformed from AST.' %
             func_name)
-    callable_func = getattr(module, func_name)
     # After transform dygraph function into callable_func saved in tmp file,
     # it lost the global variables from imported statements or defined in source file.
     # Recovers the necessary variables by `__globals__`.

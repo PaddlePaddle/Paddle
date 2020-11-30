@@ -174,8 +174,17 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices(false);
-    scope_.reset(new paddle::framework::Scope());
+    paddle::framework::InitDevices();
+    scope_.reset(new paddle::framework::Scope(), [](framework::Scope *scope) {
+      delete scope;
+#ifdef PADDLE_WITH_CUDA
+      for (int dev_id = 0; dev_id < paddle::platform::GetCUDADeviceCount();
+           ++dev_id) {
+        memory::Release(platform::CUDAPlace(dev_id));
+      }
+#endif
+      memory::Release(platform::CPUPlace());
+    });
     status_is_cloned_ = false;
   }
   sub_scope_ = &scope_->NewScope();
@@ -470,6 +479,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
+    argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
     argument_.SetMinInputShape(config_.min_input_shape_);
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
@@ -590,7 +600,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         gflags.push_back("--allocator_strategy=thread_local");
         process_level_allocator_enabled = false;
       } else {
-        gflags.push_back("--allocator_strategy=naive_best_fit");
         process_level_allocator_enabled = true;
       }
 
@@ -889,6 +898,11 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
+uint64_t AnalysisPredictor::TryShrinkMemory() {
+  ClearIntermediateTensor();
+  return paddle::memory::Release(place_);
+}
+
 void AnalysisPredictor::ClearIntermediateTensor() {
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
                           platform::errors::PreconditionNotMet(
@@ -984,6 +998,8 @@ AnalysisPredictor::~AnalysisPredictor() {
     mkldnn_quantizer_ = nullptr;
   }
 #endif
+
+  memory::Release(place_);
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
@@ -1055,7 +1071,7 @@ USE_TRT_CONVERTER(elementwise_mul_tensor);
 USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
-USE_TRT_CONVERTER(mul);
+USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(sigmoid);
@@ -1140,6 +1156,8 @@ std::unique_ptr<Predictor> Predictor::Clone() {
 void Predictor::ClearIntermediateTensor() {
   predictor_->ClearIntermediateTensor();
 }
+
+uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
 int GetNumBytesOfDataType(DataType dtype) {
   switch (dtype) {

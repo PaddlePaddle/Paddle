@@ -51,6 +51,7 @@ class MKLDNNHandlerT {
     } else {
       key_ = key_common_ + "-t:" + ThreadIDasStr();
     }
+    key_ += dev_ctx.GetKeySuffix();
   }
 
   std::shared_ptr<TForward> AcquireForwardPrimitive() {
@@ -191,6 +192,12 @@ class MKLDNNHandlerT {
   }
 
   std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
+      const std::string& suffix) {
+    return std::static_pointer_cast<mkldnn::memory>(
+        dev_ctx_.GetBlob(key_ + suffix));
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
       mkldnn::memory::desc md, void* ptr, const std::string& suffix) {
     const auto local_key = key_ + suffix;
     auto mem_p =
@@ -310,6 +317,7 @@ class MKLDNNHandler {
     } else {
       key_ = key_common_ + "-t:" + ThreadIDasStr();
     }
+    key_ += dev_ctx.GetKeySuffix();
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
@@ -589,59 +597,6 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
                           {scale_1});
     return attributes;
   }
-};
-
-class SumMKLDNNHandler : public MKLDNNHandler {
- public:
-  SumMKLDNNHandler(const platform::MKLDNNDeviceContext& dev_ctx,
-                   mkldnn::engine engine, const std::string& base_key)
-      : platform::MKLDNNHandler(dev_ctx, engine, base_key) {}
-
-  std::shared_ptr<mkldnn::sum::primitive_desc> AcquireSumPrimitiveDescriptor(
-      const std::vector<std::shared_ptr<mkldnn::memory>>& src_mems,
-      const std::vector<float>& scales, const mkldnn::memory::desc& dst_md) {
-    const std::string key_sum_pd = key_ + "@sum_pd";
-
-    sum_pd_ = std::static_pointer_cast<mkldnn::sum::primitive_desc>(
-        dev_ctx_.GetBlob(key_sum_pd));
-    if (sum_pd_ == nullptr) {
-      // Get vector of inputs primitive descriptors
-      std::vector<mkldnn::memory::desc> src_ds;
-      for (auto& input_mem : src_mems) {
-        src_ds.push_back(input_mem->get_desc());
-      }
-
-      sum_pd_.reset(
-          new mkldnn::sum::primitive_desc(dst_md, scales, src_ds, engine_));
-      dev_ctx_.SetBlob(key_sum_pd, sum_pd_);
-    }
-
-    return sum_pd_;
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(void* ptr) {
-    return this->AcquireMemoryFromPrimitive(sum_pd_->dst_desc(), ptr,
-                                            "@dst_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_src2_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::sum> AcquireSum() {
-    auto prim_key = key_ + "@sum_p";
-    auto sum_p =
-        std::static_pointer_cast<mkldnn::sum>(dev_ctx_.GetBlob(prim_key));
-    if (sum_p == nullptr) {
-      sum_p = std::make_shared<mkldnn::sum>(*sum_pd_);
-      dev_ctx_.SetBlob(prim_key, sum_p);
-    }
-    return sum_p;
-  }
-
- private:
-  std::shared_ptr<mkldnn::sum::primitive_desc> sum_pd_;
 };
 
 template <typename T>

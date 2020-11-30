@@ -35,20 +35,20 @@ __all__ = [
 
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
-    """
+    r"""
     This op normalizes ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
 
     .. math::
 
-        y = \frac{x}{ \max\left( \lvert \lvert x \rvert \rvert_p, epsilon\right) }
+        y = \\frac{x}{ \\max\\left( \\lvert \\lvert x \\rvert \\rvert_p, epsilon\\right) }
     
     .. math::
-        \lvert \lvert x \rvert \rvert_p = \left(\sum_i {\lvert x_i\rvert^p}  \right)^{1/p}
+        \\lvert \\lvert x \\rvert \\rvert_p = \\left( \\sum_i {\\lvert x_i \\rvert^p}  \\right)^{1/p}
 
-    where, :math:`\sum_i{\lvert x_i\rvert^p}` is calculated along the ``axis`` dimension.
+    where, :math:`\\sum_i{\\lvert x_i \\rvert^p}` is calculated along the ``axis`` dimension.
 
 
-    Args:
+    Parameters:
         x (Tensor): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
         p (float|int, optional): The exponent value in the norm formulation. Default: 2
         axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension. 
@@ -150,7 +150,6 @@ def batch_norm(x,
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           x = np.random.seed(123)
           x = np.random.random(size=(2, 1, 2, 3)).astype('float32')
           running_mean = np.random.random(size=1).astype('float32')
@@ -163,7 +162,7 @@ def batch_norm(x,
           w = paddle.to_tensor(weight_data)
           b = paddle.to_tensor(bias_data)
           batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv, w, b)
-          print(batch_norm_out.numpy())
+          print(batch_norm_out)
     """
 
     assert len(x.shape) >= 2, "input dim must be larger than 1"
@@ -269,14 +268,13 @@ def layer_norm(x,
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           layer_norm = paddle.nn.functional.layer_norm(x, x.shape[1:])
           layer_norm_out = layer_norm(x)
 
-          print(layer_norm_out.numpy())
+          print(layer_norm_out)
     """
     input_shape = list(x.shape)
     input_ndim = len(input_shape)
@@ -362,13 +360,12 @@ def instance_norm(x,
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           instance_norm_out = paddle.nn.functional.instancenorm(x)
 
-          print(instance_norm_out.numpy())
+          print(instance_norm_out)
 
     """
 
@@ -412,7 +409,7 @@ def local_response_norm(x,
                         k=1.,
                         data_format="NCHW",
                         name=None):
-    """
+    r"""
         Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
         For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
 

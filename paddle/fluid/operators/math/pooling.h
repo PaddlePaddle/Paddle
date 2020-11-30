@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -56,7 +57,7 @@ class MaxPoolGrad {
  public:
   DEVICE inline void compute(const T& x, const T& y, const T& dy, T scale,
                              T* dx) {
-    *dx += dy * (x == y);
+    *dx += dy * static_cast<T>(x == y);
   }
 };
 
