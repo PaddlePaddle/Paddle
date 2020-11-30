@@ -898,12 +898,15 @@ class TestCos(TestActivation):
 
 class TestTan(TestActivation):
     def setUp(self):
-        self.op_type = "cos"
-        self.init_dtype()
-
         np.random.seed(1024)
-        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
-        out = np.cos(x)
+        self.op_type = "tan"
+        self.init_dtype()
+        self.dtype = 'float32'
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+        out = np.tan(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -912,6 +915,24 @@ class TestTan(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out_test = paddle.tan(x)
+        out_ref = np.tan(self.x_np)
+        self.assertEqual(np.allclose(out_ref, out_test.numpy()), True)
+        paddle.enable_static()
+
+    def test_static_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', [10, 12], self.dtype)
+            out = paddle.tan(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = np.tan(self.x_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
 
 
 class TestAcos(TestActivation):
