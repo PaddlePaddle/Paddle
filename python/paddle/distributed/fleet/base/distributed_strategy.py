@@ -18,6 +18,7 @@ from paddle.fluid.framework import Variable, set_flags, core
 from paddle.fluid.wrapped_decorator import wrap_decorator
 import google.protobuf.text_format
 import google.protobuf
+from paddle.fluid.framework import dygraph_only
 
 __all__ = ["DistributedStrategy"]
 
@@ -539,6 +540,33 @@ class DistributedStrategy(object):
             self.strategy.fuse_grad_size_in_MB = value
         else:
             print("WARNING: fuse_grad_size_in_MB should have value of int type")
+
+    @property
+    def last_comm_group_size_MB(self):
+        """
+        Specifying the size of gradient to fuse in Mega-Bytes when 
+        the last group of each batch communicates. Making the last group 
+        small is useful to improve performance. 
+
+        Default value: 1
+
+        Examples:
+          .. code-block:: python
+        
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.last_comm_group_size_MB = 2
+        """
+        return self.strategy.last_comm_group_size_MB
+
+    @last_comm_group_size_MB.setter
+    @is_strict_auto
+    @dygraph_only
+    def last_comm_group_size_MB(self, value):
+        if value > 0:
+            self.strategy.last_comm_group_size_MB = value
+        else:
+            raise ValueError("last_comm_group_size_MB should be greater than 0")
 
     @property
     def _fuse_grad_size_in_TFLOPS(self):
