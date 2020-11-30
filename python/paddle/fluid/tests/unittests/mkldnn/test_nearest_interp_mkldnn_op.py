@@ -111,7 +111,6 @@ class TestNearestNeighborInterpMKLDNNCase2(TestNearestInterpMKLDNNOp):
         self.use_mkldnn = True
 
 
-# it seems if the out_w and out_h are smaller than input_w and inut_h, then this downsampling will use center numbers
 class TestNearestNeighborInterpDataLayout(TestNearestInterpMKLDNNOp):
     def init_test_case(self):
         self.interp_method = 'nearest'
@@ -119,7 +118,6 @@ class TestNearestNeighborInterpDataLayout(TestNearestInterpMKLDNNOp):
         self.out_h = 6
         self.out_w = 7
         self.scale = 0.
-        # self.out_size = np.array([3, 8]).astype("int32")
         self.align_corners = True
         self.data_layout = "NHWC"
         self.use_mkldnn = True

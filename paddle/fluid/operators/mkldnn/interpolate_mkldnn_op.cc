@@ -32,19 +32,18 @@ template <typename T = float>
 class InterpolateMKLDNNHandler
     : public platform::MKLDNNHandlerT<T, dnnl::resampling_forward> {
  public:
-  InterpolateMKLDNNHandler(
-      const dnnl::algorithm algo,
-      const paddle::platform::MKLDNNDeviceContext& dev_ctx,
-      const dnnl::engine engine, platform::Place cpu_place, const Tensor* x,
-      Tensor* z,                     /*const std::vector<float>& scale,*/
-      const std::string& uniq_name)  // unique_name is ctx.OutputName("Out")
+  InterpolateMKLDNNHandler(const dnnl::algorithm algo,
+                           const paddle::platform::MKLDNNDeviceContext& dev_ctx,
+                           const dnnl::engine engine, platform::Place cpu_place,
+                           const Tensor* x, Tensor* z,
+                           const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::resampling_forward>(
             dev_ctx, engine, cpu_place,
-            platform::CreateKey(framework::vectorize(x->dims()),
-                                uniq_name +
-                                    (algo == dnnl::algorithm::resampling_nearest
-                                         ? "N"
-                                         : "L"))) {
+            platform::CreateKey(
+                framework::vectorize(x->dims()),
+                uniq_name + (algo == dnnl::algorithm::resampling_nearest
+                                 ? "N"
+                                 : "L"))) {
     if (!this->isCached()) {
       const auto src_x_tz = framework::vectorize(x->dims());
       const auto dst_tz = framework::vectorize(z->dims());
@@ -69,9 +68,6 @@ class InterpolateMKLDNNHandler
     this->fwd_pd_ =
         std::static_pointer_cast<dnnl::resampling_forward::primitive_desc>(
             this->dev_ctx_.GetBlob(key_pd));
-    if (this->fwd_pd_ == nullptr) {
-      std::cout << "ERROR!" << std::endl;
-    }
     return this->fwd_pd_;
   }
 
@@ -106,16 +102,6 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
 
     const auto* x = ctx.Input<Tensor>("X");
     std::vector<float> scale_prior;
-    // if (ctx.HasInput("Scale")) {
-    //   auto* tmp_tensor = ctx.Input<Tensor>("Scale");
-    //   auto scale_temp = *(tmp_tensor->data<float>());
-    //   scale_prior.push_back(scale_temp);
-    //   scale_prior.push_back(scale_temp);
-    // } else {
-    //   auto scale_temp = ctx.Attr<float>("scale");
-    //   scale_prior.push_back(scale_temp);
-    //   scale_prior.push_back(scale_temp);
-    // }
     auto* z = ctx.Output<Tensor>("Out");
 
     auto interp_method = ctx.Attr<std::string>("interp_method");
@@ -123,7 +109,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     dnnl::algorithm algo = (interp_method == "nearest")
                                ? dnnl::algorithm::resampling_nearest
                                : dnnl::algorithm::resampling_linear;
-    // highest priority
+    // high priority
     if (ctx.HasInput("OutSize")) {
       auto* out_size = ctx.Input<Tensor>("OutSize");
       auto* out_size_data = out_size->data<int>();
@@ -137,22 +123,19 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
         dim_out = {dim_x[0], out_size_data[0], out_size_data[1], dim_x[3]};
       }
       z->Resize(dim_out);
-      std::cout << "dim_out " << dim_out << std::endl;
-      std::cout << "z->dims() is " << z->dims() << std::endl;
     }
 
     InterpolateMKLDNNHandler<> handler(algo, dev_ctx, mkldnn_engine,
-                                       ctx.GetPlace(), x, z, /*scale_prior,*/
+                                       ctx.GetPlace(), x, z,
                                        ctx.OutputName("Out"));
 
     auto resampling_pd = handler.AcquireForwardPrimitiveDescriptor();
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(x);
     auto dst_memory_p = handler.AcquireDstMemory(z);
-    // Create the primitive.
+
     auto resampling_prim = handler.AcquireForwardPrimitive();
     const std::unordered_map<int, dnnl::memory> args = {
         {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
-    // Primitive execution: resampling.
     mkldnn::stream astream(mkldnn_engine);
     resampling_prim->execute(astream, args);
     astream.wait();
