@@ -13,6 +13,7 @@
 # limitations under the License.
 from ..runtime.collective_runtime import CollectiveRuntime
 from ..runtime.parameter_server_runtime import ParameterServerRuntime
+from ..runtime.the_one_ps import TheOnePSRuntime
 
 
 class RuntimeFactory(object):
@@ -26,7 +27,8 @@ class RuntimeFactory(object):
             return collective_runtime
 
         k_steps = context["valid_strategy"].a_sync_configs["k_steps"]
+
         if not context["role_maker"]._is_collective and k_steps >= 0:
-            ps_runtime = ParameterServerRuntime()
+            ps_runtime = TheOnePSRuntime()
             ps_runtime._set_basic_info(context)
             return ps_runtime

@@ -151,6 +151,10 @@ if(WITH_DISTRIBUTE)
   add_definitions(-DPADDLE_WITH_DISTRIBUTE)
 endif()
 
+if(WITH_DISTRIBUTE2)
+  add_definitions(-DPADDLE_WITH_DISTRIBUTE2)
+endif()
+
 if(WITH_GRPC)
     add_definitions(-DPADDLE_WITH_GRPC)
 endif(WITH_GRPC)

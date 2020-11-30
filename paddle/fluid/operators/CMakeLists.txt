@@ -26,6 +26,10 @@ if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
 endif()
 
+if(WITH_DISTRIBUTE2)
+    add_subdirectory(distributed2_ops)
+endif()
+
 add_subdirectory(amp)
 
 add_subdirectory(reader)

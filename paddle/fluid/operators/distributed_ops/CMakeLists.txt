@@ -1,3 +1,7 @@
+if(NOT WITH_DISTRIBUTE)
+    return()
+endif()
+
 include(operators)
 
 set(DISTRIBUTE_DEPS "")

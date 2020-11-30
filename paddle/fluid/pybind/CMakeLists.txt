@@ -56,6 +56,13 @@ if (WITH_DISTRIBUTE)
   list(APPEND PYBIND_SRCS communicator_py.cc)
 endif()
 
+if (WITH_DISTRIBUTE2)
+  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
+  set_source_files_properties(fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  list(APPEND PYBIND_DEPS fleet communicator)
+  list(APPEND PYBIND_SRCS fleet_py.cc)
+endif()
+
 if (WITH_NCCL)
   list(APPEND PYBIND_SRCS nccl_wrapper_py.cc)
 endif()
