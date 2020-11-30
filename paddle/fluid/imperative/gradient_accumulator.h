@@ -33,6 +33,9 @@ class GradientAccumulator {
         var->SetType(framework::proto::VarType::LOD_TENSOR);
       } else if (var->Var().IsType<framework::SelectedRows>()) {
         var->SetType(framework::proto::VarType::SELECTED_ROWS);
+      } else {
+        PADDLE_THROW(platform::errors::PermissionDenied(
+            "Only support LoDTensor and SelectedRows for gradient var"));
       }
     }
 

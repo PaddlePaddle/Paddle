@@ -40,10 +40,10 @@ void BasicEngine::Init(VarBase* var, bool retain_graph) {
   init_node_ = var->GradVarBase()->GradNode();
   PADDLE_ENFORCE_EQ(var->GradVarBase()->GraphIsFreed(), false,
                     platform::errors::Unavailable(
-                        "%s Trying to backward through the same graph a second "
+                        "%s trying to backward through the same graph a second "
                         "time, but this graph have already been freed. Please "
                         "specify Tensor.backward(retain_graph=True) when "
-                        "calling backward the first time.",
+                        "calling backward at the first time.",
                         var->Name()));
 
   if (!retain_graph) {
@@ -228,15 +228,12 @@ void BasicEngine::Execute() {
                                          var->Name()));
 
           // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor
-          if (var->IsLeafGrad() && iter->second->HasInnerVar()) {
+          if (var->IsLeafGrad()) {
             leaf_accumulators_.insert(iter->second.get());
 
-            PADDLE_ENFORCE_EQ(
-                iter->second->HasInnerVar(), true,
-                platform::errors::NotFound(
-                    "Cannot find inner var of leaf tensor's grad var %s",
-                    var->Name()));
-            var = iter->second->InnerVar();
+            if (iter->second->HasInnerVar()) {
+              var = iter->second->InnerVar();
+            }
           }
 
           if (var->OverridedStopGradient() || iter->second->RefCnt() > 1) {

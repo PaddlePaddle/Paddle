@@ -102,7 +102,6 @@ class VariableWrapper {
             "Only support LoDTensor and SelectedRows for gradient var"));
       }
       if (tensor && tensor->IsInitialized()) {
-        VLOG(6) << "tensor has been initialized:  ========" << *(tensor);
         is_empty = false;
       }
     }
