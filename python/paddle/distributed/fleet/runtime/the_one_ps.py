@@ -23,6 +23,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.framework import Variable, Parameter
 from .runtime_base import RuntimeBase
+from ..base.private_helper_function import wait_server_ready
 
 
 def conv_indent(indent):
@@ -448,8 +449,10 @@ class TheOnePSRuntime(RuntimeBase):
             pshost = fluid.core.PSHost(host, int(port), idx)
             unit64_hosts.append(pshost.to_uint64())
 
-        dense_map = self.compiled_strategy.get_the_one_recv_context()
-        send_ctx = self.compiled_strategy.get_the_one_send_context()
+        dense_map = self.compiled_strategy.get_the_one_recv_context(
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode)
+        send_ctx = self.compiled_strategy.get_the_one_send_context(
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode)
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
         kwargs = {}
@@ -470,7 +473,7 @@ class TheOnePSRuntime(RuntimeBase):
             trainer_config.mode, kwargs,
             trainer_config.get_communicator_flags())
         self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
-                                         unit64_hosts)
+                                         unit64_hosts, fluid.global_scope())
         self._worker = fluid.core.DistFleetWrapper()
 
         if self.role_maker._is_first_worker():
@@ -496,6 +499,22 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _get_executor(self):
         executor = fluid.Executor(fluid.CPUPlace())
+        if self.role_maker._is_heter_parameter_server_mode:
+            heter_worker_device_guard = self.context[
+                "valid_strategy"].a_sync_configs[
+                    "heter_worker_device_guard"].upper()
+            if heter_worker_device_guard not in ["GPU", "XPU", "CPU"]:
+                raise ValueError("Heter Worker Not Support Device {}".format(
+                    heter_worker_device_guard))
+            if self.role_maker._is_heter_worker():
+                if heter_worker_device_guard == "GPU":
+                    executor = Executor(
+                        fluid.CUDAPlace(
+                            int(os.getenv("FLAGS_selected_gpus", "0"))))
+                elif heter_worker_device_guard == "XPU":
+                    executor = Executor(
+                        fluid.XPUPlace(
+                            int(os.getenv("FLAGS_selected_xpus", "0"))))
         return executor
 
     def _get_fleet_proto(self, is_server, is_sync):
@@ -531,17 +550,19 @@ class TheOnePSRuntime(RuntimeBase):
             return table
 
         def _get_tables():
-            tables = []
-            send_ctx = self.compiled_strategy.get_the_one_send_context()
-
-            index = 0
+            send_ctx = self.compiled_strategy.get_the_one_send_context(
+                use_origin_program=True,
+                split_dense_table=self.role_maker.
+                _is_heter_parameter_server_mode)
+            tables = [i for i in range(len(send_ctx) + 1)]
 
             for idx, (name, ctx) in enumerate(send_ctx.items()):
                 table = Table()
-                table.id = index
-                index += 1
+                table.id = ctx.table_id()
 
                 if ctx.is_sparse():
+                    if len(ctx.origin_varnames()) < 1:
+                        continue
                     table.type = "PS_SPARSE_TABLE"
 
                     if self.compiled_strategy.is_geo_mode():
@@ -550,6 +571,8 @@ class TheOnePSRuntime(RuntimeBase):
                         table.table_class = "CommonSparseTable"
                     table.shard_num = 256
                 else:
+                    if len(ctx.origin_varnames()) < 1:
+                        continue
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
                     table.shard_num = 256
@@ -574,10 +597,10 @@ class TheOnePSRuntime(RuntimeBase):
 
                 accessor = _build_merge_accessor(ctx)
                 table.accessor = accessor
-                tables.append(table)
+                tables[table.id] = table
 
-            barrier_table = _build_barrier_table(index)
-            tables.append(barrier_table)
+            barrier_table = _build_barrier_table(len(send_ctx))
+            tables[-1] = barrier_table
             return tables
 
         if is_server:
@@ -601,6 +624,8 @@ class TheOnePSRuntime(RuntimeBase):
             return worker
 
     def _init_server(self, dirname=None, var_names=None, **kwargs):
+        if self.role_maker._is_heter_worker():
+            self._init_heter_worker()
         role_id = self.compiled_strategy.get_role_id()
         endpoints = self.compiled_strategy.get_ps_endpoints()
         is_sync = self.compiled_strategy.is_sync_mode()
@@ -663,6 +688,9 @@ class TheOnePSRuntime(RuntimeBase):
                                                                end - begin))
 
     def _run_server(self):
+        if self.role_maker._is_heter_worker():
+            self._run_heter_worker()
+
         ep = self.compiled_strategy.get_ps_endpoint()
         host, port = ep.split(":")
         self._server.run_server(host, int(port))
@@ -674,6 +702,15 @@ class TheOnePSRuntime(RuntimeBase):
         import time
         while True:
             time.sleep(1000)
+
+    def _init_heter_worker(self):
+        executor = self._get_executor()
+        executor.run(fluid.default_startup_program())
+        self._init_worker()
+
+    def _run_heter_worker(self):
+        executor = self._get_executor()
+        executor.run(fluid.default_main_program())
 
     def _stop_worker(self):
         self._communicator.stop()
@@ -696,8 +733,8 @@ class TheOnePSRuntime(RuntimeBase):
                 return False
 
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-                            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-                            var.desc.type() == core.VarDesc.VarType.READER:
+                    var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                    var.desc.type() == core.VarDesc.VarType.READER:
                 return False
             return var.persistable
 
@@ -709,7 +746,7 @@ class TheOnePSRuntime(RuntimeBase):
         opts = _get_optimize_ops(self.origin_main_program)
         for op in opts:
             if "Param" in op.input_names and \
-                            "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
+                    "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
                 return op
 
     def _get_optimizer_status(self, op, param_name):
@@ -816,9 +853,13 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _save_distributed_persistables(self, executor, dirname, main_program,
                                        mode):
-        denses = self.compiled_strategy.get_the_one_recv_context(is_dense=True)
+
+        denses = self.compiled_strategy.get_the_one_recv_context(
+            is_dense=True,
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode)
         sparses = self.compiled_strategy.get_the_one_recv_context(
-            is_dense=False)
+            is_dense=False,
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode)
 
         recv_sparse_varnames = self._save_sparse_params(executor, dirname,
                                                         sparses, main_program)

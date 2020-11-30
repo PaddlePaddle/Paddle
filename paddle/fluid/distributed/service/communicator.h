@@ -364,8 +364,7 @@ class AsyncCommunicator : public Communicator {
   virtual void MainThread();
 
   virtual void SendSparse(const std::string &var_name, int table_id);
-  virtual void SendDense(const std::vector<std::string> &var_names,
-                         int table_id);
+  virtual void SendDense(const CommContext &ctx);
 
   virtual bool Check(const int table_id);
   virtual bool Check(const std::vector<std::string> &var_tables);
@@ -425,6 +424,7 @@ class AsyncCommunicator : public Communicator {
 
   Scope *recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
+  std::unique_ptr<Scope> xpu_temp_scope_;
   int server_nums;
 
   std::atomic<uint32_t> _async_call_num{0};

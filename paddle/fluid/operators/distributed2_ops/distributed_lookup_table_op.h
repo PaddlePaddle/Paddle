@@ -16,6 +16,7 @@
 #include "paddle/fluid/distributed/fleet.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -50,9 +51,60 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
 
     auto fleet = distributed::FleetWrapper::GetInstance();
-    fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
-                                  static_cast<uint64_t>(padding_idx),
-                                  context.GetPlace(), &inputs, &outputs);
+    if (platform::is_cpu_place(context.GetPlace())) {
+      fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
+                                    static_cast<uint64_t>(padding_idx),
+                                    context.GetPlace(), &inputs, &outputs);
+    } else {
+      auto inputs_variable = context.MultiInputVar("Ids");
+      auto outputs_variable = context.MultiOutputVar("Outputs");
+      auto inputs_name = context.InputNames("Ids");
+      auto outputs_name = context.OutputNames("Outputs");
+
+      auto cpu_place = platform::CPUPlace();
+      framework::Scope *tmp_scope = scope.NewTmpScope().release();
+
+      std::vector<const framework::LoDTensor *> tmp_input_vec;
+      auto input_var_size = inputs_variable.size();
+      std::vector<framework::LoDTensor *> tmp_output_vec;
+      auto output_var_size = outputs_variable.size();
+
+      // create temp input
+      for (size_t idx = 0; idx < input_var_size; ++idx) {
+        framework::Variable *tmp_input_var = tmp_scope->Var(inputs_name[idx]);
+        framework::LoDTensor *tmp_input_tensor =
+            tmp_input_var->GetMutable<framework::LoDTensor>();
+        framework::TensorCopy(inputs_variable[idx]->Get<framework::LoDTensor>(),
+                              cpu_place, context.device_context(),
+                              tmp_input_tensor);
+        tmp_input_vec.push_back(tmp_input_tensor);
+      }
+
+      // create temp output
+      for (size_t idx = 0; idx < output_var_size; ++idx) {
+        framework::Variable *tmp_output_var = tmp_scope->Var(outputs_name[idx]);
+        framework::LoDTensor *tmp_output_tensor =
+            tmp_output_var->GetMutable<framework::LoDTensor>();
+        tmp_output_tensor->Resize(outputs[idx]->dims());
+        tmp_output_vec.push_back(tmp_output_tensor);
+      }
+
+      // use fleet->PullSparse
+      fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
+                                    static_cast<uint64_t>(padding_idx),
+                                    cpu_place, &tmp_input_vec, &tmp_output_vec);
+
+      // cp temp to origin
+      for (size_t idx = 0; idx < output_var_size; ++idx) {
+        framework::Variable *tmp_output_var = tmp_scope->Var(outputs_name[idx]);
+        framework::LoDTensor *tmp_output_tensor =
+            tmp_output_var->GetMutable<framework::LoDTensor>();
+        framework::TensorCopy(
+            *tmp_output_tensor, context.GetPlace(), context.device_context(),
+            outputs_variable[idx]->GetMutable<framework::LoDTensor>());
+      }
+      delete tmp_scope;
+    }
 
     auto id_names = context.InputNames("Ids");
     auto out_names = context.OutputNames("Outputs");

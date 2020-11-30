@@ -89,10 +89,15 @@ class Communicator(object):
         self.envs = envs
         self.communicator_ = None
 
-    def init_with_ctx(self, send_ctx, recv_ctx, proto_txt, unit64_hosts):
-        self.communicator_ = core.DistCommunicator(self.mode, proto_txt, unit64_hosts,
-                                                   send_ctx, recv_ctx,
-                                                   global_scope(), self.envs)
+    def init_with_ctx(self,
+                      send_ctx,
+                      recv_ctx,
+                      proto_txt,
+                      unit64_hosts,
+                      scope=global_scope()):
+        self.communicator_ = core.DistCommunicator(self.mode, proto_txt,
+                                                   unit64_hosts, send_ctx,
+                                                   recv_ctx, scope, self.envs)
 
     def start(self):
         """

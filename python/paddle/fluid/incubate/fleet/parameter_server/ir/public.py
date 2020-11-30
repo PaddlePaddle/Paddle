@@ -51,8 +51,8 @@ def _get_lr_ops(program):
     for index, op in enumerate(program.global_block().ops):
         role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
         if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                        role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
-                        int(OPT_OP_ROLE_ATTR_VALUE):
+                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                int(OPT_OP_ROLE_ATTR_VALUE):
             lr_ops.append(op)
     return lr_ops
 
@@ -138,6 +138,7 @@ class CompileTimeStrategy(object):
 
         self.strategy = strategy
         self.role_maker = role_maker
+        self.is_heter_ps_mode = role_maker._is_heter_parameter_server_mode
 
         self.origin_sparse_pairs = []
         self.origin_dense_pairs = []
@@ -260,8 +261,8 @@ class CompileTimeStrategy(object):
                 # check all input
                 for key in op.input_names:
                     if key in [
-                        "Param", "Grad", "LearningRate", "Beta1Tensor",
-                        "Beta2Tensor"
+                            "Param", "Grad", "LearningRate", "Beta1Tensor",
+                            "Beta2Tensor"
                     ]:
                         continue
                     # check varibale shape related param, e.g: Moment1
@@ -498,48 +499,85 @@ class CompileTimeStrategy(object):
             "recv_type can only be 1/2/3/4, 1 : DENSE 2. SPARSE 3. DISTRIBUTED 4. ALL"
         )
 
-    def get_the_one_send_context(self):
-        send_ctx = {}
-        trainer_id = self.get_role_id()
-        idx = 0
+    def get_dense_send_context(self,
+                               send_ctx,
+                               idx,
+                               merged_dense_pairs,
+                               trainer_id,
+                               split_dense_table=False):
+        if len(merged_dense_pairs) < 1:
+            return idx
 
-        if len(self.merged_dense_pairs) > 0:
+        if not split_dense_table:
             origin_varnames = []
             var_numel = 0
-            for merged in self.merged_dense_pairs:
+            for merged in merged_dense_pairs:
                 grad = merged[1]
                 origin_varnames.append(grad.merged_var.name)
-                var = self.origin_main_program.global_block().vars[grad.merged_var.name]
+                var = self.origin_main_program.global_block().vars[
+                    grad.merged_var.name]
                 var_numel += reduce(lambda x, y: x * y, var.shape)
             grad_name = "Dense@Grad"
             trainer_id = self.get_role_id()
             aggregate = True
-            dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"], [var_numel], origin_varnames,
-                                    trainer_id, aggregate, False, False, idx)
+            dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
+                                    [var_numel], origin_varnames, trainer_id,
+                                    aggregate, False, False, idx)
             send_ctx[grad_name] = dense_ctx
             idx += 1
+        else:
+            for merged in merged_dense_pairs:
+                grad = merged[1]
+                origin_varname = grad.merged_var.name
+                var = self.origin_main_program.global_block().vars[
+                    origin_varname]
+                var_numel = reduce(lambda x, y: x * y, var.shape)
+                grad_name = origin_varname
+                aggregate = True
+                dense_ctx = CommContext(
+                    grad_name, [grad_name], ["127.0.0.1:6071"], [var_numel],
+                    [origin_varname], trainer_id, aggregate, False, False, idx)
+                send_ctx[grad_name] = dense_ctx
+                idx += 1
+        return idx
 
-        distibuted_varnames = get_sparse_tablenames(self.origin_main_program, True)
-        for merged in self.merged_sparse_pairs:
+    def get_the_one_send_context(self,
+                                 split_dense_table=False,
+                                 use_origin_program=False):
+        send_ctx = {}
+        trainer_id = self.get_role_id()
+        idx = 0
+
+        merged_dense_pairs = self.origin_merged_dense_pairs if use_origin_program else self.merged_dense_pairs
+        merged_sparse_pairs = self.origin_merged_sparse_pairs if use_origin_program else self.merged_sparse_pairs
+
+        idx += self.get_dense_send_context(send_ctx, idx, merged_dense_pairs,
+                                           trainer_id, split_dense_table)
+
+        distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
+                                                    True)
+        for merged in merged_sparse_pairs:
             param, grad = merged
             grad_name = grad.merged_var.name
             param_name = param.merged_var.name
             is_distributed = True if param_name in distibuted_varnames else False
 
-            var = self.origin_main_program.global_block().vars[grad.merged_var.name]
+            var = self.origin_main_program.global_block().vars[
+                grad.merged_var.name]
             var_numel = reduce(lambda x, y: x * y, var.shape[1:])
 
-            sparse_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"], [var_numel], [grad_name],
-                                     trainer_id, True, True, is_distributed, idx)
+            sparse_ctx = CommContext(
+                grad_name, [grad_name], ["127.0.0.1:6071"], [var_numel],
+                [grad_name], trainer_id, True, True, is_distributed, idx)
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
         return send_ctx
 
-    def get_the_one_recv_context(self,
-                                 is_dense=True):
+    def get_the_one_recv_context(self, is_dense=True, split_dense_table=False):
         recv_id_maps = {}
         if is_dense:
-            send_ctx = self.get_the_one_send_context()
+            send_ctx = self.get_the_one_send_context(
+                split_dense_table=split_dense_table)
             for idx, (name, ctx) in enumerate(send_ctx.items()):
                 if ctx.is_sparse():
                     continue

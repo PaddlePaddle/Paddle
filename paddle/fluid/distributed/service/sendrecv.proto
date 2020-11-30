@@ -60,6 +60,51 @@ message PsResponseMessage {
   optional bytes data = 3;
 };
 
+enum VarType {
+  LOD_TENSOR = 0;
+  SELECTED_ROWS = 1;
+}
+
+message VariableMessage {
+  enum Type {
+    // Pod Types
+    BOOL = 0;
+    INT16 = 1;
+    INT32 = 2;
+    INT64 = 3;
+    FP16 = 4;
+    FP32 = 5;
+    FP64 = 6;
+  }
+
+  message LodData { repeated int64 lod_data = 1; }
+  optional string varname = 1;
+  // TODO(Yancey1989): reference framework::proto::VarDesc::VarType
+  optional VarType type = 2;
+  // bool persistable is not needed for sending.
+  // tensor info:
+  optional Type data_type = 3;
+  repeated int64 dims = 4;
+
+  // lod details:
+  optional int64 lod_level = 5;
+  repeated LodData lod = 6;
+  // selected_rows height, aka. original dim0
+  optional int64 slr_height = 7;
+  // tensor data
+  optional bytes data = 8;
+}
+
+// for SendAndRecv RPC method
+message MultiVariableMessage {
+  // message flags
+  required string message_name = 1;
+  repeated string send_var_names = 2;
+  repeated string recv_var_names = 3;
+  repeated VariableMessage var_messages = 4;
+};
+
 service PsService {
   rpc service(PsRequestMessage) returns (PsResponseMessage);
+  rpc SendAndRecvVariable(MultiVariableMessage) returns (MultiVariableMessage);
 };

@@ -88,6 +88,24 @@ void AsyncCommunicator::RecvNoBarrier() {
   for (int i = 0; i < dense_status.size(); ++i) {
     dense_status[i].wait();
   }
+
+  for (auto &iter : recv_varname_to_ctx_) {
+    auto var_names = iter.second;
+    for (auto &t : var_names) {
+      Variable *var = recv_scope_->FindVar(t);
+      LoDTensor *tensor = var->GetMutable<LoDTensor>();
+      VLOG(1) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
+              << platform::is_gpu_place(tensor->place());
+      if (platform::is_gpu_place(tensor->place())) {
+#ifdef PADDLE_WITH_CUDA
+        LoDTensor *temp_tensor =
+            xpu_temp_scope_->FindVar(t)->GetMutable<LoDTensor>();
+        framework::TensorCopy(*temp_tensor, tensor->place(), tensor);
+#endif
+      }
+    }
+  }
+
   return;
 }
 
@@ -134,7 +152,7 @@ void AsyncCommunicator::SendByCommunicator() {
       SendSparse(varnames[0], table_id);
     } else {
       // grad_num_.fetch_add(merged_var_num, std::memory_order_relaxed);
-      SendDense(varnames, table_id);
+      SendDense(ctx);
     }
   }
 }
@@ -167,6 +185,7 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
   send_scope_.reset(new Scope());
+  xpu_temp_scope_.reset(new Scope());
   for (auto &iter : send_varname_to_ctx_) {
     auto &ctx = iter.second;
     auto &varnames = ctx.origin_varnames;
@@ -187,9 +206,29 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     for (auto &t : var_names) {
       Variable *var = recv_scope_->FindVar(t);
       LoDTensor *tensor = var->GetMutable<LoDTensor>();
-      float *w = tensor->data<float>();
-      paddle::distributed::Region reg(w, tensor->numel());
-      regions.emplace_back(std::move(reg));
+      VLOG(1) << "AsyncCommunicator::InitImpl Var " << t << " On gpu? "
+              << platform::is_gpu_place(tensor->place());
+      if (platform::is_gpu_place(tensor->place())) {
+#ifdef PADDLE_WITH_CUDA
+        Variable *temp_var = xpu_temp_scope_->Var(t);
+        LoDTensor *temp_tensor = temp_var->GetMutable<LoDTensor>();
+        temp_tensor->Resize(tensor->dims());
+        float *temp_data = tensor->mutable_data<float>(platform::CPUPlace());
+        framework::TensorCopy(*tensor, platform::CPUPlace(), temp_tensor);
+        float *w = temp_tensor->data<float>();
+        paddle::distributed::Region reg(w, tensor->numel());
+        regions.emplace_back(std::move(reg));
+        float *origin = tensor->data<float>();
+        VLOG(1) << "AsyncCommunicator::InitImpl Var " << t << " Origin_data[0] "
+                << origin[0] << " Origin_data[-1] "
+                << origin[tensor->numel() - 1] << " Temp_data[0] " << w[0]
+                << " Temp_data[-1] " << w[tensor->numel() - 1];
+#endif
+      } else {
+        float *w = tensor->data<float>();
+        paddle::distributed::Region reg(w, tensor->numel());
+        regions.emplace_back(std::move(reg));
+      }
     }
   }
 
@@ -319,12 +358,12 @@ void AsyncCommunicator::SendSparse(const std::string &var_name, int table_id) {
   return;
 }
 
-void AsyncCommunicator::SendDense(const std::vector<std::string> &var_names,
-                                  int table_id) {
+void AsyncCommunicator::SendDense(const CommContext &ctx) {
   auto dense_data = std::make_shared<std::vector<float>>();
   size_t request_call_num = _worker_ptr->get_server_nums();
+  std::vector<std::string> var_names = ctx.origin_varnames;
   uint32_t num_per_shard = dense_dim_per_shard(
-      send_varname_to_ctx_["Dense@Grad"].height_sections[0], request_call_num);
+      send_varname_to_ctx_[ctx.var_name].height_sections[0], request_call_num);
   dense_data->resize(num_per_shard *
                      request_call_num);  // accessor->update_dim() = 1
   float *data = dense_data->data();
@@ -351,6 +390,8 @@ void AsyncCommunicator::SendDense(const std::vector<std::string> &var_names,
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, PS_PUSH_DENSE_TABLE) != 0) {
             ret = -1;
+            brpc::Controller *cntl = closure->cntl(i);
+            VLOG(0) << "Call push dense failed: " << cntl->ErrorText();
             break;
           }
         }
@@ -358,7 +399,7 @@ void AsyncCommunicator::SendDense(const std::vector<std::string> &var_names,
         --_async_call_num;
       });
 
-  _worker_ptr->push_dense_raw_gradient(table_id, data, dense_data->size(),
+  _worker_ptr->push_dense_raw_gradient(ctx.table_id, data, dense_data->size(),
                                        closure);
   return;
 }
@@ -441,7 +482,7 @@ void HalfAsyncCommunicator::SendByCommunicator() {
       SendSparse(varnames[0], table_id);
     } else {
       // grad_num_.fetch_add(merged_var_num, std::memory_order_relaxed);
-      SendDense(varnames, table_id);
+      SendDense(ctx);
     }
   }
 }
