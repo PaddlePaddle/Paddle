@@ -214,7 +214,8 @@ class Cifar100(Cifar10):
 
 
             normalize = Normalize(mean=[0.5, 0.5, 0.5],
-                                  std=[0.5, 0.5, 0.5])
+                                  std=[0.5, 0.5, 0.5],
+                                  data_format='HWC')
             cifar100 = Cifar100(mode='train', transform=normalize)
 
             for i in range(10):
