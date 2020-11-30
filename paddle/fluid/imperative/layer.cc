@@ -215,6 +215,10 @@ void VarBase::ClearGradient() {
 #endif
       }
     }
+    // TODO(zhouwei): It's better to free memory of grad by grad_t->claer.
+    // But will have some bug on mac CPU of yolov3 model, why?
+    // After fix this bug, function SetIsEmpty() isn't need
+    grad_var_->SharedVar()->SetIsEmpty(true);
   }
 }
 
