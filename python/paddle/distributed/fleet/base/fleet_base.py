@@ -576,7 +576,7 @@ class Fleet(object):
         Args:
             optimizer(Optimizer): The executor to run for init server.
             strategy(DistributedStrategy): Extra properties for distributed optimizer. 
-                It is recommended to use DistributedStrategy in fleet.init. The strategy
+                It is recommended to use DistributedStrategy in fleet.init(). The strategy
                 here is for compatibility. If the strategy in fleet.distributed_optimizer() 
                 is not None, then it will overwrite the DistributedStrategy in fleet.init(), 
                 which will take effect in distributed training.
