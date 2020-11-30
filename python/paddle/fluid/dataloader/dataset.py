@@ -250,7 +250,6 @@ class TensorDataset(Dataset):
             import paddle
             from paddle.io import TensorDataset
 
-            paddle.disable_static()
 
             input_np = np.random.random([2, 3, 4]).astype('float32')
             input = paddle.to_tensor(input_np)
