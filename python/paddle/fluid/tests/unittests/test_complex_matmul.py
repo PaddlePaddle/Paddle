@@ -118,6 +118,42 @@ class TestComplexMatMulLayer(unittest.TestCase):
         self.compare_1(x, y)
         self.compare_op_1(x, y)
 
+    def test_complex_xy_gemv(self):
+        x = np.random.random(
+            (2, 1, 100)).astype("float32") + 1J * np.random.random(
+                (2, 1, 100)).astype("float32")
+        y = np.random.random((100)).astype("float32") + 1J * np.random.random(
+            (100)).astype("float32")
+        self.compare_1(x, y)
+        self.compare_op_1(x, y)
+
+        x = np.random.random(
+            (2, 1, 100)).astype("float64") + 1J * np.random.random(
+                (2, 1, 100)).astype("float64")
+        y = np.random.random((100)).astype("float64") + 1J * np.random.random(
+            (100)).astype("float64")
+        self.compare_1(x, y)
+        self.compare_op_1(x, y)
+
+    def test_complex_xy_gemm(self):
+        x = np.random.random(
+            (1, 2, 50)).astype("float32") + 1J * np.random.random(
+                (1, 2, 50)).astype("float32")
+        y = np.random.random(
+            (1, 50, 2)).astype("float32") + 1J * np.random.random(
+                (1, 50, 2)).astype("float32")
+        self.compare_1(x, y)
+        self.compare_op_1(x, y)
+
+        x = np.random.random(
+            (1, 2, 50)).astype("float64") + 1J * np.random.random(
+                (1, 2, 50)).astype("float64")
+        y = np.random.random(
+            (1, 50, 2)).astype("float64") + 1J * np.random.random(
+                (1, 50, 2)).astype("float64")
+        self.compare_1(x, y)
+        self.compare_op_1(x, y)
+
 
 if __name__ == '__main__':
     unittest.main()
