@@ -25,6 +25,9 @@
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
+#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_CUDA)
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#endif
 #include "xxhash.h"  // NOLINT
 
 #if defined _WIN32 || defined __APPLE__
@@ -877,6 +880,130 @@ void MultiSlotDataset::PreprocessInstance() {
     pv_data.shrink_to_fit();
     input_pv_channel_->Close();
   }
+}
+
+void MultiSlotDataset::BuildGPUPSTask(int table_id, int feadim,
+                                      int read_thread_num,
+                                      int consume_thead_num) {
+#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_CUDA)
+  VLOG(3) << "MultiSlotDataset::BuildGPUPSTask begin";
+  auto gpu_ps_warpper_ = GPUPUWrapper->GetInstance();
+  vector<vector<uint64_t>> local_feature_keys(shard_num);
+  int shard_num = multi_output_channel_.size();
+  std::vector<std::unordered_map<uint64_t, std::vector<float>>>&
+      local_map_tables = gpu_ps_wrapper_->GetLocalTable(table_id);
+  local_map_tables.resize(shard_num);
+
+  auto consume_func = [&local_map_tables](int shard_id, int feadim,
+                                          std::vector<uint64_t>& keys) {
+    for (auto k : keys) {
+      if (local_map_tables[shard_id].find(k) ==
+          local_map_tables[shard_id].end()) {
+        local_map_tables[shard_id][k] = std::vector<float>(feadim, 0);
+      }
+    }
+  };
+  
+  if (input_channel_->size() == 0) {
+    // output_channel_ should hold one pass instances now
+    uint64_t output_channels_data_size = 0;
+    for (size_t i = 0; i < multi_output_channel_.size(); i++) {
+      int cur_channel_size = multi_output_channel_[i]->size();
+      output_channels_data_size += cur_channel_size;
+      local_feature_keys.reserve(cur_channel_size);
+    }
+    CHECK(output_channels_data_size > 0);
+    auto gen_func = [this, &shard_num, &feadim, &local_map_tables,
+                   &consume_func](int i) {
+      std::vector<Record> vec_data;
+      std::vector<std::vector<uint64_t>> task_keys(shard_num);
+      std::vector<std::future<void>> task_futures;
+      this->multi_output_channel_[i]->Close();
+      this->multi_output_channel_[i]->ReadAll(vec_data);
+      for (size_t j = 0; j < vec_data.size(); j++) {
+        for (auto& feature : vec_data[j].uint64_feasigns_) {
+          int shard = feature.sign().uint64_feasign_ % shard_num;
+          task_keys[shard].push_back(feature.sign().uint64_feasign_);
+        }
+      }
+
+      for (int shard_id = 0; shard_id < shard_num; shard_id++) {
+        task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
+            consume_func, shard_id, feadim, task_keys[shard_id]));
+      }
+
+      multi_output_channel_[i]->Open();
+      multi_output_channel_[i]->Write(std::move(vec_data));
+      vec_data.clear();
+      vec_data.shrink_to_fit();
+      
+      for (auto& tf : task_futures) {
+        tf.wait();
+      }
+      for (auto& tk : task_keys) {
+        tk.clear();
+        std::vector<uint64_t>().swap(tk);
+      }
+      task_keys.clear();
+      std::vector<std::vector<uint64_t>>().swap(task_keys);
+    };
+  } else {
+    int input_channel_size = input_channel_->size();
+    CHECK(input_channel_size > 0);
+    CHECK(shard_num > 0);
+    
+    std::vector<Record> vec_data;
+    this->input_channel_->Close();
+    this->input_channel->ReadAll(vec_data);
+    auto gen_func = [this, &vec_data, &shard_num, &feadim, &local_map_tables,
+                   &consume_func](int i) {
+      std::vector<std::vector<uint64_t>> task_keys(shard_num);
+      std::vector<std::future<void>> task_futures;
+      int per_shard_num = input_channel_size / shard_num + 1;
+      int total_size = vec_data.size();
+      int start_index = i * per_shard_num;
+      int end_index = min(start_index+per_shard_num-1, total_size-1);
+      for (size_t j = start_index; j <= end_size ; j++) {
+        for (auto& feature : vec_data[j].uint64_feasigns_) {
+          int shard = feature.sign().uint64_feasign_ % shard_num;
+          task_keys[shard].push_back(feature.sign().uint64_feasign_);
+        }
+      }
+
+      for (int shard_id = 0; shard_id < shard_num; shard_id++) {
+        task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
+            consume_func, shard_id, feadim, task_keys[shard_id]));
+      }
+
+      for (auto& tf : task_futures) {
+        tf.wait();
+      }
+      for (auto& tk : task_keys) {
+        tk.clear();
+        std::vector<uint64_t>().swap(tk);
+      }
+      task_keys.clear();
+      std::vector<std::vector<uint64_t>>().swap(task_keys);
+    };
+    for (size_t i = 0; i < threads.size(); i++) {
+      threads[i] = std::thread(gen_func, i);
+    }
+    for (std::thread& t : threads) {
+      t.join();
+    }
+    input_channel_->Open();
+    input_channel_->Write(std::move(vec_data));
+  }
+  for (size_t i = 0; i < consume_task_pool_.size(); i++) {
+    consume_task_pool_[i].reset();
+  }
+  consume_task_pool_.clear();
+  gpu_ps_wrapper_->BuildGPUPS(table_id, feadim);
+#else
+  VLOG(3) << "BuildGPUPSTask only supported on PSLIB and CUDA";
+#endif 
+  
+                                          
 }
 
 void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
