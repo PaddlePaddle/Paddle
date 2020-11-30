@@ -89,9 +89,6 @@ class VariableWrapper {
 
   bool Persistable() const { return persistable_; }
 
-  // TODO(zhouwei): fix Tensor.clear_gradient() bug, this function isn't need
-  void SetIsEmpty(bool is_empty) { is_empty_ = is_empty; }
-
   bool IsEmpty() const {
     bool is_empty = true;
     if (var_.IsInitialized()) {
@@ -110,6 +107,10 @@ class VariableWrapper {
     }
     return is_empty || is_empty_;
   }
+
+  // TODO(zhouwei): fix Tensor.clear_gradient() bug, function SetIsEmpty() isn't
+  // need
+  void SetIsEmpty(bool is_empty) { is_empty_ = is_empty; }
 
   const std::string& Name() const { return name_; }
 
@@ -291,7 +292,7 @@ class VariableWrapper {
   std::weak_ptr<VariableWrapper> grad_var_;
   std::weak_ptr<GradOpNode> grad_node_;
 
-  // TODO(zhouwei): fix bug of Tensor.clear_gradient(), SetIsEmpty function
+  // TODO(zhouwei): fix bug of Tensor.clear_gradient(), function SetIsEmpty()
   // isn't need
   bool is_empty_{false};
 
