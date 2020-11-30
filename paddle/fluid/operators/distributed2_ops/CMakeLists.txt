@@ -10,6 +10,11 @@ list(APPEND DISTRIBUTE_DEPS fleet ps_service heter_serde heter_server heter_clie
 
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 
+if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+    set(DISTRIBUTE_COMPILE_FLAGS
+            "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+endif()
+
 file(GLOB OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*_op.cc")
 list(REMOVE_DUPLICATES OPS)
 
