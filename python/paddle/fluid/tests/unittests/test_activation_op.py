@@ -13,12 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
+
 from op_test import OpTest
 from scipy.special import expit, erf
+import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn
@@ -878,6 +879,24 @@ class TestFloor(TestActivation):
 
 
 class TestCos(TestActivation):
+    def setUp(self):
+        self.op_type = "cos"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
+        out = np.cos(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
+class TestTan(TestActivation):
     def setUp(self):
         self.op_type = "cos"
         self.init_dtype()
@@ -2403,6 +2422,7 @@ create_test_error_class('rsqrt')
 create_test_error_class('sin')
 create_test_error_class('sqrt')
 create_test_error_class('tanh')
+create_test_error_class('tan')
 
 
 #------------------ Test Cudnn Activation----------------------
@@ -2465,6 +2485,7 @@ create_test_act_fp16_class(TestAbs)
 create_test_act_fp16_class(TestCeil, grad_check=False)
 create_test_act_fp16_class(TestFloor, grad_check=False)
 create_test_act_fp16_class(TestCos, grad_atol=0.85)
+create_test_act_fp16_class(TestTan, grad_atol=0.85)
 create_test_act_fp16_class(TestCosh, grad_atol=0.85)
 create_test_act_fp16_class(TestAcos, grad_atol=0.85)
 create_test_act_fp16_class(TestSin)

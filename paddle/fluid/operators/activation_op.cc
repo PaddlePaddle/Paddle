@@ -249,6 +249,15 @@ $$out = cos(x)$$
 
 )DOC";
 
+UNUSED constexpr char TanDoc[] = R"DOC(
+Cosine Operator. Computes cosine of x element-wise.
+
+Input range is `[-3.14/2, 3.14/2]` and output range is `(-inf, inf)`.
+
+$$out = tan(x)$$
+
+)DOC";
+
 UNUSED constexpr char SinDoc[] = R"DOC(
 Sine Activation Operator.
 
@@ -709,6 +718,7 @@ REGISTER_ACTIVATION_OP_MAKER(Abs, AbsDoc);
 REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cos, CosDoc);
+REGISTER_ACTIVATION_OP_MAKER(Tan, TanDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sinh, SinhDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cosh, CoshDoc);
