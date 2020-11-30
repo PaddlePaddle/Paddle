@@ -24,6 +24,8 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
+from paddle.fluid.dygraph import nn
+import warnings
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -69,7 +71,7 @@ class ParallelEnv(object):
     This class is used to obtain the environment variables required for 
     the parallel execution of ``paddle.nn.Layer`` in dynamic mode.
 
-    The parallel execution in dynamic mode needs to be started using ``paddle.distributed.launch`` 
+    The parallel execution in dynamic mode needs to be started using ``paddle.distributed.launch``
     or ``paddle.distributed.spawn`` .
 
     Examples:
@@ -104,7 +106,11 @@ class ParallelEnv(object):
     def __init__(self):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-        self._device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+
+        # imperative only support one gpu
+        selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
+        self._device_id = int(selected_gpus[0])
+
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
@@ -280,58 +286,6 @@ def scale_loss(loss):
     return scaled_loss
 
 
-@no_grad
-def apply_collective_grads(parameters):
-    if not ParallelEnv().world_size > 1:
-        return
-
-    grad_var_set = set()
-    grad_vars = []
-    sparse_grad_vars = []
-    strategy = _build_default_parallel_strategy()
-    for param in parameters:
-        # NOTE(zcd): The grad_ivar maybe no generated.
-        if param.trainable and (param._grad_ivar() is not None):
-            g_var = param._grad_ivar()
-            if g_var._is_sparse():
-                sparse_grad_vars.append(g_var)
-                continue
-            grad_vars.append(g_var)
-            assert g_var not in grad_var_set
-            grad_var_set.add(g_var)
-
-    if sparse_grad_vars:
-        sparse_grad_vars.sort(key=lambda x: x.name)
-        for grad_var in sparse_grad_vars:
-            grad_var._allreduce(strategy)
-
-    # FIXME(zcd): the type of the var should be LoDTensor, i.e
-    # the gradients should be dense, otherwise, the following
-    # logic should be updated.
-    # 128 MB as a group
-    mega_bytes = 128 * 1024 * 1024
-    group_idx = 0
-    memory_counter = 0
-    grad_var_groups = OrderedDict()
-    dtype = grad_vars[0].dtype
-    for g_var in grad_vars:
-        # NOTE: the dtype of the same group should be the same.
-        bytes = np.prod(g_var.shape) * core.size_of_dtype(g_var.dtype)
-        if memory_counter < mega_bytes and dtype == g_var.dtype:
-            memory_counter += bytes
-        else:
-            memory_counter = bytes
-            group_idx += 1
-        grad_var_groups.setdefault(group_idx, []).append(g_var)
-
-    coalesced_grads_and_vars = _coalesce_tensors(grad_var_groups)
-
-    for coalesced_grad, _, _ in coalesced_grads_and_vars:
-        coalesced_grad._allreduce(strategy)
-
-    _split_tensors(coalesced_grads_and_vars)
-
-
 class DataParallel(layers.Layer):
     """
     Run the dygraph module with data parallelism.
@@ -347,7 +301,7 @@ class DataParallel(layers.Layer):
     
     2. start by ``paddle.distributed.launch`` module, for example:
     
-        ``python -m paddle.distributed.launch --selected_gpus=0,1 demo.py`` .
+        ``python -m paddle.distributed.launch --gpus=0,1 demo.py`` .
 
     And the content of `demo.py` is the code of examples.
 
@@ -355,6 +309,12 @@ class DataParallel(layers.Layer):
         layers(Layer): The module that should be executed by data parallel.
         strategy(ParallelStrategy, optional): (deprecated) The strategy of data parallelism, 
             contains environment configuration related to parallel execution. Default: None.
+        group_size_limits(int, optional): It is up limited memory size(MB) of one group 
+                                          parameters' gradient which is the input of communication 
+                                          calling(e.g NCCLAllReduce). Default: 25.
+        small_group_size(int, optional): It is up limited memory size(MB) of last group in communication
+                                         calling. Making the last group small is useful to 
+                                         improve performance. Default: 1.
             
     Returns:
         Layer: The data paralleled module.
@@ -377,13 +337,10 @@ class DataParallel(layers.Layer):
                     return self._linear2(self._linear1(x))
 
             def train():
-                # 1. enable dynamic mode
-                paddle.disable_static()
-                
-                # 2. initialize parallel environment
+                # 1. initialize parallel environment
                 dist.init_parallel_env()
 
-                # 3. create data parallel layer & optimizer
+                # 2. create data parallel layer & optimizer
                 layer = LinearNet()
                 dp_layer = paddle.DataParallel(layer)
 
@@ -391,7 +348,7 @@ class DataParallel(layers.Layer):
                 adam = opt.Adam(
                     learning_rate=0.001, parameters=dp_layer.parameters())
 
-                # 4. run layer
+                # 3. run layer
                 inputs = paddle.randn([10, 10], 'float32')
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
@@ -409,7 +366,11 @@ class DataParallel(layers.Layer):
                 # train()
     """
 
-    def __init__(self, layers, strategy=None):
+    def __init__(self,
+                 layers,
+                 strategy=None,
+                 group_size_limits=25,
+                 small_group_size=1):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
@@ -424,7 +385,67 @@ class DataParallel(layers.Layer):
         else:
             self._strategy = _build_default_parallel_strategy()
 
+        if self._strategy.nranks > 1:
+            self.group_size_limits = int(group_size_limits * 1024 * 1024)
+            # NOTE(shenliang03): We can set environment variables to control 
+            # the size of the group, Default: 1MB. The role of this small group is: 
+            # when the last group allreduce, the overlap cannot work. Making the 
+            # the last group small is useful to improve performance.
+            self.small_group_size = int(small_group_size * 1024 * 1024)
+            self.init_reducer()
+        else:
+            warnings.warn(
+                "nranks is less than 2, "
+                "maybe you need to check the current system environment."
+                " Need to use spawn or fleetrun to "
+                "start distributed programs.")
+
+    def init_reducer(self):
+        layers_param = []
+        params_set = set()
+        for sublayer in self.sublayers():
+            for _, param in sublayer.named_parameters(include_sublayers=False):
+                if param is None or param in params_set:
+                    continue
+                params_set.add(param)
+                if not isinstance(param, core.VarBase):
+                    raise TypeError("The data type of '%s' must be Varbase" %
+                                    param.name)
+                if param.trainable:
+                    layers_param.append((sublayer, param))
+
+        trainable_parameters = [param for _, param in layers_param]
+
+        # NOTE(shenliang03): Here we can only use the attributes to judge whether
+        # parameter is sparse(or SelectedRows). The reason is that the sparse message
+        # can't be obtained when bp hasn't happened yet. So if layer supports sparse parameter,
+        # we should add the layer here like "nn.Embedding".
+        def check_layer_sparse(sublayer):
+            if isinstance(sublayer, nn.Embedding):
+                return sublayer._is_sparse
+            return False
+
+        is_sparse_gradient = [
+            check_layer_sparse(sublayer) for sublayer, _ in layers_param
+        ]
+
+        self.group_indices = core.assign_group_by_size(
+            trainable_parameters, is_sparse_gradient,
+            [self.small_group_size, self.group_size_limits])
+
+        assert parallel_helper.__parallel_ctx__clz__ is not None, \
+            "ParallelContext must be initialized before. You should use init_parallel_env() before" \
+            "constructing the DataParallel."
+
+        self._reducer = core.Reducer(trainable_parameters,
+                                     list(reversed(self.group_indices)),
+                                     is_sparse_gradient,
+                                     parallel_helper.__parallel_ctx__clz__)
+
     def forward(self, *inputs, **kwargs):
+        if self._strategy.nranks > 1:
+            self._reducer.prepare_for_backward()
+
         return self._layers(*inputs, **kwargs)
 
     @deprecated(
@@ -450,28 +471,28 @@ class DataParallel(layers.Layer):
                    include_sublayers=True,
                    structured_name_prefix=""):
         '''
-        Get all parameters of self._layers and its sub-layers. And set all the parameters into a dict
+        Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters will set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            structured_name_prefix(str, optional): If not empty str, all the key in state dict will start 
-                                                 with structured_name_prefix
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
 
         Retruns:
-            dict: a dict contains all the parameters of self._layers
+            dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    strategy=fluid.dygraph.prepare_context()
-                    emb = fluid.dygraph.Embedding([10, 10])
-                    emb = fluid.dygraph.DataParallel(emb, strategy)
+                import paddle
+                import paddle.distributed as dist
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
+                dist.init_parallel_env()
+
+                emb = fluid.dygraph.Embedding([10, 10])
+                emb = fluid.dygraph.DataParallel(emb)
+
+                state_dict = emb.state_dict()
+                paddle.save(state_dict, "paddle_dy.pdparams")
 
         '''
 
@@ -486,12 +507,12 @@ class DataParallel(layers.Layer):
                        include_sublayers=True,
                        use_structured_name=True):
         '''
-        Set parameters of self._layers from state_dict. All the parameters of self._layers will be reset by the tensor in the state_dict
+        Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
         Parameters:
-            state_dict(dict) : Dict contains all the parameters
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key. 
+            state_dict(dict) : Dict contains all the parameters and persistable buffers.
+            include_sublayers(bool, optional) : If true, also include the parameters and peresistable buffers from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key. 
                                                   Default: True
         Returns:
             None
@@ -499,18 +520,18 @@ class DataParallel(layers.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle   
+                import paddle
+                import paddle.distributed as dist
 
-                paddle.disable_static()
+                dist.init_parallel_env()
 
                 emb = paddle.nn.Embedding(10, 10)
-                emb = fluid.dygraph.DataParallel(emb, strategy)
+                emb = fluid.dygraph.DataParallel(emb)
 
                 state_dict = emb.state_dict()
                 paddle.save(state_dict, "paddle_dy.pdparams")
 
                 para_state_dict = paddle.load("paddle_dy.pdparams")
-
                 emb.set_state_dict(para_state_dict)
 
         '''

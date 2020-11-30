@@ -50,7 +50,7 @@ from .. import functional as F
 
 
 class ELU(layers.Layer):
-    """
+    r"""
     ELU Activation.
 
     .. math::
@@ -70,9 +70,8 @@ class ELU(layers.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
+            x = paddle.to_tensor([[-1. ,6.], [1., 15.6]])
             m = paddle.nn.ELU(0.2)
             out = m(x)
             # [[-0.12642411  6.        ]
@@ -89,7 +88,7 @@ class ELU(layers.Layer):
 
 
 class GELU(layers.Layer):
-    """
+    r"""
     GELU Activation.
 
     If approximate is True
@@ -138,7 +137,7 @@ class GELU(layers.Layer):
 
 
 class Hardshrink(layers.Layer):
-    """
+    r"""
     Hardshrink Activation
 
     .. math::
@@ -166,11 +165,8 @@ class Hardshrink(layers.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(np.array([-1, 0.3, 2.5]))
+            x = paddle.to_tensor([-1, 0.3, 2.5])
             m = paddle.nn.Hardshrink()
             out = m(x) # [-1., 0., 2.5]
     """
@@ -185,7 +181,7 @@ class Hardshrink(layers.Layer):
 
 
 class Hardswish(layers.Layer):
-    """
+    r"""
     Hardswish activation
 
     Hardswish is proposed in MobileNetV3, and performs better in computational stability
@@ -231,7 +227,7 @@ class Hardswish(layers.Layer):
 
 
 class Tanh(layers.Layer):
-    """
+    r"""
     Tanh Activation.
 
     .. math::
@@ -268,7 +264,7 @@ class Tanh(layers.Layer):
 
 
 class Hardtanh(layers.Layer):
-    """
+    r"""
     Hardtanh Activation
 
     .. math::
@@ -293,11 +289,10 @@ class Hardtanh(layers.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
+            x = paddle.to_tensor([-1.5, 0.3, 2.5])
             m = paddle.nn.Hardtanh()
-            out = m(x) # # [-1., 0.3, 1.]
+            out = m(x) # [-1., 0.3, 1.]
     """
 
     def __init__(self, min=-1.0, max=1.0, name=None):
@@ -397,9 +392,8 @@ class ReLU(layers.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+            x = paddle.to_tensor([-2., 0., 1.])
             m = paddle.nn.ReLU()
             out = m(x) # [0., 0., 1.]
     """
@@ -448,7 +442,7 @@ class ReLU6(layers.Layer):
 
 
 class SELU(layers.Layer):
-    """
+    r"""
     SELU Activation
 
     .. math::
@@ -494,7 +488,7 @@ class SELU(layers.Layer):
 
 
 class LeakyReLU(layers.Layer):
-    """
+    r"""
     Leaky ReLU Activation.
 
     .. math::
@@ -521,9 +515,6 @@ class LeakyReLU(layers.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            paddle.disable_static()
 
             m = paddle.nn.LeakyReLU()
             x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
@@ -580,7 +571,7 @@ class Sigmoid(layers.Layer):
 
 
 class Hardsigmoid(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Hardsigmoid`` class.
     This layer calcluate the `hardsigmoid` of input x.
 
@@ -613,7 +604,7 @@ class Hardsigmoid(layers.Layer):
 
           import paddle
 
-          m = paddle.nn.Sigmoid()
+          m = paddle.nn.Hardsigmoid()
           x = paddle.to_tensor([-4., 5., 1.])
           out = m(x) # [0., 1, 0.666667]
     """
@@ -627,7 +618,7 @@ class Hardsigmoid(layers.Layer):
 
 
 class Softplus(layers.Layer):
-    """
+    r"""
     Softplus Activation
 
     .. math::
@@ -667,7 +658,7 @@ class Softplus(layers.Layer):
 
 
 class Softshrink(layers.Layer):
-    """
+    r"""
     Softshrink Activation
 
     .. math::
@@ -708,7 +699,7 @@ class Softshrink(layers.Layer):
 
 
 class Softsign(layers.Layer):
-    """
+    r"""
     Softsign Activation
 
     .. math::
@@ -743,7 +734,7 @@ class Softsign(layers.Layer):
 
 
 class Swish(layers.Layer):
-    """
+    r"""
     Swish Activation.
 
     .. math::
@@ -813,7 +804,7 @@ class Tanhshrink(layers.Layer):
 
 
 class ThresholdedReLU(layers.Layer):
-    """
+    r"""
     Thresholded ReLU Activation
 
     .. math::
@@ -853,7 +844,7 @@ class ThresholdedReLU(layers.Layer):
 
 
 class LogSigmoid(layers.Layer):
-    """
+    r"""
     LogSigmoid Activation.
 
     .. math::
@@ -888,7 +879,7 @@ class LogSigmoid(layers.Layer):
 
 
 class Softmax(layers.Layer):
-    """
+    r"""
     Softmax Activation.
 
     This operator implements the softmax layer. The calculation process is as follows:
@@ -1011,13 +1002,15 @@ class Softmax(layers.Layer):
 
 
 class LogSoftmax(layers.Layer):
-    """
+    r"""
     This operator implements the log_softmax layer. The calculation process is as follows:
 
     .. math::
 
-        Out[i, j] = log(softmax(x))
-                  = log(\\frac{\exp(X[i, j])}{\\sum_j(exp(X[i, j])})
+        \\begin{aligned} 
+        Out[i, j] &= log(softmax(x)) \\\\
+        &= log(\\frac{\\exp(X[i, j])}{\\sum_j(\\exp(X[i, j])})
+        \\end{aligned}
 
     Parameters:
         axis (int, optional): The axis along which to perform log_softmax
@@ -1035,16 +1028,13 @@ class LogSoftmax(layers.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = np.array([[[-2.0, 3.0, -4.0, 5.0],
-                           [3.0, -4.0, 5.0, -6.0],
-                           [-7.0, -8.0, 8.0, 9.0]],
-                          [[1.0, -2.0, -3.0, 4.0],
-                           [-5.0, 6.0, 7.0, -8.0],
-                           [6.0, 7.0, 8.0, 9.0]]])
+            x = [[[-2.0, 3.0, -4.0, 5.0],
+                  [3.0, -4.0, 5.0, -6.0],
+                  [-7.0, -8.0, 8.0, 9.0]],
+                 [[1.0, -2.0, -3.0, 4.0],
+                  [-5.0, 6.0, 7.0, -8.0],
+                  [6.0, 7.0, 8.0, 9.0]]]
             m = paddle.nn.LogSoftmax()
             x = paddle.to_tensor(x)
             out = m(x)
@@ -1066,7 +1056,7 @@ class LogSoftmax(layers.Layer):
 
 
 class Maxout(layers.Layer):
-    """
+    r"""
     Maxout Activation.
 
     Assumed the input shape is (N, Ci, H, W).

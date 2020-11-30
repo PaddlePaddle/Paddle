@@ -18,13 +18,12 @@ from ..fluid import framework
 from ..fluid.framework import Variable
 
 import paddle
-from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 __all__ = ["Adam"]
 
 
 class Adam(Optimizer):
-    """
+    r"""
     The Adam optimizer uses an optimization described at the end
     of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
     it can dynamically adjusts the learning rate of each parameter using
@@ -271,9 +270,6 @@ class Adam(Optimizer):
                 adam.step()
                 adam.clear_grad()
         """
-        if paddle.distributed.get_world_size() > 1:
-            apply_collective_grads(self._parameter_list)
-
         self._dtype = None
         params_grads = []
         for param in self._parameter_list:

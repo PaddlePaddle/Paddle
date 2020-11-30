@@ -163,7 +163,7 @@ class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);

@@ -114,7 +114,7 @@ def auc(input,
         num_thresholds=2**12 - 1,
         topk=1,
         slide_steps=1):
-    """
+    r"""
     **Area Under the Curve (AUC) Layer**
 
     This implementation computes the AUC according to forward output and label.

@@ -302,15 +302,12 @@ class AsyncCommunicator : public Communicator {
             const std::vector<std::string> &var_tables,
             const framework::Scope &scope) override;
 
-  virtual void SendByCommunicator(int batches);
-
+  virtual void SendByCommunicator();
   virtual void SendGlobalStep(int batches);
 
   virtual void RecvByCommunicator();
 
   virtual void RecvNoBarrier();
-
-  virtual int BatchesCounter();
 
   virtual void BarrierSend() {}
 
@@ -358,6 +355,10 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
         static_cast<bool>(std::stoi(envs.at("need_global_step")));
     VLOG(0) << "HalfAsyncCommunicator Initialized";
   }
+
+  void MainThread() override;
+
+  void SendByCommunicator() override;
 
   void Clean() override;
 
@@ -438,7 +439,7 @@ class GeoCommunicator : public AsyncCommunicator {
             const std::vector<std::string> &var_tables,
             const framework::Scope &scope) override;
 
-  void SendByCommunicator(int batches) { return; }
+  void SendByCommunicator() { return; }
 
   std::vector<int64_t> MergeSparseIds(const std::string &send_varname);
 
@@ -475,6 +476,7 @@ class GeoCommunicator : public AsyncCommunicator {
   std::shared_ptr<Scope> pserver_scope_;
 
   int send_var_nums_ = 0;
+
   std::unordered_map<std::string, std::shared_ptr<SparseValue>> old_sparses_;
 
   std::unordered_map<

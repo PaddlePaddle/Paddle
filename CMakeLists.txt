@@ -55,7 +55,6 @@ if(WIN32)
 
     set(CMAKE_SUPPRESS_REGENERATION ON)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
-    add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
 
     if (MSVC_STATIC_CRT)
         message(STATUS "Use static C runtime time, refer to https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=vs-2019")
@@ -81,7 +80,7 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        set(${flag_var} "${${flag_var}} /MP /bigobj")
+        set(${flag_var} "${${flag_var}} /MP")
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
         set(${flag_var} "${${flag_var}} /w")
@@ -93,15 +92,6 @@ if(WIN32)
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL)
         if(${flag_var} MATCHES "/Z[iI]")
             string(REGEX REPLACE "/Z[iI]" "" ${flag_var} "${${flag_var}}")
-        endif()
-    endforeach(flag_var)
-
-    foreach(flag_var 
-        CMAKE_STATIC_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS 
-        CMAKE_EXE_LINKER_FLAGS)
-        set(${flag_var} "${${flag_var}} /IGNORE:4006 /IGNORE:4098 /ignore:4049 /IGNORE:4217 /IGNORE:4221")
-        if(${flag_var} MATCHES "/INCREMENTAL" AND NOT ${flag_var} MATCHES "/INCREMENTAL:NO")
-            string(REGEX REPLACE "/INCREMENTAL" "/INCREMENTAL:NO" ${flag_var} "${${flag_var}}")
         endif()
     endforeach(flag_var)
 
