@@ -1,4 +1,4 @@
-if(NOT WITH_GPU)
+if(NOT WITH_GPU OR NOT WITH_TENSORRT)
     return()
 endif()
 
@@ -39,8 +39,7 @@ find_library(TENSORRT_LIBRARY NAMES ${TR_INFER_LIB} ${TR_INFER_RT}
 if(TENSORRT_INCLUDE_DIR AND TENSORRT_LIBRARY)
     set(TENSORRT_FOUND ON)
 else()
-    set(TENSORRT_FOUND OFF)
-    message(STATUS "TensorRT is disabled.")
+    message(FATAL_ERROR  "You are compiling PaddlePaddle with option -DWITH_TENSORRT=ON, but TensorRT is not found, please configure path to TensorRT with option -DTENSORRT_ROOT or install it.")
 endif()
 
 if(TENSORRT_FOUND)
