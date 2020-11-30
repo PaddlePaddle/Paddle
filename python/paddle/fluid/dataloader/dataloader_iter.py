@@ -177,6 +177,7 @@ def get_worker_info():
                     for i in range(iter_start, iter_end):
                         yield np.array([i])
 
+            place = paddle.CPUPlace()
             dataset = SplitedIterableDataset(start=2, end=9)
             dataloader = DataLoader(
                 dataset,
