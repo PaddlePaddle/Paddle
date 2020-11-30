@@ -14731,6 +14731,8 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
                                              index_num=20,
                                              nshards=2,
                                              shard_id=0)
+            print(shard_label)
+            # [[-1], [1]]
     """
     check_variable_and_dtype(input, 'input', ['int64'], 'shard_index')
     op_type = 'shard_index'
