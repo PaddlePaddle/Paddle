@@ -80,11 +80,9 @@ class Cifar10(Dataset):
                     image = paddle.reshape(image, (1, -1))
                     return self.fc(image), label
 
-            paddle.disable_static()
 
             normalize = Normalize(mean=[0.5, 0.5, 0.5],
-                                  std=[0.5, 0.5, 0.5],
-                                  data_format='HWC')
+                                  std=[0.5, 0.5, 0.5])
             cifar10 = Cifar10(mode='train', transform=normalize)
 
             for i in range(10):
@@ -214,11 +212,9 @@ class Cifar100(Cifar10):
                     image = paddle.reshape(image, (1, -1))
                     return self.fc(image), label
 
-            paddle.disable_static()
 
             normalize = Normalize(mean=[0.5, 0.5, 0.5],
-                                  std=[0.5, 0.5, 0.5],
-                                  data_format='HWC')
+                                  std=[0.5, 0.5, 0.5])
             cifar100 = Cifar100(mode='train', transform=normalize)
 
             for i in range(10):
