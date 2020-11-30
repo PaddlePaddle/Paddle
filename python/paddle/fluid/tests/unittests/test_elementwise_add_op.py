@@ -103,12 +103,11 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 100).astype(self.dtype)
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
         self.out = self.x + self.y
 
 
-"""
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
@@ -131,8 +130,8 @@ class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
     reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
 class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(1, 1).astype(self.dtype)
+        self.x = np.random.rand(8, 16, 16, 8).astype(self.dtype)
+        self.y = np.random.rand(8, 1, 1, 8).astype(self.dtype)
         self.out = self.x + self.y
 
 
@@ -428,7 +427,7 @@ class TestAddOp(unittest.TestCase):
             np_z = z.numpy()
             z_expected = np.array([3., 8., 6.])
             self.assertEqual((np_z == z_expected).all(), True)
-"""
+
 
 if __name__ == '__main__':
     unittest.main()
