@@ -38,6 +38,7 @@ limitations under the License. */
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
 #define BLOCK_X 32
 #define BLOCK_Y 32
+#define WARPSIZE 32
 #endif
 
 #include "paddle/fluid/operators/math/math_function.h"
@@ -509,6 +510,54 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
         }
       }
     }
+  }
+}
+
+template <typename T>
+struct Sum {
+  __host__ __device__ T operator()(const T &a, const T &b) const {
+    return a + b;
+  }
+};
+
+template <typename T, typename OP>
+__global__ __launch_bounds__(1024) void ColumnReduceKernel(
+    const T *in, T *out, const int64_t num_rows, const int64_t num_cols, OP op,
+    T init) {
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  T sum = init;
+  if (row < num_rows && col < num_cols) sum = in[row * num_cols + col];
+
+  __shared__ __align__(
+      alignof(T)) char partial_sums_raw[WARPSIZE * (WARPSIZE + 1) * sizeof(T)];
+  T *partial_sums = reinterpret_cast<T *>(partial_sums_raw);
+
+  row += gridDim.y * blockDim.y;
+
+  if (col < num_cols) {
+    for (; row < num_rows; row += gridDim.y * blockDim.y) {
+      sum = op(sum, in[row * num_cols + col]);
+    }
+  }
+
+  partial_sums[threadIdx.x * (WARPSIZE + 1) + threadIdx.y] = sum;
+
+  __syncthreads();
+
+  if (threadIdx.y == 0 && col < num_cols) {
+    T s = partial_sums[threadIdx.x * (WARPSIZE + 1)];
+
+    const int numRowsThisBlock = min(static_cast<int64_t>(blockDim.y),
+                                     num_rows - blockIdx.y * blockDim.y);
+
+    for (int row = 1; row < numRowsThisBlock; ++row) {
+      T t = partial_sums[threadIdx.x * (WARPSIZE + 1) + row];
+      s = op(s, t);
+    }
+
+    out[col * gridDim.y + blockIdx.y] = s;
   }
 }
 
@@ -1753,9 +1802,14 @@ void ElemwiseGradComputeWithBroadcast(
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
     auto y_dims_trimed = trim_trailing_singular_dims(y_dims);
+    VLOG(3) << "======= y_dims_trimed ======: " << y_dims_trimed;
     axis_trim = (y_dims_trimed.size() == 0) ? x_dims.size() : axis;
+    VLOG(3) << "======= axis_trim =======: " << axis_trim;
     get_mid_dims(x_dims, y_dims_trimed, axis_trim, &pre, &n, &post,
                  &is_run_common_broadcast);
+    VLOG(3) << " ====== "
+            << "pre: " << pre << " n: " << n << " post: " << post
+            << " is_run_common_broadcast: " << is_run_common_broadcast;
   } else {
     auto x_dims_trimed = trim_trailing_singular_dims(x_dims);
     axis_trim = (x_dims_trimed.size() == 0) ? y_dims.size() : axis;
@@ -1772,12 +1826,39 @@ void ElemwiseGradComputeWithBroadcast(
   if (post == 1) {
     if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
-      ElemwiseGradBroadcast1CUDA(
-          ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
-          y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, is_xsize_larger,
-          dx_op, dy_op,
-          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+      if (x_dims.size() == 3 && y_dims.size() == 1) {
+        auto extent_x = x_dims[0] * x_dims[1];
+        auto extent_y = x_dims[2];
+        dim3 block_dim(
+            WARPSIZE,
+            std::min(extent_x, static_cast<int64_t>(1024 / WARPSIZE)));
+        dim3 grid_dim((extent_y + (WARPSIZE - 1)) / WARPSIZE, 1, 1);
+        if (grid_dim.x < 16)
+          grid_dim.y = std::min((extent_x + (WARPSIZE - 1)) / WARPSIZE,
+                                static_cast<int64_t>(WARPSIZE));
+
+        if (dx && x_dims == out.dims()) {
+          VLOG(3) << "======= dx = dout =============";
+          dx->ShareDataWith(dout);
+        }
+        if (dy) {
+          Sum<T> sum;
+          T init_sum = T(0);
+          dy->mutable_data<T>(ctx.GetPlace());
+          const T *dout_data = dout.data<T>();
+          T *dy_data = dy->data<T>();
+          auto stream = ctx.template device_context<DeviceContext>().stream();
+          ColumnReduceKernel<<<grid_dim, block_dim, 0, stream>>>(
+              dout_data, dy_data, extent_x, extent_y, sum, init_sum);
+        }
+      } else {
+        ElemwiseGradBroadcast1CUDA(
+            ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
+            y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, is_xsize_larger,
+            dx_op, dy_op,
+            dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+            dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+      }
 #endif
     } else {
       ElemwiseGradBroadcast1CPU(
