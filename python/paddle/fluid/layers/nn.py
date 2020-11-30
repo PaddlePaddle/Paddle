@@ -4126,7 +4126,7 @@ def conv3d_transpose(input,
           conv3d_transpose can compute the kernel size automatically.
 
     Args:
-        input(Variable): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
+        input(Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
             of input is float32 or float64.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
@@ -4209,11 +4209,10 @@ def conv3d_transpose(input,
     Examples:
        .. code-block:: python
 
-          import paddle.fluid as fluid
           import paddle
           paddle.enable_static()
-          data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
-          conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
+          data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
+          conv3d_transpose = paddle.static.nn.conv3d_transpose(input=data, num_filters=2, filter_size=3)
     """
     assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
     if data_format not in ['NCDHW', 'NDHWC']:
