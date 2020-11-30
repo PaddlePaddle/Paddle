@@ -25,8 +25,10 @@ from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
+from paddle.fluid.dygraph.dygraph_to_static.utils import parse_varargs_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
+from paddle.fluid.dygraph.io import TranslatedLayer
 
 
 class FunctionSpec(object):
@@ -45,6 +47,11 @@ class FunctionSpec(object):
 
         # parse full argument names list.
         self._arg_names, self._default_kwargs = parse_arg_and_kwargs(function)
+        # parse *args
+        self.varargs_name = parse_varargs_name(function)
+        if self.varargs_name is not None and isinstance(function.__self__,
+                                                        TranslatedLayer):
+            self._arg_names += function.__self__._input_args_names
 
     def unified_args_and_kwargs(self, args, kwargs):
         """

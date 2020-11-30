@@ -2701,13 +2701,13 @@ def batch_norm(input,
         `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
 
     Args:
-        input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type
+        input(Tensor): The rank of input Tensor can be 2, 3, 4, 5. The data type
             is float16 or float32 or float64.
         act(string, Default None): Activation type, linear|relu|prelu|...
         is_test (bool, Default False): A flag indicating whether it is in
             test phrase or not.
-        momentum(float|Variable, Default 0.9): The value used for the moving_mean and
-            moving_var computation. This should be a float number or a Variable with
+        momentum(float|Tensor, Default 0.9): The value used for the moving_mean and
+            moving_var computation. This should be a float number or a Tensor with
             shape [1] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
@@ -2745,48 +2745,23 @@ def batch_norm(input,
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
     Returns:
-        A Variable holding Tensor which is the result after applying batch normalization on the input,
+        A Tensor which is the result after applying batch normalization on the input,
         has same shape and data type with input.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import paddle
+            
             paddle.enable_static()
-            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
-            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
-            hidden2 = fluid.layers.batch_norm(input=hidden1)
-
-        .. code-block:: python
-
-            # batch_norm with momentum as Variable
-            import paddle.fluid as fluid
-            import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler
-            import paddle
-            paddle.enable_static()
-
-            def get_decay_momentum(momentum_init, decay_steps, decay_rate):
-                global_step = lr_scheduler._decay_step_counter()
-                momentum = fluid.layers.create_global_var(
-		    shape=[1],
-		    value=float(momentum_init),
-		    dtype='float32',
-		    # set persistable for save checkpoints and resume
-		    persistable=True,
-		    name="momentum")
-                div_res = global_step / decay_steps
-                decayed_momentum = momentum_init * (decay_rate**div_res)
-                fluid.layers.assign(decayed_momentum, momentum)
-
-                return momentum
-
-            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
-            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
-            momentum = get_decay_momentum(0.9, 1e5, 0.9)
-            hidden2 = fluid.layers.batch_norm(input=hidden1, momentum=momentum)
-
+            x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            hidden1 = paddle.static.nn.fc(x=x, size=200)
+            print(hidden1.shape)
+            # [3, 200]
+            hidden2 = paddle.static.nn.batch_norm(input=hidden1)
+            print(hidden2.shape)
+            # [3, 200]
     """
     assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('batch_norm', **locals())
@@ -11278,25 +11253,24 @@ def shape(input):
 
 def rank(input):
     """
-    :alias_main: paddle.rank
-	:alias: paddle.rank,paddle.tensor.rank,paddle.tensor.attribute.rank
-	:old_api: paddle.fluid.layers.rank
 
     The OP returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
 
     Args:
-        input (Variable): The input N-D tensor with shape of :math:`[N_1, N_2, ..., N_k]`, the data type is arbitrary.
+        input (Tensor): The input N-D tensor with shape of :math:`[N_1, N_2, ..., N_k]`, the data type is arbitrary.
 
     Returns:
-        Variable, the output data type is int32.: The 0-D tensor with the dimensions of the input variable.
+        Tensor, the output data type is int32.: The 0-D tensor with the dimensions of the input Tensor.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
-            input = fluid.data(name="input", shape=[3, 100, 100], dtype="float32")
-            rank = fluid.layers.rank(input) # rank=(3,)
+            input = paddle.rand((3, 100, 100))
+            rank = paddle.rank(input)
+            print(rank)
+            # 3
     """
     check_type(input, 'input', (Variable), 'input')
     ndims = len(input.shape)
@@ -14722,9 +14696,10 @@ def deformable_roi_pooling(input,
     return output
 
 
+@deprecated(since="2.0.0", update_to="paddle.shard_index")
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    This operator recomputes the `input` indices according to the offset of the
+    Recompute the `input` indices according to the offset of the
     shard. The length of the indices is evenly divided into N shards, and if
     the `shard_id` matches the shard with the input index inside, the index is
     recomputed on the basis of the shard offset, elsewise it is set to
@@ -14737,44 +14712,27 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     NOTE: If the length of indices cannot be evely divided by the shard number,
     the size of the last shard will be less than the calculated `shard_size`
 
-    Examples:
-    ::
-
-        Input:
-          X.shape = [4, 1]
-          X.data = [[1], [6], [12], [19]]
-          index_num = 20
-          nshards = 2
-          ignore_value = -1
-
-        if shard_id == 0, we get:
-          Out.shape = [4, 1]
-          Out.data = [[1], [6], [-1], [-1]]
-
-        if shard_id == 1, we get:
-          Out.shape = [4, 1]
-          Out.data = [[-1], [-1], [2], [9]]
-
     Args:
-        - **input** (Variable): Input indices, last dimension must be 1.
-        - **index_num** (scalar): An integer defining the range of the index.
-        - **nshards** (scalar): The number of shards
-        - **shard_id** (scalar): The index of the current shard
-        - **ignore_value** (scalar): An integer value out of sharded index range
+        input (Tensor): Input indices with data type int64. It's last dimension must be 1.
+        index_num (int): An integer defining the range of the index.
+        nshards (int): The number of shards.
+        shard_id (int): The index of the current shard.
+        ignore_value (int): An integer value out of sharded index range.
 
     Returns:
-        Variable: The sharded index of input.
+        Tensor: The sharded index of input.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            batch_size = 32
-            label = fluid.data(name="label", shape=[batch_size, 1], dtype="int64")
-            shard_label = fluid.layers.shard_index(input=label,
-                                                   index_num=20,
-                                                   nshards=2,
-                                                   shard_id=0)
+            import paddle
+            label = paddle.to_tensor([[16], [1]], "int64")
+            shard_label = paddle.shard_index(input=label,
+                                             index_num=20,
+                                             nshards=2,
+                                             shard_id=0)
+            print(shard_label)
+            # [[-1], [1]]
     """
     check_variable_and_dtype(input, 'input', ['int64'], 'shard_index')
     op_type = 'shard_index'

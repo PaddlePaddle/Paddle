@@ -42,6 +42,7 @@ class NCCLCommImpl : public NCCLComm {
   void set_dev_ctx(std::unique_ptr<CUDADeviceContext>&& dev_ctx) {
     dev_ctx_ = std::move(dev_ctx);
   }
+  CUDADeviceContext* dev_context() const override { return dev_ctx_.get(); }
 
  private:
   int ring_id_;
