@@ -134,6 +134,14 @@ class TestComplexElementwiseLayers(unittest.TestCase):
         self.compare(x, y)
         self.compare_op(x, y)
 
+    def test_complex64_xy(self):
+        x = rand([2, 3, 4, 5]).astype("float32") + 1j * rand(
+            [2, 3, 4, 5]).astype("float32")
+        y = rand([2, 3, 4, 5]).astype("float32") + 1j * rand(
+            [2, 3, 4, 5]).astype("float32")
+        self.compare_1(x, y)
+        self.compare_op_1(x, y)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -108,6 +108,16 @@ class TestComplexMatMulLayer(unittest.TestCase):
                 (2, 3, 5, 4)).astype("float32")
         self.compare(x, y)
 
+    def test_complex128_xy(self):
+        x = np.random.random(
+            (2, 3, 4, 5)).astype("float64") + 1J * np.random.random(
+                (2, 3, 4, 5)).astype("float64")
+        y = np.random.random(
+            (2, 3, 5, 4)).astype("float64") + 1J * np.random.random(
+                (2, 3, 5, 4)).astype("float64")
+        self.compare_1(x, y)
+        self.compare_op_1(x, y)
+
 
 if __name__ == '__main__':
     unittest.main()
