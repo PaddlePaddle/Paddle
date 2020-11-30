@@ -3197,13 +3197,9 @@ class TreeConv(layers.Layer):
 
 class Flatten(layers.Layer):
     """
-    :alias_main: paddle.nn.Flatten
-    :alias: paddle.nn.Flatten,paddle.nn.layer.Flatten,paddle.nn.layer.common.Flatten
     This interface is used to construct a callable object of the ``FLatten`` class.
     For more details, refer to code examples.
     It implements flatten a contiguous range of dims into a tensor.
-
-    Equation:
 
     Parameters:
         start_axis(int): first dim to flatten (default = 1)
@@ -3218,7 +3214,6 @@ class Flatten(layers.Layer):
 
           import paddle
           import numpy as np
-          paddle.disable_static()
 
           inp_np = np.ones([5, 2, 3, 4]).astype('float32')
           inp_np = paddle.to_tensor(inp_np)
