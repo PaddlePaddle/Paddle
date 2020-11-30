@@ -250,9 +250,9 @@ $$out = cos(x)$$
 )DOC";
 
 UNUSED constexpr char TanDoc[] = R"DOC(
-Cosine Operator. Computes cosine of x element-wise.
+Tangent Operator. Computes tangent of x element-wise.
 
-Input range is `[-3.14/2, 3.14/2]` and output range is `(-inf, inf)`.
+Input range is `(k*pi-pi/2 and k*pi+pi/2)` and output range is `(-inf, inf)`.
 
 $$out = tan(x)$$
 
