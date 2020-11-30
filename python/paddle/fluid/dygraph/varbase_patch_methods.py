@@ -162,7 +162,7 @@ def monkey_patch_varbase():
                 # 3: [2000.]
                 # 4: [2500.]
 
-                x.clear_gradient()
+                x.clear_grad()
                 print("{}".format(x.grad))
                 # 0.
 
@@ -181,31 +181,21 @@ def monkey_patch_varbase():
     @framework.dygraph_only
     def gradient(self):
         """
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
-
-        Get the Gradient of Current Variable
+        Get the Gradient of Current Tensor.
 
         Returns:
-            ndarray: Numpy value of the gradient of current Variable
+            ndarray: Numpy value of the gradient of current Tensor
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                import numpy as np
+                import paddle
 
-                x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    inputs2 = []
-                    for _ in range(10):
-                        tmp = fluid.dygraph.base.to_variable(x)
-                        tmp.stop_gradient=False
-                        inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    loss2.backward()
-                    print(loss2.gradient())
+                x = paddle.to_tensor(5., stop_gradient=False)
+                y = paddle.pow(x, 4.0)
+                y.backward()
+                print("grad of x: {}".format(x.grad))
+                # [500.]
 
         """
         if self._grad_ivar() is None:

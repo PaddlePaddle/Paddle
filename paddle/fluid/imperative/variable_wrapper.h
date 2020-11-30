@@ -89,6 +89,28 @@ class VariableWrapper {
 
   bool Persistable() const { return persistable_; }
 
+  // TODO(zhouwei): fix Tensor.clear_gradient() bug, this function isn't need
+  void SetIsEmpty(bool is_empty) { is_empty_ = is_empty; }
+
+  bool IsEmpty() const {
+    bool is_empty = true;
+    if (var_.IsInitialized()) {
+      const framework::Tensor* tensor = nullptr;
+      if (var_.IsType<framework::LoDTensor>()) {
+        tensor = &(var_.Get<framework::LoDTensor>());
+      } else if (var_.IsType<framework::SelectedRows>()) {
+        tensor = &(var_.Get<framework::SelectedRows>()).value();
+      } else {
+        PADDLE_THROW(platform::errors::PermissionDenied(
+            "Only support LoDTensor and SelectedRows for gradient var"));
+      }
+      if (tensor && tensor->IsInitialized()) {
+        is_empty = false;
+      }
+    }
+    return is_empty || is_empty_;
+  }
+
   const std::string& Name() const { return name_; }
 
   void SetName(const std::string& name) { name_ = name; }
@@ -268,6 +290,10 @@ class VariableWrapper {
 
   std::weak_ptr<VariableWrapper> grad_var_;
   std::weak_ptr<GradOpNode> grad_node_;
+
+  // TODO(zhouwei): fix bug of Tensor.clear_gradient(), SetIsEmpty function
+  // isn't need
+  bool is_empty_{false};
 
   // NOTE: only grad var can hold hooks now
   // only interior var can hold interior hooks

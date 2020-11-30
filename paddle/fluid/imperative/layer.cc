@@ -206,8 +206,6 @@ void VarBase::ClearGradient() {
     } else {
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
-      // TODO(zhouwei): can Free memory of grad by grad_t->claer? It's better.
-      // which will have some error on mac CPU, why?
       if (grad_t->IsInitialized()) {
         auto* dev_ctx =
             platform::DeviceContextPool::Instance().Get(grad_t->place());
@@ -217,6 +215,10 @@ void VarBase::ClearGradient() {
 #endif
       }
     }
+    // TODO(zhouwei): It's better to free memory of grad by grad_t->claer.
+    // But will have some bug on mac CPU of yolov3 model, why?
+    // After fix this bug, function SetIsEmpty() isn't need
+    grad_var_->SharedVar()->SetIsEmpty(true);
   }
 }
 

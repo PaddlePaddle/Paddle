@@ -184,9 +184,9 @@ class VarBase {
 
   std::string GradVarName() { return framework::GradVarName(Name()); }
 
-  void SetGraphIsFree(bool free) { graph_is_free_ = free; }
+  void SetGraphIsFreed(bool free) { graph_is_free_ = free; }
 
-  const bool& GraphIsFree() const { return graph_is_free_; }
+  const bool& GraphIsFreed() const { return graph_is_free_; }
 
   void SetType(framework::proto::VarType::Type type) { var_->SetType(type); }
 

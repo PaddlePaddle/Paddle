@@ -27,8 +27,6 @@ namespace imperative {
 class GradientAccumulator {
  public:
   explicit GradientAccumulator(VariableWrapper* var) {
-    VLOG(3) << "Prepare acccumulator for grad variable " << var->Name();
-
     // var may be initialized, so Synchronous VariableWrapper with Variable
     if (var && var->Var().IsInitialized()) {
       if (var->Var().IsType<framework::LoDTensor>()) {

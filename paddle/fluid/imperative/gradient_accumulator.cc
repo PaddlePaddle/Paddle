@@ -380,22 +380,7 @@ void GradientAccumulator::AccumulateGrad() {
                         "Interior var of Leaf tensor  should be initialized."));
   auto* src = inner_var_->MutableVar();
   auto* dst = var_->MutableVar();
-  bool is_initialized = false;
-  if (var_->Var().IsInitialized()) {
-    const framework::Tensor* tensor = nullptr;
-    if (var_->Var().IsType<framework::LoDTensor>()) {
-      tensor = &(var_->Var().Get<framework::LoDTensor>());
-    } else if (var_->Var().IsType<framework::SelectedRows>()) {
-      tensor = &(var_->Var().Get<framework::SelectedRows>()).value();
-    } else {
-      PADDLE_THROW(platform::errors::PermissionDenied(
-          "Only support LoDTensor and SelectedRows for gradient var"));
-    }
-    if (tensor && tensor->IsInitialized()) {
-      is_initialized = true;
-    }
-  }
-  if (is_initialized) {
+  if (!var_->IsEmpty()) {
     VLOG(6) << "Leaf Gradient Var(" << var_->Name()
             << ") has been calculated by previous graph, will accumulate on "
                "previous graph.";
@@ -424,6 +409,7 @@ void GradientAccumulator::AccumulateGrad() {
     var_->SetType(inner_var_->Type());
     var_->SetDataType(inner_var_->DataType());
   }
+  var_->SetIsEmpty(false);
   inner_var_.reset();
 }
 

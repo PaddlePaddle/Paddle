@@ -38,7 +38,7 @@ namespace imperative {
 void BasicEngine::Init(VarBase* var, bool retain_graph) {
   retain_graph_ = retain_graph;
   init_node_ = var->GradVarBase()->GradNode();
-  PADDLE_ENFORCE_EQ(var->GradVarBase()->GraphIsFree(), false,
+  PADDLE_ENFORCE_EQ(var->GradVarBase()->GraphIsFreed(), false,
                     platform::errors::Unavailable(
                         "%s Trying to backward through the same graph a second "
                         "time, but this graph have already been freed. Please "
@@ -49,7 +49,7 @@ void BasicEngine::Init(VarBase* var, bool retain_graph) {
   if (!retain_graph) {
     VLOG(5) << "Clear the auto-grad graph from grad var " << var->Name()
             << " because of retain_graph=False when calling backward";
-    var->GradVarBase()->SetGraphIsFree(true);
+    var->GradVarBase()->SetGraphIsFreed(true);
     var->GradVarBase()->ClearGradNode();
   }
 
@@ -126,6 +126,10 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
       }
 
       accumulator->IncreaseRefCnt();
+
+      VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
+              << var.get() << ")  with reference count "
+              << accumulator->RefCnt();
 
       if (var->HasLeafHooks()) {
         VLOG(3) << "Grad variable wrapper (" << var->Name()
@@ -229,9 +233,9 @@ void BasicEngine::Execute() {
 
             PADDLE_ENFORCE_EQ(
                 iter->second->HasInnerVar(), true,
-                platform::errors::NotFound("Cannot find interior gradient of "
-                                           "leaf tensor's grad var %s",
-                                           var->Name()));
+                platform::errors::NotFound(
+                    "Cannot find inner var of leaf tensor's grad var %s",
+                    var->Name()));
             var = iter->second->InnerVar();
           }
 
