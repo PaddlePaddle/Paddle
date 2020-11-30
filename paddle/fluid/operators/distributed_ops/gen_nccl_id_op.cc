@@ -161,64 +161,16 @@ class GenNCCLIdOp : public framework::OperatorBase {
       break;
     }
 
-    for (int i = 0; i < nccl_comm_num; i++) {
-      rpc_service->SetCond(distributed::kRequestSend);
-      VLOG(3) << "trainer_id:" << trainer_id
-              << " start getting nccl id from trainer 0, nccl_comm_no:" << i;
-      rpc_service->WaitBarrier(distributed::kRequestSend);
-      rpc_service->ResetBarrierCounter();
-    }
-
-    if (use_hierarchical_allreduce) {
-      if (inter_trainer_id > 0) {
-        for (int i = 0; i < nccl_comm_num; i++) {
-          rpc_service->SetCond(distributed::kRequestSend);
-          VLOG(3) << "trainer_id:" << trainer_id
-                  << ", inter_trainer_id:" << inter_trainer_id
-                  << " start getting nccl id from inter_trainer:" << i;
-          rpc_service->WaitBarrier(distributed::kRequestSend);
-          rpc_service->ResetBarrierCounter();
-        }
-      }
-
-      if (exter_trainer_id > 0) {
-        for (int i = 0; i < nccl_comm_num; i++) {
-          rpc_service->SetCond(distributed::kRequestSend);
-          VLOG(3)
-              << "trainer_id:" << trainer_id
-              << ", exter_trainer_id:" << exter_trainer_id
-              << " start getting nccl id from exter_trainer 0, nccl_comm_no:"
-              << i;
-          rpc_service->WaitBarrier(distributed::kRequestSend);
-          rpc_service->ResetBarrierCounter();
-        }
-      }
-    }
-
-    VLOG(3) << "traier_id:" << trainer_id
-            << ", inter_trainer_id:" << inter_trainer_id
-            << ", exter_trainer_id:" << exter_trainer_id
-            << " got nccl id and stop server...";
-    rpc_service->ShutDown();
-    VLOG(3) << "rpc server stopped";
-    server_thread.join();
-
-    VLOG(3) << "listening on: " << ep;
-    if (listen(server_fd, 3) < 0) {
+    if ((new_socket =
+             accept(server_fd, reinterpret_cast<struct sockaddr*>(&address),
+                    reinterpret_cast<socklen_t*>(&addrlen))) < 0) {
       PADDLE_THROW(platform::errors::Unavailable(
-          "Listen on server file descriptor failed."));
+          "Accept the new socket file descriptor failed."));
     }
 
-      if ((new_socket =
-                   accept(server_fd, reinterpret_cast<struct sockaddr*>(&address),
-                          reinterpret_cast<socklen_t*>(&addrlen))) < 0) {
-          PADDLE_THROW(platform::errors::Unavailable(
-                  "Accept the new socket file descriptor failed."));
-      }
-
-      if (read(new_socket, buffer, 1024) < 0) {
-          PADDLE_THROW(platform::errors::Unavailable("Read from socket failed."));
-      }
+    if (read(new_socket, buffer, 1024) < 0) {
+      PADDLE_THROW(platform::errors::Unavailable("Read from socket failed."));
+    }
 
     VLOG(3) << "recevived the ncclUniqueId";
     memcpy(nccl_id, buffer, NCCL_UNIQUE_ID_BYTES);
