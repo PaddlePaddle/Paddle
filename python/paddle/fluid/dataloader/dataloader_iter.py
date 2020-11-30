@@ -187,7 +187,8 @@ def get_worker_info():
                 batch_size=1,
                 drop_last=True)
 
-            print(list(dataloader))
+            for data in dataloader:
+                print(data)
             # outputs: [2, 5, 3, 6, 4, 7]
 
     """
