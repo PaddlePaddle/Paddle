@@ -296,14 +296,22 @@ def convert_shape_compare(left, *args):
     assert args_len % 2 == 0, "Illegal input for convert_shape_compare, *args should be op(str), var, op(str), var ..."
     num_cmp = args_len / 2
     if isinstance(left, Variable):
-        final_result = eval("left " + args[0] + " args[1]")
+
+        def reduce_compare(x, op_str, y):
+            element_wise_result = eval("x " + op_str + " y")
+            if op_str == "!=":
+                return reduce_any(element_wise_result)
+            else:
+                return reduce_all(element_wise_result)
+
+        final_result = reduce_compare(left, args[0], args[1])
         for i in range(1, num_cmp):
             cmp_left = args[i * 2 - 1]
             cmp_op = args[i * 2]
             cmp_right = args[i * 2 + 1]
-            cur_result = eval("cmp_left " + cmp_op + " cmp_right")
+            cur_result = reduce_compare(cmp_left, cmp_op, cmp_right)
             final_result = logical_and(final_result, cur_result)
-        return reduce_all(final_result)
+        return final_result
     else:
         cmp_left = left
         for i in range(num_cmp):
