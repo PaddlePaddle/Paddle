@@ -221,6 +221,9 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
+    if in_dygraph_mode():
+        core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', out.dtype)
+
     check_variable_and_dtype(
         x, 'x',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
@@ -232,7 +235,7 @@ def cast(x, dtype):
 
     helper = LayerHelper('cast', **locals())
     out = helper.create_variable_for_type_inference(
-        dtype=dtype, sop_gradient=x.stop_gradient)
+        dtype=dtype, stop_gradient=x.stop_gradient)
     helper.append_op(
         type='cast',
         inputs={'X': [x]},
