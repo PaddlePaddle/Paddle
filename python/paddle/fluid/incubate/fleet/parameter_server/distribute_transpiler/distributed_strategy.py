@@ -46,6 +46,20 @@ class TrainerRuntimeConfig(object):
         self.runtime_configs['communicator_is_sgd_optimizer'] = os.getenv(
             "FLAGS_communicator_is_sgd_optimizer", "1")
 
+        self.runtime_configs['pserver_push_sparse_merge_limit'] = os.getenv("FLAGS_pserver_push_sparse_merge_limit", "12")
+        self.runtime_configs['pserver_push_dense_merge_limit'] = os.getenv("FLAGS_pserver_push_dense_merge_limit", "12")
+        self.runtime_configs['pserver_pull_dense_limit'] = os.getenv("FLAGS_pserver_pull_dense_limit", "12")
+        self.runtime_configs['pserver_async_push_sparse_interval_ms'] = os.getenv("FLAGS_pserver_async_push_sparse_interval_ms", "10")
+        self.runtime_configs['pserver_async_push_dense_interval_ms'] = os.getenv("FLAGS_pserver_async_push_dense_interval_ms", "10")
+        self.runtime_configs['pserver_scale_gradient_by_merge'] = os.getenv("FLAGS_pserver_scale_gradient_by_merge", "0")
+        self.runtime_configs['pserver_communicate_compress_type'] = os.getenv("FLAGS_pserver_communicate_compress_type", "0")
+        self.runtime_configs['pserver_max_async_call_num'] = os.getenv("FLAGS_pserver_max_async_call_num", "13")
+        self.runtime_configs['pserver_timeout_ms'] = os.getenv("FLAGS_pserver_timeout_ms", "500000")
+        self.runtime_configs['pserver_connect_timeout_ms'] = os.getenv("FLAGS_pserver_connect_timeout_ms", "10000")
+        self.runtime_configs['pserver_connection_type'] = os.getenv("FLAGS_pserver_connection_type", "pooled")
+        self.runtime_configs['pserver_sparse_merge_thread'] = os.getenv("FLAGS_pserver_sparse_merge_thread", "1")
+        self.runtime_configs['pserver_sparse_table_shard_num'] = os.getenv("FLAGS_pserver_sparse_table_shard_num", "1000")
+
         # not used 
         self.runtime_configs['rpc_deadline'] = os.getenv("FLAGS_rpc_deadline",
                                                          "180000")

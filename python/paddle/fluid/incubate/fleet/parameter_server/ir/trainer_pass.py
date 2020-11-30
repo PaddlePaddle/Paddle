@@ -82,6 +82,7 @@ def delete_optimizer_pass(program, config):
 
 def distributed_ops_pass(program, config):
     trainer_id = config.get_role_id()
+    send_ctx = config.get_the_one_send_context()
 
     def _get_pull_sparse_ops(_program):
         pull_sparse_ops = {}
@@ -102,6 +103,18 @@ def distributed_ops_pass(program, config):
                 program.global_block().vars[op.input("Ids")[0]] for op in ops
             ]
             w = program.global_block().vars[ops[0].input("W")[0]]
+
+            grad_name = config.param_name_to_grad_name[w.name]
+
+            table_id = -1
+
+            for name, ctx in send_ctx.items():
+                if grad_name in ctx.origin_varnames():
+                    table_id = ctx.table_id()
+
+            if table_id == -1:
+                raise ValueError("can not find suitable sparse table, please check")
+
             padding_idx = ops[0].attr("padding_idx")
             is_distributed = ops[0].attr("is_distributed")
             op_type = ops[0].type
@@ -128,16 +141,6 @@ def distributed_ops_pass(program, config):
                         if out_var.name in ins:
                             outputs_idxs[out_id] = idx
 
-            tables = config.get_var_distributed(w.name, True)
-
-            pserver_endpoints = config.get_ps_endpoints()
-
-            tablenames, eps, sections, = [], [], []
-            for table in tables:
-                tablenames.append(table[0])
-                eps.append(table[1])
-                sections.append(table[2])
-
             if min(outputs_idxs) - max(inputs_idxs) >= 1:
                 distributed_idx = max(inputs_idxs) + 1
 
@@ -148,12 +151,9 @@ def distributed_ops_pass(program, config):
                             'W': w},
                     outputs={"Outputs": outputs},
                     attrs={
-                        "table_names": tablenames,
-                        "endpoints": eps,
                         "is_distributed": is_distributed,
-                        "pserver_num": len(pserver_endpoints),
                         "padding_idx": padding_idx,
-                        "trainer_id": trainer_id,
+                        "table_id": table_id,
                         "lookup_table_version": op_type
                     })
             else:
@@ -168,9 +168,8 @@ def distributed_ops_pass(program, config):
 def append_send_ops_pass(program, config):
     mode = config.get_distributed_mode()
     trainer_id = config.get_role_id()
-    pserver_endpoints = config.get_ps_endpoints()
 
-    def _append_send_op(union_vars, queue):
+    def _append_send_op(union_vars, queue, is_sparse, table_id):
 
         if queue == STEP_COUNTER:
             send_input_vars = []
@@ -191,9 +190,8 @@ def append_send_ops_pass(program, config):
             outputs={"Out": dummy_output},
             attrs={
                 "send_varnames": [queue],
-                "merge_add": True,
-                "use_send_handler": False,
-                "endpoints": pserver_endpoints,
+                "is_sparse": is_sparse,
+                "table_id": table_id,
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
@@ -205,7 +203,6 @@ def append_send_ops_pass(program, config):
             inputs={"X": dummys},
             outputs={"Out": []},
             attrs={
-                "endpoints": pserver_endpoints,
                 "trainer_id": trainer_id,
                 "half_async": True,
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -213,10 +210,12 @@ def append_send_ops_pass(program, config):
 
     dummys = []
 
-    sends = config.get_trainer_send_context()
+    sends = config.get_the_one_send_context()
 
     for merged_name, send in sends.items():
-        dummys.append(_append_send_op(send.origin_varnames(), merged_name))
+        is_sparse = 1 if send.is_sparse() else 0
+        is_sparse = 2 if send.is_distributed() else is_sparse
+        dummys.append(_append_send_op(send.origin_varnames(), merged_name, is_sparse, send.table_id()))
 
     if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
         _append_barrier_op(dummys)
@@ -225,6 +224,10 @@ def append_send_ops_pass(program, config):
 
 
 def init_from_server_pass(program, config):
+    # 0' trainer do not need barrier, it will call barrier at the end init_worker
+    if config.role_maker._is_first_worker():
+        return program
+
     fetch_barrier_out = program.global_block().create_var(
         name=framework.generate_control_dev_var_name())
 
@@ -421,7 +424,7 @@ def find_heter_ops(program, default_device="cpu"):
             total_heter_ops += len(heter_block)
     print(
         "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".
-        format(len(block.ops), total_heter_ops, heter_blocks))
+            format(len(block.ops), total_heter_ops, heter_blocks))
     return origin_porgram, heter_ops, default_ops, program_block_ops
 
 
@@ -776,7 +779,7 @@ def get_communicate_var_info(program, block_index, entrance_var_list,
         if len(shape) < 2 or shape[0] != -1:
             raise ValueError(
                 "Variable {} not support heter training. its shape is {}".
-                format(name, shape))
+                    format(name, shape))
         recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
         input_var_reshape_dim.append(recv_var_dim)
         input_var_reshape_name.append("{}.input_reshape@Heter".format(name))
@@ -789,7 +792,7 @@ def get_communicate_var_info(program, block_index, entrance_var_list,
         if len(shape) < 2 or shape[0] != -1:
             raise ValueError(
                 "Variable {} not support heter training. its shape is {}".
-                format(var_name, shape))
+                    format(var_name, shape))
         send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape)
         output_var_reshape_dim.append(send_reshape_dim)
         output_var_reshape_name.append("{}.output_reshape@Heter".format(
@@ -887,8 +890,8 @@ def find_need_var_from_previous_block(need_add_vars, block_var_detail,
             total_var = previous_block_private + previous_block_exit + previous_block_entrance
             if var in total_var:
                 if index_device_map[current_index] == index_device_map[
-                        pre_index] and index_device_map[
-                            current_index] == DEFAULT_DEVICE:
+                    pre_index] and index_device_map[
+                    current_index] == DEFAULT_DEVICE:
                     need_ignore_var.append(var)
                     break
             pre_index -= 1
