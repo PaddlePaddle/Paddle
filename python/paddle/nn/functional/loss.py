@@ -31,7 +31,6 @@ from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
 
 from ...fluid.layers import edit_distance  #DEFINE_ALIAS
-from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import huber_loss
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode
