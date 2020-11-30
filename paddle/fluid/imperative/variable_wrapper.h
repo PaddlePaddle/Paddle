@@ -174,6 +174,17 @@ class VariableWrapper {
 
   std::shared_ptr<LeafVarHookPipeline>& GetLeafHooks() { return leaf_hooks_; }
 
+  uint32_t InplaceVersionSnapshot() const { return inplace_version_snapshot_; }
+
+  void ResetInplaceVersion() {
+    auto new_version = var_.CurrentInplaceVersion();
+
+    VLOG(6) << "The wrapper version of VariableWrapper '" << name_
+            << "' will be updated from " << inplace_version_snapshot_ << "to "
+            << new_version;
+    inplace_version_snapshot_ = new_version;
+  }
+
  private:
   void SetGradVar(const std::shared_ptr<VariableWrapper>& var) {
     auto shared_var = grad_var_.lock();
@@ -243,6 +254,10 @@ class VariableWrapper {
   // should override the frameworks setting (-1) unset, (1) true, (0) false
   int overrided_stop_gradient_{-1};
   bool persistable_{false};
+
+  // Used for checking whether there is any inplace operation affecting gradient
+  // calculation.
+  uint32_t inplace_version_snapshot_{0};
 
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};

@@ -593,6 +593,10 @@ void BindImperative(py::module *m_ptr) {
                SetTensorFromPyArray(self_tensor, self_numpy,
                                     self_tensor->place(), true);
              }
+             // NOTE(liym27):
+             // Increase the version of VarBase self because __setitem__ is an
+             // inplace operator for the VarBase self.
+             self->BumpInplaceVersion();
            })
       .def("__getitem__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
@@ -632,6 +636,28 @@ void BindImperative(py::module *m_ptr) {
                return out;
              }
            })
+      .def("_inplace_version",
+           [](imperative::VarBase &self) -> uint32_t {
+             const auto &var = self.MutableVar();
+             PADDLE_ENFORCE_EQ(
+                 var->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor of %s is Empty, please check if it has no data.",
+                     self.Name()));
+             return var->CurrentInplaceVersion();
+           })
+      .def("_bump_inplace_version",
+           [](std::shared_ptr<imperative::VarBase> &self) {
+             // NOTE(liym27): _bump_inplace_version is only used for inplace
+             // operation
+             self->BumpInplaceVersion();
+           },
+           R"DOC(
+        **Notes**:
+            **This API is ONLY available in Dygraph mode.**
+            **This is a very low level API. Users should not use it directly. **
+         Bump the version whenever the Tensor is modified through an inplace operation.
+            )DOC")
       .def("numpy",
            [](imperative::VarBase &self) -> py::array {
              const auto &tensor =
