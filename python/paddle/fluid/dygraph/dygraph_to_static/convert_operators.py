@@ -17,7 +17,7 @@ from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import Assert, Print
 from paddle.fluid.layers import array_length, array_read, array_write, create_array
-from paddle.fluid.layers import assign, fill_constant, slice
+from paddle.fluid.layers import assign, fill_constant, slice, reduce_all
 from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 
@@ -270,6 +270,50 @@ def convert_var_shape(x):
         return nn.shape(x)
     else:
         return x.shape
+
+
+def convert_shape_compare(left, *args):
+    """
+    A function handles comparison difference between Paddle and Python.
+    For example, if x and y are Tensors, x.shape == y.shape will return single
+    boolean Value (True/False). However, paddle.shape(x) == paddle.shape(y) is
+    an element-wise comparison. The difference can cause dy2stat error. So we
+    create this function to handle the difference.
+
+    Args:
+        left: variable
+        *args: compare_op(str), variable, compare_op(str), variable, where
+            compare_op means "<", ">", "==", "!=", etc.
+    Returns:
+        If the variables to compare are NOT Paddle Variables, we will return as
+        Python like "a op1 b and b op2 c and ... ".
+        If the variables to compare are Paddle Variables, we will do elementwise
+        comparsion first and then reduce to a boolean whose numel is 1.
+        
+    """
+    args_len = len(args)
+    assert args_len >= 2, "convert_shape_compare needs at least one right compare variable"
+    assert args_len % 2 == 0, "Illegal input for convert_shape_compare, *args should be op(str), var, op(str), var ..."
+    num_cmp = args_len / 2
+    if isinstance(left, Variable):
+        final_result = eval("left " + args[0] + " args[1]")
+        for i in range(1, num_cmp):
+            cmp_left = args[i * 2 - 1]
+            cmp_op = args[i * 2]
+            cmp_right = args[i * 2 + 1]
+            cur_result = eval("cmp_left " + cmp_op + " cmp_right")
+            final_result = logical_and(final_result, cur_result)
+        return reduce_all(final_result)
+    else:
+        cmp_left = left
+        for i in range(num_cmp):
+            cmp_op = args[i * 2]
+            cmp_right = args[i * 2 + 1]
+            cur_result = eval("cmp_left " + cmp_op + " cmp_right")
+            if not cur_result:
+                return False
+            cmp_left = cmp_right
+        return True
 
 
 def cast_bool_if_necessary(var):

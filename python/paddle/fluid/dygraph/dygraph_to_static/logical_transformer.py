@@ -47,6 +47,29 @@ class LogicalTransformer(gast.NodeTransformer):
             return new_node
         return node
 
+    def visit_Compare(self, node):
+        self.generic_visit(node)
+        left_str = ast_to_source_code(node.left).strip()
+        if left_str.startswith("paddle.jit.dy2static.convert_var_shape"):
+            # check left and comparators are all converted var shape
+            compare_arg_str = left_str
+            for i, comparator in enumerate(node.comparators):
+                comparator_str = ast_to_source_code(node.left).strip()
+                if not comparator_str.startswith(
+                        "paddle.jit.dy2static.convert_var_shape"):
+                    return node
+                op_str = ast_to_source_code(node.left).strip()
+                compare_arg_strs += (", '" + op_str + "', " + comparator_str)
+
+            # Now all left and comparators are converted shape
+            # Replace some comparsion operation because of difference between
+            # Python and Paddle
+            new_node_str = "paddle.jit.dy2static.convert_shape_compare({})".format(
+                compare_arg_strs)
+            new_node = gast.parse(new_node_str).body[0].value
+            return new_node
+        return node
+
     def visit_BoolOp(self, node):
         self.generic_visit(node)
         if isinstance(node.op, gast.And):
