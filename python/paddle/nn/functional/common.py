@@ -792,7 +792,7 @@ def dropout(x,
 
         1. When ``axis=None`` , this is commonly used dropout, which dropout each element of x randomly.
 
-..  code-block:: text
+        ..  code-block:: text
 
             Let's see a simple case when x is a 2d tensor with shape 2*3:
             [[1 2 3]
@@ -823,7 +823,7 @@ def dropout(x,
 
         2. When ``axis!=None`` , this is useful for dropping whole channels from an image or sequence.
 
-..  code-block:: text
+        ..  code-block:: text
 
             Let's see the simple case when x is a 2d tensor with shape 2*3 again:
             [[1 2 3]
@@ -865,12 +865,8 @@ def dropout(x,
                  [0 0 0]]
                 Actually this is not what we want because all elements may set to zero~
 
-           When x is a 4d tensor with shape `NCHW`, we can set ``axis=[0,1]`` and the dropout will be performed
-           in channel `N` and `C`, `H` and `W` is tied, i.e.
-           paddle.nn.dropout(x, p, axis=[0,1])
-           Please refer to ``paddle.nn.functional.dropout2d`` for more details.
-           Similarly, when x is a 5d tensor with shape `NCDHW`, we can set ``axis=[0,1]`` to perform
-           dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
+        When x is a 4d tensor with shape `NCHW`, we can set ``axis=[0,1]`` and the dropout will be performed in channel `N` and `C`, `H` and `W` is tied, i.e. paddle.nn.dropout(x, p, axis=[0,1]) . Please refer to ``paddle.nn.functional.dropout2d`` for more details.
+        Similarly, when x is a 5d tensor with shape `NCDHW`, we can set ``axis=[0,1]`` to perform dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
 
         .. code-block:: python
 

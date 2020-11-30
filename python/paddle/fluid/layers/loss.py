@@ -1681,43 +1681,43 @@ from .control_flow import equal
 
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
-    r'''
+    """ 
+  
+    Npair loss requires paired data. Npair loss has two parts: the first part is L2
+    regularizer on the embedding vector; the second part is cross entropy loss which
+    takes the similarity matrix of anchor and positive as logits.
+  
+    For more information, please refer to:
+    `Improved Deep Metric Learning with Multi class N pair Loss Objective <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/papers/nips16_npairmetriclearning.pdf>`_
+  
+    Args:
+      anchor(Tensor): embedding vector for the anchor image. shape=[batch_size, embedding_dims], 
+                        the data type is float32 or float64.
+      positive(Tensor): embedding vector for the positive image. shape=[batch_size, embedding_dims], 
+                        the data type is float32 or float64.
+      labels(Tensor): 1-D tensor. shape=[batch_size], the data type is float32 or float64 or int64.
+      l2_reg(float32): L2 regularization term on embedding vector, default: 0.002.
 
-  Read `Improved Deep Metric Learning with Multi class N pair Loss Objective\
-       <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/\
-       papers/nips16_npairmetriclearning.pdf>`_ .
+  
+    Returns:
+      A Tensor representing the npair loss, the data type is the same as anchor, the shape is [1].
+  
+    Examples:
 
-  Npair loss requires paired data. Npair loss has two parts: the first part is L2
-  regularizer on the embedding vector; the second part is cross entropy loss which
-  takes the similarity matrix of anchor and positive as logits.
-
-  Args:
-    anchor(Tensor): embedding vector for the anchor image. shape=[batch_size, embedding_dims], 
-                      the data type is float32 or float64.
-    positive(Tensor): embedding vector for the positive image. shape=[batch_size, embedding_dims], 
-                      the data type is float32 or float64.
-    labels(Tensor): 1-D tensor. shape=[batch_size], the data type is float32 or float64 or int64.
-    l2_reg(float32): L2 regularization term on embedding vector, default: 0.002.
-
-  Returns:
-    A Tensor representing the npair loss, the data type is the same as 
-    anchor, the shape is [1].
-
-  Examples:
-    .. code-block:: python
-
-        import paddle
-        
-        DATATYPE = "float32"
-
-        anchor = paddle.rand(shape=(18, 6), dtype=DATATYPE)
-        positive = paddle.rand(shape=(18, 6), dtype=DATATYPE)
-        labels = paddle.rand(shape=(18,), dtype=DATATYPE)
-        
-        npair_loss = paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg = 0.002)
-        print(npair_loss)
-
-  '''
+      .. code-block:: python
+  
+          import paddle
+          
+          DATATYPE = "float32"
+  
+          anchor = paddle.rand(shape=(18, 6), dtype=DATATYPE)
+          positive = paddle.rand(shape=(18, 6), dtype=DATATYPE)
+          labels = paddle.rand(shape=(18,), dtype=DATATYPE)
+          
+          npair_loss = paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg = 0.002)
+          print(npair_loss)
+  
+    """
     check_variable_and_dtype(anchor, 'anchor', ['float32', 'float64'],
                              'npair_loss')
     check_variable_and_dtype(positive, 'positive', ['float32', 'float64'],
