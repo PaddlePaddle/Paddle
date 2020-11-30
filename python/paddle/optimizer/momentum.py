@@ -105,6 +105,8 @@ class Momentum(Optimizer):
         self.type = "momentum"
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
+        for p in parameters:
+            self._add_accumulator(self._velocity_acc_str, p)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
