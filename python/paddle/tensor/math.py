@@ -184,9 +184,6 @@ def pow(x, y, name=None):
         if isinstance(y, (int, float)):
             return core.ops.pow(x, 'factor', y)
         elif isinstance(y, (paddle.Tensor, Variable)):
-            if x.dtype != y.dtype:
-                y = cast(y, dtype='float64')
-                x = cast(x, dtype='float64')
             return _elementwise_op_in_dygraph(
                 x, y, axis=-1, act=None, op_name='elementwise_pow')
         else:
@@ -204,9 +201,6 @@ def pow(x, y, name=None):
         elif isinstance(y, (paddle.Tensor, Variable)):
             # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
             helper = LayerHelper('elementwise_pow', **locals())
-            if x.dtype != y.dtype:
-                y = cast(y, dtype='float64')
-                x = cast(x, dtype='float64')
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
             return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
         else:
