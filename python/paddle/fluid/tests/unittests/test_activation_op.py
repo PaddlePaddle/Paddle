@@ -906,9 +906,9 @@ class TestTan(TestActivation):
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
-        out = np.tan(x)
+        out = np.tan(self.x_np)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x_np)}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
