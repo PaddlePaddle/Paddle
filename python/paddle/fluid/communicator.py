@@ -65,13 +65,14 @@ class Communicator(object):
 
         if mode == DistributedMode.SYNC:
             envs["pserver_endpoints"] = ','.join(kwargs["pserver_endpoints"])
-            envs["trainer_id"] = str(kwargs["trainer_id"])
 
         if mode == DistributedMode.GEO:
             envs["trainers"] = str(kwargs["trainers"])
             envs["sparse_attrs"] = str(kwargs["sparse_attrs"])
 
+        envs["trainer_id"] = str(kwargs["trainer_id"])
         envs["need_global_step"] = str(kwargs["need_global_step"])
+        envs["barrier_table_id"] = str(kwargs["barrier_table_id"])
 
         mode_str = None
 
@@ -88,9 +89,9 @@ class Communicator(object):
         self.envs = envs
         self.communicator_ = None
 
-    def init_with_ctx(self, send_ctx, recv_ctx):
-        self.communicator_ = core.DistCommunicator(self.mode, send_ctx,
-                                                   recv_ctx,
+    def init_with_ctx(self, send_ctx, recv_ctx, proto_txt, unit64_hosts):
+        self.communicator_ = core.DistCommunicator(self.mode, proto_txt, unit64_hosts,
+                                                   send_ctx, recv_ctx,
                                                    global_scope(), self.envs)
 
     def start(self):
