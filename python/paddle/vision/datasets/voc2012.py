@@ -58,7 +58,6 @@ class VOC2012(Dataset):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             from paddle.vision.datasets import VOC2012
             from paddle.vision.transforms import Normalize
 
