@@ -58,6 +58,7 @@ class VOC2012(Dataset):
         .. code-block:: python
 
             import paddle
+            import numpy as np
             from paddle.vision.datasets import VOC2012
             from paddle.vision.transforms import Normalize
 
@@ -77,7 +78,7 @@ class VOC2012(Dataset):
             for i in range(10):
                 image, label= voc2012[i]
                 image = paddle.cast(paddle.to_tensor(image), 'float32')
-                label = paddle.to_tensor(label)
+                label = paddle.to_tensor(np.array(label))
 
                 model = SimpleNet()
                 image, label= model(image, label)
