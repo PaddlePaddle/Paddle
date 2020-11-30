@@ -14696,9 +14696,10 @@ def deformable_roi_pooling(input,
     return output
 
 
+@deprecated(since="2.0.0", update_to="paddle.shard_index")
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    This operator recomputes the `input` indices according to the offset of the
+    Recompute the `input` indices according to the offset of the
     shard. The length of the indices is evenly divided into N shards, and if
     the `shard_id` matches the shard with the input index inside, the index is
     recomputed on the basis of the shard offset, elsewise it is set to
@@ -14711,44 +14712,27 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     NOTE: If the length of indices cannot be evely divided by the shard number,
     the size of the last shard will be less than the calculated `shard_size`
 
-    Examples:
-    ::
-
-        Input:
-          X.shape = [4, 1]
-          X.data = [[1], [6], [12], [19]]
-          index_num = 20
-          nshards = 2
-          ignore_value = -1
-
-        if shard_id == 0, we get:
-          Out.shape = [4, 1]
-          Out.data = [[1], [6], [-1], [-1]]
-
-        if shard_id == 1, we get:
-          Out.shape = [4, 1]
-          Out.data = [[-1], [-1], [2], [9]]
-
     Args:
-        - **input** (Variable): Input indices, last dimension must be 1.
-        - **index_num** (scalar): An integer defining the range of the index.
-        - **nshards** (scalar): The number of shards
-        - **shard_id** (scalar): The index of the current shard
-        - **ignore_value** (scalar): An integer value out of sharded index range
+        input (Tensor): Input indices with data type int64. It's last dimension must be 1.
+        index_num (int): An integer defining the range of the index.
+        nshards (int): The number of shards.
+        shard_id (int): The index of the current shard.
+        ignore_value (int): An integer value out of sharded index range.
 
     Returns:
-        Variable: The sharded index of input.
+        Tensor: The sharded index of input.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            batch_size = 32
-            label = fluid.data(name="label", shape=[batch_size, 1], dtype="int64")
-            shard_label = fluid.layers.shard_index(input=label,
-                                                   index_num=20,
-                                                   nshards=2,
-                                                   shard_id=0)
+            import paddle
+            label = paddle.to_tensor([[16], [1]], "int64")
+            shard_label = paddle.shard_index(input=label,
+                                             index_num=20,
+                                             nshards=2,
+                                             shard_id=0)
+            print(shard_label)
+            # [[-1], [1]]
     """
     check_variable_and_dtype(input, 'input', ['int64'], 'shard_index')
     op_type = 'shard_index'
