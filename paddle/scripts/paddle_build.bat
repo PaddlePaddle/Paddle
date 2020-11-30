@@ -41,7 +41,7 @@ if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
 if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_TPCACHE set WITH_TPCACHE=ON
-if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=ON
+if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
 rem -------set cache build work directory-----------

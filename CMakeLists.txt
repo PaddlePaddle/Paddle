@@ -290,13 +290,6 @@ else()
     message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
 endif()
 
-if(WITH_UNITY_BUILD)
-    if(WIN32)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /we4005")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /we4005")
-    endif()
-endif()
-
 add_subdirectory(paddle)
 if(WITH_PYTHON)
     add_subdirectory(python)
