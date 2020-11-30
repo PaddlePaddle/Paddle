@@ -899,7 +899,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             place = paddle.CPUPlace()
             with paddle.static.program_guard(prog, startup_prog):
                 x = paddle.fluid.data(name='x', shape=[10, ], dtype='float64')
-                label = paddle.fluid.data(name='label', shape=[10, ], dtype='float64')
+                label = paddle.fluid.data(
+                    name='label', shape=[10, ], dtype='float64')
                 nll_loss = paddle.nn.loss.NLLLoss()
                 res = nll_loss(x, label)
 
@@ -923,7 +924,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             place = paddle.CPUPlace()
             with paddle.static.program_guard(prog, startup_prog):
                 x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
-                label = paddle.fluid.data(name='label', shape=[10], dtype='int64')
+                label = paddle.fluid.data(
+                    name='label', shape=[10], dtype='int64')
                 nll_loss = paddle.nn.loss.NLLLoss(reduction='')
                 res = nll_loss(x, label)
 
@@ -947,7 +949,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             place = paddle.CPUPlace()
             with paddle.static.program_guard(prog, startup_prog):
                 x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
-                label = paddle.fluid.data(name='label', shape=[10], dtype='int64')
+                label = paddle.fluid.data(
+                    name='label', shape=[10], dtype='int64')
                 res = paddle.nn.functional.nll_loss(x, label, reduction='')
 
         self.assertRaises(ValueError,

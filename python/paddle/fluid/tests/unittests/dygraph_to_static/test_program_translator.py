@@ -64,8 +64,10 @@ def get_source_code(func):
 class StaticCode1():
     # TODO: Transform return statement
     def dyfunc_with_if_else(x_v, label=None):
-        __return_1 = paddle.fluid.layers.fill_constant(shape=[1], dtype='bool', value=False)
-        __return_0 = paddle.fluid.layers.fill_constant(shape=[1], dtype='bool', value=False)
+        __return_1 = paddle.fluid.layers.fill_constant(
+            shape=[1], dtype='bool', value=False)
+        __return_0 = paddle.fluid.layers.fill_constant(
+            shape=[1], dtype='bool', value=False)
         __return_value_init_0 = paddle.fluid.layers.fill_constant(
             shape=[1], dtype='float64', value=0.0)
         __return_value_0 = __return_value_init_0
@@ -116,8 +118,10 @@ class StaticCode1():
 class StaticCode2():
     # TODO: Transform return statement
     def dyfunc_with_if_else(x_v, label=None):
-        __return_3 = paddle.fluid.layers.fill_constant(shape=[1], dtype='bool', value=False)
-        __return_2 = paddle.fluid.layers.fill_constant(shape=[1], dtype='bool', value=False)
+        __return_3 = paddle.fluid.layers.fill_constant(
+            shape=[1], dtype='bool', value=False)
+        __return_2 = paddle.fluid.layers.fill_constant(
+            shape=[1], dtype='bool', value=False)
         __return_value_init_1 = paddle.fluid.layers.fill_constant(
             shape=[1], dtype='float64', value=0.0)
         __return_value_1 = __return_value_init_1

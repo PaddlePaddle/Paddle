@@ -166,7 +166,8 @@ class InvalidInputTest(unittest.TestCase):
                     name='tensor1', shape=[20, 20], dtype='float32')
                 tensor2 = fluid.data(
                     name='tensor2', shape=[20, 20], dtype='float32')
-                out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=1)
+                out = paddle.tensor.math.addcmul(
+                    input, tensor1, tensor2, value=1)
 
         self.assertRaises(TypeError, test_invalid_value_int)
 
@@ -178,7 +179,8 @@ class InvalidInputTest(unittest.TestCase):
                     name='tensor1', shape=[20, 20], dtype='int32')
                 tensor2 = fluid.data(
                     name='tensor2', shape=[20, 20], dtype='int32')
-                out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=1.0)
+                out = paddle.tensor.math.addcmul(
+                    input, tensor1, tensor2, value=1.0)
 
         self.assertRaises(TypeError, test_invalid_value_float)
 

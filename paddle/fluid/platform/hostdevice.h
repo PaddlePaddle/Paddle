@@ -14,7 +14,7 @@
 #pragma once
 
 #ifdef __HIPCC__
-#include<hip/hip_runtime.h>
+#include <hip/hip_runtime.h>
 #endif
 
 #if (defined(__CUDACC__) || defined(__HIPCC__))
