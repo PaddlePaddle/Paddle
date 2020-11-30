@@ -1677,7 +1677,7 @@ def conv3d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        input (Variable): The input is 5-D Tensor with shape [N, C, D, H, W], the data
+        input (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
             type of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
