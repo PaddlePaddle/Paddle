@@ -53,8 +53,6 @@ class BasicEngine : public Engine {
   // leaf_accumulators_ is only for leaf tensor(hooks/accumulate grad)
   std::unordered_set<GradientAccumulator*> leaf_accumulators_;
 
-  // TODO(zhouwei): non_leaf_accumulators_ is only for non-leaf tensor
-  // std::unordered_set<GradientAccumulator*> non_leaf_accumulators_;
   bool retain_graph_;
 };
 
