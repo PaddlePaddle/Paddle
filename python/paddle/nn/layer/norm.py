@@ -109,7 +109,7 @@ class _InstanceNormBase(layers.Layer):
 
 
 class InstanceNorm1D(_InstanceNormBase):
-    """
+    r"""
     Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCL `[batch, in_channels, length]`
@@ -163,14 +163,13 @@ class InstanceNorm1D(_InstanceNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           instance_norm = paddle.nn.InstanceNorm1D(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy())
+          print(instance_norm_out)
 
     """
 
@@ -181,7 +180,7 @@ class InstanceNorm1D(_InstanceNormBase):
 
 
 class InstanceNorm2D(_InstanceNormBase):
-    """
+    r"""
     Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
@@ -235,14 +234,13 @@ class InstanceNorm2D(_InstanceNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           instance_norm = paddle.nn.InstanceNorm2D(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy())
+          print(instance_norm_out)
     """
 
     def _check_input_dim(self, input):
@@ -252,7 +250,7 @@ class InstanceNorm2D(_InstanceNormBase):
 
 
 class InstanceNorm3D(_InstanceNormBase):
-    """
+    r"""
     Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
@@ -306,14 +304,13 @@ class InstanceNorm3D(_InstanceNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           instance_norm = paddle.nn.InstanceNorm3D(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy())
+          print(instance_norm_out.numpy)
     """
 
     def _check_input_dim(self, input):
@@ -352,6 +349,7 @@ class GroupNorm(layers.Layer):
 
     Examples:
         .. code-block:: python
+
           import paddle
           import numpy as np
 
@@ -437,7 +435,7 @@ class GroupNorm(layers.Layer):
 
 
 class LayerNorm(layers.Layer):
-    """
+    r"""
     :alias_main: paddle.nn.LayerNorm
 	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
 	:old_api: paddle.fluid.dygraph.LayerNorm
@@ -492,14 +490,13 @@ class LayerNorm(layers.Layer):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           layer_norm = paddle.nn.LayerNorm(x_data.shape[1:])
           layer_norm_out = layer_norm(x)
 
-          print(layer_norm_out.numpy())
+          print(layer_norm_out)
     """
 
     def __init__(self,
@@ -649,7 +646,7 @@ class _BatchNormBase(layers.Layer):
 
 
 class BatchNorm1D(_BatchNormBase):
-    """
+    r"""
     Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When track_running_stats = False, the :math:`\\mu_{\\beta}`
@@ -714,14 +711,13 @@ class BatchNorm1D(_BatchNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           batch_norm = paddle.nn.BatchNorm1D(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy())
+          print(batch_norm_out)
     """
 
     def _check_data_format(self, input):
@@ -740,7 +736,7 @@ class BatchNorm1D(_BatchNormBase):
 
 
 class BatchNorm2D(_BatchNormBase):
-    """
+    r"""
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When track_running_stats = False, the :math:`\\mu_{\\beta}`
@@ -804,14 +800,13 @@ class BatchNorm2D(_BatchNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           batch_norm = paddle.nn.BatchNorm2D(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy())
+          print(batch_norm_out)
     """
 
     def _check_data_format(self, input):
@@ -829,7 +824,7 @@ class BatchNorm2D(_BatchNormBase):
 
 
 class BatchNorm3D(_BatchNormBase):
-    """
+    r"""
     Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When track_running_stats = False, the :math:`\\mu_{\\beta}`
@@ -893,14 +888,13 @@ class BatchNorm3D(_BatchNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           batch_norm = paddle.nn.BatchNorm3D(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy())
+          print(batch_norm_out)
     """
 
     def _check_data_format(self, input):
@@ -919,7 +913,7 @@ class BatchNorm3D(_BatchNormBase):
 
 
 class SyncBatchNorm(_BatchNormBase):
-    """
+    r"""
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
     It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
     be used as a normalizer function for other operations, such as conv2d and fully connected 
@@ -996,12 +990,12 @@ class SyncBatchNorm(_BatchNormBase):
           import numpy as np
 
           x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-          paddle.disable_static()
           x = paddle.to_tensor(x)
-          if paddle.fluid.is_compiled_with_cuda():
+
+          if paddle.is_compiled_with_cuda():
               sync_batch_norm = nn.SyncBatchNorm(2)
               hidden1 = sync_batch_norm(x)
-              print(hidden1.numpy())
+              print(hidden1)
               # [[[[0.26824948, 1.0936325],[0.26824948, -1.6301316]],[[ 0.8095662, -0.665287],[-1.2744656, 1.1301866 ]]]]
     """
 
@@ -1096,13 +1090,19 @@ class SyncBatchNorm(_BatchNormBase):
                 import paddle
                 import paddle.nn as nn
 
-                paddle.disable_static()
                 model = nn.Sequential(nn.Conv2D(3, 5, 3), nn.BatchNorm2D(5))
                 sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
         """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
+            if layer._weight_attr != None and not isinstance(layer._weight_attr,
+                                                             bool):
+                layer._weight_attr.name = layer._weight_attr.name + '_sync'
+            if layer._bias_attr != None and not isinstance(layer._weight_attr,
+                                                           bool):
+                layer._bias_attr.name = layer._bias_attr.name + '_sync'
+
             layer_output = SyncBatchNorm(layer._num_features, layer._momentum,
                                          layer._epsilon, layer._weight_attr,
                                          layer._bias_attr, layer._data_format,

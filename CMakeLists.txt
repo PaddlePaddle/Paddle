@@ -55,7 +55,6 @@ if(WIN32)
 
     set(CMAKE_SUPPRESS_REGENERATION ON)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
-    add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
 
     if (MSVC_STATIC_CRT)
         message(STATUS "Use static C runtime time, refer to https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=vs-2019")
@@ -74,25 +73,30 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
-    # windows build turn off warnings.
+    # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
+        set(${flag_var} "${${flag_var}} /MP")
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
         set(${flag_var} "${${flag_var}} /w")
     endforeach(flag_var)
 
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838 /MP")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838 /MP")
-    message(STATUS "Using parallel compiling (/MP)")
-    set(PADDLE_LINK_FLAGS "/IGNORE:4006 /IGNORE:4098 /IGNORE:4217 /IGNORE:4221")
-    set(CMAKE_STATIC_LINKER_FLAGS  "${CMAKE_STATIC_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
-    set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
+    # Windows Remove /Zi, /ZI for Release, MinSizeRel builds
+    foreach(flag_var
+        CMAKE_C_FLAGS CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_MINSIZEREL
+        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL)
+        if(${flag_var} MATCHES "/Z[iI]")
+            string(REGEX REPLACE "/Z[iI]" "" ${flag_var} "${${flag_var}}")
+        endif()
+    endforeach(flag_var)
+
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838")
 else(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations")
 endif(WIN32)
@@ -234,6 +238,12 @@ if(WITH_PROFILER)
     add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
+if(WITH_DISTRIBUTE)
+    if(LINUX)
+        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
+    endif()
+endif()
+
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION
@@ -246,12 +256,6 @@ if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)
 endif(WITH_AMD_GPU)
-
-if(WITH_DISTRIBUTE)
-    if(LINUX)
-        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
-    endif()
-endif()
 
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")

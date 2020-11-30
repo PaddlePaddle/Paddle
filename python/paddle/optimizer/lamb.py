@@ -19,6 +19,7 @@ from ..fluid.framework import Variable
 
 __all__ = ["Lamb"]
 
+
 class Lamb(Optimizer):
     """
     LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
@@ -47,44 +48,35 @@ class Lamb(Optimizer):
     Args:
         learning_rate (float|Variable, optional): the learning rate used to update parameters. \
             Can be a float value or a Variable with data type float32. Default 0.001.
-        lamb_weight_decay (float, optional): The LAMB weight decay rate. Default 0.01.
+        lamb_weight_decay (float, optional): The LAMB weight decay rate. Default 0.01. Remind that weight_decay should be None.
         beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
             Default 0.9.
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             Default 0.999.
         epsilon (float, optional): A small float value for numerical stability. Default 1e-6.
-        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
+        parameters (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
-        exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight
-            decay when **exclude_from_weight_decay_fn(parameter)** returns true.
-            Default None.
         name(str|None): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
     Examples:
         .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
-            hidden = fluid.layers.fc(input=data, size=10)
-            cost = fluid.layers.mean(hidden)
-
-            def exclude_fn(param):
-                return param.name.endswith('.b_0')
-
-            optimizer = fluid.optimizer.Lamb(learning_rate=0.002,
-                                             exclude_from_weight_decay_fn=exclude_fn)
-            optimizer.minimize(cost)
+            import paddle
+            import numpy as np
+            inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')
+            linear = paddle.nn.Linear(10, 10)
+            out = linear(inp)
+            loss = paddle.mean(out)
+            beta1 = paddle.to_tensor([0.9], dtype="float32")
+            beta2 = paddle.to_tensor([0.85], dtype="float32")
+            lamb = paddle.optimizer.Lamb(learning_rate=0.002, parameters=linear.parameters(), lamb_weight_decay=0.01)
+            back = out.backward()
+            lamb.step()
+            lamb.clear_grad()
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
@@ -99,19 +91,16 @@ class Lamb(Optimizer):
                  beta2=0.999,
                  epsilon=1e-6,
                  parameters=None,
-                 weight_decay=None,
                  grad_clip=None,
-                 exclude_from_weight_decay_fn=None,
                  name=None):
         assert learning_rate is not None
-        assert weight_decay is not None
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
         super(Lamb, self).__init__(
             learning_rate=learning_rate,
             parameters=parameters,
-            weight_decay=weight_decay,
+            weight_decay=None,
             grad_clip=grad_clip,
             name=name)
         self.type = "lamb"
@@ -119,7 +108,6 @@ class Lamb(Optimizer):
         self._beta2 = beta2
         self._epsilon = epsilon
         self._lamb_weight_decay = lamb_weight_decay
-        self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -156,8 +144,7 @@ class Lamb(Optimizer):
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
 
-        if self._exclude_from_weight_decay_fn is not None \
-            and self._exclude_from_weight_decay_fn(param_and_grad[0]):
+        if param_and_grad[0].need_clip:
             weight_decay = 0.0
         else:
             weight_decay = self._lamb_weight_decay
@@ -188,4 +175,3 @@ class Lamb(Optimizer):
             stop_gradient=True)
 
         return lamb_op
-

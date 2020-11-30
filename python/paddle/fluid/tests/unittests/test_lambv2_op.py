@@ -22,6 +22,7 @@ from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
 
+
 class TestLambOpV2(unittest.TestCase):
     def test_lamb_op(self):
         paddle.enable_static()
@@ -35,24 +36,18 @@ class TestLambOpV2(unittest.TestCase):
                 data = fluid.data(name="data", shape=shape)
                 conv = fluid.layers.conv2d(data, 8, 3)
                 loss = fluid.layers.reduce_mean(conv)
-
-                beta1 = fluid.layers.create_global_var(
-                    shape=[1], value=0.85, dtype='float32', persistable=True)
-                beta2 = fluid.layers.create_global_var(
-                    shape=[1], value=0.95, dtype='float32', persistable=True)
+                beta1 = 0.85
+                beta2 = 0.95
                 betas = [beta1, beta2]
                 opt = paddle.optimizer.Lamb(
-                    learning_rate=1e-5,
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=0.01,
-                    epsilon=1e-8)
+                    learning_rate=1e-5, beta1=beta1, beta2=beta2, epsilon=1e-8)
                 opt.minimize(loss)
 
         exe.run(startup)
         data_np = np.random.random(shape).astype('float32')
         rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
         assert rets[0] is not None
+
 
 if __name__ == "__main__":
     unittest.main()

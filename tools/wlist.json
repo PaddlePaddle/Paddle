@@ -379,6 +379,8 @@
         "While.block",
         "DGCMomentumOptimizer",
         "ParallelEnv",
+        "spawn",
+        "init_parallel_env",
         "DataParallel",
         "DataParallel.scale_loss",
         "DataParallel.apply_collective_grads",

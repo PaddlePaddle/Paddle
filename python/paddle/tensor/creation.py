@@ -54,7 +54,7 @@ __all__ = [
 
 @dygraph_only
 def to_tensor(data, dtype=None, place=None, stop_gradient=True):
-    """
+    r"""
     Constructs a ``paddle.Tensor`` or ``paddle.ComplexTensor`` from ``data`` , 
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor, paddle\.ComplexTensor.
 
@@ -126,10 +126,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     if place is None:
         place = _current_expected_place()
-    elif not isinstance(place,
-                        (core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
+    elif not isinstance(place, (core.Place, core.CPUPlace, core.CUDAPinnedPlace,
+                                core.CUDAPlace)):
         raise ValueError(
-            "'place' must be any of paddle.Place, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
+            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
         )
 
     #Todo(zhouwei): Support allocate tensor on any other specified card
@@ -300,9 +300,6 @@ def ones(shape, dtype=None, name=None):
 
 def ones_like(x, dtype=None, name=None):
     """
-	:alias_main: paddle.ones_like
-	:alias: paddle.tensor.ones_like, paddle.tensor.creation.ones_like
-
     This OP returns a Tensor filled with the value 1, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
@@ -323,18 +320,16 @@ def ones_like(x, dtype=None, name=None):
 
     Raise:
         TypeError: If ``dtype`` is not None and is not bool, float16, float32,
-            float64, int32 or int64.
+        float64, int32 or int64.
 
     Examples:
         .. code-block:: python
 
             import paddle
 
-            paddle.disable_static()
-
             x = paddle.to_tensor([1,2,3])
-            out1 = paddle.zeros_like(x) # [1., 1., 1.]
-            out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
+            out1 = paddle.ones_like(x) # [1., 1., 1.]
+            out2 = paddle.ones_like(x, dtype='int32') # [1, 1, 1]
 
     """
     return full_like(x=x, fill_value=1, dtype=dtype, name=name)
@@ -380,9 +375,6 @@ def zeros(shape, dtype=None, name=None):
 
 def zeros_like(x, dtype=None, name=None):
     """
-	:alias_main: paddle.zeros_like
-	:alias: paddle.tensor.zeros_like, paddle.tensor.creation.zeros_like
-
     This OP returns a Tensor filled with the value 0, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
@@ -403,16 +395,14 @@ def zeros_like(x, dtype=None, name=None):
 
     Raise:
         TypeError: If ``dtype`` is not None and is not bool, float16, float32,
-            float64, int32 or int64.
+        float64, int32 or int64.
 
     Examples:
         .. code-block:: python
 
             import paddle
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor([1,2,3])
+            x = paddle.to_tensor([1, 2, 3])
             out1 = paddle.zeros_like(x) # [0., 0., 0.]
             out2 = paddle.zeros_like(x, dtype='int32') # [0, 0, 0]
 
@@ -519,9 +509,6 @@ def full(shape, fill_value, dtype=None, name=None):
 
 def arange(start=0, end=None, step=1, dtype=None, name=None):
     """
-	:alias_main: paddle.arange
-	:alias: paddle.tensor.arange, paddle.tensor.creation.arange
-
     This OP returns a 1-D Tensor with spaced values within a given interval.
 
     Values are generated into the half-open interval [``start``, ``end``) with
@@ -552,33 +539,30 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     Returns: 
         Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
-            taken with common difference ``step`` beginning from ``start``. Its
-            data type is set by ``dtype``.
+        taken with common difference ``step`` beginning from ``start``. Its
+        data type is set by ``dtype``.
 
     Raises:
         TypeError: If ``dtype`` is not int32, int64, float32, float64.
 
-    examples:
-
+    Examples:
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        paddle.disable_static()
+            out1 = paddle.arange(5)
+            # [0, 1, 2, 3, 4]
 
-        out1 = paddle.arange(5)
-        # [0, 1, 2, 3, 4]
+            out2 = paddle.arange(3, 9, 2.0)
+            # [3, 5, 7]
 
-        out2 = paddle.arange(3, 9, 2.0)
-        # [3, 5, 7]
+            # use 4.999 instead of 5.0 to avoid floating point rounding errors
+            out3 = paddle.arange(4.999, dtype='float32')
+            # [0., 1., 2., 3., 4.]
 
-        # use 4.999 instead of 5.0 to avoid floating point rounding errors
-        out3 = paddle.arange(4.999, dtype='float32')
-        # [0., 1., 2., 3., 4.]
-
-        start_var = paddle.to_tensor([3])
-        out4 = paddle.arange(start_var, 7)
-        # [3, 4, 5, 6]
+            start_var = paddle.to_tensor([3])
+            out4 = paddle.arange(start_var, 7)
+            # [3, 4, 5, 6]
              
     """
     if dtype is None:
@@ -625,7 +609,7 @@ def _tril_triu_op(helper):
 
 
 def tril(x, diagonal=0, name=None):
-    """
+    r"""
 	:alias_main: paddle.tril
 	:alias: paddle.tril,paddle.tensor.tril,paddle.tensor.creation.tril
 
@@ -696,7 +680,7 @@ def tril(x, diagonal=0, name=None):
 
 
 def triu(x, diagonal=0, name=None):
-    """
+    r"""
 	:alias_main: paddle.triu
 	:alias: paddle.triu,paddle.tensor.triu,paddle.tensor.creation.triu
 

@@ -56,6 +56,9 @@ function init() {
     fi
 
     ENABLE_MAKE_CLEAN=${ENABLE_MAKE_CLEAN:-ON}
+
+    # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
+    export FLAGS_call_stack_level=2
 }
 
 function cmake_base() {
@@ -64,9 +67,6 @@ function cmake_base() {
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
-    # `gym` is only used in unittest, it's not suitable to add in requirements.txt.
-    # Add it dynamically.
-    echo "gym" >> ${PADDLE_ROOT}/python/requirements.txt
     # Support build for all python versions, currently
     # including cp27-cp27m and cp27-cp27mu.
     PYTHON_FLAGS=""
@@ -134,8 +134,6 @@ function cmake_base() {
                 exit 1
             fi
         fi
-        # delete `gym` to avoid modifying requirements.txt in *.whl
-        sed -i .bak "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
@@ -199,8 +197,6 @@ function cmake_base() {
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
         fi
-        # delete `gym` to avoid modifying requirements.txt in *.whl
-        sed -i "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     fi
 
     if [ "$SYSTEM" == "Darwin" ]; then
@@ -288,6 +284,10 @@ EOF
 function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
+    cmake_base $1
+}
+
+function cmake_gen_in_current_dir() {
     cmake_base $1
 }
 
@@ -563,12 +563,12 @@ EOF
         if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
             nightly_label=""
         else
-            nightly_label="RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY"
+            nightly_label="(RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
             echo "========================================="
             echo "Unittests with nightly labels  are only run at night"
             echo "========================================="
         fi
-        ctest -E "($disable_ut_quickly)" -LE "($nightly_label)" --output-on-failure -j $2 | tee $tmpfile
+        ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
         collect_failed_tests
         mactest_error=0
@@ -727,6 +727,7 @@ function generate_api_spec() {
 }
 
 function check_approvals_of_unittest() {
+    set +x
     if [ "$GITHUB_API_TOKEN" == "" ] || [ "$GIT_PR_ID" == "" ]; then
         return 0
     fi
@@ -736,7 +737,6 @@ function check_approvals_of_unittest() {
         approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
         if [ "${approval_line}" != "" ]; then
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244`
-            set +x
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "TRUE" ]; then
                 echo "==================================="
@@ -750,7 +750,6 @@ function check_approvals_of_unittest() {
         if [ "$unittest_spec_diff" != "" ]; then
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
-            set +x
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "************************************"
@@ -765,6 +764,16 @@ function check_approvals_of_unittest() {
         fi
     fi
     set -x
+}
+
+function check_diff_file_for_coverage() {
+    diff_h_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_cc_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_py_file=$(git diff --name-status test develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
+
+    export PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}
+    export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}
+    export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
 }
 
 function check_change_of_unittest() {
@@ -1610,6 +1619,10 @@ function example() {
     fi
 }
 
+function test_op_benchmark() {
+    bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
+}
+
 function summary_check_problems() {
     set +x
     local check_style_code=$1
@@ -1717,6 +1730,7 @@ function main() {
         ;;
       cicheck_coverage)
         check_approvals_of_unittest 1
+        check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
         parallel_test
@@ -1771,6 +1785,9 @@ function main() {
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
         ;;
+      cmake_gen_in_current_dir)
+        cmake_gen_in_current_dir ${PYTHON_ABI:-""}
+        ;;
       gen_fluid_lib)
         gen_fluid_lib ${parallel_number}
         ;;
@@ -1784,6 +1801,9 @@ function main() {
         ;;
       api_example)
         example
+        ;;
+      test_op_benchmark)
+        test_op_benchmark
         ;;
       *)
         print_usage

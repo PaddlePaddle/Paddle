@@ -69,6 +69,10 @@ _out_scale_op_list = [
     "hard_swish",
     "hard_sigmoid",
     "conv2d_transpose",
+    "gru",
+    "bilinear_interp",
+    "nearest_interp",
+    "trilinear_interp",
 ]
 
 # list op real input and output names, to avoid processing input such as AxisTensor.
@@ -114,6 +118,7 @@ _op_real_in_out_name = {
     "scale": [["X"], ["Out"]],
     "hard_swish": [["X"], ["Out"]],
     "hard_sigmoid": [["X"], ["Out"]],
+    "gru": [["Input", "Weight"], ["Hidden"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
@@ -234,7 +239,7 @@ class QuantizationTransformPass(object):
                  act_preprocess_func=None,
                  optimizer_func=None,
                  executor=None):
-        """
+        r"""
         Constructor.
 
         Args:

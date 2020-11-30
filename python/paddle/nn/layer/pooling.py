@@ -90,7 +90,6 @@ class AvgPool1D(layers.Layer):
 
           import paddle
           import paddle.nn as nn
-          paddle.disable_static()
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
@@ -121,7 +120,7 @@ class AvgPool1D(layers.Layer):
 
 
 class AvgPool2D(layers.Layer):
-    """
+    r"""
     This operation applies 2D average pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
     in NCHW format, where N is batch size, C is the number of channels,
@@ -181,7 +180,6 @@ class AvgPool2D(layers.Layer):
           import paddle
           import paddle.nn as nn
           import numpy as np
-          paddle.disable_static()
 
           # max pool2d
           input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
@@ -273,7 +271,6 @@ class AvgPool3D(layers.Layer):
           import paddle
           import paddle.nn as nn
           import numpy as np
-          paddle.disable_static()
 
           # avg pool3d
           input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
@@ -370,7 +367,6 @@ class MaxPool1D(layers.Layer):
 
           import paddle
           import paddle.nn as nn
-          paddle.disable_static()
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
@@ -405,7 +401,7 @@ class MaxPool1D(layers.Layer):
 
 
 class MaxPool2D(layers.Layer):
-    """
+    r"""
     This operation applies 2D max pooling over input feature based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
     in NCHW format, where N is batch size, C is the number of channels,
@@ -464,7 +460,6 @@ class MaxPool2D(layers.Layer):
           import paddle
           import paddle.nn as nn
           import numpy as np
-          paddle.disable_static()
 
           # max pool2d
           input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
@@ -556,7 +551,6 @@ class MaxPool3D(layers.Layer):
           import paddle
           import paddle.nn as nn
           import numpy as np
-          paddle.disable_static()
 
           # max pool3d
           input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
@@ -601,7 +595,7 @@ class MaxPool3D(layers.Layer):
 
 
 class AdaptiveAvgPool1D(layers.Layer):
-    """
+    r"""
 
     This operation applies a 1D adaptive average pooling over an input signal composed
     of several input planes, based on the input, output_size, return_mask parameters.
@@ -652,7 +646,6 @@ class AdaptiveAvgPool1D(layers.Layer):
           #
           import paddle
           import paddle.nn as nn
-          paddle.disable_static()
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AdaptiveAvgPool1D = nn.AdaptiveAvgPool1D(output_size=16)
@@ -670,7 +663,7 @@ class AdaptiveAvgPool1D(layers.Layer):
 
 
 class AdaptiveAvgPool2D(layers.Layer):
-    """
+    r"""
 
     This operation applies 2D adaptive avg pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size.
@@ -728,7 +721,7 @@ class AdaptiveAvgPool2D(layers.Layer):
             #
             import paddle
             import numpy as np
-            paddle.disable_static()
+
             input_data = np.random.rand(2, 3, 32, 32)
             x = paddle.to_tensor(input_data)
             # x.shape is [2, 3, 32, 32]
@@ -752,7 +745,7 @@ class AdaptiveAvgPool2D(layers.Layer):
 
 
 class AdaptiveAvgPool3D(layers.Layer):
-    """
+    r"""
 
     This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size.
@@ -816,7 +809,7 @@ class AdaptiveAvgPool3D(layers.Layer):
             #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
             import numpy as np
-            paddle.disable_static()
+
             input_data = np.random.rand(2, 3, 8, 32, 32)
             x = paddle.to_tensor(input_data)
             # x.shape is [2, 3, 8, 32, 32]
@@ -893,7 +886,6 @@ class AdaptiveMaxPool1D(layers.Layer):
           #
                     import paddle
           import paddle.nn as nn
-          paddle.disable_static()
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16)
@@ -928,10 +920,15 @@ class AdaptiveMaxPool2D(layers.Layer):
     ..  math::
 
        hstart &= floor(i * H_{in} / H_{out})
+
        hend &= ceil((i + 1) * H_{in} / H_{out})
+
        wstart &= floor(j * W_{in} / W_{out})
+
        wend &= ceil((j + 1) * W_{in} / W_{out})
+
        Output(i ,j) &= max(Input[hstart:hend, wstart:wend])
+
     Parameters:
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain two element, (H, W). H and W can be either a int, or None which means the size will be the same as that of the input.
         return_mask (bool): If true, the index of max pooling point will be returned along with outputs. It cannot be set in average pooling type. Default False.
@@ -964,7 +961,7 @@ class AdaptiveMaxPool2D(layers.Layer):
             #
             import paddle
             import numpy as np
-            paddle.disable_static()
+
             input_data = np.random.rand(2, 3, 32, 32)
             x = paddle.to_tensor(input_data)
             adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=3, return_mask=True)
@@ -995,11 +992,17 @@ class AdaptiveMaxPool3D(layers.Layer):
     ..  math::
 
       dstart &= floor(i * D_{in} / D_{out})
+
       dend &= ceil((i + 1) * D_{in} / D_{out})
+
       hstart &= floor(j * H_{in} / H_{out})
+
       hend &= ceil((j + 1) * H_{in} / H_{out})
+
       wstart &= floor(k * W_{in} / W_{out})
+
       wend &= ceil((k + 1) * W_{in} / W_{out})
+
       Output(i ,j, k) &= max(Input[dstart:dend, hstart:hend, wstart:wend])
 
     Parameters:
@@ -1036,7 +1039,7 @@ class AdaptiveMaxPool3D(layers.Layer):
             #                     max(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
             import numpy as np
-            paddle.disable_static()
+
             input_data = np.random.rand(2, 3, 8, 32, 32)
             x = paddle.to_tensor(input_data)
             pool = paddle.nn.AdaptiveMaxPool3D(output_size=4)

@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.h"
+
 #include <functional>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -150,7 +152,7 @@ REGISTER_PASS(conv_bias_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_bias_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
+            .LE("conv2d", 1)
             .EQ("elementwise_add", 0));
 
 REGISTER_PASS(conv_transpose_bias_mkldnn_fuse_pass,

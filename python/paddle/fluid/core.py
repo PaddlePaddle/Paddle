@@ -224,7 +224,7 @@ def less_than_ver(a, b):
     import operator
 
     def to_list(s):
-        s = re.sub('(\.0+)+$', '', s)
+        s = re.sub(r'(\.0+)+$', '', s)
         return [int(x) for x in s.split('.')]
 
     return operator.lt(to_list(a), to_list(b))
