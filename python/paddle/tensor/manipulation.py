@@ -116,29 +116,23 @@ def concat(x, axis=0, name=None):
 
 def flip(x, axis, name=None):
     """
-	:alias_main: paddle.flip
-	:alias: paddle.flip,paddle.tensor.flip,paddle.tensor.manipulation.flip
-
-
     Reverse the order of a n-D tensor along given axis in axis.
 
     Args:
-        x (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
+        x (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
         axis (list): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: Tensor or LoDTensor calculated by flip layer. The data type is same with input x.
+        Tensor: Tensor or LoDTensor calculated by flip layer. The data type is same with input x.
 
     Examples:
         .. code-block:: python
 
           import paddle
           import numpy as np
-
-          paddle.disable_static()
 
           image_shape=(3, 2, 2)
           x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
@@ -275,16 +269,13 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
 def roll(x, shifts, axis=None, name=None):
     """
-	:alias_main: paddle.roll
-	:alias: paddle.roll,paddle.tensor.roll,paddle.tensor.manipulation.roll
-
     Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that 
     roll beyond the last position are re-introduced at the first according to 'shifts'. 
     If a axis is not specified, 
     the tensor will be flattened before rolling and then restored to the original shape.
 
     Args:
-        x (Tensor): The x tensor variable as input.
+        x (Tensor): The x tensor as input.
         shifts (int|list|tuple): The number of places by which the elements
                            of the `x` tensor are shifted.
         axis (int|list|tuple|None): axis(axes) along which to roll.
@@ -300,12 +291,12 @@ def roll(x, shifts, axis=None, name=None):
                                   [4.0, 5.0, 6.0],
                                   [7.0, 8.0, 9.0]])
             out_z1 = paddle.roll(x, shifts=1)
-            print(out_z1.numpy())
+            print(out_z1)
             #[[9. 1. 2.]
             # [3. 4. 5.]
             # [6. 7. 8.]]
             out_z2 = paddle.roll(x, shifts=1, axis=0)
-            print(out_z2.numpy())
+            print(out_z2)
             #[[7. 8. 9.]
             # [1. 2. 3.]
             # [4. 5. 6.]]
