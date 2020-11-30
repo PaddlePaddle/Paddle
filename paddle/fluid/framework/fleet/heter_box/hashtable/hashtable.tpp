@@ -64,6 +64,21 @@ __global__ void search_kernel(Table* table, const typename Table::key_type* cons
   }
 }
 
+template <typename Table, typename GradType, typename Sgd>
+__global__ void update_kernel(Table* table,
+                              const typename Table::key_type* const keys,
+                              const GradType* const grads,
+                              size_t len,
+                              Sgd sgd){
+
+    const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < len) {
+        auto it = table->find(keys[i]);
+        sgd.update_value((it.getter())->second, grads[i]);
+    }
+}
+
+
 template<typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
   container_ = new TableContainer<KeyType, ValType>(capacity);
@@ -96,6 +111,16 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, const ValType* d
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys, d_vals, len);
+}
+
+template <typename KeyType, typename ValType>
+template <typename GradType, typename Sgd>
+void HashTable<KeyType, ValType>::update(const KeyType* d_keys, const GradType* d_grads, size_t len, Sgd sgd, cudaStream_t stream) {
+  if (len == 0) {
+    return;
+  }
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys, d_grads, len, sgd);
 }
 
 }  // end namespace framework

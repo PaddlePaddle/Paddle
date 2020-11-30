@@ -15,19 +15,19 @@ limitations under the License. */
 #pragma once
 
 namespace optimizer_config {
-    __constant__    float mf_create_thresholds;
-    __constant__    float nonclk_coeff;
-    __constant__    float clk_coeff;
-    __constant__    float min_bound;
-    __constant__    float max_bound;
-    __constant__    float learning_rate;
-    __constant__    float initial_g2sum;
-    __constant__    float initial_range;
+    __constant__    float mf_create_thresholds = 1;
+    __constant__    float nonclk_coeff = 1;
+    __constant__    float clk_coeff = 1;
+    __constant__    float min_bound = -10000;
+    __constant__    float max_bound = 10000;
+    __constant__    float learning_rate = 1;
+    __constant__    float initial_g2sum = 1;
+    __constant__    float initial_range = 1;
 
-    __constant__    float mf_learning_rate;
-    __constant__    float mf_initial_g2sum;
-    __constant__    float mf_initial_range;
-    __constant__    float mf_min_bound;
-    __constant__    float mf_max_bound;
+    __constant__    float mf_learning_rate = 1;
+    __constant__    float mf_initial_g2sum = 1;
+    __constant__    float mf_initial_range = 1;
+    __constant__    float mf_min_bound = 1;
+    __constant__    float mf_max_bound = 1;
 }
 

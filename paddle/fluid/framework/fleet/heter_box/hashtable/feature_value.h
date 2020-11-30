@@ -29,7 +29,7 @@ struct FeatureValue {
   float show;
   float clk;
   int slot;
-  float lr_w;
+  float lr;
   float lr_g2sum;
   int mf_size;
   float mf[MF_DIM + 1]; 
@@ -45,7 +45,7 @@ struct FeaturePushValue {
 
 std::ostream& operator<<(std::ostream& out, FeatureValue& val) {
   out << "show: " << val.show << " clk: " << val.clk
-      << " slot: " << val.slot << " lr_w: " << val.lr_w
+      << " slot: " << val.slot << " lr: " << val.lr
       << " mf_size: " << val.mf_size << " mf:";
   for (int i = 0; i < val.mf_size; ++i) {
     out << " " << val.mf[i];

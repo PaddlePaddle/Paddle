@@ -67,12 +67,12 @@ class Optimizer {
   
     g2sum += add_g2sum / n;
   }
-  __device__ void update_value(ValType val, const GradType grad) {
+  __device__ void update_value(ValType& val, const GradType& grad) {
       val.slot = grad.slot;;
       val.show += grad.show;
       val.clk += grad.clk;
       
-      update_lr(val.lr, val.lr_g2sum, val.lr_g, 1.0);
+      update_lr(val.lr, val.lr_g2sum, grad.lr_g, 1.0);
 
       if (val.mf_size == 0) {
         if (0) {
