@@ -153,6 +153,7 @@ def get_worker_info():
         .. code-block:: python
 
             import math
+            import paddle
             import numpy as np
             from paddle.io import IterableDataset, DataLoader, get_worker_info
 
