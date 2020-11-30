@@ -35,9 +35,11 @@ void PSGPUWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
   mpi_rank_ = desc.mpi_rank();
   trainer_desc_ = desc;
+  /*
   for (int i = 0; i < trainer_desc_.xpu_recv_list_size(); ++i) {
     send_var_list_.push_back(trainer_desc_.xpu_recv_list(i));
   }
+  */
   for (int i = 0; i < param_.sparse_table_size(); ++i) {
     uint64_t table_id =
         static_cast<uint64_t>(param_.sparse_table(i).table_id());
@@ -82,7 +84,7 @@ void PSGPUWorker::Initialize(const TrainerDesc& desc) {
   need_to_push_sparse_ = param_.push_sparse();
   need_to_push_dense_ = param_.push_dense();
 
-  fleet_ptr_ = FleetWrapper::GetInstance();
+  fleet_ptr_ = PSGPUWrapper::GetInstance();
   fetch_config_ = desc.fetch_config();
   use_cvm_ = desc.use_cvm();
   // for sparse value accessor, embedding only
@@ -142,18 +144,226 @@ void PSGPUWorker::SetNeedDump(bool need_dump_field) {
 
 void PSGPUWorker::DumpParam() {}
 
-void PSGPUWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
-                                      size_t table_idx) {
-  return;
+void PSGPUWorker::CollectLabelInfo(size_t table_idx) {
+  if (no_cvm_) {
+    return;
+  }
+  uint64_t table_id = static_cast<uint64_t>(
+      param_.program_config(0).pull_sparse_table_id(table_idx));
+
+  TableParameter table;
+  for (auto i : param_.sparse_table()) {
+    if (i.table_id() == table_id) {
+      table = i;
+      break;
+    }
+  }
+  auto& feature = features_[table_id];
+  auto& feature_label = feature_labels_[table_id];
+  feature_label.resize(feature.size());
+  Variable* var = thread_scope_->FindVar(label_var_name_[table_id]);
+  LoDTensor* tensor = var->GetMutable<LoDTensor>();
+  int64_t* label_ptr = tensor->data<int64_t>();
+
+  size_t global_index = 0;
+  for (size_t i = 0; i < sparse_key_names_[table_id].size(); ++i) {
+    VLOG(3) << "sparse_key_names_[" << i
+            << "]: " << sparse_key_names_[table_id][i];
+    Variable* fea_var = thread_scope_->FindVar(sparse_key_names_[table_id][i]);
+    if (fea_var == nullptr) {
+      continue;
+    }
+    LoDTensor* tensor = fea_var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var "
+                             << sparse_key_names_[table_id][i] << " is null";
+
+    // skip slots which do not have embedding
+    Variable* emb_var =
+        thread_scope_->FindVar(sparse_value_names_[table_id][i]);
+    if (emb_var == nullptr) {
+      continue;
+    }
+
+    int64_t* ids = tensor->data<int64_t>();
+    size_t fea_idx = 0;
+    // tensor->lod()[0].size() == batch_size + 1
+    for (auto lod_idx = 1u; lod_idx < tensor->lod()[0].size(); ++lod_idx) {
+      for (; fea_idx < tensor->lod()[0][lod_idx]; ++fea_idx) {
+        // should be skipped feasign defined in protobuf
+        if (ids[fea_idx] == 0u) {
+          continue;
+        }
+        feature_label[global_index++] =
+            static_cast<float>(label_ptr[lod_idx - 1]);
+      }
+    }
+  }
+  CHECK(global_index == feature.size())
+      << "expect fea info size:" << feature.size() << " real:" << global_index;
 }
 
-void PSGPUWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
-                                     size_t table_idx) {
-  return;
+void PSGPUWorker::FillSparseValue(size_t table_idx) {
+  uint64_t table_id = static_cast<uint64_t>(
+      param_.program_config(0).pull_sparse_table_id(table_idx));
+
+  TableParameter table;
+  for (auto i : param_.sparse_table()) {
+    if (i.table_id() == table_id) {
+      table = i;
+      break;
+    }
+  }
+
+  auto& fea_value = feature_values_[table_id];
+  auto fea_idx = 0u;
+
+  std::vector<float> init_value(table.fea_dim());
+  for (size_t i = 0; i < sparse_key_names_[table_id].size(); ++i) {
+    std::string slot_name = sparse_key_names_[table_id][i];
+    std::string emb_slot_name = sparse_value_names_[table_id][i];
+    Variable* var = thread_scope_->FindVar(slot_name);
+    if (var == nullptr) {
+      continue;
+    }
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
+    int64_t* ids = tensor->data<int64_t>();
+    int len = tensor->numel();
+    Variable* var_emb = thread_scope_->FindVar(emb_slot_name);
+    if (var_emb == nullptr) {
+      continue;
+    }
+    LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
+    float* ptr = tensor_emb->mutable_data<float>({len, table.emb_dim()},
+                                                 platform::CPUPlace());
+    memset(ptr, 0, sizeof(float) * len * table.emb_dim());
+    auto& tensor_lod = tensor->lod()[0];
+    LoD data_lod{tensor_lod};
+    tensor_emb->set_lod(data_lod);
+
+    bool is_nid = (adjust_ins_weight_config_.need_adjust() &&
+                   adjust_ins_weight_config_.nid_slot() == emb_slot_name);
+    if (is_nid) {
+      nid_show_.clear();
+    }
+    int nid_ins_index = 0;
+
+    for (int index = 0; index < len; ++index) {
+      if (use_cvm_ || no_cvm_) {
+        if (ids[index] == 0u) {
+          memcpy(ptr + table.emb_dim() * index, init_value.data(),
+                 sizeof(float) * table.emb_dim());
+          if (is_nid) {
+            nid_show_.push_back(-1);
+            ++nid_ins_index;
+          }
+          continue;
+        }
+        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data(),
+               sizeof(float) * table.emb_dim());
+        if (is_nid &&
+            static_cast<size_t>(index) == tensor->lod()[0][nid_ins_index]) {
+          nid_show_.push_back(fea_value[fea_idx][0]);
+          ++nid_ins_index;
+        }
+        fea_idx++;
+      } else {
+        if (ids[index] == 0u) {
+          memcpy(ptr + table.emb_dim() * index, init_value.data() + 2,
+                 sizeof(float) * table.emb_dim());
+          if (is_nid) {
+            nid_show_.push_back(-1);
+            ++nid_ins_index;
+          }
+          continue;
+        }
+        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2,
+               sizeof(float) * table.emb_dim());
+        if (is_nid &&
+            static_cast<size_t>(index) == tensor->lod()[0][nid_ins_index]) {
+          nid_show_.push_back(fea_value[fea_idx][0]);
+          ++nid_ins_index;
+        }
+        fea_idx++;
+      }
+    }
+  }
 }
 
 void PSGPUWorker::AdjustInsWeight(std::shared_ptr<HeterTask> task) {
-  return;
+#ifdef _LINUX
+  // check var and tensor not null
+  if (!adjust_ins_weight_config_.need_adjust()) {
+    VLOG(0) << "need_adjust=false, skip adjust ins weight";
+    return;
+  }
+  Variable* nid_var =
+      thread_scope_->FindVar(adjust_ins_weight_config_.nid_slot());
+  if (nid_var == nullptr) {
+    VLOG(0) << "nid slot var " << adjust_ins_weight_config_.nid_slot()
+            << " is nullptr, skip adjust ins weight";
+    return;
+  }
+  LoDTensor* nid_tensor = nid_var->GetMutable<LoDTensor>();
+  if (nid_tensor == nullptr) {
+    VLOG(0) << "tensor of nid slot var " << adjust_ins_weight_config_.nid_slot()
+            << " is nullptr, skip adjust ins weight";
+    return;
+  }
+  Variable* ins_weight_var =
+      thread_scope_->FindVar(adjust_ins_weight_config_.ins_weight_slot());
+  if (ins_weight_var == nullptr) {
+    VLOG(0) << "ins weight var " << adjust_ins_weight_config_.ins_weight_slot()
+            << " is nullptr, skip adjust ins weight";
+    return;
+  }
+  LoDTensor* ins_weight_tensor = ins_weight_var->GetMutable<LoDTensor>();
+  if (ins_weight_tensor == nullptr) {
+    VLOG(0) << "tensor of ins weight tensor "
+            << adjust_ins_weight_config_.ins_weight_slot()
+            << " is nullptr, skip adjust ins weight";
+    return;
+  }
+
+  float* ins_weights = ins_weight_tensor->data<float>();
+  size_t len = ins_weight_tensor->numel();  // len = batch size
+  // here we assume nid_show slot only has one feasign in each instance
+  CHECK(len == nid_show_.size()) << "ins_weight size should be equal to "
+                                 << "nid_show size, " << len << " vs "
+                                 << nid_show_.size();
+  float nid_adjw_threshold = adjust_ins_weight_config_.nid_adjw_threshold();
+  float nid_adjw_ratio = adjust_ins_weight_config_.nid_adjw_ratio();
+  int64_t nid_adjw_num = 0;
+  double nid_adjw_weight = 0.0;
+  size_t ins_index = 0;
+  for (size_t i = 0; i < len; ++i) {
+    float nid_show = nid_show_[i];
+    VLOG(3) << "nid_show " << nid_show;
+    if (nid_show < 0) {
+      VLOG(3) << "nid_show < 0, continue";
+      continue;
+    }
+    float ins_weight = 1.0;
+    if (nid_show >= 0 && nid_show < nid_adjw_threshold) {
+      ins_weight = log(M_E +
+                       (nid_adjw_threshold - nid_show) / nid_adjw_threshold *
+                           nid_adjw_ratio);
+      // count nid adjw insnum and weight
+      ++nid_adjw_num;
+      nid_adjw_weight += ins_weight;
+      // choose large ins weight
+      VLOG(3) << "ins weight new " << ins_weight << ", ins weight origin "
+              << ins_weights[ins_index];
+      if (ins_weight > ins_weights[ins_index]) {
+        VLOG(3) << "ins " << ins_index << " weight changes to " << ins_weight;
+        ins_weights[ins_index] = ins_weight;
+      }
+      ++ins_index;
+    }
+  }
+  VLOG(3) << "nid adjw info: total_adjw_num: " << nid_adjw_num
+          << ", avg_adjw_weight: " << nid_adjw_weight;
+#endif
 }
 
 void PSGPUWorker::TrainFiles() {

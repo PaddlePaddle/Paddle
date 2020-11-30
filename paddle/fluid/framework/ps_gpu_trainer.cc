@@ -30,7 +30,49 @@ namespace framework {
 
 void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
                                  Dataset* dataset) {
-  return;
+  thread_num_ = trainer_desc.thread_num();
+  param_ = trainer_desc.downpour_param();
+  // TODO : add dense grad names ?
+  scale_datanorm_ = trainer_desc.scale_datanorm();
+  int place_num = trainer_desc.worker_places_size();
+  const std::vector<paddle::framework::DataFeed*> readers =
+      dataset->GetReaders();
+  // init places, streams, events
+  for (int i = 0; i < place_num; ++i) {
+    int num = trainer_desc.worker_places(i);
+    platform::CUDAPlace place = platform::CUDAPlace(num);
+    platform::CUDADeviceGuard guard(place.device);
+    cudaStream_t stream;
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream));
+    copy_streams_.push_back(stream);
+    places_.push_back(place);
+    cudaEvent_t event;
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+    events_.push_back(event);
+    platform::XPUPlace place = platform::XPUPlace(num);
+    places_.push_back(place);
+  }
+  // for accuratly stat metrics in thread level like auc bukets bucket
+  for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
+       i++) {
+    need_merge_var_names_.push_back(
+        trainer_desc.downpour_param().stat_var_names(i));
+  }
+  VLOG(3) << "going to initialize pull dense worker";
+  pull_dense_worker_ = PullDenseWorker::GetInstance();
+  pull_dense_worker_->Initialize(trainer_desc);
+  VLOG(3) << "initialize pull dense worker";
+  trainer_desc_ = trainer_desc;
+  workers_.resize(place_num);
+  for (int i = 0; i < place_num; ++i) {
+    workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
+        trainer_desc.device_worker_name());
+    workers_[i]->SetDeviceIndex(i);
+    workers_[i]->SetDataFeed(readers[i]);
+    workers_[i]->Initialize(trainer_desc);
+    workers_[i]->SetWorkerNum(place_num);
+  }
 }
 
 void PSGPUTrainer::DumpWork(int tid) {}
@@ -46,16 +88,91 @@ void PSGPUTrainer::RegisterHeterCallback() {
 
 void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                      const platform::Place& place) {
-  return;
+  for (size_t i = 0; i < places_.size(); ++i) {
+    workers_[i]->SetPlace(places_[i]);
+    workers_[i]->SetStream(copy_streams_[i]);
+    workers_[i]->SetEvent(events_[i]);
+    workers_[i]->SetReaderPlace(platform::CPUPlace());
+    workers_[i]->SetRootScope(root_scope_);
+    workers_[i]->CreateDeviceResource(main_program);  // Program
+    workers_[i]->BindingDataFeedMemory();
+    workers_[i]->CacheProgram(main_program);
+  }
+  for (size_t num = 0; num < places_.size(); ++num) {
+    auto place = places_[num];
+    Scope* scope = workers_[num]->GetThreadScope();
+    auto stream = copy_streams_[num];
+    auto event = events_[num];
+    auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    platform::CUDADeviceGuard guard(dev_id);
+    auto& block = main_program.Block(0);
+    for (auto& var : block.AllVars()) {
+      if (var->Persistable()) {
+        auto name = var->Name();
+        Variable* root_var = root_scope_->FindVar(name);
+        if (!root_var) {
+          continue;
+        }
+        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+        auto* ptr = scope->Var(name);
+        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+        LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
+
+#define HeterMemcpyFunc(cpp_type, proto_type)                           \
+  do {                                                                  \
+    if (root_tensor->type() == proto_type) {                            \
+      HeterMemCpy<cpp_type>(thread_tensor, root_tensor, place, stream); \
+    }                                                                   \
+  } while (0)
+        _ForEachDataType_(HeterMemcpyFunc);
+      }
+    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
+    cudaEventSynchronize(event);
+  }
+  place_ = place;
+}
+
+template <typename T>
+void PSGPUTrainer::HeterMemCpy(LoDTensor* thread_tensor,
+                                  LoDTensor* root_tensor,
+                                  const paddle::platform::Place& thread_place,
+                                  cudaStream_t stream) {
+  T* thread_ptr =
+      thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
+  T* root_ptr = root_tensor->data<T>();
+  if (platform::is_cpu_place(root_tensor->place())) {
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, thread_place), thread_ptr,
+                 platform::CPUPlace(), root_ptr,
+                 sizeof(T) * root_tensor->numel(), stream);
+  } else {
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, thread_place), thread_ptr,
+                 BOOST_GET_CONST(platform::CUDAPlace, root_tensor->place()),
+                 root_ptr, sizeof(T) * root_tensor->numel(), stream);
+  }
 }
 
 void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
-  
+  pull_dense_worker_->SetRootScope(root_scope_);
+  pull_dense_worker_->CreatePinVar();
+  for (size_t i = 0; i < places_.size(); ++i) {
+    pull_dense_worker_->AddThreadScope(workers_[i]->GetThreadScope());
+    pull_dense_worker_->AddPlace(places_[i]);
+    pull_dense_worker_->AddStream(copy_streams_[i]);
+  }
   VLOG(3) << "init other env done.";
 }
 
 void PSGPUTrainer::Run() {
-  
+  for (int thidx = 0; thidx < thread_num_; ++thidx) {
+    if (!debug_) {
+      threads_.push_back(
+          std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
+    } else {
+      threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
+                                     workers_[thidx].get()));
+    }
+  }
 }
 
 
