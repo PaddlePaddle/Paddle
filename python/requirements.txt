@@ -12,4 +12,3 @@ Pillow
 six
 decorator
 astor
-pathlib

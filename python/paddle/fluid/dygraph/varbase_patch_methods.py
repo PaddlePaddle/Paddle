@@ -222,6 +222,27 @@ def monkey_patch_varbase():
         """
         self.clear_gradient()
 
+    @property
+    def inplace_version(self):
+        """
+        The inplace version of current Tensor.
+        The version number is incremented whenever the current Tensor is modified through an inplace operation.
+
+        **Notes: This is a read-only property**
+
+        Examples:
+          .. code-block:: python
+
+            import paddle
+            var = paddle.ones(shape=[4, 2, 3], dtype="float32")
+            print(var.inplace_version)  # 0
+
+            var[1] = 2.2
+            print(var.inplace_version)  # 1
+
+        """
+        return self._inplace_version()
+
     def __str__(self):
         """
         Convert a VarBase object to a readable string.
@@ -260,9 +281,9 @@ def monkey_patch_varbase():
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
         ("block", block), ("backward", backward), ("clear_grad", clear_grad),
-        ("grad", grad), ("gradient", gradient), ("__str__", __str__),
-        ("__repr__", __str__), ("__module__", "paddle"),
-        ("__name__", "Tensor")):
+        ("inplace_version", inplace_version), ("grad", grad),
+        ("gradient", gradient), ("__str__", __str__), ("__repr__", __str__),
+        ("__module__", "paddle"), ("__name__", "Tensor")):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase
