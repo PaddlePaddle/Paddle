@@ -222,7 +222,7 @@ class Reducer {
   // Following variables are to help rebuild group
   bool has_rebuilt_group_{false};
   std::vector<std::shared_ptr<imperative::VarBase>> rebuild_vars_;
-  std::vector<size_t> rebuild_group_indices_;
+  std::vector<int64_t> rebuild_var_indices_;
   const std::vector<size_t> group_size_limits_;
 };
 

@@ -199,7 +199,7 @@ void Reducer::AddDistHook(VariableWrapper *var_warpper, size_t var_index) {
 
   if (!has_rebuilt_group_) {
     rebuild_vars_.push_back(vars_[var_index]);
-    rebuild_group_indices_.push_back(var_index);
+    rebuild_var_indices_.push_back(var_index);
   }
 
   if (!group.is_sparse_) {
@@ -264,12 +264,13 @@ void Reducer::MarkGroupReady(size_t group_index) {
 }
 
 std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
-  auto rebuild_index =
-      AssignGroupBySize(rebuild_vars_, is_sparse_gradient_, group_size_limits_);
+  auto rebuild_group_index =
+      AssignGroupBySize(rebuild_vars_, is_sparse_gradient_, group_size_limits_,
+                        rebuild_var_indices_);
   has_rebuilt_group_ = true;
   rebuild_vars_.clear();
-  rebuild_group_indices_.clear();
-  return rebuild_index;
+  rebuild_var_indices_.clear();
+  return rebuild_group_index;
 }
 
 void Reducer::FinalizeBackward() {
@@ -277,8 +278,8 @@ void Reducer::FinalizeBackward() {
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaStreamWaitEvent(compute_stream_, comm_enent_.get(), 0));
   if (!has_rebuilt_group_) {
-    auto rebuild_index = RebuildGruops();
-    InitializeGroups(rebuild_index);
+    auto rebuild_group_index = RebuildGruops();
+    InitializeGroups(rebuild_group_index);
   }
   VLOG(3) << "In the batch, Reducer is finished...";
 }
