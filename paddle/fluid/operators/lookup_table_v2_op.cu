@@ -107,21 +107,17 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
       ids_p = ids_t->data<int64_t>();
     }
 
-    Tensor x_in_cpu;
-    framework::TensorCopy(*ids_t, platform::CPUPlace(), &x_in_cpu);
-    auto *x_cpu_data = x_in_cpu.data<int64_t>();
-
     for (int64_t i = 0; i < K; ++i) {
       PADDLE_ENFORCE_GE(
-          x_cpu_data[i], 0,
+          ids[i], 0,
           "Variable value (input) of OP(paddle.nn.embedding) "
           "expected >= 0 and < %ld, but got %ld. Please check input value.",
-          N, x_cpu_data[i]);
+          N, ids[i]);
       PADDLE_ENFORCE_LT(
-          x_cpu_data[i], N,
+          ids[i], N,
           "Variable value (input) of OP(paddle.nn.embedding) "
           "expected >= 0 and < %ld, but got %ld. Please check input value.",
-          N, x_cpu_data[i]);
+          N, ids[i]);
     }
 
     auto *table = table_t->data<T>();
