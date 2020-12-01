@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,12 +11,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 
+#include <ostream>
 #include <string>
 
 #include "glog/logging.h"
@@ -27,51 +29,90 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/imperative/nccl_context.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/split.h"
 
 namespace paddle {
 namespace operators {
 
-class CGenNCCLIdOp : public framework::OperatorBase {
+class GenNCCLIdOp : public framework::OperatorBase {
  public:
-  CGenNCCLIdOp(const std::string& type,
-               const framework::VariableNameMap& inputs,
-               const framework::VariableNameMap& outputs,
-               const framework::AttributeMap& attrs)
+  GenNCCLIdOp(const std::string& type, const framework::VariableNameMap& inputs,
+              const framework::VariableNameMap& outputs,
+              const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
     // put nccl id in CPUPlace
-    int rank = Attr<int>("rank");
+    int trainer_id = Attr<int>("trainer_id");
 
-    std::string endpoint = Attr<std::string>("endpoint");
-    std::vector<std::string> endpoint_list =
-        Attr<std::vector<std::string>>("other_endpoints");
+    std::vector<std::string> trainers =
+        Attr<std::vector<std::string>>("trainers");
+    PADDLE_ENFORCE_GE(trainer_id, 0, platform::errors::InvalidArgument(
+                                         "trainer_id %d is less than 0. Its "
+                                         "valid range is [0, trainer_size)"));
+    PADDLE_ENFORCE_LT(
+        trainer_id, static_cast<int>(trainers.size()),
+        platform::errors::OutOfRange("trainer_id %d is out of range. Its valid "
+                                     "range is [0, trainer_size)",
+                                     trainer_id));
 
-    std::string var_name = Output("Out");
-    auto var = scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::InvalidArgument("Output can not be Null"));
-    auto nccl_id = var->GetMutable<ncclUniqueId>();
-    if (rank == 0) {
-      PADDLE_ENFORCE_EQ(platform::dynload::ncclGetUniqueId(nccl_id), 0,
-                        platform::errors::InvalidArgument(
-                            "ncclGetUniqueId failed with id %s", nccl_id));
-      for (auto& ep : endpoint_list) {
-        VLOG(3) << "sending nccl id to " << ep;
-        SendNCCLID(ep, nccl_id);
+    std::string endpoint = trainers[trainer_id];
+
+    int nccl_comm_num = Attr<int>("nccl_comm_num");
+    int use_hierarchical_allreduce = Attr<bool>("use_hierarchical_allreduce");
+    int inter_nranks = Attr<int>("hierarchical_allreduce_inter_nranks");
+    int inter_trainer_id = -1;
+    int exter_trainer_id = -1;
+
+    if (use_hierarchical_allreduce) {
+      PADDLE_ENFORCE_GT(
+          trainers.size(), 1,
+          platform::errors::PreconditionNotMet(
+              "The number of collective trainers %llu <= 1", trainers.size()));
+      PADDLE_ENFORCE_GT(
+          inter_nranks, 1,
+          platform::errors::PreconditionNotMet(
+              "inter_nranks %d <= 1 while in hierarchical allreduce mode",
+              inter_nranks));
+      PADDLE_ENFORCE_EQ(
+          trainers.size() % inter_nranks, 0,
+          platform::errors::PreconditionNotMet(
+              "The number of trainers %llu mod inter_nranks %d is not equal 0",
+              trainers.size(), inter_nranks));
+
+      inter_trainer_id = trainer_id % inter_nranks;
+
+      if (trainer_id % inter_nranks == 0) {
+        exter_trainer_id = trainer_id / inter_nranks;
       }
-    } else {
-      RecvNCCLID(endpoint, nccl_id);
     }
+
+    std::ostringstream ss;
+    for (size_t i = 0; i < trainers.size(); i++) {
+      ss << trainers[i] << ",";
+    }
+
+    VLOG(1) << "trainer_id:" << trainer_id
+            << ", use_hierarchical_allreduce:" << use_hierarchical_allreduce
+            << ", nccl_comm_num:" << nccl_comm_num
+            << ", inter_nranks:" << inter_nranks
+            << ", inter_trainer_id:" << inter_trainer_id
+            << ", exter_trainer_id:" << exter_trainer_id
+            << ", trainers:" << ss.str();
   }
 
  private:
-  void RecvNCCLID(const std::string& ep, ncclUniqueId* nccl_id) const {
+  void RecvNCCLID(const std::string& ep, ncclUniqueId* nccl_id,
+                  int nccl_comm_num, bool use_hierarchical_allreduce,
+                  int trainer_id, int inter_trainer_id, int exter_trainer_id) {
     auto addr = paddle::string::Split(ep, ':');
     PADDLE_ENFORCE_EQ(
         addr.size(), 2UL,
@@ -120,12 +161,6 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       break;
     }
 
-    VLOG(3) << "listening on: " << ep;
-    if (listen(server_fd, 3) < 0) {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Listen on server file descriptor failed."));
-    }
-
     if ((new_socket =
              accept(server_fd, reinterpret_cast<struct sockaddr*>(&address),
                     reinterpret_cast<socklen_t*>(&addrlen))) < 0) {
@@ -144,7 +179,7 @@ class CGenNCCLIdOp : public framework::OperatorBase {
     close(server_fd);
   }
 
-  void SendNCCLID(const std::string& ep, ncclUniqueId* nccl_id) const {
+  void SendNCCLID(const std::string& ep, ncclUniqueId* nccl_id) {
     auto addr = paddle::string::Split(ep, ':');
     PADDLE_ENFORCE_EQ(
         addr.size(), 2UL,
@@ -209,28 +244,36 @@ class CGenNCCLIdOp : public framework::OperatorBase {
   }
 };
 
-class CGenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
+class GenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("Out", "Raw variable contains a NCCL UniqueId instaces.");
+    AddOutput("NCCLID", "Raw variable contains a NCCL UniqueId instaces.");
     AddComment(R"DOC(
-CGenNCCLId operator
+GenNCCLId operator
 
 For trainer 0: generate a new UniqueId and send it to all the other trainers.
 For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the server.
 )DOC");
-    AddAttr<std::string>("endpoint",
-                         "(string), e.g. 127.0.0.1:6175 "
-                         "current listen endpoint");
     AddAttr<std::vector<std::string>>(
-        "other_endpoints",
-        "['trainer1_ip:port', 'trainer2_ip:port', ...] "
-        "list of other trainer endpoints")
+        "trainers",
+        "['trainer0_ip:port', 'trainer1_ip:port', ...] "
+        "list of all trainer endpoints")
         .SetDefault({});
-    AddAttr<int>("rank",
-                 "(int default 0) "
-                 "The rank of the trainer in distributed training.")
-        .SetDefault(0);
+    AddAttr<int>("trainer_id",
+                 "(int) "
+                 "The index of the trainer in distributed training.");
+    AddAttr<int>("nccl_comm_num",
+                 "(int default 1) "
+                 "The number of nccl communicator num.")
+        .SetDefault(1);
+    AddAttr<bool>("use_hierarchical_allreduce",
+                  "(bool default false) "
+                  "Wheter to use hierarchical allreduce.")
+        .SetDefault(false);
+    AddAttr<int>("hierarchical_allreduce_inter_nranks",
+                 "(int default 1) "
+                 "Wheter to use hierarchical allreduce.")
+        .SetDefault(-1);
   }
 };
 
@@ -239,4 +282,4 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_gen_nccl_id, ops::CGenNCCLIdOp, ops::CGenNCCLIdOpMaker);
+REGISTER_OPERATOR(gen_nccl_id, ops::GenNCCLIdOp, ops::GenNCCLIdOpMaker);

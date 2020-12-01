@@ -12,6 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+
 #include <ostream>
 #include <string>
 
@@ -61,14 +67,12 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     std::string endpoint = trainers[trainer_id];
 
-    framework::Scope& local_scope = scope.NewScope();
-
     int nccl_comm_num = Attr<int>("nccl_comm_num");
     int use_hierarchical_allreduce = Attr<bool>("use_hierarchical_allreduce");
     int inter_nranks = Attr<int>("hierarchical_allreduce_inter_nranks");
-
     int inter_trainer_id = -1;
     int exter_trainer_id = -1;
+
     if (use_hierarchical_allreduce) {
       PADDLE_ENFORCE_GT(
           trainers.size(), 1,
@@ -92,12 +96,6 @@ class GenNCCLIdOp : public framework::OperatorBase {
       }
     }
 
-    if (trainer_id != 0) {
-      GetIdByServer(endpoint, &local_scope, dev_ctx, nccl_comm_num,
-                    use_hierarchical_allreduce, trainer_id, inter_trainer_id,
-                    exter_trainer_id);
-    }
-
     std::ostringstream ss;
     for (size_t i = 0; i < trainers.size(); i++) {
       ss << trainers[i] << ",";
@@ -109,166 +107,140 @@ class GenNCCLIdOp : public framework::OperatorBase {
             << ", inter_trainer_id:" << inter_trainer_id
             << ", exter_trainer_id:" << exter_trainer_id
             << ", trainers:" << ss.str();
-
-    // init flat
-    if (trainer_id == 0) {
-      std::vector<std::string> flat_endpoints;
-      flat_endpoints.insert(flat_endpoints.begin(), trainers.begin() + 1,
-                            trainers.end());
-      // flat nccl_id
-      for (int i = 0; i < nccl_comm_num; i++) {
-        std::string var_name = platform::GetFlatNCCLVarName(i);
-        GenerateAndSend(&local_scope, dev_ctx, var_name, flat_endpoints);
-      }
-    }
-
-    if (!use_hierarchical_allreduce) {
-      return;
-    }
-
-    PADDLE_ENFORCE_EQ(
-        trainers.size() % inter_nranks, 0,
-        platform::errors::PreconditionNotMet(
-            "The number of trainers %llu mod inter_nranks %d is not equal 0",
-            trainers.size(), inter_nranks));
-    PADDLE_ENFORCE_GT(
-        inter_nranks, 1,
-        platform::errors::PreconditionNotMet(
-            "inter_nranks %d <= 1 while in hierarchical allreduce mode",
-            inter_nranks));
-
-    // hierarchical inter ncclid
-    if (inter_trainer_id == 0) {
-      std::ostringstream ss;
-      ss << endpoint;
-      std::vector<std::string> inter_endpoints;
-      for (int i = trainer_id + 1; i < trainer_id + inter_nranks &&
-                                   i < static_cast<int>(trainers.size());
-           i++) {
-        ss << ",";
-        inter_endpoints.push_back(trainers[i]);
-        ss << trainers[i];
-      }
-      VLOG(1) << "Hierarchical inter ring endpoints:" << ss.str();
-      for (int i = 0; i < nccl_comm_num; i++) {
-        std::string nccl_var_name =
-            platform::GetHierarchicalInterNCCLVarName(i);
-        GenerateAndSend(&local_scope, dev_ctx, nccl_var_name, inter_endpoints);
-      }
-    }
-
-    // hierarchical exter ncclid
-    if (exter_trainer_id == 0) {
-      std::ostringstream ss;
-      std::vector<std::string> exter_endpoints;
-      ss << endpoint;
-      for (size_t i = inter_nranks; i < trainers.size(); i += inter_nranks) {
-        ss << ",";
-        exter_endpoints.push_back(trainers[i]);
-        ss << trainers[i];
-      }
-      VLOG(1) << "Hierarchical exter ring endpoints:" << ss.str();
-      for (int i = 0; i < nccl_comm_num; i++) {
-        std::string nccl_var_name =
-            platform::GetHierarchicalExterNCCLVarName(i);
-        GenerateAndSend(&local_scope, dev_ctx, nccl_var_name, exter_endpoints);
-      }
-    }
   }
 
  private:
-  void GenerateAndSend(framework::Scope* scope,
-                       const platform::DeviceContext& dev_ctx,
-                       const std::string& nccl_id_name,
-                       const std::vector<std::string>& endpoint_list) const {
-    auto var = scope->FindVar(nccl_id_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable with name %s is not found",
-                                        nccl_id_name.c_str()));
-    auto id = var->GetMutable<ncclUniqueId>();
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGetUniqueId(id));
+  void RecvNCCLID(const std::string& ep, ncclUniqueId* nccl_id,
+                  int nccl_comm_num, bool use_hierarchical_allreduce,
+                  int trainer_id, int inter_trainer_id, int exter_trainer_id) {
+    auto addr = paddle::string::Split(ep, ':');
+    PADDLE_ENFORCE_EQ(
+        addr.size(), 2UL,
+        platform::errors::InvalidArgument(
+            "The endpoint should contain host and port, but got %s.", ep));
+    std::string host = addr[0];
+    int port = std::stoi(addr[1]);
 
-    distributed::RPCClient* client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
+    int server_fd, new_socket;
+    struct sockaddr_in address;
+    int addrlen = sizeof(address);
+    char buffer[1024] = {0};
+    int opt = 0;
+    // creating socket fd
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Create server file descriptor failed."));
+    }
 
-    for (auto& ep : endpoint_list) {
-      VLOG(3) << "sending nccl_id_var:" << nccl_id_name << " to " << ep;
-      client->AsyncSendVar(ep, dev_ctx, *scope, nccl_id_name);
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+      PADDLE_THROW(platform::errors::Unavailable("Set socket options failed."));
     }
-    client->Wait();
-    for (auto& ep : endpoint_list) {
-      client->AsyncSendBatchBarrier(ep);
+
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(port);
+
+    int try_times = 0;
+    int retry_time = 0;
+    while (true) {
+      if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
+        retry_time = 3 * (try_times + 1);
+        LOG(WARNING)
+            << "Socket bind worker " << ep
+            << (try_times < 9
+                    ? " failed, try again after " + std::to_string(retry_time) +
+                          " seconds."
+                    : " failed, try again after " + std::to_string(retry_time) +
+                          " seconds. Bind on endpoint " + ep +
+                          " failed. Please confirm whether the "
+                          "communication port or GPU card is occupied.");
+        std::this_thread::sleep_for(std::chrono::seconds(retry_time));
+        ++try_times;
+        continue;
+      }
+      break;
     }
-    client->Wait();
-    VLOG(3) << "sending completed...";
+
+    if ((new_socket =
+             accept(server_fd, reinterpret_cast<struct sockaddr*>(&address),
+                    reinterpret_cast<socklen_t*>(&addrlen))) < 0) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Accept the new socket file descriptor failed."));
+    }
+
+    if (read(new_socket, buffer, 1024) < 0) {
+      PADDLE_THROW(platform::errors::Unavailable("Read from socket failed."));
+    }
+
+    VLOG(3) << "recevived the ncclUniqueId";
+    memcpy(nccl_id, buffer, NCCL_UNIQUE_ID_BYTES);
+
+    VLOG(3) << "closing the socket server: " << ep;
+    close(server_fd);
   }
 
-  void GetIdByServer(const std::string& endpoint, framework::Scope* scope,
-                     const platform::DeviceContext& dev_ctx, int nccl_comm_num,
-                     bool use_hierarchical_allreduce, int trainer_id,
-                     int inter_trainer_id, int exter_trainer_id) const {
-    // std::string endpoint = Attr<std::string>("endpoint");
-    // NOTE: Can not use unique_ptr here because the default
-    // deleter will call GRPC Server's base class's dtor and
-    // that will cause a wired crash.
-    distributed::RequestSendHandler rpc_h(distributed::DistributedMode::kSync);
-    std::unique_ptr<distributed::RPCServer> rpc_service(
-        new RPCSERVER_T(endpoint, 1));
+  void SendNCCLID(const std::string& ep, ncclUniqueId* nccl_id) {
+    auto addr = paddle::string::Split(ep, ':');
+    PADDLE_ENFORCE_EQ(
+        addr.size(), 2UL,
+        platform::errors::InvalidArgument(
+            "The endpoint should contain host and port, but got %s.", ep));
+    std::string host = addr[0];
+    int port = std::stoi(addr[1]);
+    // struct sockaddr_in address;
+    int sock = 0;
+    struct sockaddr_in serv_addr;
+    char buffer[1024] = {0};
 
-    rpc_service->RegisterRPC(distributed::kRequestSend, &rpc_h);
-    rpc_h.SetRPCServer(rpc_service.get());
-
-    framework::ProgramDesc empty_program;
-    framework::Executor executor(dev_ctx.GetPlace());
-    rpc_h.SetScope(scope);
-    rpc_h.SetDevCtx(&dev_ctx);
-    rpc_h.SetProgram(&empty_program);
-    rpc_h.SetExecutor(&executor);
-
-    std::thread server_thread(
-        std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
-
-    for (int i = 0; i < nccl_comm_num; i++) {
-      rpc_service->SetCond(distributed::kRequestSend);
-      VLOG(3) << "trainer_id:" << trainer_id
-              << " start getting nccl id from trainer 0, nccl_comm_no:" << i;
-      rpc_service->WaitBarrier(distributed::kRequestSend);
-      rpc_service->ResetBarrierCounter();
+    memcpy(buffer, nccl_id, NCCL_UNIQUE_ID_BYTES);
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+      PADDLE_THROW(platform::errors::Unavailable("Create socket failed."));
     }
 
-    if (use_hierarchical_allreduce) {
-      if (inter_trainer_id > 0) {
-        for (int i = 0; i < nccl_comm_num; i++) {
-          rpc_service->SetCond(distributed::kRequestSend);
-          VLOG(3) << "trainer_id:" << trainer_id
-                  << ", inter_trainer_id:" << inter_trainer_id
-                  << " start getting nccl id from inter_trainer:" << i;
-          rpc_service->WaitBarrier(distributed::kRequestSend);
-          rpc_service->ResetBarrierCounter();
-        }
-      }
+    memset(&serv_addr, '0', sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(port);
 
-      if (exter_trainer_id > 0) {
-        for (int i = 0; i < nccl_comm_num; i++) {
-          rpc_service->SetCond(distributed::kRequestSend);
-          VLOG(3)
-              << "trainer_id:" << trainer_id
-              << ", exter_trainer_id:" << exter_trainer_id
-              << " start getting nccl id from exter_trainer 0, nccl_comm_no:"
-              << i;
-          rpc_service->WaitBarrier(distributed::kRequestSend);
-          rpc_service->ResetBarrierCounter();
-        }
-      }
+    char* ip = NULL;
+    struct hostent* hp;
+    if ((hp = gethostbyname(host.c_str())) == NULL) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Fail to get host by name %s.", host));
+    }
+    int i = 0;
+    while (hp->h_addr_list[i] != NULL) {
+      ip = inet_ntoa(*(struct in_addr*)hp->h_addr_list[i]);
+      VLOG(3) << "gethostbyname  host:" << host << "  ->ip: " << ip;
+      break;
+    }
+    if (inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) {
+      PADDLE_THROW(
+          platform::errors::Unavailable("Open address %s failed.", ep));
     }
 
-    VLOG(3) << "traier_id:" << trainer_id
-            << ", inter_trainer_id:" << inter_trainer_id
-            << ", exter_trainer_id:" << exter_trainer_id
-            << " got nccl id and stop server...";
-    rpc_service->ShutDown();
-    VLOG(3) << "rpc server stopped";
-    server_thread.join();
+    int try_times = 0;
+    int retry_time = 0;
+    while (true) {
+      if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        retry_time = 3 * (try_times + 1);
+        LOG(WARNING)
+            << "Socket connect worker " << ep
+            << (try_times < 9
+                    ? " failed, try again after " + std::to_string(retry_time) +
+                          " seconds."
+                    : " failed, try again after " + std::to_string(retry_time) +
+                          " seconds. Maybe that some process is occupied the "
+                          "GPUs of this node now, and you should kill those "
+                          "process manually.");
+        std::this_thread::sleep_for(std::chrono::seconds(retry_time));
+        ++try_times;
+        continue;
+      }
+      VLOG(3) << "sending the ncclUniqueId to " << ep;
+      send(sock, buffer, NCCL_UNIQUE_ID_BYTES, 0);
+      break;
+    }
+    close(sock);
   }
 };
 
