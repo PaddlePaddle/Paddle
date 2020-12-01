@@ -135,6 +135,11 @@ if(WITH_MUSL)
     LIST(REMOVE_ITEM TEST_OPS test_sigmoid_focal_loss_op)
 endif()
 
+if(WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_rnn_decode_api)
+    LIST(REMOVE_ITEM TEST_OPS test_complex_matmul)
+endif()
+
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint1)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
