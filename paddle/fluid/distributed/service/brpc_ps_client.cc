@@ -12,10 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/service/brpc_ps_client.h"
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "Eigen/Dense"
+#include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
+
+const static int max_port = 65535;
 
 DEFINE_int32(pserver_push_dense_merge_limit, 12,
              "limit max push_dense local merge requests");
@@ -74,7 +80,7 @@ void DownpourPsClientService::service(
   }
 }
 
-//启动client端RpcService 用于数据互发等操作
+// 启动client端RpcService 用于数据互发等操作
 int32_t BrpcPsClient::start_client_service() {
   if (_service.configure(this, _client_id) != 0) {
     LOG(ERROR)
@@ -84,7 +90,6 @@ int32_t BrpcPsClient::start_client_service() {
   _server.AddService(&_service, brpc::SERVER_DOESNT_OWN_SERVICE);
   brpc::ServerOptions options;
   int start_port = 8500;
-  const static int max_port = 65535;
   options.num_threads = 24;
 
   if (_server.Start(butil::my_ip_cstr(), brpc::PortRange(start_port, max_port),
@@ -139,7 +144,7 @@ int32_t BrpcPsClient::initialize() {
   std::string server_ip_port;
   std::string client_ip(butil::my_ip_cstr());
 
-  //获取server列表，并连接
+  // 获取server列表，并连接
   std::vector<PSHost> server_list = _env->get_ps_servers();
   _server_channels.resize(server_list.size());
   for (size_t i = 0; i < server_list.size(); ++i) {
@@ -157,7 +162,7 @@ int32_t BrpcPsClient::initialize() {
     }
     os << server_ip_port << ",";
   }
-  //启动client探听接口, 并相互建立连接
+  // 启动client探听接口, 并相互建立连接
   start_client_service();
 
   _running = true;
@@ -439,7 +444,7 @@ std::future<int32_t> BrpcPsClient::push_sparse_param(
     size_t table_id, const uint64_t *keys, const float **update_values,
     size_t num, void *done) {
   auto *accessor = table_accessor(table_id);
-  //发送RPC请求
+  // 发送RPC请求
   DownpourBrpcClosure *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
   auto promise = std::make_shared<std::promise<int32_t>>();
   closure->add_promise(promise);
@@ -495,8 +500,8 @@ std::future<int32_t> BrpcPsClient::pull_dense(Region *regions,
       request_call_num, [request_call_num, num_per_shard, regions, region_num,
                          accessor](void *done) {
         int ret = 0;
-        size_t region_idx = 0;       //当前填充的region偏移
-        size_t region_data_idx = 0;  //当前填充的region内data偏移
+        size_t region_idx = 0;       // 当前填充的region偏移
+        size_t region_data_idx = 0;  // 当前填充的region内data偏移
         auto *closure = (DownpourBrpcClosure *)done;
         size_t shard_data_size = num_per_shard * accessor->select_size();
         for (size_t i = 0; i < request_call_num; ++i) {
@@ -684,7 +689,7 @@ std::future<int32_t> BrpcPsClient::push_sparse_raw_gradient(
     rpc_stub.service(closure->cntl(shard_idx), closure->request(shard_idx),
                      closure->response(shard_idx), closure);
   }
-  return fut
+  return fut;
 }
 
 std::future<int32_t> BrpcPsClient::push_dense_raw_gradient(

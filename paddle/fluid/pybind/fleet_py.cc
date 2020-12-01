@@ -21,9 +21,12 @@ limitations under the License. */
 #undef _XOPEN_SOURCE
 #endif
 
+#include "paddle/fluid/pybind/fleet_py.h"
+
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/pybind/fleet_py.h"
 
 #include "paddle/fluid/distributed/communicator_common.h"
 #include "paddle/fluid/distributed/fleet.h"
@@ -121,7 +124,8 @@ void BindDistCommunicator(py::module* m) {
       }))
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)
-      .def("is_running", &Communicator::IsRunning);
+      .def("is_running", &Communicator::IsRunning)
+      .def("init_params", &Communicator::InitParams);
   //  .def("recv", &Communicator::RecvNoBarrier);
 }
 
