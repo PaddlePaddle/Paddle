@@ -198,7 +198,6 @@ void Reducer::AddDistHook(VariableWrapper *var_warpper, size_t var_index) {
   auto &group = groups_[group_index];
 
   if (!has_rebuilt_group_) {
-    rebuild_vars_.push_back(vars_[var_index]);
     rebuild_var_indices_.push_back(var_index);
   }
 
@@ -264,12 +263,12 @@ void Reducer::MarkGroupReady(size_t group_index) {
 }
 
 std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
-  auto rebuild_group_index =
-      AssignGroupBySize(rebuild_vars_, is_sparse_gradient_, group_size_limits_,
-                        rebuild_var_indices_);
+  std::reverse(rebuild_var_indices_.begin(), rebuild_var_indices_.end());
+  auto rebuild_group_index = AssignGroupBySize(
+      vars_, is_sparse_gradient_, group_size_limits_, rebuild_var_indices_);
   has_rebuilt_group_ = true;
-  rebuild_vars_.clear();
   rebuild_var_indices_.clear();
+  std::reverse(rebuild_group_index.begin(), rebuild_group_index.end());
   return rebuild_group_index;
 }
 
