@@ -144,7 +144,20 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
     // skip out
     auto *out = dout;
 
-    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
+    // Special case when dy is not needed and dx doesn't reduce
+    if (dx != nullptr && dy == nullptr && dx->dims() == dout->dims()) {
+      VLOG(4) << "Special case when dy is not needed and dx doesn't "
+                 "reduce";
+      framework::TensorCopy(
+          *dout, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), dx);
+    } else if (dx == nullptr && dy != nullptr && dy->dims() == dout->dims()) {
+      VLOG(4) << "Special case when dx is not needed and dy doesn't "
+                 "reduce";
+      framework::TensorCopy(
+          *dout, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), dy);
+    } else if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
       elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
     } else {
       default_elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx,
