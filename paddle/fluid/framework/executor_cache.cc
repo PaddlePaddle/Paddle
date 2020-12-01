@@ -68,8 +68,8 @@ static void AppendSafeEagerDeletionSkipVars(
 // a static local variable is already being initialized.
 // https://stackoverflow.com/questions/11711920/how-to-implement-multithread-safe-singleton-in-c11-without-using-mutex
 ExecutorInfoCache &ExecutorInfoCache::Instance() {
-  static ExecutorInfoCache g_info_map;
-  return g_info_map;
+  static ExecutorInfoCache g_exe_cache_info_map;
+  return g_exe_cache_info_map;
 }
 
 std::shared_ptr<framework::ExecutorPrepareContext> GetExecutorInfoFromCache(

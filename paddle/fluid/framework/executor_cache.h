@@ -90,7 +90,7 @@ class ExecutorInfoCache {
 std::shared_ptr<framework::ExecutorPrepareContext> GetExecutorInfoFromCache(
     const framework::Executor& exe, const framework::ExecutionContext& ctx,
     const std::vector<std::vector<std::string>>& ctx_output_names,
-    bool is_grad = false);
+    bool is_grad);
 
 }  // namespace framework
 }  // namespace paddle
