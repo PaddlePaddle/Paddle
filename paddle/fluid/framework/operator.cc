@@ -1480,6 +1480,54 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   return data_type;
 }
 
+Tensor* OperatorWithKernel::GetTensorFormInputSafely(
+    const ExecutionContext& ctx, const std::string& name) const {
+  // 1. get variable and check
+  // NOTE: only supports signal input var now
+  Variable* var = const_cast<Variable*>(ctx.InputVar(name));
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::NotFound(
+               "The variable %s is not found when promote types.", name));
+  // 2. get tensor and check
+  Tensor* t = nullptr;
+  if (var->IsType<Tensor>()) {
+    t = var->GetMutable<Tensor>();
+  } else if (var->IsType<LoDTensor>()) {
+    t = var->GetMutable<LoDTensor>();
+  } else if (var->IsType<SelectedRows>()) {
+    t = var->GetMutable<SelectedRows>()->mutable_value();
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported input variable type in type promotion."));
+  }
+  PADDLE_ENFORCE_NOT_NULL(
+      t, platform::errors::InvalidArgument(
+             "The Tensor of variable %s is nullptr when promote types."));
+  PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                    platform::errors::InvalidArgument(
+                        "The Tensor in the %s Op's Input Variable %s(%s) is "
+                        "not initialized.",
+                        Type(), name, ctx.InputName(name)));
+  return t;
+}
+
+proto::VarType::Type OperatorWithKernel::PromoteVarDataTypes(
+    const ExecutionContext& ctx, const std::string& name1,
+    const std::string& name2) const {
+  // 1. Get tensor
+  auto* tensor_a = GetTensorFormInputSafely(ctx, name1);
+  auto* tensor_b = GetTensorFormInputSafely(ctx, name2);
+
+  // 2. Get two input types
+  auto type_a = tensor_a->type();
+  auto type_b = tensor_b->type();
+
+  // 3. Promote types
+  auto target_type = PromoteTypes(type_a, type_b);
+
+  return target_type;
+}
+
 OpKernelType OperatorWithKernel::GetExpectedKernelType(
     const ExecutionContext& ctx) const {
   return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());

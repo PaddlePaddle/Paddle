@@ -141,5 +141,20 @@ inline std::ostream& operator<<(std::ostream& out,
   out << DataTypeToString(type);
   return out;
 }
+
+extern inline bool IsDataType(const proto::VarType::Type t) {
+  return (t == proto::VarType::BOOL || t == proto::VarType::INT16 ||
+          t == proto::VarType::INT32 || t == proto::VarType::INT64 ||
+          t == proto::VarType::FP16 || t == proto::VarType::FP32 ||
+          t == proto::VarType::FP64 || t == proto::VarType::UINT8 ||
+          t == proto::VarType::INT8 || t == proto::VarType::BF16 ||
+          t == proto::VarType::COMPLEX64 || t == proto::VarType::COMPLEX128);
+}
+
+extern int DataTypeNumAlign(const proto::VarType::Type t);
+
+extern proto::VarType::Type PromoteTypes(const proto::VarType::Type type_a,
+                                         const proto::VarType::Type type_b);
+
 }  // namespace framework
 }  // namespace paddle

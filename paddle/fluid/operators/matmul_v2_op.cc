@@ -85,9 +85,17 @@ class MatMulV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    framework::proto::VarType::Type data_type =
+        static_cast<framework::proto::VarType::Type>(-1);
+    data_type = OperatorWithKernel::PromoteVarDataTypes(ctx, "X", "Y");
+    return framework::OpKernelType(data_type, ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    return framework::OpKernelType(tensor.type(), tensor.place(),
+                                   tensor.layout());
   }
 };
 
