@@ -27,8 +27,7 @@ limitations under the License. */
 
 
 #include "paddle/fluid/framework/fleet/heter_box/hashtable/gpu_resource.h"
-#include "paddle/fluid/framework/fleet/heter_box/hashtable/gpu_ps.h"
-#include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_box/heter_box_base.h"
 #include "paddle/fluid/framework/fleet/gpu_task.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -92,10 +91,10 @@ class PSGPUWrapper {
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   std::unordered_map<uint64_t, std::vector<std::unordered_map<uint64_t,std::vector<float>>>> local_tables_;
-  std::shared_ptr<GpuPs<FeatureKey, FeatureValue, FeaturePushValue>> GpuPs_;
+//  std::shared_ptr<GpuPs<FeatureKey, FeatureValue, FeaturePushValue>> GpuPs_;
+  HeterBoxBase* GpuPs_;
   std::shared_ptr<GpuTask> GpuTask_;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
-  Optimizer<FeatureValue, FeaturePushValue> opt_;
   std::shared_ptr<HeterBoxResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
   std::vector<int> slot_vector_;

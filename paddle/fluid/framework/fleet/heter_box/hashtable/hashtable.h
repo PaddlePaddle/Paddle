@@ -37,7 +37,7 @@ template <typename KeyType, typename ValType>
 class HashTable {
  public:
   HashTable(size_t capacity);
-  ~HashTable();
+  virtual ~HashTable();
   HashTable(const HashTable&) = delete;
   HashTable& operator=(const HashTable&) = delete;
   void insert(const KeyType* d_keys, const ValType* d_vals, size_t len, cudaStream_t stream);
