@@ -38,7 +38,6 @@ limitations under the License. */
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
 #define BLOCK_X 32
 #define BLOCK_Y 32
-#define WARPSIZE 32
 #endif
 
 #include "paddle/fluid/operators/math/math_function.h"
@@ -52,42 +51,6 @@ constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
 
 namespace paddle {
 namespace operators {
-
-/*
-Only use Reduce when x is 3-D tensor and y is 1-D tensor
-*/
-inline static bool UseReduceColumn3To1(const framework::DDim &dout_dims,
-                                       const framework::DDim &x_dims,
-                                       const framework::DDim &y_dims,
-                                       const int axis) {
-  VLOG(3) << "x_dims: " << x_dims << " y_dims: " << y_dims;
-  if (x_dims == dout_dims && x_dims.size() == 3 && y_dims.size() == 1 &&
-      axis == 2 && x_dims[2] == y_dims[0]) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-inline static bool UseReduceColumn3To2(const framework::DDim &dout_dims,
-                                       const framework::DDim &x_dims,
-                                       const framework::DDim &y_dims,
-                                       const int axis) {
-  VLOG(3) << "dout_dims: " << dout_dims << " x_dims: " << x_dims
-          << " y_dims: " << y_dims << " axis: " << axis;
-  if (x_dims == dout_dims && x_dims.size() == 3 && y_dims.size() == 2 &&
-      axis == 1 && x_dims[1] == y_dims[0] && x_dims[2] == y_dims[1]) {
-    VLOG(3) << "======= UseReduceColumn3To2 =====";
-    return true;
-  } else if (x_dims == dout_dims && x_dims.size() == 4 && y_dims.size() == 4 &&
-             axis == 0 && y_dims[0] != 1 && y_dims[3] != 1 && y_dims[1] == 1 &&
-             y_dims[2] == 1) {
-    VLOG(3) << "======= UseReduceColumn3To2 =====";
-    return true;
-  } else {
-    return false;
-  }
-}
 
 /*
  * Out = X ⊙ Y
@@ -548,13 +511,6 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
     }
   }
 }
-
-template <typename T>
-struct Sum {
-  __host__ __device__ T operator()(const T &a, const T &b) const {
-    return a + b;
-  }
-};
 
 template <typename T, typename DX_OP>
 __global__ void CommonGradBroadcastCUDAKernel(
@@ -1703,153 +1659,6 @@ static void ElemwiseGradBroadcast2CUDA(cudaStream_t stream, const T *x,
 
 #endif
 
-#ifdef __NVCC__
-template <typename T, typename OP>
-__global__ __launch_bounds__(1024) void ColumnReduceKernel(
-    const T *in, T *out, const int64_t num_rows, const int64_t num_cols, OP op,
-    T init) {
-  int row = blockIdx.y * blockDim.y + threadIdx.y;
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-  T sum = init;
-  if (row < num_rows && col < num_cols) sum = in[row * num_cols + col];
-
-  __shared__ __align__(
-      alignof(T)) char partial_sums_raw[WARPSIZE * (WARPSIZE + 1) * sizeof(T)];
-  T *partial_sums = reinterpret_cast<T *>(partial_sums_raw);
-
-  row += gridDim.y * blockDim.y;
-
-  if (col < num_cols) {
-    for (; row < num_rows; row += gridDim.y * blockDim.y) {
-      sum = op(sum, in[row * num_cols + col]);
-    }
-  }
-
-  partial_sums[threadIdx.x * (WARPSIZE + 1) + threadIdx.y] = sum;
-
-  __syncthreads();
-
-  if (threadIdx.y == 0 && col < num_cols) {
-    T s = partial_sums[threadIdx.x * (WARPSIZE + 1)];
-
-    const int numRowsThisBlock = min(static_cast<int64_t>(blockDim.y),
-                                     num_rows - blockIdx.y * blockDim.y);
-
-    for (int row = 1; row < numRowsThisBlock; ++row) {
-      T t = partial_sums[threadIdx.x * (WARPSIZE + 1) + row];
-      s = op(s, t);
-    }
-
-    out[col * gridDim.y + blockIdx.y] = s;
-  }
-}
-
-template <typename DeviceContext, typename T>
-static void ElemwiseYGradCUDA(const framework::ExecutionContext &ctx,
-                              const framework::Tensor &dout,
-                              const framework::DDim &x_dims,
-                              framework::Tensor *dx, framework::Tensor *dy) {
-  auto extent_x = x_dims[0] * x_dims[1];
-  auto extent_y = x_dims[2];
-  VLOG(3) << " ====== dx_dims:===== " << x_dims;
-  dim3 block_dim(WARPSIZE,
-                 std::min(extent_x, static_cast<int64_t>(1024 / WARPSIZE)));
-  dim3 grid_dim((extent_y + (WARPSIZE - 1)) / WARPSIZE, 1, 1);
-  if (grid_dim.x < 16)
-    grid_dim.y = std::min((extent_x + (WARPSIZE - 1)) / WARPSIZE,
-                          static_cast<int64_t>(WARPSIZE));
-
-  if (dx && x_dims == dout.dims()) {
-    VLOG(3) << "====== dx=dout =======";
-    framework::TensorCopy(
-        dout, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), dx);
-    // dx->ShareDataWith(dout);
-  }
-  if (dy) {
-    Sum<T> sum;
-    T init_sum = T(0);
-    dy->mutable_data<T>(ctx.GetPlace());
-    const T *dout_data = dout.data<T>();
-    T *dy_data = dy->data<T>();
-    auto stream = ctx.template device_context<DeviceContext>().stream();
-    ColumnReduceKernel<<<grid_dim, block_dim, 0, stream>>>(
-        dout_data, dy_data, extent_x, extent_y, sum, init_sum);
-  }
-}
-
-template <typename T, typename OP>
-__global__ __launch_bounds__(1024) void ColumnReduce3To2Kernel(
-    const T *in, T *out, const int num_planes, const int num_rows,
-    const int num_cols, OP op, T init) {
-  const int gid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int elems_per_plane = num_rows * num_cols;
-
-  const int plane = gid / num_cols;
-  const int col = gid % num_cols;
-
-  if (plane >= num_planes) return;
-
-  if (num_rows == 1) {
-    out[plane * elems_per_plane + col] = in[plane * elems_per_plane + col];
-    return;
-  }
-
-  T sum = op(in[plane * elems_per_plane + col],
-             in[plane * elems_per_plane + num_cols + col]);
-  for (int row = 2; row < num_rows; ++row) {
-    sum = op(sum, in[plane * elems_per_plane + row * num_cols + col]);
-  }
-
-  out[plane * num_cols + col] = sum;
-}
-
-template <typename DeviceContext, typename T>
-static void ElemwiseGrad2DYCUDA(const framework::ExecutionContext &ctx,
-                                const framework::Tensor &dout,
-                                const framework::DDim &x_dims,
-                                framework::Tensor *dx, framework::Tensor *dy) {
-  auto extent_x = x_dims[0];
-  auto extent_y = x_dims[1] * x_dims[2];
-  int num_threads = 128;
-  int num_blocks = (extent_y + num_threads - 1) / num_threads;
-  auto num_planes = 1;
-  auto num_rows = extent_x;
-  auto num_cols = extent_y;
-
-  auto extent_z = 0;
-  if (x_dims.size() == 4) {
-    extent_x = x_dims[0];
-    extent_y = x_dims[1] * x_dims[2];
-    extent_z = x_dims[3];
-    num_blocks = (extent_x * extent_z + num_threads - 1) / num_threads;
-    num_planes = extent_x;
-    num_rows = extent_y;
-    num_cols = extent_z;
-  }
-
-  if (dx && x_dims == dout.dims()) {
-    VLOG(3) << "====== dx=dout =======";
-    framework::TensorCopy(
-        dout, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), dx);
-    // dx->ShareDataWith(dout);
-  }
-  if (dy) {
-    Sum<T> sum;
-    T init_sum = T(0);
-    dy->mutable_data<T>(ctx.GetPlace());
-    const T *dout_data = dout.data<T>();
-    T *dy_data = dy->data<T>();
-    auto stream = ctx.template device_context<DeviceContext>().stream();
-    ColumnReduce3To2Kernel<<<num_blocks, num_threads, 0, stream>>>(
-        dout_data, dy_data, num_planes, static_cast<int>(num_rows),
-        static_cast<int>(num_cols), sum, init_sum);
-  }
-}
-#endif
-
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
 void CommonElementwiseBroadcastBackward(
     const framework::ExecutionContext &ctx, const framework::DDim &x_dims,
@@ -1879,15 +1688,11 @@ void CommonElementwiseBroadcastBackward(
 
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
-    if (UseReduceColumn3To2(dout.dims(), x_dims, y_dims, axis)) {
-      ElemwiseGrad2DYCUDA<DeviceContext, T>(ctx, dout, x_dims, dx, dy);
-    } else {
-      CommonGradBroadcastCUDA<T, DX_OP, DY_OP>(
-          x, y, out, dout, dx, dy, x_dims_array.data(), y_dims_array.data(),
-          out_dims_array.data(), max_dim,
-          ctx.template device_context<platform::CUDADeviceContext>(), dx_op,
-          dy_op);
-    }
+    CommonGradBroadcastCUDA<T, DX_OP, DY_OP>(
+        x, y, out, dout, dx, dy, x_dims_array.data(), y_dims_array.data(),
+        out_dims_array.data(), max_dim,
+        ctx.template device_context<platform::CUDADeviceContext>(), dx_op,
+        dy_op);
 #endif
   } else {
     CommonGradBroadcastCPU<T, DX_OP, DY_OP>(
@@ -1967,19 +1772,12 @@ void ElemwiseGradComputeWithBroadcast(
   if (post == 1) {
     if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
-      if (UseReduceColumn3To1(dout.dims(), x_dims, y_dims, axis)) {
-        VLOG(3) << "=======use reduce column ========";
-        ElemwiseYGradCUDA<DeviceContext, T>(ctx, dout, x_dims, dx, dy);
-      } else if (UseReduceColumn3To2(dout.dims(), x_dims, y_dims, axis)) {
-        ElemwiseGrad2DYCUDA<DeviceContext, T>(ctx, dout, x_dims, dx, dy);
-      } else {
-        ElemwiseGradBroadcast1CUDA(
-            ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
-            y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, is_xsize_larger,
-            dx_op, dy_op,
-            dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-            dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
-      }
+      ElemwiseGradBroadcast1CUDA(
+          ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
+          y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, is_xsize_larger,
+          dx_op, dy_op,
+          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
 #endif
     } else {
       ElemwiseGradBroadcast1CPU(
