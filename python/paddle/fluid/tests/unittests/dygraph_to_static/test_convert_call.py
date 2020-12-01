@@ -22,8 +22,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph import declarative
-from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import DISABLE_CONVERTION
+from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import CONVERSION_OPTIONS
 from test_program_translator import get_source_code
 
 program_translator = ProgramTranslator()
@@ -219,8 +218,10 @@ class TestNotToConvert(TestRecursiveCall2):
     def set_func(self):
         self.dygraph_func = func_not_to_static
 
-    def test_disable_convertion(self):
-        self.assertTrue(getattr(self.dygraph_func, DISABLE_CONVERTION))
+    def test_CONVERSION_OPTIONS(self):
+        options = getattr(self.dygraph_func, CONVERSION_OPTIONS, None)
+        self.assertIsNotNone(options)
+        self.assertTrue(options.not_convert)
 
 
 class TestNotToConvert2(TestRecursiveCall2):

@@ -42,8 +42,21 @@ BUILTIN_LIKELY_MODULES = [
 
 translator_logger = TranslatorLogger()
 
-DISABLE_CONVERTION = "An attribute for a function that indicates that" \
-                  "the user does not want it to be converted in dynamic-to-static."
+CONVERSION_OPTIONS = "An attribute for a function that indicates conversion flags of the function in dynamic-to-static."
+
+
+class ConversionOptions(object):
+    """
+    A container for conversion flags of a function in dynamic-to-static.
+
+    Attributes:
+        not_convert(bool): An attribute indicates that the function won't be converted in dynamic-to-static.
+
+    NOTE(liym27): More attributes and methods can be added in this class.
+    """
+
+    def __init__(self, not_convert=False):
+        self.not_convert = not_convert
 
 
 def not_to_static(func=None):
@@ -81,7 +94,8 @@ def not_to_static(func=None):
     if func is None:
         return not_to_static
 
-    setattr(func, DISABLE_CONVERTION, True)
+    options = ConversionOptions(not_convert=True)
+    setattr(func, CONVERSION_OPTIONS, options)
     return func
 
 
@@ -175,7 +189,8 @@ def convert_call(func):
     # in this case, unwraps it into a raw method or function.
     _, func = unwrap_decorators(func)
 
-    if getattr(func, DISABLE_CONVERTION, False):
+    options = getattr(func, CONVERSION_OPTIONS, None)
+    if options is not None and options.not_convert:
         translator_logger.log(
             2,
             "{} is not converted when it is decorated by 'paddle.jit.not_to_static'.".
