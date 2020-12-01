@@ -178,7 +178,7 @@ def convert_call(func):
     if getattr(func, DISABLE_CONVERTION, False):
         translator_logger.log(
             2,
-            "{} is not converted it is decorated by 'paddle.jit.not_to_static'.".
+            "{} is not converted when it is decorated by 'paddle.jit.not_to_static'.".
             format(func))
         return func
 

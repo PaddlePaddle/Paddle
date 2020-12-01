@@ -35,7 +35,7 @@ np.random.seed(SEED)
 
 
 # Use a decorator to test exception
-@declarative
+@paddle.jit.to_static
 def dyfunc_with_if(x_v):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
@@ -44,7 +44,7 @@ def dyfunc_with_if(x_v):
     return x_v
 
 
-@declarative
+@paddle.jit.to_static
 def nested_func(x_v):
     x_v = fluid.dygraph.to_variable(x_v)
 
@@ -55,7 +55,7 @@ def nested_func(x_v):
     return res
 
 
-@declarative
+@paddle.jit.to_static
 def dyfunc_with_third_library_logging(x_v):
     logging.info('test dyfunc_with_third_library_logging')
     if fluid.layers.mean(x_v).numpy()[0] > 5:
@@ -111,14 +111,14 @@ class MyConvLayer(fluid.dygraph.Layer):
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.5)))
 
-    @declarative
+    @paddle.jit.to_static
     def forward(self, inputs):
         y = dyfunc_with_if(inputs)
         y = lambda_fun(y)
         y = self.dymethod(y)
         return y
 
-    @declarative
+    @paddle.jit.to_static
     def dymethod(self, x_v):
         x_v = fluid.layers.assign(x_v)
         return x_v
@@ -138,7 +138,7 @@ class MyLayer(fluid.dygraph.Layer):
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.5)))
 
-    @declarative
+    @paddle.jit.to_static
     def forward(self, inputs):
         h = self.conv(inputs)
         out = self.fc(h)
@@ -198,7 +198,7 @@ def func_not_to_static(x):
     return res
 
 
-@declarative
+@paddle.jit.to_static
 def func_convert_then_not_to_static(x):
     y = func_not_to_static(x)
     return y
@@ -209,7 +209,7 @@ class TestClass(paddle.nn.Layer):
     def called_member(self, x):
         return paddle.sum(x)
 
-    @declarative
+    @paddle.jit.to_static
     def forward(self, x):
         y = self.called_member(x)
         return y
