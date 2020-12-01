@@ -219,7 +219,9 @@ class TracedGradOp {
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
         if (var && !var->OverridedStopGradient()) {
-          var->SetGradNode(node_);
+          // var->SetGradNode(node_);
+          // set grad_node later
+          input_grad_vars_.emplace_back(var);
         }
       }
     }
@@ -256,6 +258,10 @@ class TracedGradOp {
       op_->SetOutput(name, std::move(var_wrappers),
                      kRole == TracedVarRole::kBackward);
     }
+  }
+
+  std::vector<std::shared_ptr<VarBase>> GetInputGradVars() {
+    return input_grad_vars_;
   }
 
   std::string Type() const { return op_->Type(); }
@@ -328,6 +334,7 @@ class TracedGradOp {
  private:
   const std::shared_ptr<GradOpNode>& node_;
   OpBase* op_;
+  std::vector<std::shared_ptr<VarBase>> input_grad_vars_;
 };
 
 }  // namespace imperative

@@ -275,8 +275,10 @@ std::string GenerateOpFunctionsBody(
     input_args_num++;
     const auto in_cast_type =
         input.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
-    ins_cast_str += paddle::string::Sprintf(
-        in_cast_type, in_name, op_type, in_name, arg_idx++, TempName(in_name));
+    auto dispensable = input.dispensable() ? "true" : "false";
+    ins_cast_str +=
+        paddle::string::Sprintf(in_cast_type, in_name, op_type, in_name,
+                                arg_idx++, TempName(in_name), dispensable);
 
     if (input.dispensable()) {
       const auto in_template = input.duplicable()

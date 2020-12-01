@@ -225,6 +225,12 @@ class SingleGradOpMaker<imperative::OpBase>
       imperative::TracedGradOp traced_grad_op(node);
       try {
         this->Apply(&traced_grad_op);
+        auto input_grad_vars_ = traced_grad_op.GetInputGradVars();
+        for (auto iter = input_grad_vars_.cbegin();
+             iter != input_grad_vars_.cend(); ++iter) {
+          (*iter)->SetGradNode(node);
+        }
+        input_grad_vars_.clear();
       } catch (platform::EnforceNotMet& exception) {
         framework::AppendErrorOpHint(traced_grad_op.Type(), &exception);
         throw std::move(exception);
