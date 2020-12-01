@@ -273,6 +273,7 @@ from . import onnx
 from .hapi import Model
 from .hapi import callbacks
 from .hapi import summary
+from .hapi import flops
 import paddle.text
 import paddle.vision
 
