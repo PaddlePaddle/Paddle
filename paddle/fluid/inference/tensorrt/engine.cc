@@ -179,6 +179,27 @@ void TensorRTEngine::FreezeNetwork() {
   if (with_dynamic_shape_) {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
+    bool all_inputs_have_dynamic_shape = true;
+    std::unordered_set<std::string> all_input_names;
+    for (int i = 0; i < network()->getNbInputs(); i++) {
+      std::string input_name = network()->getInput(i)->getName();
+      all_input_names.insert(input_name);
+      if (!(min_input_shape_.count(input_name) &&
+            max_input_shape_.count(input_name) &&
+            optim_input_shape_.count(input_name))) {
+        all_inputs_have_dynamic_shape = false;
+      }
+    }
+    PADDLE_ENFORCE_EQ(
+        all_inputs_have_dynamic_shape, true,
+        platform::errors::PreconditionNotMet(
+            "Paddle-TRT dynamic shape expects all TRT engine inputs have min, "
+            "max, and opt input shapes."
+            " Please check your inputs and ensure the precondition above by "
+            "calling config.SetTRTDynamicShapeInfo(...)"
+            " interface. The inputs of this engine are: [%s]",
+            string::join_strings(all_input_names, ',')));
+
     for (auto &input : min_input_shape_) {
       optim_profile_->setDimensions(
           input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
