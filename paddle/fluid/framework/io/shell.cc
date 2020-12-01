@@ -133,13 +133,12 @@ static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
   }
 
   close_open_fds_internal();
-  int shell_return = -1;
+
 #if defined(PADDLE_WITH_MUSL)
-  shell_return = execl("/bin/sh", "sh", "-c", real_cmd, NULL);
+  PCHECK(execl("/bin/sh", "sh", "-c", real_cmd, NULL) >= 0);
 #else
-  shell_return = execl("/bin/bash", "bash", "-c", real_cmd, NULL);
+  PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, NULL) >= 0);
 #endif
-  PCHECK(shell_return >= 0);
   // Note: just for compilation. the child don't run this line.
   _exit(0);
 #endif
