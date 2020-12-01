@@ -548,24 +548,6 @@ class TestModelFunction(unittest.TestCase):
         gt_params = _get_param_from_state_dict(rnn.state_dict())
         np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
 
-    def test_static_flops(self):
-        paddle.disable_static()
-        net = models.__dict__['mobilenet_v2'](pretrained=False)
-        inputs = paddle.randn([1, 3, 224, 224])
-        static_program = jit._trace(net, inputs=[inputs])[1]
-        paddle.flops(static_program, [1, 3, 224, 224], print_detail=True)
-
-    def test_dynamic_flops(self):
-        net = models.__dict__['mobilenet_v2'](pretrained=False)
-
-        def customize_dropout(m, x, y):
-            m.total_ops += 0
-
-        paddle.flops(
-            net, [1, 3, 224, 224],
-            custom_ops={paddle.nn.Dropout: customize_dropout},
-            print_detail=True)
-
     def test_summary_dtype(self):
         input_shape = (3, 1)
         net = paddle.nn.Embedding(10, 3, sparse=True)
@@ -583,6 +565,24 @@ class TestModelFunction(unittest.TestCase):
         paddle.disable_static()
         nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
         paddle.summary(nlp_net, (1, 1, 2))
+
+    def test_static_flops(self):
+        paddle.disable_static()
+        net = models.__dict__['mobilenet_v2'](pretrained=False)
+        inputs = paddle.randn([1, 3, 224, 224])
+        static_program = jit._trace(net, inputs=[inputs])[1]
+        paddle.flops(static_program, [1, 3, 224, 224], print_detail=True)
+
+    def test_dynamic_flops(self):
+        net = models.__dict__['mobilenet_v2'](pretrained=False)
+
+        def customize_dropout(m, x, y):
+            m.total_ops += 0
+
+        paddle.flops(
+            net, [1, 3, 224, 224],
+            custom_ops={paddle.nn.Dropout: customize_dropout},
+            print_detail=True)
 
     def test_export_deploy_model(self):
         self.set_seed()

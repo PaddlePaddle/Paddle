@@ -403,7 +403,6 @@ class TestMomentumV2(unittest.TestCase):
 
     def test_momentum(self):
         paddle.enable_static()
-
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
@@ -566,6 +565,7 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             loss = paddle.mean(out)
             loss.backward()
             momentum.minimize(loss)
+            linear.clear_gradients()
 
     def __test_vs(self, place=fluid.CPUPlace()):
         paddle.disable_static(place=place)

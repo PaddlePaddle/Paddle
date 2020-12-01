@@ -15,7 +15,6 @@
 import copy
 import numpy as np
 import paddle
-from prettytable import PrettyTable
 from collections import OrderedDict
 from paddle.static import Program, program_guard, Variable
 
@@ -170,6 +169,12 @@ def count_element_op(op):
 def _graph_flops(graph, detail=False):
     assert isinstance(graph, GraphWrapper)
     flops = 0
+    try:
+        from prettytable import PrettyTable
+    except ImportError:
+        raise ImportError(
+            "paddle.flops() requires package `prettytable`, place install it firstly using `pip install prettytable`. "
+        )
     table = PrettyTable(["OP Type", 'Param name', "Flops"])
     for op in graph.ops():
         param_name = ''

@@ -190,12 +190,12 @@ def disable_dygraph():
 def _switch_tracer_mode_guard_(is_train=True):
     tracer = framework._dygraph_tracer()
     if tracer:
-        mode = tracer._train_mode
-        tracer._train_mode = is_train
+        has_grad = tracer._has_grad
+        tracer._has_grad = is_train
         try:
             yield
         finally:
-            tracer._train_mode = mode
+            tracer._has_grad = has_grad
     else:
         yield
 
@@ -444,7 +444,6 @@ def grad(outputs,
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             def test_dygraph_grad(create_graph):
                 x = paddle.ones(shape=[1], dtype='float32')
@@ -479,10 +478,9 @@ def grad(outputs,
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             def test_dygraph_grad(grad_outputs=None):
-                x = paddle.fluid.layers.fill_constant(shape=[1], value=2.0, dtype='float32')
+                x = paddle.to_tensor(2.0)
                 x.stop_gradient = False
 
                 y1 = x * x
@@ -505,8 +503,7 @@ def grad(outputs,
 
                 return dx.numpy()
 
-            grad_value = paddle.fluid.layers.fill_constant(shape=[1], value=4.0, dtype='float32')
-
+            grad_value = paddle.to_tensor(4.0)
             # dy1 = [1], dy2 = [1]
             print(test_dygraph_grad(None)) # [7.]
 
@@ -517,7 +514,7 @@ def grad(outputs,
             print(test_dygraph_grad([grad_value, None])) # [19.]
 
             # dy1 = [3], dy2 = [4]
-            grad_y1 = paddle.fluid.layers.fill_constant(shape=[1], value=3.0, dtype='float32')
+            grad_y1 = paddle.to_tensor(3.0)
             print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
 	'''
 

@@ -16,7 +16,6 @@ import paddle
 import warnings
 import paddle.nn as nn
 import numpy as np
-from prettytable import PrettyTable
 from .static_flops import static_flops
 
 __all__ = ['flops']
@@ -266,6 +265,12 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     for handler in handler_collection:
         handler.remove()
 
+    try:
+        from prettytable import PrettyTable
+    except ImportError:
+        raise ImportError(
+            "paddle.flops() requires package `prettytable`, place install it firstly using `pip install prettytable`. "
+        )
     table = PrettyTable(
         ["Layer Name", "Input Shape", "Output Shape", "Params", "Flops"])
 

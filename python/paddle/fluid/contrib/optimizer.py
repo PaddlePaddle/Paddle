@@ -26,7 +26,7 @@ __all__ = ['Momentum']
 
 
 class Momentum(Optimizer):
-    """
+    r"""
 
     Simple Momentum optimizer with velocity state
 

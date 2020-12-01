@@ -141,7 +141,7 @@ class BCEWithLogitsLoss(fluid.dygraph.Layer):
 
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
-    """
+    r"""
     This operator implements the cross entropy loss function with softmax. This function 
     combines the calculation of the softmax operation and the cross entropy loss function 
     to provide a more numerically stable gradient.
@@ -177,15 +177,15 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
 
     Parameters:
-        input (Variable): Input tensor, the data type is float32, float64. Shape is
+        input (Tensor): Input tensor, the data type is float32, float64. Shape is
 	    (N, C), where C is number of classes, and if shape is more than 2D, this
 	    is (N, C, D1, D2,..., Dk), k >= 1.
-        label (Variable): Label tensor, the data type is int64. Shape is (N), where each
+        label (Tensor): Label tensor, the data type is int64. Shape is (N), where each
 	    value is 0 <= label[i] <= C-1, and if shape is more than 2D, this is
 	    (N, D1, D2,..., Dk), k >= 1.
-        weight (Variable, optional): Weight tensor, a manual rescaling weight for each
-            sample relative to each class. It has the same shape as label.
-	    and the data type is float32, float64. Default is ``'None'``.
+        weight (Tensor, optional): Weight tensor, a manual rescaling weight given
+            to each class and the shape is (C). It has the same dimensions as class
+	    number and the data type is float32, float64. Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -202,24 +202,24 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
 
     Returns:
-        The tensor variable storing the cross_entropy_loss of input and label.
+        Tensor. The tensor storing the cross_entropy_loss of input and label.
 
-    Return type: Variable.
 
     Examples:
         .. code-block:: python
             import paddle
             import numpy as np
-            input_np = np.random.random([2, 4]).astype(np.float64)
-            label_np = np.random.randint(0, 4, size=(2, 1)).astype(np.int64)
-            weight_np = np.random.random([4]).astype(np.float64) #shape:C
-            weight_ce = weight_np[label_np]  #shape:N,1
-            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=paddle.to_tensor(weight_ce))
-            output = cross_entropy_loss(
-                paddle.to_tensor(input_np),
-                paddle.to_tensor(label_np))
-            print(output.numpy()) #[1.44375251]
+
+            input_data = paddle.uniform([5, 100], dtype="float64")
+            label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
+            weight_data = np.random.random([100]).astype("float64")
+            input =  paddle.to_tensor(input_data)
+            label =  paddle.to_tensor(label_data)
+            weight = paddle.to_tensor(weight_data)
+            ce_loss = paddle.nn.CrossEntropyLoss(weight=weight, reduction='mean')
+            output = ce_loss(input, label)
+            print(output)
+            # [4.84496039]
     """
 
     def __init__(self,
@@ -623,7 +623,7 @@ class BCELoss(fluid.dygraph.Layer):
 
 
 class NLLLoss(fluid.dygraph.Layer):
-    """
+    r"""
 	:alias_main: paddle.nn.NLLLoss
 	:alias: paddle.nn.NLLLoss,paddle.nn.layer.NLLLoss,paddle.nn.layer.loss.NLLLoss
 
@@ -838,9 +838,13 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input: N-D Tensor, the shape is [N, *], N is batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
+    
+        input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+
         other: N-D Tensor, `other` have the same shape and dtype as `input`.
+
         label: N-D Tensor, label have the same shape and dtype as `input`.
+
         output: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
 
     Returns:
@@ -851,14 +855,15 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             input = paddle.to_tensor([[1, 2], [3, 4]]), dtype="float32")
             other = paddle.to_tensor([[2, 1], [2, 4]]), dtype="float32")
             label = paddle.to_tensor([[1, -1], [-1, -1]], dtype="float32")
             margin_rank_loss = paddle.nn.MarginRankingLoss()
             loss = margin_rank_loss(input, other, label)
-            print(loss.numpy()) # [0.75]
+
+            print(loss)
+            # [0.75]
     """
 
     def __init__(self, margin=0.0, reduction='mean', name=None):

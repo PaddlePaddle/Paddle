@@ -13,13 +13,13 @@
 # limitations under the License.
 
 from . import logger
-from . import callbacks  #DEFINE_ALIAS
+from . import callbacks
 from . import model_summary
 
 from . import model
 from .model import *
-from .model_summary import summary  #DEFINE_ALIAS
-from .dynamic_flops import flops  #DEFINE_ALIAS
+from .model_summary import summary
+from .dynamic_flops import flops
 
 logger.setup_logger()
 

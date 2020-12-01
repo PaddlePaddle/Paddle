@@ -55,10 +55,11 @@ _two_bang_pattern_ = re.compile(r"!!([^!]+)!!")
 
 
 def escape_math(text):
-    return _two_bang_pattern_.sub(
-        r'$$\1$$',
-        _single_dollar_pattern_.sub(r':math:`\1`',
-                                    _two_dollar_pattern_.sub(r"!!\1!!", text)))
+    #return _two_bang_pattern_.sub(
+    #    r'$$\1$$',
+    #    _single_dollar_pattern_.sub(r':math:\n`\1`',
+    #                                _two_dollar_pattern_.sub(r"!!\1!!", text)))
+    return _two_dollar_pattern_.sub(r':math:`\1`', text)
 
 
 def _generate_doc_string_(op_proto,
