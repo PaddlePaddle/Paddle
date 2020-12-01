@@ -22,7 +22,6 @@ from collections import defaultdict
 import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
-from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 from . import framework
 from . import layers
@@ -772,9 +771,6 @@ class Optimizer(object):
             parameter_list = parameter_list if parameter_list \
                 else self._parameter_list
 
-            if paddle.distributed.get_world_size() > 1:
-                apply_collective_grads(parameter_list)
-
             params_grads = []
             for param in parameter_list:
                 if not param.trainable:
@@ -878,6 +874,8 @@ class Optimizer(object):
     def clear_gradients(self):
         """
         Clear the gradients of all optimized parameters for model.
+
+        If not, new gradient will accumulat on previous gradient.
         
         Returns:
             None

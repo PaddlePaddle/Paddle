@@ -238,6 +238,12 @@ if(WITH_PROFILER)
     add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
+if(WITH_DISTRIBUTE)
+    if(LINUX)
+        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
+    endif()
+endif()
+
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION
@@ -259,12 +265,6 @@ if(WITH_ROCM_PLATFORM)
     find_package(HIP)
     include(hip)
 endif(WITH_ROCM_PLATFORM)
-
-if(WITH_DISTRIBUTE)
-    if(LINUX)
-        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
-    endif()
-endif()
 
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
