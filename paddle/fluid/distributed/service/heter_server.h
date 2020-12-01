@@ -67,7 +67,7 @@ class HeterService : public ::paddle::PsService {
 
   void RegisterServiceHandler(std::string message_name,
                               HeterServiceHandler func) {
-    VLOG(0) << "register heter service";
+    VLOG(4) << "register heter service";
     handler_map_[message_name] = func;
   }
 

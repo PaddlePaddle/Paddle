@@ -188,7 +188,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
   auto status =
       _worker_ptr->push_dense_param(regions.data(), regions.size(), table_id);
   status.wait();
-  VLOG(0) << "RPC Send Dense Param " << table_id << " done!";
+  VLOG(4) << "RPC Send Dense Param " << table_id << " done!";
   return;
 }
 
