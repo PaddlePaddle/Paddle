@@ -203,5 +203,43 @@ class TestDictPop2(TestDictPop):
         self.dygraph_func = test_dic_pop_2
 
 
+class NetWithDictPop(paddle.nn.Layer):
+    def __init__(self):
+        super(NetWithDictPop, self).__init__()
+
+    @to_static
+    def forward(self, x, **kwargs):
+        x = paddle.to_tensor(x)
+        y = kwargs.pop('y', None)
+        if y:
+            y = paddle.to_tensor(x)
+            x += y
+
+        x.mean()
+        return x
+
+
+class TestDictPop(TestNetWithDict):
+    def setUp(self):
+        self.x = np.array([2, 2]).astype('float32')
+
+    def train(self, to_static=False):
+        prog_trans = ProgramTranslator()
+        prog_trans.enable(to_static)
+        with fluid.dygraph.guard(PLACE):
+            net = NetWithDictPop()
+            ret = net(z=0, x=self.x, y=True)
+            return ret.numpy()
+
+    def test_ast_to_func(self):
+        dygraph_result = self._run_dygraph()
+        static_result = self._run_static()
+
+        self.assertTrue(
+            (dygraph_result == static_result).all(),
+            msg="dygraph result: {}\nstatic result: {}".format(dygraph_result,
+                                                               static_result))
+
+
 if __name__ == '__main__':
     unittest.main()

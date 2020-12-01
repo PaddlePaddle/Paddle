@@ -18,12 +18,14 @@ import six
 import gast
 
 from paddle.fluid import core
+from paddle.fluid.framework import Variable
 from paddle.fluid.layers import fill_constant
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = [
-    'create_fill_constant_node', 'create_static_variable_gast_node',
-    'data_layer_not_check', 'to_static_variable', 'to_static_variable_gast_node'
+    'create_bool_as_type', 'create_fill_constant_node',
+    'create_static_variable_gast_node', 'data_layer_not_check',
+    'to_static_variable', 'to_static_variable_gast_node'
 ]
 
 
@@ -122,3 +124,13 @@ def to_static_variable(x):
         return fill_constant(shape=[1], dtype='int64', value=x)
 
     return x
+
+
+def create_bool_as_type(x, value=True):
+    '''
+    Create a bool variable, which type is the same as x.
+    '''
+    if isinstance(x, Variable):
+        return fill_constant(shape=[1], value=value, dtype="bool")
+    else:
+        return value
