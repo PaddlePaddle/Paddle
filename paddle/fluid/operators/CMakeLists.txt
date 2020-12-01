@@ -28,6 +28,7 @@ endif()
 
 if(WITH_DISTRIBUTE2)
     add_subdirectory(distributed2_ops)
+    add_subdirectory(collective)
 endif()
 
 add_subdirectory(amp)
