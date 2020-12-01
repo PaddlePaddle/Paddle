@@ -17,29 +17,22 @@ from __future__ import print_function
 import gast
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
+cmpop_type_to_str = {
+    gast.Eq: "==",
+    gast.NotEq: "!=",
+    gast.Lt: "<",
+    gast.LtE: "<=",
+    gast.Gt: ">",
+    gast.GtE: ">=",
+    gast.Is: "is",
+    gast.IsNot: "is not",
+    gast.In: "in",
+    gast.NotIn: "not in"
+}
+
 
 def cmpop_node_to_str(node):
-    if isinstance(node, gast.Eq):
-        return "=="
-    if isinstance(node, gast.NotEq):
-        return "!="
-    if isinstance(node, gast.Lt):
-        return "<"
-    if isinstance(node, gast.LtE):
-        return "<="
-    if isinstance(node, gast.Gt):
-        return ">"
-    if isinstance(node, gast.GtE):
-        return ">="
-    if isinstance(node, gast.Is):
-        return "is"
-    if isinstance(node, gast.IsNot):
-        return "is not"
-    if isinstance(node, gast.In):
-        return "in"
-    if isinstance(node, gast.NotIn):
-        return "not in"
-    raise TypeError("Illegal cmpop node, the node is " + str(node))
+    return cmpop_type_to_str[type(node)]
 
 
 class LogicalTransformer(gast.NodeTransformer):

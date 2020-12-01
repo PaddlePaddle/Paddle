@@ -260,7 +260,7 @@ class TestShapeNotEqual(TestLogicalNot):
 
 class TestCmpopNodeToStr(unittest.TestCase):
     def test_exception(self):
-        with self.assertRaises(TypeError):
+        with self.assertRaises(KeyError):
             cmpop_node_to_str(gast.Or())
 
     def test_expected_result(self):
