@@ -217,16 +217,16 @@ class DeformableConvGradXPUKernel : public framework::OpKernel<T> {
 
     // set zeros for d_table_data
     const int zero = 0;
-    int r_dx = xpu::memset(dev_ctx.x_context(), dx_data, zero,
-                           input->numel() * sizeof(T));
-    int r_dw = xpu::memset(dev_ctx.x_context(), dw_data, zero,
-                           filter.numel() * sizeof(T));
-    int r_doffset = xpu::memset(dev_ctx.x_context(), doffset_data, zero,
-                                offset.numel() * sizeof(T));
-    int r_dmask = xpu::memset(dev_ctx.x_context(), dmask_data, zero,
-                              mask.numel() * sizeof(T));
-    int r_filter = xpu::memset(dev_ctx.x_context(), filter_grad_tmp, zero,
-                               filter.numel() * sizeof(T));
+    int r_dx =
+        xpu::constant<T>(dev_ctx.x_context(), dx_data, input->numel(), zero);
+    int r_dw =
+        xpu::constant<T>(dev_ctx.x_context(), dw_data, filter.numel(), zero);
+    int r_doffset = xpu::constant<T>(dev_ctx.x_context(), doffset_data,
+                                     offset.numel(), zero);
+    int r_dmask =
+        xpu::constant<T>(dev_ctx.x_context(), dmask_data, mask.numel(), zero);
+    int r_filter = xpu::constant<T>(dev_ctx.x_context(), filter_grad_tmp,
+                                    filter.numel(), zero);
     auto ret = (r_dx == xpu::Error_t::SUCCESS) && (r_dx == r_dw) &&
                (r_dx == r_doffset) && (r_dx == r_dmask) && (r_dx == r_filter);
     PADDLE_ENFORCE_EQ(ret, true,

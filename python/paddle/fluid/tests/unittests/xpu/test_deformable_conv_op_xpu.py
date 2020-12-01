@@ -18,10 +18,10 @@ sys.path.append("..")
 import unittest
 import numpy as np
 
-import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from op_test import OpTest
+from op_test_xpu import OpTest, XPUOpTest
+import paddle
 from paddle.fluid import Program, program_guard
 
 
@@ -110,7 +110,7 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
     return out
 
 
-class TestModulatedDeformableConvOp(OpTest):
+class TestModulatedDeformableConvOp(XPUOpTest):
     def setUp(self):
         self.op_type = "deformable_conv"
         self.dtype = np.float32
