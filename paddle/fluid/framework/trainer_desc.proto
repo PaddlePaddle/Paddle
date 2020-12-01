@@ -50,6 +50,8 @@ message TrainerDesc {
   optional bool thread_barrier = 22;
   repeated string loss_names = 23;
 
+  optional string user_define_dump_filename = 24;
+
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
   optional DownpourWorkerParameter downpour_param = 103;
