@@ -54,7 +54,7 @@ class LogicalTransformer(gast.NodeTransformer):
             # check left and comparators are all converted var shape
             compare_arg_strs = left_str
             for i, comparator in enumerate(node.comparators):
-                comparator_str = ast_to_source_code(node.left).strip()
+                comparator_str = ast_to_source_code(comparator).strip()
                 if not comparator_str.startswith(
                         "paddle.jit.dy2static.convert_var_shape"):
                     return node
