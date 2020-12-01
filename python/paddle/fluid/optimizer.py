@@ -5141,7 +5141,6 @@ class GradientMergeOptimizer(object):
                 with switch.default():
                     # 1. update the graient_vars
                     #     gradient_vars += gradient_merge_vars
-                    cur_block_idx = main_block.program.current_block_idx
                     cur_block = main_block.program.current_block()
                     for param_name in param_names:
                         grad = param_to_grad[param_name]
@@ -5167,11 +5166,6 @@ class GradientMergeOptimizer(object):
                                        'use_mkldnn': False})
 
                     # 2. apply_optimize
-                    target_grad_block = main_block.program._create_block(
-                        parent_idx=cur_block.parent_idx)
-                    target_grad_block._set_forward_block_idx(cur_block_idx)
-                    main_block.program.current_block_idx = cur_block_idx
-
                     optimize_ops = self.inner_optimizer.apply_optimize(
                         loss,
                         startup_program=startup_program,
