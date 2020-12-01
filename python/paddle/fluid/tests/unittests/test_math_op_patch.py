@@ -257,6 +257,19 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[b])
         self.assertTrue(numpy.allclose(-a_np, b_np))
 
+    @prog_scope()
+    def test_astype(self):
+        a = fluid.layers.data(name="a", shape=[10, 1])
+        b = a.astype('float32')
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        a_np = numpy.random.uniform(-1, 1, size=[10, 1]).astype('float64')
+
+        b_np = exe.run(fluid.default_main_program(),
+                       feed={"a": a_np},
+                       fetch_list=[b])
+        self.assertTrue(numpy.allclose(a_np.astype('float32'), b_np))
+
 
 if __name__ == '__main__':
     unittest.main()
