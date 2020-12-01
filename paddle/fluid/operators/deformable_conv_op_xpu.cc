@@ -69,8 +69,8 @@ class DeformableConvXPUKernel : public framework::OpKernel<T> {
 
     // set zeros for d_table_data
     const int zero = 0;
-    int r = xpu::memset(dev_ctx.x_context(), output_prt, zero,
-                        output->numel() * sizeof(T));
+    int r = xpu::constant<T>(dev_ctx.x_context(), output_prt, output->numel(),
+                             zero);
     PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
                       platform::errors::External(
                           "XPU API return wrong value[%d], please check where "
