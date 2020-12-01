@@ -132,10 +132,6 @@ class Dataset {
                                          int read_thread_num,
                                          int consume_thread_num,
                                          int shard_num) = 0;
-  virtual void BuildGPUPSTask(int table_id, int feadim,
-                              int read_thread_num,
-                              int consume_thead_num,
-                              int shard) = 0;
   virtual void ClearLocalTables() = 0;
   // create preload readers
   virtual void CreatePreLoadReaders() = 0;
@@ -224,10 +220,6 @@ class DatasetImpl : public Dataset {
                                          int read_thread_num,
                                          int consume_thread_num,
                                          int shard_num) {}
-  virtual void BuildGPUPSTask(int table_id, int feadim,
-                              int read_thread_num,
-                              int consume_thead_num,
-                              int shard) {}
   virtual void ClearLocalTables() {}
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
@@ -299,10 +291,6 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
                                          int read_thread_num,
                                          int consume_thread_num, int shard_num);
-  virtual void BuildGPUPSTask(int table_id, int feadim,
-                              int read_thread_num,
-                              int consume_thead_num,
-                              int shard);
   virtual void ClearLocalTables() {
     for (auto& t : local_tables_) {
       t.clear();

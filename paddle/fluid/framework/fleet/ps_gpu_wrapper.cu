@@ -43,12 +43,10 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
       *(dest[x] + y * hidden) = 0;
       *(dest[x] + y * hidden + 1) = 0;
       *(dest[x] + y * hidden + 2) = 0;
-      *(dest[x] + y * hidden + 3) = 0;
     } else {
       *(dest[x] + y * hidden) = (src + i)->show;
       *(dest[x] + y * hidden + 1) = (src + i)->clk;
       *(dest[x] + y * hidden + 2) = (src + i)->lr;
-      *(dest[x] + y * hidden + 3) = (src + i)->mf;
     }
     if ((src + i)->mf_size == 0 || *(keys[x] + y) == 0) {
       for (int j = 0; j < 8; j++) {
@@ -56,7 +54,7 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
       }
     } else {
       for (int j = 0; j < 8; j++) {
-        *(dest[x] + y * hidden + 3 + j) = (src + i)->embedx[1 + j];
+        *(dest[x] + y * hidden + 3 + j) = (src + i)->mf[1 + j];
       }
     }
   }
