@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
 
@@ -30,49 +31,7 @@ namespace framework {
 
 void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
                                  Dataset* dataset) {
-  thread_num_ = trainer_desc.thread_num();
-  param_ = trainer_desc.downpour_param();
-  // TODO : add dense grad names ?
-  scale_datanorm_ = trainer_desc.scale_datanorm();
-  int place_num = trainer_desc.worker_places_size();
-  const std::vector<paddle::framework::DataFeed*> readers =
-      dataset->GetReaders();
-  // init places, streams, events
-  for (int i = 0; i < place_num; ++i) {
-    int num = trainer_desc.worker_places(i);
-    platform::CUDAPlace place = platform::CUDAPlace(num);
-    platform::CUDADeviceGuard guard(place.device);
-    cudaStream_t stream;
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream));
-    copy_streams_.push_back(stream);
-    places_.push_back(place);
-    cudaEvent_t event;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
-    events_.push_back(event);
-    platform::XPUPlace place = platform::XPUPlace(num);
-    places_.push_back(place);
-  }
-  // for accuratly stat metrics in thread level like auc bukets bucket
-  for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
-       i++) {
-    need_merge_var_names_.push_back(
-        trainer_desc.downpour_param().stat_var_names(i));
-  }
-  VLOG(3) << "going to initialize pull dense worker";
-  pull_dense_worker_ = PullDenseWorker::GetInstance();
-  pull_dense_worker_->Initialize(trainer_desc);
-  VLOG(3) << "initialize pull dense worker";
-  trainer_desc_ = trainer_desc;
-  workers_.resize(place_num);
-  for (int i = 0; i < place_num; ++i) {
-    workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
-        trainer_desc.device_worker_name());
-    workers_[i]->SetDeviceIndex(i);
-    workers_[i]->SetDataFeed(readers[i]);
-    workers_[i]->Initialize(trainer_desc);
-    workers_[i]->SetWorkerNum(place_num);
-  }
+  return;
 }
 
 void PSGPUTrainer::DumpWork(int tid) {}
@@ -88,93 +47,136 @@ void PSGPUTrainer::RegisterHeterCallback() {
 
 void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                      const platform::Place& place) {
-  for (size_t i = 0; i < places_.size(); ++i) {
-    workers_[i]->SetPlace(places_[i]);
-    workers_[i]->SetStream(copy_streams_[i]);
-    workers_[i]->SetEvent(events_[i]);
-    workers_[i]->SetReaderPlace(platform::CPUPlace());
-    workers_[i]->SetRootScope(root_scope_);
-    workers_[i]->CreateDeviceResource(main_program);  // Program
-    workers_[i]->BindingDataFeedMemory();
-    workers_[i]->CacheProgram(main_program);
-  }
-  for (size_t num = 0; num < places_.size(); ++num) {
-    auto place = places_[num];
-    Scope* scope = workers_[num]->GetThreadScope();
-    auto stream = copy_streams_[num];
-    auto event = events_[num];
-    auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
-    platform::CUDADeviceGuard guard(dev_id);
-    auto& block = main_program.Block(0);
-    for (auto& var : block.AllVars()) {
-      if (var->Persistable()) {
-        auto name = var->Name();
-        Variable* root_var = root_scope_->FindVar(name);
-        if (!root_var) {
-          continue;
-        }
-        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
-        auto* ptr = scope->Var(name);
-        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-        LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
-
-#define HeterMemcpyFunc(cpp_type, proto_type)                           \
-  do {                                                                  \
-    if (root_tensor->type() == proto_type) {                            \
-      HeterMemCpy<cpp_type>(thread_tensor, root_tensor, place, stream); \
-    }                                                                   \
-  } while (0)
-        _ForEachDataType_(HeterMemcpyFunc);
-      }
-    }
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
-    cudaEventSynchronize(event);
-  }
-  place_ = place;
-}
-
-template <typename T>
-void PSGPUTrainer::HeterMemCpy(LoDTensor* thread_tensor,
-                                  LoDTensor* root_tensor,
-                                  const paddle::platform::Place& thread_place,
-                                  cudaStream_t stream) {
-  T* thread_ptr =
-      thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
-  T* root_ptr = root_tensor->data<T>();
-  if (platform::is_cpu_place(root_tensor->place())) {
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, thread_place), thread_ptr,
-                 platform::CPUPlace(), root_ptr,
-                 sizeof(T) * root_tensor->numel(), stream);
-  } else {
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, thread_place), thread_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, root_tensor->place()),
-                 root_ptr, sizeof(T) * root_tensor->numel(), stream);
-  }
+  return;
 }
 
 void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
-  pull_dense_worker_->SetRootScope(root_scope_);
-  pull_dense_worker_->CreatePinVar();
-  for (size_t i = 0; i < places_.size(); ++i) {
-    pull_dense_worker_->AddThreadScope(workers_[i]->GetThreadScope());
-    pull_dense_worker_->AddPlace(places_[i]);
-    pull_dense_worker_->AddStream(copy_streams_[i]);
-  }
+  
   VLOG(3) << "init other env done.";
 }
 
 void PSGPUTrainer::Run() {
-  for (int thidx = 0; thidx < thread_num_; ++thidx) {
-    if (!debug_) {
-      threads_.push_back(
-          std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
-    } else {
-      threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
-                                     workers_[thidx].get()));
-    }
-  }
+  
 }
+void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
+  VLOG(3) << "PSGPUTrainer::BuildGPUPSTask begin";
+  int shard_num = dataset->multi_output_channel_.size();
+  auto gpu_ps_wrapper = PSGPUWrapper::GetInstance();
+  std::vector<std::vector<uint64_t>> local_feature_keys(shard_num);
+  std::vector<std::unordered_map<uint64_t, std::vector<float>>> local_map_tables;
+  local_map_tables.resize(shard_num);
+  // read thread
+  std::vector<std::thread> threads(shard_num);
+  dataset->consume_task_pool_.resize(shard_num);
+  for (size_t i = 0; i < consume_task_pool_.size(); i++) {
+    consume_task_pool_[i].reset(new ::ThreadPool(1));
+  }
+  auto consume_func = [&local_map_tables](int shard_id, int feadim,
+                                          std::vector<uint64_t>& keys) {
+    for (auto k : keys) {
+      if (local_map_tables[shard_id].find(k) ==
+          local_map_tables[shard_id].end()) {
+        local_map_tables[shard_id][k] = std::vector<float>(feadim, 0);
+      }
+    }
+  };
 
+  if (dataset->input_channel_->Size() == 0) {
+    // output_channel_ should hold one pass instances now
+    uint64_t output_channels_data_size = 0;
+    for (size_t i = 0; i < dataset->multi_output_channel_.size(); i++) {
+      int cur_channel_size = multi_output_channel_[i]->Size();
+      output_channels_data_size += cur_channel_size;
+      local_feature_keys.reserve(cur_channel_size);
+    }
+    CHECK(output_channels_data_size > 0);
+    auto gen_func = [&dataset, &shard_num, &feadim, &local_map_tables,
+                   &consume_func](int i) {
+      std::vector<Record> vec_data;
+      std::vector<std::vector<uint64_t>> task_keys(shard_num);
+      std::vector<std::future<void>> task_futures;
+      dataset->multi_output_channel_[i]->Close();
+      dataset->multi_output_channel_[i]->ReadAll(vec_data);
+      for (size_t j = 0; j < vec_data.size(); j++) {
+        for (auto& feature : vec_data[j].uint64_feasigns_) {
+          int shard = feature.sign().uint64_feasign_ % shard_num;
+          task_keys[shard].push_back(feature.sign().uint64_feasign_);
+        }
+      }
+
+      for (int shard_id = 0; shard_id < shard_num; shard_id++) {
+        task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
+            consume_func, shard_id, feadim, task_keys[shard_id]));
+      }
+
+      dataset->multi_output_channel_[i]->Open();
+      dataset->multi_output_channel_[i]->Write(std::move(vec_data));
+      vec_data.clear();
+      vec_data.shrink_to_fit();
+      
+      for (auto& tf : task_futures) {
+        tf.wait();
+      }
+      for (auto& tk : task_keys) {
+        tk.clear();
+        std::vector<uint64_t>().swap(tk);
+      }
+      task_keys.clear();
+      std::vector<std::vector<uint64_t>>().swap(task_keys);
+    };
+  } else {
+    int input_channel_size = dataset->input_channel_->Size();
+    CHECK(input_channel_size > 0);
+    CHECK(shard_num > 0);
+    
+    std::vector<Record> vec_data;
+    dataset->input_channel_->Close();
+    dataset->input_channel_->ReadAll(vec_data);
+    auto gen_func = [&dataset, &vec_data, &shard_num, &input_channel_size, &feadim, &local_map_tables,
+                   &consume_func](int i) {
+      std::vector<std::vector<uint64_t>> task_keys(shard_num);
+      std::vector<std::future<void>> task_futures;
+      size_t per_shard_num = input_channel_size / shard_num + 1;
+      size_t total_size = vec_data.size();
+      size_t start_index = i * per_shard_num;
+      size_t end_index = std::min(start_index+per_shard_num-1, total_size-1);
+      for (size_t j = start_index; j <= end_index ; j++) {
+        for (auto& feature : vec_data[j].uint64_feasigns_) {
+          int shard = feature.sign().uint64_feasign_ % shard_num;
+          task_keys[shard].push_back(feature.sign().uint64_feasign_);
+        }
+      }
+
+      for (int shard_id = 0; shard_id < shard_num; shard_id++) {
+        task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
+            consume_func, shard_id, feadim, task_keys[shard_id]));
+      }
+
+      for (auto& tf : task_futures) {
+        tf.wait();
+      }
+      for (auto& tk : task_keys) {
+        tk.clear();
+        std::vector<uint64_t>().swap(tk);
+      }
+      task_keys.clear();
+      std::vector<std::vector<uint64_t>>().swap(task_keys);
+    };
+    for (size_t i = 0; i < threads.size(); i++) {
+      threads[i] = std::thread(gen_func, i);
+    }
+    for (std::thread& t : threads) {
+      t.join();
+    }
+    dataset->input_channel_->Open();
+    dataset->input_channel_->Write(std::move(vec_data));
+  }
+  for (size_t i = 0; i < dataset->consume_task_pool_.size(); i++) {
+    dataset->consume_task_pool_[i].reset();
+  }
+  dataset->consume_task_pool_.clear();
+  gpu_ps_wrapper->BuildGPUPS(table_id, feadim);
+}
 
 Scope* PSGPUTrainer::GetWorkerScope(int thread_id) { return nullptr; }
 

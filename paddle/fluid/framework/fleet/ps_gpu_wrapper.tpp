@@ -26,18 +26,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_WITH_PSLIB
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include <algorithm>
 #include <utility>
-#include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/timer.h"
-#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_CUDA)
+
 
 namespace paddle {
 namespace framework {
@@ -45,12 +43,12 @@ namespace framework {
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
 
-void PSGPUWrapper::BuildGPUPS(const uint64_t table_id, int feature_dim) {
+void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
   auto fleet_ptr = FleetWrapper::GetInstance();
   if (local_tables_.find(table_id) == local_tables_.end()) {
     return;
   }
-  int shard_num = local_tables_[table_id];
+  int shard_num = local_tables_[table_id].size();
   if (shard_num == 0) {
     return;
   }
@@ -88,11 +86,13 @@ void PSGPUWrapper::BuildGPUPS(const uint64_t table_id, int feature_dim) {
     t.join();
   }
   // build GPUPSTask to build PS
+  GpuTask_.reset(new GpuTask());
   GpuTask_->BuildTask(table_id, local_tables_[table_id]);
-  GpuPs_->build_ps(table_id, GpuTask->feature_keys_, GpuTask->feature_values, GpuTask->size(), 10000, 2);
+  GpuPs_->build_ps(table_id, GpuTask_->feature_keys_[0].data(), GpuTask_->feature_values_[0].data(), GpuTask_->size(), 10000, 2);
   
   
 }
+
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                             const int table_id,
                             const std::vector<const uint64_t*>& keys,
@@ -101,11 +101,13 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                             const int hidden_size) {
   VLOG(3) << "Begine Gpu Ps PullSparse";
   platform::Timer all_timer;
-  platform::Time pull_gpups_timer;
+  platform::Timer pull_gpups_timer;
   all_timer.Start();
   int64_t total_length = std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
   auto buf = memory::AllocShared(
       place, total_length * sizeof(FeatureValue));
+  FeatureValue* total_values_gpu =
+      reinterpret_cast<FeatureValue*>(buf->ptr());
   if (platform::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GpuPs now."));
@@ -138,8 +140,8 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     pull_gpups_timer.Start();
     GpuPs_->pull_sparse(table_id, total_keys, total_values_gpu,
                               static_cast<int>(total_length));
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "PullSparseGPU failed in GPUPS."));
+    //PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+    //                              "PullSparseGPU failed in GPUPS."));
     pull_gpups_timer.Pause();
 
     VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
@@ -165,7 +167,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
                             const std::vector<const uint64_t*>& keys,
                             const std::vector<const float*>& grad_values,
                             const std::vector<int64_t>& slot_lengths,
-                            const int hidden_size) {
+                            const int hidden_size, const int batch_size) {
   VLOG(3) << "Begin GPUPS PushSparseGrad";
   platform::Timer all_timer;
   platform::Timer push_gpups_timer;
@@ -173,8 +175,8 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
   int64_t total_length =
       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
   auto buf = memory::AllocShared(
-      place, total_length * sizeof(FeatureValue));
-  FeatureValue* total_grad_values_gpu = reinterpret_cast<FeatureValue*>(buf->ptr());
+      place, total_length * sizeof(FeaturePushValue));
+  FeaturePushValue* total_grad_values_gpu = reinterpret_cast<FeaturePushValue*>(buf->ptr());
   if (platform::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GPUPS now."));
@@ -190,10 +192,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     VLOG(3) << "Begin call PushSparseGPU in GPUPS";
     push_gpups_timer.Start();
     GpuPs_->push_sparse(table_id,
-        total_keys, total_grad_values_gpu, static_cast<int>(total_length),
-        );
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "PushSparseGPU failed in GPUPS."));
+        total_keys, total_grad_values_gpu, static_cast<int>(total_length), opt_);
     push_gpups_timer.Pause();
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -205,6 +204,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
           << " s";
   VLOG(3) << "End PushSparseGrad";
 }
+
 
 }  // end namespace framework
 }  // end namespace paddle

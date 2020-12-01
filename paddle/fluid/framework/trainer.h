@@ -295,13 +295,13 @@ class PSGPUTrainer : public TrainerBase {
   }
   virtual std::string GetDumpPath(int tid) { return ""; }
   virtual void InitDumpEnv() {}
-  // for root to thread
+  void BuildGPUPSTask(Dataset* dataset);
+  /*
   template <typename T>
   void HeterMemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
                    const paddle::platform::Place& thread_place,
                    cudaStream_t stream);
-  
-  void CreateThreadParam(const ProgramDesc& program, int num);
+  */
   
   template <typename T>
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
