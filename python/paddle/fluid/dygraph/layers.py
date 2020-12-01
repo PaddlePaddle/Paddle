@@ -1083,7 +1083,12 @@ class Layer(core.Layer):
                     # value via `assign`.
                     if type(value) == framework.Variable:
                         from paddle import assign
-                        if type(_buffers[name]) == core.VarBase:
+                        # Note(zhhsplendid): the condition below happens in PaddleGan model,
+                        # but should all non-Variable _buffers[name] be re-assign? We
+                        # should consider it in the future. I current wrote this as
+                        # conservative code.
+                        if _buffers[name] is None or type(_buffers[
+                                name]) == core.VarBase:
                             _buffers[name] = assign(value)
                         else:
                             assign(value, _buffers[name])
