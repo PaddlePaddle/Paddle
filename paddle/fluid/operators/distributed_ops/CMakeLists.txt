@@ -1,6 +1,5 @@
-if(NOT WITH_DISTRIBUTE)
-    return()
-endif()
+return()
+
 
 include(operators)
 

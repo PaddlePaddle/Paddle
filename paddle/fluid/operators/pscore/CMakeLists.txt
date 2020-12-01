@@ -1,7 +1,3 @@
-if (NOT WITH_DISTRIBUTE2)
-    return()
-endif ()
-
 include(operators)
 
 set(DISTRIBUTE_DEPS "")

@@ -183,12 +183,12 @@ void HogwildWorker::TrainFilesWithProfiler() {
     writer_.Flush();
   }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-  if (thread_barrier_) {
-    operators::distributed::Communicator::GetInstance()
-        ->BarrierTriggerDecrement();
-  }
-#endif
+  // #ifdef PADDLE_WITH_DISTRIBUTE
+  //   if (thread_barrier_) {
+  //     operators::distributed::Communicator::GetInstance()
+  //         ->BarrierTriggerDecrement();
+  //   }
+  // #endif
 }
 
 void HogwildWorker::TrainFiles() {
@@ -214,12 +214,12 @@ void HogwildWorker::TrainFiles() {
     PrintFetchVars();
     thread_scope_->DropKids();
   }
-#ifdef PADDLE_WITH_DISTRIBUTE
-  if (thread_barrier_) {
-    operators::distributed::Communicator::GetInstance()
-        ->BarrierTriggerDecrement();
-  }
-#endif
+  // #ifdef PADDLE_WITH_DISTRIBUTE
+  //   if (thread_barrier_) {
+  //     operators::distributed::Communicator::GetInstance()
+  //         ->BarrierTriggerDecrement();
+  //   }
+  // #endif
 }
 
 void HogwildWorker::PrintFetchVars() {

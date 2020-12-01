@@ -101,15 +101,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/pybind/communicator_py.h"
-#endif
-
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
 #endif
 
-#ifdef PADDLE_WITH_DISTRIBUTE2
+#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
@@ -2823,12 +2819,8 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
 #endif
+
 #ifdef PADDLE_WITH_DISTRIBUTE
-  BindCommunicator(&m);
-  BindCommunicatorContext(&m);
-  BindLargeScaleKV(&m);
-#endif
-#ifdef PADDLE_WITH_DISTRIBUTE2
   BindDistFleetWrapper(&m);
   BindPSHost(&m);
   BindCommunicatorContext(&m);

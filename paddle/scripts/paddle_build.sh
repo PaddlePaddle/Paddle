@@ -200,7 +200,7 @@ function cmake_base() {
     fi
 
     if [ "$SYSTEM" == "Darwin" ]; then
-        WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
+        WITH_DISTRIBUTE="OFF"
         WITH_AVX=${WITH_AVX:-ON}
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
     else
@@ -208,15 +208,8 @@ function cmake_base() {
     fi
 
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
-    grpc_flag=${WITH_GRPC:-${distibuted_flag}}
-
-    if [ "$SYSTEM" == "Darwin" ]; then
-        gloo_flag="OFF"
-    else
-        gloo_flag=${distibuted_flag}
-    fi
-
-    distibuted_flag2=${WITH_DISTRIBUTE2:-OFF}
+    grpc_flag="OFF"
+    gloo_flag=${distibuted_flag}
 
     cat <<EOF
     ========================================
@@ -226,7 +219,6 @@ function cmake_base() {
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
-        -DWITH_DISTRIBUTE2=${distibuted_flag2}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
@@ -259,7 +251,6 @@ EOF
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
-        -DWITH_DISTRIBUTE2=${distibuted_flag2} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \

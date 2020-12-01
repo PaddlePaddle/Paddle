@@ -24,10 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/math/blas.h"
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/operators/distributed/parameter_prefetch.h"
-#endif
-
 namespace paddle {
 namespace operators {
 

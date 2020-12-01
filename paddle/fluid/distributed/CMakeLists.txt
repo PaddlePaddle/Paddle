@@ -1,4 +1,4 @@
-if(NOT WITH_DISTRIBUTE2)
+if(NOT WITH_DISTRIBUTE)
     return()
 endif()
 
