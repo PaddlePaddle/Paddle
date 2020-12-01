@@ -188,8 +188,7 @@ __global__ void LayerNormBackwardGradientAll(const T *x, const T *d_y,
 
   for (int i = beg_idx; i < end_idx; i += stride) {
     int row_idx = i / feature_size;
-    auto var_val =
-        static_cast<U>(real_sqrt(static_cast<float>(var[row_idx]) + epsilon));
+    auto var_val = real_sqrt(static_cast<U>(var[row_idx]) + epsilon);
     d_scale_partial += static_cast<U>(d_y[i]) *
                        (static_cast<U>(x[i]) - mean[row_idx]) / var_val;
     d_bias_partial += static_cast<U>(d_y[i]);
