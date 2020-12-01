@@ -80,12 +80,12 @@ function prepare_benchmark_environment {
       --info_file api_info.txt >& 2
   [ $? -ne 0 ] && LOG "[FATAL] Collect api info fail." && exit -1
   [ ! -f benchmark/ci/scripts/op_benchmark.config ] && LOG "[FATAL] Missing op_benchmark.config!" && exit -1
-  source benchmark/ci/scripts/op_benchmark.config
 }
 
 # Load unique op name from CHANGE_OP_FILES
 function load_CHANGE_OP_MAP {
   local op_name change_file change_file_name
+  source benchmark/ci/scripts/op_benchmark.config
   for change_file in ${CHANGE_OP_FILES[@]}
   do
     change_file_name=${change_file#*paddle/fluid/operators/}
@@ -107,6 +107,7 @@ function load_CHANGE_OP_MAP {
 # Load ops that will run benchmark test
 function load_BENCHMARK_OP_MAP {
   local line op_name api_name
+  source benchmark/ci/scripts/op_benchmark.config
   for line in $(cat api_info.txt)
   do
     api_name=${line%%,*}
