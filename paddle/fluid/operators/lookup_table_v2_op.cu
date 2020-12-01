@@ -31,16 +31,6 @@ __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ENFORCE(
-        id >= 0,
-        "Variable value (input) of OP(fluid.layers.embedding) "
-        "expected >= 0 and < %ld, but got %ld. Please check input value.",
-        N, id);
-    PADDLE_ENFORCE(
-        id < N,
-        "Variable value (input) of OP(fluid.layers.embedding) "
-        "expected >= 0 and < %ld, but got %ld. Please check input value.",
-        N, id);
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
@@ -66,16 +56,6 @@ __global__ void LookupTableV2Grad(T *table, const T *output, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ENFORCE(
-        id >= 0,
-        "Variable value (input) of OP(fluid.layers.embedding) "
-        "expected >= 0 and < %ld, but got %ld. Please check input value.",
-        N, id);
-    PADDLE_ENFORCE(
-        id < N,
-        "Variable value (input) of OP(fluid.layers.embedding) "
-        "expected >= 0 and < %ld, but got %ld. Please check input value.",
-        N, id);
     const T *out = output + idy * D;
     T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
@@ -125,6 +105,23 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
       ids_p = ids.MutableData(context.GetPlace());
     } else {
       ids_p = ids_t->data<int64_t>();
+    }
+
+    Tensor x_in_cpu;
+    framework::TensorCopy(*ids_t, platform::CPUPlace(), &x_in_cpu);
+    auto *x_cpu_data = x_in_cpu.data<int64_t>();
+
+    for (int64_t i = 0; i < K; ++i) {
+      PADDLE_ENFORCE_GE(
+          x_cpu_data[i], 0,
+          "Variable value (input) of OP(paddle.nn.embedding) "
+          "expected >= 0 and < %ld, but got %ld. Please check input value.",
+          N, x_cpu_data[i]);
+      PADDLE_ENFORCE_LT(
+          x_cpu_data[i], N,
+          "Variable value (input) of OP(paddle.nn.embedding) "
+          "expected >= 0 and < %ld, but got %ld. Please check input value.",
+          N, x_cpu_data[i]);
     }
 
     auto *table = table_t->data<T>();
