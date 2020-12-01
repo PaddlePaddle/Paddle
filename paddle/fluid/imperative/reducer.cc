@@ -274,12 +274,28 @@ void Reducer::FinalizeBackward() {
 std::vector<std::vector<size_t>> AssignGroupBySize(
     const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
     const std::vector<bool> &is_sparse_gradient,
-    const std::vector<size_t> &group_size_limits) {
+    const std::vector<size_t> &group_size_limits,
+    const std::vector<int64_t> &tensor_indices) {
   PADDLE_ENFORCE_EQ(vars.size(), is_sparse_gradient.size(),
                     platform::errors::PreconditionNotMet(
                         "vars len must be equal to is_sparse_gradient len, but "
                         "[%lu] != [%lu]",
                         vars.size(), is_sparse_gradient.size()));
+  auto check_perm = [](const std::vector<int64_t> &x) -> bool {
+    size_t len = x.size();
+    std::vector<size_t> cnt(len, 0);
+    for (size_t i = 0; i < len; ++i) {
+      if (x[i] >= static_cast<int64_t>(len) || x[i] < 0 || cnt[x[i]]) {
+        return false;
+      }
+      cnt[x[i]]++;
+    }
+    return true;
+  };
+  PADDLE_ENFORCE_EQ(true, check_perm(tensor_indices),
+                    platform::errors::PreconditionNotMet(
+                        "tensor_indices must be a permutation from 0 to %lu",
+                        tensor_indices.size()));
   // the return vector
   std::vector<std::vector<size_t>> res;
 
@@ -294,9 +310,15 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
 
   for (size_t i = 0; i < vars.size(); ++i) {
     const auto &var = vars[i];
-    if (is_sparse_gradient[i]) {
+
+    size_t tensor_real_index = i;
+    if (!tensor_indices.empty()) {
+      tensor_real_index = tensor_indices[i];
+    }
+
+    if (is_sparse_gradient[tensor_real_index]) {
       // we keep sparse var a single group
-      res.push_back({i});
+      res.push_back({tensor_real_index});
       continue;
     }
 
@@ -313,7 +335,7 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
               << " is not tensor or selected_rows, so skip it";
       continue;
     }
-    group_info.first.push_back(i);
+    group_info.first.push_back(tensor_real_index);
     group_info.second += framework::SizeOfType(var_dtype) * var_size;
 
     if (group_limit_index.find(var_dtype_str) == group_limit_index.end()) {
@@ -344,10 +366,12 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
         platform::errors::PreconditionNotMet(
             "AssignGroupBySize construct empty group, please check."));
   }
-  std::sort(res.begin(), res.end(),
-            [](const std::vector<size_t> &x, const std::vector<size_t> &y) {
-              return x.front() < y.front();
-            });
+  if (tensor_indices.empty()) {
+    std::sort(res.begin(), res.end(),
+              [](const std::vector<size_t> &x, const std::vector<size_t> &y) {
+                return x.front() < y.front();
+              });
+  }
   return res;
 }
 #endif

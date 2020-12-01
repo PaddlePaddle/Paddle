@@ -218,7 +218,8 @@ class Reducer {
 std::vector<std::vector<size_t>> AssignGroupBySize(
     const std::vector<std::shared_ptr<imperative::VarBase>>& tensors,
     const std::vector<bool>& is_sparse_gradient,
-    const std::vector<size_t>& group_size_limits);
+    const std::vector<size_t>& group_size_limits,
+    const std::vector<int64_t>& tensor_indices);
 #endif
 
 }  // namespace imperative
