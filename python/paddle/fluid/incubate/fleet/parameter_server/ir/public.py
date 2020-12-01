@@ -499,6 +499,33 @@ class CompileTimeStrategy(object):
             "recv_type can only be 1/2/3/4, 1 : DENSE 2. SPARSE 3. DISTRIBUTED 4. ALL"
         )
 
+    def get_the_one_trainer_send_context(self, split_dense_table):
+        if self.is_geo_mode():
+            send_ctx = {}
+            trainer_id = self.get_role_id()
+            idx = 0
+
+            distibuted_varnames = get_sparse_tablenames(
+                self.origin_main_program, True)
+            for merged in self.merged_sparse_pairs:
+                param, grad = merged
+                grad_name = grad.merged_var.name
+                param_name = param.merged_var.name
+                is_distributed = True if param_name in distibuted_varnames else False
+
+                var = self.origin_main_program.global_block().vars[
+                    grad.merged_var.name]
+                var_numel = reduce(lambda x, y: x * y, var.shape[1:])
+
+                sparse_ctx = CommContext(
+                    grad_name, [grad_name], ["127.0.0.1:6071"], [var_numel],
+                    [grad_name], trainer_id, True, True, is_distributed, idx)
+                idx += 1
+                send_ctx[sparse_ctx.var_name()] = sparse_ctx
+            return send_ctx
+        else:
+            return self.get_the_one_send_context(split_dense_table)
+
     def get_dense_send_context(self,
                                send_ctx,
                                idx,
@@ -507,7 +534,6 @@ class CompileTimeStrategy(object):
                                split_dense_table=False):
         if len(merged_dense_pairs) < 1:
             return idx
-
         if not split_dense_table:
             origin_varnames = []
             var_numel = 0
@@ -573,11 +599,15 @@ class CompileTimeStrategy(object):
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
         return send_ctx
 
-    def get_the_one_recv_context(self, is_dense=True, split_dense_table=False):
+    def get_the_one_recv_context(self,
+                                 is_dense=True,
+                                 split_dense_table=False,
+                                 use_origin_program=False):
         recv_id_maps = {}
         if is_dense:
             send_ctx = self.get_the_one_send_context(
-                split_dense_table=split_dense_table)
+                split_dense_table=split_dense_table,
+                use_origin_program=use_origin_program)
             for idx, (name, ctx) in enumerate(send_ctx.items()):
                 if ctx.is_sparse():
                     continue

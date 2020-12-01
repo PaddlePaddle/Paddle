@@ -384,7 +384,102 @@ std::future<int32_t> BrpcPsClient::barrier(size_t table_id,
 std::future<int32_t> BrpcPsClient::pull_geo_param(size_t table_id,
                                                   std::vector<float> *values,
                                                   std::vector<uint64_t> *keys) {
-  std::future<int> fut;
+  size_t request_call_num = _server_channels.size();
+  auto *accessor = table_accessor(table_id);
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
+      request_call_num, [request_call_num, keys, values, accessor](void *done) {
+        int ret = 0;
+        auto *closure = (DownpourBrpcClosure *)done;
+        uint32_t shard_nums;
+        for (size_t i = 0; i < request_call_num; ++i) {
+          if (closure->check_response(i, PS_PULL_GEO_PARAM) != 0) {
+            ret = -1;
+            break;
+          }
+          auto &res_io_buffer = closure->cntl(i)->response_attachment();
+          butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
+          size_t shard_buffer_remain = res_io_buffer.size();
+          if (shard_buffer_remain <= 0) {
+            ret = -1;
+            break;
+          }
+          io_buffer_itr.copy_and_forward((void *)(&shard_nums),
+                                         sizeof(uint32_t));
+          std::vector<uint64_t> shard_keys;
+          std::vector<float> shard_values;
+          shard_keys.resize(shard_nums);
+          shard_values.resize(shard_nums * accessor->update_dim());
+          io_buffer_itr.copy_and_forward((void *)(shard_keys.data()),
+                                         sizeof(uint64_t) * shard_nums);
+          io_buffer_itr.copy_and_forward((void *)(shard_values.data()),
+                                         shard_nums * accessor->update_size());
+          keys->insert(keys->end(), shard_keys.begin(), shard_keys.end());
+          values->insert(values->end(), shard_values.begin(),
+                         shard_values.end());
+        }
+        closure->set_promise_value(ret);
+      });
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+
+  for (size_t i = 0; i < request_call_num; ++i) {
+    closure->request(i)->set_cmd_id(PS_PULL_GEO_PARAM);
+    closure->request(i)->set_table_id(table_id);
+    closure->request(i)->set_client_id(_client_id);
+    PsService_Stub rpc_stub(get_cmd_channel(i));
+    closure->cntl(i)->set_log_id(butil::gettimeofday_ms());
+    rpc_stub.service(closure->cntl(i), closure->request(i),
+                     closure->response(i), closure);
+  }
+  return fut;
+}
+
+std::future<int32_t> BrpcPsClient::push_sparse_param(
+    size_t table_id, const uint64_t *keys, const float **update_values,
+    size_t num, void *done) {
+  auto *accessor = table_accessor(table_id);
+  //发送RPC请求
+  DownpourBrpcClosure *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+  size_t request_call_num = _server_channels.size();
+  std::vector<std::vector<uint64_t>> ids;
+  std::vector<std::vector<const float *>> value_ptrs;
+  ids.resize(request_call_num);
+  value_ptrs.resize(request_call_num);
+  for (size_t i = 0; i < num; ++i) {
+    size_t pserver_idx = keys[i] % request_call_num;
+    ids[pserver_idx].push_back(keys[i]);
+    value_ptrs[pserver_idx].push_back(update_values[i]);
+  }
+  for (size_t shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
+    auto kvs = ids[shard_idx];
+    auto value_ptr = value_ptrs[shard_idx];
+    size_t kv_size = kvs.size();
+    uint32_t value_size = accessor->update_size();
+    // 发送RPC请求
+    auto *push_request = closure->request(shard_idx);
+    push_request->set_cmd_id(PS_PUSH_SPARSE_PARAM);
+    push_request->set_table_id(table_id);
+    push_request->set_client_id(_client_id);
+    push_request->add_params((char *)&kv_size, sizeof(uint32_t));
+    auto *push_data = push_request->mutable_data();
+    push_data->resize(kv_size * (sizeof(uint64_t) + accessor->update_size()));
+    char *push_data_ptr = const_cast<char *>(push_data->data());
+    memcpy(push_data_ptr, kvs.data(), kv_size * sizeof(uint64_t));
+    push_data_ptr += kv_size * sizeof(uint64_t);
+    for (int i = 0; i < kv_size; ++i) {
+      memcpy(push_data_ptr, value_ptr[i], accessor->update_size());
+      push_data_ptr += accessor->update_size();
+    }
+    PsService_Stub rpc_stub(get_sparse_channel(shard_idx));
+    closure->cntl(shard_idx)->set_request_compress_type(
+        (brpc::CompressType)FLAGS_pserver_communicate_compress_type);
+    rpc_stub.service(closure->cntl(shard_idx), closure->request(shard_idx),
+                     closure->response(shard_idx), closure);
+  }
   return fut;
 }
 
@@ -538,13 +633,15 @@ std::future<int32_t> BrpcPsClient::push_dense_param(const Region *regions,
   return fut;
 }
 
-void BrpcPsClient::push_sparse_raw_gradient(size_t table_id,
-                                            const uint64_t *keys,
-                                            const float **update_values,
-                                            size_t num, void *done) {
+std::future<int32_t> BrpcPsClient::push_sparse_raw_gradient(
+    size_t table_id, const uint64_t *keys, const float **update_values,
+    size_t num, void *done) {
   auto *accessor = table_accessor(table_id);
   //发送RPC请求
   DownpourBrpcClosure *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
 
   size_t request_call_num = _server_channels.size();
   std::vector<std::vector<uint64_t>> ids;
@@ -587,14 +684,18 @@ void BrpcPsClient::push_sparse_raw_gradient(size_t table_id,
     rpc_stub.service(closure->cntl(shard_idx), closure->request(shard_idx),
                      closure->response(shard_idx), closure);
   }
+  return fut
 }
 
-void BrpcPsClient::push_dense_raw_gradient(int table_id, float *total_send_data,
-                                           size_t total_send_data_size,
-                                           void *done) {
-  DownpourBrpcClosure *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
-  auto *accessor = table_accessor(table_id);
+std::future<int32_t> BrpcPsClient::push_dense_raw_gradient(
+    int table_id, float *total_send_data, size_t total_send_data_size,
+    void *done) {
   size_t request_call_num = _server_channels.size();
+  DownpourBrpcClosure *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+  auto *accessor = table_accessor(table_id);
   //将数据拷贝到请求buffer区
   uint32_t num_per_shard =
       dense_dim_per_shard(accessor->fea_dim(), request_call_num);
@@ -609,12 +710,16 @@ void BrpcPsClient::push_dense_raw_gradient(int table_id, float *total_send_data,
     memcpy(push_data_ptr, &num_per_shard, sizeof(uint32_t));
     memcpy(push_data_ptr + sizeof(uint32_t),
            total_send_data + i * num_per_shard, num_per_shard * sizeof(float));
-    closure->cntl(i)->set_request_compress_type(
-        (brpc::CompressType)FLAGS_pserver_communicate_compress_type);
+    VLOG(1) << "push_dense_raw_gradient finish memcpy";
+    // closure->cntl(i)->set_request_compress_type(
+    //     (brpc::CompressType)FLAGS_pserver_communicate_compress_type);
     PsService_Stub rpc_stub(get_dense_channel(i));
+    VLOG(1) << "push_dense_raw_gradient get_dense_channel " << i;
     rpc_stub.service(closure->cntl(i), closure->request(i),
                      closure->response(i), closure);
+    VLOG(1) << "push_dense_raw_gradient async service " << i;
   }
+  return fut;
 }
 
 std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,

@@ -35,10 +35,7 @@ namespace distributed {
 
 class SparseGeoTable : public CommonSparseTable {
  public:
-  explicit SparseGeoTable() : CommonSparseTable() {
-    auto trainers = _config.common().trainer_num();
-    geo_recorder = std::make_shared<GeoRecorder>(trainers);
-  }
+  explicit SparseGeoTable() : CommonSparseTable() { geo_recorder = nullptr; }
   virtual ~SparseGeoTable() {}
 
   int32_t pull_geo_param(const uint32_t trainer_id, std::vector<float>* values,
@@ -46,6 +43,12 @@ class SparseGeoTable : public CommonSparseTable {
 
   virtual int32_t push_sparse(const uint64_t* keys, const float* values,
                               size_t num) override;
+
+  virtual void init_geo_recorder() {
+    if (geo_recorder) return;
+    auto trainers = _config.common().trainer_num();
+    geo_recorder = std::make_shared<GeoRecorder>(trainers);
+  }
 
  private:
   std::shared_ptr<GeoRecorder> geo_recorder;

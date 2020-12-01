@@ -190,13 +190,19 @@ class BrpcPsClient : public PSClient {
       _client_channels;  // client2client
   std::vector<std::array<std::shared_ptr<brpc::Channel>, 3>>
       _server_channels;  // client2server
-  virtual void push_dense_raw_gradient(int table_id, float *total_send_data,
-                                       size_t total_send_data_size,
-                                       void *done) override;
+  virtual std::future<int32_t> push_dense_raw_gradient(
+      int table_id, float *total_send_data, size_t total_send_data_size,
+      void *done) override;
 
-  virtual void push_sparse_raw_gradient(size_t table_id, const uint64_t *keys,
-                                        const float **update_values, size_t num,
-                                        void *done) override;
+  virtual std::future<int32_t> push_sparse_raw_gradient(
+      size_t table_id, const uint64_t *keys, const float **update_values,
+      size_t num, void *done) override;
+
+  virtual std::future<int32_t> push_sparse_param(size_t table_id,
+                                                 const uint64_t *keys,
+                                                 const float **update_values,
+                                                 size_t num,
+                                                 void *done) override;
 
   virtual size_t get_server_nums() { return _server_channels.size(); }
 

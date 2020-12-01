@@ -20,6 +20,7 @@ namespace distributed {
 int32_t SparseGeoTable::pull_geo_param(const uint32_t trainer_id,
                                        std::vector<float>* values,
                                        std::vector<uint64_t>* ids) {
+  init_geo_recorder();
   geo_recorder->GetAndClear(trainer_id, ids);
   auto dim = _config.common().dims()[0];
   values->resize(ids->size() * dim);
@@ -29,6 +30,7 @@ int32_t SparseGeoTable::pull_geo_param(const uint32_t trainer_id,
 
 int32_t SparseGeoTable::push_sparse(const uint64_t* keys, const float* values,
                                     size_t num) {
+  init_geo_recorder();
   std::vector<uint64_t> ids;
   ids.resize(num);
   std::copy_n(keys, num, ids.begin());

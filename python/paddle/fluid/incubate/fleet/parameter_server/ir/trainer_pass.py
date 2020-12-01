@@ -212,7 +212,7 @@ def append_send_ops_pass(program, config):
 
     dummys = []
 
-    sends = config.get_the_one_send_context(
+    sends = config.get_the_one_trainer_send_context(
         split_dense_table=config.is_heter_ps_mode)
 
     for merged_name, send in sends.items():
@@ -544,7 +544,7 @@ def create_trainer_program(program, config, heter_ops, block_var_detail):
                 heter_ops[device][heter_block_index], block_var_detail)
             remove_trainer_send_op(program, config, heter_block_index,
                                    block_var_detail)
-    deleter_trainer_useless_var(program, static_var)
+    deleter_trainer_useless_var(config, program, static_var)
     check_op_device(program.global_block(), DEFAULT_DEVICE)
 
 
@@ -947,7 +947,9 @@ def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype,
         index += 1
 
 
-def deleter_trainer_useless_var(program, static_var):
+def deleter_trainer_useless_var(config, program, static_var):
+    if config.role_maker._is_first_worker():
+        return []
     static_var = list(set(static_var))
     porgram_useful_var_list = []
     for op in program.global_block().ops:

@@ -105,9 +105,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             wait_server_ready(self.role_maker._get_pserver_endpoints())
 
             # for ps-heter mode, wait heter worker ready
-            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
-            ):
-                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
+            # if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
+            # ):
+            #     wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
         return _main, _startup
 

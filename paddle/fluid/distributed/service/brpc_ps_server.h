@@ -68,6 +68,9 @@ class PsService : public PsBaseService {
                      PsResponseMessage &response, brpc::Controller *cntl);
   int32_t push_dense_param(Table *table, const PsRequestMessage &request,
                            PsResponseMessage &response, brpc::Controller *cntl);
+  int32_t push_sparse_param(Table *table, const PsRequestMessage &request,
+                            PsResponseMessage &response,
+                            brpc::Controller *cntl);
   int32_t pull_sparse(Table *table, const PsRequestMessage &request,
                       PsResponseMessage &response, brpc::Controller *cntl);
   int32_t pull_geo_param(Table *table, const PsRequestMessage &request,

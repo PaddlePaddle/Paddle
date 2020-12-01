@@ -379,6 +379,7 @@ class TheOnePSRuntime(RuntimeBase):
         super(TheOnePSRuntime, self).__init__()
         self._communicator = None
         self._server = None
+        self._worker = fluid.core.DistFleetWrapper()
 
     def _set_basic_info(self, context):
         self.context = context
@@ -455,9 +456,20 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode)
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
+        debug = bool(os.getenv("PSERVER_DEBUG", "0"))
+
+        if debug:
+            print("worker: \n{}".format(proto_txt))
+            print("communicator send_ctx:")
+            for key in send_ctx:
+                print("{}: {}".format(key, send_ctx[key]))
+            for key in dense_map:
+                print("{}: {}".format(key, dense_map[key]))
+
         kwargs = {}
         kwargs['need_global_step'] = "0"
         kwargs["trainer_id"] = self.role_maker._role_id()
+        kwargs["trainers"] = self.role_maker._worker_num()
 
         for table in server.servers[0].tables:
             if table.table_class == "BarrierTable":
@@ -476,26 +488,32 @@ class TheOnePSRuntime(RuntimeBase):
                                          unit64_hosts, fluid.global_scope())
         self._worker = fluid.core.DistFleetWrapper()
 
-        if self.role_maker._is_first_worker():
-            for idx, varnames in dense_map.items():
-                self._worker.push_dense_params(fluid.global_scope(), idx,
-                                               varnames)
-                print("push {} to table {} from 0' trainer done".format(
-                    varnames, idx))
-            self._worker.barrier(1)
+        dist_strategy = self.context["valid_strategy"]
+
+        if self.role_maker._is_first_worker(
+        ) and self.role_maker._is_heter_parameter_server_mode:
+            # for ps-heter mode load all parameters on first_worker
+            origin_dense_map = self.compiled_strategy.get_the_one_recv_context(
+                split_dense_table=True, use_origin_program=True)
+            self._communicator.init_params(origin_dense_map)
         else:
-            print("wait 0' trainer push dense var to pserver")
-            self._worker.barrier(1)
-            for idx, varnames in dense_map.items():
-                self._worker.pull_dense_params(fluid.global_scope(), idx,
-                                               varnames)
-                print("pull {} from table {} from parameter server done".format(
-                    varnames, idx))
+            self._communicator.init_params(dense_map)
 
         if not self._communicator.is_running():
             self._communicator.start()
         else:
             warnings.warn("communicator has been initialized, skip")
+
+        launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]
+        launch_barrier_flag = int(os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
+        if launch_barrier and launch_barrier_flag:
+            # for trainer wait server ready
+            wait_server_ready(self.role_maker._get_pserver_endpoints())
+
+            # for ps-heter mode, wait heter worker ready
+            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
+            ):
+                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
     def _get_executor(self):
         executor = fluid.Executor(fluid.CPUPlace())
@@ -542,7 +560,11 @@ class TheOnePSRuntime(RuntimeBase):
 
             common = CommonAccessor()
             common.table_name = "barrier_table"
-            common.trainer_num = self.compiled_strategy.get_trainers()
+            trainer_num = self.compiled_strategy.get_trainers()
+            if self.role_maker._is_heter_parameter_server_mode:
+                trainer_num += len(self.role_maker._get_heter_worker_endpoints(
+                ))
+            common.trainer_num = trainer_num
             common.attrs = ""
             common.dims = []
             common.params = []
@@ -856,10 +878,12 @@ class TheOnePSRuntime(RuntimeBase):
 
         denses = self.compiled_strategy.get_the_one_recv_context(
             is_dense=True,
-            split_dense_table=self.role_maker._is_heter_parameter_server_mode)
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode,
+            use_origin_program=True)
         sparses = self.compiled_strategy.get_the_one_recv_context(
             is_dense=False,
-            split_dense_table=self.role_maker._is_heter_parameter_server_mode)
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode,
+            use_origin_program=True)
 
         recv_sparse_varnames = self._save_sparse_params(executor, dirname,
                                                         sparses, main_program)

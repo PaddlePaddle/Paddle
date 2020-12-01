@@ -44,6 +44,7 @@ enum PsCmdID {
   PS_LOAD_ONE_TABLE_WITH_WHITELIST = 23;
   PS_PULL_GEO_PARAM = 24;
   PS_BARRIER = 25;
+  PS_PUSH_SPARSE_PARAM = 26;
 }
 
 message PsRequestMessage {

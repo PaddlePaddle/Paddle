@@ -245,25 +245,42 @@ int32_t PsService::barrier(Table *table, const PsRequestMessage &request,
   return 0;
 }
 
-int32_t PsService::pull_geo_param(Table *table, const PsRequestMessage &request,
-                                  PsResponseMessage &response,
-                                  brpc::Controller *cntl) {
+int32_t PsService::push_sparse_param(Table *table,
+                                     const PsRequestMessage &request,
+                                     PsResponseMessage &response,
+                                     brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
-  thread_local std::string push_sparse_request_buffer;
-  auto &req_io_buffer = cntl->request_attachment();
-  auto req_buffer_size = req_io_buffer.size();
-
-  if (req_buffer_size < 1) {
-    set_response_code(response, -1, "req attachment is empty");
+  auto &push_data = request.data();
+  if (push_data.size() < 1) {
+    // set_response_code(response, 0, "push sparse data is empty");
     return 0;
   }
-
   if (request.params_size() < 1) {
     set_response_code(response, -1,
                       "PsRequestMessage.params is requeired at "
                       "least 1 for num of sparse_key");
     return 0;
   }
+  uint32_t num = *(uint32_t *)(request.params(0).c_str());
+  /*
+  Push Content:
+  |---keysData---|---valuesData---|
+  |---8*{num}B---|----------------|
+  */
+  const uint64_t *keys = (const uint64_t *)push_data.data();
+  const float *values =
+      (const float *)(push_data.data() + sizeof(uint64_t) * num);
+  if (table->push_sparse_param(keys, values, num) != 0) {
+    set_response_code(response, -1, "push_sparse_param error");
+  }
+  return 0;
+}
+
+int32_t PsService::pull_geo_param(Table *table, const PsRequestMessage &request,
+                                  PsResponseMessage &response,
+                                  brpc::Controller *cntl) {
+  CHECK_TABLE_EXIST(table, request, response)
+  thread_local std::string push_sparse_request_buffer;
 
   auto trainer_id = request.client_id();
 
@@ -271,12 +288,10 @@ int32_t PsService::pull_geo_param(Table *table, const PsRequestMessage &request,
   std::vector<uint64_t> ids;
   table->pull_geo_param(trainer_id, &values, &ids);
 
-  cntl->response_attachment().append((char *)ids.size(),
-                                     ids.size() * sizeof(uint32_t));
-
+  uint32_t num = ids.size();
+  cntl->response_attachment().append((char *)(&num), sizeof(uint32_t));
   cntl->response_attachment().append((char *)ids.data(),
                                      ids.size() * sizeof(uint64_t));
-
   cntl->response_attachment().append((char *)values.data(),
                                      values.size() * sizeof(float));
   return 0;

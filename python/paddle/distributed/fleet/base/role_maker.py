@@ -763,7 +763,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 raise ValueError(
                     "Can not find POD_IP, please check your environment.")
             curr_endpoint = ":".join([cur_ip, cur_port])
-            current_id = heter_trainer_eplist.index(curr_endpoint)
+            current_id = heter_trainer_eplist.index(
+                curr_endpoint) + trainers_num
 
         self._trainers_num = trainers_num
         self._role = role

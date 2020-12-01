@@ -201,9 +201,32 @@ class Communicator {
     }
     barrier_table_id_ = std::stoi(envs.at("barrier_table_id"));
     trainer_id_ = std::stoi(envs.at("trainer_id"));
+    trainers_ = std::stoi(envs.at("trainers"));
   }
 
+  virtual void InitBrpcClient(const std::string &dist_desc,
+                              const std::vector<uint64_t> &host_sign_list);
+  // 1. recv dense param
+  virtual void RpcRecvDense(const std::vector<std::string> &varnames,
+                            int table_id, Scope *scope);
+  // 2. send dense param
+  virtual void RpcSendDenseParam(const std::vector<std::string> &varnames,
+                                 int table_id, const Scope &scope);
+  // 3. send dense grad
+  virtual void RpcSendDense(const CommContext &ctx, const Scope &scope);
+  // 4. send sparse grad
+  virtual void RpcSendSparse(const std::string &var_name, int table_id,
+                             const Scope &scope);
+  // 5. send sparse param
+  virtual void RpcSendSparseParam(const std::string &varname, int table_id,
+                                  const Scope &scope);
+  // 6. recv sparse param
+  virtual void RpcRecvSparse(const std::string &varname, int table_id,
+                             Scope *scope);
+
   virtual ~Communicator() {}
+
+  virtual void InitParams(const RecvCtxMap &recv_varname_to_ctx);
 
   virtual void Start() = 0;
 
@@ -236,8 +259,6 @@ class Communicator {
 
   virtual void InitImpl(const RpcCtxMap &send_varname_to_ctx,
                         const RecvCtxMap &recv_varname_to_ctx,
-                        const std::string &dist_desc,
-                        const std::vector<uint64_t> &host_sign_list,
                         Scope *recv_scope) {}
 
   static Communicator *GetInstance() { return communicator_.get(); }
@@ -268,8 +289,8 @@ class Communicator {
     if (communicator_.get() == nullptr) {
       communicator_.reset(new T(std::ref(envs)));
       communicator_->InitEnvs();
-      communicator_->InitImpl(send_ctx, recv_ctx, dist_desc, host_sign_list,
-                              recv_scope);
+      communicator_->InitBrpcClient(dist_desc, host_sign_list);
+      communicator_->InitImpl(send_ctx, recv_ctx, recv_scope);
     }
   }
 
@@ -288,8 +309,6 @@ class Communicator {
   static std::shared_ptr<Communicator> communicator_;
   static std::once_flag init_flag_;
 
-  int barrier_table_id_ = 0;
-  int trainer_id_ = 0;
   std::unordered_map<std::string, std::string> envs;
 
   //计算每个shard 对 dense的存储量
@@ -301,6 +320,16 @@ class Communicator {
   void init_gflag(const std::string &gflags);
   paddle::distributed::PSParameter _ps_param;
   paddle::distributed::PaddlePSEnvironment _ps_env;
+  int servers_ = 0;
+  int trainers_;
+  int trainer_id_ = 0;
+  int barrier_table_id_ = 0;
+  RpcCtxMap send_varname_to_ctx_;
+  RecvCtxMap recv_varname_to_ctx_;
+
+  Scope *recv_scope_;  // should be global scope
+  std::unique_ptr<Scope> xpu_temp_scope_;
+  std::atomic<uint32_t> _async_call_num{0};
 };
 
 class AsyncCommunicator : public Communicator {
@@ -313,7 +342,8 @@ class AsyncCommunicator : public Communicator {
   ~AsyncCommunicator();
 
   void InitEnvs() {
-    VLOG(0) << "AsyncCommunicator InitEnvs Begin";
+    independent_recv_ = static_cast<bool>(
+        std::stoi(envs.at("communicator_independent_recv_thread")));
     min_send_grad_num_before_recv_ =
         std::stoi(envs.at("communicator_min_send_grad_num_before_recv"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
@@ -322,31 +352,6 @@ class AsyncCommunicator : public Communicator {
     send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
     need_global_step_ =
         static_cast<bool>(std::stoi(envs.at("need_global_step")));
-
-    // trainers_ = std::stoi(envs.at("trainers"));
-    pserver_push_sparse_merge_limit_ =
-        std::stoi(envs.at("pserver_push_sparse_merge_limit"));
-    pserver_push_dense_merge_limit_ =
-        std::stoi(envs.at("pserver_push_dense_merge_limit"));
-    pserver_pull_dense_limit_ = std::stoi(envs.at("pserver_pull_dense_limit"));
-    pserver_async_push_sparse_interval_ms_ =
-        std::stoi(envs.at("pserver_async_push_sparse_interval_ms"));
-    pserver_async_push_dense_interval_ms_ =
-        std::stoi(envs.at("pserver_async_push_dense_interval_ms"));
-    pserver_communicate_compress_type_ =
-        std::stoi(envs.at("pserver_communicate_compress_type"));
-    pserver_scale_gradient_by_merge_ =
-        std::stoi(envs.at("pserver_scale_gradient_by_merge"));
-    pserver_max_async_call_num_ =
-        std::stoi(envs.at("pserver_max_async_call_num"));
-    pserver_timeout_ms_ = std::stoi(envs.at("pserver_timeout_ms"));
-    pserver_connect_timeout_ms_ =
-        std::stoi(envs.at("pserver_connect_timeout_ms"));
-    pserver_sparse_merge_thread_ =
-        std::stoi(envs.at("pserver_sparse_merge_thread"));
-    pserver_sparse_table_shard_num_ =
-        std::stoi(envs.at("pserver_sparse_table_shard_num"));
-    VLOG(0) << "AsyncCommunicator InitEnvs End";
   }
 
   void Start() override;
@@ -355,16 +360,10 @@ class AsyncCommunicator : public Communicator {
 
   void InitImpl(const RpcCtxMap &send_varname_to_ctx,
                 const RecvCtxMap &recv_varname_to_ctx,
-                const std::string &dist_desc,
-                const std::vector<uint64_t> &host_sign_list,
                 Scope *recv_scope) override;
 
-  void InitParams();
-
   virtual void MainThread();
-
-  virtual void SendSparse(const std::string &var_name, int table_id);
-  virtual void SendDense(const CommContext &ctx);
+  virtual void RecvThread();
 
   virtual bool Check(const int table_id);
   virtual bool Check(const std::vector<std::string> &var_tables);
@@ -389,11 +388,10 @@ class AsyncCommunicator : public Communicator {
   virtual void BarrierWeakUp() {}
 
  protected:
-  std::map<uint64_t, std::vector<paddle::distributed::Region>>
-      _dense_pull_regions;
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
       send_varname_to_queue_;
+  std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
 
   int min_send_grad_num_before_recv_;
   int thread_pool_size_;
@@ -401,33 +399,13 @@ class AsyncCommunicator : public Communicator {
   int send_wait_times_;
   int send_queue_size_;
   bool need_global_step_ = false;
-  int trainers_;
-
-  int pserver_push_sparse_merge_limit_;
-  int pserver_push_dense_merge_limit_;
-  int pserver_sparse_merge_thread_;
-  int pserver_async_push_sparse_interval_ms_;
-  int pserver_async_push_dense_interval_ms_;
-  int pserver_pull_dense_limit_;
-  int pserver_scale_gradient_by_merge_;
-  int pserver_max_async_call_num_;
-  int pserver_communicate_compress_type_;
-  int pserver_timeout_ms_;
-  int pserver_connect_timeout_ms_;
-  int pserver_sparse_table_shard_num_;
-
-  RpcCtxMap send_varname_to_ctx_;
-  RecvCtxMap recv_varname_to_ctx_;
+  bool independent_recv_ = true;
 
   std::unique_ptr<std::thread> main_thread_{nullptr};
   std::unique_ptr<std::thread> recv_thread_{nullptr};
 
-  Scope *recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
-  std::unique_ptr<Scope> xpu_temp_scope_;
-  int server_nums;
-
-  std::atomic<uint32_t> _async_call_num{0};
+  std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
 };
 
 class HalfAsyncCommunicator : public AsyncCommunicator {
@@ -438,14 +416,16 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
       : AsyncCommunicator(envs) {}
 
   void InitEnvs() {
+    // enfore to recv after send
+    independent_recv_ = false;
     min_send_grad_num_before_recv_ = 0;
-
+    thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
-    thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
     send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
     need_global_step_ =
         static_cast<bool>(std::stoi(envs.at("need_global_step")));
+
     VLOG(0) << "HalfAsyncCommunicator Initialized";
   }
 
@@ -479,8 +459,9 @@ class SyncCommunicator : public HalfAsyncCommunicator {
       : HalfAsyncCommunicator(envs) {}
 
   void InitEnvs() {
+    // enfore to recv after send
+    independent_recv_ = false;
     min_send_grad_num_before_recv_ = 0;
-
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
@@ -488,8 +469,6 @@ class SyncCommunicator : public HalfAsyncCommunicator {
     need_global_step_ =
         static_cast<bool>(std::stoi(envs.at("need_global_step")));
 
-    auto pserver_strings = envs.at("pserver_endpoints");
-    pserver_endpoints_ = paddle::string::Split(pserver_strings, ',');
     VLOG(0) << "SyncCommunicator Initialized";
   }
 
@@ -499,6 +478,81 @@ class SyncCommunicator : public HalfAsyncCommunicator {
 
  private:
   std::vector<std::string> pserver_endpoints_{};
+};
+
+class GeoCommunicator : public AsyncCommunicator {
+ public:
+  GeoCommunicator() : AsyncCommunicator() {}
+
+  explicit GeoCommunicator(const std::map<std::string, std::string> &envs)
+      : AsyncCommunicator(envs) {}
+
+  void InitImpl(const RpcCtxMap &send_varname_to_ctx,
+                const RecvCtxMap &recv_varname_to_ctx,
+                Scope *recv_scope) override;
+
+  void InitParams(const RecvCtxMap &recv_varname_to_ctx) override;
+  void InitDense(std::vector<std::string> &varnames, int table_id);
+  void InitSparse(const std::string &var_name, int table_id);
+
+  void SendDense(const CommContext &send_ctx);
+  void RecvDense(const CommContext &send_ctx);
+
+  std::vector<int64_t> MergeSparseIds(const std::string &varname);
+  void SendSparse(const std::string &varname, std::vector<int64_t> &sparse_ids,
+                  int table_id);
+  void RecvSparse(const std::string &varname, int table_id);
+
+  void MainThread() override;
+
+  void InitEnvs() {
+    independent_recv_ = false;
+    min_send_grad_num_before_recv_ = 0;
+    send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
+    thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
+    // id_queue's size
+    max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
+    send_queue_size_ = max_merge_var_num_;
+    VLOG(0) << "GeoCommunicator Initialized";
+  }
+
+  void Send(const std::vector<std::string> &var_names,
+            const framework::Scope &scope) override;
+
+  void SendByCommunicator() { return; }
+
+  void SendGlobalStep(int batches) override { return; }
+
+  void RecvByCommunicator() override { return; }
+
+  inline std::string GradToParam(const std::string var_name) {
+    std::string param_name = var_name.substr(0, var_name.size() - 5);
+    return param_name;
+  }
+
+  inline std::string ParamToDelta(const std::string param_name) {
+    std::stringstream ss;
+    ss << param_name << ".delta";
+    return ss.str();
+  }
+
+  inline std::string DeltaToParam(const std::string delta_name) {
+    std::string param_name = delta_name.substr(0, delta_name.size() - 6);
+    return param_name;
+  }
+
+ private:
+  // parameter for delta calc and send
+  std::shared_ptr<Scope> delta_scope_;
+  // parameter for storage the pserver param after last recv
+  std::shared_ptr<Scope> old_scope_;
+  // parameter on pserver
+  std::shared_ptr<Scope> pserver_scope_;
+
+  std::unordered_map<
+      std::string,
+      std::shared_ptr<BlockingQueue<std::shared_ptr<std::vector<int64_t>>>>>
+      sparse_id_queues_;
 };
 
 }  // namespace distributed
