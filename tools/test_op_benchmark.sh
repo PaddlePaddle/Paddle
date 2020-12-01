@@ -79,8 +79,8 @@ function prepare_benchmark_environment {
       --test_module_name tests_v2                 \
       --info_file api_info.txt >& 2
   [ $? -ne 0 ] && LOG "[FATAL] Collect api info fail." && exit -1
-  [ ! -f ci/scripts/op_benchmark.config ] && LOG "[FATAL] Missing op_benchmark.config!" && exit -1
-  source ci/scripts/op_benchmark.config
+  [ ! -f benchmark/ci/scripts/op_benchmark.config ] && LOG "[FATAL] Missing op_benchmark.config!" && exit -1
+  source benchmark/ci/scripts/op_benchmark.config
 }
 
 # Load unique op name from CHANGE_OP_FILES
