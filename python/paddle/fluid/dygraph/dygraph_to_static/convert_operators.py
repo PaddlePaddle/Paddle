@@ -17,7 +17,7 @@ from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import Assert, Print
 from paddle.fluid.layers import array_length, array_read, array_write, create_array
-from paddle.fluid.layers import assign, fill_constant, slice, reduce_all
+from paddle.fluid.layers import assign, fill_constant, slice, reduce_all, reduce_any
 from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 
@@ -294,13 +294,15 @@ def convert_shape_compare(left, *args):
     args_len = len(args)
     assert args_len >= 2, "convert_shape_compare needs at least one right compare variable"
     assert args_len % 2 == 0, "Illegal input for convert_shape_compare, *args should be op(str), var, op(str), var ..."
-    num_cmp = args_len / 2
+    num_cmp = args_len // 2
     if isinstance(left, Variable):
 
         def reduce_compare(x, op_str, y):
             element_wise_result = eval("x " + op_str + " y")
             if op_str == "!=":
                 return reduce_any(element_wise_result)
+            elif op_str == "is" or op_str == "is not" or op_str == "in" or op_str == "not in":
+                return element_wise_result
             else:
                 return reduce_all(element_wise_result)
 
@@ -310,18 +312,23 @@ def convert_shape_compare(left, *args):
             cmp_op = args[i * 2]
             cmp_right = args[i * 2 + 1]
             cur_result = reduce_compare(cmp_left, cmp_op, cmp_right)
-            final_result = logical_and(final_result, cur_result)
+            final_result = convert_logical_and(final_result, cur_result)
         return final_result
     else:
         cmp_left = left
+        final_result = None
         for i in range(num_cmp):
             cmp_op = args[i * 2]
             cmp_right = args[i * 2 + 1]
             cur_result = eval("cmp_left " + cmp_op + " cmp_right")
-            if not cur_result:
-                return False
+            if final_result is None:
+                final_result = cur_result
+            else:
+                final_result = final_result and cur_result
+                if final_result is False:
+                    return False
             cmp_left = cmp_right
-        return True
+        return final_result
 
 
 def cast_bool_if_necessary(var):

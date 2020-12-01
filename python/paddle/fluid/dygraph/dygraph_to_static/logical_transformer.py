@@ -52,13 +52,13 @@ class LogicalTransformer(gast.NodeTransformer):
         left_str = ast_to_source_code(node.left).strip()
         if left_str.startswith("paddle.jit.dy2static.convert_var_shape"):
             # check left and comparators are all converted var shape
-            compare_arg_str = left_str
+            compare_arg_strs = left_str
             for i, comparator in enumerate(node.comparators):
                 comparator_str = ast_to_source_code(node.left).strip()
                 if not comparator_str.startswith(
                         "paddle.jit.dy2static.convert_var_shape"):
                     return node
-                op_str = ast_to_source_code(node.left).strip()
+                op_str = self.cmpop_node_to_str(node.ops[i])
                 compare_arg_strs += (", '" + op_str + "', " + comparator_str)
 
             # Now all left and comparators are converted shape
@@ -107,3 +107,26 @@ class LogicalTransformer(gast.NodeTransformer):
         # NOTE: gast.parse return Module(body=[expr(...)])
         new_node = gast.parse(new_node_str).body[0].value
         return new_node
+
+    def cmpop_node_to_str(self, node):
+        if isinstance(node, gast.Eq):
+            return "=="
+        if isinstance(node, gast.NotEq):
+            return "!="
+        if isinstance(node, gast.Lt):
+            return "<"
+        if isinstance(node, gast.LtE):
+            return "<="
+        if isinstance(node, gast.Gt):
+            return ">"
+        if isinstance(node, gast.GtE):
+            return ">="
+        if isinstance(node, gast.Is):
+            return "is"
+        if isinstance(node, gast.IsNot):
+            return "is not"
+        if isinstance(node, gast.In):
+            return "in"
+        if isinstance(node, gast.NotIn):
+            return "not in"
+        raise ValueError("Illegal cmpop node, the node is " + str(node))
