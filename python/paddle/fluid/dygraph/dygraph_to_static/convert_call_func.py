@@ -33,7 +33,7 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
 from paddle.fluid.dygraph.layers import Layer
 
-__all__ = ["convert_call", "not_to_convert"]
+__all__ = ["convert_call", "not_to_static"]
 
 # TODO(liym27): A better way to do this.
 BUILTIN_LIKELY_MODULES = [
@@ -46,7 +46,7 @@ DISABLE_CONVERTION = "An attribute for a function that indicates that" \
                   "the user does not want it to be converted in dynamic-to-static."
 
 
-def not_to_convert(func=None):
+def not_to_static(func=None):
     """
     A Decorator to suppresses the convertion of a function.
 
@@ -61,15 +61,15 @@ def not_to_convert(func=None):
 
             import paddle
 
-            @paddle.jit.not_to_convert
-            def func_not_to_convert(x):
+            @paddle.jit.not_to_static
+            def func_not_to_static(x):
                 res = x - 1
                 return res
 
             @paddle.jit.to_static
             def func(x):
                 if paddle.mean(x) < 0:
-                    x_v = func_not_to_convert(x)
+                    x_v = func_not_to_static(x)
                 else:
                     x_v = x + 1
                 return x_v
@@ -79,7 +79,7 @@ def not_to_convert(func=None):
             print(x_v) # [[2. 2.]]
     """
     if func is None:
-        return not_to_convert
+        return not_to_static
 
     setattr(func, DISABLE_CONVERTION, True)
     return func
@@ -178,7 +178,7 @@ def convert_call(func):
     if getattr(func, DISABLE_CONVERTION, False):
         translator_logger.log(
             2,
-            "{} is not converted it is decorated by 'paddle.jit.not_to_convert'.".
+            "{} is not converted it is decorated by 'paddle.jit.not_to_static'.".
             format(func))
         return func
 

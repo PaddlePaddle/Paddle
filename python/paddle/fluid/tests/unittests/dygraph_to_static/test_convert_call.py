@@ -184,7 +184,7 @@ class TestThirdPartyLibrary(TestRecursiveCall2):
         self.dygraph_func = dyfunc_with_third_library_logging
 
 
-# Situation 2 : test not_to_convert
+# Situation 2 : test not_to_static
 
 
 def func_sum(x):
@@ -192,20 +192,20 @@ def func_sum(x):
     return res
 
 
-@paddle.jit.not_to_convert
-def func_not_to_convert(x):
+@paddle.jit.not_to_static
+def func_not_to_static(x):
     res = func_sum(x)
     return res
 
 
 @declarative
-def func_convert_then_not_to_convert(x):
-    y = func_not_to_convert(x)
+def func_convert_then_not_to_static(x):
+    y = func_not_to_static(x)
     return y
 
 
 class TestClass(paddle.nn.Layer):
-    @paddle.jit.not_to_convert
+    @paddle.jit.not_to_static
     def called_member(self, x):
         return paddle.sum(x)
 
@@ -217,7 +217,7 @@ class TestClass(paddle.nn.Layer):
 
 class TestNotToConvert(TestRecursiveCall2):
     def set_func(self):
-        self.dygraph_func = func_not_to_convert
+        self.dygraph_func = func_not_to_static
 
     def test_disable_convertion(self):
         self.assertTrue(getattr(self.dygraph_func, DISABLE_CONVERTION))
@@ -225,7 +225,7 @@ class TestNotToConvert(TestRecursiveCall2):
 
 class TestNotToConvert2(TestRecursiveCall2):
     def set_func(self):
-        self.dygraph_func = func_convert_then_not_to_convert
+        self.dygraph_func = func_convert_then_not_to_static
 
 
 class TestNotToConvert3(TestRecursiveCall2):
@@ -239,16 +239,16 @@ class TestDynamicToStaticCode(unittest.TestCase):
         self.set_answer_func()
 
     def set_func(self):
-        self.func = func_not_to_convert
+        self.func = func_not_to_static
 
     def set_answer_func(self):
         class StaticCode():
-            @paddle.jit.not_to_convert
-            def func_not_to_convert(x):
+            @paddle.jit.not_to_static
+            def func_not_to_static(x):
                 res = func_sum(x)
                 return res
 
-        self.answer_func = StaticCode.func_not_to_convert
+        self.answer_func = StaticCode.func_not_to_static
 
     def _get_answer_code(self):
         return get_source_code(self.answer_func)
@@ -269,15 +269,15 @@ class TestDynamicToStaticCode(unittest.TestCase):
 
 class TestDynamicToStaticCode2(TestDynamicToStaticCode):
     def set_func(self):
-        self.func = func_convert_then_not_to_convert
+        self.func = func_convert_then_not_to_static
 
     def set_answer_func(self):
         class StaticCode():
-            def func_convert_then_not_to_convert(x):
-                y = paddle.jit.dy2static.convert_call(func_not_to_convert)(x)
+            def func_convert_then_not_to_static(x):
+                y = paddle.jit.dy2static.convert_call(func_not_to_static)(x)
                 return y
 
-        self.answer_func = StaticCode.func_convert_then_not_to_convert
+        self.answer_func = StaticCode.func_convert_then_not_to_static
 
 
 if __name__ == '__main__':
