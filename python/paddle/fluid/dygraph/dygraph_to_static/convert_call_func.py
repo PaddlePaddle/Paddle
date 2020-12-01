@@ -14,8 +14,6 @@
 
 from __future__ import print_function
 
-__all__ = ['convert_call']
-
 import collections
 import copy
 import functools
@@ -35,12 +33,56 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
 from paddle.fluid.dygraph.layers import Layer
 
+__all__ = ["convert_call", "not_to_convert"]
+
 # TODO(liym27): A better way to do this.
 BUILTIN_LIKELY_MODULES = [
     collections, pdb, copy, inspect, re, six, numpy, logging
 ]
 
 translator_logger = TranslatorLogger()
+
+DISABLE_CONVERTION = "An attribute for a function that indicates that" \
+                  "the user does not want it to be converted in dynamic-to-static."
+
+
+def not_to_convert(func=None):
+    """
+    A Decorator to suppresses the convertion of a function.
+
+    Args:
+        func(callable): The function to decorate.
+
+    Returns:
+        callable: A function which won't be converted in Dynamic-to-Static.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            @paddle.jit.not_to_convert
+            def func_not_to_convert(x):
+                res = x - 1
+                return res
+
+            @paddle.jit.to_static
+            def func(x):
+                if paddle.mean(x) < 0:
+                    x_v = func_not_to_convert(x)
+                else:
+                    x_v = x + 1
+                return x_v
+
+            x = paddle.ones([1, 2], dtype='float32')
+            x_v = func(x)
+            print(x_v) # [[2. 2.]]
+    """
+    if func is None:
+        return not_to_convert
+
+    setattr(func, DISABLE_CONVERTION, True)
+    return func
 
 
 def is_builtin(func):
@@ -132,6 +174,13 @@ def convert_call(func):
     # Function in convert_call may be decorated by another `@to_static`,
     # in this case, unwraps it into a raw method or function.
     _, func = unwrap_decorators(func)
+
+    if getattr(func, DISABLE_CONVERTION, False):
+        translator_logger.log(
+            2,
+            "{} is not converted it is decorated by 'paddle.jit.not_to_convert'.".
+            format(func))
+        return func
 
     if is_builtin_len(func):
         return convert_len
