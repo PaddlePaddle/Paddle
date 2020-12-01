@@ -45,9 +45,7 @@ class CGenNCCLIdOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     // put nccl id in CPUPlace
-    auto& dev_ctx = *pool.Get(platform::CPUPlace());
     int rank = Attr<int>("rank");
 
     std::string endpoint = Attr<std::string>("endpoint");
@@ -55,7 +53,7 @@ class CGenNCCLIdOp : public framework::OperatorBase {
         Attr<std::vector<std::string>>("other_endpoints");
 
     std::string var_name = Output("Out");
-    auto var = scope->FindVar(var_name);
+    auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::InvalidArgument("Output can not be Null"));
     auto nccl_id = var->GetMutable<ncclUniqueId>();
@@ -73,7 +71,7 @@ class CGenNCCLIdOp : public framework::OperatorBase {
   }
 
  private:
-  void RecvNCCLID(const std::string& ep, ncclUniqueId* nccl_id) {
+  void RecvNCCLID(const std::string& ep, ncclUniqueId* nccl_id) const {
     auto addr = paddle::string::Split(ep, ':');
     PADDLE_ENFORCE_EQ(
         addr.size(), 2UL,
@@ -146,7 +144,7 @@ class CGenNCCLIdOp : public framework::OperatorBase {
     close(server_fd);
   }
 
-  void SendNCCLID(const std::string& ep, ncclUniqueId* nccl_id) {
+  void SendNCCLID(const std::string& ep, ncclUniqueId* nccl_id) const {
     auto addr = paddle::string::Split(ep, ':');
     PADDLE_ENFORCE_EQ(
         addr.size(), 2UL,

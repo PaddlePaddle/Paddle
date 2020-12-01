@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/split.h"
 
 namespace paddle {
 namespace operators {
@@ -49,9 +50,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     // put nccl id in CPUPlace
-    auto& dev_ctx = *pool.Get(platform::CPUPlace());
     int trainer_id = Attr<int>("trainer_id");
 
     std::vector<std::string> trainers =
@@ -103,6 +102,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     VLOG(1) << "trainer_id:" << trainer_id
             << ", use_hierarchical_allreduce:" << use_hierarchical_allreduce
+            << ", nccl_comm_num:" << nccl_comm_num
             << ", inter_nranks:" << inter_nranks
             << ", inter_trainer_id:" << inter_trainer_id
             << ", exter_trainer_id:" << exter_trainer_id
