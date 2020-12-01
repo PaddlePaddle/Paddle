@@ -2979,7 +2979,7 @@ class GroupNorm(layers.Layer):
 
 
 class SpectralNorm(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``SpectralNorm`` class.
     For more details, refer to code examples. It implements the function of the Spectral Normalization Layer.
     This layer calculates the spectral normalization value of weight parameters of
