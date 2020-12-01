@@ -40,7 +40,6 @@ RUN wget --no-check-certificate -qO- https://storage.googleapis.com/golang/go1.8
 ENV GOROOT=/usr/local/go GOPATH=/root/gopath
 ENV PATH=${GOROOT}/bin:${GOPATH}/bin:${PATH}
 
-RUN gcc --version
 # protobuf 3.6.1
 RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/protobuf-cpp-3.6.1.tar.gz && \ 
     tar xzf protobuf-cpp-3.6.1.tar.gz && \
