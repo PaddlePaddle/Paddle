@@ -73,7 +73,27 @@ def resnet_cifar10(input, depth=32):
     return pool
 
 
-def train(use_pure_fp16=True):
+def compile(program, loss_name=None):
+    build_strategy = paddle.static.BuildStrategy()
+    exec_strategy = paddle.static.ExecutionStrategy()
+
+    exec_strategy.num_threads = 1
+    exec_strategy.num_iteration_per_drop_scope = 10000
+
+    build_strategy.fuse_bn_act_ops = True
+    build_strategy.fuse_elewise_add_act_ops = True
+    build_strategy.fuse_bn_add_act_ops = True
+
+    compiled_program = paddle.static.CompiledProgram(
+        program).with_data_parallel(
+            loss_name=loss_name,
+            build_strategy=build_strategy,
+            exec_strategy=exec_strategy)
+
+    return compiled_program
+
+
+def train(use_pure_fp16=True, use_nesterov=False):
     classdim = 10
     data_shape = [3, 32, 32]
     BATCH_SIZE = 128
@@ -105,6 +125,7 @@ def train(use_pure_fp16=True):
         optimizer = fluid.contrib.optimizer.Momentum(
             learning_rate=0.001,
             momentum=0.9,
+            use_nesterov=use_nesterov,
             regularization=fluid.regularizer.L2Decay(1e-4),
             multi_precision=use_pure_fp16,
             rescale_grad=1.0 / BATCH_SIZE)
@@ -125,20 +146,20 @@ def train(use_pure_fp16=True):
     def train_loop(main_program):
         exe.run(startup_prog)
         if use_pure_fp16:
-            cast_parameters_to_fp16(exe.place, train_program,
-                                    fluid.global_scope())
+            cast_parameters_to_fp16(place, train_program, fluid.global_scope())
+        compiled_program = compile(train_program, sum_cost.name)
         loss = 0.0
         for pass_id in range(PASS_NUM):
             train_loss_list = []
             for batch_id, data in enumerate(train_reader()):
-                loss, = exe.run(main_program,
+                loss, = exe.run(compiled_program,
                                 feed=feeder.feed(data),
                                 fetch_list=[sum_cost])
                 print('PassID {0:1}, Train Batch ID {1:04}, train loss {2:2.4}'.
                       format(pass_id, batch_id + 1, float(loss)))
                 train_loss_list.append(float(loss))
 
-                if batch_id >= 9:  # For speeding up CI
+                if batch_id >= 4:  # For speeding up CI
                     test_loss_list = []
                     for tid, test_data in enumerate(test_reader()):
                         loss_t, = exe.run(program=test_program,
@@ -148,7 +169,7 @@ def train(use_pure_fp16=True):
                         print(
                             'PassID {0:1}, Test Batch ID {1:04}, test loss {2:2.4}'.
                             format(pass_id, tid + 1, float(loss_t)))
-                        if tid >= 9:
+                        if tid >= 4:
                             break  # For speeding up CI
                     return train_loss_list, test_loss_list
 
@@ -159,33 +180,39 @@ class TestImageMultiPrecision(unittest.TestCase):
     def test_resnet_pure_fp16(self):
         if not fluid.core.is_compiled_with_cuda():
             return
-        with self.scope_prog_guard():
-            print(
-                "--------------------------------FP16 Train--------------------------------"
-            )
-            train_loss_fp16, test_loss_fp16 = train(use_pure_fp16=True)
-        with self.scope_prog_guard():
-            print(
-                "--------------------------------FP32 Train--------------------------------"
-            )
-            train_loss_fp32, test_loss_fp32 = train(use_pure_fp16=False)
 
-        self.assertTrue(
-            np.allclose(
-                np.array(train_loss_fp16),
-                np.array(train_loss_fp32),
-                rtol=1e-02,
-                atol=1e-05,
-                equal_nan=True),
-            msg='Failed to train in pure FP16.')
-        self.assertTrue(
-            np.allclose(
-                np.array(test_loss_fp16),
-                np.array(test_loss_fp32),
-                rtol=1e-02,
-                atol=1e-05,
-                equal_nan=True),
-            msg='Failed to test in pure FP16.')
+        def do_test(use_nesterov=False):
+            with self.scope_prog_guard():
+                suffix = "with Nesterov" if use_nesterov else "without Nesterov"
+                print("-----------------FP16 Train {}-----------------".format(
+                    suffix))
+                train_loss_fp16, test_loss_fp16 = train(
+                    use_pure_fp16=True, use_nesterov=use_nesterov)
+            with self.scope_prog_guard():
+                print("-----------------FP32 Train {}-----------------".format(
+                    suffix))
+                train_loss_fp32, test_loss_fp32 = train(
+                    use_pure_fp16=False, use_nesterov=use_nesterov)
+
+            self.assertTrue(
+                np.allclose(
+                    np.array(train_loss_fp16),
+                    np.array(train_loss_fp32),
+                    rtol=1e-03,
+                    atol=1e-06,
+                    equal_nan=True),
+                msg='Failed to train in pure FP16.')
+            self.assertTrue(
+                np.allclose(
+                    np.array(test_loss_fp16),
+                    np.array(test_loss_fp32),
+                    rtol=1e-03,
+                    atol=1e-06,
+                    equal_nan=True),
+                msg='Failed to test in pure FP16.')
+
+        do_test(use_nesterov=False)
+        do_test(use_nesterov=True)
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
@@ -195,6 +222,38 @@ class TestImageMultiPrecision(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
                 yield
+
+
+class TestAmpWithNonIterableDataLoader(unittest.TestCase):
+    def decorate_with_data_loader(self):
+        main_prog = paddle.static.Program()
+        start_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, start_prog):
+            with paddle.fluid.unique_name.guard():
+                image = fluid.layers.data(
+                    name='image', shape=[3, 224, 224], dtype='float32')
+                label = fluid.layers.data(
+                    name='label', shape=[1], dtype='int64')
+                py_reader = fluid.io.DataLoader.from_generator(
+                    feed_list=[image, label],
+                    capacity=4,
+                    iterable=False,
+                    use_double_buffer=False)
+
+                net = resnet_cifar10(image)
+                logits = fluid.layers.fc(input=net, size=10, act="softmax")
+
+        block = main_prog.global_block()
+        for op in block.ops:
+            if op.type == "mul":
+                op._set_attr('in_dtype', fluid.core.VarDesc.VarType.FP32)
+                op._set_attr('out_dtype', fluid.core.VarDesc.VarType.FP32)
+                op._set_attr('dtype', fluid.core.VarDesc.VarType.FP32)
+
+        cast_model_to_fp16(main_prog)
+
+    def test_non_iterable_dataloader(self):
+        self.decorate_with_data_loader()
 
 
 if __name__ == '__main__':

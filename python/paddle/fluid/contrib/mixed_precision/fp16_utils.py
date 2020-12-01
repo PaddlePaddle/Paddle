@@ -217,8 +217,9 @@ def cast_model_to_fp16(main_program):
             if op.type == 'create_py_reader' or op.type == 'read':
                 continue
             for in_name in op.input_names:
-                if op.type in {'batch_norm', 'fused_bn_add_activation'
-                               } and in_name not in {'X', 'Z'}:
+                if op.type in {
+                        'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+                } and in_name not in {'X', 'Z'}:
                     continue
                 for in_var_name in op.input(in_name):
                     in_var = None
@@ -245,8 +246,9 @@ def cast_model_to_fp16(main_program):
                         format(op.type, in_var_name, in_var.dtype))
 
             for out_name in op.output_names:
-                if op.type in {'batch_norm', 'fused_bn_add_activation'
-                               } and out_name != 'Y':
+                if op.type in {
+                        'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+                } and out_name != 'Y':
                     continue
                 for out_var_name in op.output(out_name):
                     out_var = None
@@ -297,7 +299,9 @@ def cast_parameters_to_fp16(place, main_program, scope=None):
         all_ops.extend(block.ops)
     bn_params = set()
     for op in all_ops:
-        if op.type not in {'batch_norm', 'fused_bn_add_activation'}:
+        if op.type not in {
+                'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+        }:
             continue
         for in_name in op.input_names:
             if in_name not in {'X', 'Z'}:
