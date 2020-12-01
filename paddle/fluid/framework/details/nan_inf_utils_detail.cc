@@ -156,7 +156,8 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
          static_cast<uint64_t>(nan_count), static_cast<uint64_t>(inf_count),
          static_cast<uint64_t>(num_count));
   PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "Found nan or inf in tensor `%s` of operator `%s`.", op_type, var_name));
+      "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
+      op_type));
 }
 
 // openmp 4.0, reduction with fp16
@@ -245,8 +246,8 @@ void CheckNanInf<paddle::platform::complex64>(
     // hot fix for compile failed in gcc4.8
     // here also need print detail info of nan or inf later
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Found nan or inf in tensor `%s` of operator `%s`.", op_type,
-        var_name));
+        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
+        op_type));
   }
 }
 
@@ -271,8 +272,8 @@ void CheckNanInf<paddle::platform::complex128>(
     // hot fix for compile failed in gcc4.8
     // here also need print detail info of nan or inf later
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Found nan or inf in tensor `%s` of operator `%s`.", op_type,
-        var_name));
+        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
+        op_type));
   }
 }
 #endif
