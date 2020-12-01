@@ -46,6 +46,43 @@ class TestComplexReshape(unittest.TestCase):
 
         np.testing.assert_allclose(np.reshape(x_np, shape_), y_np)
 
+    def test_case3(self):
+        x_np = np.random.randn(2, 3, 4) + 1j * np.random.randn(2, 3, 4)
+        shape = (2, -1)
+
+        place = fluid.CPUPlace()
+        with dg.guard(place):
+            x_var = fluid.core.VarBase(
+                value=x_np,
+                place=fluid.framework._current_expected_place(),
+                persistable=False,
+                zero_copy=None,
+                name='')
+
+            y_var = fluid.layers.reshape(x_var, shape)
+            y_np = y_var.numpy()
+
+        np.testing.assert_allclose(np.reshape(x_np, shape), y_np)
+
+    def test_case4(self):
+        x_np = np.random.randn(2, 3, 4) + 1j * np.random.randn(2, 3, 4)
+        shape = (0, -1)
+        shape_ = (2, 12)
+
+        place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        with dg.guard(place):
+            x_var = fluid.core.VarBase(
+                value=x_np,
+                place=fluid.framework._current_expected_place(),
+                persistable=False,
+                zero_copy=None,
+                name='')
+            y_var = fluid.layers.reshape(x_var, shape)
+            y_np = y_var.numpy()
+
+        np.testing.assert_allclose(np.reshape(x_np, shape_), y_np)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -35,6 +35,7 @@ class ComplexKronTestCase(unittest.TestCase):
         if fluid.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
             self.test_identity(place)
+            self.test_identity_1(place)
 
     def test_identity(self, place):
         with dg.guard(place):
@@ -42,6 +43,27 @@ class ComplexKronTestCase(unittest.TestCase):
             y_var = dg.to_variable(self.y)
             out_var = paddle.complex.kron(x_var, y_var)
             np.testing.assert_allclose(out_var.numpy(), self.ref_result)
+
+    def test_identity_1(self, place):
+        x = np.random.randn(2, 2) + 1j * np.random.randn(2, 2)
+        y = np.random.randn(3, 3) + 1j * np.random.randn(3, 3)
+        with dg.guard(place):
+            x_var = fluid.core.VarBase(
+                value=x,
+                place=fluid.framework._current_expected_place(),
+                persistable=False,
+                zero_copy=None,
+                name='')
+            y_var = fluid.core.VarBase(
+                value=y,
+                place=fluid.framework._current_expected_place(),
+                persistable=False,
+                zero_copy=None,
+                name='')
+
+            out_var = tensor.math.kron(x_var, y_var)
+
+            np.testing.assert_allclose(out_var.numpy(), np.kron(x, y))
 
 
 def load_tests(loader, standard_tests, pattern):
