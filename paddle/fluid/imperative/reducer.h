@@ -143,7 +143,7 @@ class Group {
   }
 };
 
-struct VariableIndex {
+struct VariableLocator {
   // record the index in groups_
   size_t group_index;
   size_t inside_group_index;
@@ -155,7 +155,8 @@ class Reducer {
       const std::vector<std::shared_ptr<imperative::VarBase>>& vars,
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
-      std::shared_ptr<imperative::ParallelContext> parallel_ctx);
+      std::shared_ptr<imperative::ParallelContext> parallel_ctx,
+      const std::vector<size_t>& group_size_limits);
 
   virtual ~Reducer() {}
 
@@ -166,11 +167,9 @@ class Reducer {
 
   void PrepareForBackward();
 
-  void AddDistHook(VariableWrapper* var_warpper,
-                   const VariableIndex& var_index);
+  void AddDistHook(VariableWrapper* var_warpper, size_t var_index);
 
-  void MarkVariableReady(const VariableIndex& var_index,
-                         VariableWrapper* var_warpper);
+  void MarkVariableReady(size_t var_index, VariableWrapper* var_warpper);
 
   void MarkGroupReady(size_t group_index);
 
@@ -178,15 +177,19 @@ class Reducer {
 
   void ReleaseReducer();
 
+  std::vector<std::vector<size_t>> RebuildGruops();
+
   // Reducer Singleton
   static std::shared_ptr<Reducer> SetInstance(
       const std::vector<std::shared_ptr<imperative::VarBase>>& vars,
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
-      std::shared_ptr<imperative::ParallelContext> parallel_ctx) {
+      std::shared_ptr<imperative::ParallelContext> parallel_ctx,
+      const std::vector<size_t>& group_size_limits) {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::imperative::Reducer(
-          vars, group_indices, is_sparse_gradient, parallel_ctx));
+          vars, group_indices, is_sparse_gradient, parallel_ctx,
+          group_size_limits));
     }
     return s_instance_;
   }
@@ -208,11 +211,19 @@ class Reducer {
   std::once_flag once_flag_;
   std::vector<bool> is_sparse_gradient_;
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;
+  std::vector<VariableLocator> variable_locators_;
 
+  // Following variables are to help sync stream
   std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
   std::shared_ptr<platform::CudaEventObject> comm_enent_;
   cudaStream_t compute_stream_;
   cudaStream_t comm_stream_;
+
+  // Following variables are to help rebuild group
+  bool has_rebuilt_group_{false};
+  std::vector<std::shared_ptr<imperative::VarBase>> rebuild_vars_;
+  std::vector<size_t> rebuild_group_indices_;
+  const std::vector<size_t> group_size_limits_;
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(

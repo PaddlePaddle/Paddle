@@ -23,33 +23,23 @@ std::shared_ptr<Reducer> Reducer::s_instance_ = NULL;
 Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
                  const std::vector<std::vector<size_t>> &group_indices,
                  const std::vector<bool> &is_sparse_gradient,
-                 std::shared_ptr<imperative::ParallelContext> parallel_ctx)
+                 std::shared_ptr<imperative::ParallelContext> parallel_ctx,
+                 const std::vector<size_t> &group_size_limits)
     : vars_(vars),
       group_indices_(group_indices),
       is_sparse_gradient_(is_sparse_gradient),
-      parallel_ctx_(parallel_ctx) {
+      parallel_ctx_(parallel_ctx),
+      group_size_limits_(group_size_limits) {
   VLOG(3) << "Start construct the Reducer ...";
   // initialize groups
   InitializeGroups(group_indices);
-
-  {
-    for (size_t group_index = 0; group_index < group_indices.size();
-         ++group_index) {
-      for (size_t var_index = 0; var_index < group_indices[group_index].size();
-           ++var_index) {
-        size_t global_var_index = group_indices[group_index][var_index];
-        const auto variable_index = VariableIndex{
-            .group_index = group_index, .inside_group_index = var_index,
-        };
-        VLOG(3) << "add hook for var[" << vars_[global_var_index]->GradVarName()
-                << "], it's in group [" << group_index << "]";
-        vars_[global_var_index]->SharedVar()->AddGradVarLeafBackwardHook(
-            std::unique_ptr<LambdaGradAccumulatorPostHook>(
-                new LambdaGradAccumulatorPostHook([=](VariableWrapper *grad) {
-                  this->AddDistHook(grad, variable_index);
-                })));
-      }
-    }
+  for (size_t global_var_index = 0; global_var_index < vars_.size();
+       ++global_var_index) {
+    vars_[global_var_index]->SharedVar()->AddGradVarLeafBackwardHook(
+        std::unique_ptr<LambdaGradAccumulatorPostHook>(
+            new LambdaGradAccumulatorPostHook([=](VariableWrapper *grad) {
+              this->AddDistHook(grad, global_var_index);
+            })));
   }
 
   compute_stream_ = static_cast<platform::CUDADeviceContext *>(
@@ -137,6 +127,8 @@ void Reducer::InitializeGroups(
   // clear the group
   groups_.clear();
   groups_.reserve(group_indices.size());
+  variable_locators_.clear();
+  variable_locators_.resize(vars_.size());
 
   auto group_nums = group_indices.size();
   for (size_t group_index = 0; group_index < group_nums; ++group_index) {
@@ -146,9 +138,7 @@ void Reducer::InitializeGroups(
         platform::errors::PreconditionNotMet(
             "The number of group_index[`%d`]'s elements is 0.", group_index));
     Group group;
-    group.variable_indices_ = variable_indices_;
     int64_t all_length = 0;
-
     // It's just for check the sparse or dense
     auto first_varbase = vars_[variable_indices_.front()];
     if (variable_indices_.size() == 1 &&
@@ -169,6 +159,16 @@ void Reducer::InitializeGroups(
     VLOG(3) << "the groups_[" << group_index << "] basic message:";
     VLOG(3) << "numul: " << all_length << " ;is_sparse: " << group.is_sparse_
             << " ;var number: " << group.variable_indices_.size();
+
+    // map variables to this group by VariableLocator
+    size_t inside_group_index = 0;
+    for (const auto var_index : group_indices[group_index]) {
+      variable_locators_[var_index] = VariableLocator{
+          .group_index = group_index,
+          .inside_group_index = inside_group_index++,
+      };
+    }
+    group.variable_indices_ = std::move(variable_indices_);
     groups_.emplace_back(std::move(group));
   }
 }
@@ -192,10 +192,15 @@ void Reducer::PrepareForBackward() {
 // counter is 0, it means that allreduce can be emitted, and
 // concat + allreduce + split is emitted in turn according to next_group_.
 // 3, FinalizeBackward: after the end, synchronize each stream.
-void Reducer::AddDistHook(VariableWrapper *var_warpper,
-                          const VariableIndex &var_index) {
-  auto group_index = var_index.group_index;
+void Reducer::AddDistHook(VariableWrapper *var_warpper, size_t var_index) {
+  const auto &var_locator = variable_locators_[var_index];
+  auto group_index = var_locator.group_index;
   auto &group = groups_[group_index];
+
+  if (!has_rebuilt_group_) {
+    rebuild_vars_.push_back(vars_[var_index]);
+    rebuild_group_indices_.push_back(var_index);
+  }
 
   if (!group.is_sparse_) {
     // Only dense_contents_ need memory copy
@@ -211,21 +216,22 @@ void Reducer::AddDistHook(VariableWrapper *var_warpper,
   }
 }
 
-void Reducer::MarkVariableReady(const VariableIndex &var_index,
+void Reducer::MarkVariableReady(size_t var_index,
                                 VariableWrapper *var_warpper) {
-  auto group_index = var_index.group_index;
-  auto variable_index = var_index.inside_group_index;
+  const auto &var_locator = variable_locators_[var_index];
+  auto group_index = var_locator.group_index;
+  auto inside_group_index = var_locator.inside_group_index;
   auto &group = groups_[group_index];
-  auto length = group.length_[variable_index];
+  auto length = group.length_[inside_group_index];
 
   auto tensor = var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
-  group.dense_tensors_[variable_index].ShareDataWith(*tensor).Resize(
+  group.dense_tensors_[inside_group_index].ShareDataWith(*tensor).Resize(
       {static_cast<int64_t>(length)});
 }
 
 void Reducer::MarkGroupReady(size_t group_index) {
   if (group_index > next_group_) {
-    VLOG(3) << "Maybe it need adjust the order of group";
+    VLOG(3) << "It will adjust the order of group in next batch automatically";
     return;
   }
 
@@ -257,10 +263,23 @@ void Reducer::MarkGroupReady(size_t group_index) {
   }
 }
 
+std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
+  auto rebuild_index =
+      AssignGroupBySize(rebuild_vars_, is_sparse_gradient_, group_size_limits_);
+  has_rebuilt_group_ = true;
+  rebuild_vars_.clear();
+  rebuild_group_indices_.clear();
+  return rebuild_index;
+}
+
 void Reducer::FinalizeBackward() {
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(comm_enent_.get(), comm_stream_));
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaStreamWaitEvent(compute_stream_, comm_enent_.get(), 0));
+  if (!has_rebuilt_group_) {
+    auto rebuild_index = RebuildGruops();
+    InitializeGroups(rebuild_index);
+  }
   VLOG(3) << "In the batch, Reducer is finished...";
 }
 
