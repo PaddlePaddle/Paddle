@@ -4222,15 +4222,15 @@ def conv3d_transpose(input,
           import numpy as np
          
 	  paddle.enable_static()
-          data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
-          param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
-          res = paddle.static.nn.conv3d_transpose(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
-          place = paddle.CPUPlace()
-          exe = paddle.static.Executor(place)
-          exe.run(paddle.static.default_startup_program())
-          x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
-          output = exe.run(feed={"data": x}, fetch_list=[res])
-          print(output)
+	  data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
+	  param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
+	  res = paddle.static.nn.conv3d_transpose(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
+	  place = paddle.CPUPlace()
+	  exe = paddle.static.Executor(place)
+	  exe.run(paddle.static.default_startup_program())
+	  x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
+	  output = exe.run(feed={"data": x}, fetch_list=[res])
+	  print(output)
     """
     assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
     if data_format not in ['NCDHW', 'NDHWC']:
