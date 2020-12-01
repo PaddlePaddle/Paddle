@@ -12,10 +12,12 @@ foreach(src ${OPS})
 endforeach()
 
 register_operators(EXCLUDES c_gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
+register_operators(EXCLUDES gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
 
 if(WITH_NCCL)
     set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper)
     op_library(c_gen_nccl_id_op DEPS ${COLLECTIVE_DEPS} nccl_common)
+    op_library(gen_nccl_id_op DEPS ${COLLECTIVE_DEPS} nccl_common)
 endif()
 
 if(WITH_GLOO)
