@@ -312,7 +312,8 @@ def convert_shape_compare(left, *args):
             cmp_op = args[i * 2]
             cmp_right = args[i * 2 + 1]
             cur_result = reduce_compare(cmp_left, cmp_op, cmp_right)
-            final_result = convert_logical_and(final_result, cur_result)
+            final_result = convert_logical_and(lambda: final_result,
+                                               lambda: cur_result)
         return final_result
     else:
         cmp_left = left
@@ -325,8 +326,9 @@ def convert_shape_compare(left, *args):
                 final_result = cur_result
             else:
                 final_result = final_result and cur_result
-                if final_result is False:
-                    return False
+
+            if final_result is False:
+                return False
             cmp_left = cmp_right
         return final_result
 
