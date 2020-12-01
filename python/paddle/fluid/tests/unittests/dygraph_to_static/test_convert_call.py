@@ -34,6 +34,8 @@ np.random.seed(SEED)
 # Situation 1 : test recursive call
 
 
+# Use a decorator to test exception
+@declarative
 def dyfunc_with_if(x_v):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
