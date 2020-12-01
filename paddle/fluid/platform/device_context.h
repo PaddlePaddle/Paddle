@@ -58,7 +58,7 @@ namespace paddle {
 namespace platform {
 
 #ifdef PADDLE_WITH_CUDA
-static bool allow_tf32_cublas{true};
+extern bool allow_tf32_cublas;
 #endif  // PADDLE_WITH_CUDA
 
 class DeviceContext {
@@ -271,7 +271,7 @@ class CUDADeviceContext : public DeviceContext {
   virtual ~CUDADeviceContext();
 
   /*! \brief Set the value of the global variable allow_tf32_cublas*/
-  void SetTF32Cublas(bool active);
+  void SetAllowTF32Cublas(bool active);
   /*! \brief Get the global variable allow_tf32_cublas value*/
   bool AllowTF32Cublas() const;
 

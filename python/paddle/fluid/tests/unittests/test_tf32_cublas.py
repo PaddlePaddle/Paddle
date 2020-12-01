@@ -47,8 +47,8 @@ class TestTF32OnMatmul(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 input_array1 = np.random.rand(4, 12, 64, 88).astype("float32")
                 input_array2 = np.random.rand(4, 12, 88, 512).astype("float32")
-                data1 = fluid.dygraph.to_variable(input_array1)
-                data2 = fluid.dygraph.to_variable(input_array2)
+                data1 = paddle.to_tensor(input_array1)
+                data2 = paddle.to_tensor(input_array2)
                 out = paddle.matmul(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
             self.assertTrue(np.allclose(expected_result, out.numpy(), 1e-03))
