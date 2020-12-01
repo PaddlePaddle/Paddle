@@ -12,7 +12,7 @@
   See the License for the specific language governing permissions and
   limitations under the License. */
 
-#include "paddle/fluid/operators/distributed2_ops/distributed_lookup_table_op.h"
+#include "paddle/fluid/operators/pscore/distributed_lookup_table_op.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;

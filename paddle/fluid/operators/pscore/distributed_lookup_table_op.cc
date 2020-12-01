@@ -13,8 +13,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/distributed2_ops/distributed_lookup_table_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/pscore/distributed_lookup_table_op.h"
 
 namespace paddle {
 namespace operators {

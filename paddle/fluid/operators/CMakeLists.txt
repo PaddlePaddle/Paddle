@@ -27,7 +27,7 @@ if(WITH_DISTRIBUTE)
 endif()
 
 if(WITH_DISTRIBUTE2)
-    add_subdirectory(distributed2_ops)
+    add_subdirectory(pscore)
     add_subdirectory(collective)
 endif()
 

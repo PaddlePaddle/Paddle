@@ -22,8 +22,8 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed2_ops/heter_listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/pscore/heter_listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_int32(rpc_send_thread_num, 12, "number of threads for rpc send");
