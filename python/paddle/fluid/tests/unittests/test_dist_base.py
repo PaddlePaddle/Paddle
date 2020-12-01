@@ -124,6 +124,67 @@ class TestDistRunnerBase(object):
         exe.run(pserver_prog)
         print_to_err(type(self).__name__, "run pserver main program done.")
 
+    def run_pipeline_trainer(self, args):
+        self.lr = args.lr
+
+        dist_strategy = DistributedStrategy()
+        test_program, avg_cost, train_reader, test_reader, batch_acc, predict, data_loader = \
+            self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
+
+        device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        eprint(type(self).__name__, "device_id: %d." % device_id)
+        place = fluid.CUDAPlace(device_id)
+
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        eprint(type(self).__name__, "run worker startup program done.")
+
+        data_loader.set_sample_list_generator(train_reader, place)
+        data_loader.start()
+        print_to_err(type(self).__name__, "begin to train on trainer")
+        out_losses = []
+        for i in six.moves.xrange(RUN_STEP):
+            loss = exe.run(fluid.default_main_program(), fetch_list=[avg_cost])
+            loss = loss[0] if loss else None
+            out_losses.append(loss)
+            print_to_err(type(self).__name__, "run step %d finished" % i)
+        print_to_err(type(self).__name__, "trainer run finished")
+
+        if six.PY2:
+            print(pickle.dumps(out_losses))
+        else:
+            sys.stdout.buffer.write(pickle.dumps(out_losses))
+
+        if args.save_model:
+            model_save_dir = "/tmp"
+            if fleet.worker_index() == 0:
+                model_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_persistables")
+                model_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_persistables")
+                infer_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_infer")
+                infer_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_infer")
+            else:
+                model_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_persistables_2")
+                model_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_persistables_2")
+                infer_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_infer_2")
+                infer_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_infer_2")
+            fluid.io.save_persistables(exe, model_save_dir_fluid,
+                                       fleet._origin_program)
+            fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
+            feeded_var_names = [var.name for var in feed_var_list]
+            fluid.io.save_inference_model(infer_save_dir_fluid,
+                                          feeded_var_names, [avg_cost], exe,
+                                          fleet._origin_program)
+            fleet.save_inference_model(exe, infer_save_dir_fleet,
+                                       feeded_var_names, [avg_cost])
+
     def run_gpu_fleet_api_trainer(self, args):
         assert args.update_method == "nccl2"
 
@@ -532,6 +593,7 @@ def runtime_main(test_class):
     parser.add_argument('--nccl_comm_num', type=int, required=False, default=1)
     parser.add_argument('--enable_backward_deps', action='store_true')
     parser.add_argument('--use_hallreduce', action='store_true')
+    parser.add_argument('--use_pipeline', action='store_true')
     parser.add_argument('--gpu_fleet_api', action='store_true')
     parser.add_argument('--use_local_sgd', action='store_true')
     parser.add_argument('--ut4grad_allreduce', action='store_true')
@@ -566,6 +628,8 @@ def runtime_main(test_class):
         model.run_pserver(args)
     elif args.gpu_fleet_api:
         model.run_gpu_fleet_api_trainer(args)
+    elif args.use_pipeline:
+        model.run_pipeline_trainer(args)
     else:
         model.run_trainer(args)
 
@@ -607,6 +671,7 @@ class TestDistBase(unittest.TestCase):
         self._dc_asgd = False  # must use with async mode
         self._use_reader_alloc = True
         self._nccl2_mode = False
+        self._pipeline_mode = False
         self._mp_mode = False
         # FIXME(typhoonzero): I added this stupid argument to enable
         # testing allreduce layers, which users can call layers.allreduce
@@ -892,6 +957,8 @@ class TestDistBase(unittest.TestCase):
         if self._use_dgc:
             tr_cmd += " --use_dgc"
 
+        if self._pipeline_mode:
+            tr_cmd += " --use_pipeline"
         if self._mp_mode:
             env = {"FLAGS_selected_gpus": "{}".format(trainer_id % 2)}
 
@@ -978,6 +1045,51 @@ class TestDistBase(unittest.TestCase):
             print("outs[1]:", outs[1])
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
+    def _run_pipeline(self, model, envs, check_error_log, log_name):
+        # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
+        worker_endpoints = self._ps_endpoints.split(",")
+        update_method = "nccl2"
+
+        trainer_num = len(worker_endpoints)
+
+        procs = []
+        pipes = []
+        for i in range(0, trainer_num):
+            tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
+                model, worker_endpoints[i], update_method, i, trainer_num)
+            tr_env.update(envs)
+            tr_env['CUDA_VISIBLE_DEVICES'] = "0,1"
+            tr_env['NCCL_SHM_DISABLE'] = '1'
+            tr_env['FLAGS_selected_gpus'] = str(i)
+            tr_env['FLAGS_cudnn_deterministic'] = '0'
+            print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
+
+            tr_pipe = open("/tmp/" + "tr{}_err.log".format(i), "wb")
+
+            print_to_err(
+                type(self).__name__,
+                "going to start process {} with nccl2".format(i))
+            tr_proc = subprocess.Popen(
+                tr_cmd.strip().split(" "),
+                stdout=subprocess.PIPE,
+                stderr=tr_pipe,
+                env=tr_env)
+
+            procs.append(tr_proc)
+            pipes.append(tr_pipe)
+
+        outs = []
+        for i in range(0, trainer_num):
+            tr_out, tr_err = procs[i].communicate()
+            outs.append(tr_out)
+            pipes[i].close()
+            sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
+
+        if check_error_log:
+            print("outs[0]:", outs[0])
+            print("outs[1]:", outs[1])
+        return pickle.loads(outs[0]), pickle.loads(outs[1])
+
     def _get_required_envs(self, check_error_log=False, need_envs={}):
         # TODO(typhoonzero): should auto adapt GPU count on the machine.
         required_envs = {
@@ -1032,6 +1144,9 @@ class TestDistBase(unittest.TestCase):
                     False,
                     check_error_log,
                     log_name=log_name)
+        elif self._pipeline_mode:
+            tr0_losses, tr1_losses = self._run_pipeline(
+                model_file, required_envs, check_error_log, log_name=log_name)
         else:
             tr0_losses, tr1_losses = self._run_cluster(
                 model_file, required_envs, check_error_log, log_name=log_name)
@@ -1040,7 +1155,10 @@ class TestDistBase(unittest.TestCase):
             local_loss = local_losses[step_id]
             tr0_loss = tr0_losses[step_id]
             tr1_loss = tr1_losses[step_id]
-            dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
+            if self._pipeline_mode:
+                dist_loss = np.array([tr1_loss])
+            else:
+                dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
 

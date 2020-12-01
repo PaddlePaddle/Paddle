@@ -13,8 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
+
+import numpy
 import six
+import warnings
 from six.moves import reduce
+
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
@@ -27,8 +31,7 @@ from .layer_function_generator import templatedoc
 from . import utils
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.utils import deprecated
-import numpy
-import warnings
+
 from .utils import check_shape
 
 __all__ = [
@@ -343,7 +346,7 @@ def concat(input, axis=0, name=None):
 
 
 def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
-    """
+    r"""
     This function concatenates or stacks all tensors in the input LoDTensorArray
     along the axis mentioned and returns that as the output.
 
@@ -452,7 +455,7 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
 
 
 def sums(input, out=None):
-    """
+    r"""
     This function computes the sum of multiple input Tensors elementwisely.
 
     - Case 1, sum of 3 Tensors
@@ -556,6 +559,8 @@ def assign(input, output=None):
     """
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
+    is_inplace = True if output is not None else False
+
     if isinstance(input, Variable):
         check_dtype(
             input.dtype, 'input',
@@ -599,6 +604,9 @@ def assign(input, output=None):
                 'shape': list(input.shape),
                 value_name: values
             })
+
+    if is_inplace and in_dygraph_mode():
+        output._bump_inplace_version()
 
     return output
 
@@ -1271,28 +1279,26 @@ def has_nan(x):
 
 def isfinite(x):
     """
-	:alias_main: paddle.isfinite
-	:alias: paddle.isfinite,paddle.tensor.isfinite,paddle.tensor.logic.isfinite
-	:old_api: paddle.fluid.layers.isfinite
 
     Test if any of x contains an infinity/NAN number. If all the elements are finite,
     returns true, else false.
 
     Args:
-       x(variable): The Tensor/LoDTensor to be checked.
+        x(Tensor): The Tensor to be checked.
 
     Returns:
-        Variable: The tensor variable storing the output, contains a bool value.
+        Tensor: The tensor storing the output, contains a bool value.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            var = fluid.layers.data(name="data",
-                                    shape=(4, 6),
-                                    dtype="float32")
-            out = fluid.layers.isfinite(var)
+            import paddle
+
+            x = paddle.rand(shape=[4, 6], dtype='float32')
+            y = paddle.fluid.layers.isfinite(x)
+            print(y)
+
     """
     check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
                              "isfinite")
@@ -1391,7 +1397,7 @@ def range(start, end, step, dtype, name=None):
 
 
 def linspace(start, stop, num, dtype=None, name=None):
-    """
+    r"""
     This OP return fixed number of evenly spaced values within a given interval.
 
     Args:
@@ -1479,6 +1485,8 @@ def linspace(start, stop, num, dtype=None, name=None):
                 'Num': tensor_num},
         attrs={'dtype': dtype},
         outputs={'Out': [out]})
+    if isinstance(num, int):
+        out.desc.set_shape((num, ))
     return out
 
 
@@ -1527,7 +1535,7 @@ def zeros_like(x, out=None):
 
 @deprecated(since="2.0.0", update_to="paddle.diag")
 def diag(diagonal):
-    """
+    r"""
 	:alias_main: paddle.diag
 	:alias: paddle.diag,paddle.tensor.diag,paddle.tensor.creation.diag
 	:old_api: paddle.fluid.layers.diag

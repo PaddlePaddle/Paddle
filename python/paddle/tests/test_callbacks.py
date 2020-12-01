@@ -18,12 +18,36 @@ import time
 import random
 import tempfile
 import shutil
-import paddle
+import numpy as np
 
+import paddle
 from paddle import Model
 from paddle.static import InputSpec
 from paddle.vision.models import LeNet
 from paddle.hapi.callbacks import config_callbacks
+import paddle.vision.transforms as T
+from paddle.vision.datasets import MNIST
+from paddle.metric import Accuracy
+from paddle.nn.layer.loss import CrossEntropyLoss
+
+
+class MnistDataset(MNIST):
+    def __init__(self, mode, return_label=True, sample_num=None):
+        super(MnistDataset, self).__init__(mode=mode)
+        self.return_label = return_label
+        if sample_num:
+            self.images = self.images[:sample_num]
+            self.labels = self.labels[:sample_num]
+
+    def __getitem__(self, idx):
+        img, label = self.images[idx], self.labels[idx]
+        img = np.reshape(img, [1, 28, 28])
+        if self.return_label:
+            return img, np.array(self.labels[idx]).astype('int64')
+        return img,
+
+    def __len__(self):
+        return len(self.images)
 
 
 class TestCallbacks(unittest.TestCase):
@@ -82,13 +106,13 @@ class TestCallbacks(unittest.TestCase):
 
             test_logs = {}
             params = {'steps': eval_steps}
-            cbks.on_begin('test', params)
+            cbks.on_begin('predict', params)
             for step in range(eval_steps):
-                cbks.on_batch_begin('test', step, test_logs)
+                cbks.on_batch_begin('predict', step, test_logs)
                 test_logs['batch_size'] = 2
                 time.sleep(0.005)
-                cbks.on_batch_end('test', step, test_logs)
-            cbks.on_end('test', test_logs)
+                cbks.on_batch_end('predict', step, test_logs)
+            cbks.on_end('predict', test_logs)
 
         cbks.on_end('train')
 
@@ -104,6 +128,10 @@ class TestCallbacks(unittest.TestCase):
         self.verbose = 2
         self.run_callback()
 
+    def test_callback_verbose_3(self):
+        self.verbose = 3
+        self.run_callback()
+
     def test_visualdl_callback(self):
         # visualdl not support python2
         if sys.version_info < (3, ):
@@ -112,8 +140,11 @@ class TestCallbacks(unittest.TestCase):
         inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
 
-        train_dataset = paddle.vision.datasets.MNIST(mode='train')
-        eval_dataset = paddle.vision.datasets.MNIST(mode='test')
+        transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
+        train_dataset = paddle.vision.datasets.MNIST(
+            mode='train', transform=transform)
+        eval_dataset = paddle.vision.datasets.MNIST(
+            mode='test', transform=transform)
 
         net = paddle.vision.LeNet()
         model = paddle.Model(net, inputs, labels)
@@ -129,6 +160,77 @@ class TestCallbacks(unittest.TestCase):
                   eval_dataset,
                   batch_size=64,
                   callbacks=callback)
+
+    def test_earlystopping(self):
+        paddle.seed(2020)
+        for dynamic in [True, False]:
+            paddle.enable_static if not dynamic else None
+            device = paddle.set_device('cpu')
+            sample_num = 100
+            train_dataset = MnistDataset(mode='train', sample_num=sample_num)
+            val_dataset = MnistDataset(mode='test', sample_num=sample_num)
+
+            net = LeNet()
+            optim = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=net.parameters())
+
+            inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
+            labels = [InputSpec([None, 1], 'int64', 'label')]
+
+            model = Model(net, inputs=inputs, labels=labels)
+            model.prepare(
+                optim,
+                loss=CrossEntropyLoss(reduction="sum"),
+                metrics=[Accuracy()])
+            callbacks_0 = paddle.callbacks.EarlyStopping(
+                'loss',
+                mode='min',
+                patience=1,
+                verbose=1,
+                min_delta=0,
+                baseline=None,
+                save_best_model=True)
+            callbacks_1 = paddle.callbacks.EarlyStopping(
+                'acc',
+                mode='auto',
+                patience=1,
+                verbose=1,
+                min_delta=0,
+                baseline=0,
+                save_best_model=True)
+            callbacks_2 = paddle.callbacks.EarlyStopping(
+                'loss',
+                mode='auto_',
+                patience=1,
+                verbose=1,
+                min_delta=0,
+                baseline=None,
+                save_best_model=True)
+            callbacks_3 = paddle.callbacks.EarlyStopping(
+                'acc_',
+                mode='max',
+                patience=1,
+                verbose=1,
+                min_delta=0,
+                baseline=0,
+                save_best_model=True)
+            model.fit(
+                train_dataset,
+                val_dataset,
+                batch_size=64,
+                save_freq=10,
+                save_dir=self.save_dir,
+                epochs=10,
+                verbose=0,
+                callbacks=[callbacks_0, callbacks_1, callbacks_2, callbacks_3])
+            # Test for no val_loader
+            model.fit(train_dataset,
+                      batch_size=64,
+                      save_freq=10,
+                      save_dir=self.save_dir,
+                      epochs=10,
+                      verbose=0,
+                      callbacks=[callbacks_0])
 
 
 if __name__ == '__main__':

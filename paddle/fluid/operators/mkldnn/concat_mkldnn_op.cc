@@ -160,7 +160,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::string key = platform::CreateKey(
         paddle::framework::vectorize<int>(multi_input[0]->dims()),
         multi_input.size(), ctx.OutputName("Out"), dt,
-        platform::ThreadIDasStr());
+        platform::ThreadIDasStr(), dev_ctx.GetKeySuffix());
 
     const std::string key_prim = key + "@concat_p";
     const std::string key_concat_pd = key + "@concat_pd";
@@ -221,5 +221,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(concat, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::ConcatMKLDNNOpKernel<float>,
+                   ops::ConcatMKLDNNOpKernel<paddle::platform::bfloat16>,
                    ops::ConcatMKLDNNOpKernel<int8_t>,
                    ops::ConcatMKLDNNOpKernel<uint8_t>);

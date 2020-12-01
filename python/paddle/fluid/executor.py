@@ -561,6 +561,7 @@ class Executor(object):
         self._default_executor = core.Executor(p)
         self._closed = False
         self.pruned_program_scope_caches = dict()
+        self._prepare_to_run_called = False
 
         self._auto_checkpoint_name = unique_name.generate(
             "__auto_checkpoint_executor__")
@@ -1115,6 +1116,24 @@ class Executor(object):
         use_default_main_program = program is None
         if program is None:
             program = default_main_program()
+
+        if fetch_list is not None:
+            if isinstance(fetch_list, Variable) or isinstance(
+                    fetch_list, str) or isinstance(fetch_list,
+                                                   six.string_types):
+                fetch_list = [fetch_list]
+            assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
+                "Currently , The fetch_list type only should be list or tuple, \n"\
+                "but the input type is {}. For more information please refer to \n"\
+                "the executor.run(...).".format(type(fetch_list))
+        else:
+            fetch_list = []
+
+        if isinstance(program, Program) and program._pipeline_opt:
+            if "startup_program" in program._pipeline_opt:
+                program = program._pipeline_opt["startup_program"]
+            else:
+                return self.train_from_dataset(program, fetch_list=fetch_list)
         if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:
             if use_default_main_program:
@@ -1130,18 +1149,6 @@ class Executor(object):
 
         if scope is None:
             scope = global_scope()
-
-        if fetch_list is not None:
-            if isinstance(fetch_list, Variable) or isinstance(
-                    fetch_list, str) or isinstance(fetch_list,
-                                                   six.string_types):
-                fetch_list = [fetch_list]
-            assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
-                "Currently , The fetch_list type only should be list or tuple, \n"\
-                "but the input type is {}. For more information please refer to \n"\
-                "the executor.run(...).".format(type(fetch_list))
-        else:
-            fetch_list = []
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
@@ -1261,6 +1268,11 @@ class Executor(object):
                 "Executor requires Program as its Parameter. But you passed in %s"
                 % (type(program)))
 
+        if not isinstance(fetch_var_name, str):
+            raise TypeError(
+                "The name of fetch variable requires string as its Parameter. But you passed in %s"
+                % (type(fetch_var_name)))
+
         if use_program_cache:
             cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
             cached_program = self._get_program_cache(cache_key)
@@ -1311,7 +1323,7 @@ class Executor(object):
 
         if not use_program_cache:
             self._default_executor.run(program.desc, scope, 0, True, True,
-                                       fetch_var_name)
+                                       [fetch_var_name])
         else:
             self._default_executor.run_prepared_ctx(ctx, scope, False, False,
                                                     False)
@@ -1362,6 +1374,8 @@ class Executor(object):
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
             if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
+                is_heter = 1
+            if program._fleet_opt.get("use_ps_gpu", ""):
                 is_heter = 1
         if scope is None:
             scope = global_scope()
@@ -1442,6 +1456,25 @@ class Executor(object):
                 raise RuntimeError("dataset is need and should be initialized")
 
         dataset._prepare_to_run()
+        real_fetch_list = []
+        if program._pipeline_opt:
+            real_program = program._pipeline_opt["section_program"]['program']
+            for fetch_var in fetch_list:
+                if isinstance(fetch_var, Variable):
+                    fetch_var_name = fetch_var.name
+                else:
+                    fetch_var_name = fetch_var
+                if fetch_var_name in real_program.global_block().vars:
+                    real_fetch_list.append(fetch_var)
+
+            program._pipeline_opt["section_program"][
+                'program'] = self._add_feed_fetch_ops(
+                    program=program._pipeline_opt["section_program"]['program'],
+                    feed=[],
+                    fetch_list=real_fetch_list,
+                    feed_var_name='feed',
+                    fetch_var_name='fetch')
+            fetch_list = None
 
         scope, trainer = self._prepare_trainer(
             program=program,
@@ -1476,6 +1509,10 @@ class Executor(object):
 
         dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
+        if real_fetch_list:
+            arr = scope.find_var('fetch').get_fetch_list()
+            tensors = arr._move_to_list()
+            return as_numpy(tensors)
 
         return None
 

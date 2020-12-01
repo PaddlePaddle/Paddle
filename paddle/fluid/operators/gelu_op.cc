@@ -49,7 +49,7 @@ class GeluOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     auto it = this->Attrs().find("use_mkldnn");
     if (library == framework::LibraryType::kPlain &&
-        it != this->Attrs().end() && platform::CanMKLDNNBeUsed(ctx)) {
+        it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
@@ -89,7 +89,7 @@ class GeluGradOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     auto it = this->Attrs().find("use_mkldnn");
     if (library == framework::LibraryType::kPlain &&
-        it != this->Attrs().end() && platform::CanMKLDNNBeUsed(ctx)) {
+        it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
@@ -111,6 +111,11 @@ class GeluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
     AddAttr<bool>("use_cudnn",
                   "(bool, default false) Only used in cudnn kernel, need "
                   "install cudnn")

@@ -582,11 +582,11 @@ class GRUCell(RNNCellBase):
 
     ..  math::
 
-        r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t} + b_{hr})
+        r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t-1} + b_{hr})
 
-        z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}x_{t} + b_{hz})
+        z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}x_{t-1} + b_{hz})
 
-        \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t} + b_{hc}))
+        \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t-1} + b_{hc}))
 
         h_{t} & = z_{t} * h_{t-1} + (1 - z_{t}) * \widetilde{h}_{t}
 
@@ -985,12 +985,10 @@ class RNNBase(LayerList):
                 "direction should be forward, backward or bidirectional, "
                 "received direction = {}".format(direction))
 
-        self.could_use_cudnn = get_device().startswith(
-            "gpu:") and get_cudnn_version()
+        self.could_use_cudnn = True
         self.could_use_cudnn &= direction != "backward"
         self.could_use_cudnn &= len(self.parameters()) == num_layers * 4 * (
             2 if direction == "bidirectional" else 1)
-        self.could_use_cudnn &= mode == "LSTM"  # currently only support LSTM
 
         # Expose params as RNN's attribute, which can make it compatible when
         # replacing small ops composed rnn with cpp rnn kernel.
@@ -1062,22 +1060,18 @@ class RNNBase(LayerList):
     def _cudnn_impl(self, inputs, initial_states, sequence_length):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
-        # unify LSTM/GRU/SimpleRNN later, currently only support LSTM
-        # TODO(guosheng): use `core.ops.cudnn_lstm` in dygraph mode if support
-        # specify output, since `dropout_state` should be a persistable tensor
-        # rather than a temporary on.
         out = self._helper.create_variable_for_type_inference(inputs.dtype)
-        last_h = self._helper.create_variable_for_type_inference(inputs.dtype)
-        last_c = self._helper.create_variable_for_type_inference(inputs.dtype)
+        state = [
+            self._helper.create_variable_for_type_inference(inputs.dtype)
+            for i in range(self.state_components)
+        ]
         reserve = self._helper.create_variable_for_type_inference(
             dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
 
         inputs = {
             'Input': inputs,
-            # 'W': self._flat_weight,  # would be unused_var
             'WeightList': self._all_weights,
-            'InitH': initial_states[0],
-            'InitC': initial_states[1],
+            'PreState': initial_states,
             'SequenceLength': sequence_length
         }
         attrs = {
@@ -1086,23 +1080,22 @@ class RNNBase(LayerList):
             'input_size': self.input_size,
             'hidden_size': self.hidden_size,
             'num_layers': self.num_layers,
+            'mode': self.mode,
             'is_test': not self.training
         }
 
         outputs = {
             'Out': out,
-            'LastH': last_h,
-            'LastC': last_c,
+            'State': state,
             'Reserve': reserve,
-            'StateOut': self._dropout_state,
+            'DropoutState': self._dropout_state,
         }
 
         self._helper.append_op(
-            type="cudnn_lstm", inputs=inputs, outputs=outputs, attrs=attrs)
+            type="rnn", inputs=inputs, outputs=outputs, attrs=attrs)
         out = paddle.tensor.transpose(out,
                                       [1, 0, 2]) if not self.time_major else out
-        states = (last_h, last_c)
-        return out, states
+        return out, tuple(state) if len(state) > 1 else state[0]
 
     def forward(self, inputs, initial_states=None, sequence_length=None):
         batch_index = 1 if self.time_major else 0
@@ -1419,11 +1412,11 @@ class GRU(RNNBase):
 
     .. math::
 
-        r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t} + b_{hr})
+        r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t-1} + b_{hr})
 
-        z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}x_{t} + b_{hz})
+        z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}x_{t-1} + b_{hz})
 
-        \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t} + b_{hc}))
+        \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t-1} + b_{hc}))
 
         h_{t} & = z_{t} * h_{t-1} + (1 - z_{t}) * \widetilde{h}_{t}
 

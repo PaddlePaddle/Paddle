@@ -63,5 +63,5 @@ REGISTER_PASS(depthwise_conv_mkldnn_pass,
               paddle::framework::ir::DepthwiseConvMKLDNNPass);
 REGISTER_PASS_CAPABILITY(depthwise_conv_mkldnn_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "depthwise_conv2d", 0));
+        paddle::framework::compatible::OpVersionComparatorCombination().LE(
+            "depthwise_conv2d", 1));

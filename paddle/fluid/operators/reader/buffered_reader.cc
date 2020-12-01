@@ -104,6 +104,12 @@ void BufferedReader::ReadAsync(size_t i) {
         std::vector<void *> cuda_pinned_ptrs;
         cuda_pinned_ptrs.reserve(cpu.size());
         platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+        // NODE(chenwehiang): When we use CUDAPinned Memory, we need call
+        // cudaHostAlloc, that is a CUDA API, calling CUDA API need load
+        // cuda lib into device, it will cost hundreds of MB of GPU memory.
+        // If we don't set Device here, which will use CUDAPlace(0) default.
+        platform::SetDeviceId(
+            BOOST_GET_CONST(platform::CUDAPlace, place_).device);
         for (size_t i = 0; i < cpu.size(); ++i) {
           if (platform::is_cpu_place(cpu[i].place())) {
             cuda[i].Resize(cpu[i].dims());

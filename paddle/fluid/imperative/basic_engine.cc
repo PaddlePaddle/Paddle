@@ -114,6 +114,16 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
 
       accumulator->IncreaseRefCnt();
 
+      if (var->HasLeafHooks()) {
+        VLOG(3) << "Grad variable wrapper (" << var->Name()
+                << ") has leaf grad hooks.";
+        PADDLE_ENFORCE_NE(var->HasGradNode(), true,
+                          platform::errors::PermissionDenied(
+                              "Only leaf Tensor's gradient can append hook to "
+                              "Gradientaccumulator."));
+        accumulator->SetPostHooks(var->GetLeafHooks());
+      }
+
       VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
               << var.get() << ")  with reference count "
               << accumulator->RefCnt();
@@ -204,6 +214,7 @@ void BasicEngine::Execute() {
                                          var->Name()));
 
           if (!var->OverridedStopGradient() && iter->second->RefCnt() == 1) {
+            no_need_run_accumulators_.emplace_back(iter->second.get());
             continue;
           }
 
@@ -214,18 +225,50 @@ void BasicEngine::Execute() {
         }
       }
 
+      VLOG(4) << "Check whether there is any inplace operation affecting "
+                 "gradient calculation.";
+      for (auto& pair : bwd_ins) {
+        for (auto& var_wrapper : pair.second) {
+          auto wrapper_version_snapshot = var_wrapper->InplaceVersionSnapshot();
+          auto tensor_version =
+              var_wrapper->MutableVar()->CurrentInplaceVersion();
+          PADDLE_ENFORCE_EQ(
+              tensor_version, wrapper_version_snapshot,
+              platform::errors::PermissionDenied(
+                  "Tensor '%s' used in gradient computation in grad op '%s' "
+                  "has been "
+                  "modified by an inplace operation. "
+                  "Its version is %s but the expected version is %s. "
+                  "Please fix your code to void calling an inplace operator "
+                  "after using the Tensor which will used in gradient "
+                  "computation.",
+                  var_wrapper->Name(), cur_op.Type(), tensor_version,
+                  wrapper_version_snapshot));
+
+          VLOG(6) << " The version of Tensor '" << var_wrapper->Name()
+                  << "' is [ " << wrapper_version_snapshot << " ]";
+        }
+      }
+
       {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
         OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
                     cur_op.place());
       }
 
-      // Step 2: Sum Gradient
+      // Step 2: Sum Gradient & Call Accumulator Hooks
+      for (auto* accumulator : no_need_run_accumulators_) {
+        if (accumulator->HasPostHooks()) {
+          accumulator->CallBackwardPostHooks();
+        }
+      }
+
       for (auto& pair : need_accu_var_list_) {
         pair.first->Add(std::move(pair.second), cur_op.id());
       }
 
       need_accu_var_list_.clear();
+      no_need_run_accumulators_.clear();
 
       VLOG(3) << "Remove op after op " << cur_op.Type() << " runs";
       if (!retain_graph_) {
@@ -258,6 +301,7 @@ void BasicEngine::Clear() {
   node_deps_.clear();
   accumulators_.clear();
   need_accu_var_list_.clear();
+  no_need_run_accumulators_.clear();
 }
 
 }  // namespace imperative
