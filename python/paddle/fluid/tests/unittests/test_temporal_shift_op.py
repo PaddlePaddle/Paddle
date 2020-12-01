@@ -84,6 +84,11 @@ class TestTemporalShiftAPI(unittest.TestCase):
         out = paddle.fluid.layers.temporal_shift(
             x=input, seg_num=2, shift_ratio=0.2)
 
+        out_from_function = paddle.nn.functional.temporal_shift(
+            x=input, seg_num=2, shift_ratio=0.2)
+
+        np.testing.assert_allclose(out_from_function, out)
+
 
 if __name__ == "__main__":
     unittest.main()
