@@ -294,7 +294,6 @@ class TestMomentumV2(unittest.TestCase):
 
     def test_momentum(self):
         paddle.enable_static()
-
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
