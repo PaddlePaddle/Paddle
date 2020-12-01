@@ -240,11 +240,6 @@ if(WITH_PROFILER)
     add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
-if(WITH_RDTSC_PROFILER)
-    add_subdirectory(tools) # Compile RdtscProfiler
-    add_definitions(-DPADDLE_WITH_RDTSC_PROFILER)
-endif()
-
 if(WITH_DISTRIBUTE)
     if(LINUX)
         set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
@@ -299,4 +294,9 @@ endif()
 add_subdirectory(paddle)
 if(WITH_PYTHON)
     add_subdirectory(python)
+endif()
+
+if(WITH_RDTSC_PROFILER)
+    add_subdirectory(tools) # Compile RdtscProfiler
+    add_definitions(-DPADDLE_WITH_RDTSC_PROFILER)
 endif()
