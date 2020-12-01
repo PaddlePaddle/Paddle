@@ -252,7 +252,7 @@ $$out = cos(x)$$
 UNUSED constexpr char TanDoc[] = R"DOC(
 Tangent Operator. Computes tangent of x element-wise.
 
-Input range is `(k*pi-pi/2 and k*pi+pi/2)` and output range is `(-inf, inf)`.
+Input range is `(k*pi-pi/2, k*pi+pi/2)` and output range is `(-inf, inf)`.
 
 $$out = tan(x)$$
 
