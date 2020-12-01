@@ -16,14 +16,14 @@ from __future__ import print_function
 import unittest
 
 import numpy as np
+from scipy.special import expit, erf
 
 from op_test import OpTest
-from scipy.special import expit, erf
-import paddle.fluid.core as core
 import paddle
-import paddle.fluid as fluid
 import paddle.nn as nn
 import paddle.nn.functional as F
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import compiler, Program, program_guard
 
 paddle.enable_static()
@@ -915,6 +915,7 @@ class TestTan(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+        print(self.check_grad(['X'], 'Out'))
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -933,6 +934,18 @@ class TestTan(TestActivation):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = np.tan(self.x_np)
         self.assertEqual(np.allclose(out_ref, res[0]), True)
+
+    def test_backward(self):
+        test_data_shape = [11, 17]
+        with fluid.dygraph.guard():
+            input_x = np.random.uniform(0.1, 1,
+                                        test_data_shape).astype("float32")
+            var = paddle.to_tensor(input_x)
+            var.stop_gradient = False
+            loss = paddle.tan(var)
+            loss.backward()
+            grad_var = var.gradient()
+            self.assertEqual(grad_var.shape, input_x.shape)
 
 
 class TestAcos(TestActivation):
