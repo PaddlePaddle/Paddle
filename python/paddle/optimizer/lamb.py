@@ -21,7 +21,7 @@ __all__ = ["Lamb"]
 
 
 class Lamb(Optimizer):
-    """
+    r"""
     LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
 
     LAMB Optimizer is designed to scale up the batch size of training without losing

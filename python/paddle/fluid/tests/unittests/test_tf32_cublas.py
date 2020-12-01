@@ -41,9 +41,7 @@ class TestTF32OnMatmul(unittest.TestCase):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
             tmp_ctx = core.CUDADeviceContext(place)
-            print(tmp_ctx.get_cublas_switch())
             tmp_ctx.set_cublas_switch(0)  # turn off
-            print(tmp_ctx.get_cublas_switch())
             with fluid.dygraph.guard(place):
                 input_array1 = np.random.rand(4, 12, 64, 88).astype("float32")
                 input_array2 = np.random.rand(4, 12, 88, 512).astype("float32")

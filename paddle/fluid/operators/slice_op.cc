@@ -424,10 +424,18 @@ REGISTER_OP_CPU_KERNEL(
     slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::SliceKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SliceKernel<paddle::platform::CPUDeviceContext,
+                     paddle::platform::complex64>,
+    ops::SliceKernel<paddle::platform::CPUDeviceContext,
+                     paddle::platform::complex128>);
 
 REGISTER_OP_CPU_KERNEL(
     slice_grad, ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex64>,
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex128>);

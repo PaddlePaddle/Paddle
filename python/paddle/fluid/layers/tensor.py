@@ -13,8 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
+
+import numpy
 import six
+import warnings
 from six.moves import reduce
+
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
@@ -27,8 +31,7 @@ from .layer_function_generator import templatedoc
 from . import utils
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.utils import deprecated
-import numpy
-import warnings
+
 from .utils import check_shape
 
 __all__ = [
@@ -221,6 +224,11 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
+    if in_dygraph_mode():
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        out = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+
     check_variable_and_dtype(
         x, 'x',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
@@ -231,7 +239,8 @@ def cast(x, dtype):
     ], 'cast')
 
     helper = LayerHelper('cast', **locals())
-    out = helper.create_variable_for_type_inference(dtype=dtype)
+    out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=x.stop_gradient)
     helper.append_op(
         type='cast',
         inputs={'X': [x]},
@@ -556,6 +565,8 @@ def assign(input, output=None):
     """
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
+    is_inplace = True if output is not None else False
+
     if isinstance(input, Variable):
         check_dtype(
             input.dtype, 'input',
@@ -599,6 +610,9 @@ def assign(input, output=None):
                 'shape': list(input.shape),
                 value_name: values
             })
+
+    if is_inplace and in_dygraph_mode():
+        output._bump_inplace_version()
 
     return output
 
