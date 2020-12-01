@@ -30,7 +30,7 @@ class LayerNormMKLDNNHandler
                          const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::layer_normalization_forward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, uniq_name)) {
+            platform::CreateKey(dev_ctx, dims, uniq_name)) {
     if (!this->isCached()) {
       auto md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
       if (!is_test) {

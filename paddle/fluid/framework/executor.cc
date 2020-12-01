@@ -183,6 +183,9 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool force_disable_gc, bool keep_kid_scopes) {
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars,
                      keep_kid_scopes);
@@ -308,6 +311,9 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    const std::string& fetch_holder_name) {
   platform::RecordBlock b(kProgramId);
   if (FLAGS_use_mkldnn) EnableMKLDNN(program);
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   bool has_feed_ops =
       has_feed_operators(program.Block(0), *feed_targets, feed_holder_name);
   bool has_fetch_ops =
@@ -557,7 +563,6 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       }
     }
   }
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
 #else
   LOG(WARNING)
       << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";

@@ -296,9 +296,11 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const MKLDNNDeviceContext &dev_ctx, const ExecutionContext &ctx,
     const Tensor *input_x, const Tensor *input_y,
     const mkldnn::engine &mkldnn_engine) {
-  const std::string key = platform::CreateKey(
-      input_x->type(), framework::vectorize(input_x->dims()), input_y->type(),
-      framework::vectorize(input_y->dims()), ctx.OutputName("Out"));
+  std::string key = platform::CreateKey(
+      dev_ctx, input_x->type(), framework::vectorize(input_x->dims()),
+      input_y->type(), framework::vectorize(input_y->dims()),
+      ctx.OutputName("Out"));
+  key = platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, key);
 
   auto prim_creator = std::static_pointer_cast<MulPrimitiveFactory<XT, YT, OT>>(
       dev_ctx.GetBlob(key));

@@ -53,8 +53,8 @@ class SoftmaxMKLDNNHandler
                                  mkldnn::softmax_backward>(
             dev_ctx, mkldnn_engine, cpu_place,
             // Softmax may be inplace then uniq_name is no longer unique
-            platform::CreateKey(framework::vectorize(input->dims()), axis,
-                                uniq_name)) {
+            platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
+                                axis, uniq_name)) {
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(
           input->dims(), output->dims(),
@@ -78,7 +78,7 @@ class SoftmaxMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::softmax_forward,
                                  mkldnn::softmax_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, axis, uniq_name)) {
+            platform::CreateKey(dev_ctx, dims, axis, uniq_name)) {
     auto data_softmax_md =
         mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
     auto diff_softmax_md =

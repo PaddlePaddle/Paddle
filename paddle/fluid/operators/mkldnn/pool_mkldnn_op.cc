@@ -140,7 +140,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // Get an unique name from "argument" name of "Out" variable
     // This name will be used as key when referring info from device context
     const std::string key = platform::CreateKey(
-        diff_src_tz, pooling_type, ksize, strides, paddings,
+        dev_ctx, diff_src_tz, pooling_type, ksize, strides, paddings,
         memory::data_type::f32, in_x->format(), ctx.InputName("Out"));
 
     platform::PoolingMKLDNNHandler<T> handler(

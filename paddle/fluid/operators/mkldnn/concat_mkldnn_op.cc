@@ -158,9 +158,10 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // If one of the multiple inputs of concat has an input size of 0, the
     // actual size of the multi_input will change
     std::string key = platform::CreateKey(
-        paddle::framework::vectorize<int>(multi_input[0]->dims()),
+        dev_ctx, paddle::framework::vectorize<int>(multi_input[0]->dims()),
         multi_input.size(), ctx.OutputName("Out"), dt,
-        platform::ThreadIDasStr(), dev_ctx.GetKeySuffix());
+        platform::ThreadIDasStr());
+    key = platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, key);
 
     const std::string key_prim = key + "@concat_p";
     const std::string key_concat_pd = key + "@concat_pd";
