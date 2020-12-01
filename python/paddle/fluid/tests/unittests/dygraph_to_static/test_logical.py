@@ -149,6 +149,26 @@ def test_logical_not_and_or(x):
     return x
 
 
+@paddle.jit.to_static
+def test_shape_equal(x):
+    x = paddle.to_tensor(x)
+    y = paddle.zeros([1, 2, 3])
+    if x.shape == y.shape:
+        return y
+    else:
+        return paddle.ones([1, 2, 3])
+
+
+@paddle.jit.to_static
+def test_shape_not_equal(x):
+    x = paddle.to_tensor(x)
+    y = paddle.zeros([1, 2, 3])
+    if x.shape != y.shape:
+        return y
+    else:
+        return paddle.ones([1, 2, 3])
+
+
 class TestLogicalBase(unittest.TestCase):
     def setUp(self):
         self.input = np.array([3]).astype('int32')
@@ -222,6 +242,18 @@ class TestLogicalOr2(TestLogicalNot):
 class TestLogicalNotAndOr(TestLogicalNot):
     def _set_test_func(self):
         self.dygraph_func = test_logical_not_and_or
+
+
+class TestShapeEqual(TestLogicalNot):
+    def _set_test_func(self):
+        self.input = np.ones([1, 2, 3]).astype('float32')
+        self.dygraph_func = test_shape_equal
+
+
+class TestShapeNotEqual(TestLogicalNot):
+    def _set_test_func(self):
+        self.input = np.ones([1, 2, 3]).astype('float32')
+        self.dygraph_func = test_shape_not_equal
 
 
 if __name__ == '__main__':
