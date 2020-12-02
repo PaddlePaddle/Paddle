@@ -152,6 +152,7 @@ class CommonAccessor:
             self.accessor_class = oop.type
 
         for (formal_name, shape) in param_varnames:
+            params.append(formal_name)
             param = main_program.global_block().vars[oop.input(formal_name)[0]]
             if formal_name == "LearningRate" and param.name != "learning_rate_0":
                 warnings.warn("will support decay soon")
