@@ -31,7 +31,7 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
-#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_PSLIB
 void BindPSGPUWrapper(py::module* m) {
   py::class_<framework::PSGPUWrapper, std::shared_ptr<framework::PSGPUWrapper>>(
       *m, "PSGPU")

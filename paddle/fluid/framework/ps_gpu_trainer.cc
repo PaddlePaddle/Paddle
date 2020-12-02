@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/gpu_task.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
-#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_PSLIB
 
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
@@ -60,62 +60,66 @@ void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
 void PSGPUTrainer::Run() {
   
 }
-void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
+void PSGPUTrainer::BuildGPUPSTask(DatasetImpl<Record>* dataset, int table_id, int feadim) {
   VLOG(3) << "PSGPUTrainer::BuildGPUPSTask begin";
-  GpuTask* gpu_task;
-  int shard_num = dataset->multi_output_channel_.size();
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  std::shared_ptr<GpuTask>  gpu_task = std::make_shared<GpuTask>();
+  auto& multi_output_channel = dataset->GetMultiOutputChannel();
+  auto& input_channel = dataset->GetInputChannelRef();
+  int gen_shard_num = multi_output_channel.size();
+  int device_num = platform::GetCUDADeviceCount();
   auto gpu_ps_wrapper = PSGPUWrapper::GetInstance();
   auto& local_keys = gpu_task->feature_keys_;
-  local_keys.resize(shard_num);
+  local_keys.resize(device_num);
   auto& local_values = gpu_task->feature_values_;
-  local_values.resize(shard_num);
+  local_values.resize(device_num);
   for (auto& ks : local_keys) {
     ks.reserve(100000);
   }
   // read thread
-  std::vector<std::thread> threads(shard_num);
-  dataset->consume_task_pool_.resize(shard_num);
-  for (size_t i = 0; i < consume_task_pool_.size(); i++) {
-    consume_task_pool_[i].reset(new ::ThreadPool(1));
+  std::vector<std::thread> threads(gen_shard_num);
+  std::vector<std::shared_ptr<ThreadPool>> consume_task_pool(device_num);
+  for (size_t i = 0; i < consume_task_pool.size(); i++) {
+    consume_task_pool[i].reset(new ::ThreadPool(1));
   }
   auto consume_func = [&local_keys](int shard_id, int feadim,
                                           std::vector<uint64_t>& keys) {
     local_keys[shard_id].insert(local_keys[shard_id].end(), keys.begin(), keys.end());
   };
 
-  if (dataset->input_channel_->Size() == 0) {
+  if (input_channel->Size() == 0) {
     // output_channel_ should hold one pass instances now
     uint64_t output_channels_data_size = 0;
-    for (size_t i = 0; i < dataset->multi_output_channel_.size(); i++) {
-      int cur_channel_size = multi_output_channel_[i]->Size();
+    for (size_t i = 0; i < multi_output_channel.size(); i++) {
+      int cur_channel_size = multi_output_channel[i]->Size();
       output_channels_data_size += cur_channel_size;
       
     }
     CHECK(output_channels_data_size > 0);
     for (auto& ks : local_keys) {
-      ks.reserve(output_channels_data_size * 10) // magic number
+      ks.reserve(output_channels_data_size * 10); // magic number
     }
-    auto gen_func = [&dataset, &shard_num, &feadim,
+    auto gen_func = [&dataset, &device_num, &feadim, &consume_task_pool, &multi_output_channel,
                    &consume_func](int i) {
       std::vector<Record> vec_data;
-      std::vector<std::vector<uint64_t>> task_keys(shard_num);
+      std::vector<std::vector<uint64_t>> task_keys(device_num);
       std::vector<std::future<void>> task_futures;
-      dataset->multi_output_channel_[i]->Close();
-      dataset->multi_output_channel_[i]->ReadAll(vec_data);
+      multi_output_channel[i]->Close();
+      multi_output_channel[i]->ReadAll(vec_data);
       for (size_t j = 0; j < vec_data.size(); j++) {
         for (auto& feature : vec_data[j].uint64_feasigns_) {
-          int shard = feature.sign().uint64_feasign_ % shard_num;
+          int shard = feature.sign().uint64_feasign_ % device_num;
           task_keys[shard].push_back(feature.sign().uint64_feasign_);
         }
       }
 
-      for (int shard_id = 0; shard_id < shard_num; shard_id++) {
-        task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
+      for (int shard_id = 0; shard_id < device_num; shard_id++) {
+        task_futures.emplace_back(consume_task_pool[shard_id]->enqueue(
             consume_func, shard_id, feadim, task_keys[shard_id]));
       }
 
-      dataset->multi_output_channel_[i]->Open();
-      dataset->multi_output_channel_[i]->Write(std::move(vec_data));
+      multi_output_channel[i]->Open();
+      multi_output_channel[i]->Write(std::move(vec_data));
       vec_data.clear();
       vec_data.shrink_to_fit();
       
@@ -129,33 +133,39 @@ void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
       task_keys.clear();
       std::vector<std::vector<uint64_t>>().swap(task_keys);
     };
+    for (size_t i = 0; i < threads.size(); i++) {
+      threads[i] = std::thread(gen_func, i);
+    }
+    for (std::thread& t : threads) {
+      t.join();
+    }
   } else {
-    int input_channel_size = dataset->input_channel_->Size();
+    int input_channel_size = input_channel->Size();
     CHECK(input_channel_size > 0);
-    CHECK(shard_num > 0);
+    CHECK(gen_shard_num > 0);
     for (auto& ks : local_keys) {
-      ks.reserve(input_channel_size * 10) // magic number
+      ks.reserve(input_channel_size * 10); // magic number
     }
     std::vector<Record> vec_data;
-    dataset->input_channel_->Close();
-    dataset->input_channel_->ReadAll(vec_data);
-    auto gen_func = [&dataset, &vec_data, &shard_num, &input_channel_size, &feadim,
+    input_channel->Close();
+    input_channel->ReadAll(vec_data);
+    auto gen_func = [&dataset, &vec_data, &device_num, &gen_shard_num, &input_channel_size, &feadim, &consume_task_pool, multi_output_channel,
                    &consume_func](int i) {
-      std::vector<std::vector<uint64_t>> task_keys(shard_num);
+      std::vector<std::vector<uint64_t>> task_keys(device_num);
       std::vector<std::future<void>> task_futures;
-      size_t per_shard_num = input_channel_size / shard_num + 1;
+      size_t per_shard_num = input_channel_size / gen_shard_num + 1;
       size_t total_size = vec_data.size();
       size_t start_index = i * per_shard_num;
       size_t end_index = std::min(start_index+per_shard_num-1, total_size-1);
       for (size_t j = start_index; j <= end_index ; j++) {
         for (auto& feature : vec_data[j].uint64_feasigns_) {
-          int shard = feature.sign().uint64_feasign_ % shard_num;
+          int shard = feature.sign().uint64_feasign_ % device_num;
           task_keys[shard].push_back(feature.sign().uint64_feasign_);
         }
       }
 
-      for (int shard_id = 0; shard_id < shard_num; shard_id++) {
-        task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
+      for (int shard_id = 0; shard_id < device_num; shard_id++) {
+        task_futures.emplace_back(consume_task_pool[shard_id]->enqueue(
             consume_func, shard_id, feadim, task_keys[shard_id]));
       }
 
@@ -175,13 +185,14 @@ void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
     for (std::thread& t : threads) {
       t.join();
     }
-    dataset->input_channel_->Open();
-    dataset->input_channel_->Write(std::move(vec_data));
+    input_channel->Open();
+    input_channel->Write(std::move(vec_data));
   }
 
   auto unique_func = [&local_keys](int i) {
-    std::sort(local_keys[i].begin(), local_keys[i].ene());
-    local_keys[i].erase(std::unique(local_keys[i].begin(), local_keys[i].end(), local_keys[i].ene()));
+    auto& cur_keys = local_keys[i];
+    std::sort(cur_keys.begin(), cur_keys.end());
+    cur_keys.erase(std::unique(cur_keys.begin(), cur_keys.end()), cur_keys.end());
   };
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(unique_func, i);
@@ -189,13 +200,36 @@ void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
   for (std::thread& t : threads) {
     t.join();
   }
-  for (size_t i = 0; i < dataset->consume_task_pool_.size(); i++) {
-    dataset->consume_task_pool_[i].reset();
+  for (size_t i = 0; i < consume_task_pool.size(); i++) {
+    consume_task_pool[i].reset();
   }
-  dataset->consume_task_pool_.clear();
+  consume_task_pool.clear();
 
-  for (int i = 0; i < shard_num; i++) {
+  for (int i = 0; i < device_num; i++) {
     local_values[i].resize(local_keys[i].size());
+  }
+  
+  auto ptl_func = [this, &local_keys, &local_values, &table_id, &fleet_ptr](int i) {
+    //size_t key_size = local_keys[i].size();
+    //auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
+    //    local_keys[i].data(), table_id, (char**)(local_values[i].data()), key_size);
+    //tt.wait();
+    //auto status = tt.get();
+    auto status = 0;
+    if (status != 0) {
+      LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+      sleep(300);
+      exit(-1);
+    } else {
+      VLOG(3) << "FleetWrapper Pull sparse to local done with table size: "
+              << local_keys[i].size();
+    }
+  };
+  for (size_t i = 0; i < threads.size(); i++) {
+    threads[i] = std::thread(ptl_func, i);
+  }
+  for (std::thread& t : threads) {
+    t.join();
   }
   
   gpu_ps_wrapper->BuildGPUPS(table_id, feadim, gpu_task);

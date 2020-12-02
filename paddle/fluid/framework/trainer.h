@@ -276,7 +276,7 @@ class HeterBoxTrainer : public TrainerBase {
 };
 #endif
 
-#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_PSLIB
 class PSGPUTrainer : public TrainerBase {
  public:
   PSGPUTrainer() {}
@@ -295,7 +295,7 @@ class PSGPUTrainer : public TrainerBase {
   }
   virtual std::string GetDumpPath(int tid) { return ""; }
   virtual void InitDumpEnv() {}
-  void BuildGPUPSTask(Dataset* dataset);
+  void BuildGPUPSTask(DatasetImpl<Record>* dataset, int table_id, int feadim);
   /*
   template <typename T>
   void HeterMemCpy(LoDTensor* tensor, LoDTensor* root_tensor,

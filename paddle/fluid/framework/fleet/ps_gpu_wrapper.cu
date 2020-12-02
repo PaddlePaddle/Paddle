@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_PSLIB
 #include <algorithm>
 #include <ctime>
 #include <memory>
