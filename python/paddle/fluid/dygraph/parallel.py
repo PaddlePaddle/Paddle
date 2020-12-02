@@ -441,7 +441,7 @@ class DataParallel(layers.Layer):
             trainable_parameters,
             list(reversed(self.group_indices)), is_sparse_gradient,
             parallel_helper.__parallel_ctx__clz__,
-            [self.small_group_size, self.group_size_limits])
+            [self.last_comm_buffer_size, self.comm_buffer_size])
 
     def forward(self, *inputs, **kwargs):
         if self._strategy.nranks > 1:
