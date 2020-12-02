@@ -20,6 +20,7 @@ from scipy.special import logit
 from scipy.special import expit
 from op_test import OpTest
 
+import paddle
 from paddle.fluid import core
 
 
@@ -279,6 +280,67 @@ class TestYolov3LossWithScaleXY(TestYolov3LossOp):
         self.gtscore = True
         self.use_label_smooth = True
         self.scale_x_y = 1.2
+
+
+class TestYolov3LossDygraph(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = np.random.random([2, 14, 8, 8]).astype('float32')
+        gt_box = np.random.random([2, 10, 4]).astype('float32')
+        gt_label = np.random.random([2, 10]).astype('int32')
+
+        x = paddle.to_tensor(x)
+        gt_box = paddle.to_tensor(gt_box)
+        gt_label = paddle.to_tensor(gt_label)
+
+        loss = paddle.vision.ops.yolo_loss(
+            x,
+            gt_box=gt_box,
+            gt_label=gt_label,
+            anchors=[10, 13, 16, 30],
+            anchor_mask=[0, 1],
+            class_num=2,
+            ignore_thresh=0.7,
+            downsample_ratio=8,
+            use_label_smooth=True,
+            scale_x_y=1.)
+        assert loss is not None
+        paddle.enable_static()
+
+
+class TestYolov3LossStatic(unittest.TestCase):
+    def test_static(self):
+        x = paddle.static.data('x', [2, 14, 8, 8], 'float32')
+        gt_box = paddle.static.data('gt_box', [2, 10, 4], 'float32')
+        gt_label = paddle.static.data('gt_label', [2, 10], 'int32')
+        gt_score = paddle.static.data('gt_score', [2, 10], 'float32')
+
+        loss = paddle.vision.ops.yolo_loss(
+            x,
+            gt_box=gt_box,
+            gt_label=gt_label,
+            anchors=[10, 13, 16, 30],
+            anchor_mask=[0, 1],
+            class_num=2,
+            ignore_thresh=0.7,
+            downsample_ratio=8,
+            gt_score=gt_score,
+            use_label_smooth=True,
+            scale_x_y=1.)
+        assert loss is not None
+
+        loss = paddle.vision.ops.yolo_loss(
+            x,
+            gt_box=gt_box,
+            gt_label=gt_label,
+            anchors=[10, 13, 16, 30],
+            anchor_mask=[0, 1],
+            class_num=2,
+            ignore_thresh=0.7,
+            downsample_ratio=8,
+            use_label_smooth=True,
+            scale_x_y=1.)
+        assert loss is not None
 
 
 if __name__ == "__main__":

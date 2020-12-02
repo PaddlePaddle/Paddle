@@ -129,7 +129,7 @@ def Singleton(cls):
 @Singleton
 class CompileTimeStrategy(object):
     def __init__(self, main_program, startup_program, strategy, role_maker):
-        self.min_block_size = 8192
+        self.min_block_size = 81920
 
         self.origin_main_program = main_program
         self.origin_startup_program = startup_program
@@ -677,16 +677,16 @@ class CompileTimeStrategy(object):
 
                 split_count = 1
 
-                # if min_block_size == -1:
-                #     split_count = 1
-                # else:
-                #     split_count = slice_count
-                #     max_pserver_count = int(
-                #         math.floor(var_numel / float(min_block_size)))
-                #     if max_pserver_count == 0:
-                #         max_pserver_count = 1
-                #     if max_pserver_count < slice_count:
-                #         split_count = max_pserver_count
+                if min_block_size == -1:
+                    split_count = 1
+                else:
+                    split_count = slice_count
+                    max_pserver_count = int(
+                        math.floor(var_numel / float(min_block_size)))
+                    if max_pserver_count == 0:
+                        max_pserver_count = 1
+                    if max_pserver_count < slice_count:
+                        split_count = max_pserver_count
                 block_size = int(math.ceil(var_numel / float(split_count)))
 
                 if len(var.shape) >= 2:
@@ -758,8 +758,8 @@ class CompileTimeStrategy(object):
         # 3. grad_param_mapping : grad.blockx->param.blockx
         # 4. param_grad_ep_mapping : ep->{"params" : [], "grads" : [] }
 
-        dps, dgs = self._get_param_grad_blocks(self.merged_dense_pairs, -1,
-                                               False)
+        dps, dgs = self._get_param_grad_blocks(self.merged_dense_pairs,
+                                               self.min_block_size, False)
         sps, sgs = self._get_param_grad_blocks(self.merged_sparse_pairs,
                                                self.min_block_size, True)
 

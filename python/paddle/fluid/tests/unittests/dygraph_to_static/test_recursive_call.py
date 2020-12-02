@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 
+import logging
 import numpy as np
 
 import paddle.fluid as fluid
@@ -47,6 +48,16 @@ def nested_func(x_v):
 
     res = fn1()
     return res
+
+
+@declarative
+def dyfunc_with_third_library_logging(x_v):
+    logging.info('test dyfunc_with_third_library_logging')
+    if fluid.layers.mean(x_v).numpy()[0] > 5:
+        x_v = x_v - 1
+    else:
+        x_v = x_v + 1
+    return x_v
 
 
 class TestRecursiveCall1(unittest.TestCase):
@@ -161,6 +172,17 @@ class TestRecursiveCall2(unittest.TestCase):
             np.allclose(dygraph_res, static_res),
             msg='dygraph is {}\n static_res is \n{}'.format(dygraph_res,
                                                             static_res))
+
+
+class TestThirdPartyLibrary(TestRecursiveCall2):
+    def _run(self):
+        with fluid.dygraph.guard():
+            self.dygraph_func = dyfunc_with_third_library_logging
+            fluid.default_startup_program.random_seed = SEED
+            fluid.default_main_program.random_seed = SEED
+            data = fluid.dygraph.to_variable(self.input)
+            res = self.dygraph_func(data)
+            return res.numpy()
 
 
 if __name__ == '__main__':

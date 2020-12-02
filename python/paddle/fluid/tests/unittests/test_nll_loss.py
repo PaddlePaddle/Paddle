@@ -800,13 +800,16 @@ class TestNLLLossOp2DWithReduce(OpTest):
         self.init_test_case()
         self.op_type = "nll_loss"
         self.with_weight = False
+        np.random.seed(200)
         input_np = np.random.uniform(0.1, 0.8,
                                      self.input_shape).astype("float64")
+        np.random.seed(200)
         label_np = np.random.randint(0, self.input_shape[1],
                                      self.label_shape).astype("int64")
         output_np, total_weight_np = nll_loss_2d(input_np, label_np)
         self.inputs = {'X': input_np, 'Label': label_np}
         if self.with_weight:
+            np.random.seed(200)
             weight_np = np.random.uniform(0.1, 0.8,
                                           self.input_shape[1]).astype("float64")
             output_np, total_weight_np = nll_loss_2d(
@@ -832,8 +835,8 @@ class TestNLLLossOp2DWithReduce(OpTest):
             self.check_grad_with_place(place, ['X'], 'Out')
 
     def init_test_case(self):
-        self.input_shape = [5, 3, 5, 5]
-        self.label_shape = [5, 5, 5]
+        self.input_shape = [2, 3, 5, 5]
+        self.label_shape = [2, 5, 5]
 
 
 class TestNLLLossOp2DNoReduce(OpTest):

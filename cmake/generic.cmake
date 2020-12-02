@@ -266,6 +266,32 @@ function(merge_static_libs TARGET_NAME)
   endif(WIN32)
 endfunction(merge_static_libs)
 
+function(check_coverage_opt TARGET_NAME SRCS)
+  if(WITH_COVERAGE)
+    if ("$ENV{PADDLE_GIT_DIFF_H_FILE}" STREQUAL "")
+      if (NOT ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" STREQUAL ""))
+        string(REPLACE "," ";" CC_FILE_LIST $ENV{PADDLE_GIT_DIFF_CC_FILE})
+        set(use_coverage_opt FALSE)
+        FOREACH(cc_file ${CC_FILE_LIST})
+          if("${SRCS};" MATCHES "${cc_file}")
+            set(use_coverage_opt TRUE)
+            break()
+          endif()
+        ENDFOREACH(cc_file)
+
+        if (use_coverage_opt)
+          message(STATUS "cc changed, add coverage opt for ${TARGET_NAME}")
+          target_compile_options(${TARGET_NAME} PRIVATE -g -O0 -fprofile-arcs -ftest-coverage)
+          target_link_libraries(${TARGET_NAME} -fprofile-arcs)
+          get_target_property(WH_TARGET_COMPILE_OPTIONS ${TARGET_NAME} COMPILE_OPTIONS)
+          message(STATUS "property for ${TARGET_NAME} is ${WH_TARGET_COMPILE_OPTIONS}")
+        endif()
+      endif()
+    endif()
+  endif()
+endfunction(check_coverage_opt)
+
+
 function(cc_library TARGET_NAME)
   set(options STATIC static SHARED shared INTERFACE interface)
   set(oneValueArgs "")
@@ -325,6 +351,9 @@ function(cc_library TARGET_NAME)
         list(APPEND cc_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
       endif()
     endforeach()
+
+    check_coverage_opt(${TARGET_NAME} ${cc_library_SRCS})
+
   else(cc_library_SRCS)
     if(cc_library_DEPS)
       list(REMOVE_DUPLICATES cc_library_DEPS)
@@ -352,6 +381,9 @@ function(cc_binary TARGET_NAME)
   endif()
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${TARGET_NAME} ${os_dependency_modules})
+
+  check_coverage_opt(${TARGET_NAME} ${cc_binary_SRCS})
+
 endfunction(cc_binary)
 
 function(cc_test_build TARGET_NAME)
@@ -371,6 +403,9 @@ function(cc_test_build TARGET_NAME)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     common_link(${TARGET_NAME})
   endif()
+
+  check_coverage_opt(${TARGET_NAME} ${cc_test_SRCS})
+
 endfunction()
 
 function(cc_test_run TARGET_NAME)
@@ -533,6 +568,9 @@ function(hip_library TARGET_NAME)
           list(APPEND hip_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
         endif()
       endforeach()
+
+      check_coverage_opt(${TARGET_NAME} ${hip_library_SRCS})
+
     else(hip_library_SRCS)
       if (hip_library_DEPS)
         merge_static_libs(${TARGET_NAME} ${hip_library_DEPS})
@@ -603,6 +641,9 @@ function(hip_binary TARGET_NAME)
       common_link(${TARGET_NAME})
     endif()
   endif()
+
+  check_coverage_opt(${TARGET_NAME} ${hip_binary_SRCS})
+
 endfunction(hip_binary)
 
 function(hip_test TARGET_NAME)
@@ -625,6 +666,9 @@ function(hip_test TARGET_NAME)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
   endif()
+
+  check_coverage_opt(${TARGET_NAME} ${hip_test_SRCS})
+
 endfunction(hip_test)
 
 function(go_library TARGET_NAME)
@@ -704,6 +748,9 @@ function(go_binary TARGET_NAME)
     WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
   add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${TARGET_NAME}_timestamp ${go_binary_DEPS})
   install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME} DESTINATION bin)
+
+  check_coverage_opt(${TARGET_NAME} ${go_binary_SRCS})
+
 endfunction(go_binary)
 
 function(go_test TARGET_NAME)
@@ -793,12 +840,12 @@ function(py_test TARGET_NAME)
 
     if(WITH_COVERAGE)
       add_test(NAME ${TARGET_NAME}
-               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
-               FLAGS_cpu_deterministic=true
-               PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
-               COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-               ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
-               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+        COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+        FLAGS_cpu_deterministic=true
+        PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+        COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+        ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
       add_test(NAME ${TARGET_NAME}
                COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
