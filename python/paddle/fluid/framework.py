@@ -1133,6 +1133,17 @@ class Variable(object):
         """
         pass
 
+    def tolist(self):
+        """
+        Returns a nested list represenation of this tensor.
+        """
+        dim = self.dim()
+        if dim == 1:
+            return [v for v in self]
+        elif dim > 0:
+            return [subt.tolist() for subt in self]
+        return []
+
     @fake_interface_only
     def set_value(self, value):
         """
