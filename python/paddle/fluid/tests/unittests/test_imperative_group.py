@@ -167,6 +167,18 @@ class TestDataParallelGroup(unittest.TestCase):
                                         [400], [3, 0, 1, 2])
         self.assertEqual([[3, 0], [1], [2]], res)
 
+    def test_construct_group9(self):
+        # one dtype & one limit capability & have tensor_indices
+        var_list = []
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
+        var_list.append(
+            self.create_varbase(core.VarDesc.VarType.FP32, [2, 1000]))
+        res = core.assign_group_by_size(var_list, [False, False, False, True],
+                                        [300], [1, 0, 2, 3])
+        self.assertEqual([[1, 0], [3], [2]], res)
+
 
 if __name__ == '__main__':
     unittest.main()
