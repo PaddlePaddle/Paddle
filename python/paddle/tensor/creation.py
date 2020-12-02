@@ -610,16 +610,13 @@ def _tril_triu_op(helper):
 
 def tril(x, diagonal=0, name=None):
     r"""
-	:alias_main: paddle.tril
-	:alias: paddle.tril,paddle.tensor.tril,paddle.tensor.creation.tril
-
     This op returns the lower triangular part of a matrix (2-D tensor) or batch
     of matrices :attr:`x`, the other elements of the result tensor are set 
     to 0. The lower triangular part of the matrix is defined as the elements 
     on and below the diagonal.
 
     Args:
-        x (Variable): The input variable x which is a Tensor.
+        x (Tensor): The input x which is a Tensor.
             Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and below the main diagonal are
@@ -632,7 +629,7 @@ def tril(x, diagonal=0, name=None):
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Tensor, results of lower triangular operation by the specified diagonal of input tensor x,
+        Tensor: Results of lower triangular operation by the specified diagonal of input tensor x,
         it's data type is the same as x's Tensor.
 
     Raises:
@@ -650,7 +647,6 @@ def tril(x, diagonal=0, name=None):
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
 
-            paddle.disable_static()
 
             x = paddle.to_tensor(data)
             
@@ -681,16 +677,13 @@ def tril(x, diagonal=0, name=None):
 
 def triu(x, diagonal=0, name=None):
     r"""
-	:alias_main: paddle.triu
-	:alias: paddle.triu,paddle.tensor.triu,paddle.tensor.creation.triu
-
     This op returns the upper triangular part of a matrix (2-D tensor) or batch of matrices
     :attr:`x`, the other elements of the result tensor are set to 0.
     The upper triangular part of the matrix is defined as the elements on and
     above the diagonal.
 
     Args:
-        x (Variable): The input variable x which is a Tensor.
+        x (Tensor): The input x which is a Tensor.
             Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and above the main diagonal are
@@ -703,7 +696,7 @@ def triu(x, diagonal=0, name=None):
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Tensor, results of upper triangular operation by the specified diagonal of input tensor x,
+        Tensor: Results of upper triangular operation by the specified diagonal of input tensor x,
         it's data type is the same as x's Tensor.
 
     Raises:
@@ -721,7 +714,6 @@ def triu(x, diagonal=0, name=None):
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
 
-            paddle.disable_static()
 
             # example 1, default diagonal
             x = paddle.to_tensor(data)
@@ -752,9 +744,6 @@ def triu(x, diagonal=0, name=None):
 
 def meshgrid(*args, **kwargs):
     """
-	:alias_main: paddle.meshgrid
-	:alias: paddle.meshgrid,paddle.tensor.meshgrid,paddle.tensor.creation.meshgrid
-
     This op takes a list of N tensors as input *args, each of which is 1-dimensional 
     vector, and creates N-dimensional grids.
     
