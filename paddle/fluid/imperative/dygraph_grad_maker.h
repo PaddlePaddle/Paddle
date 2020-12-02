@@ -219,6 +219,7 @@ class TracedGradOp {
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
         if (var && !var->OverridedStopGradient()) {
+          var->SetGraphIsFreed(false);
           // var->SetGradNode(node_);
           // set grad_node later
           input_grad_vars_.emplace_back(var);

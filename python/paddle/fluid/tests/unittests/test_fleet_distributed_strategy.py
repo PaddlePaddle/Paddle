@@ -169,6 +169,13 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.fuse_grad_size_in_MB = "40"
         self.assertEqual(strategy.fuse_grad_size_in_MB, 50)
 
+    def test_last_comm_group_size_MB(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.last_comm_group_size_MB = 50
+        self.assertEqual(strategy.last_comm_group_size_MB, 50)
+        with self.assertRaises(ValueError):
+            strategy.last_comm_group_size_MB = -1
+
     def test_fuse_grad_size_in_TFLOPS(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy._fuse_grad_size_in_TFLOPS = 0.1

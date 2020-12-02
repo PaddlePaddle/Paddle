@@ -13,9 +13,6 @@
 # limitations under the License.
 
 import os
-from paddle.check_import_scipy import check_import_scipy
-
-check_import_scipy(os.name)
 
 try:
     from paddle.version import full_version as __version__
@@ -276,6 +273,7 @@ from . import onnx
 from .hapi import Model
 from .hapi import callbacks
 from .hapi import summary
+from .hapi import flops
 import paddle.text
 import paddle.vision
 
