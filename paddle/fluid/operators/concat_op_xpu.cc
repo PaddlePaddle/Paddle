@@ -16,7 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "xpu/refactor/math.h"
+#include "paddle/fluid/platform/xpu_header.h"
 
 namespace paddle {
 namespace operators {
