@@ -86,6 +86,7 @@ int32_t PsService::initialize() {
   _service_handler_map[PS_PUSH_DENSE_PARAM] = &PsService::push_dense_param;
   _service_handler_map[PS_PRINT_TABLE_STAT] = &PsService::print_table_stat;
   _service_handler_map[PS_PULL_GEO_PARAM] = &PsService::pull_geo_param;
+  _service_handler_map[PS_PUSH_SPARSE_PARAM] = &PsService::push_sparse_param;
   _service_handler_map[PS_BARRIER] = &PsService::barrier;
 
   // shard初始化,server启动后才可从env获取到server_list的shard信息
