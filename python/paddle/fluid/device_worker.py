@@ -221,6 +221,13 @@ class DownpourSGD(DeviceWorker):
                 for i in program_configs[program_id]["pull_dense"]:
                     pc.pull_dense_table_id.extend([i])
                     dense_table_set.add(i)
+                # code for partial push dense table such as multitask
+                if "cond2denseid" in program_configs[program_id]:
+                    cond2denseid = program_configs[program_id]["cond2denseid"]
+                    for key, value in cond2denseid.items():
+                        mc_map = pc.partial_pushdense_condtable_map.add()
+                        mc_map.key = key
+                        mc_map.value = value
                 break
 
         trainer_desc.device_worker_name = opt_info.get("worker_class",
@@ -406,25 +413,17 @@ class Section(DeviceWorker):
         section_param = trainer_desc.section_param
         section_param.num_microbatches = pipeline_opt["num_microbatches"]
         section_param.start_cpu_core_id = pipeline_opt["start_cpu_core_id"]
-        for i, program in enumerate(pipeline_opt["section_program_list"]):
-            cfg = section_param.section_config.add()
-            cfg.program_desc.ParseFromString(program["program"]._get_desc()
-                                             .serialize_to_string())
-            # TODO: why does not work
-            # cfg.program_desc.CopyFrom(program.program._get_desc())
-            place = pipeline_opt["place_list"][i]
-            place_id = pipeline_opt["place_id_list"][i]
-            if isinstance(place, core.CPUPlace):
-                cfg.place = cfg.CPUPlace
-            elif isinstance(place, core.CUDAPlace):
-                cfg.place = cfg.CUDAPlace
-            elif isinstance(place, core.CUDAPinnedPlace):
-                cfg.place = cfg.CUDAPinnedPlace
-            else:
-                raise NotImplementedError(
-                    "SectionWorker only supports CPUPlace, CUDAPlace and CUDAPinnedPlace now."
-                )
-            cfg.place_id = place_id
+        cfg = section_param.section_config
+        program = pipeline_opt["section_program"]
+        cfg.program_desc.ParseFromString(program["program"]._get_desc()
+                                         .serialize_to_string())
+        # TODO: why does not work
+        # cfg.program_desc.CopyFrom(program.program._get_desc())
+        place = pipeline_opt["place"]
+        place_id = pipeline_opt["place_id"]
+        assert isinstance(place, core.CUDAPlace)
+        cfg.place = cfg.CUDAPlace
+        cfg.place_id = place_id
 
 
 class DeviceWorkerFactory(object):

@@ -13,9 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
-#include <memory>
+
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -111,13 +127,21 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex64>,
+    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub_grad,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex64>,
+    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub_grad_grad,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
@@ -127,4 +151,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int>,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>);
+                                        int64_t>,
+    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex64>,
+    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex128>);

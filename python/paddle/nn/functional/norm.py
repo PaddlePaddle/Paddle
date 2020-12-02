@@ -19,8 +19,6 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, core
 from ...framework import create_parameter
-from ...fluid.layers import l2_normalize  #DEFINE_ALIAS
-from ...fluid.layers import lrn  #DEFINE_ALIAS
 from ...fluid.initializer import Constant
 from ...fluid.param_attr import ParamAttr
 from ...fluid import core, dygraph_utils
@@ -29,29 +27,28 @@ __all__ = [
     'batch_norm',
     #       'data_norm',
     'instance_norm',
-    'l2_normalize',
     'layer_norm',
-    'lrn',
+    'local_response_norm',
     'normalize',
     #       'spectral_norm'
 ]
 
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
-    """
+    r"""
     This op normalizes ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
 
     .. math::
 
-        y = \frac{x}{ \max\left( \lvert \lvert x \rvert \rvert_p, epsilon\right) }
+        y = \\frac{x}{ \\max\\left( \\lvert \\lvert x \\rvert \\rvert_p, epsilon\\right) }
     
     .. math::
-        \lvert \lvert x \rvert \rvert_p = \left(\sum_i {\lvert x_i\rvert^p}  \right)^{1/p}
+        \\lvert \\lvert x \\rvert \\rvert_p = \\left( \\sum_i {\\lvert x_i \\rvert^p}  \\right)^{1/p}
 
-    where, :math:`\sum_i{\lvert x_i\rvert^p}` is calculated along the ``axis`` dimension.
+    where, :math:`\\sum_i{\\lvert x_i \\rvert^p}` is calculated along the ``axis`` dimension.
 
 
-    Args:
+    Parameters:
         x (Tensor): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
         p (float|int, optional): The exponent value in the norm formulation. Default: 2
         axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension. 
@@ -112,8 +109,9 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     helper.append_op(
         type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
     eps = out.block.create_var(dtype=out.dtype)
-    paddle.fill_constant([1], out.dtype, epsilon, out=eps)
-    return paddle.elementwise_div(x, paddle.maximum(out, eps), name=name)
+    paddle.fluid.layers.fill_constant([1], out.dtype, epsilon, out=eps)
+    return paddle.fluid.layers.elementwise_div(
+        x, paddle.maximum(out, eps), name=name)
 
 
 def batch_norm(x,
@@ -129,7 +127,7 @@ def batch_norm(x,
     """
     Applies Batch Normalization as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    nn.functional.batch_norm is uesd for nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d. Please use above API for BatchNorm.
+    nn.functional.batch_norm is uesd for nn.BatchNorm1D, nn.BatchNorm2D, nn.BatchNorm3D. Please use above API for BatchNorm.
     
     Parameters:
         x(Tesnor): input value. It's data type should be float32, float64.
@@ -140,7 +138,7 @@ def batch_norm(x,
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Defalut False.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Defalut "NCHW".
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Defalut "NCHW".
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
@@ -152,7 +150,6 @@ def batch_norm(x,
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           x = np.random.seed(123)
           x = np.random.random(size=(2, 1, 2, 3)).astype('float32')
           running_mean = np.random.random(size=1).astype('float32')
@@ -165,7 +162,7 @@ def batch_norm(x,
           w = paddle.to_tensor(weight_data)
           b = paddle.to_tensor(bias_data)
           batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv, w, b)
-          print batch_norm_out
+          print(batch_norm_out)
     """
 
     assert len(x.shape) >= 2, "input dim must be larger than 1"
@@ -175,6 +172,14 @@ def batch_norm(x,
     # input ad out must share the memory
     mean_out = running_mean
     variance_out = running_var
+
+    true_data_format = ['NC', 'NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC']
+    if data_format not in true_data_format:
+        raise ValueError(
+            "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
+            "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format))
+
+    data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
     if in_dygraph_mode():
         # for dygraph need tuple
@@ -263,14 +268,13 @@ def layer_norm(x,
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           layer_norm = paddle.nn.functional.layer_norm(x, x.shape[1:])
           layer_norm_out = layer_norm(x)
 
-          print(layer_norm_out.numpy)
+          print(layer_norm_out)
     """
     input_shape = list(x.shape)
     input_ndim = len(input_shape)
@@ -289,7 +293,8 @@ def layer_norm(x,
                                             'begin_norm_axis', begin_norm_axis)
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
-    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'LayerNorm')
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
+                             'LayerNorm')
 
     inputs = dict()
     inputs['X'] = [x]
@@ -301,11 +306,13 @@ def layer_norm(x,
 
     # create output
     helper = LayerHelper('layer_norm', **locals())
+
+    dtype = x.dtype
     mean_out = helper.create_variable_for_type_inference(
-        dtype=x.type, stop_gradient=True)
+        dtype=dtype, stop_gradient=True)
     variance_out = helper.create_variable_for_type_inference(
-        dtype=x.type, stop_gradient=True)
-    layer_norm_out = helper.create_variable_for_type_inference(x.type)
+        dtype=dtype, stop_gradient=True)
+    layer_norm_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type="layer_norm",
@@ -332,7 +339,7 @@ def instance_norm(x,
                   data_format="NCHW",
                   name=None):
     """
-    See more detail in nn.layer.InstanceNorm2d.
+    See more detail in nn.layer.InstanceNorm2D.
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
@@ -356,13 +363,12 @@ def instance_norm(x,
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           instance_norm_out = paddle.nn.functional.instancenorm(x)
 
-          print(instance_norm_out.numpy)
+          print(instance_norm_out)
 
     """
 
@@ -397,3 +403,109 @@ def instance_norm(x,
     helper.append_op(
         type="instance_norm", inputs=inputs, outputs=outputs, attrs=attrs)
     return instance_norm_out
+
+
+def local_response_norm(x,
+                        size,
+                        alpha=1e-4,
+                        beta=0.75,
+                        k=1.,
+                        data_format="NCHW",
+                        name=None):
+    r"""
+        Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
+        For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
+
+        The formula is as follows:
+
+        .. math::
+
+            Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + size/2)}_{j = \\max(0, i - size/2)}(Input(j, x, y))^2\\right)^{\\beta}
+
+        In the above equation:
+
+        - :math:`size` : The number of channels to sum over.
+        - :math:`k` : The offset (avoid being divided by 0).
+        - :math:`\\alpha` : The scaling parameter.
+        - :math:`\\beta` : The exponent parameter.
+
+
+        Args:
+            x (Tensor): The input 3-D/4-D/5-D tensor. The data type is float32.
+            size (int): The number of channels to sum over.
+            alpha (float, optional): The scaling parameter, positive. Default:1e-4
+            beta (float, optional): The exponent, positive. Default:0.75
+            k (float, optional): An offset, positive. Default: 1.0
+            data_format (str, optional): Specify the data format of the input, and the data format of the output
+                will be consistent with that of the input. An optional string from:
+                If x is 3-D Tensor, the string could be `"NCL"` or `"NLC"` . When it is `"NCL"`,
+                the data is stored in the order of: `[batch_size, input_channels, feature_length]`.
+                If x is 4-D Tensor, the string could be  `"NCHW"`, `"NHWC"`. When it is `"NCHW"`,
+                the data is stored in the order of: `[batch_size, input_channels, input_height, input_width]`.
+                If x is 5-D Tensor, the string could be  `"NCDHW"`, `"NDHWC"` . When it is `"NCDHW"`,
+                the data is stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+            name (str, optional): Name for the operation (optional, default is None). For more information,
+                please refer to :ref:`api_guide_Name`.
+
+        Returns:
+            A tensor storing the transformation result with the same shape and data type as input.
+
+
+        Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
+            y = paddle.nn.functional.local_response_norm(x, size=5)
+            print(y.shape)  # [3, 3, 112, 112]
+        """
+    if not in_dygraph_mode():
+        check_variable_and_dtype(x, 'x', ['float32'], 'local_response_norm')
+    if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
+        raise ValueError(
+            "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], " \
+            "but got {}".format(data_format))
+
+    sizes = x.shape
+    dim = len(sizes)
+    if dim < 3:
+        raise ValueError(
+            'Expected 3D or higher dimensionality input, but got {} dimensions'.
+            format(dim))
+
+    channel_last = True if data_format[-1] == "C" else False
+
+    div = paddle.unsqueeze(paddle.multiply(x, x), axis=1)
+    if not channel_last:
+        pad4d_shape = [0, 0, size // 2, (size - 1) // 2]
+        pool2d_shape = (size, 1)
+        reshape_shape = [sizes[0], 1, sizes[1], sizes[2], -1]
+        pad5d_shape = [0, 0, 0, 0, size // 2, (size - 1) // 2]
+        pool3d_shape = (size, 1, 1)
+    else:
+        pad4d_shape = [size // 2, (size - 1) // 2, 0, 0]
+        pool2d_shape = (1, size)
+        reshape_shape = [sizes[0], 1, sizes[1], -1, sizes[-1]]
+        pad5d_shape = [size // 2, (size - 1) // 2, 0, 0, 0, 0]
+        pool3d_shape = (1, 1, size)
+
+    if dim == 3:
+        div = paddle.nn.functional.pad(div, pad=pad4d_shape)
+        div = paddle.nn.functional.avg_pool2d(
+            div, kernel_size=pool2d_shape, stride=1)
+        div = paddle.squeeze(div, axis=1)
+    else:
+        div = paddle.reshape(div, shape=reshape_shape)
+        div = paddle.nn.functional.pad(div,
+                                       pad=pad5d_shape,
+                                       data_format='NCDHW')
+        div = paddle.nn.functional.avg_pool3d(
+            div, kernel_size=pool3d_shape, stride=1)
+        div = paddle.reshape(paddle.squeeze(div, axis=1), sizes)
+
+    div = paddle.scale(div, scale=alpha, bias=k)
+    div = paddle.pow(div, beta)
+    res = paddle.divide(x, div, name=name)
+    return res

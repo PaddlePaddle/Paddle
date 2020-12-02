@@ -14,19 +14,16 @@
 
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 
-#include <algorithm>
 #include <memory>
-#include <set>
 #include <string>
-#include <unordered_set>
 #include <utility>
 
-#include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/imperative/variable_wrapper.h"
 
 namespace paddle {
 namespace imperative {
+
+class VarBase;
 
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
@@ -52,15 +49,15 @@ inline std::string GetDtypeStr(
 }
 
 inline bool NeedCast(const std::shared_ptr<VarBase>& var) {
-  if (!platform::is_gpu_place(var->Place())) {
-    return false;
+  if (platform::is_gpu_place(var->Place()) ||
+      platform::is_cuda_pinned_place(var->Place())) {
+    // CudaPinndePlace is added for varbase created by dataloader
+    if (var->DataType() == framework::proto::VarType::FP32 ||
+        var->DataType() == framework::proto::VarType::FP16) {
+      return true;
+    }
   }
-  if (var->DataType() == framework::proto::VarType::FP32 ||
-      var->DataType() == framework::proto::VarType::FP16) {
-    return true;
-  } else {
-    return false;
-  }
+  return false;
 }
 
 // NOTE: Trace a cast op, so if a var is casted from fp32 to fp16, then the grad

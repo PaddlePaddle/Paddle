@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
-#include "paddle/fluid/framework/details/var_handle.h"
-#include "paddle/fluid/framework/var_desc.h"
 
 namespace paddle {
 namespace framework {

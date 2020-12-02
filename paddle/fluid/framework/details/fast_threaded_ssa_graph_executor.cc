@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
+
 #include <deque>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
@@ -48,7 +50,9 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       bootstrap_ops_.emplace_back(op);
     }
   }
-  PADDLE_ENFORCE_GT(op_deps_.size(), 0, "The graph doesn't have operators.");
+  PADDLE_ENFORCE_GT(op_deps_.size(), 0,
+                    platform::errors::PreconditionNotMet(
+                        "The graph doesn't have operators."));
   PrepareAtomicOpDeps();
 }
 
@@ -227,6 +231,23 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
       OpHandleBase *op_to_run = op_queue.back();
       op_queue.pop_back();
 
+      // The Op involves data transfer of multiple devices may block other
+      // computations emit. For example:
+      // 1 step, queue=[Share, Allreduce], which Share is high priority
+      // 2 step, Share exec, pending_op=Grad, queue=[Allreduce, Grad]
+      // 3 step, Allreduce run with sync. Although Allreduce and Grad do not
+      // have topo dependency, but Grad must wait for Allreduce to complete
+      // before scheduling.
+      // In this scenario, calculation and communication may not overlap.
+      // Therefore, emit the op in the queue before running multi device op.
+      if (op_to_run->IsMultiDeviceTransfer()) {
+        while (!op_queue.empty()) {
+          OpHandleBase *post_op = op_queue.back();
+          op_queue.pop_back();
+          RunOpAsync(op_deps, post_op, complete_q);
+        }
+      }
+
       if (!RunOp(op_to_run, complete_q, &complete)) {
         return;
       }
@@ -242,6 +263,9 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           // first without switching to another thread.
           if (pending_op->GetPriority() == OpHandleBase::Priority::kHighest) {
             op_queue.push_back(pending_op);
+          } else if (pending_op->IsMultiDeviceTransfer()) {
+            // multi device ops should be scheduled prior to computing ops
+            op_queue.push_front(pending_op);
           } else {
             if (op_to_run == nullptr) {
               op_to_run = pending_op;

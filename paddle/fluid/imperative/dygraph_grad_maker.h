@@ -147,7 +147,6 @@ class GradOpBaseMakerBase {
                                                bool is_input) const {
     const auto& data_map = is_input ? var_base_map_in_ : var_base_map_out_;
     auto iterator = data_map.find(name);
-
     TracedVarList<VarBase, kRole> vec_temp;
     if (iterator != data_map.end()) {
       vec_temp.reserve(iterator->second.size());
@@ -220,12 +219,14 @@ class TracedGradOp {
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
         if (var && !var->OverridedStopGradient()) {
+          var->SetGraphIsFreed(false);
           var->SetGradNode(node_);
         }
       }
     }
 
     auto var_wrappers = ToVarWrapperList<kRole>(vars);
+
     if (!var_wrappers.empty()) {
       op_->SetInput(name, std::move(var_wrappers),
                     kRole == TracedVarRole::kBackward);
@@ -293,7 +294,8 @@ class TracedGradOp {
                             var->OverridedStopGradient()))) {
         result.emplace_back();
       } else {
-        result.emplace_back(var->SharedVar());
+        auto var_wrapper = SnapshotVarWrapper(var->SharedVar());
+        result.emplace_back(var_wrapper);
         has_valid = true;
       }
     }
@@ -302,6 +304,26 @@ class TracedGradOp {
       result.clear();
     }
     return result;
+  }
+
+  // Get a snapshot of VariableWrapper at a certain inplace version.
+  // The inplace version number of VariableWrapper is used for inplace
+  // detection in gradient compution.
+  static const std::shared_ptr<VariableWrapper> SnapshotVarWrapper(
+      const std::shared_ptr<VariableWrapper>& var_wrapper) {
+    // NOTE(liym27):
+    //  Use original var_wrapper if its inplace_version is not
+    //  changed. Otherwise, it will affect the accuracy of the model
+    //  results and affect double grad.
+    if (!var_wrapper->MutableVar()->IsInitialized() ||
+        var_wrapper->InplaceVersionSnapshot() ==
+            var_wrapper->MutableVar()->CurrentInplaceVersion()) {
+      return var_wrapper;
+    } else {
+      VariableWrapper new_var_wrapper = *var_wrapper.get();
+      new_var_wrapper.ResetInplaceVersion();
+      return std::make_shared<VariableWrapper>(new_var_wrapper);
+    }
   }
 
  private:

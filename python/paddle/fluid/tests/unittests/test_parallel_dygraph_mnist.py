@@ -47,5 +47,21 @@ class TestParallelDygraphMnistSpawn(TestDistSpawnRunner):
             self.check_dist_result_with_spawn(test_class=TestMnist, delta=1e-5)
 
 
+class TestFleetDygraphMnist(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._nccl2_mode = True
+        self._dygraph = True
+        self._gpu_fleet_api = True
+
+    def test_mnist(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "parallel_dygraph_mnist.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -20,81 +20,41 @@ from ...fluid import dygraph_utils
 import numpy as np
 
 # TODO: define specitial functions used in computer vision task  
-from ...fluid.layers import affine_channel  #DEFINE_ALIAS
-from ...fluid.layers import anchor_generator  #DEFINE_ALIAS
-from ...fluid.layers import bipartite_match  #DEFINE_ALIAS
-from ...fluid.layers import box_clip  #DEFINE_ALIAS
-from ...fluid.layers import box_coder  #DEFINE_ALIAS
-from ...fluid.layers import box_decoder_and_assign  #DEFINE_ALIAS
-from ...fluid.layers import collect_fpn_proposals  #DEFINE_ALIAS
-from ...fluid.layers import deformable_roi_pooling  #DEFINE_ALIAS
-from ...fluid.layers import density_prior_box  #DEFINE_ALIAS
-from ...fluid.layers import detection_output  #DEFINE_ALIAS
-from ...fluid.layers import distribute_fpn_proposals  #DEFINE_ALIAS
-from ...fluid.layers import generate_mask_labels  #DEFINE_ALIAS
-from ...fluid.layers import generate_proposal_labels  #DEFINE_ALIAS
-from ...fluid.layers import generate_proposals  #DEFINE_ALIAS
-from ...fluid.layers import grid_sampler  #DEFINE_ALIAS
-from ...fluid.layers import image_resize  #DEFINE_ALIAS
-from ...fluid.layers import prior_box  #DEFINE_ALIAS
-from ...fluid.layers import prroi_pool  #DEFINE_ALIAS
-from ...fluid.layers import psroi_pool  #DEFINE_ALIAS
-from ...fluid.layers import resize_bilinear  #DEFINE_ALIAS
-from ...fluid.layers import resize_nearest  #DEFINE_ALIAS
-from ...fluid.layers import resize_trilinear  #DEFINE_ALIAS
-from ...fluid.layers import roi_align  #DEFINE_ALIAS
-from ...fluid.layers import roi_pool  #DEFINE_ALIAS
-from ...fluid.layers import space_to_depth  #DEFINE_ALIAS
-from ...fluid.layers import yolo_box  #DEFINE_ALIAS
-from ...fluid.layers import yolov3_loss  #DEFINE_ALIAS
-
-from ...fluid.layers import fsp_matrix  #DEFINE_ALIAS
-from ...fluid.layers import image_resize_short  #DEFINE_ALIAS
+# from ...fluid.layers import affine_channel  #DEFINE_ALIAS
+# from ...fluid.layers import anchor_generator  #DEFINE_ALIAS
+# from ...fluid.layers import bipartite_match  #DEFINE_ALIAS
+# from ...fluid.layers import box_clip  #DEFINE_ALIAS
+# from ...fluid.layers import box_coder  #DEFINE_ALIAS
+# from ...fluid.layers import box_decoder_and_assign  #DEFINE_ALIAS
+# from ...fluid.layers import collect_fpn_proposals  #DEFINE_ALIAS
+# from ...fluid.layers import deformable_roi_pooling  #DEFINE_ALIAS
+# from ...fluid.layers import density_prior_box  #DEFINE_ALIAS
+# from ...fluid.layers import detection_output  #DEFINE_ALIAS
+# from ...fluid.layers import distribute_fpn_proposals  #DEFINE_ALIAS
+# from ...fluid.layers import generate_mask_labels  #DEFINE_ALIAS
+# from ...fluid.layers import generate_proposal_labels  #DEFINE_ALIAS
+# from ...fluid.layers import generate_proposals  #DEFINE_ALIAS
+# from ...fluid.layers import image_resize  #DEFINE_ALIAS
+# from ...fluid.layers import prior_box  #DEFINE_ALIAS
+# from ...fluid.layers import prroi_pool  #DEFINE_ALIAS
+# from ...fluid.layers import psroi_pool  #DEFINE_ALIAS
+# from ...fluid.layers import resize_bilinear  #DEFINE_ALIAS
+# from ...fluid.layers import resize_nearest  #DEFINE_ALIAS
+# from ...fluid.layers import resize_trilinear  #DEFINE_ALIAS
+# from ...fluid.layers import roi_align  #DEFINE_ALIAS
+# from ...fluid.layers import roi_pool  #DEFINE_ALIAS
+# from ...fluid.layers import space_to_depth  #DEFINE_ALIAS
+# from ...fluid.layers import yolo_box  #DEFINE_ALIAS
+# from ...fluid.layers import yolov3_loss  #DEFINE_ALIAS
+# from ...fluid.layers import fsp_matrix  #DEFINE_ALIAS
+# from ...fluid.layers import image_resize_short  #DEFINE_ALIAS
 # from ...fluid.layers import pixel_shuffle  #DEFINE_ALIAS
-from ...fluid.layers import retinanet_detection_output  #DEFINE_ALIAS
-from ...fluid.layers import retinanet_target_assign  #DEFINE_ALIAS
-from ...fluid.layers import roi_perspective_transform  #DEFINE_ALIAS
-from ...fluid.layers import shuffle_channel  #DEFINE_ALIAS
+# from ...fluid.layers import retinanet_detection_output  #DEFINE_ALIAS
+# from ...fluid.layers import retinanet_target_assign  #DEFINE_ALIAS
+# from ...fluid.layers import roi_perspective_transform  #DEFINE_ALIAS
+# from ...fluid.layers import shuffle_channel  #DEFINE_ALIAS
 
-__all__ = [
-    'affine_channel',
-    'affine_grid',
-    'anchor_generator',
-    'bipartite_match',
-    'box_clip',
-    'box_coder',
-    'box_decoder_and_assign',
-    'collect_fpn_proposals',
-    #       'deformable_conv',
-    'deformable_roi_pooling',
-    'density_prior_box',
-    'detection_output',
-    'distribute_fpn_proposals',
-    'fsp_matrix',
-    'generate_mask_labels',
-    'generate_proposal_labels',
-    'generate_proposals',
-    'grid_sampler',
-    'image_resize',
-    'image_resize_short',
-    #       'multi_box_head',
-    'pixel_shuffle',
-    'prior_box',
-    'prroi_pool',
-    'psroi_pool',
-    'resize_bilinear',
-    'resize_nearest',
-    'resize_trilinear',
-    'retinanet_detection_output',
-    'retinanet_target_assign',
-    'roi_align',
-    'roi_perspective_transform',
-    'roi_pool',
-    'shuffle_channel',
-    'space_to_depth',
-    'yolo_box',
-    'yolov3_loss'
-]
+__all__ = ['affine_grid', 'grid_sample', 'pixel_shuffle']
 
 
 def affine_grid(theta, out_shape, align_corners=True, name=None):
@@ -126,7 +86,6 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-            paddle.disable_static()
             # theta shape = [1, 2, 3]
             theta = np.array([[[-0.7, -0.4, 0.3],
                                [ 0.6,  0.5, 1.5]]]).astype("float32")
@@ -135,7 +94,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                     theta_t,
                     [1, 2, 3, 3],
                     align_corners=False)
-            print(y_t.numpy())
+            print(y_t)
             
             #[[[[ 1.0333333   0.76666665]
             #   [ 0.76666665  1.0999999 ]
@@ -205,25 +164,35 @@ def grid_sample(x,
     data x and y is indexing the 3rd dimension (in height dimension),
     finally results is the bilinear interpolation or nearest value of 4 nearest corner
     points. The output tensor shape will be [N, C, H, W].
+
+
+    Step 1:
+
+    Get (x, y) grid coordinates and scale to [0, H-1/W-1].
+
     .. code-block:: text
-        Step 1:
-        Get (x, y) grid coordinates and scale to [0, H-1/W-1].
-        .. code-block:: text
-            grid_x = 0.5 * (grid[:, :, :, 0] + 1) * (W - 1)
-            grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
-        Step 2:
-        Indices input data X with grid (x, y) in each [H, W] area, and bilinear
-        interpolate point value by 4 nearest points or nearest interpolate point value
-        by nearest point.
-          wn ------- y_n ------- en
-          |           |           |
-          |          d_n          |
-          |           |           |
-         x_w --d_w-- grid--d_e-- x_e
-          |           |           |
-          |          d_s          |
-          |           |           |
-          ws ------- y_s ------- wn
+
+        grid_x = 0.5 * (grid[:, :, :, 0] + 1) * (W - 1)
+        grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
+
+    Step 2:
+    
+    Indices input data X with grid (x, y) in each [H, W] area, and bilinear
+    interpolate point value by 4 nearest points or nearest interpolate point value
+    by nearest point.
+
+    .. code-block:: text
+
+        wn ------- y_n ------- en
+        |           |           |
+        |          d_n          |
+        |           |           |
+        x_w --d_w-- grid--d_e-- x_e
+        |           |           |
+        |          d_s          |
+        |           |           |
+        ws ------- y_s ------- wn
+
         For bilinear interpolation:
         x_w = floor(x)              // west side x coord
         x_e = x_w + 1               // east side x coord
@@ -237,8 +206,10 @@ def grid_sample(x,
         en = X[:, :, y_n, x_e]      // north-east point value
         ws = X[:, :, y_s, x_w]      // south-east point value
         es = X[:, :, y_s, x_w]      // north-east point value
+
         output = wn * d_e * d_s + en * d_w * d_s
-               + ws * d_e * d_n + es * d_w * d_n
+                + ws * d_e * d_n + es * d_w * d_n
+
     Args:
         x(Tensor): The input tensor, which is a 4-d tensor with shape
                      [N, C, H, W], N is the batch size, C is the channel
@@ -249,7 +220,7 @@ def grid_sample(x,
         mode(str, optional): The interpolation method which can be 'bilinear' or 'nearest'.
                          Default: 'bilinear'.
         padding_mode(str, optional) The padding method used when source index
-                   is out of input images. It can be 'zeros', 'reflect' and 'border'.
+                   is out of input images. It can be 'zeros', 'reflection' and 'border'.
                    Default: zeros.
         align_corners(bool, optional): If `align_corners` is true, it will projects
                    -1 and 1 to the centers of the corner pixels. Otherwise, it will
@@ -262,7 +233,9 @@ def grid_sample(x,
         Tensor, The shape of output is [N, C, grid_H, grid_W] in which `grid_H` is the height of grid and `grid_W` is the width of grid. The data type is same as input tensor.
 
     Examples:
+
         .. code-block:: python
+        
             import paddle
             import paddle.nn.functional as F
             import numpy as np
@@ -287,7 +260,7 @@ def grid_sample(x,
                             [ 0.7,  0.4],
                             [ 0.2,  0.8]]]]).astype("float64")
             
-            paddle.disable_static()
+            
             x = paddle.to_tensor(x)
             grid = paddle.to_tensor(grid)
             y_t = F.grid_sample(
@@ -296,7 +269,7 @@ def grid_sample(x,
                 mode='bilinear',
                 padding_mode='border',
                 align_corners=True)
-            print(y_t.numpy())
+            print(y_t)
             
             # output shape = [1, 1, 3, 4]
             # [[[[ 0.34   0.016  0.086 -0.448]
@@ -304,15 +277,12 @@ def grid_sample(x,
             #    [ 0.596  0.38   0.52   0.24 ]]]]
     """
     helper = LayerHelper("grid_sample", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sampler')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sample')
     check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
-                             'grid_sampler')
-    if not isinstance(x, Variable):
-        raise ValueError("The x should be a Variable")
-    if not isinstance(grid, Variable):
-        raise ValueError("The grid should be a Variable")
+                             'grid_sample')
+
     _modes = ['bilinear', 'nearest']
-    _padding_modes = ['zeros', 'reflect', 'border']
+    _padding_modes = ['zeros', 'reflection', 'border']
     if mode not in _modes:
         raise ValueError(
             "The mode of grid sample function should be in {}, but got: {}".
@@ -331,6 +301,9 @@ def grid_sample(x,
     if (cudnn_version is not None
         ) and align_corners and mode == 'bilinear' and padding_mode == 'zeros':
         use_cudnn = True
+        # CUDNN always computes gradients for all inputs
+        x.stop_gradient = False
+        grid.stop_gradient = False
     ipts = {'X': x, 'Grid': grid}
     attrs = {
         'mode': mode,
@@ -368,15 +341,14 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
         ValueError: If the square of upscale_factor cannot divide the channels of input.
     Examples:
         .. code-block:: python
+
             import paddle
             import paddle.nn.functional as F
             import numpy as np
             x = np.random.randn(2, 9, 4, 4).astype(np.float32)
-            paddle.disable_static()
             x_var = paddle.to_tensor(x)
             out_var = F.pixel_shuffle(x_var, 3)
             out = out_var.numpy()
-            print(out.shape) 
             # (2, 1, 12, 12)
     """
     if not in_dygraph_mode():

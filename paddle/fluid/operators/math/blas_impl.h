@@ -12,11 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#ifdef PADDLE_WITH_MKLML
+#include <mkl.h>
+#endif
 #include <algorithm>
 #include <cmath>
 #include <limits>
 #include <vector>
+
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 
 namespace paddle {
 namespace operators {
@@ -29,7 +35,8 @@ template <>
 struct CBlas<int8_t> {
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    PADDLE_THROW("Blas VCOPY don't support int8_t");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Blas VCOPY do not supported on CPU, please check your code"));
   }
 };
 
@@ -286,6 +293,246 @@ struct CBlas<double> {
   }
 };
 
+template <>
+struct CBlas<platform::complex64> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    platform::dynload::cblas_ccopy(args...);
+  }
+
+  // the libmklml_intel.so paddle used has no vcAdd, vcSub,
+  // vcMul, vcDiv apis before rebuild from source
+  // so replace with the raw operator methods
+  /*
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    platform::dynload::vcAdd(args...);
+  }
+
+  template <typename... ARGS>
+  static void VSUB(ARGS... args) {
+    platform::dynload::vcSub(args...);
+  }
+
+  template <typename... ARGS>
+  static void VMUL(ARGS... args) {
+    platform::dynload::vcMul(args...);
+  }
+
+  template <typename... ARGS>
+  static void VDIV(ARGS... args) {
+    platform::dynload::vcDiv(args...);
+  }
+  */
+
+  template <typename... ARGS>
+  static void VADD(int n, const paddle::platform::complex64 *a,
+                   const paddle::platform::complex64 *b,
+                   paddle::platform::complex64 *y) {
+    for (int i = 0; i < n; ++i) {
+      y[i] = a[i] + b[i];
+    }
+  }
+
+  template <typename... ARGS>
+  static void VSUB(int n, const paddle::platform::complex64 *a,
+                   const paddle::platform::complex64 *b,
+                   paddle::platform::complex64 *y) {
+    for (int i = 0; i < n; ++i) {
+      y[i] = a[i] - b[i];
+    }
+  }
+
+  template <typename... ARGS>
+  static void VMUL(int n, const paddle::platform::complex64 *a,
+                   const paddle::platform::complex64 *b,
+                   paddle::platform::complex64 *y) {
+    for (int i = 0; i < n; ++i) {
+      y[i] = a[i] * b[i];
+    }
+  }
+  template <typename... ARGS>
+  static void VDIV(int n, const paddle::platform::complex64 *a,
+                   const paddle::platform::complex64 *b,
+                   paddle::platform::complex64 *y) {
+    for (int i = 0; i < n; ++i) {
+      y[i] = a[i] / b[i];
+    }
+  }
+
+  template <typename... ARGS>
+  static void GEMV(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE trans, int M, int N,
+                   paddle::platform::complex64 alpha,
+                   const paddle::platform::complex64 *A, int lda,
+                   const paddle::platform::complex64 *X, int incx,
+                   paddle::platform::complex64 beta,
+                   paddle::platform::complex64 *Y, int incy) {
+    const void *a_ = (const void *)(A);
+    const void *x_ = (const void *)(X);
+    void *y_ = static_cast<void *>(Y);
+    platform::dynload::cblas_cgemv(layout, trans, M, N, &alpha, a_, lda, x_,
+                                   incx, &beta, y_, incy);
+  }
+
+  template <typename... ARGS>
+  static void GEMM(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE trans_a,
+                   CBLAS_TRANSPOSE trans_b, int M, int N, int K,
+                   paddle::platform::complex64 alpha,
+                   const paddle::platform::complex64 *A, int lda,
+                   const paddle::platform::complex64 *B, int ldb,
+                   paddle::platform::complex64 beta,
+                   paddle::platform::complex64 *C, int ldc) {
+    const void *a_ = (const void *)(A);
+    const void *b_ = (const void *)(B);
+    void *c_ = static_cast<void *>(C);
+    platform::dynload::cblas_cgemm(layout, trans_a, trans_b, M, N, K, &alpha,
+                                   a_, lda, b_, ldb, &beta, c_, ldc);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_BATCH(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE *trans_a,
+                         CBLAS_TRANSPOSE *trans_b, int *M, int *N, int *K,
+                         paddle::platform::complex64 *alpha,
+                         const paddle::platform::complex64 **A, const int *lda,
+                         const paddle::platform::complex64 **B, const int *ldb,
+                         paddle::platform::complex64 *beta,
+                         paddle::platform::complex64 **C, const int *ldc,
+                         int group_count, int *group_size) {
+    const void **A_void = (const void **)(&(*A));
+    const void **B_void = (const void **)(&(*B));
+    void **C_void = reinterpret_cast<void **>(C);
+
+    platform::dynload::cblas_cgemm_batch(layout, trans_a, trans_b, M, N, K,
+                                         alpha, A_void, lda, B_void, ldb, beta,
+                                         C_void, ldc, group_count, group_size);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_EX(ARGS... args) {
+    platform::dynload::cblas_cgemm_batch(args...);
+  }
+};
+
+template <>
+struct CBlas<platform::complex128> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    platform::dynload::cblas_zcopy(args...);
+  }
+
+  // the libmklml_intel.so paddle used has no vzAdd, vzSub,
+  // vzMul, vzDiv apis before rebuild from source
+  // so replace with the raw operator methods
+  /*
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    platform::dynload::vzAdd(args...);
+  }
+
+  template <typename... ARGS>
+  static void VSUB(ARGS... args) {
+    platform::dynload::vzSub(args...);
+  }
+
+  template <typename... ARGS>
+  static void VMUL(ARGS... args) {
+    platform::dynload::vzMul(args...);
+  }
+
+  template <typename... ARGS>
+  static void VDIV(ARGS... args) {
+    platform::dynload::vzDiv(args...);
+  }
+  */
+
+  template <typename... ARGS>
+  static void VADD(int n, const paddle::platform::complex128 *a,
+                   const paddle::platform::complex128 *b,
+                   paddle::platform::complex128 *y) {
+    for (int i = 0; i < n; ++i) {
+      y[i] = a[i] + b[i];
+    }
+  }
+
+  template <typename... ARGS>
+  static void VSUB(int n, const paddle::platform::complex128 *a,
+                   const paddle::platform::complex128 *b,
+                   paddle::platform::complex128 *y) {
+    for (int i = 0; i < n; ++i) {
+      y[i] = a[i] - b[i];
+    }
+  }
+
+  template <typename... ARGS>
+  static void VMUL(int n, const paddle::platform::complex128 *a,
+                   const paddle::platform::complex128 *b,
+                   paddle::platform::complex128 *y) {
+    for (int i = 0; i < n; ++i) {
+      y[i] = a[i] * b[i];
+    }
+  }
+  template <typename... ARGS>
+  static void VDIV(int n, const paddle::platform::complex128 *a,
+                   const paddle::platform::complex128 *b,
+                   paddle::platform::complex128 *y) {
+    for (int i = 0; i < n; ++i) {
+      y[i] = a[i] / b[i];
+    }
+  }
+
+  template <typename... ARGS>
+  static void GEMV(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE trans, int M, int N,
+                   paddle::platform::complex128 alpha,
+                   const paddle::platform::complex128 *A, int lda,
+                   const paddle::platform::complex128 *X, int incx,
+                   paddle::platform::complex128 beta,
+                   paddle::platform::complex128 *Y, int incy) {
+    const void *a_ = (const void *)(A);
+    const void *x_ = (const void *)(X);
+    void *y_ = static_cast<void *>(Y);
+    platform::dynload::cblas_zgemv(layout, trans, M, N, &alpha, a_, lda, x_,
+                                   incx, &beta, y_, incy);
+  }
+
+  template <typename... ARGS>
+  static void GEMM(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE trans_a,
+                   CBLAS_TRANSPOSE trans_b, int M, int N, int K,
+                   paddle::platform::complex128 alpha,
+                   const paddle::platform::complex128 *A, int lda,
+                   const paddle::platform::complex128 *B, int ldb,
+                   paddle::platform::complex128 beta,
+                   paddle::platform::complex128 *C, int ldc) {
+    const void *a_ = (const void *)(A);
+    const void *b_ = (const void *)(B);
+    void *c_ = static_cast<void *>(C);
+    platform::dynload::cblas_zgemm(layout, trans_a, trans_b, M, N, K, &alpha,
+                                   a_, lda, b_, ldb, &beta, c_, ldc);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_BATCH(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE *trans_a,
+                         CBLAS_TRANSPOSE *trans_b, int *M, int *N, int *K,
+                         paddle::platform::complex128 *alpha,
+                         const paddle::platform::complex128 **A, const int *lda,
+                         const paddle::platform::complex128 **B, const int *ldb,
+                         paddle::platform::complex128 *beta,
+                         paddle::platform::complex128 **C, const int *ldc,
+                         int group_count, int *group_size) {
+    const void **A_void = (const void **)(&(*A));
+    const void **B_void = (const void **)(&(*B));
+    void **C_void = reinterpret_cast<void **>(C);
+
+    platform::dynload::cblas_zgemm_batch(layout, trans_a, trans_b, M, N, K,
+                                         alpha, A_void, lda, B_void, ldb, beta,
+                                         C_void, ldc, group_count, group_size);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_EX(ARGS... args) {
+    platform::dynload::cblas_zgemm_batch(args...);
+  }
+};
+
 #else
 
 template <>
@@ -343,26 +590,138 @@ struct CBlas<double> {
     cblas_dtrsm(args...);
   }
 };
+
+template <>
+struct CBlas<platform::complex64> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    cblas_ccopy(args...);
+  }
+
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    vcAdd(args...);
+  }
+
+  template <typename... ARGS>
+  static void AXPY(int n, const paddle::platform::complex64 alpha,
+                   const paddle::platform::complex64 *X, const int incX,
+                   paddle::platform::complex64 *Y, const int incY) {
+    cblas_caxpy(n, &alpha, X, incX, Y, incY);
+  }
+
+  template <typename... ARGS>
+  static void GEMV(const CBLAS_LAYOUT layout, const CBLAS_TRANSPOSE TransA,
+                   const int M, const int N,
+                   const paddle::platform::complex64 alpha,
+                   const paddle::platform::complex64 *A, const int lda,
+                   const paddle::platform::complex64 *X, const int incX,
+                   const paddle::platform::complex64 beta,
+                   paddle::platform::complex64 *Y, const int incY) {
+    cblas_cgemv(layout, TransA, M, N, &alpha, A, lda, X, incX, &beta, Y, incY);
+  }
+
+  template <typename... ARGS>
+  static void GEMM(const CBLAS_LAYOUT layout, const CBLAS_TRANSPOSE TransA,
+                   const CBLAS_TRANSPOSE TransB, const int M, const int N,
+                   const int K, const paddle::platform::complex64 alpha,
+                   const paddle::platform::complex64 *A, const int lda,
+                   const paddle::platform::complex64 *B, const int ldb,
+                   const paddle::platform::complex64 beta,
+                   paddle::platform::complex64 *C, const int ldc) {
+    cblas_cgemm(layout, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta,
+                C, ldc);
+  }
+};
+
+template <>
+struct CBlas<platform::complex128> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    cblas_zcopy(args...);
+  }
+
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    vzAdd(args...);
+  }
+
+  template <typename... ARGS>
+  static void AXPY(int n, const paddle::platform::complex128 alpha,
+                   const paddle::platform::complex128 *X, const int incX,
+                   paddle::platform::complex128 *Y, const int incY) {
+    cblas_zaxpy(n, &alpha, X, incX, Y, incY);
+  }
+
+  template <typename... ARGS>
+  static void GEMV(const CBLAS_LAYOUT layout, const CBLAS_TRANSPOSE TransA,
+                   const int M, const int N,
+                   const paddle::platform::complex128 alpha,
+                   const paddle::platform::complex128 *A, const int lda,
+                   const paddle::platform::complex128 *X, const int incX,
+                   const paddle::platform::complex128 beta,
+                   paddle::platform::complex128 *Y, const int incY) {
+    cblas_zgemv(layout, TransA, M, N, &alpha, A, lda, X, incX, &beta, Y, incY);
+  }
+
+  template <typename... ARGS>
+  static void GEMM(const CBLAS_LAYOUT layout, const CBLAS_TRANSPOSE TransA,
+                   const CBLAS_TRANSPOSE TransB, const int M, const int N,
+                   const int K, const paddle::platform::complex128 alpha,
+                   const paddle::platform::complex128 *A, const int lda,
+                   const paddle::platform::complex128 *B, const int ldb,
+                   const paddle::platform::complex128 beta,
+                   paddle::platform::complex128 *C, const int ldc) {
+    cblas_zgemm(layout, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta,
+                C, ldc);
+  }
+};
+
 #endif
 
 template <>
 struct CBlas<platform::float16> {
-  static void GEMM(...) { PADDLE_THROW("float16 GEMM not supported on CPU"); }
+  static void GEMM(...) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "float16 GEMM not supported on CPU, please check your code"));
+  }
+
   static void SMM_GEMM(...) {
-    PADDLE_THROW("float16 SMM_GEMM not supported on CPU");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "float16 SMM_GEMM not supported on CPU, please check your code"));
   }
-  static void VMUL(...) { PADDLE_THROW("float16 VMUL not supported on CPU"); }
-  static void VEXP(...) { PADDLE_THROW("float16 VEXP not supported on CPU"); }
+  static void VMUL(...) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "float16 VMUL not supported on CPU, please check your code"));
+  }
+  static void VEXP(...) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "float16 VEXP not supported on CPU, please check your code"));
+  }
   static void VSQUARE(...) {
-    PADDLE_THROW("float16 VSQUARE not supported on CPU");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "float16 VSQUARE not supported on CPU, please check your code"));
   }
-  static void VPOW(...) { PADDLE_THROW("float16 VPOW not supported on CPU"); }
-  static void DOT(...) { PADDLE_THROW("float16 DOT not supported on CPU"); };
-  static void SCAL(...) { PADDLE_THROW("float16 SCAL not supported on CPU"); };
-  static void ASUM(...) { PADDLE_THROW("float16 ASUM not supported on CPU"); };
+  static void VPOW(...) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "float16 VPOW not supported on CPU, please check your code"));
+  }
+  static void DOT(...) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "float16 DOT not supported on CPU, please check your code"));
+  };
+  static void SCAL(...) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "float16 SCAL not supported on CPU, please check your code"));
+  };
+  static void ASUM(...) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "float16 ASUM not supported on CPU, please check your code"));
+  };
 #ifdef PADDLE_WITH_MKLML
   static void GEMM_BATCH(...) {
-    PADDLE_THROW("float16 GEMM_BATCH not supported on CPU");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "float16 GEMM_BATCH not supported on CPU, please check your code"));
   }
 #endif
 };
@@ -446,11 +805,18 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a, bool trans_a,
   auto dim_a = mat_a.dims();
   auto dim_b = mat_b.dims();
   auto dim_out = mat_out->dims();
-  PADDLE_ENFORCE(dim_a.size() == 2 && dim_b.size() == 2 && dim_out.size() == 2,
-                 "The input and output of matmul be matrix");
-  PADDLE_ENFORCE(
-      mat_a.place() == mat_b.place() && mat_a.place() == mat_out->place(),
-      "The places of matrices must be same");
+  PADDLE_ENFORCE_EQ(
+      dim_a.size() == 2 && dim_b.size() == 2 && dim_out.size() == 2, true,
+      platform::errors::InvalidArgument(
+          "The input and output of matmul should be matrix, the dim size must "
+          "be 2,"
+          "but received dim size input_a:%d, input_b:%d, output:%d",
+          dim_a.size(), dim_b.size(), dim_out.size()));
+  PADDLE_ENFORCE_EQ(
+      mat_a.place() == mat_b.place() && mat_a.place() == mat_out->place(), true,
+      platform::errors::InvalidArgument("The places of matrices in the matmul "
+                                        "should be same, please check your "
+                                        "code."));
 
   int M = dim_out[0];
   int N = dim_out[1];
@@ -484,10 +850,10 @@ void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
   CBlas<T>::VADD(n, x, y, z);
 #else
   if (x == z) {
-    this->template AXPY<T>(n, 1., y, z);
+    this->template AXPY<T>(n, (T)(1.), y, z);
   } else {
     this->template VCOPY<T>(n, y, z);
-    this->template AXPY<T>(n, 1., x, z);
+    this->template AXPY<T>(n, (T)(1.), x, z);
   }
 #endif
 }
@@ -662,9 +1028,9 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
     T alpha, const T **A, const T **B, T beta, T **C, int batchCount) const {
 #ifdef PADDLE_WITH_MKLML
-  const int lda = std::max((transA == CblasNoTrans) ? K : M, 1);
-  const int ldb = std::max((transB == CblasNoTrans) ? N : K, 1);
-  const int ldc = std::max(N, 1);
+  const int lda = (std::max)((transA == CblasNoTrans) ? K : M, 1);
+  const int ldb = (std::max)((transB == CblasNoTrans) ? N : K, 1);
+  const int ldc = (std::max)(N, 1);
   CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha, A,
                        &lda, B, &ldb, &beta, C, &ldc, 1 /* group_count */,
                        &batchCount);
@@ -715,7 +1081,13 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMMWithHead(
     }
 
   } else {
-    PADDLE_ENFORCE_EQ(W1, H2);
+    PADDLE_ENFORCE_EQ(
+        W1, H2,
+        platform::errors::InvalidArgument(
+            "The fisrt matrix width should be same as second matrix height,"
+            "but received fisrt matrix width %d"
+            ", second matrix height %d",
+            W1, H2));
     int ldc = W2 * head_number;
     int sub_width = W1 / head_number;
 
@@ -785,7 +1157,14 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
                                  const framework::Tensor &mat_b,
                                  const MatDescriptor &dim_b, T alpha,
                                  framework::Tensor *mat_out, T beta) const {
-  PADDLE_ENFORCE_EQ(dim_a.width_, dim_b.height_);
+  PADDLE_ENFORCE_EQ(
+      dim_a.width_, dim_b.height_,
+      platform::errors::InvalidArgument(
+          "The fisrt matrix width should be same as second matrix height,"
+          "but received fisrt matrix width %d"
+          ", second matrix height %d",
+          dim_a.width_, dim_b.height_));
+
   CBLAS_TRANSPOSE transA = !dim_a.trans_ ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
   if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
@@ -793,12 +1172,14 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
                            dim_a.width_, alpha, mat_a.data<T>(),
                            mat_b.data<T>(), beta, mat_out->data<T>());
   } else {
-    PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
-                       dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0,
-                   "dim_a.batch_size should be equal to dim_b.batch_size, or "
-                   "one of dim_a.batch_size and dim_b.batch_size should be 0. "
-                   "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
-                   dim_a.batch_size_, dim_b.batch_size_);
+    PADDLE_ENFORCE_EQ(
+        dim_a.batch_size_ == dim_b.batch_size_ || dim_a.batch_size_ == 0 ||
+            dim_b.batch_size_ == 0,
+        true, platform::errors::InvalidArgument(
+                  "dim_a.batch_size should be equal to dim_b.batch_size, or "
+                  "one of dim_a.batch_size and dim_b.batch_size should be 0. "
+                  "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
+                  dim_a.batch_size_, dim_b.batch_size_));
     this->template BatchedGEMM<T>(
         transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
         mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),
@@ -834,15 +1215,42 @@ void Blas<DeviceContext>::MatMulWithHead(const framework::Tensor &mat_a,
                                          int head_number,
                                          framework::Tensor *mat_out, T beta,
                                          bool mat_b_split_vertical) const {
-  PADDLE_ENFORCE_EQ(dim_a.width_ % head_number, 0);
-  PADDLE_ENFORCE_GE(head_number, 1);
-  PADDLE_ENFORCE_LE(head_number, dim_a.width_);
+  PADDLE_ENFORCE_EQ(
+      dim_a.width_ % head_number, 0,
+      platform::errors::InvalidArgument(
+          "The first input width must be some times the head number"
+          "but received first input width %d"
+          ",  head_number %d",
+          dim_a.width_, head_number));
+  PADDLE_ENFORCE_GE(head_number, 1,
+                    platform::errors::InvalidArgument(
+                        "The head number should be greater equal 1,"
+                        "but received head number %d",
+                        head_number));
+  PADDLE_ENFORCE_LE(
+      head_number, dim_a.width_,
+      platform::errors::InvalidArgument(
+          "The head number should be less equal first input width,"
+          "but received first input width %d"
+          ",  head_number %d",
+          dim_a.width_, head_number));
   CBLAS_TRANSPOSE transA = !dim_a.trans_ ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
 
   if (mat_b_split_vertical) {
-    PADDLE_ENFORCE_EQ(dim_b.height_, dim_a.width_ / head_number);
-    PADDLE_ENFORCE_EQ(dim_b.width_ % head_number, 0);
+    PADDLE_ENFORCE_EQ(
+        dim_b.height_, dim_a.width_ / head_number,
+        platform::errors::InvalidArgument(
+            "The second input height should be equal than first input width,"
+            "but received second input height %d, first input width %d",
+            dim_b.height_, dim_a.width_ / head_number));
+    PADDLE_ENFORCE_EQ(
+        dim_a.width_ % head_number, 0,
+        platform::errors::InvalidArgument(
+            "The second input width should be some times the head number"
+            "but received second input width %d"
+            ",  head_number %d",
+            dim_b.width_, head_number));
   }
 
   if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
@@ -888,9 +1296,16 @@ void Blas<DeviceContext>::MatMulWithHead(const framework::Tensor &mat_a,
                              mat_out->data<T>() + sub_matC_offset, ldc);
     }
   } else {
-    PADDLE_ENFORCE_EQ((dim_a.batch_size_ == dim_b.batch_size_ ||
-                       dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0),
-                      true);
+    PADDLE_ENFORCE_EQ(
+        (dim_a.batch_size_ == dim_b.batch_size_ || dim_a.batch_size_ == 0 ||
+         dim_b.batch_size_ == 0),
+        true,
+        platform::errors::InvalidArgument(
+            "The first input batch size should be equal than second input,"
+            "either two input batch size is 0, but received first input batch "
+            "size"
+            " %d, second input batch size %d",
+            dim_a.batch_size_, dim_b.batch_size_));
 
     this->template BatchedGEMMWithHead<T>(
         transA, transB, dim_a.width_, dim_a.height_, dim_b.width_,

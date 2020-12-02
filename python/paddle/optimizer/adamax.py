@@ -21,7 +21,7 @@ __all__ = ["Adamax"]
 
 
 class Adamax(Optimizer):
-    """
+    r"""
     The Adamax optimizer is implemented based on the Adamax Optimization 
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
@@ -47,8 +47,8 @@ class Adamax(Optimizer):
     it is added here for numerical stability to prevent the division by 0 error.
 
     Args:
-        learning_rate (float|_LRScheduler, optional): The learning rate used to update ``Parameter``.
-            It can be a float value or a _LRScheduler. The default value is 0.001.
+        learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a LRScheduler. The default value is 0.001.
         beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
             The default value is 0.9.
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.

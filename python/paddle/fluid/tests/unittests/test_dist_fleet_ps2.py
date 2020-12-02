@@ -24,6 +24,8 @@ import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
 
+paddle.enable_static()
+
 # For Net
 base_lr = 0.2
 emb_lr = base_lr * 3
@@ -181,8 +183,12 @@ class TestPSPassWithBow(unittest.TestCase):
 
         from paddle.fluid.communicator import LargeScaleKV
         kv = LargeScaleKV()
+
         kv.save("__emb__.block0",
                 os.path.join(model_dir, "__emb__", "__emb__.block0"))
+
+        kv.size("__emb__.block0")
+
         fluid.framework.switch_main_program(fluid.Program())
         fleet.init_server(model_dir)
         shutil.rmtree(model_dir)

@@ -16,20 +16,49 @@ from __future__ import print_function
 
 import unittest
 
+import paddle
+import paddle.nn as nn
+import numpy as np
+
+paddle.disable_static()
+
 
 class EmbeddingDygraph(unittest.TestCase):
     def test_1(self):
-        import paddle
-        import paddle.nn as nn
-        import numpy as np
-        paddle.disable_static()
+        x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
+        y_data = np.arange(6, 12).reshape((3, 2)).astype(np.float32)
+        paddle.disable_static(paddle.CPUPlace())
+        x = paddle.to_tensor(x_data, stop_gradient=False)
+        y = paddle.to_tensor(y_data, stop_gradient=False)
 
-        # example 1
-        inp_word = np.array([[2, 3, 5], [4, 2, 1]]).astype('int64')
-        inp_word.shape  # [2, 3]
-        dict_size = 20
+        embedding = paddle.nn.Embedding(10, 3, sparse=True)
 
-        emb = nn.Embedding(dict_size, 32, weight_attr='emb.w', sparse=False)
+        w0 = np.full(shape=(10, 3), fill_value=2).astype(np.float32)
+        embedding.weight.set_value(w0)
+
+        adam = paddle.optimizer.Adam(
+            parameters=[embedding.weight], learning_rate=0.01)
+        adam.clear_grad()
+
+        out = embedding(x)
+        out.backward()
+        adam.step()
+
+    def test_2(self):
+        x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
+        y_data = np.arange(6, 12).reshape((3, 2)).astype(np.float32)
+        paddle.disable_static(paddle.CPUPlace())
+        x = paddle.to_tensor(x_data, stop_gradient=False)
+        y = paddle.to_tensor(y_data, stop_gradient=False)
+
+        with self.assertRaises(ValueError):
+            embedding = paddle.nn.Embedding(10, 3, padding_idx=11, sparse=True)
+
+        with self.assertRaises(ValueError):
+            embedding = paddle.nn.Embedding(-1, 3, sparse=True)
+
+        with self.assertRaises(ValueError):
+            embedding = paddle.nn.Embedding(10, -3, sparse=True)
 
 
 if __name__ == '__main__':

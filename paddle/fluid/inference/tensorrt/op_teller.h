@@ -17,8 +17,15 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace inference {

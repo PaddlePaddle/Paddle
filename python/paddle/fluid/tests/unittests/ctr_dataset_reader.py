@@ -22,7 +22,7 @@ import random
 import warnings
 
 import paddle
-import paddle.fluid.incubate.data_generator as data_generator
+import paddle.distributed.fleet as fleet
 
 logging.basicConfig()
 logger = logging.getLogger("paddle")
@@ -84,7 +84,7 @@ class CtrReader(object):
         return reader
 
 
-class DatasetCtrReader(data_generator.MultiSlotDataGenerator):
+class DatasetCtrReader(fleet.MultiSlotDataGenerator):
     def generate_sample(self, line):
         def get_rand(low=0.0, high=1.0):
             return random.random()
@@ -153,7 +153,33 @@ def gen_fake_line(dnn_data_num=7,
     return line
 
 
-def prepare_fake_data(file_nums=8, file_lines=1000):
+def gen_zero_line(dnn_data_num=7, lr_data_num=5):
+    # for embedding zero padding test
+    line = ""
+
+    # for deep data
+    for index in range(dnn_data_num):
+        data = str(0)
+        if index < dnn_data_num - 1:
+            data += " "
+        line += data
+    line += "\t"
+
+    # for wide data
+    for index in range(lr_data_num):
+        data = str(0) + ":" + str(1)
+        if index < lr_data_num - 1:
+            data += " "
+        line += data
+    line += "\t"
+
+    # for label
+    line += str(random.randint(0, 1))
+    line += "\n"
+    return line
+
+
+def prepare_fake_data(file_nums=6, file_lines=1000):
     """
     Create fake data with same type as avazu_ctr_data
     """
@@ -165,7 +191,8 @@ def prepare_fake_data(file_nums=8, file_lines=1000):
                              "ctr_train_data_part_{}".format(file_index)),
                 'w+') as fin:
             file_str = ""
-            for line_index in range(file_lines):
+            file_str += gen_zero_line()
+            for line_index in range(file_lines - 1):
                 file_str += gen_fake_line()
             fin.write(file_str)
             warnings.warn("Write done ctr_train_data_part_{}".format(

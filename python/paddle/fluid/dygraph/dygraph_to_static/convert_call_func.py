@@ -19,6 +19,7 @@ __all__ = ['convert_call']
 import collections
 import copy
 import functools
+import logging
 import inspect
 import pdb
 import re
@@ -29,12 +30,15 @@ import six
 
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticLayer
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
 from paddle.fluid.dygraph.layers import Layer
 
 # TODO(liym27): A better way to do this.
-BUILTIN_LIKELY_MODULES = [collections, pdb, copy, inspect, re, six, numpy]
+BUILTIN_LIKELY_MODULES = [
+    collections, pdb, copy, inspect, re, six, numpy, logging
+]
 
 translator_logger = TranslatorLogger()
 
@@ -64,12 +68,17 @@ def is_unsupported(func):
     Checks whether the func is supported by dygraph to static graph.
     """
 
-    if any(func in m.__dict__.values() for m in BUILTIN_LIKELY_MODULES):
-        translator_logger.log(
-            2,
-            "Whitelist: {} is part of built-in module and does not have to be transformed.".
-            format(func))
-        return True
+    for m in BUILTIN_LIKELY_MODULES:
+        for v in m.__dict__.values():
+            func_in_dict = func == v
+            if isinstance(func_in_dict, (list, numpy.ndarray)):
+                func_in_dict = any(func_in_dict)
+            if func_in_dict:
+                translator_logger.log(
+                    2,
+                    "Whitelist: {} is part of built-in module and does not have to be transformed.".
+                    format(func))
+                return True
 
     if is_paddle_func(func):
         translator_logger.log(
@@ -92,25 +101,27 @@ def convert_call(func):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          from paddle.fluid.dygraph.dygraph_to_static import convert_call
+            import paddle
+            from paddle.jit.dy2static import convert_call
 
-          def dyfunc(x):
-              if fluid.layers.mean(x) < 0:
-                  x_v = x - 1
-              else:
-                  x_v = x + 1
+            paddle.enable_static()
+            def dyfunc(x):
+                if paddle.mean(x) < 0:
+                    x_v = x - 1
+                else:
+                    x_v = x + 1
+                return x_v
 
-               return x_v
-          new_func = convert_call(dyfunc)
-          x = fluid.layers.fill_constant(shape=[3, 3], value=0, dtype='float64')
-          x_v = new_func(x)
-          exe = fluid.Executor(fluid.CPUPlace())
-          out = exe.run(fetch_list=[x_v])
-          print(out[0])
-          # [[1. 1. 1.]
-          #  [1. 1. 1.]
-          #  [1. 1. 1.]]
+            new_func = convert_call(dyfunc)
+            x = paddle.tensor.manipulation.fill_constant(shape=[3, 3], value=0, dtype='float64')
+            x_v = new_func(x)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            out = exe.run(fetch_list=[x_v])
+            print(out[0])
+            # [[1. 1. 1.]
+            #  [1. 1. 1.]
+            #  [1. 1. 1.]]
 
     """
     translator_logger.log(1,
@@ -118,14 +129,9 @@ def convert_call(func):
     func_self = None
     converted_call = None
 
-    # Function in convert_call may be decorated by another `@declarative`,
+    # Function in convert_call may be decorated by another `@to_static`,
     # in this case, unwraps it into a raw method or function.
-    if isinstance(func, StaticLayer):
-        instance = func._class_instance
-        if instance is not None:
-            func = func.dygraph_function.__get__(instance)
-        else:
-            func = func.dygraph_function
+    _, func = unwrap_decorators(func)
 
     if is_builtin_len(func):
         return convert_len
@@ -141,21 +147,22 @@ def convert_call(func):
             # Note(Aurelius84): Because `@declarative` returns a class instance instead of
             # a function. This will modify the value referring to itself in `__globals__`.
 
-            # For example: 
+            # For example:
             #
             #      @declarative
             #      def foo(x):
             #          return x
             #
-            # `foo` will be converted into a wrapper class, suppose as `StaticLayer`.
-            # And `foo.__globals__['foo']` will still return this `StaticLayer` instead of
-            # `foo` function. So `isinstance(fn, StaticLayer)` is added here. 
+            # `foo` will be converted into a wrapper class, suppose as `StaticFunction`.
+            # And `foo.__globals__['foo']` will still return this `StaticFunction` instead of
+            # `foo` function. So `isinstance(fn, StaticFunction)` is added here.
             global_functions = set()
             for fn in func.__globals__.values():
                 if inspect.isfunction(fn):
                     global_functions.add(fn)
-                elif isinstance(fn, StaticLayer):
-                    global_functions.add(fn.dygraph_function)
+                elif isinstance(fn, StaticFunction):
+                    _, fn = unwrap_decorators(fn)
+                    global_functions.add(fn)
 
             if func in global_functions:
                 converted_call = convert_to_static(func)
@@ -189,9 +196,12 @@ def convert_call(func):
     elif hasattr(func, '__class__') and hasattr(func.__class__, '__call__'):
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
-                forward_func = convert_to_static(func.forward)
-                setattr(func, 'forward', forward_func)
-                func_self = func
+                _, forward_func = unwrap_decorators(func.forward)
+                forward_func = convert_to_static(forward_func)
+                # Bound mothod will be convert into plain function after `convert_to_static`.
+                # So descriptor mechanism is used to bound `self` instance on function to
+                # keep it as bound method.
+                setattr(func, 'forward', forward_func.__get__(func))
             except Exception:
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self

@@ -46,8 +46,8 @@ class TestLogsumexp(OpTest):
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {
-            'dim': self.axis,
-            'keep_dim': self.keepdim,
+            'axis': self.axis,
+            'keepdim': self.keepdim,
             'reduce_all': self.reduce_all
         }
 
@@ -90,7 +90,7 @@ class TestLogsumexpError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.logsumexp, 1)
-            x1 = paddle.data(name='x1', shape=[120], dtype="int32")
+            x1 = paddle.fluid.data(name='x1', shape=[120], dtype="int32")
             self.assertRaises(TypeError, paddle.logsumexp, x1)
 
 
@@ -104,14 +104,14 @@ class TestLogsumexpAPI(unittest.TestCase):
     def api_case(self, axis=None, keepdim=False):
         out_ref = ref_logsumexp(self.x, axis, keepdim)
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.shape)
+            x = paddle.fluid.data('X', self.shape)
             out = paddle.logsumexp(x, axis, keepdim)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
         self.assertTrue(np.allclose(res[0], out_ref))
 
         paddle.disable_static(self.place)
-        x = paddle.to_variable(self.x)
+        x = paddle.to_tensor(self.x)
         out = paddle.logsumexp(x, axis, keepdim)
         self.assertTrue(np.allclose(out.numpy(), out_ref))
         paddle.enable_static()
@@ -126,7 +126,7 @@ class TestLogsumexpAPI(unittest.TestCase):
 
     def test_alias(self):
         paddle.disable_static(self.place)
-        x = paddle.to_variable(self.x)
+        x = paddle.to_tensor(self.x)
         out1 = paddle.logsumexp(x)
         out2 = paddle.tensor.logsumexp(x)
         out3 = paddle.tensor.math.logsumexp(x)

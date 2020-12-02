@@ -15,7 +15,8 @@ from multiprocessing import Pool, Process
 import os
 import socket
 from contextlib import closing
-import psutil
+import time
+import sys
 
 
 def launch_func(func, env_dict):
@@ -25,19 +26,36 @@ def launch_func(func, env_dict):
     return proc
 
 
-def wait(procs, timeout=None):
-    # wait
-    decents = []
-    for p in procs:
-        for child in psutil.Process(p.pid).children(recursive=True):
-            decents.append(child)
+def wait(procs, timeout=30):
+    error = False
+    begin = time.time()
+    while True:
+        alive = False
+        for p in procs:
+            p.join(timeout=10)
+            if p.exitcode is None:
+                alive = True
+                continue
+            elif p.exitcode != 0:
+                error = True
+                break
 
-    gone, alive = psutil.wait_procs(decents, timeout=timeout)
-    for p in alive:
-        p.kill()
-    for p in gone:
-        if p.returncode != 0:
-            sys.exit(1)
+        if not alive:
+            break
+
+        if error:
+            break
+
+        if timeout is not None and time.time() - begin >= timeout:
+            error = True
+            break
+
+    for p in procs:
+        if p.is_alive():
+            p.terminate()
+
+    if error:
+        sys.exit(1)
 
 
 def _find_free_port(port_set):

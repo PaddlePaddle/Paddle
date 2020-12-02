@@ -81,9 +81,17 @@ class TestStrategyConfig(unittest.TestCase):
 
     def test_localsgd_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
-        configs = {"k_steps": 4}
+        configs = {"k_steps": 4, "begin_step": 120}
         strategy.localsgd_configs = configs
         self.assertEqual(strategy.localsgd_configs["k_steps"], 4)
+        self.assertEqual(strategy.localsgd_configs["begin_step"], 120)
+
+    def test_adaptive_localsgd_configs(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {"init_k_steps": 1, "begin_step": 120}
+        strategy.adaptive_localsgd_configs = configs
+        self.assertEqual(strategy.adaptive_localsgd_configs["init_k_steps"], 1)
+        self.assertEqual(strategy.adaptive_localsgd_configs["begin_step"], 120)
 
     def test_dgc(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -93,6 +101,16 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.dgc, False)
         strategy.dgc = "True"
         self.assertEqual(strategy.dgc, False)
+
+    def test_fp16_allreduce(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.fp16_allreduce = True
+        self.assertEqual(strategy.fp16_allreduce, True)
+        strategy.fp16_allreduce = False
+        self.assertEqual(strategy.fp16_allreduce, False)
+        with self.assertRaises(TypeError):
+            strategy.fp16_allreduce = "True"
+        self.assertEqual(strategy.fp16_allreduce, False)
 
     def test_sync_nccl_allreduce(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -150,6 +168,13 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.fuse_grad_size_in_MB, 50)
         strategy.fuse_grad_size_in_MB = "40"
         self.assertEqual(strategy.fuse_grad_size_in_MB, 50)
+
+    def test_last_comm_group_size_MB(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.last_comm_group_size_MB = 50
+        self.assertEqual(strategy.last_comm_group_size_MB, 50)
+        with self.assertRaises(ValueError):
+            strategy.last_comm_group_size_MB = -1
 
     def test_fuse_grad_size_in_TFLOPS(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -230,7 +255,7 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.a_sync = True
         strategy.localsgd = True
         strategy.dgc = True
-        localsgd_configs = {"k_steps": 5}
+        localsgd_configs = {"k_steps": 5, "begin_step": 1}
         strategy.localsgd_configs = localsgd_configs
         build_strategy = paddle.fluid.BuildStrategy()
         build_strategy.enable_sequential_execution = True
@@ -315,6 +340,14 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.conv_workspace_size_limit = "400"
         self.assertEqual(strategy.conv_workspace_size_limit, 1000)
         strategy._enable_env()
+
+    def test_distributed_strategy_repr(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.recompute = True
+        strategy.recompute_configs = {"checkpoints": ["a1", "a2", "a3"]}
+        strategy.amp = True
+        strategy.localsgd = True
+        print(str(strategy))
 
 
 if __name__ == '__main__':

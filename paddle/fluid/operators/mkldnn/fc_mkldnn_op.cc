@@ -12,13 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <mkldnn/include/mkldnn_types.h>
 #include <memory>
-#include "paddle/fluid/framework/tensor.h"
+
 #include "paddle/fluid/operators/fc_op.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/variant.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class Tensor;
+}  // namespace framework
+namespace platform {
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -354,7 +361,8 @@ class FCPrimitiveFactory {
 
   void CacheWeightsAndBias(const MKLDNNDeviceContext& dev_ctx,
                            const ExecutionContext& ctx) {
-    const std::string key = platform::CreateKey(platform::ThreadIDasStr());
+    const std::string key =
+        platform::CreateKey(platform::ThreadIDasStr(), dev_ctx.GetKeySuffix());
     const std::string weights_key = key + ctx.InputName("W");
     const std::string bias_key = key + ctx.InputName("Bias");
     dev_ctx.SetBlob(weights_key, weights_);
@@ -525,12 +533,17 @@ static void ExecuteFc(const ExecutionContext& ctx, const LoDTensor* input,
                       bool fuse_relu, bool force_fp32_output) {
   auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   const std::string prim_key = platform::CreateKey(
-      platform::ThreadIDasStr(), input->format(), input->dims()[0],
-      framework::vectorize<int>(w->dims()), ctx.OutputName("Out"));
+      platform::ThreadIDasStr(), dev_ctx.GetKeySuffix(), input->format(),
+      input->dims()[0], framework::vectorize<int>(w->dims()),
+      ctx.OutputName("Out"));
   constexpr bool is_int8 =
       std::is_same<T_in, int8_t>::value || std::is_same<T_in, uint8_t>::value;
-  if (!is_int8 || force_fp32_output) {
+  bool is_bfloat16 = std::is_same<T_in, paddle::platform::bfloat16>::value;
+  if ((!is_int8 && !is_bfloat16) || force_fp32_output) {
     GetPrimitiveFactory<T_in, T_w, float>(dev_ctx, prim_key)
+        ->ExecuteFcPrimitive(input, w, bias, output, dev_ctx, ctx);
+  } else if (is_bfloat16) {
+    GetPrimitiveFactory<T_in, T_w, platform::bfloat16>(dev_ctx, prim_key)
         ->ExecuteFcPrimitive(input, w, bias, output, dev_ctx, ctx);
   } else if (fuse_relu) {
     GetPrimitiveFactory<T_in, T_w, uint8_t>(dev_ctx, prim_key)
@@ -572,6 +585,11 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, ::paddle::platform::CPUPlace,
                                     FP32, ops::kFCMKLDNNFP32,
                                     ops::FCMKLDNNOpKernel<float, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
+    fc, MKLDNN, ::paddle::platform::CPUPlace, BF16, ops::kFCMKLDNNFP32,
+    ops::FCMKLDNNOpKernel<paddle::platform::bfloat16,
+                          paddle::platform::bfloat16>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, ::paddle::platform::CPUPlace,
                                     U8, ops::kFCMKLDNNINT8,

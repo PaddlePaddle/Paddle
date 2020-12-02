@@ -24,6 +24,8 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
+from paddle.fluid.dygraph import nn
+import warnings
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -61,66 +63,54 @@ def prepare_context(strategy=None):
 
 class ParallelEnv(object):
     """
-    **Notes**:
-        **The old class name was Env and will be deprecated. Please use new class name ParallelEnv.**
+    .. note::
+        This API is not recommended, if you need to get rank and world_size, 
+        it is recommended to use ``paddle.distributed.get_rank()`` and 
+        ``paddle.distributed.get_world_size()`` .
 
     This class is used to obtain the environment variables required for 
-    the parallel execution of dynamic graph model.
+    the parallel execution of ``paddle.nn.Layer`` in dynamic mode.
 
-    The dynamic graph parallel mode needs to be started using paddle.distributed.launch.
-    By default, the related environment variable is automatically configured by this module.
-
-    This class is generally used in with `fluid.dygraph.DataParallel` to configure dynamic graph models
-    to run in parallel.
+    The parallel execution in dynamic mode needs to be started using ``paddle.distributed.launch``
+    or ``paddle.distributed.spawn`` .
 
     Examples:
       .. code-block:: python
 
-        # This example needs to run with paddle.distributed.launch, The usage is:
-        #   python -m paddle.distributed.launch --selected_gpus=0,1 example.py
-        # And the content of `example.py` is the code of following example.
+        import paddle
+        import paddle.distributed as dist
 
-        import numpy as np
-        import paddle.fluid as fluid
-        import paddle.fluid.dygraph as dygraph
-        from paddle.fluid.optimizer import AdamOptimizer
-        from paddle.fluid.dygraph.nn import Linear
-        from paddle.fluid.dygraph.base import to_variable
+        def train():
+            # 1. initialize parallel environment
+            dist.init_parallel_env()
 
-        place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-        with fluid.dygraph.guard(place=place):
+            # 2. get current ParallelEnv
+            parallel_env = dist.ParallelEnv()
+            print("rank: ", parallel_env.rank)
+            print("world_size: ", parallel_env.world_size)
 
-            # prepare the data parallel context
-            strategy=dygraph.prepare_context()
+            # print result in process 1:
+            # rank: 1
+            # world_size: 2
+            # print result in process 2:
+            # rank: 2
+            # world_size: 2
 
-            linear = Linear(1, 10, act="softmax")
-            adam = fluid.optimizer.AdamOptimizer()
-
-            # make the module become the data parallelism module
-            linear = dygraph.DataParallel(linear, strategy)
-
-            x_data = np.random.random(size=[10, 1]).astype(np.float32)
-            data = to_variable(x_data)
-
-            hidden = linear(data)
-            avg_loss = fluid.layers.mean(hidden)
-
-            # scale the loss according to the number of trainers.
-            avg_loss = linear.scale_loss(avg_loss)
-
-            avg_loss.backward()
-
-            # collect the gradients of trainers.
-            linear.apply_collective_grads()
-
-            adam.minimize(avg_loss)
-            linear.clear_gradients()
+        if __name__ == '__main__':
+            # 1. start by ``paddle.distributed.spawn`` (default)
+            dist.spawn(train, nprocs=2)
+            # 2. start by ``paddle.distributed.launch``
+            # train()
     """
 
     def __init__(self):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-        self._device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+
+        # imperative only support one gpu
+        selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
+        self._device_id = int(selected_gpus[0])
+
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
@@ -233,6 +223,69 @@ class ParallelEnv(object):
 Env = ParallelEnv
 
 
+def _build_default_parallel_strategy():
+    strategy = ParallelStrategy()
+    strategy.nranks = ParallelEnv().nranks
+    strategy.local_rank = ParallelEnv().local_rank
+    strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
+    strategy.current_endpoint = ParallelEnv().current_endpoint
+    return strategy
+
+
+def _coalesce_tensors(var_groups):
+    from ..layers import nn
+    coalesced_grads_and_grad_vars = []
+    for group_id, grad_vars in var_groups.items():
+        flattened_vars = []
+        g_var_shapes = []
+        for g_var in grad_vars:
+            g_var_shapes.append(g_var.shape)
+            flattened_vars.append(
+                nn.reshape(
+                    x=g_var, shape=[np.prod(g_var.shape)]))
+        coalesced_grad = nn.concat(flattened_vars)
+        coalesced_grads_and_grad_vars.append(
+            [coalesced_grad, grad_vars, g_var_shapes])
+    return coalesced_grads_and_grad_vars
+
+
+@framework.dygraph_only
+def _reshape_inplace(x, shape):
+    x_shape = framework._varbase_creator(dtype=x.dtype)
+    framework._dygraph_tracer().trace_op(
+        type="reshape2",
+        inputs={'X': x},
+        outputs={'Out': x,
+                 'XShape': x_shape},
+        attrs={'shape': shape})
+
+
+@framework.dygraph_only
+def _split_tensors(coalesced_grads_and_grad_vars):
+    for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
+        grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
+        framework._dygraph_tracer().trace_op(
+            type='split',
+            inputs={'X': coalesced_grad},
+            outputs={'Out': origin_grad_vars},
+            attrs={'sections': grad_var_len,
+                   'axis': 0})
+        for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
+            _reshape_inplace(x=g_var, shape=g_shape)
+            assert g_var.shape == g_shape
+
+
+def scale_loss(loss):
+    if not ParallelEnv().world_size > 1:
+        return loss
+
+    loss_scale = to_variable(
+        np.array([ParallelEnv().world_size]).astype("float32"))
+    loss_scale.stop_gradient = True
+    scaled_loss = loss / loss_scale
+    return scaled_loss
+
+
 class DataParallel(layers.Layer):
     """
     Run the dygraph module with data parallelism.
@@ -248,7 +301,7 @@ class DataParallel(layers.Layer):
     
     2. start by ``paddle.distributed.launch`` module, for example:
     
-        ``python -m paddle.distributed.launch --selected_gpus=0,1 demo.py`` .
+        ``python -m paddle.distributed.launch --gpus=0,1 demo.py`` .
 
     And the content of `demo.py` is the code of examples.
 
@@ -256,6 +309,12 @@ class DataParallel(layers.Layer):
         layers(Layer): The module that should be executed by data parallel.
         strategy(ParallelStrategy, optional): (deprecated) The strategy of data parallelism, 
             contains environment configuration related to parallel execution. Default: None.
+        comm_buffer_size(int, optional):  It limits the memory size(MB) of one buffer  
+                                          parameters' gradient which is the input of communication 
+                                          calling(e.g NCCLAllReduce). Default: 25.
+        last_comm_buffer_size(float, optional): It limits memory size(MB) of last buffer in communication
+                                         calling. Making the last communication buffer size small is useful to 
+                                         improve performance. Default: 1.
             
     Returns:
         Layer: The data paralleled module.
@@ -278,13 +337,10 @@ class DataParallel(layers.Layer):
                     return self._linear2(self._linear1(x))
 
             def train():
-                # 1. enable dynamic mode
-                paddle.disable_static()
-                
-                # 2. initialize parallel environment
+                # 1. initialize parallel environment
                 dist.init_parallel_env()
 
-                # 3. create data parallel layer & optimizer
+                # 2. create data parallel layer & optimizer
                 layer = LinearNet()
                 dp_layer = paddle.DataParallel(layer)
 
@@ -292,15 +348,13 @@ class DataParallel(layers.Layer):
                 adam = opt.Adam(
                     learning_rate=0.001, parameters=dp_layer.parameters())
 
-                # 4. run layer
+                # 3. run layer
                 inputs = paddle.randn([10, 10], 'float32')
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
                 loss = loss_fn(outputs, labels)
                 
-                loss = dp_layer.scale_loss(loss)
                 loss.backward()
-                dp_layer.apply_collective_grads()
 
                 adam.step()
                 adam.clear_grad()
@@ -312,7 +366,11 @@ class DataParallel(layers.Layer):
                 # train()
     """
 
-    def __init__(self, layers, strategy=None):
+    def __init__(self,
+                 layers,
+                 strategy=None,
+                 comm_buffer_size=25,
+                 last_comm_buffer_size=1):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
@@ -325,260 +383,117 @@ class DataParallel(layers.Layer):
         if strategy is not None:
             self._strategy = strategy
         else:
-            self._strategy = ParallelStrategy()
-            self._strategy.nranks = ParallelEnv().nranks
-            self._strategy.local_rank = ParallelEnv().local_rank
-            self._strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
-            self._strategy.current_endpoint = ParallelEnv().current_endpoint
+            self._strategy = _build_default_parallel_strategy()
+
+        if self._strategy.nranks > 1:
+            self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
+            # NOTE(shenliang03): We can set environment variables to control 
+            # the size of the group, Default: 1MB. The role of this small group is: 
+            # when the last group allreduce, the overlap cannot work. Making the 
+            # the last group small is useful to improve performance.
+            self.last_comm_buffer_size = int(last_comm_buffer_size * 1024 *
+                                             1024)
+            self.init_reducer()
+        else:
+            warnings.warn(
+                "nranks is less than 2, "
+                "maybe you need to check the current system environment."
+                " Need to use spawn or fleetrun to "
+                "start distributed programs.")
+
+    def init_reducer(self):
+        layers_param = []
+        params_set = set()
+        for sublayer in self.sublayers():
+            for _, param in sublayer.named_parameters(include_sublayers=False):
+                if param is None or param in params_set:
+                    continue
+                params_set.add(param)
+                if not isinstance(param, core.VarBase):
+                    raise TypeError("The data type of '%s' must be Varbase" %
+                                    param.name)
+                if param.trainable:
+                    layers_param.append((sublayer, param))
+
+        trainable_parameters = [param for _, param in layers_param]
+
+        # NOTE(shenliang03): Here we can only use the attributes to judge whether
+        # parameter is sparse(or SelectedRows). The reason is that the sparse message
+        # can't be obtained when bp hasn't happened yet. So if layer supports sparse parameter,
+        # we should add the layer here like "nn.Embedding".
+        def check_layer_sparse(sublayer):
+            if isinstance(sublayer, nn.Embedding):
+                return sublayer._is_sparse
+            return False
+
+        is_sparse_gradient = [
+            check_layer_sparse(sublayer) for sublayer, _ in layers_param
+        ]
+
+        self.group_indices = core.assign_group_by_size(
+            trainable_parameters, is_sparse_gradient,
+            [self.last_comm_buffer_size, self.comm_buffer_size])
+
+        assert parallel_helper.__parallel_ctx__clz__ is not None, \
+            "ParallelContext must be initialized before. You should use init_parallel_env() before" \
+            "constructing the DataParallel."
+
+        self._reducer = core.Reducer(trainable_parameters,
+                                     list(reversed(self.group_indices)),
+                                     is_sparse_gradient,
+                                     parallel_helper.__parallel_ctx__clz__)
 
     def forward(self, *inputs, **kwargs):
+        if self._strategy.nranks > 1:
+            self._reducer.prepare_for_backward()
+
         return self._layers(*inputs, **kwargs)
 
+    @deprecated(
+        since="2.0.0", reason="This method does not need to be called anymore.")
     def scale_loss(self, loss):
         """
-        Scale the loss. In data parallel mode, the loss should be scale with
-        the number of trainers. If not in data parallel mode, return the loss
-        directly.
-
-        Args:
-            loss(Variable): The loss of the current Model.
-
-        Returns:
-            Variable: the scaled loss.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                import paddle.nn as nn
-                import paddle.optimizer as opt
-                import paddle.distributed as dist
-
-                class LinearNet(nn.Layer):
-                    def __init__(self):
-                        super(LinearNet, self).__init__()
-                        self._linear1 = nn.Linear(10, 10)
-                        self._linear2 = nn.Linear(10, 1)
-                        
-                    def forward(self, x):
-                        return self._linear2(self._linear1(x))
-
-                def train():
-                    # 1. enable dynamic mode
-                    paddle.disable_static()
-                    
-                    # 2. initialize parallel environment
-                    dist.init_parallel_env()
-
-                    # 3. create data parallel layer & optimizer
-                    layer = LinearNet()
-                    dp_layer = paddle.DataParallel(layer)
-
-                    loss_fn = nn.MSELoss()
-                    adam = opt.Adam(
-                        learning_rate=0.001, parameters=dp_layer.parameters())
-
-                    # 4. run layer
-                    inputs = paddle.randn([10, 10], 'float32')
-                    outputs = dp_layer(inputs)
-                    labels = paddle.randn([10, 1], 'float32')
-                    loss = loss_fn(outputs, labels)
-                    
-                    loss = dp_layer.scale_loss(loss)
-                    loss.backward()
-                    dp_layer.apply_collective_grads()
-
-                    adam.step()
-                    adam.clear_grad()
-
-                if __name__ == '__main__':
-                    # 1. start by ``paddle.distributed.spawn`` (default)
-                    dist.spawn(train, nprocs=2)
-                    # 2. start by ``paddle.distributed.launch``
-                    # train()
+        Deprecated method, now ``scale_loss`` is an empty method,  
+        keep this method just for compatibility.
         """
-        if not self._is_data_parallel_mode():
-            return loss
-
-        loss_scale = to_variable(
-            np.array([self._strategy.nranks]).astype("float32"))
-        loss_scale.stop_gradient = True
-        loss = loss / loss_scale
         return loss
 
-    def _coalesce_tensors(self, var_groups):
-        from ..layers import nn
-        coalesced_grads_and_grad_vars = []
-        for group_id, grad_vars in var_groups.items():
-            flattened_vars = []
-            g_var_shapes = []
-            for g_var in grad_vars:
-                g_var_shapes.append(g_var.shape)
-                flattened_vars.append(
-                    nn.reshape(
-                        x=g_var, shape=[np.prod(g_var.shape)], inplace=True))
-            coalesced_grad = nn.concat(flattened_vars)
-            coalesced_grads_and_grad_vars.append(
-                [coalesced_grad, grad_vars, g_var_shapes])
-        return coalesced_grads_and_grad_vars
-
-    def _reshape_inplace(self, x, shape):
-        x_shape = self._helper.create_variable_for_type_inference(dtype=x.dtype)
-        self._helper.append_op(
-            type="reshape2",
-            inputs={'X': x},
-            attrs={'shape': shape},
-            outputs={'Out': x,
-                     'XShape': x_shape})
-
-    def _split_tensors(self, coalesced_grads_and_grad_vars):
-        from ..layers import nn
-        for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
-            grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
-            self._helper.main_program.current_block().append_op(
-                type='split',
-                inputs={'X': coalesced_grad},
-                outputs={'Out': origin_grad_vars},
-                attrs={'sections': grad_var_len,
-                       'axis': 0})
-            for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
-                self._reshape_inplace(x=g_var, shape=g_shape)
-                assert g_var.shape == g_shape
-
-    @no_grad
+    @deprecated(
+        since="2.0.0", reason="This method does not need to be called anymore.")
     def apply_collective_grads(self):
         """
-        AllReduce the Parameters' gradient.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                import paddle.nn as nn
-                import paddle.optimizer as opt
-                import paddle.distributed as dist
-
-                class LinearNet(nn.Layer):
-                    def __init__(self):
-                        super(LinearNet, self).__init__()
-                        self._linear1 = nn.Linear(10, 10)
-                        self._linear2 = nn.Linear(10, 1)
-                        
-                    def forward(self, x):
-                        return self._linear2(self._linear1(x))
-
-                def train():
-                    # 1. enable dynamic mode
-                    paddle.disable_static()
-                    
-                    # 2. initialize parallel environment
-                    dist.init_parallel_env()
-
-                    # 3. create data parallel layer & optimizer
-                    layer = LinearNet()
-                    dp_layer = paddle.DataParallel(layer)
-
-                    loss_fn = nn.MSELoss()
-                    adam = opt.Adam(
-                        learning_rate=0.001, parameters=dp_layer.parameters())
-
-                    # 4. run layer
-                    inputs = paddle.randn([10, 10], 'float32')
-                    outputs = dp_layer(inputs)
-                    labels = paddle.randn([10, 1], 'float32')
-                    loss = loss_fn(outputs, labels)
-                    
-                    loss = dp_layer.scale_loss(loss)
-                    loss.backward()
-                    dp_layer.apply_collective_grads()
-
-                    adam.step()
-                    adam.clear_grad()
-
-                if __name__ == '__main__':
-                    # 1. start by ``paddle.distributed.spawn`` (default)
-                    dist.spawn(train, nprocs=2)
-                    # 2. start by ``paddle.distributed.launch``
-                    # train()
+        Deprecated method, now ``apply_collective_grads`` is an empty method, 
+        keep this method just for compatibility.
         """
-        if not self._is_data_parallel_mode():
-            return
-
-        grad_var_set = set()
-        grad_vars = []
-        sparse_grad_vars = []
-        for param in self._layers.parameters():
-            # NOTE(zcd): The grad_ivar maybe no generated.
-            if param.trainable and (param._grad_ivar() is not None):
-                g_var = param._grad_ivar()
-                if g_var._is_sparse():
-                    sparse_grad_vars.append(g_var)
-                    continue
-                grad_vars.append(g_var)
-                assert g_var not in grad_var_set
-                grad_var_set.add(g_var)
-
-        if sparse_grad_vars:
-            sparse_grad_vars.sort(key=lambda x: x.name)
-            for grad_var in sparse_grad_vars:
-                grad_var._allreduce(self._strategy)
-
-        # FIXME(zcd): the type of the var should be LoDTensor, i.e
-        # the gradients should be dense, otherwise, the following
-        # logic should be updated.
-        # 128 MB as a group
-        mega_bytes = 128 * 1024 * 1024
-        group_idx = 0
-        memory_counter = 0
-        grad_var_groups = OrderedDict()
-        dtype = grad_vars[0].dtype
-        for g_var in grad_vars:
-            # Note: the dtype of the same group should be the same.
-            bytes = np.prod(g_var.shape) * core.size_of_dtype(g_var.dtype)
-            if memory_counter < mega_bytes and dtype == g_var.dtype:
-                memory_counter += bytes
-            else:
-                memory_counter = bytes
-                group_idx += 1
-            grad_var_groups.setdefault(group_idx, []).append(g_var)
-
-        coalesced_grads_and_vars = self._coalesce_tensors(grad_var_groups)
-
-        for coalesced_grad, _, _ in coalesced_grads_and_vars:
-            coalesced_grad._allreduce(self._strategy)
-
-        self._split_tensors(coalesced_grads_and_vars)
-
-    def _is_data_parallel_mode(self):
-        return self._strategy.nranks > 1
+        return
 
     def state_dict(self,
                    destination=None,
                    include_sublayers=True,
                    structured_name_prefix=""):
         '''
-        Get all parameters of self._layers and its sub-layers. And set all the parameters into a dict
+        Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters will set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            structured_name_prefix(str, optional): If not empty str, all the key in state dict will start 
-                                                 with structured_name_prefix
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
 
         Retruns:
-            dict: a dict contains all the parameters of self._layers
+            dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    strategy=fluid.dygraph.prepare_context()
-                    emb = fluid.dygraph.Embedding([10, 10])
-                    emb = fluid.dygraph.DataParallel(emb, strategy)
+                import paddle
+                import paddle.distributed as dist
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
+                dist.init_parallel_env()
+
+                emb = fluid.dygraph.Embedding([10, 10])
+                emb = fluid.dygraph.DataParallel(emb)
+
+                state_dict = emb.state_dict()
+                paddle.save(state_dict, "paddle_dy.pdparams")
 
         '''
 
@@ -587,17 +502,18 @@ class DataParallel(layers.Layer):
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix)
 
-    def set_dict(self,
-                 stat_dict,
-                 include_sublayers=True,
-                 use_structured_name=True):
+    @framework.deprecate_stat_dict
+    def set_state_dict(self,
+                       state_dict,
+                       include_sublayers=True,
+                       use_structured_name=True):
         '''
-        Set parameters of self._layers from stat_dict. All the parameters of self._layers will be reset by the tensor in the stat_dict
+        Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
         Parameters:
-            state_dict(dict) : Dict contains all the parameters
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key. 
+            state_dict(dict) : Dict contains all the parameters and persistable buffers.
+            include_sublayers(bool, optional) : If true, also include the parameters and peresistable buffers from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key. 
                                                   Default: True
         Returns:
             None
@@ -605,62 +521,27 @@ class DataParallel(layers.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    strategy=fluid.dygraph.prepare_context()
-                    emb = fluid.dygraph.Embedding([10, 10])
-                    emb = fluid.dygraph.DataParallel(emb, strategy)
+                import paddle
+                import paddle.distributed as dist
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
-                    
-                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
+                dist.init_parallel_env()
 
-                    emb.set_dict( para_state_dict )
+                emb = paddle.nn.Embedding(10, 10)
+                emb = fluid.dygraph.DataParallel(emb)
+
+                state_dict = emb.state_dict()
+                paddle.save(state_dict, "paddle_dy.pdparams")
+
+                para_state_dict = paddle.load("paddle_dy.pdparams")
+                emb.set_state_dict(para_state_dict)
 
         '''
 
-        self._layers.set_dict(
-            stat_dict,
+        self._layers.set_state_dict(
+            state_dict,
             include_sublayers=include_sublayers,
             use_structured_name=use_structured_name)
 
-    def load_dict(self,
-                  stat_dict,
-                  include_sublayers=True,
-                  use_structured_name=True):
-        '''
-        Set parameters of self._layers from stat_dict. All the parameters of self._layers will be reset by the tensor in the stat_dict
-
-        This api will be Deprecated. Please use set_dict
-
-        Parameters:
-            state_dict(dict) : Dict contains all the parameters
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key.
-                                                  Default: True
-        Returns:
-            None
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    strategy=fluid.dygraph.prepare_context()
-                    emb = fluid.dygraph.Embedding([10, 10])
-                    emb = fluid.dygraph.DataParallel(emb, strategy)
-
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
-                    
-                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
-
-                    emb.load_dict( para_state_dict )
-
-        '''
-
-        self._layers.load_dict(
-            stat_dict,
-            include_sublayers=include_sublayers,
-            use_structured_name=use_structured_name)
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
+    load_dict = set_state_dict

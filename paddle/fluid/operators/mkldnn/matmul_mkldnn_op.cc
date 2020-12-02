@@ -12,11 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "mkldnn.hpp"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+
+namespace paddle {
+namespace platform {
+class MKLDNNDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -34,6 +40,11 @@ using Tensor = framework::Tensor;
 template <typename T>
 constexpr bool IsInt8() {
   return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}
+
+template <typename T>
+constexpr bool IsBfloat16() {
+  return std::is_same<T, paddle::platform::bfloat16>::value;
 }
 
 // Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
@@ -164,7 +175,9 @@ class MatMulFactory {
   void CorrectStridesWhenFloatOutputFused(const ExecutionContext& ctx,
                                           const memory::dim N, memory::dim b,
                                           memory::dims* out_strides) const {
-    if (!IsInt8<OT>() && IsOutputFused(ctx)) *out_strides = {N, b * N, 1};
+    if (!IsInt8<OT>() && !IsBfloat16<OT>() && IsOutputFused(ctx)) {
+      *out_strides = {N, b * N, 1};
+    }
   }
 
   MatMulDims GetMatmulDims(const ExecutionContext& ctx) {
@@ -324,8 +337,8 @@ static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
   const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   const auto batch_size = ctx.Input<Tensor>("X")->dims()[0];
 
-  const std::string key =
-      platform::CreateKey(platform::ThreadIDasStr(), batch_size, out_name);
+  const std::string key = platform::CreateKey(
+      platform::ThreadIDasStr(), dev_ctx.GetKeySuffix(), batch_size, out_name);
 
   auto factory =
       std::static_pointer_cast<MatMulFactory<XT, YT, OT>>(dev_ctx.GetBlob(key));
@@ -342,10 +355,14 @@ static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
 template <typename XT, typename YT>
 static void ExecuteMatMul(const ExecutionContext& ctx) {
   constexpr bool is_int8 = IsInt8<XT>();
+  constexpr bool is_bfloat16 = IsBfloat16<XT>();
   const bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
   constexpr bool fuse_relu = false;  // TODO(intel): Enable eltwise fuses
-  if (!is_int8 || force_fp32_output) {
+  if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
     GetPrimitiveFactory<XT, YT, float>(ctx)->CreateAndExecute(ctx);
+  } else if (is_bfloat16) {
+    GetPrimitiveFactory<XT, YT, paddle::platform::bfloat16>(ctx)
+        ->CreateAndExecute(ctx);
   } else if (fuse_relu) {
     GetPrimitiveFactory<XT, YT, uint8_t>(ctx)->CreateAndExecute(ctx);
   } else {
@@ -370,5 +387,7 @@ class DNNLMatMulKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(matmul, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::DNNLMatMulKernel<float>, ops::DNNLMatMulKernel<int8_t>,
+                   ops::DNNLMatMulKernel<float>,
+                   ops::DNNLMatMulKernel<paddle::platform::bfloat16>,
+                   ops::DNNLMatMulKernel<int8_t>,
                    ops::DNNLMatMulKernel<uint8_t>);

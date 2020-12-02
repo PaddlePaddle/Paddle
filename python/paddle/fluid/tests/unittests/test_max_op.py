@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci, check_out_dtype
 import paddle
 import paddle.fluid.core as core
 
@@ -80,8 +80,22 @@ class ApiMaxTest(unittest.TestCase):
     def test_imperative_api(self):
         paddle.disable_static()
         np_x = np.array([10, 10]).astype('float64')
-        x = paddle.to_variable(np_x)
+        x = paddle.to_tensor(np_x)
         z = paddle.max(x, axis=0)
         np_z = z.numpy()
         z_expected = np.array(np.max(np_x, axis=0))
         self.assertEqual((np_z == z_expected).all(), True)
+
+
+class TestOutDtype(unittest.TestCase):
+    def test_max(self):
+        api_fn = paddle.max
+        shape = [10, 16]
+        check_out_dtype(
+            api_fn,
+            in_specs=[(shape, )],
+            expect_dtypes=['float32', 'float64', 'int32', 'int64'])
+
+
+if __name__ == '__main__':
+    unittest.main()

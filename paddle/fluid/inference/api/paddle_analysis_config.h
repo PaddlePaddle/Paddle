@@ -312,6 +312,20 @@ struct PD_INFER_DECL AnalysisConfig {
       std::map<std::string, std::vector<int>> max_input_shape,
       std::map<std::string, std::vector<int>> optim_input_shape,
       bool disable_trt_plugin_fp16 = false);
+
+  ///
+  /// \brief Replace some TensorRT plugins to TensorRT OSS(
+  /// https://github.com/NVIDIA/TensorRT), with which some models's inference may 
+  /// be more high-performance. Libnvinfer_plugin.so greater than V7.2.1 is needed.
+  ///
+  void EnableTensorRtOSS();
+  ///
+  /// \brief A boolean state telling whether to use the TensorRT OSS.
+  ///
+  /// \return bool Whether to use the TensorRT OSS.
+  ///
+  bool tensorrt_oss_enabled() { return trt_use_oss_; }
+
   ///
   /// \brief Turn on the usage of Lite sub-graph engine.
   ///
@@ -400,6 +414,27 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMkldnnQuantizer();
+
+  ///
+  /// \brief Turn on MKLDNN bfloat16.
+  ///
+  ///
+  void EnableMkldnnBfloat16();
+
+  ///
+  /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
+  ///
+  /// \return bool Whether to use the MKLDNN Bfloat16.
+  ///
+  bool mkldnn_bfloat16_enabled() const { return use_mkldnn_bfloat16_; }
+
+  /// \brief Specify the operator type list to use Bfloat16 acceleration.
+  ///
+  /// \param op_list The operator type list.
+  ///
+  void SetBfloat16Op(std::unordered_set<std::string> op_list) {
+    bfloat16_enabled_op_types_ = op_list;
+  }
 
   ///
   /// \brief A boolean state telling whether the thread local CUDA stream is
@@ -548,6 +583,7 @@ struct PD_INFER_DECL AnalysisConfig {
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
+  bool trt_use_oss_{false};
   std::map<std::string, std::vector<int>> min_input_shape_{};
   std::map<std::string, std::vector<int>> max_input_shape_{};
   std::map<std::string, std::vector<int>> optim_input_shape_{};
@@ -592,6 +628,8 @@ struct PD_INFER_DECL AnalysisConfig {
   int mkldnn_cache_capacity_{0};
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
+  bool use_mkldnn_bfloat16_{false};
+  std::unordered_set<std::string> bfloat16_enabled_op_types_;
 
   // If the config is already used on a predictor, it becomes invalid.
   // Any config can only be used with one predictor.

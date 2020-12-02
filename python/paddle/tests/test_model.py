@@ -25,7 +25,7 @@ import tempfile
 import paddle
 from paddle import fluid
 from paddle import to_tensor
-from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential, Softmax
+from paddle.nn import Conv2D, Linear, ReLU, Sequential, Softmax
 
 from paddle import Model
 from paddle.static import InputSpec
@@ -33,60 +33,32 @@ from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
-from paddle.io import DistributedBatchSampler
+import paddle.vision.models as models
+import paddle.fluid.dygraph.jit as jit
+from paddle.io import DistributedBatchSampler, Dataset
 from paddle.hapi.model import prepare_distributed_context
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
 
 class LeNetDygraph(paddle.nn.Layer):
-    def __init__(self, num_classes=10, classifier_activation=None):
+    def __init__(self, num_classes=10):
         super(LeNetDygraph, self).__init__()
         self.num_classes = num_classes
         self.features = Sequential(
-            Conv2d(
+            Conv2D(
                 1, 6, 3, stride=1, padding=1),
             ReLU(),
-            Pool2D(2, 'max', 2),
-            Conv2d(
+            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            Conv2D(
                 6, 16, 5, stride=1, padding=0),
             ReLU(),
-            Pool2D(2, 'max', 2))
+            paddle.fluid.dygraph.Pool2D(2, 'max', 2))
 
         if num_classes > 0:
             self.fc = Sequential(
-                Linear(400, 120), Linear(120, 84), Linear(84, 10),
-                Softmax())  #Todo: accept any activation
+                Linear(400, 120), Linear(120, 84), Linear(84, 10))
 
-    def forward(self, inputs):
-        x = self.features(inputs)
-
-        if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
-            x = self.fc(x)
-        return x
-
-
-class LeNetDeclarative(fluid.dygraph.Layer):
-    def __init__(self, num_classes=10, classifier_activation=None):
-        super(LeNetDeclarative, self).__init__()
-        self.num_classes = num_classes
-        self.features = Sequential(
-            Conv2d(
-                1, 6, 3, stride=1, padding=1),
-            ReLU(),
-            Pool2D(2, 'max', 2),
-            Conv2d(
-                6, 16, 5, stride=1, padding=0),
-            ReLU(),
-            Pool2D(2, 'max', 2))
-
-        if num_classes > 0:
-            self.fc = Sequential(
-                Linear(400, 120), Linear(120, 84), Linear(84, 10),
-                Softmax())  #Todo: accept any activation
-
-    @declarative
     def forward(self, inputs):
         x = self.features(inputs)
 
@@ -172,7 +144,7 @@ class TestModel(unittest.TestCase):
             cls.test_dataset, places=cls.device, batch_size=64)
 
         seed = 333
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
         dy_lenet = LeNetDygraph()
@@ -224,10 +196,10 @@ class TestModel(unittest.TestCase):
     def fit(self, dynamic, num_replicas=None, rank=None):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
-        net = LeNet(classifier_activation=None)
+        net = LeNet()
         optim_new = fluid.optimizer.Adam(
             learning_rate=0.001, parameter_list=net.parameters())
         model = Model(net, inputs=self.inputs, labels=self.labels)
@@ -314,22 +286,46 @@ class TestModel(unittest.TestCase):
 
         fluid.disable_dygraph() if dynamic else None
 
+    def test_predict_without_inputs(self):
+        fluid.enable_dygraph(self.device)
+        model = Model(LeNet())
+        model.prepare()
+        model.load(self.weight_path)
+        model._inputs = None
+        output = model.predict(
+            self.test_dataset, batch_size=64, stack_outputs=True)
+        np.testing.assert_equal(output[0].shape[0], len(self.test_dataset))
+        fluid.disable_dygraph()
+
+    def test_summary_gpu(self):
+        paddle.disable_static(self.device)
+        rnn = paddle.nn.LSTM(16, 32, 2)
+        params_info = paddle.summary(
+            rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
+
 
 class MyModel(paddle.nn.Layer):
-    def __init__(self, classifier_activation='softmax'):
+    def __init__(self):
         super(MyModel, self).__init__()
         self._fc = Linear(20, 10)
-        self._act = Softmax()  #Todo: accept any activation
 
     def forward(self, x):
         y = self._fc(x)
-        y = self._act(y)
         return y
+
+
+class MyDataset(Dataset):
+    def __getitem__(self, idx):
+        return np.random.random(size=(20,)).astype(np.float32), \
+               np.random.randint(0, 10, size=(1,)).astype(np.int64)
+
+    def __len__(self):
+        return 40
 
 
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
     def test_train_batch(self, dynamic=True):
@@ -340,7 +336,7 @@ class TestModelFunction(unittest.TestCase):
         def get_expect():
             fluid.enable_dygraph(fluid.CPUPlace())
             self.set_seed()
-            m = MyModel(classifier_activation=None)
+            m = MyModel()
             optim = fluid.optimizer.SGD(learning_rate=0.001,
                                         parameter_list=m.parameters())
             m.train()
@@ -359,7 +355,7 @@ class TestModelFunction(unittest.TestCase):
             fluid.enable_dygraph(device) if dynamic else None
             self.set_seed()
 
-            net = MyModel(classifier_activation=None)
+            net = MyModel()
             optim2 = fluid.optimizer.SGD(learning_rate=0.001,
                                          parameter_list=net.parameters())
 
@@ -393,7 +389,7 @@ class TestModelFunction(unittest.TestCase):
             inputs = [InputSpec([None, dim], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
-            out, = model.test_batch([data])
+            out, = model.predict_batch([data])
 
             np.testing.assert_allclose(out, ref, rtol=1e-6)
             fluid.disable_dygraph() if dynamic else None
@@ -403,7 +399,7 @@ class TestModelFunction(unittest.TestCase):
         for dynamic in [True, False]:
             device = paddle.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
-            net = MyModel(classifier_activation=None)
+            net = MyModel()
             inputs = [InputSpec([None, 20], 'float32', 'x')]
             labels = [InputSpec([None, 1], 'int64', 'label')]
             optim = fluid.optimizer.SGD(learning_rate=0.001,
@@ -416,12 +412,35 @@ class TestModelFunction(unittest.TestCase):
             shutil.rmtree(path)
             fluid.disable_dygraph() if dynamic else None
 
+    def test_dynamic_load(self):
+        mnist_data = MnistDataset(mode='train')
+        for new_optimizer in [True, False]:
+            path = tempfile.mkdtemp()
+            paddle.disable_static()
+            net = LeNet()
+            inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
+            labels = [InputSpec([None, 1], 'int64', 'label')]
+            if new_optimizer:
+                optim = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=net.parameters())
+            else:
+                optim = fluid.optimizer.Adam(
+                    learning_rate=0.001, parameter_list=net.parameters())
+            model = Model(net, inputs, labels)
+            model.prepare(
+                optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+            model.fit(mnist_data, batch_size=64, verbose=0)
+            model.save(path + '/test')
+            model.load(path + '/test')
+            shutil.rmtree(path)
+            paddle.enable_static()
+
     def test_dynamic_save_static_load(self):
         path = tempfile.mkdtemp()
         # dynamic saving
         device = paddle.set_device('cpu')
         fluid.enable_dygraph(device)
-        model = Model(MyModel(classifier_activation=None))
+        model = Model(MyModel())
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
@@ -430,7 +449,7 @@ class TestModelFunction(unittest.TestCase):
 
         inputs = [InputSpec([None, 20], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
-        model = Model(MyModel(classifier_activation=None), inputs, labels)
+        model = Model(MyModel(), inputs, labels)
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
@@ -440,7 +459,7 @@ class TestModelFunction(unittest.TestCase):
     def test_static_save_dynamic_load(self):
         path = tempfile.mkdtemp()
 
-        net = MyModel(classifier_activation=None)
+        net = MyModel()
         inputs = [InputSpec([None, 20], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
@@ -452,7 +471,7 @@ class TestModelFunction(unittest.TestCase):
         device = paddle.set_device('cpu')
         fluid.enable_dygraph(device)  #if dynamic else None
 
-        net = MyModel(classifier_activation=None)
+        net = MyModel()
         inputs = [InputSpec([None, 20], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
@@ -476,13 +495,103 @@ class TestModelFunction(unittest.TestCase):
             self.assertTrue(params[0].shape[1] == 10)
             fluid.disable_dygraph() if dynamic else None
 
-    def test_export_deploy_model(self):
+    def test_summary(self):
+        def _get_param_from_state_dict(state_dict):
+            params = 0
+            for k, v in state_dict.items():
+                params += np.prod(v.numpy().shape)
+            return params
+
         for dynamic in [True, False]:
-            fluid.enable_dygraph() if dynamic else None
-            # paddle.disable_static() if dynamic else None
+            device = paddle.set_device('cpu')
+            fluid.enable_dygraph(device) if dynamic else None
+            net = MyModel()
+            inputs = [InputSpec([None, 20], 'float32', 'x')]
+            model = Model(net, inputs)
+            model.prepare()
+            params_info = model.summary()
+            gt_params = _get_param_from_state_dict(net.state_dict())
+
+            np.testing.assert_allclose(params_info['total_params'], gt_params)
+            print(params_info)
+
+            model.summary(input_size=(20))
+            model.summary(input_size=[(20)])
+            model.summary(input_size=(20), dtype='float32')
+
+    def test_summary_nlp(self):
+        def _get_param_from_state_dict(state_dict):
+            params = 0
+            for k, v in state_dict.items():
+                params += np.prod(v.numpy().shape)
+            return params
+
+        nlp_net = paddle.nn.GRU(input_size=2,
+                                hidden_size=3,
+                                num_layers=3,
+                                direction="bidirectional")
+        paddle.summary(nlp_net, (1, 1, 2))
+
+        rnn = paddle.nn.LSTM(16, 32, 2)
+        params_info = paddle.summary(
+            rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
+        gt_params = _get_param_from_state_dict(rnn.state_dict())
+        np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
+
+        rnn = paddle.nn.GRU(16, 32, 2, direction='bidirectional')
+        params_info = paddle.summary(rnn, (4, 23, 16))
+        gt_params = _get_param_from_state_dict(rnn.state_dict())
+        np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
+
+        rnn = paddle.nn.SimpleRNN(16, 32, 2, direction='bidirectional')
+        params_info = paddle.summary(rnn, (4, 23, 16))
+        gt_params = _get_param_from_state_dict(rnn.state_dict())
+        np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
+
+    def test_summary_dtype(self):
+        input_shape = (3, 1)
+        net = paddle.nn.Embedding(10, 3, sparse=True)
+        paddle.summary(net, input_shape, dtypes='int64')
+
+    def test_summary_error(self):
+        with self.assertRaises(TypeError):
+            nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
+            paddle.summary(nlp_net, (1, 1, '2'))
+
+        with self.assertRaises(ValueError):
+            nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
+            paddle.summary(nlp_net, (-1, -1))
+
+        paddle.disable_static()
+        nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
+        paddle.summary(nlp_net, (1, 1, 2))
+
+    def test_static_flops(self):
+        paddle.disable_static()
+        net = models.__dict__['mobilenet_v2'](pretrained=False)
+        inputs = paddle.randn([1, 3, 224, 224])
+        static_program = jit._trace(net, inputs=[inputs])[1]
+        paddle.flops(static_program, [1, 3, 224, 224], print_detail=True)
+
+    def test_dynamic_flops(self):
+        net = models.__dict__['mobilenet_v2'](pretrained=False)
+
+        def customize_dropout(m, x, y):
+            m.total_ops += 0
+
+        paddle.flops(
+            net, [1, 3, 224, 224],
+            custom_ops={paddle.nn.Dropout: customize_dropout},
+            print_detail=True)
+
+    def test_export_deploy_model(self):
+        self.set_seed()
+        np.random.seed(201)
+        for dynamic in [True, False]:
+            paddle.disable_static() if dynamic else None
             prog_translator = ProgramTranslator()
             prog_translator.enable(False) if not dynamic else None
-            net = LeNetDeclarative()
+            net = LeNet()
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
@@ -491,8 +600,9 @@ class TestModelFunction(unittest.TestCase):
                 os.makedirs(save_dir)
             tensor_img = np.array(
                 np.random.random((1, 1, 28, 28)), dtype=np.float32)
-            ori_results = model.test_batch(tensor_img)
+
             model.save(save_dir, training=False)
+            ori_results = model.predict_batch(tensor_img)
             fluid.disable_dygraph() if dynamic else None
 
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
@@ -501,24 +611,235 @@ class TestModelFunction(unittest.TestCase):
             with fluid.scope_guard(new_scope):
                 exe = fluid.Executor(place)
                 [inference_program, feed_target_names, fetch_targets] = (
-                    fluid.io.load_inference_model(
-                        dirname=save_dir, executor=exe))
+                    paddle.static.io.load_inference_model(
+                        path_prefix=save_dir, executor=exe))
                 results = exe.run(inference_program,
                                   feed={feed_target_names[0]: tensor_img},
                                   fetch_list=fetch_targets)
                 np.testing.assert_allclose(
                     results, ori_results, rtol=1e-5, atol=1e-7)
                 shutil.rmtree(save_dir)
+            paddle.enable_static()
+
+    def test_dygraph_export_deploy_model_about_inputs(self):
+        mnist_data = MnistDataset(mode='train')
+        paddle.disable_static()
+        # without inputs
+        for initial in ["fit", "train_batch", "eval_batch", "predict_batch"]:
+            save_dir = tempfile.mkdtemp()
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+            net = LeNet()
+            model = Model(net)
+            optim = fluid.optimizer.Adam(
+                learning_rate=0.001, parameter_list=model.parameters())
+            model.prepare(
+                optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+            if initial == "fit":
+                model.fit(mnist_data, batch_size=64, verbose=0)
+            else:
+                img = np.array(
+                    np.random.random((1, 1, 28, 28)), dtype=np.float32)
+                label = np.array(np.random.rand(1, 1), dtype=np.int64)
+                if initial == "train_batch":
+                    model.train_batch([img], [label])
+                elif initial == "eval_batch":
+                    model.eval_batch([img], [label])
+                else:
+                    model.predict_batch([img])
+
+            model.save(save_dir, training=False)
+            shutil.rmtree(save_dir)
+        # with inputs, and the type of inputs is InputSpec
+        save_dir = tempfile.mkdtemp()
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        net = LeNet()
+        inputs = InputSpec([None, 1, 28, 28], 'float32', 'x')
+        model = Model(net, inputs)
+        optim = fluid.optimizer.Adam(
+            learning_rate=0.001, parameter_list=model.parameters())
+        model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+        model.save(save_dir, training=False)
+        shutil.rmtree(save_dir)
+
+
+class TestModelWithLRScheduler(unittest.TestCase):
+    def test_fit_by_step(self):
+        base_lr = 1e-3
+        boundaries = [5, 8]
+
+        def make_optimizer(parameters=None):
+            momentum = 0.9
+            weight_decay = 5e-4
+            values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
+            learning_rate = paddle.optimizer.lr.PiecewiseDecay(
+                boundaries=boundaries, values=values)
+            learning_rate = paddle.optimizer.lr.LinearWarmup(
+                learning_rate=learning_rate,
+                warmup_steps=4,
+                start_lr=base_lr / 5.,
+                end_lr=base_lr,
+                verbose=True)
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                momentum=momentum,
+                parameters=parameters)
+            return optimizer
+
+        # dynamic test
+        device = paddle.set_device('cpu')
+        fluid.enable_dygraph(device)
+        net = MyModel()
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+        optim = make_optimizer(net.parameters())
+        model = Model(net, inputs, labels)
+        model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+
+        dataset = MyDataset()
+        model.fit(dataset, dataset, batch_size=4, epochs=10, num_workers=0)
+
+        np.testing.assert_allclose(model._optimizer._learning_rate.last_lr,
+                                   base_lr * (0.1**len(boundaries)))
+        # static test
+        paddle.enable_static()
+
+        net = MyModel()
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+        optim = make_optimizer(net.parameters())
+        model = Model(net, inputs, labels)
+        model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+
+        dataset = MyDataset()
+        model.fit(dataset, dataset, batch_size=4, epochs=10, num_workers=0)
+
+        np.testing.assert_allclose(model._optimizer._learning_rate.last_lr,
+                                   base_lr * (0.1**len(boundaries)))
+
+    def test_fit_by_epoch(self):
+        base_lr = 1e-3
+        boundaries = [5, 8]
+        epochs = 10
+        wamup_epochs = 4
+
+        def make_optimizer(parameters=None):
+            momentum = 0.9
+            weight_decay = 5e-4
+            values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
+            learning_rate = paddle.optimizer.lr.PiecewiseDecay(
+                boundaries=boundaries, values=values)
+            learning_rate = paddle.optimizer.lr.LinearWarmup(
+                learning_rate=learning_rate,
+                warmup_steps=wamup_epochs,
+                start_lr=base_lr / 5.,
+                end_lr=base_lr,
+                verbose=True)
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                momentum=momentum,
+                parameters=parameters)
+            return optimizer
+
+        # dynamic test
+        device = paddle.set_device('cpu')
+        fluid.enable_dygraph(device)
+        net = MyModel()
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+        optim = make_optimizer(net.parameters())
+        model = Model(net, inputs, labels)
+        model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+
+        dataset = MyDataset()
+
+        lr_scheduler_callback = paddle.callbacks.LRScheduler(
+            by_step=False, by_epoch=True)
+
+        model.fit(dataset,
+                  dataset,
+                  batch_size=4,
+                  epochs=epochs,
+                  num_workers=0,
+                  callbacks=lr_scheduler_callback)
+
+        cnt = 0
+        for b in boundaries:
+            if b + wamup_epochs <= epochs:
+                cnt += 1
+
+        np.testing.assert_allclose(model._optimizer._learning_rate.last_lr,
+                                   base_lr * (0.1**cnt))
+        # static test
+        paddle.enable_static()
+
+        net = MyModel()
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+        optim = make_optimizer(net.parameters())
+        model = Model(net, inputs, labels)
+        model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+
+        dataset = MyDataset()
+
+        lr_scheduler_callback = paddle.callbacks.LRScheduler(
+            by_step=False, by_epoch=True)
+
+        model.fit(dataset,
+                  dataset,
+                  batch_size=4,
+                  epochs=epochs,
+                  num_workers=0,
+                  callbacks=lr_scheduler_callback)
+
+        cnt = 0
+        for b in boundaries:
+            if b + wamup_epochs <= epochs:
+                cnt += 1
+
+        np.testing.assert_allclose(model._optimizer._learning_rate.last_lr,
+                                   base_lr * (0.1**cnt))
 
 
 class TestRaiseError(unittest.TestCase):
     def test_input_without_name(self):
-        net = MyModel(classifier_activation=None)
-
+        net = MyModel()
         inputs = [InputSpec([None, 10], 'float32')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         with self.assertRaises(ValueError):
             model = Model(net, inputs, labels)
+
+    def test_static_without_inputs(self):
+        paddle.enable_static()
+        net = MyModel()
+        with self.assertRaises(TypeError):
+            model = Model(net)
+
+    def test_save_infer_model_without_inputs_and_run_in_dygraph(self):
+        paddle.disable_static()
+        net = MyModel()
+        save_dir = tempfile.mkdtemp()
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        with self.assertRaises(RuntimeError):
+            model = Model(net)
+            model.save(save_dir, training=False)
+        paddle.enable_static()
+
+    def test_save_infer_model_without_file_prefix(self):
+        paddle.enable_static()
+        net = LeNet()
+        inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
+        model = Model(net, inputs)
+        model.prepare()
+        path = ""
+        tensor_img = np.array(
+            np.random.random((1, 1, 28, 28)), dtype=np.float32)
+        with self.assertRaises(ValueError):
+            model.save(path, training=False)
 
 
 if __name__ == '__main__':

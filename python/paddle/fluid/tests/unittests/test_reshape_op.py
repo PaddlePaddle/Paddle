@@ -20,7 +20,8 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import compiler
+from paddle.static import Program, program_guard
 
 
 # situation 1: have shape( list, no tensor), no actual shape(Tensor)
@@ -226,20 +227,39 @@ class TestReshapeUint8Op(TestReshapeInt8Op):
         self.dtype = np.uint8
 
 
+class TestReshapeOpBool(TestReshapeOp):
+    def setUp(self):
+        self.init_data()
+        self.op_type = "reshape2"
+        self.inputs = {
+            "X": np.random.choice(
+                [True, False], size=self.ori_shape)
+        }
+        self.attrs = {"shape": self.new_shape}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype("float32")
+        }
+
+    def test_check_grad(self):
+        pass
+
+
 # Test python API
 class TestReshapeAPI(unittest.TestCase):
     def _set_paddle_api(self):
-        self.fill_constant = paddle.fill_constant
-        self.data = paddle.data
+        self.fill_constant = paddle.fluid.layers.fill_constant
+        self.data = paddle.static.data
         self.reshape = paddle.reshape
         self.to_tensor = paddle.to_tensor
 
     def _set_fluid_api(self):
         self.fill_constant = fluid.layers.fill_constant
-        self.data = fluid.data
+        self.data = paddle.static.data
         self.reshape = fluid.layers.reshape
 
     def _test_api(self):
+        paddle.enable_static()
         input = np.random.random([2, 25]).astype("float32")
         shape = [2, 5, 5]
         main_prog = Program()
@@ -262,7 +282,7 @@ class TestReshapeAPI(unittest.TestCase):
             # Situation 4: have shape(Tensor), no actual shape(Tensor)
             out_4 = self.reshape(x, shape=actual_shape)
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = paddle.static.Executor(place=paddle.CPUPlace())
         res_1, res_2, res_3, res_4 = exe.run(
             main_prog,
             feed={"x": input,
@@ -305,7 +325,7 @@ class TestReshapeAPI(unittest.TestCase):
 # Test Input Error
 class TestReshapeOpError(unittest.TestCase):
     def _set_paddle_api(self):
-        self.data = paddle.data
+        self.data = paddle.static.data
         self.reshape = paddle.reshape
 
     def _set_fluid_api(self):
@@ -317,14 +337,14 @@ class TestReshapeOpError(unittest.TestCase):
             # The x type of reshape_op must be Variable.
             def test_x_type():
                 x1 = fluid.create_lod_tensor(
-                    np.array([[-1]]), [[1]], fluid.CPUPlace())
+                    np.array([[-1]]), [[1]], paddle.CPUPlace())
                 self.reshape(x1, shape=[1])
 
             self.assertRaises(TypeError, test_x_type)
 
             # The x dtype of reshape_op must be float16, float32, float64, int32 or int64.
             def test_x_dtype():
-                x2 = self.data(name="x2", shape=[2, 25], dtype="bool")
+                x2 = self.data(name="x2", shape=[2, 25], dtype="int8")
                 self.reshape(x2, shape=[2, 5, 5])
 
             self.assertRaises(TypeError, test_x_dtype)
@@ -375,6 +395,35 @@ class TestReshapeOpError(unittest.TestCase):
     def test_fluid_api_error(self):
         self._set_fluid_api()
         self._test_errors()
+
+
+class API_TestDygraphReshape(unittest.TestCase):
+    def test_out(self):
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("int32")
+        input = paddle.to_tensor(input_1)
+        output = paddle.reshape(x=input, shape=[5, 10])
+        out_np = output.numpy()
+        expected_out = np.reshape(input_1, newshape=[5, 10])
+        self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_out_uint8(self):
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("uint8")
+        input = paddle.to_tensor(input_1)
+        output = paddle.reshape(x=input, shape=[5, 10])
+        out_np = output.numpy()
+        expected_out = np.reshape(input_1, newshape=[5, 10])
+        self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_out_float32(self):
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("float32")
+        input = paddle.to_tensor(input_1)
+        output = paddle.reshape(x=input, shape=[5, 10])
+        out_np = output.numpy()
+        expected_out = np.reshape(input_1, newshape=[5, 10])
+        self.assertTrue(np.allclose(expected_out, out_np))
 
 
 if __name__ == "__main__":

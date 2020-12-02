@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import copy
 import paddle
 from paddle.fluid.framework import core
 from paddle.fluid import compiler
@@ -48,16 +49,24 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                  callbacks=None):
         pass
 
-    # should fix the variable 
+    # should fix the variable
     def _setup_nccl_op(self, startup_program, main_program, build_strategy):
-        trainer_endpoints = self.role_maker.get_trainer_endpoints()
-        trainers = trainer_endpoints
-        trainer_id = self.role_maker.worker_index()
-        current_endpoint = self.role_maker.get_trainer_endpoints()[trainer_id]
+        trainer_endpoints = self.role_maker._get_trainer_endpoints()
+        other_trainers = copy.copy(trainer_endpoints)
+
+        trainer_id = self.role_maker._worker_index()
+        current_endpoint = self.role_maker._get_trainer_endpoints()[trainer_id]
+        other_trainers.remove(current_endpoint)
+
         trainer_endpoints_env = ",".join(trainer_endpoints)
-        trainers_num = self.role_maker.worker_num()
+        trainers_num = self.role_maker._worker_num()
+
+        if trainer_id == 0:
+            wait_server_ready(other_trainers)
+
         nccl_id_var = startup_program.global_block().create_var(
             name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
+
         for i in range(1, build_strategy.nccl_comm_num):
             startup_program.global_block().create_var(
                 name="NCCLID_{}".format(i),
@@ -90,35 +99,34 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             })
 
     def _try_to_compile(self, startup_program, main_program, loss):
-        import copy
         dist_strategy = self.user_defined_strategy
         local_build_strategy = paddle.fluid.BuildStrategy()
         local_build_strategy.enable_sequential_execution = \
-                    dist_strategy.build_strategy.enable_sequential_execution
+            dist_strategy.build_strategy.enable_sequential_execution
         local_build_strategy.fuse_elewise_add_act_ops = \
-                    dist_strategy.build_strategy.fuse_elewise_add_act_ops
+            dist_strategy.build_strategy.fuse_elewise_add_act_ops
         local_build_strategy.fuse_bn_act_ops = \
-                    dist_strategy.build_strategy.fuse_bn_act_ops
+            dist_strategy.build_strategy.fuse_bn_act_ops
         local_build_strategy.enable_auto_fusion = \
-                    dist_strategy.build_strategy.enable_auto_fusion
+            dist_strategy.build_strategy.enable_auto_fusion
         local_build_strategy.fuse_relu_depthwise_conv = \
-                    dist_strategy.build_strategy.fuse_relu_depthwise_conv
+            dist_strategy.build_strategy.fuse_relu_depthwise_conv
         local_build_strategy.fuse_broadcast_ops = \
-                    dist_strategy.build_strategy.fuse_broadcast_ops
+            dist_strategy.build_strategy.fuse_broadcast_ops
         local_build_strategy.fuse_all_optimizer_ops = \
-                    dist_strategy.build_strategy.fuse_all_optimizer_ops
+            dist_strategy.build_strategy.fuse_all_optimizer_ops
         local_build_strategy.enable_inplace = \
-                    dist_strategy.build_strategy.enable_inplace
+            dist_strategy.build_strategy.enable_inplace
         local_build_strategy.use_hierarchical_allreduce = \
-                    dist_strategy.use_hierarchical_allreduce
+            dist_strategy.use_hierarchical_allreduce
         local_build_strategy.hierarchical_allreduce_inter_nranks = \
-                    dist_strategy.hierarchical_allreduce_inter_nranks
+            dist_strategy.hierarchical_allreduce_inter_nranks
         local_build_strategy.sync_batch_norm = \
-                    dist_strategy.sync_batch_norm
+            dist_strategy.sync_batch_norm
         local_build_strategy.fuse_all_reduce_ops = \
-                    dist_strategy.fuse_all_reduce_ops
+            dist_strategy.fuse_all_reduce_ops
         local_build_strategy.nccl_comm_num = \
-                    dist_strategy.nccl_comm_num
+            dist_strategy.nccl_comm_num
 
         if self.user_defined_strategy.recompute == True:
             logging.warn(
@@ -127,8 +135,8 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             local_build_strategy.enable_sequential_execution = True
 
         exe_strategy = self.user_defined_strategy.execution_strategy
-        worker_num = self.role_maker.worker_num()
-        node_num = self.role_maker.node_num()
+        worker_num = self.role_maker._worker_num()
+        node_num = self.role_maker._node_num()
 
         if self.role_maker._is_collective:
             assert worker_num >= 1, "nccl2 worker_num must >= 1, now:{}" % worker_num
@@ -148,16 +156,12 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
 
         sync_allreduce = dist_strategy.sync_nccl_allreduce
         if sync_allreduce:
-            paddle.fluid.framework.set_flags({
-                "FLAGS_sync_nccl_allreduce": True
-            })
-            exe_strategy.num_threads = local_build_strategy.nccl_comm_num + 1
-            if local_build_strategy.use_hierarchical_allreduce:
-                exe_strategy.num_threads = 2 * local_build_strategy.nccl_comm_num + 1
-            if exe_strategy.num_threads > 4:
+            exe_strategy.num_threads = max(
+                local_build_strategy.nccl_comm_num + 1,
+                exe_strategy.num_threads)
+            if local_build_strategy.nccl_comm_num > 1:
                 logging.warn(
-                    "if you use hierachical_allreduce or "
-                    "with multi nccl comm, please set distributed_strategy.sync_nccl_allreduce=False"
+                    "nccl_comm_num > 1, you may need to set sync_nccl_allreduce=False to ensure that different nccl comms can overlap"
                 )
 
         sync_batch_norm = local_build_strategy.sync_batch_norm
@@ -170,12 +174,17 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 "set num_threads=1, nccl_comm_num=1, hierachical_allreduce=False."
             )
 
+        # NOTE. compatible with compiler, otherwise these values will be overwritten by compiler
+        main_program._nccl_comm_num = local_build_strategy.nccl_comm_num
+        main_program._use_hierarchical_allreduce = local_build_strategy.use_hierarchical_allreduce
+        main_program._hierarchical_allreduce_inter_nranks = local_build_strategy.hierarchical_allreduce_inter_nranks
+
         # TODO(guru4elephant): should be an independent optimizer
         self._setup_nccl_op(startup_program, main_program, local_build_strategy)
 
-        local_build_strategy.num_trainers = self.role_maker.worker_num()
-        local_build_strategy.trainer_id = self.role_maker.worker_index()
-        local_build_strategy.trainers_endpoints = self.role_maker.get_trainer_endpoints(
+        local_build_strategy.num_trainers = self.role_maker._worker_num()
+        local_build_strategy.trainer_id = self.role_maker._worker_index()
+        local_build_strategy.trainers_endpoints = self.role_maker._get_trainer_endpoints(
         )
         local_build_strategy.enable_backward_optimizer_op_deps = True
 
@@ -191,7 +200,11 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         # TODO(guru4elephant): should close all PE related flags here
-        pass
+        return
+
+    def _enable_strategy(self, dist_strategy, context):
+        # by default, graph execution strategy is enabled
+        return
 
     def minimize(self,
                  loss,

@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 import paddle.fluid as fluid
 
 
@@ -59,9 +60,9 @@ def dyfunc_with_if_else3(x):
     # The var is created only in one of If.body or If.orelse node, and it used as gast.Load firstly after gast.If node.
     # The transformed code:
     """
-    q = fluid.dygraph.dygraph_to_static.variable_trans_func.
+    q = paddle.jit.dy2static.
         data_layer_not_check(name='q', shape=[-1], dtype='float32')
-    z = fluid.dygraph.dygraph_to_static.variable_trans_func.
+    z = paddle.jit.dy2static.
             data_layer_not_check(name='z', shape=[-1], dtype='float32')
 
     def true_fn_0(q, x, y):
@@ -77,8 +78,8 @@ def dyfunc_with_if_else3(x):
         n = x + 3
         return q, x, y, z
     q, x, y, z = fluid.layers.cond(fluid.layers.mean(x)[0] < 5, lambda :
-        fluid.dygraph.dygraph_to_static.convert_call(true_fn_0)(q, x, y),
-        lambda : fluid.dygraph.dygraph_to_static.convert_call(false_fn_0)(q,
+        paddle.jit.dy2static.convert_call(true_fn_0)(q, x, y),
+        lambda : paddle.jit.dy2static.convert_call(false_fn_0)(q,
         x, y))
     """
     y = x + 1
@@ -97,6 +98,16 @@ def dyfunc_with_if_else3(x):
     n = q + 2
     x = n
     return x
+
+
+def dyfunc_with_if_else_with_list_geneator(x):
+    if 10 > 5:
+        y = paddle.add_n(
+            [paddle.full(
+                shape=[2], fill_value=v) for v in range(5)])
+    else:
+        y = x
+    return y
 
 
 def nested_if_else(x_v):

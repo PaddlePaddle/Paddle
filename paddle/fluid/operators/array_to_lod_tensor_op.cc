@@ -12,13 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <paddle/fluid/operators/math/concat_and_split.h>
-#include <numeric>
 
-#include "paddle/fluid/framework/lod_rank_table.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+class Scope;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -26,6 +32,7 @@ namespace operators {
 using LoD = framework::LoD;
 
 struct ArrayToLoDFunctor;
+
 template <typename DeviceContext>
 struct ArrayToLoDFunctorImpl {
   const ArrayToLoDFunctor *prev_functor_;

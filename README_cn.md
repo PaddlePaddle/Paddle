@@ -15,7 +15,7 @@
 
 欢迎来到 PaddlePaddle GitHub
 
-飞桨（PaddlePaddle）是目前国内唯一自主研发、开源开放、功能完备的产业级深度学习平台，集深度学习核心框架、基础模型库、端到端开发套件、工具组件和服务平台于一体。飞桨源于产业实践，致力于与产业深入融合，提供了领先的深度学习&机器学习任务开发、训练、部署能力，加速企业从算法研发到产业落地的过程。目前飞桨已广泛应用于工业、农业、服务业等，服务150多万开发者，与合作伙伴一起帮助越来越多的行业完成AI赋能。
+飞桨（PaddlePaddle）是目前国内唯一自主研发、开源开放、功能完备的产业级深度学习平台，集深度学习核心框架、基础模型库、端到端开发套件、工具组件和服务平台于一体。飞桨源于产业实践，致力于与产业深入融合，提供了领先的深度学习&机器学习任务开发、训练、部署能力，加速企业从算法研发到产业落地的过程。目前飞桨已广泛应用于工业、农业、服务业等，服务230多万开发者，与合作伙伴一起帮助越来越多的行业完成AI赋能。
 
 
 ## 安装
@@ -30,7 +30,7 @@ pip install paddlepaddle
 # Linux GPU cuda10cudnn7
 pip install paddlepaddle-gpu
 # Linux GPU cuda9cudnn7
-pip install paddlepaddle-gpu==1.8.4.post97
+pip install paddlepaddle-gpu==1.8.5.post97
 
 ```
 更多安装信息详见官网 [安装说明](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.8/beginners_guide/install/index_cn.html)

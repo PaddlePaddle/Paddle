@@ -29,6 +29,28 @@ import numpy as np
 
 from paddle.fluid import unique_name
 
+
+class BaseNodeVisitor(gast.NodeVisitor):
+    """
+    Implement customized NodeVisitor inherited from gast.NodeVisitor. 
+    Ancestor nodes are traced to easily support more operations of currently
+    visited node.
+    """
+
+    def __init__(self):
+        self.ancestor_nodes = []
+
+    def visit(self, node):
+        """Visit a node."""
+        self.ancestor_nodes.append(node)
+
+        method = 'visit_' + node.__class__.__name__
+        visitor = getattr(self, method, self.generic_visit)
+        ret = visitor(node)
+        self.ancestor_nodes.pop()
+        return ret
+
+
 # imp is deprecated in python3
 if six.PY2:
     import imp
@@ -91,6 +113,15 @@ def parse_arg_and_kwargs(function):
     return arg_names, default_kwargs
 
 
+def parse_varargs_name(function):
+    """
+    Returns varargs name string of function. e.g: 'input' from `foo(x, *input)`
+    """
+    fullargspec = getfullargspec(function)
+    varargs = fullargspec.varargs
+    return varargs
+
+
 def type_name(v):
     return type(v).__name__
 
@@ -127,7 +158,14 @@ def _is_api_in_module_helper(obj, module_prefix):
 
 def is_api_in_module(node, module_prefix):
     assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
-    func_str = astor.to_source(gast.gast_to_ast(node.func))
+
+    # Python can have gast.Call as function, for example: covert_call(func)(x)
+    # We only check the most outside function
+    func_node = node.func
+    while isinstance(func_node, gast.Call):
+        func_node = func_node.func
+
+    func_str = astor.to_source(gast.gast_to_ast(func_node)).strip()
     try:
         # TODO(liym27):
         #  Consider a better to import modules like:
@@ -427,7 +465,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
             os.remove(filepath)
 
     source = ast_to_source_code(ast_root)
-    import_fluid = "import paddle.fluid as fluid\n"
+    import_fluid = "import paddle\nimport paddle.fluid as fluid\n"
     source = import_fluid + source
 
     if six.PY2:
@@ -449,11 +487,17 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     else:
         module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
-    if not hasattr(module, func_name):
+    # The 'forward' or 'another_forward' of 'TranslatedLayer' cannot be obtained
+    # through 'func_name'. So set the special function name '__i_m_p_l__'.
+    if hasattr(module, '__i_m_p_l__'):
+        callable_func = getattr(module, '__i_m_p_l__')
+        callable_func.__name__ = func_name
+    elif hasattr(module, func_name):
+        callable_func = getattr(module, func_name)
+    else:
         raise ValueError(
             'Function: %s doesn\'t exist in the Module transformed from AST.' %
             func_name)
-    callable_func = getattr(module, func_name)
     # After transform dygraph function into callable_func saved in tmp file,
     # it lost the global variables from imported statements or defined in source file.
     # Recovers the necessary variables by `__globals__`.
@@ -922,7 +966,7 @@ class ForNodeVisitor(object):
         else:
             iter_var_name = ast_to_source_code(self.iter_node).strip()
 
-        convert_len_node_source_str = '{} = fluid.dygraph.dygraph_to_static.convert_operators.convert_len({})'.format(
+        convert_len_node_source_str = '{} = paddle.jit.dy2static.convert_len({})'.format(
             self.iter_var_len_name, iter_var_name)
 
         convert_len_node = gast.parse(convert_len_node_source_str).body[0]

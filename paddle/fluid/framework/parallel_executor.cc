@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
@@ -33,6 +35,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/set_reader_device_info_utils.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 
 DECLARE_double(eager_delete_tensor_gb);
 
@@ -51,6 +57,10 @@ namespace framework {
 static std::once_flag gProfileOnce;
 #ifdef WITH_GPERFTOOLS
 static bool gProfileStarted = false;
+#endif
+
+#ifdef PADDLE_WITH_CUDA
+std::once_flag p2p_init_flag;
 #endif
 
 class ParallelExecutorPrivate {
@@ -108,6 +118,11 @@ class ParallelExecutorPrivate {
    *                                       them.
    */
   inline void SetSkipMemoryReuse(size_t scope_idx, const std::string &name) {
+    if (mem_opt_var_infos_.size() == 0) {
+      VLOG(4) << "The mem_opt_var_infos_ is empty, maybe no memory "
+                 "optimization strategy is enabled";
+      return;
+    }
     auto iter = mem_opt_var_infos_[scope_idx].find(name);
     if (iter != mem_opt_var_infos_[scope_idx].end()) {
       iter->second->SetSkipMemoryReuse(true);
@@ -308,6 +323,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   }
 
   bool need_mem_opt = build_strategy_.enable_inplace_ ||
+                      build_strategy_.enable_addto_ ||
                       build_strategy_.memory_optimize_.get() || is_gc_enabled;
 
   if (!need_mem_opt) return graph;
@@ -319,6 +335,16 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   ref_cnt_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
   graph = ref_cnt_pass->Apply(graph);
   VLOG(10) << "ReferenceCountPass Applied";
+
+  if (build_strategy_.enable_addto_) {
+    auto addto_pass = ir::PassRegistry::Instance().Get("inplace_addto_op_pass");
+    addto_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
+    addto_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
+    addto_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    VLOG(10) << "Start to apply inplace_addto_op_pass";
+    graph = addto_pass->Apply(graph);
+    VLOG(10) << "inplace_addto_op_pass Applied";
+  }
 
   if (build_strategy_.enable_inplace_) {
     auto inplace_pass =
@@ -440,6 +466,41 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
   return executor && executor->NeedCreateLocalExeScope();
 }
 
+void InitP2P(const std::vector<platform::Place> &places) {
+#ifdef PADDLE_WITH_CUDA
+  std::call_once(p2p_init_flag, [&]() {
+    int count = places.size();
+    if (count <= 1) return;
+
+    std::vector<int> devices;
+    for (int i = 0; i < count; i++) {
+      if (!is_gpu_place(places[i])) return;
+
+      platform::CUDAPlace device =
+          BOOST_GET_CONST(platform::CUDAPlace, places[i]);
+      devices.push_back(device.GetDeviceId());
+    }
+
+    for (int i = 0; i < count; ++i) {
+      for (int j = 0; j < count; ++j) {
+        if (devices[i] == devices[j]) continue;
+        int can_acess = -1;
+        cudaError_t ret =
+            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
+        if (ret != cudaSuccess || can_acess != 1) {
+          LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
+                       << " to " << devices[j];
+        } else {
+          platform::CUDADeviceGuard guard(devices[i]);
+          cudaDeviceEnablePeerAccess(devices[j], 0);
+        }
+      }
+    }
+    VLOG(1) << "init p2p";
+  });
+#endif
+}
+
 ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const std::vector<std::string> &bcast_vars,
                                    const std::string &loss_var_name,
@@ -452,6 +513,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   PADDLE_ENFORCE(places.size() > 0 && !is_xpu_place(places[0]),
                  platform::errors::Unavailable(
                      "XPU is not supported in ParallelExecutor"));
+  InitP2P(places);
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
   member_->use_cuda_ = exec_strategy.use_cuda_;
@@ -1068,3 +1130,4 @@ USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);
 USE_PASS(buffer_shared_inplace_pass);
 USE_PASS(buffer_shared_cross_op_memory_reuse_pass);
+USE_PASS(inplace_addto_op_pass);

@@ -293,7 +293,7 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
 
         # dygraph 
         x_data = np.random.random((1, 3, 128)).astype("float32")
-        us_1 = paddle.nn.UpSample(
+        us_1 = paddle.nn.Upsample(
             size=[64, ],
             mode='linear',
             align_mode=1,
@@ -385,19 +385,19 @@ class TestLinearInterpOpError(unittest.TestCase):
 
             def input_shape_error():
                 x1 = fluid.data(name="x1", shape=[1], dtype="float32")
-                out1 = paddle.nn.UpSample(
+                out1 = paddle.nn.Upsample(
                     size=[256, ], data_format='NCW', mode='linear')
                 out1_res = out1(x1)
 
             def data_format_error():
                 x2 = fluid.data(name="x2", shape=[1, 3, 128], dtype="float32")
-                out2 = paddle.nn.UpSample(
+                out2 = paddle.nn.Upsample(
                     size=[256, ], data_format='NHWCD', mode='linear')
                 out2_res = out2(x2)
 
             def out_shape_error():
                 x3 = fluid.data(name="x3", shape=[1, 3, 128], dtype="float32")
-                out3 = paddle.nn.UpSample(
+                out3 = paddle.nn.Upsample(
                     size=[
                         256,
                         256,

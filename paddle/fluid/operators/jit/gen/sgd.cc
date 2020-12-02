@@ -13,9 +13,10 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen/sgd.h"
+
 #include <stddef.h>  // offsetof
 #include <memory>
-#include <vector>
+
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -115,9 +116,24 @@ class SgdCreator : public JitCodeCreator<sgd_attr_t> {
   size_t CodeSize(const sgd_attr_t& attr) const override { return 96 + 32 * 8; }
   std::unique_ptr<GenBase> CreateJitCode(
       const sgd_attr_t& attr) const override {
-    PADDLE_ENFORCE_EQ(attr.param_width, attr.grad_width);
-    PADDLE_ENFORCE_LE(attr.selected_rows_size, attr.grad_height);
-    PADDLE_ENFORCE_GE(attr.selected_rows_size, 0);
+    PADDLE_ENFORCE_EQ(attr.param_width, attr.grad_width,
+                      platform::errors::InvalidArgument(
+                          "The attribute param_width of Sgd should be "
+                          "equal to the attribute grad_width. But param_width "
+                          "is %d and grad_width is %d.",
+                          attr.param_width, attr.grad_width));
+    PADDLE_ENFORCE_LE(attr.selected_rows_size, attr.grad_height,
+                      platform::errors::InvalidArgument(
+                          "The attribute selected_rows_size of Sgd should be "
+                          "equal to or less than the attribute grad_height. "
+                          "But selected_rows_size is %d and grad_height is %d.",
+                          attr.selected_rows_size, attr.grad_height));
+    PADDLE_ENFORCE_GE(
+        attr.selected_rows_size, 0,
+        platform::errors::InvalidArgument(
+            "The attribute selected_rows_size of Sgd should be "
+            "equal to or larger than 0. But selected_rows_size is %d.",
+            attr.selected_rows_size));
     return make_unique<SgdJitCode>(attr, CodeSize(attr));
   }
 };

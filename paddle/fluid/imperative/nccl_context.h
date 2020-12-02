@@ -16,21 +16,32 @@
 // network header files
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #endif
 
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
+
 #if defined(PADDLE_WITH_NCCL)
+#include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/fluid/platform/nccl_helper.h"
 #endif
+
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace imperative {
@@ -40,6 +51,8 @@ struct ParallelStrategy {
   int local_rank_{0};
   std::vector<std::string> trainer_endpoints_{};
   std::string current_endpoint_{""};
+  // TODO(shenliang03): support multi stream communication
+  int nrings_{1};
 };
 
 class ParallelContext {
@@ -52,13 +65,21 @@ class ParallelContext {
 
   virtual void Init() = 0;
 
+  virtual void AllReduceByStream(const framework::Variable& src,
+                                 framework::Variable* dst, int ring_id = 0,
+                                 bool use_calc_stream = false) = 0;
+#if defined(PADDLE_WITH_NCCL)
+  virtual paddle::platform::CUDADeviceContext* GetDeviceContext(
+      int ring_id) = 0;
+#endif
+
  protected:
   ParallelStrategy strategy_;
   platform::Place place_;
 };
 
 #if defined(PADDLE_WITH_NCCL)
-class NCCLParallelContext : ParallelContext {
+class NCCLParallelContext : public ParallelContext {
  public:
   explicit NCCLParallelContext(const ParallelStrategy& strategy,
                                const platform::Place& place)
@@ -69,6 +90,12 @@ class NCCLParallelContext : ParallelContext {
   void BcastNCCLId(ncclUniqueId* nccl_id, int root);
 
   void Init() override;
+
+  void AllReduceByStream(const framework::Variable& src,
+                         framework::Variable* dst, int ring_id,
+                         bool use_calc_stream) override;
+
+  paddle::platform::CUDADeviceContext* GetDeviceContext(int ring_id) override;
 
  protected:
   void RecvNCCLID(const std::string& endpoint, ncclUniqueId* nccl_id);

@@ -28,11 +28,12 @@ class PredictorTools(object):
     Paddle-Inference predictor
     '''
 
-    def __init__(self, model_path, params_file, feeds_var):
+    def __init__(self, model_path, model_file, params_file, feeds_var):
         '''
         __init__
         '''
         self.model_path = model_path
+        self.model_file = model_file
         self.params_file = params_file
 
         self.feeds_var = feeds_var
@@ -43,7 +44,7 @@ class PredictorTools(object):
         '''
         if os.path.exists(os.path.join(self.model_path, self.params_file)):
             config = AnalysisConfig(
-                os.path.join(self.model_path, "__model__"),
+                os.path.join(self.model_path, self.model_file),
                 os.path.join(self.model_path, self.params_file))
         else:
             config = AnalysisConfig(os.path.join(self.model_path))
@@ -56,7 +57,9 @@ class PredictorTools(object):
         config.switch_use_feed_fetch_ops(False)
         config.enable_memory_optim()
         config.disable_glog_info()
-        config.switch_ir_optim(True)
+        # TODO: set it to True after PaddleInference fix the precision error
+        # in CUDA11
+        config.switch_ir_optim(False)
 
         return config
 
@@ -81,7 +84,7 @@ class PredictorTools(object):
                 tensor.set_lod(feed_data.lod())
 
         # ensure no diff in multiple repeat times
-        repeat_time = 10
+        repeat_time = 2
         for i in range(repeat_time):
             predictor.zero_copy_run()
 

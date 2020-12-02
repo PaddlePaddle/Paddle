@@ -39,6 +39,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
 
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpInfo;
+class Scope;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
 DECLARE_int32(inner_op_parallelism);
 
 namespace paddle {
@@ -105,8 +114,8 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
-class OperatorBase;
 class ExecutionContext;
+class OperatorBase;
 
 class RuntimeContext {
  public:
@@ -147,6 +156,8 @@ class OperatorBase {
 
   virtual bool SupportGPU() const { return false; }
 
+  virtual bool SupportsMKLDNN() const { return false; }
+
   const std::string& Type() const { return type_; }
 
   bool HasAttr(const std::string& name) const { return attrs_.count(name); }
@@ -156,6 +167,14 @@ class OperatorBase {
         attrs_.find(name), attrs_.end(),
         platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
     return BOOST_GET_CONST(T, attrs_.at(name));
+  }
+  void SetAttr(const std::string& name, const Attribute& v) {
+    PADDLE_ENFORCE_EQ(
+        HasAttr(name), true,
+        platform::errors::NotFound(
+            "The attribute %s is not found in operator %s", name, Type()));
+
+    attrs_[name] = v;
   }
   const AttributeMap& Attrs() const { return attrs_; }
 
@@ -473,6 +492,9 @@ class OperatorWithKernel : public OperatorBase {
                          return platform::is_gpu_place(kern_pair.first.place_);
                        });
   }
+  bool SupportsMKLDNN() const override;
+
+  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) const;
 
   virtual void InferShape(InferShapeContext* ctx) const = 0;
 

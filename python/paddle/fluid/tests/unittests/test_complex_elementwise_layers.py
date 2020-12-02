@@ -26,6 +26,13 @@ layers = {
     "div": cpx.elementwise_div,
 }
 
+fluid_layers = {
+    "add": fluid.layers.elementwise_add,
+    "sub": fluid.layers.elementwise_sub,
+    "mul": fluid.layers.elementwise_mul,
+    "div": fluid.layers.elementwise_div,
+}
+
 
 class TestComplexElementwiseLayers(unittest.TestCase):
     def setUp(self):
@@ -40,6 +47,22 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             var_y = dg.to_variable(y)
             return layers[layer_type](var_x, var_y).numpy()
 
+    def fuild_calc(self, x, y, layer_type, place):
+        with dg.guard(place):
+            var_x = fluid.core.VarBase(
+                value=x,
+                place=fluid.framework._current_expected_place(),
+                persistable=False,
+                zero_copy=None,
+                name='')
+            var_y = fluid.core.VarBase(
+                value=y,
+                place=fluid.framework._current_expected_place(),
+                persistable=False,
+                zero_copy=None,
+                name='')
+            return fluid_layers[layer_type](var_x, var_y).numpy()
+
     def compare(self, x, y):
         for place in self._places:
             self.assertTrue(np.allclose(self.calc(x, y, "add", place), x + y))
@@ -47,23 +70,77 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             self.assertTrue(np.allclose(self.calc(x, y, "mul", place), x * y))
             self.assertTrue(np.allclose(self.calc(x, y, "div", place), x / y))
 
+    def compare_1(self, x, y):
+        for place in self._places:
+            self.assertTrue(
+                np.allclose(self.fuild_calc(x, y, "add", place), x + y))
+            self.assertTrue(
+                np.allclose(self.fuild_calc(x, y, "sub", place), x - y))
+            self.assertTrue(
+                np.allclose(self.fuild_calc(x, y, "mul", place), x * y))
+            self.assertTrue(
+                np.allclose(self.fuild_calc(x, y, "div", place), x / y))
+
+    def compare_op(self, x, y):
+        for place in self._places:
+            with dg.guard(place):
+                var_x = dg.to_variable(x)
+                var_y = dg.to_variable(y)
+                self.assertTrue(var_x + var_y, x + y)
+                self.assertTrue(var_x - var_y, x - y)
+                self.assertTrue(var_x * var_y, x * y)
+                self.assertTrue(var_x / var_y, x / y)
+
+    def compare_op_1(self, x, y):
+        for place in self._places:
+            with dg.guard(place):
+                var_x = fluid.core.VarBase(
+                    value=x,
+                    place=fluid.framework._current_expected_place(),
+                    persistable=False,
+                    zero_copy=None,
+                    name='')
+                var_y = fluid.core.VarBase(
+                    value=y,
+                    place=fluid.framework._current_expected_place(),
+                    persistable=False,
+                    zero_copy=None,
+                    name='')
+                self.assertTrue(np.allclose((var_x + var_y).numpy(), x + y))
+                self.assertTrue(np.allclose((var_x - var_y).numpy(), x - y))
+                self.assertTrue(np.allclose((var_x * var_y).numpy(), x * y))
+                self.assertTrue(np.allclose((var_x / var_y).numpy(), x / y))
+
     def test_complex_xy(self):
         x = rand([2, 3, 4, 5]).astype(self._dtype) + 1j * rand(
             [2, 3, 4, 5]).astype(self._dtype)
         y = rand([2, 3, 4, 5]).astype(self._dtype) + 1j * rand(
             [2, 3, 4, 5]).astype(self._dtype)
         self.compare(x, y)
+        self.compare_op(x, y)
+        self.compare_1(x, y)
+        self.compare_op_1(x, y)
 
     def test_complex_x_real_y(self):
         x = rand([2, 3, 4, 5]).astype(self._dtype) + 1j * rand(
             [2, 3, 4, 5]).astype(self._dtype)
         y = rand([4, 5]).astype(self._dtype)
         self.compare(x, y)
+        self.compare_op(x, y)
 
     def test_real_x_complex_y(self):
         x = rand([2, 3, 4, 5]).astype(self._dtype)
         y = rand([5]).astype(self._dtype) + 1j * rand([5]).astype(self._dtype)
         self.compare(x, y)
+        self.compare_op(x, y)
+
+    def test_complex64_xy(self):
+        x = rand([2, 3, 4, 5]).astype("float32") + 1j * rand(
+            [2, 3, 4, 5]).astype("float32")
+        y = rand([2, 3, 4, 5]).astype("float32") + 1j * rand(
+            [2, 3, 4, 5]).astype("float32")
+        self.compare_1(x, y)
+        self.compare_op_1(x, y)
 
 
 if __name__ == '__main__':

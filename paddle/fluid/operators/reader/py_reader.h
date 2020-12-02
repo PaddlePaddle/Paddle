@@ -17,12 +17,15 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {
 namespace operators {
 namespace reader {
+
+class LoDTensorBlockingQueue;
 
 class PyReader : public framework::FileReader {
  public:

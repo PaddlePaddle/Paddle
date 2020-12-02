@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_type.h"
-#include <stdint.h>
 #include <string>
 #include <unordered_map>
 
 using float16 = paddle::platform::float16;
+using bfloat16 = paddle::platform::bfloat16;
 
 namespace paddle {
 namespace framework {

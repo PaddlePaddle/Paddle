@@ -19,6 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 #include "paddle/fluid/framework/ir/fusion_group/subgraph.h"
 
@@ -26,6 +27,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 namespace fusion_group {
+
+class SubGraph;
 
 class CodeGenerator {
  public:

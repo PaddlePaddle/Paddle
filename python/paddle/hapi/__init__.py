@@ -14,14 +14,14 @@
 
 from . import logger
 from . import callbacks
+from . import model_summary
 
 from . import model
 from .model import *
-
-from .dygraph_layer_patch import monkey_patch_layer
+from .model_summary import summary
+from .dynamic_flops import flops
 
 logger.setup_logger()
 
-__all__ = ['callbacks'] + model.__all__
-
-monkey_patch_layer()
+__all__ = ['callbacks'] + model.__all__ + ['summary']
+__all__ = model.__all__ + ['flops']

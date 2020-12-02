@@ -832,8 +832,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out])
         try:
-            stat_dict = {}
-            recompute_optimizer.load(stat_dict)
+            state_dict = {}
+            recompute_optimizer.load(state_dict)
         except NotImplementedError as e:
             self.assertEqual(
                 "load function is not supported by Recompute Optimizer for now",

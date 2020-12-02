@@ -50,7 +50,7 @@ class TestSaveModelWithoutVar(unittest.TestCase):
                 params_filename='params')
             expected_warn = "no variable in your model, please ensure there are any variables in your model to save"
             self.assertTrue(len(w) > 0)
-            self.assertTrue(expected_warn == str(w[0].message))
+            self.assertTrue(expected_warn == str(w[-1].message))
 
 
 if __name__ == '__main__':

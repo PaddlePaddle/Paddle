@@ -42,7 +42,7 @@ __all__ = [
 
 
 class Conv2D(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Conv2D`` class.
     For more details, refer to code examples.
     The convolution2D layer calculates the output based on the input, filter
@@ -110,7 +110,7 @@ class Conv2D(layers.Layer):
         dilation (int or tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: 1.
-        groups (int, optional): The groups number of the Conv2d Layer. According to grouped
+        groups (int, optional): The groups number of the Conv2D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -282,7 +282,7 @@ class Conv2D(layers.Layer):
 
 
 class Conv3D(layers.Layer):
-    """
+    r"""
     **Convlution3D Layer**
 
     The convolution3D layer calculates the output based on the input, filter
@@ -345,7 +345,7 @@ class Conv3D(layers.Layer):
         dilation (int|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        groups (int, optional): The groups number of the Conv3d Layer. According to grouped
+        groups (int, optional): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -484,7 +484,7 @@ class Conv3D(layers.Layer):
 
 
 class Conv3DTranspose(layers.Layer):
-    """
+    r"""
     **Convlution3D transpose layer**
 
     The convolution3D transpose layer calculates the output based on the input,
@@ -574,7 +574,7 @@ class Conv3DTranspose(layers.Layer):
         dilation(int|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        groups(int, optional): The groups number of the Conv3d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv3D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
@@ -701,10 +701,7 @@ class Conv3DTranspose(layers.Layer):
 
 
 class Pool2D(layers.Layer):
-    """
-    :alias_main: paddle.nn.Pool2D
-	:alias: paddle.nn.Pool2D,paddle.nn.layer.Pool2D,paddle.nn.layer.common.Pool2D
-	:old_api: paddle.fluid.dygraph.Pool2D
+    r"""
 
     This interface is used to construct a callable object of the ``Pool2D`` class.
     For more details, refer to code examples.
@@ -895,9 +892,6 @@ class Pool2D(layers.Layer):
 
 class Linear(layers.Layer):
     """
-    :alias_main: paddle.nn.Linear
-	:alias: paddle.nn.Linear,paddle.nn.layer.Linear,paddle.nn.layer.common.Linear
-	:old_api: paddle.fluid.dygraph.Linear
     
     Fully-connected linear transformation layer:
 
@@ -1015,7 +1009,7 @@ class Linear(layers.Layer):
 
 
 class InstanceNorm(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``InstanceNorm`` class.
     For more details, refer to code examples.
 
@@ -1149,7 +1143,7 @@ class InstanceNorm(layers.Layer):
 
 
 class BatchNorm(layers.Layer):
-    """
+    r"""
     :alias_main: paddle.nn.BatchNorm
 	:alias: paddle.nn.BatchNorm,paddle.nn.layer.BatchNorm,paddle.nn.layer.norm.BatchNorm
 	:old_api: paddle.fluid.dygraph.BatchNorm
@@ -1498,7 +1492,7 @@ class Dropout(layers.Layer):
 
 
 class Embedding(layers.Layer):
-    """
+    r"""
     :alias_main: paddle.nn.Embedding
 	:alias: paddle.nn.Embedding,paddle.nn.layer.Embedding,paddle.nn.layer.common.Embedding
 	:old_api: paddle.fluid.dygraph.Embedding
@@ -1658,7 +1652,7 @@ class Embedding(layers.Layer):
 
 
 class LayerNorm(layers.Layer):
-    """
+    r"""
     :alias_main: paddle.nn.LayerNorm
 	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
 	:old_api: paddle.fluid.dygraph.LayerNorm
@@ -2248,7 +2242,7 @@ class NCE(layers.Layer):
 
 
 class PRelu(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``PRelu`` class.
     For more details, refer to code examples.
     It implements three activation methods of the ``PRelu`` activation function.
@@ -2356,10 +2350,7 @@ class PRelu(layers.Layer):
 
 
 class BilinearTensorProduct(layers.Layer):
-    """
-    :alias_main: paddle.nn.BilinearTensorProduct
-	:alias: paddle.nn.BilinearTensorProduct,paddle.nn.layer.BilinearTensorProduct,paddle.nn.layer.common.BilinearTensorProduct
-	:old_api: paddle.fluid.dygraph.BilinearTensorProduct
+    r"""
 
     **Add Bilinear Tensor Product Layer**
 
@@ -2396,21 +2387,21 @@ class BilinearTensorProduct(layers.Layer):
         **bias** (Parameter): the learnable bias of this layer.
 
     Returns:
-       Variable: A 2-D Tensor of shape [batch_size, size].
+       Tensor: A 2-D Tensor of shape [batch_size, size].
 
     Examples:
        .. code-block:: python
 
-         import paddle.fluid as fluid
-         import numpy
+        import paddle
+        import numpy
 
-         with fluid.dygraph.guard():
-             layer1 = numpy.random.random((5, 5)).astype('float32')
-             layer2 = numpy.random.random((5, 4)).astype('float32')
-             bilinearTensorProduct = fluid.dygraph.nn.BilinearTensorProduct(
-                    input1_dim=5, input2_dim=4, output_dim=1000)
-             ret = bilinearTensorProduct(fluid.dygraph.base.to_variable(layer1),
-                                fluid.dygraph.base.to_variable(layer2))
+        layer1 = numpy.random.random((5, 5)).astype('float32')
+        layer2 = numpy.random.random((5, 4)).astype('float32')
+        bilinearTensorProduct = paddle.nn.BilinearTensorProduct(
+            input1_dim=5, input2_dim=4, output_dim=1000)
+        ret = bilinearTensorProduct(paddle.to_tensor(layer1),
+                                    paddle.to_tensor(layer2))
+
     """
 
     def __init__(self,
@@ -2476,7 +2467,7 @@ class BilinearTensorProduct(layers.Layer):
 
 
 class Conv2DTranspose(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Conv2DTranspose`` class.
     For more details, refer to code examples.
     The convolution2D transpose layer calculates the output based on the input,
@@ -2550,7 +2541,7 @@ class Conv2DTranspose(layers.Layer):
         dilation(int or tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: 1.
-        groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv2D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
@@ -2988,11 +2979,7 @@ class GroupNorm(layers.Layer):
 
 
 class SpectralNorm(layers.Layer):
-    """
-    :alias_main: paddle.nn.SpectralNorm
-	:alias: paddle.nn.SpectralNorm,paddle.nn.layer.SpectralNorm,paddle.nn.layer.norm.SpectralNorm
-	:old_api: paddle.fluid.dygraph.SpectralNorm
-
+    r"""
     This interface is used to construct a callable object of the ``SpectralNorm`` class.
     For more details, refer to code examples. It implements the function of the Spectral Normalization Layer.
     This layer calculates the spectral normalization value of weight parameters of
@@ -3040,13 +3027,13 @@ class SpectralNorm(layers.Layer):
     Examples:
        .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
+            import paddle
+            x = paddle.rand((2,8,32,32))
 
-            with fluid.dygraph.guard():
-                weight = np.random.random((2, 8, 32, 32)).astype('float32')
-                spectralNorm = fluid.dygraph.nn.SpectralNorm(weight.shape, dim=1, power_iters=2)
-                ret = spectralNorm(fluid.dygraph.base.to_variable(weight))
+            spectral_norm = paddle.nn.SpectralNorm(x.shape, dim=1, power_iters=2)
+            spectral_norm_out = spectral_norm(x)
+
+            print(spectral_norm_out.shape) # [2, 8, 32, 32]
 
     """
 
@@ -3210,13 +3197,9 @@ class TreeConv(layers.Layer):
 
 class Flatten(layers.Layer):
     """
-    :alias_main: paddle.nn.Flatten
-    :alias: paddle.nn.Flatten,paddle.nn.layer.Flatten,paddle.nn.layer.common.Flatten
     This interface is used to construct a callable object of the ``FLatten`` class.
     For more details, refer to code examples.
     It implements flatten a contiguous range of dims into a tensor.
-
-    Equation:
 
     Parameters:
         start_axis(int): first dim to flatten (default = 1)
@@ -3230,14 +3213,10 @@ class Flatten(layers.Layer):
         .. code-block:: python
 
           import paddle
-          from paddle import to_variable
           import numpy as np
 
           inp_np = np.ones([5, 2, 3, 4]).astype('float32')
-          
-          paddle.disable_static()
-          
-          inp_np = to_variable(inp_np)
+          inp_np = paddle.to_tensor(inp_np)
           flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
           flatten_res = flatten(inp_np)
 

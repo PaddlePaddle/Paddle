@@ -17,6 +17,8 @@ import paddle
 import os
 from launch_function_helper import launch_func, wait, _find_free_port
 
+paddle.enable_static()
+
 
 class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
     def setUp(self):
@@ -72,6 +74,9 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy)
             optimizer.minimize(avg_cost)
+
+            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe.run(paddle.fluid.default_startup_program())
 
         proc_a = launch_func(node_func, node_a)
         proc_a.start()
@@ -190,10 +195,13 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             avg_cost = paddle.fluid.layers.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
-            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy)
             optimizer.minimize(avg_cost)
+
+            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe.run(paddle.fluid.default_startup_program())
 
         proc_a = launch_func(node_func, node_a)
         proc_a.start()

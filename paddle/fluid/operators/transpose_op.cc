@@ -61,6 +61,19 @@ class TransposeOp : public framework::OperatorWithKernel {
     }
 
     framework::DDim out_dims(x_dims);
+#ifdef PADDLE_WITH_MKLDNN
+    // Here we need to match dims to paddle layout
+    // as we are producing non-oneDNN result
+    if ((x_dims.size() >= 3) &&
+        (paddle::platform::MKLDNNDeviceContext::tls()
+             .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC)) {
+      auto dims = framework::vectorize<int>(x_dims);
+      std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
+      x_dims = x_dims.reshape(dims);
+      VLOG(3)
+          << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
+    }
+#endif
     for (size_t i = 0; i < axis_size; i++) {
       out_dims[i] = x_dims[axis[i]];
     }
@@ -75,7 +88,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -173,7 +186,7 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -220,7 +233,7 @@ class Transpose2Op : public TransposeOp {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       using framework::proto::VarType;
@@ -285,7 +298,7 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }

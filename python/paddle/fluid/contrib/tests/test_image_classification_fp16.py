@@ -25,6 +25,8 @@ import os
 import copy
 import numpy as np
 
+paddle.enable_static()
+
 
 def resnet_cifar10(input, depth=32):
     def conv_bn_layer(input,
@@ -413,6 +415,43 @@ class TestImageClassification(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
                 yield
+
+
+class TestAmpWithNonIterableDataLoader(unittest.TestCase):
+    def decorate_with_data_loader(self):
+        main_prog = paddle.static.Program()
+        start_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, start_prog):
+            with paddle.fluid.unique_name.guard():
+                image = fluid.layers.data(
+                    name='image', shape=[3, 224, 224], dtype='float32')
+                label = fluid.layers.data(
+                    name='label', shape=[1], dtype='int64')
+                py_reader = fluid.io.DataLoader.from_generator(
+                    feed_list=[image, label],
+                    capacity=4,
+                    iterable=False,
+                    use_double_buffer=False)
+
+                net = vgg16_bn_drop(image)
+                logits = fluid.layers.fc(input=net, size=10, act="softmax")
+                cost, predict = fluid.layers.softmax_with_cross_entropy(
+                    logits, label, return_softmax=True)
+                avg_cost = fluid.layers.mean(cost)
+
+                optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+                amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+                    custom_black_varnames={"loss", "conv2d_0.w_0"})
+                mp_optimizer = fluid.contrib.mixed_precision.decorate(
+                    optimizer=optimizer,
+                    amp_lists=amp_lists,
+                    init_loss_scaling=8.0,
+                    use_dynamic_loss_scaling=True)
+
+                mp_optimizer.minimize(avg_cost)
+
+    def test_non_iterable_dataloader(self):
+        self.decorate_with_data_loader()
 
 
 if __name__ == '__main__':

@@ -20,11 +20,13 @@ import warnings
 import numpy as np
 import random
 import six
+import struct
 import time
 import itertools
 import collections
 from collections import defaultdict
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
@@ -35,6 +37,48 @@ from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
 from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
 from white_list import op_threshold_white_list, no_grad_set_white_list
+
+
+def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
+    """
+    Determines whether dtype of output tensor is as expected.
+
+    Args:
+        api_fn(callable):  paddle api function
+        in_specs(list[tuple]): list of shape and dtype information for constructing input tensor of api_fn, such as [(shape, dtype), (shape, dtype)].
+        expected_dtype(list[str]): expected dtype of output tensor.
+        target_index(int): indicate which one from in_specs to infer the dtype of output.
+        config(dict): other arguments of paddle api function
+
+    Example:
+        check_out_dtype(fluid.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
+
+    """
+    paddle.enable_static()
+    for i, expect_dtype in enumerate(expect_dtypes):
+        with paddle.static.program_guard(paddle.static.Program()):
+            input_t = []
+            for index, spec in enumerate(in_specs):
+                if len(spec) == 1:
+                    shape = spec[0]
+                    dtype = expect_dtype if target_index == index else 'float32'
+                elif len(spec) == 2:
+                    shape, dtype = spec
+                else:
+                    raise ValueError(
+                        "Value of in_specs[{}] should contains two elements: [shape, dtype]".
+                        format(index))
+                input_t.append(
+                    paddle.static.data(
+                        name='data_%s' % index, shape=shape, dtype=dtype))
+
+            out = api_fn(*input_t, **configs)
+            out_dtype = fluid.data_feeder.convert_dtype(out.dtype)
+
+            if out_dtype != expect_dtype:
+                raise ValueError(
+                    "Expected out.dtype is {}, but got {} from {}.".format(
+                        expect_dtype, out_dtype, api_fn.__name__))
 
 
 def _set_use_system_allocator(value=None):
@@ -167,6 +211,18 @@ def skip_check_grad_ci(reason=None):
     return wrapper
 
 
+def copy_bits_from_float_to_uint16(f):
+    return struct.unpack('<I', struct.pack('<f', f))[0] >> 16
+
+
+def convert_float_to_uint16(float_list):
+    new_output = []
+    for x in np.nditer(float_list):
+        new_output.append(np.uint16(copy_bits_from_float_to_uint16(x)))
+
+    return np.reshape(new_output, float_list.shape).view(np.uint16)
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -204,6 +260,9 @@ class OpTest(unittest.TestCase):
                     return False
             return True
 
+        def is_xpu_op_test():
+            return hasattr(cls, "use_xpu") and cls.use_xpu == True
+
         def is_mkldnn_op_test():
             return hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True
 
@@ -226,6 +285,7 @@ class OpTest(unittest.TestCase):
             if cls.dtype in [np.float32, np.float64] \
                 and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
                 and not hasattr(cls, 'exist_fp64_check_grad') \
+                and not is_xpu_op_test() \
                 and not is_mkldnn_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
@@ -241,6 +301,11 @@ class OpTest(unittest.TestCase):
         if not self.call_once:
             self.call_once = True
             self.dtype = data_type
+
+    def is_bfloat16_op(self):
+        return self.dtype == np.uint16 or (
+            hasattr(self, 'mkldnn_data_type') and
+            getattr(self, 'mkldnn_data_type') is "bfloat16")
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def is_np_data(input):
@@ -276,8 +341,9 @@ class OpTest(unittest.TestCase):
         infer_dtype(inputs, dtype_set)
         dtype_list = [
             np.dtype(np.float64), np.dtype(np.float32), np.dtype(np.float16),
-            np.dtype(np.int64), np.dtype(np.int32), np.dtype(np.int16),
-            np.dtype(np.int8), np.dtype(np.uint8), np.dtype(np.bool)
+            np.dtype(np.int64), np.dtype(np.int32), np.dtype(np.uint16),
+            np.dtype(np.int16), np.dtype(np.int8), np.dtype(np.uint8),
+            np.dtype(np.bool)
         ]
         # check the dtype in dtype_list in order, select the first dtype that in dtype_set
         for dtype in dtype_list:
@@ -316,6 +382,11 @@ class OpTest(unittest.TestCase):
             (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
                     self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
+
+        if (hasattr(self, "use_xpu") and self.use_xpu == True) or \
+            (hasattr(self, "attrs") and "use_xpu" in self.attrs and \
+                    self.attrs["use_xpu"] == True):
+            self.__class__.use_xpu = True
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
@@ -913,6 +984,8 @@ class OpTest(unittest.TestCase):
         need_run_ops = self._get_need_run_ops(op_desc)
 
         res = {}
+        if hasattr(self, 'attrs') and bool(self.attrs.get('use_xpu', False)):
+            return
         for op_desc, father_op_desc in reversed(need_run_ops):
             # The first one is the forward op
             has_infer_inplace = fluid.core.has_infer_inplace(op_desc.type())
@@ -956,6 +1029,14 @@ class OpTest(unittest.TestCase):
         if self.dtype == np.float64 and \
             self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST:
             atol = 0
+
+        if self.is_bfloat16_op():
+            check_dygraph = False
+            if hasattr(self, 'force_fp32_output') and getattr(
+                    self, 'force_fp32_output'):
+                atol = 1e-2
+            else:
+                atol = 2
 
         if no_check_set is not None:
             if self.op_type not in no_check_set_white_list.no_check_set_white_list:
@@ -1095,8 +1176,10 @@ class OpTest(unittest.TestCase):
             )
         # Check inplace for given op, its grad op, its grad_grad op, etc.
         # No effect on original OpTest
-        self.check_inplace_output_with_place(
-            place, no_check_set=no_check_set, inplace_atol=inplace_atol)
+        # Currently not support ParallelExecutor on XPUPlace.
+        if not paddle.is_compiled_with_xpu():
+            self.check_inplace_output_with_place(
+                place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
         if check_dygraph:
             return outs, dygraph_outs, fetch_list
@@ -1175,6 +1258,11 @@ class OpTest(unittest.TestCase):
             (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
                     self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
+
+        if (hasattr(self, "use_xpu") and self.use_xpu == True) or \
+            (hasattr(self, "attrs") and "use_xpu" in self.attrs and \
+                    self.attrs["use_xpu"] == True):
+            self.__class__.use_xpu = True
 
         places = self._get_places()
         for place in places:
@@ -1274,6 +1362,13 @@ class OpTest(unittest.TestCase):
         cache_list = None
         if hasattr(self, "cache_name_list"):
             cache_list = self.cache_name_list
+
+        # oneDNN numeric gradient should use CPU kernel
+        use_onednn = False
+        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"] == True:
+            op_attrs["use_mkldnn"] = False
+            use_onednn = True
+
         self.op = create_op(
             self.scope,
             self.op_type,
@@ -1282,12 +1377,16 @@ class OpTest(unittest.TestCase):
             op_attrs,
             cache_list=cache_list)
 
+        if use_onednn:
+            op_attrs["use_mkldnn"] = True
+
         if no_grad_set is None:
             no_grad_set = set()
         else:
             if (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
-                ) and (self.op_type not in
-                       no_grad_set_white_list.NOT_CHECK_OP_LIST):
+                ) and (
+                    self.op_type not in no_grad_set_white_list.NOT_CHECK_OP_LIST
+                ) and (not self.is_bfloat16_op()):
                 raise AssertionError("no_grad_set must be None, op_type is " +
                                      self.op_type + " Op.")
 

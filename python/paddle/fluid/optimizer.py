@@ -19,6 +19,7 @@ import six
 import logging
 from collections import defaultdict
 
+import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
 
@@ -40,7 +41,6 @@ from paddle.fluid.layers import tensor
 from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
-import paddle
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -69,15 +69,15 @@ class Optimizer(object):
                  grad_clip=None,
                  name=None):
         # Because of the loop import, so place it in the function body
-        from paddle.optimizer.lr_scheduler import _LRScheduler
+        from paddle.optimizer.lr import LRScheduler
         self._parameter_list = list(
             parameter_list) if parameter_list is not None else None
         self._name = name
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate,
-                              (float, LearningRateDecay, _LRScheduler)):
+                              (float, LearningRateDecay, LRScheduler)):
                 raise TypeError(
-                    "learning rate should be float or _LRScheduler, got %s here"
+                    "learning rate should be float or LRScheduler, got %s here"
                     % type(learning_rate))
             if self._parameter_list is None:
                 raise AttributeError(
@@ -93,9 +93,9 @@ class Optimizer(object):
                         break
         else:
             if not isinstance(learning_rate,
-                              (float, framework.Variable, _LRScheduler)):
+                              (float, framework.Variable, LRScheduler)):
                 raise TypeError(
-                    "learning rate should be float or _LRScheduler, got %s here"
+                    "learning rate should be float or LRScheduler, got %s here"
                     % type(learning_rate))
 
         if grad_clip is not None:
@@ -146,13 +146,13 @@ class Optimizer(object):
                     state_dict = adam.state_dict()
 
         '''
-        from paddle.optimizer.lr_scheduler import _LRScheduler
+        from paddle.optimizer.lr import LRScheduler
         state_dict = {}
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
         # global step if use lr decay
-        if isinstance(self._learning_rate, _LRScheduler):
+        if isinstance(self._learning_rate, LRScheduler):
             state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
             return state_dict
         if isinstance(self._learning_rate, LearningRateDecay):
@@ -170,7 +170,7 @@ class Optimizer(object):
         return state_dict
 
     @framework.dygraph_only
-    def set_dict(self, state_dict):
+    def set_state_dict(self, state_dict):
         '''
         Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
 
@@ -182,24 +182,28 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                import paddle
+                import paddle.fluid as fluid
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph(state_dict, "paddle_dy")
+                paddle.disable_static()
 
-                    adam = fluid.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
-                                                parameter_list=emb.parameters())
-                    state_dict = adam.state_dict()
-                    fluid.save_dygraph(state_dict, "paddle_dy")
+                emb = paddle.nn.Embedding(10, 10)
 
-                    para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
+                state_dict = emb.state_dict()
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
-                    adam.set_dict(opti_state_dict)
+                scheduler = paddle.optimizer.lr.NoamDecay(	
+                    d_model=0.01, warmup_steps=100, verbose=True)
+                adam = paddle.optimizer.Adam(
+                    learning_rate=scheduler,
+                    parameters=emb.parameters())
+                state_dict = adam.state_dict()
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
+                para_state_dict, opti_state_dict = fluid.load_dygraph("paddle_dy")
         '''
-        from paddle.optimizer.lr_scheduler import _LRScheduler
-        if isinstance(self._learning_rate, _LRScheduler):
+        from paddle.optimizer.lr import LRScheduler
+        if isinstance(self._learning_rate, LRScheduler):
             self._learning_rate.set_dict(state_dict["LR_Scheduler"])
 
         if isinstance(self._learning_rate, LearningRateDecay):
@@ -257,12 +261,15 @@ class Optimizer(object):
 
                 tensor.set(load_para_np, framework._current_expected_place())
 
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
+
     def get_opti_var_name_list(self):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
-        from paddle.optimizer.lr_scheduler import _LRScheduler
-        if isinstance(self._learning_rate, _LRScheduler):
+        from paddle.optimizer.lr import LRScheduler
+        if isinstance(self._learning_rate, LRScheduler):
             lr_var = self._global_learning_rate()
             # only create global lr_var once
             if not isinstance(lr_var, framework.Variable):
@@ -723,9 +730,6 @@ class Optimizer(object):
                     outputs={"ParamOut": param_and_grad[0]})
         return new_param_grads, (table_param, table_grad), sgd_op
 
-    def _append_dgc_ops(self, param_and_grad):
-        pass
-
     def backward(self,
                  loss,
                  startup_program=None,
@@ -764,8 +768,11 @@ class Optimizer(object):
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
+            parameter_list = parameter_list if parameter_list \
+                else self._parameter_list
+
             params_grads = []
-            for param in self._parameter_list:
+            for param in parameter_list:
                 if not param.trainable:
                     continue
                 if param._grad_ivar() is not None:
@@ -787,9 +794,6 @@ class Optimizer(object):
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                act_no_grad_set, callbacks)
-                # Note: since we can't use all_reduce_op now,
-                # dgc_op should be the last op of one grad.
-                self._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_gradients(self, params_grads):
@@ -870,6 +874,8 @@ class Optimizer(object):
     def clear_gradients(self):
         """
         Clear the gradients of all optimized parameters for model.
+
+        If not, new gradient will accumulat on previous gradient.
         
         Returns:
             None
@@ -932,6 +938,7 @@ class Optimizer(object):
 
         parameter_list = parameter_list if parameter_list \
             else self._parameter_list
+
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
@@ -945,7 +952,7 @@ class Optimizer(object):
 
 
 class SGDOptimizer(Optimizer):
-    """
+    r"""
     Optimizer of the stochastic gradient descent algorithm.
 
     .. math::
@@ -1039,7 +1046,7 @@ class SGDOptimizer(Optimizer):
 
 
 class MomentumOptimizer(Optimizer):
-    """
+    r"""
 
     Simple Momentum optimizer with velocity state
 
@@ -1174,7 +1181,7 @@ class MomentumOptimizer(Optimizer):
 
 
 class DGCMomentumOptimizer(Optimizer):
-    """
+    r"""
 	:api_attr: Static Graph
 
     DGC (Deep Gradient Compression) Momentum Optimizer. Original paper is https://arxiv.org/abs/1712.01887
@@ -1554,6 +1561,11 @@ class DGCMomentumOptimizer(Optimizer):
 
     @imperative_base.no_grad
     def apply_gradients(self, params_grads):
+        # Note: since we can't use all_reduce_op now,
+        # dgc_op should be the last op of one grad.
+        # Maybe need a grad allreduce pass.
+        self._append_dgc_ops(params_grads)
+
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
@@ -1589,7 +1601,7 @@ class DGCMomentumOptimizer(Optimizer):
 
 
 class LarsMomentumOptimizer(Optimizer):
-    """
+    r"""
     Momentum optimizer with LARS support
 
     The update equations are as follows:
@@ -1599,7 +1611,7 @@ class LarsMomentumOptimizer(Optimizer):
         & local\_learning\_rate = learning\_rate * lars\_coeff * \\
           \\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}
 
-        & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param)
+        & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param + epsilon)
 
         & param = param - velocity
 
@@ -1623,7 +1635,9 @@ class LarsMomentumOptimizer(Optimizer):
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
-
+        exclude_from_weight_decay (list[str], optional): Name string of layers which will be exclude from lars weight decay. Default is None.
+        epsilon (float, optional): Epsilon to avoid Division by Zero when calculate local lr. Default is 0.
+        
     Examples:
         .. code-block:: python
 
@@ -1654,7 +1668,9 @@ class LarsMomentumOptimizer(Optimizer):
                  parameter_list=None,
                  regularization=None,
                  grad_clip=None,
-                 name=None):
+                 name=None,
+                 exclude_from_weight_decay=None,
+                 epsilon=0):
         assert learning_rate is not None
         assert momentum is not None
         super(LarsMomentumOptimizer, self).__init__(
@@ -1667,6 +1683,11 @@ class LarsMomentumOptimizer(Optimizer):
         self._momentum = momentum
         self._lars_coeff = float(lars_coeff)
         self._lars_weight_decay = float(lars_weight_decay)
+        self._epsilon = float(epsilon)
+        if exclude_from_weight_decay is None:
+            self._exclude_from_weight_decay = []
+        else:
+            self._exclude_from_weight_decay = exclude_from_weight_decay
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -1676,6 +1697,14 @@ class LarsMomentumOptimizer(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+
+        _lars_weight_decay = self._lars_weight_decay
+        param_name = param_and_grad[0].name
+        if len(self._exclude_from_weight_decay) > 0:
+            for name in self._exclude_from_weight_decay:
+                if name in param_name:
+                    _lars_weight_decay = 0.0
+                    break
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
@@ -1695,7 +1724,8 @@ class LarsMomentumOptimizer(Optimizer):
             attrs={
                 "mu": self._momentum,
                 "lars_coeff": self._lars_coeff,
-                "lars_weight_decay": self._lars_weight_decay
+                "lars_weight_decay": _lars_weight_decay,
+                "epsilon": self._epsilon
             },
             stop_gradient=True)
 
@@ -1703,7 +1733,7 @@ class LarsMomentumOptimizer(Optimizer):
 
 
 class AdagradOptimizer(Optimizer):
-    """
+    r"""
     The Adaptive Gradient optimizer (Adagrad for short) can adaptively assign
     different learning rates to individual parameters.
 
@@ -1819,7 +1849,7 @@ class AdagradOptimizer(Optimizer):
 
 
 class AdamOptimizer(Optimizer):
-    """
+    r"""
     The Adam optimizer uses an optimization described at the end
     of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
     it can dynamically adjusts the learning rate of each parameter using
@@ -2085,7 +2115,7 @@ class AdamOptimizer(Optimizer):
 
 
 class AdamaxOptimizer(Optimizer):
-    """
+    r"""
     The Adamax optimizer is implemented based on the Adamax Optimization 
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
@@ -2257,7 +2287,7 @@ class AdamaxOptimizer(Optimizer):
 
 
 class DpsgdOptimizer(Optimizer):
-    """
+    r"""
     We implement the Dpsgd optimizer according to CCS16 paper -
     Deep Learning with Differential Privacy.
 
@@ -2352,7 +2382,7 @@ class DpsgdOptimizer(Optimizer):
 
 
 class DecayedAdagradOptimizer(Optimizer):
-    """
+    r"""
     The Decayed Adagrad optimizer can be seen as an Adagrad algorithm that introduces
     the decay rate to solve the problem of a sharp drop in the learning rate
     during model training when using the AdagradOptimizer.
@@ -2462,7 +2492,7 @@ class DecayedAdagradOptimizer(Optimizer):
 
 
 class AdadeltaOptimizer(Optimizer):
-    """
+    r"""
     **Notes: This API does not support sparse parameter optimization.**
 
     Adadelta Optimizer. Please refer to this for details:
@@ -2581,7 +2611,7 @@ class AdadeltaOptimizer(Optimizer):
 
 
 class RMSPropOptimizer(Optimizer):
-    """
+    r"""
     Root Mean Squared Propagation (RMSProp) is an unpublished, adaptive learning
     rate method. The original slides proposed RMSProp: Slide 29 of
     http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf .
@@ -2769,7 +2799,7 @@ class RMSPropOptimizer(Optimizer):
 
 
 class FtrlOptimizer(Optimizer):
-    """
+    r"""
     FTRL (Follow The Regularized Leader) Optimizer.
 
     The paper that proposed Follow The Regularized Leader (FTRL):
@@ -2928,7 +2958,7 @@ class FtrlOptimizer(Optimizer):
 
 
 class LambOptimizer(AdamOptimizer):
-    """
+    r"""
     LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
 
     LAMB Optimizer is designed to scale up the batch size of training without losing 
@@ -3100,7 +3130,7 @@ Lamb = LambOptimizer
 
 
 class ModelAverage(Optimizer):
-    """
+    r"""
 	:api_attr: Static Graph
 
     The ModelAverage optimizer accumulates specific continuous historical parameters
@@ -3409,7 +3439,7 @@ class ModelAverage(Optimizer):
 
 
 class ExponentialMovingAverage(object):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Compute the moving average of parameters with exponential decay.
@@ -3547,8 +3577,10 @@ class ExponentialMovingAverage(object):
                 # bias correction
                 with layers.control_flow.Switch() as switch:
                     with switch.case(global_step > 0):
-                        layers.assign(output=ema, input=ema / (1.0 - decay_pow))
-                layers.assign(input=ema, output=param)
+                        layers.assign(
+                            output=param, input=ema / (1.0 - decay_pow))
+                    with switch.default():
+                        layers.assign(output=param, input=ema)
 
         self.restore_program = Program()
         block = self.restore_program.global_block()
@@ -3709,15 +3741,9 @@ class PipelineOptimizer(object):
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             batch_size = 1
-            filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-            dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
-            dataset.set_use_var([x,y])
-            dataset.set_batch_size(batch_size)
-            dataset.set_filelist(filelist)
             data_loader.start()
             exe.train_from_dataset(
-                    fluid.default_main_program(),
-                    dataset)
+                    fluid.default_main_program())
             data_loader.reset()
     """
 
@@ -3735,7 +3761,7 @@ class PipelineOptimizer(object):
             "num_microbatches must be a positive value.")
         self._num_microbatches = num_microbatches
         assert start_cpu_core_id >= 0, (
-            "start_cpu_core_id must be greater than or equal to 0.")
+            "start_cpu_core_id must be a non-negative integer.")
         self._start_cpu_core_id = start_cpu_core_id
         self._place_list = None
         op_maker = core.op_proto_and_checker_maker
@@ -3743,7 +3769,7 @@ class PipelineOptimizer(object):
         self._op_role_key = op_maker.kOpRoleAttrName()
         self._op_role_var_key = op_maker.kOpRoleVarAttrName()
         self._op_device_key = op_maker.kOpDeviceAttrName()
-        self._param_device_map = dict()
+        self._param_device_map = None
 
     def _create_vars(self, block, main_program):
         # Create vars for block, copied from main_program's global block
@@ -3759,7 +3785,10 @@ class PipelineOptimizer(object):
                 used_var_set.add(var)
                 source_var = main_program.block(0).var(str(var))
                 if source_var.type == core.VarDesc.VarType.READER:
-                    block.create_var(name=var, type=core.VarDesc.VarType.READER)
+                    block.create_var(
+                        name=var,
+                        type=core.VarDesc.VarType.READER,
+                        persistable=source_var.persistable)
                 else:
                     block._clone_variable(source_var, False)
 
@@ -3782,28 +3811,48 @@ class PipelineOptimizer(object):
         return 'Param' in op.input_names and 'Grad' in op.input_names and (
             "LearningRate" in op.input_names)
 
-    def _split_program(self, main_program):
+    def _split_program(self, main_program, devices):
         """
         Split a program into sections according to devices that ops run on.
+        The ops of the role LRSched are copied to all sections.
 
         Args:
             main_program (Program): the main program
+            devices: all used devices
         """
         programs = []
         # Map from device to its corresponding section program info
         device_program_map = dict()
-        block = main_program.block(0)
+        for device in devices:
+            p = {'program': Program()}
+            device_program_map[device] = p
 
+        block = main_program.block(0)
         for op in block.ops:
             device = op.attr(self._op_device_key)
-
-            if device not in device_program_map:
-                program = {"program": Program()}
-                device_program_map[device] = program
-            program = device_program_map[device]
-            op_desc = op.desc
-            ap_op = program["program"].block(0).desc.append_op()
-            ap_op.copy_from(op_desc)
+            op_role = op.attr(self._op_role_key)
+            if int(op_role) & int(self._op_role.LRSched):
+                # Copy ops of the role LRSched to all sections.
+                for device in device_program_map.keys():
+                    program = device_program_map[device]
+                    op_desc = op.desc
+                    ap_op = program["program"].block(0).desc.append_op()
+                    ap_op.copy_from(op_desc)
+                    ap_op._set_attr(self._op_device_key, "")
+            elif op.type == "create_py_reader" or op.type == "read":
+                # Copy read related ops to all section to make them exit after each epoch.
+                for device in device_program_map.keys():
+                    program = device_program_map[device]
+                    op_desc = op.desc
+                    ap_op = program["program"].block(0).desc.append_op()
+                    ap_op.copy_from(op_desc)
+                    ap_op._set_attr(self._op_device_key, "")
+            else:
+                program = device_program_map[device]
+                op_desc = op.desc
+                ap_op = program["program"].block(0).desc.append_op()
+                ap_op.copy_from(op_desc)
+                ap_op._set_attr(self._op_device_key, "")
 
         for key in sorted(device_program_map.keys()):
             program = device_program_map[key]
@@ -3811,6 +3860,24 @@ class PipelineOptimizer(object):
             programs.append(program)
 
         return programs
+
+    def _split_startup_program(self, startup_program, local_rank):
+        block = startup_program.block(0)
+        new_startup_program = Program()
+        for op in block.ops:
+            device = op.attr(self._op_device_key)
+            if device:
+                device_index = int(device.split(":")[1])
+            else:
+                device_index = None
+            if device_index is not None and device_index != local_rank: continue
+            op_desc = op.desc
+            ap_op = new_startup_program.block(0).desc.append_op()
+            ap_op.copy_from(op_desc)
+            ap_op._set_attr(self._op_device_key, "")
+        new_startup_program._sync_with_cpp()
+        self._create_vars(new_startup_program.block(0), startup_program)
+        return new_startup_program
 
     def _find_post_op(self, ops, cur_op, var_name):
         """
@@ -3833,9 +3900,8 @@ class PipelineOptimizer(object):
             for in_var_name in op.input_arg_names:
                 if in_var_name == var_name:
                     post_op.append(op)
+                    break
         if post_op:
-            if not len(post_op) == 1:
-                raise ValueError("Each op can only have one post op.")
             return post_op[0]
         return None
 
@@ -3851,6 +3917,8 @@ class PipelineOptimizer(object):
         """
         prev_op = []
         for op in ops:
+            if op.type == 'send_v2' or op.type == 'recv_v2':
+                continue
             if op == cur_op:
                 break
             for out_var_name in op.output_arg_names:
@@ -3889,61 +3957,27 @@ class PipelineOptimizer(object):
 
     def _get_data_var_info(self, block):
         """
-        Get all vars whose is_data attribute are true and then rename them.
-
-        For PipelineTrainer, all data vars are binded to
-        minibatch scope, so we have to feed them to the microbatch
-        to avoid conflicts. The vars feeded to microbatch have to
-        be renamed.
+        Get info of all vars whose is_data attribute are true.
         """
-        # A map from var name to the renamed name.
-        raw_name_new_name_map = dict()
-        # Because we will create vars in block, it is more safe
-        # to get all var_names before iteration.
-        var_names = list(block.vars.keys())
-        for var_name in var_names:
-            var = block.var(var_name)
-            if not var.is_data:
-                continue
-            assert var_name not in raw_name_new_name_map, (
-                "{} has already been processed.".format(var_name))
-            new_name = unique_name.generate(var_name)
-            raw_name_new_name_map[var_name] = new_name
-            new_var = self._create_var(block, var, new_name)
-            new_var.is_data = False
-
-        # map of data to devices that that data on
+        # map of data vars to devices that that data on
         data_devices_map = dict()
         for op in block.ops:
             dev_spec = op.attr(self._op_device_key)
             for var_name in op.input_arg_names:
-                if var_name not in raw_name_new_name_map:
+                if "blocking_queue" in var_name: continue
+                var = block.var(var_name)
+                if not var.is_data:
                     continue
                 if not var_name in data_devices_map:
                     data_devices_map[var_name] = []
                 if not dev_spec in data_devices_map[var_name]:
                     data_devices_map[var_name].append(dev_spec)
-                new_name = raw_name_new_name_map[var_name]
-                #self._rename_arg(op, var_name, new_name)
-        return data_devices_map, raw_name_new_name_map
+        return data_devices_map
 
-    def _rename_var_in_block(self, block, raw_name_new_name_map):
+    def _insert_sendrecv_for_data_var(self, main_block, programs, startup,
+                                      devices):
         """
-        Rename vars whose names in raw_name_new_name_map to the corresponding
-        new names.
-        """
-        for op in block.ops:
-            if op.type == "enqueue" or op.type == "dequeue":
-                continue
-            for var_name in op.input_arg_names:
-                if var_name in raw_name_new_name_map:
-                    new_name = raw_name_new_name_map[var_name]
-                    self._rename_arg(op, var_name, new_name)
-
-    def _insert_enq_deq_for_data_var(self, main_block, programs, startup,
-                                     devices):
-        """
-        Insert enqueue and dequeue ops for data var
+        Insert send and recv ops for data var that on other devices.
 
         Args:
             main_block (Block): Global block for main program
@@ -3952,48 +3986,34 @@ class PipelineOptimizer(object):
             devices (list): List of devices in the format (dev:dev_index)
         """
         main_program = main_block.program
-        data_devices_map, raw_name_new_name_map = self._get_data_var_info(
-            main_block)
+        data_devices_map = self._get_data_var_info(main_block)
 
         first_prog = programs[0]['program']
         first_block = first_prog.block(0)
-        enqueue_index = 0
-        if first_block.ops[0].type == "create_py_reader" or (
-                first_block.ops[1].type == "create_py_reader"):
-            for op in first_block.ops:
-                if op.type == "read":
-                    enqueue_index += 1
-                    break
-                enqueue_index += 1
+        insert_index = 0
+        for op in first_block.ops:
+            insert_index += 1
+            if op.type == "read":
+                break
         first_dev_spec = devices[0]
+        first_dev_index = int(first_dev_spec.split(':')[1])
         for var_name in data_devices_map.keys():
             for device in data_devices_map[var_name]:
-                # step1: generate queue for each pair of data var and device
-                # that that data on
-                queue_name = var_name + "_blocking_queue"
-                queue_name = unique_name.generate(queue_name)
-                queue_var = startup.block(0).create_var(
-                    name=queue_name,
-                    persistable=True,
-                    type=core.VarDesc.VarType.RAW)
-                startup.block(0).append_op(
-                    type='queue_generator',
-                    attrs={
-                        'names': [queue_name],
-                        'capacity': self._num_microbatches
-                    })
+                if device == first_dev_spec: continue
                 main_var = main_block.var(var_name)
                 assert main_var.is_data
                 if not var_name in first_block.vars:
                     self._create_var(first_block, main_var, var_name)
+                dev_index = int(device.split(':')[1])
                 first_block._insert_op(
-                    index=enqueue_index,
-                    type='enqueue',
+                    index=insert_index,
+                    type='send_v2',
                     inputs={'X': first_block.var(var_name)},
                     attrs={
-                        'queue_name': queue_name,
                         self._op_device_key: first_dev_spec,
-                        self._op_role_key: self._op_role.Forward
+                        self._op_role_key: self._op_role.Forward,
+                        'use_calc_stream': True,
+                        'peer': dev_index,
                     })
                 # Get the device that that data on
                 assert device in devices
@@ -4001,21 +4021,24 @@ class PipelineOptimizer(object):
                 prog = programs[prog_index]['program']
                 block = prog.block(0)
                 index = 0
-                if device == first_dev_spec:
-                    index = enqueue_index + 1
-                new_name = raw_name_new_name_map[var_name]
+                for op in block.ops:
+                    index += 1
+                    if op.type == "read":
+                        break
                 source_var = main_program.block(0).var(var_name)
-                new_var = self._create_var(block, source_var, new_name)
+                new_var = self._create_var(block, source_var, var_name)
                 block._insert_op(
                     index=index,
-                    type='dequeue',
+                    type='recv_v2',
                     outputs={'Out': [new_var]},
                     attrs={
+                        'out_shape': new_var.shape,
+                        'dtype': new_var.dtype,
                         self._op_device_key: device,
                         self._op_role_key: self._op_role.Forward,
-                        'queue_name': queue_name,
+                        'peer': first_dev_index,
+                        'use_calc_stream': True,
                     })
-                self._rename_var_in_block(block, raw_name_new_name_map)
 
     def _strip_grad_suffix(self, name):
         """
@@ -4029,18 +4052,6 @@ class PipelineOptimizer(object):
         Append grad suffix to the given variable name
         """
         return name + core.grad_var_suffix()
-
-    def _update_param_device_map(self, params_grads, block):
-        for param_grad in params_grads:
-            if not param_grad[0].trainable: continue
-            param_name = param_grad[0].name
-            ops = block.ops
-            for op in ops:
-                input_arg_names = op.input_arg_names
-                if param_name in input_arg_names:
-                    self._param_device_map[param_name] = op.attr(
-                        self._op_device_key)
-                    break
 
     def _add_opdevice_attr_for_regularization_clip(self, block):
         """
@@ -4056,7 +4067,7 @@ class PipelineOptimizer(object):
             assert self._op_role_var_key in op.attr_names
             op_role_var = op.all_attrs()[self._op_role_var_key]
             assert len(op_role_var) == 2
-            param_name = block.vars[op_role_var[0]].name
+            param_name = op_role_var[0]
             device = self._param_device_map[param_name]
             op._set_attr(self._op_device_key, device)
 
@@ -4125,32 +4136,37 @@ class PipelineOptimizer(object):
                               "{} has not been set.".format(op.type))
             if not dev_spec in device_specs:
                 device_specs.append(dev_spec)
+        sorted_device_specs = sorted(device_specs)
+        assert sorted_device_specs == device_specs
         return device_specs
 
-    def _insert_enq_deq_ops_for_boundaries(self, block, origin_block,
-                                           startup_program):
+    def _insert_sendrecv_ops_for_boundaries(self, block):
         """
-        Insert a pair of enqueue and dequeue ops for every two
+        Insert a pair of send and recv ops for every two
         consecutive ops on different devices.
         """
-        startup_block = startup_program.global_block()
         extra_index = 0
 
         # A map from var to device spec where op takes it as input,
-        # avoiding multiple enqueue and dequeue ops.
+        # avoiding multiple send and recv ops.
         var_devspec = dict()
 
-        for index, op in list(enumerate(origin_block.ops)):
+        for index, op in enumerate(list(block.ops)):
+            # skips lr-related ops and vars, as we will process them later.
+            if int(op.attr(self._op_role_key)) & int(self._op_role.LRSched):
+                continue
+            # skips update ops and vars, as we will process them later.
+            if self._is_update_op(op): continue
+
             cur_device_spec = op.attr(self._op_device_key)
             for var_name in op.input_arg_names:
                 # i.e., lod_tensor_blocking_queue created by DataLoader,
                 # which only exists in startup program.
-                if not var_name in origin_block.vars: continue
+                if not var_name in block.vars: continue
                 var = block.var(var_name)
                 # skip data, because we will process it later
                 if var.is_data: continue
-                prev_op = self._find_real_prev_op(origin_block.ops, op,
-                                                  var_name)
+                prev_op = self._find_real_prev_op(block.ops, op, var_name)
                 if prev_op is None:
                     continue
                 prev_device_spec = prev_op.attr(self._op_device_key)
@@ -4161,118 +4177,64 @@ class PipelineOptimizer(object):
                     if cur_device_spec in var_devspec[var_name]: continue
                     var_devspec[var_name].append(cur_device_spec)
 
-                    queue_name = var_name + "_blocking_queue"
-                    queue_name = unique_name.generate(queue_name)
-                    queue_var = startup_block.create_var(
-                        name=queue_name,
-                        persistable=True,
-                        type=core.VarDesc.VarType.RAW)
-                    startup_block.append_op(
-                        type='queue_generator',
-                        attrs={
-                            'names': [queue_name],
-                            'capacity': self._num_microbatches
-                        })
                     op_role = op.all_attrs()[self._op_role_key]
                     var = block.vars[var_name]
+                    prev_device_index = int(prev_device_spec.split(':')[1])
+                    cur_device_index = int(cur_device_spec.split(':')[1])
                     block._insert_op(
                         index=index + extra_index,
-                        type='enqueue',
+                        type='send_v2',
                         inputs={'X': var},
                         attrs={
-                            'queue_name': queue_name,
                             self._op_device_key: prev_device_spec,
-                            self._op_role_key: op_role
+                            self._op_role_key: op_role,
+                            'use_calc_stream': True,
+                            'peer': cur_device_index,
                         })
                     extra_index += 1
                     block._insert_op(
                         index=index + extra_index,
-                        type='dequeue',
+                        type='recv_v2',
                         outputs={'Out': [var]},
                         attrs={
+                            'out_shape': var.shape,
+                            'dtype': var.dtype,
                             self._op_device_key: cur_device_spec,
-                            'queue_name': queue_name,
-                            self._op_role_key: op_role
+                            self._op_role_key: op_role,
+                            'use_calc_stream': True,
+                            'peer': prev_device_index,
                         })
                     extra_index += 1
 
-    def _add_dequeue_ops_for_optimize(self, block, startup_program):
-        startup_block = startup_program.global_block()
-        grad_queue_map = dict()
-        grad_device_map = dict()
-        optimize_index = None
-        grad_names_to_dequeue = []
-
-        for index, op in reversed(list(enumerate(block.ops))):
-            device = op.attr(self._op_device_key)
-            # Optimizer pass
-            if not self._is_optimize_op(op):
-                optimize_index = index + 1
-                break
-            if not self._is_update_op(op): continue
-            assert self._op_role_var_key in op.attr_names
-            op_role_var = op.all_attrs()[self._op_role_var_key]
-            assert len(op_role_var) == 2
-            grad_name = op_role_var[1]
-            assert grad_name not in grad_device_map
-            assert grad_name not in grad_names_to_dequeue
-            grad_device_map[grad_name] = device
-            grad_names_to_dequeue.append(grad_name)
-
-        for grad_name in grad_names_to_dequeue:
-            device = grad_device_map[grad_name]
-            grad_names = []
-            grads = []
-            queue_name = grad_name + "_blocking_queue"
-            queue_name = unique_name.generate(queue_name)
-            grad_queue_map[grad_name] = queue_name
-            ref_var = block.vars[grad_name]
-            queue_var = startup_block.create_var(
-                name=queue_name,
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-            startup_block.append_op(
-                type='queue_generator',
-                attrs={
-                    'names': [queue_name],
-                    'capacity': self._num_microbatches
-                })
-            orig_var_name = self._strip_grad_suffix(grad_name)
-            for _ in range(self._num_microbatches):
-                u_name = unique_name.generate(orig_var_name)
-                u_grad_name = self._append_grad_suffix(u_name)
-                grad_var = self._create_var(block, ref_var, u_grad_name)
-                grad_names.append(u_grad_name)
-                grads.append(grad_var)
-            block._insert_op(
-                index=optimize_index,
-                type='dequeue',
-                outputs={'Out': grads},
-                attrs={
-                    self._op_device_key: device,
-                    'queue_name': queue_name,
-                    self._op_role_key: self._op_role.Optimize
-                })
-            block._insert_op(
-                index=optimize_index + 1,
-                type='sum',
-                inputs={'X': grad_names},
-                outputs={'Out': ref_var},
-                attrs={
-                    self._op_device_key: device,
-                    self._op_role_key: self._op_role.Optimize
-                })
-        return grad_queue_map
-
-    def _insert_enq_deq_ops_for_update(self, block, startup_program):
+    def _clear_gradients(self, main_block, dev_spec):
         """
-        Insert enqueue and dequeue ops for gradients of parameters.
+        Clear gradients at the begining of each run of a minibatch.
         """
-        startup_block = startup_program.global_block()
-        grad_queue_map = self._add_dequeue_ops_for_optimize(block,
-                                                            startup_program)
+        for param_name in self._param_device_map:
+            device = self._param_device_map[param_name]
+            if device != dev_spec: continue
+            grad_name = self._append_grad_suffix(param_name)
+            grad_var = main_block.vars[grad_name]
+            main_block._insert_op(
+                index=0,
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [grad_var]},
+                attrs={
+                    'shape': grad_var.shape,
+                    'dtype': grad_var.dtype,
+                    'value': float(0),
+                    self._op_device_key: device,
+                    # a trick to run this op once per mini-batch
+                    self._op_role_key: self._op_role.Optimize.LRSched,
+                })
 
-        for index, op in reversed(list(enumerate(block.ops))):
+    def _accumulate_gradients(self, block):
+        """
+        Accumulate the gradients generated in microbatch to the one in mini-batch.
+        We also scale the loss corresponding to number of micro-batches as well.
+        """
+        for index, op in reversed(tuple(enumerate(list(block.ops)))):
             offset = index
             device = op.attr(self._op_device_key)
 
@@ -4298,19 +4260,23 @@ class PipelineOptimizer(object):
                 if len(op_role_var) == 0:
                     continue
                 assert len(op_role_var) % 2 == 0
+                offset = index
                 for i in range(0, len(op_role_var), 2):
                     grad_name = op_role_var[i + 1]
                     grad_var = block.vars[grad_name]
-                    assert grad_name in grad_queue_map
-                    queue_name = grad_queue_map[grad_name]
+                    new_grad_var_name = unique_name.generate(grad_name)
+                    new_var = self._create_var(block, grad_var,
+                                               new_grad_var_name)
+                    self._rename_arg(op, grad_name, new_grad_var_name)
                     block._insert_op(
                         index=offset + 1,
-                        type='enqueue',
-                        inputs={'X': block.vars[grad_name]},
+                        type='sum',
+                        inputs={'X': [grad_var, new_var]},
+                        outputs={'Out': grad_var},
                         attrs={
-                            'queue_name': queue_name,
                             self._op_device_key: device,
-                            self._op_role_key: self._op_role.Backward
+                            self._op_role_key: self._op_role.Backward,
+                            self._op_role_var_key: op_role_var
                         })
                     offset += 1
 
@@ -4367,7 +4333,9 @@ class PipelineOptimizer(object):
             for prog in var_info[var_name]:
                 block = prog.block(0)
                 for op in block.ops:
-                    if op.type == "dequeue": continue
+                    if op.type == "recv_v2" or op.type == "create_py_reader" or \
+                        op.type == "read":
+                        continue
                     # We have processed lr related vars
                     if op.attr(self._op_role_key) == int(
                             self._op_role.Optimize.LRSched):
@@ -4387,45 +4355,39 @@ class PipelineOptimizer(object):
             write_prog = write_info[var_name]
             write_block = write_prog.block(0)
             write_device = self._get_device_info(write_block)
+            write_dev_index = int(write_device.split(':')[1])
             all_progs = var_info[var_name]
             for prog in all_progs:
                 if prog == write_prog: continue
-
-                queue_name = var_name + "_blocking_queue"
-                queue_name = unique_name.generate(queue_name)
-                queue_var = startup_prog.block(0).create_var(
-                    name=queue_name,
-                    persistable=True,
-                    type=core.VarDesc.VarType.RAW)
-                startup_prog.block(0).append_op(
-                    type='queue_generator',
-                    attrs={
-                        'names': [queue_name],
-                        'capacity': self._num_microbatches
-                    })
-                write_block._insert_op(
-                    index=0,
-                    type='enqueue',
-                    inputs={'X': write_block.var(var_name), },
-                    attrs={
-                        'queue_name': queue_name,
-                        self._op_device_key: write_device,
-                        # A trick to make the role LRSched to avoid copy every
-                        # microbatch
-                        self._op_role_key: self._op_role.LRSched
-                    })
                 read_block = prog.block(0)
                 read_device = self._get_device_info(read_block)
-                read_block._insert_op(
+                read_dev_index = int(read_device.split(':')[1])
+
+                write_block._insert_op(
                     index=0,
-                    type='dequeue',
-                    outputs={'Out': [read_block.var(var_name)]},
+                    type='send_v2',
+                    inputs={'X': write_block.var(var_name), },
                     attrs={
-                        self._op_device_key: read_device,
+                        self._op_device_key: write_device,
+                        'use_calc_stream': True,
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch
                         self._op_role_key: self._op_role.LRSched,
-                        'queue_name': queue_name,
+                        'peer': read_dev_index,
+                    })
+                read_block._insert_op(
+                    index=0,
+                    type='recv_v2',
+                    outputs={'Out': [read_block.var(var_name)]},
+                    attrs={
+                        'out_shape': read_block.var(var_name).shape,
+                        'dtype': read_block.var(var_name).dtype,
+                        self._op_device_key: read_device,
+                        'use_calc_stream': True,
+                        # A trick to make the role LRSched to avoid copy every
+                        # microbatch
+                        self._op_role_key: self._op_role.LRSched,
+                        'peer': write_dev_index
                     })
 
     def minimize(self,
@@ -4438,26 +4400,21 @@ class PipelineOptimizer(object):
             startup_program = default_startup_program()
         optimize_ops, params_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
-        self._update_param_device_map(params_grads, main_block)
+        self._param_device_map = self._optimizer._param_device_map
 
         # Step1: add default op_device attribute for regulization and clip ops
         self._add_opdevice_attr_for_regularization_clip(main_block)
 
         # Step2: add default op_device attribute for ops whose op_device
-        # attribute have not been set yet.
+        # attribute have not been set yet. Then check all ops have the
+        # op_device attribute.
         self._add_default_opdevice_attr(main_block)
+
         device_specs = self._check_validation(main_block)
+        assert len(device_specs) > 1
 
-        # Step3: add enqueue and dequeue ops between section boundaries
-        origin_prog = main_block.program.clone(for_test=False)
-        origin_main_block = origin_prog.global_block()
-        self._insert_enq_deq_ops_for_boundaries(main_block, origin_main_block,
-                                                startup_program)
-
-        # Step4: add a pair of enqueue and dequeueN for parameter gradients
-        self._insert_enq_deq_ops_for_update(main_block, startup_program)
-
-        main_program = main_block.program
+        # Step3: add send and recv ops between section boundaries
+        self._insert_sendrecv_ops_for_boundaries(main_block)
 
         place_list = []
         place_id_list = []
@@ -4472,37 +4429,56 @@ class PipelineOptimizer(object):
             else:
                 raise ValueError("Unknown device type: %s", dev_spec)
 
-        # Step5: split program into sections and add pairs of
-        # enqueue and dequeue ops for data var.
-        if len(place_list) == 0:
-            program_list = []
-            ptmp = {
-                "program": main_program,
-                "input_set": set(),
-                "output_set": set()
-            }
-            program_list.append(ptmp)
-        else:
-            program_list = self._split_program(main_program)
-            for p in program_list:
-                self._create_vars(p["program"].block(0), main_program)
-        self._insert_enq_deq_for_data_var(main_block, program_list,
-                                          startup_program, device_specs)
+        # Step4: split program into sections and add pairs of
+        # send and recv ops for data var.
+        main_program = main_block.program
+        program_list = self._split_program(main_program, device_specs)
+        for p in program_list:
+            self._create_vars(p["program"].block(0), main_program)
+        self._insert_sendrecv_for_data_var(main_block, program_list,
+                                           startup_program, device_specs)
 
-        # Step6: Special Case: process persistable vars that exist in
+        # Step5: Special Case: process persistable vars that exist in
         # multiple sections
         self._process_persistable_vars_in_multi_sections(
             main_program, startup_program, program_list)
 
-        # Step7: Add sub blocks for section programs
+        # Step6: Add sub blocks for section programs
         self._add_sub_blocks(main_block, program_list)
 
+        assert (main_program._pipeline_opt and
+                isinstance(main_program._pipeline_opt, dict) and
+                'local_rank' in main_program._pipeline_opt), \
+                "You must use pipeline with fleet"
+        local_rank = main_program._pipeline_opt['local_rank']
+
+        # Step7: Split startup program
+        new_startup_program = self._split_startup_program(startup_program,
+                                                          local_rank)
+
+        # Step8: clear gradients before each mini-batch and 
+        # accumulate gradients during backward
+        self._clear_gradients(
+            program_list[local_rank]['program'].global_block(),
+            dev_spec=device_specs[local_rank])
+        self._accumulate_gradients(program_list[local_rank]['program']
+                                   .global_block())
+
+        with open("startup_prog_%d" % local_rank, 'w') as f:
+            f.writelines(str(new_startup_program))
+        with open("main_prog_%d" % local_rank, 'w') as f:
+            f.writelines(str(program_list[local_rank]['program']))
+
+        startup_program._pipeline_opt = {
+            "startup_program": new_startup_program,
+        }
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
-            "section_program_list": program_list,
-            "place_list": place_list,
-            "place_id_list": place_id_list,
+            "inner_parallelism": len(device_specs),
+            "section_program": program_list[local_rank],
+            "place": place_list[local_rank],
+            "place_id": place_id_list[local_rank],
             "sync_steps": -1,
             "num_microbatches": self._num_microbatches,
             "start_cpu_core_id": self._start_cpu_core_id,
@@ -4595,15 +4571,16 @@ class RecomputeOptimizer(Optimizer):
             ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 
-    def load(self, stat_dict):
+    @framework.deprecate_stat_dict
+    def load(self, state_dict):
         """
-	:api_attr: Static Graph
+	    :api_attr: Static Graph
 
         load function is not supported by Recompute Optimizer for now.
         :return: None
 
         Args:
-            stat_dict: the dict load by load_persistable method
+            state_dict: the dict load by load_persistable method
 
         Examples:
             .. code-block:: python
@@ -4627,8 +4604,8 @@ class RecomputeOptimizer(Optimizer):
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 try:
-                    stat_dict = {}
-                    sgd.load(stat_dict)
+                    state_dict = {}
+                    sgd.load(state_dict)
                 except NotImplementedError as e:
                     print(cpt.get_exception_message(e))
         """
@@ -4748,10 +4725,6 @@ class RecomputeOptimizer(Optimizer):
 
             params_grads = append_backward(
                 loss, parameter_list, no_grad_set, checkpoints=checkpoint_vars)
-            # Note: since we can't use all_reduce_op now,
-            #  dgc_op should be the last op of one grad.
-            if hasattr(self._optimizer, "_append_dgc_ops"):
-                self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -4820,7 +4793,7 @@ class RecomputeOptimizer(Optimizer):
 
 
 class LookaheadOptimizer(object):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This implements the Lookahead optimizer of the
@@ -4848,29 +4821,35 @@ class LookaheadOptimizer(object):
             import paddle
             import paddle.fluid as fluid
             import numpy as np
+            import numpy.random as random
 
-	    x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-	    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-	    y = fluid.layers.fc(input=[x], size=2, act="softmax")
-	    loss = fluid.layers.cross_entropy(input=y, label=label)
-	    loss = fluid.layers.mean(x=loss)
-	    sgd = fluid.optimizer.SGD(learning_rate=0.01)
-	    optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
-                                            alpha=0.5,
-                                            k=5)
-	    optimizer.minimize(loss)
-	    main_program = fluid.default_main_program()
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+            paddle.enable_static()
+        
+            x = fluid.layers.data(name='x', shape=[2], dtype='float32')
+            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            y = fluid.layers.fc(input=[x], size=2, act="softmax")
+            loss = fluid.layers.cross_entropy(input=y, label=label)
+            loss = fluid.layers.mean(x=loss)
+            sgd = fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
+                                                alpha=0.5,
+                                                k=5)
+            optimizer.minimize(loss)
+            main_program = fluid.default_main_program()
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
 
-	    feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
-
-	    step = 0
-            while(step < 10):
-                step += 1
-		exe.run(fluid.default_main_program(),
-            	feed=feeder.feed(batch_data))
+            def train_reader(limit=5):
+                for i in range(limit):
+                    yield random.random([2]).astype('float32'), random.random([1]).astype('int64')
+            
+            feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
+            reader = paddle.batch(paddle.reader.shuffle(train_reader, buf_size=50000),batch_size=1)
+            
+            for batch_data in reader():
+                exe.run(fluid.default_main_program(),
+                feed=feeder.feed(batch_data))
 
     """
 

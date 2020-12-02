@@ -26,6 +26,8 @@ import paddle
 def nearest_neighbor_interp_np(X,
                                out_h,
                                out_w,
+                               scale_h=0,
+                               scale_w=0,
                                out_size=None,
                                actual_shape=None,
                                align_corners=True,
@@ -46,13 +48,18 @@ def nearest_neighbor_interp_np(X,
         if (align_corners):
             ratio_h = (in_h - 1.0) / (out_h - 1.0)
         else:
-            ratio_h = 1.0 * in_h / out_h
+            if scale_h > 0:
+                ratio_h = 1.0 / scale_h
+            else:
+                ratio_h = 1.0 * in_h / out_h
     if (out_w > 1):
         if (align_corners):
             ratio_w = (in_w - 1.0) / (out_w - 1.0)
         else:
-            ratio_w = 1.0 * in_w / out_w
-
+            if scale_w > 0:
+                ratio_w = 1.0 / scale_w
+            else:
+                ratio_w = 1.0 * in_w / out_w
     out = np.zeros((n, c, out_h, out_w))
 
     if align_corners:
@@ -89,7 +96,8 @@ class TestNearestInterpOp(OpTest):
         else:
             in_h = self.input_shape[1]
             in_w = self.input_shape[2]
-
+        scale_h = 0
+        scale_w = 0
         if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
                 if self.scale > 0:
@@ -106,8 +114,8 @@ class TestNearestInterpOp(OpTest):
             out_w = self.out_w
 
         output_np = nearest_neighbor_interp_np(
-            input_np, out_h, out_w, self.out_size, self.actual_shape,
-            self.align_corners, self.data_layout)
+            input_np, out_h, out_w, scale_h, scale_w, self.out_size,
+            self.actual_shape, self.align_corners, self.data_layout)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -265,7 +273,7 @@ class TestNearestInterpOpUint8(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = nearest_neighbor_interp_np(input_np, out_h, out_w,
+        output_np = nearest_neighbor_interp_np(input_np, out_h, out_w, 0, 0,
                                                self.out_size, self.actual_shape,
                                                self.align_corners)
         self.inputs = {'X': input_np}
@@ -408,7 +416,7 @@ class TestNearestInterpOp_attr_tensor(OpTest):
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0]]
             self.attrs['scale'] = self.scale
-        output_np = nearest_neighbor_interp_np(input_np, out_h, out_w,
+        output_np = nearest_neighbor_interp_np(input_np, out_h, out_w, 0, 0,
                                                self.out_size, self.actual_shape,
                                                self.align_corners)
         self.outputs = {'Out': output_np}
@@ -516,20 +524,6 @@ class TestNearestAPI(unittest.TestCase):
             np.allclose(results[0], np.transpose(expect_res, (0, 2, 3, 1))))
         for i in range(len(results) - 1):
             self.assertTrue(np.allclose(results[i + 1], expect_res))
-
-
-class TestUpsampleNearest2dInterpOpAPI2_0(unittest.TestCase):
-    def test_case(self):
-
-        # dygraph
-        x_data = np.random.random((1, 3, 6, 6)).astype("float32")
-        upsample = paddle.nn.UpsamplingNearest2d(scale_factor=[2, 2])
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(x_data)
-            interp = upsample(x)
-            expect = nearest_neighbor_interp_np(
-                x_data, out_h=12, out_w=12, align_corners=False)
-            self.assertTrue(np.allclose(interp.numpy(), expect))
 
 
 class TestNearestInterpException(unittest.TestCase):

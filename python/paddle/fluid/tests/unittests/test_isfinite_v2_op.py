@@ -27,7 +27,7 @@ def run_static(x_np, dtype, op_str, use_gpu=False):
         place = paddle.CUDAPlace(0)
     exe = fluid.Executor(place)
     with fluid.program_guard(main_program, startup_program):
-        x = paddle.data(name='x', shape=x_np.shape, dtype=dtype)
+        x = paddle.fluid.data(name='x', shape=x_np.shape, dtype=dtype)
         res = getattr(paddle.tensor, op_str)(x)
         exe.run(startup_program)
         static_result = exe.run(main_program,
@@ -41,7 +41,7 @@ def run_dygraph(x_np, op_str, use_gpu=True):
     if use_gpu and fluid.core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     paddle.disable_static(place)
-    x = paddle.to_variable(x_np)
+    x = paddle.to_tensor(x_np)
     dygraph_result = getattr(paddle.tensor, op_str)(x)
     return dygraph_result
 

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_helper.h"
@@ -35,6 +36,7 @@ limitations under the License. */
 #endif
 
 #include <map>
+
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
@@ -42,6 +44,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
+
+namespace Eigen {
+struct DefaultDevice;
+struct GpuDevice;
+}  // namespace Eigen
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_header.h"
@@ -111,8 +118,8 @@ struct DefaultDeviceContextType<platform::XPUPlace> {
 
 #ifdef PADDLE_WITH_CUDA
 
-class EigenCudaStreamDevice;
 class CudnnWorkspaceHandle;
+class EigenCudaStreamDevice;
 
 class CUDAContext {
  public:
@@ -200,8 +207,8 @@ class CUDAContext {
             << "Please recompile or reinstall Paddle with compatible CUDNN "
                "version.";
       }
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreate(&cudnn_handle_));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_RETRY_CUDA_SUCCESS(dynload::cudnnCreate(&cudnn_handle_));
+      PADDLE_RETRY_CUDA_SUCCESS(
           dynload::cudnnSetStream(cudnn_handle_, RawStream()));
     } else {
       cudnn_handle_ = nullptr;
@@ -209,9 +216,8 @@ class CUDAContext {
   }
 
   void InitCuSolverContext() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cusolverDnCreate(&cusolver_dn_handle_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::cusolverDnCreate(&cusolver_dn_handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(
         dynload::cusolverDnSetStream(cusolver_dn_handle_, RawStream()));
   }
 
@@ -522,6 +528,10 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // Remove all entries from the blob map
   void ResetBlobMap();
 
+  // Set a suffix to be added to key
+  void SetKeySuffix(const std::string& suffix) { key_suffix_ = suffix; }
+  const std::string& GetKeySuffix(void) const { return key_suffix_; }
+
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
 
@@ -543,6 +553,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
+  std::string key_suffix_;  // Key identifying current Executor
 };
 #endif
 

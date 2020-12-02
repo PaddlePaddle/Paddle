@@ -83,9 +83,9 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.attrs = {
             "numeric_stable_mode": self.numeric_stable_mode,
             "soft_label": self.soft_label,
+            "ignore_index": self.ignore_index,
         }
-        if self.ignore_index >= 0:
-            self.attrs['ignore_index'] = self.ignore_index
+
         if self.axis != -1:
             self.attrs['axis'] = self.axis
 
@@ -93,7 +93,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["Logits"], "Loss", max_relative_error=0.05)
+        self.check_grad(["Logits"], "Loss", max_relative_error=5e-5)
 
 
 class TestSoftmaxWithCrossEntropyOpNoCudnn(TestSoftmaxWithCrossEntropyOp):

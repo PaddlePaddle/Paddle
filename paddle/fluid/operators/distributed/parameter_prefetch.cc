@@ -12,29 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
+#include "paddle/fluid/operators/distributed/parameter_prefetch.h"
 #include <memory>
 #include <set>
-#include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <vector>
-
-#include "paddle/fluid/operators/distributed/parameter_prefetch.h"
-
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/tensor.h"
-
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/rpc_client.h"
-#include "paddle/fluid/operators/distributed/variable_response.h"
-#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
+
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+class RPCClient;
 
 using LoDTensor = framework::LoDTensor;
 using LoDTensor = framework::LoDTensor;
@@ -158,8 +156,14 @@ void prefetch_core(
       const auto *out_var_data = prefetch_out_var.data<float>();
       auto &dims = prefetch_out_var.dims();
 
-      PADDLE_ENFORCE_EQ(dims.size(), 2, "");
-      PADDLE_ENFORCE_EQ(ids_in_this_section.size(), dims[0]);
+      PADDLE_ENFORCE_EQ(dims.size(), 2,
+                        platform::errors::InvalidArgument(
+                            "The size of Tensor dims must be 2."));
+      PADDLE_ENFORCE_EQ(ids_in_this_section.size(), dims[0],
+                        platform::errors::InvalidArgument(
+                            "The size of ids in this section must equal to "
+                            "dims[0]: %s, but got %s",
+                            dims[0], ids_in_this_section.size()));
 
       auto row_numel = dims[1];
 
@@ -246,7 +250,6 @@ void prefetchs(const std::vector<std::string> &id_var_names,
   for (size_t i = 0; i < table_names.size(); i++) {
     tables.push_back(std::make_pair(table_names[i], endpoints[i]));
   }
-
   std::unordered_map<int64_t, std::vector<float>> recved_vec_map;
   prefetch_core(ids_union, tables, context, scope, is_distributed,
                 &recved_vec_map);
@@ -279,23 +282,22 @@ void prefetchs(const std::vector<std::string> &id_var_names,
       }
     } else {
 #ifdef PADDLE_WITH_CUDA
+      std::vector<float> ids_value_vec(ids_size * vec_dim_1);
       for (auto idx = 0; idx < static_cast<int>(ids_size); idx++) {
         const auto &id = ids[idx];
-        auto stream = context.cuda_device_context().stream();
         if (padding_idx != distributed::kNoPadding && id == padding_idx) {
-          platform::GpuMemsetAsync(out_d + idx * vec_dim_1, 0,
-                                   sizeof(float) * vec_dim_1, stream);
+          memset(&ids_value_vec[idx * vec_dim_1], 0, sizeof(float) * vec_dim_1);
         } else {
-          auto &cpu_place =
-              BOOST_GET_CONST(platform::CPUPlace,
-                              paddle::platform::CPUDeviceContext().GetPlace());
-          auto &gpu_place =
-              BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
-          memory::Copy(gpu_place, out_d + idx * vec_dim_1, cpu_place,
-                       &recved_vec_map[id][0], sizeof(float) * vec_dim_1,
-                       stream);
+          memcpy(&ids_value_vec[idx * vec_dim_1], &recved_vec_map[id][0],
+                 sizeof(float) * vec_dim_1);
         }
       }
+      auto &gpu_place = BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
+      auto &cpu_place = BOOST_GET_CONST(
+          platform::CPUPlace, paddle::platform::CPUDeviceContext().GetPlace());
+      auto stream = context.cuda_device_context().stream();
+      memory::Copy(gpu_place, out_d, cpu_place, &ids_value_vec[0],
+                   sizeof(float) * ids_size * vec_dim_1, stream);
 #else
       PADDLE_ENFORCE(true, platform::errors::PermissionDenied(
                                "Paddle is not compiled with GPU!"));

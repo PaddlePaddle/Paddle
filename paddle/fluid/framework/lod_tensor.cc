@@ -12,19 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <stdint.h>
-#include <string.h>
-#include <algorithm>
-#include <iterator>
-
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/var_type.h"
+#include <stdint.h>
+#include <algorithm>
 #include "paddle/fluid/framework/version.h"
 
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/memory/memory.h"
+namespace paddle {
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -284,7 +281,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     PADDLE_ENFORCE_EQ(
         version, 0U,
         platform::errors::InvalidArgument(
-            "Tensor version %u is not supported, only version 0 is supported.",
+            "Deserialize to tensor failed, maybe the loaded file is "
+            "not a paddle model(expected file format: 0, but %u found).",
             version));
   }
   {
@@ -310,7 +308,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     PADDLE_ENFORCE_EQ(
         version, 0U,
         platform::errors::InvalidArgument(
-            "Tensor version %u is not supported, only version 0 is supported.",
+            "Deserialize to tensor failed, maybe the loaded file is "
+            "not a paddle model(expected file format: 0, but %u found).",
             version));
   }
   {

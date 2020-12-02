@@ -30,10 +30,12 @@ using platform::to_void_cast;
 
 static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
   for (auto* input : inputs) {
-    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Input tensor");
-    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Input tensor");
+    PADDLE_ENFORCE_EQ(
+        input->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument("Wrong layout set for Input tensor"));
+    PADDLE_ENFORCE_NE(
+        input->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for Input tensor"));
   }
 }
 
@@ -49,7 +51,7 @@ static platform::CPUPlace GetCpuPlace(
     const paddle::framework::ExecutionContext& ctx) {
   auto place = ctx.GetPlace();
   PADDLE_ENFORCE(paddle::platform::is_cpu_place(place),
-                 "It must use CPUPlace.");
+                 platform::errors::InvalidArgument("It must use CPUPlace."));
   return BOOST_GET_CONST(platform::CPUPlace, place);
 }
 
@@ -84,8 +86,10 @@ class ConcatPrimitiveFactory {
   concat CreateConcatPrimitive(const concat::primitive_desc& concat_pd,
                                Tensor* output, platform::CPUPlace place,
                                const mkldnn::engine& mkldnn_engine) {
-    dst_mem = mkldnn::memory(concat_pd.dst_desc(), mkldnn_engine,
-                             output->mutable_data<T>(place));
+    dst_mem = mkldnn::memory(
+        concat_pd.dst_desc(), mkldnn_engine,
+        output->mutable_data<T>(place, concat_pd.dst_desc().get_size()));
+
     return concat(concat_pd);
   }
 
@@ -156,7 +160,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::string key = platform::CreateKey(
         paddle::framework::vectorize<int>(multi_input[0]->dims()),
         multi_input.size(), ctx.OutputName("Out"), dt,
-        platform::ThreadIDasStr());
+        platform::ThreadIDasStr(), dev_ctx.GetKeySuffix());
 
     const std::string key_prim = key + "@concat_p";
     const std::string key_concat_pd = key + "@concat_pd";
@@ -191,7 +195,9 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         prim_creator.SetSrcDataHandleByIndex(
             *srcs, i, to_void_cast<T>(multi_input[i]->data<T>()));
       }
-      prim_creator.SetDstDataHandle(*dst_mem, output->mutable_data<T>(place));
+      prim_creator.SetDstDataHandle(
+          *dst_mem,
+          output->mutable_data<T>(place, concat_pd->dst_desc().get_size()));
     }
 
     mkldnn::stream astream(mkldnn_engine);
@@ -215,5 +221,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(concat, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::ConcatMKLDNNOpKernel<float>,
+                   ops::ConcatMKLDNNOpKernel<paddle::platform::bfloat16>,
                    ops::ConcatMKLDNNOpKernel<int8_t>,
                    ops::ConcatMKLDNNOpKernel<uint8_t>);

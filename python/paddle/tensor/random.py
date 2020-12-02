@@ -14,26 +14,19 @@
 
 # TODO: define random functions  
 
-import numpy as np
-
 from ..fluid import core
-from ..fluid.framework import device_guard, in_dygraph_mode, _varbase_creator, Variable, convert_np_dtype_to_dtype_
-from ..fluid.layers.layer_function_generator import templatedoc
+from ..fluid.framework import in_dygraph_mode, Variable, convert_np_dtype_to_dtype_
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, check_shape
 from ..fluid.layers import utils
-from ..fluid.layers.tensor import fill_constant
 import paddle
-import warnings
-
-from ..fluid.io import shuffle  #DEFINE_ALIAS
 
 __all__ = [
     'bernoulli',
+    'multinomial',
     'standard_normal',
     'normal',
     'uniform',
-    'shuffle',
     'randn',
     'rand',
     'randint',
@@ -64,20 +57,20 @@ def bernoulli(x, name=None):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
 
-        paddle.disable_static()
+            paddle.set_device('cpu')  # on CPU device
+            paddle.seed(100) 
 
-        x = paddle.rand([2, 3])
-        print(x.numpy())
-        # [[0.11272584 0.3890902  0.7730957 ]
-        # [0.10351662 0.8510418  0.63806665]]
+            x = paddle.rand([2,3])
+            print(x)
+            # [[0.55355281, 0.20714243, 0.01162981],
+            #  [0.51577556, 0.36369765, 0.26091650]]
 
-        out = paddle.bernoulli(x)
-        print(out.numpy())
-        # [[0. 0. 1.]
-        # [0. 0. 1.]]
+            out = paddle.bernoulli(x)
+            print(out)
+            # [[1., 0., 1.],
+            #  [0., 1., 0.]]
 
     """
 
@@ -94,26 +87,92 @@ def bernoulli(x, name=None):
     return out
 
 
-def gaussian_random(shape, mean=0.0, std=1.0, dtype=None, name=None):
+def multinomial(x, num_samples=1, replacement=False, name=None):
+    """
+    This OP returns a Tensor filled with random values sampled from a Multinomical
+    distribution. The input ``x`` is a tensor with probabilities for generating the
+    random number. Each element in ``x`` should be larger or equal to 0, but not all
+    0. ``replacement`` indicates whether it is a replaceable sample. If ``replacement``
+    is True, a category can be sampled more than once.
+
+    Args:
+        x(Tensor):  A tensor with probabilities for generating the random number. The data type
+            should be float32, float64.
+        num_samples(int, optional): Number of samples, default is 1.
+        replacement(bool, optional): Whether it is a replaceable sample, default is False.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: A Tensor filled with sampled category index after ``num_samples`` times samples.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.seed(100) # on CPU device
+            x = paddle.rand([2,4])
+            print(x)
+            # [[0.5535528  0.20714243 0.01162981 0.51577556]
+            # [0.36369765 0.2609165  0.18905126 0.5621971 ]]
+
+            paddle.seed(200) # on CPU device
+            out1 = paddle.multinomial(x, num_samples=5, replacement=True)
+            print(out1)
+            # [[3 3 0 0 0]
+            # [3 3 3 1 0]]
+
+            # out2 = paddle.multinomial(x, num_samples=5)
+            # InvalidArgumentError: When replacement is False, number of samples
+            #  should be less than non-zero categories
+
+            paddle.seed(300) # on CPU device
+            out3 = paddle.multinomial(x, num_samples=3)
+            print(out3)
+            # [[3 0 1]
+            # [3 1 0]]
+
+    """
+
+    if in_dygraph_mode():
+        return core.ops.multinomial(x, 'num_samples', num_samples,
+                                    'replacement', replacement)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64"], "multinomial")
+
+    helper = LayerHelper("multinomial", **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=convert_np_dtype_to_dtype_('int64'))
+    helper.append_op(
+        type='multinomial',
+        inputs={"X": x},
+        outputs={'Out': out},
+        attrs={'num_samples': num_samples,
+               'replacement': replacement})
+    return out
+
+
+def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
     """
     This OP returns a Tensor filled with random values sampled from a Gaussian
     distribution, with ``shape`` and ``dtype``.
 
     Args:
-        shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
+        shape (list|tuple|Tensor): The shape of the output Tensor. If ``shape``
             is a list or tuple, the elements of it should be integers or Tensors
             (with the shape [1], and the data type int32 or int64). If ``shape``
             is a Tensor, it should be a 1-D Tensor(with the data type int32 or
             int64).
-        mean(float|int, optional): Mean of the output tensor, default is 0.0.
-        std(float|int, optional): Standard deviation of the output tensor, default
+        mean (float|int, optional): Mean of the output tensor, default is 0.0.
+        std (float|int, optional): Standard deviation of the output tensor, default
             is 1.0.
-        seed(int, optional): ${seed_comment}
-        dtype(str|np.dtype, optional): The data type of the output Tensor.
+        seed (int, optional): Random seed of generator.
+        dtype (str|np.dtype, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
-        name(str, optional): The default value is None. Normally there is no
+        name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
@@ -121,26 +180,26 @@ def gaussian_random(shape, mean=0.0, std=1.0, dtype=None, name=None):
         Tensor: A Tensor filled with random values sampled from a Gaussian
         distribution, with ``shape`` and ``dtype``. 
     """
+    op_type_for_check = 'gaussian/standard_normal/randn/normal'
+    seed = 0
+
     if dtype is None:
         dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
-                "gaussian_random only supports [float32, float64], but the default dtype is %s"
-                % dtype)
-
+                "{} only supports [float32, float64], but the default dtype is {}"
+                .format(op_type_for_check, dtype))
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    seed = 0
-    op_type_for_check = 'gaussian_random/standard_normal/randn/normal'
 
     if in_dygraph_mode():
-        shape = utils._convert_shape_to_list(shape)
+        shape = utils.convert_shape_to_list(shape)
         return core.ops.gaussian_random('shape', shape, 'mean',
                                         float(mean), 'std',
                                         float(std), 'seed', seed, 'dtype',
                                         dtype)
 
-    check_type(shape, 'shape', (list, tuple, Variable), op_type_for_check)
+    check_shape(shape, op_type_for_check)
     check_dtype(dtype, 'dtype', ['float32', 'float64'], op_type_for_check)
 
     inputs = {}
@@ -151,10 +210,10 @@ def gaussian_random(shape, mean=0.0, std=1.0, dtype=None, name=None):
         'dtype': dtype,
         'use_mkldnn': False
     }
-    utils._get_shape_tensor_inputs(
+    utils.get_shape_tensor_inputs(
         inputs=inputs, attrs=attrs, shape=shape, op_type=op_type_for_check)
 
-    helper = LayerHelper('gaussian_random', **locals())
+    helper = LayerHelper('gaussian', **locals())
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='gaussian_random',
@@ -172,12 +231,12 @@ def standard_normal(shape, dtype=None, name=None):
     and ``dtype``.
 
     Args:
-        shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
+        shape (list|tuple|Tensor): The shape of the output Tensor. If ``shape``
             is a list or tuple, the elements of it should be integers or Tensors
             (with the shape [1], and the data type int32 or int64). If ``shape``
             is a Tensor, it should be a 1-D Tensor(with the data type int32 or
             int64).
-        dtype(str|np.dtype, optional): The data type of the output Tensor.
+        dtype (str|np.dtype, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
@@ -189,27 +248,20 @@ def standard_normal(shape, dtype=None, name=None):
         normal distribution with mean 0 and standard deviation 1, with
         ``shape`` and ``dtype``.
 
-    Raises:
-        TypeError: If ``shape`` is not list, tuple, Tensor.
-        TypeError: If ``dtype`` is not float32, float64.
-
     Examples:
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            paddle.disable_static()
 
             # example 1: attr shape is a list which doesn't contain Tensor.
-            result_1 = paddle.standard_normal(shape=[2, 3])
+            out1 = paddle.standard_normal(shape=[2, 3])
             # [[-2.923464  ,  0.11934398, -0.51249987],  # random
             #  [ 0.39632758,  0.08177969,  0.2692008 ]]  # random
 
             # example 2: attr shape is a list which contains Tensor.
-            dim_1 = paddle.fill_constant([1], "int64", 2)
-            dim_2 = paddle.fill_constant([1], "int32", 3)
-            result_2 = paddle.standard_normal(shape=[dim_1, dim_2, 2])
+            dim1 = paddle.to_tensor([2], 'int64')
+            dim2 = paddle.to_tensor([3], 'int32')
+            out2 = paddle.standard_normal(shape=[dim1, dim2, 2])
             # [[[-2.8852394 , -0.25898588],  # random
             #   [-0.47420555,  0.17683524],  # random
             #   [-0.7989969 ,  0.00754541]],  # random
@@ -218,24 +270,67 @@ def standard_normal(shape, dtype=None, name=None):
             #   [ 0.8086993 ,  0.6868893 ]]]  # random
 
             # example 3: attr shape is a Tensor, the data type must be int64 or int32.
-            var_shape = paddle.to_tensor(np.array([2, 3]))
-            result_3 = paddle.standard_normal(var_shape)
+            shape_tensor = paddle.to_tensor([2, 3])
+            out3 = paddle.standard_normal(shape_tensor)
             # [[-2.878077 ,  0.17099959,  0.05111201]  # random
             #  [-0.3761474, -1.044801  ,  1.1870178 ]]  # random
 
     """
-    if dtype is None:
-        dtype = paddle.framework.get_default_dtype()
-        if dtype not in ['float32', 'float64']:
-            raise TypeError(
-                "standard_normal only supports [float32, float64], but the default dtype is %s"
-                % dtype)
-
-    return gaussian_random(
-        shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
+    return gaussian(shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
 
 
-randn = standard_normal
+def randn(shape, dtype=None, name=None):
+    """
+    This OP returns a Tensor filled with random values sampled from a standard
+    normal distribution with mean 0 and standard deviation 1, with ``shape``
+    and ``dtype``.
+
+    Args:
+        shape (list|tuple|Tensor): The shape of the output Tensor. If ``shape``
+            is a list or tuple, the elements of it should be integers or Tensors
+            (with the shape [1], and the data type int32 or int64). If ``shape``
+            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
+            int64).
+        dtype (str|np.dtype, optional): The data type of the output Tensor.
+            Supported data types: float32, float64.
+            Default is None, use global default dtype (see ``get_default_dtype``
+            for details).
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A Tensor filled with random values sampled from a standard
+        normal distribution with mean 0 and standard deviation 1, with
+        ``shape`` and ``dtype``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            # example 1: attr shape is a list which doesn't contain Tensor.
+            out1 = paddle.randn(shape=[2, 3])
+            # [[-2.923464  ,  0.11934398, -0.51249987],  # random
+            #  [ 0.39632758,  0.08177969,  0.2692008 ]]  # random
+
+            # example 2: attr shape is a list which contains Tensor.
+            dim1 = paddle.to_tensor([2], 'int64')
+            dim2 = paddle.to_tensor([3], 'int32')
+            out2 = paddle.randn(shape=[dim1, dim2, 2])
+            # [[[-2.8852394 , -0.25898588],  # random
+            #   [-0.47420555,  0.17683524],  # random
+            #   [-0.7989969 ,  0.00754541]],  # random
+            #  [[ 0.85201347,  0.32320443],  # random
+            #   [ 1.1399018 ,  0.48336947],  # random
+            #   [ 0.8086993 ,  0.6868893 ]]]  # random
+
+            # example 3: attr shape is a Tensor, the data type must be int64 or int32.
+            shape_tensor = paddle.to_tensor([2, 3])
+            out3 = paddle.randn(shape_tensor)
+            # [[-2.878077 ,  0.17099959,  0.05111201]  # random
+            #  [-0.3761474, -1.044801  ,  1.1870178 ]]  # random
+    """
+    return standard_normal(shape, dtype, name)
 
 
 def normal(mean=0.0, std=1.0, shape=None, name=None):
@@ -275,19 +370,16 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            paddle.disable_static()
 
             out1 = paddle.normal(shape=[2, 3])
             # [[ 0.17501129  0.32364586  1.561118  ]  # random
             #  [-1.7232178   1.1545963  -0.76156676]]  # random
 
-            mean_tensor = paddle.to_tensor(np.array([1.0, 2.0, 3.0]))
+            mean_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
             out2 = paddle.normal(mean=mean_tensor)
             # [ 0.18644847 -1.19434458  3.93694787]  # random
 
-            std_tensor = paddle.to_tensor(np.array([1.0, 2.0, 3.0]))
+            std_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
             out3 = paddle.normal(mean=mean_tensor, std=std_tensor)
             # [1.00780561 3.78457445 5.81058198]  # random
 
@@ -306,16 +398,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
                 "If std is Tensor, it's data type only support float32, float64."
             )
         if shape is not None:
-            if isinstance(shape, (list, tuple)):
-                for item in shape:
-                    check_type(item, 'shape', (int), 'normal',
-                               'Elements of shape should be int.')
-            elif isinstance(shape, Variable):
-                check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'normal')
-            else:
-                assert TypeError(
-                    'If mean and std are all not Tensor, shape should be list, tuple, Tensor.'
-                )
+            check_shape(shape, 'normal')
 
     if isinstance(mean, Variable):
         if isinstance(std, Variable):
@@ -330,7 +413,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         mean = float(mean)
         out = standard_normal(paddle.shape(std), std.dtype, name)
     else:
-        return gaussian_random(shape=shape, mean=mean, std=std, name=name)
+        return gaussian(shape=shape, mean=mean, std=std, name=name)
 
     out = out * std + mean
     if not in_dygraph_mode():
@@ -344,7 +427,9 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     distribution in the range [``min``, ``max``), with ``shape`` and ``dtype``.
 
     Examples:
-    ::
+
+    .. code-block:: text
+
         Input:
           shape = [1, 2]
         Output:
@@ -383,63 +468,55 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     Examples:
         .. code-block:: python
             
-            import numpy as np
             import paddle
-
-            paddle.disable_static()
 
             # example 1:
             # attr shape is a list which doesn't contain Tensor.
-            result_1 = paddle.tensor.random.uniform(shape=[3, 4])
-            # [[ 0.84524226,  0.6921872,   0.56528175,  0.71690357],
-            #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249],
-            #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]]
+            out1 = paddle.uniform(shape=[3, 4])
+            # [[ 0.84524226,  0.6921872,   0.56528175,  0.71690357], # random
+            #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249], # random
+            #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
 
             # example 2:
             # attr shape is a list which contains Tensor.
-            dim_1 = paddle.fill_constant([1], "int64", 2)
-            dim_2 = paddle.fill_constant([1], "int32", 3)
-            result_2 = paddle.tensor.random.uniform(shape=[dim_1, dim_2])
-            # [[-0.9951253,   0.30757582, 0.9899647 ],
-            #  [ 0.5864527,   0.6607096,  -0.8886161 ]]
+            dim1 = paddle.to_tensor([2], 'int64')
+            dim2 = paddle.to_tensor([3], 'int32')
+            out2 = paddle.uniform(shape=[dim1, dim2])
+            # [[-0.9951253,   0.30757582, 0.9899647 ], # random
+            #  [ 0.5864527,   0.6607096,  -0.8886161]] # random
 
             # example 3:
             # attr shape is a Tensor, the data type must be int64 or int32.
-            shape = np.array([2, 3])
-            shape_tensor = paddle.to_tensor(shape)
-            result_3 = paddle.tensor.random.uniform(shape_tensor)
-            # if shape_tensor's value is [2, 3]
-            # result_3 is:
-            # [[-0.8517412,  -0.4006908,   0.2551912 ],
-            #  [ 0.3364414,   0.36278176, -0.16085452]]
-
-
+            shape_tensor = paddle.to_tensor([2, 3])
+            out3 = paddle.uniform(shape_tensor)
+            # [[-0.8517412,  -0.4006908,   0.2551912 ], # random
+            #  [ 0.3364414,   0.36278176, -0.16085452]] # random
     """
     if dtype is None:
         dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
-                "uniform only supports [float32, float64], but the default dtype is %s"
-                % dtype)
+                "uniform/rand only supports [float32, float64], but the default dtype is {}".
+                format(dtype))
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        shape = utils._convert_shape_to_list(shape)
+        shape = utils.convert_shape_to_list(shape)
         return core.ops.uniform_random('shape', shape, 'min',
                                        float(min), 'max',
                                        float(max), 'seed', seed, 'dtype', dtype)
 
-    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
-    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random/rand')
+    check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')
+    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform/rand')
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
-    utils._get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform_random/rand')
+    utils.get_shape_tensor_inputs(
+        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform/rand')
 
-    helper = LayerHelper("uniform_random", **locals())
+    helper = LayerHelper("uniform", **locals())
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="uniform_random", inputs=inputs, attrs=attrs,
@@ -449,29 +526,26 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
 def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     """
-	:alias_main: paddle.randint
-	:alias: paddle.tensor.randint, paddle.tensor.random.randint
-
     This OP returns a Tensor filled with random integers from a discrete uniform
     distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
     If ``high`` is None (the default), the range is [0, ``low``).
 
     Args:
-        low(int): The lower bound on the range of random values to generate.
+        low (int): The lower bound on the range of random values to generate.
             The ``low`` is included in the range. If ``high`` is None, the
             range is [0, ``low``). Default is 0.
-        high(int, optional): The upper bound on the range of random values to
+        high (int, optional): The upper bound on the range of random values to
             generate, the ``high`` is excluded in the range. Default is None
             (see above for behavior if high = None). Default is None.
-        shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
+        shape (list|tuple|Tensor): The shape of the output Tensor. If ``shape``
             is a list or tuple, the elements of it should be integers or Tensors
             (with the shape [1], and the data type int32 or int64). If ``shape``
             is a Tensor, it should be a 1-D Tensor(with the data type int32 or
             int64). Default is [1].
-        dtype(str|np.dtype, optional): The data type of the
+        dtype (str|np.dtype, optional): The data type of the
             output tensor. Supported data types: int32, int64. If ``dytpe``
             is None, the data type is int64. Default is None.
-        name(str, optional): The default value is None.  Normally there is no
+        name (str, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
 
@@ -479,48 +553,39 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         Tensor: A Tensor filled with random integers from a discrete uniform
         distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
 
-    Raises:
-        TypeError: If ``shape`` is not list, tuple, Tensor.
-        TypeError: If ``dtype`` is not int32, int64.
-        ValueError: If ``high`` is not greater then ``low``; If ``high`` is 
-            None, and ``low`` is not greater than 0.
-
     Examples:
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            paddle.disable_static()
 
             # example 1:
             # attr shape is a list which doesn't contain Tensor.
-            result_1 = paddle.randint(low=-5, high=5, shape=[3])
+            out1 = paddle.randint(low=-5, high=5, shape=[3])
             # [0, -3, 2]  # random
 
             # example 2:
             # attr shape is a list which contains Tensor.
-            dim_1 = paddle.fill_constant([1], "int64", 2)
-            dim_2 = paddle.fill_constant([1], "int32", 3)
-            result_2 = paddle.randint(low=-5, high=5, shape=[dim_1, dim_2], dtype="int32")
+            dim1 = paddle.to_tensor([2], 'int64')
+            dim2 = paddle.to_tensor([3], 'int32')
+            out2 = paddle.randint(low=-5, high=5, shape=[dim1, dim2])
             # [[0, -1, -3],  # random
             #  [4, -2,  0]]  # random
 
             # example 3:
             # attr shape is a Tensor
-            var_shape = paddle.to_variable(np.array([3]))
-            result_3 = paddle.randint(low=-5, high=5, shape=var_shape)
+            shape_tensor = paddle.to_tensor(3)
+            out3 = paddle.randint(low=-5, high=5, shape=shape_tensor)
             # [-2, 2, 3]  # random
 
             # example 4:
             # data type is int32
-            result_4 = paddle.randint(low=-5, high=5, shape=[3], dtype='int32')
+            out4 = paddle.randint(low=-5, high=5, shape=[3], dtype='int32')
             # [-5, 4, -4]  # random
 
             # example 5:
             # Input only one parameter
             # low=0, high=10, shape=[1], dtype='int64'
-            result_5 = paddle.randint(10)
+            out5 = paddle.randint(10)
             # [7]  # random
 
     """
@@ -537,11 +602,11 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        shape = utils._convert_shape_to_list(shape)
+        shape = utils.convert_shape_to_list(shape)
         return core.ops.randint('shape', shape, 'low', low, 'high', high,
                                 'seed', 0, 'dtype', dtype)
 
-    check_type(shape, 'shape', (list, tuple, Variable), 'randint')
+    check_shape(shape, 'randint')
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
     if low >= high:
         raise ValueError(
@@ -550,7 +615,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
     inputs = dict()
     attrs = {'low': low, 'high': high, 'seed': 0, 'dtype': dtype}
-    utils._get_shape_tensor_inputs(
+    utils.get_shape_tensor_inputs(
         inputs=inputs, attrs=attrs, shape=shape, op_type='randint')
 
     helper = LayerHelper("randint", **locals())
@@ -560,21 +625,17 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     return out
 
 
-@templatedoc()
 def randperm(n, dtype="int64", name=None):
     """
-	:alias_main: paddle.randperm
-	:alias: paddle.tensor.randperm, paddle.tensor.random.randperm
-
     This OP returns a 1-D Tensor filled with random permutation values from 0
     to n-1, with ``dtype``.
 
     Args:
-        n(int): The upper bound (exclusive), and it should be greater than 0.
-        dtype(str|np.dtype, optional): The data type of
+        n (int): The upper bound (exclusive), and it should be greater than 0.
+        dtype (str|np.dtype, optional): The data type of
             the output Tensor. Supported data types: int32, int64, float32,
             float64. Default is int64.
-        name(str, optional): The default value is None. Normally there is no
+        name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
@@ -582,21 +643,15 @@ def randperm(n, dtype="int64", name=None):
         Tensor: A 1-D Tensor filled with random permutation values from 0
         to n-1, with ``dtype``.
 
-    Raises:
-        ValueError: If ``n`` is not greater than 0.
-        TypeError: If ``dtype`` is not int32, int64, float32, float64.
-
     Examples:
         .. code-block:: python
 
             import paddle
 
-            paddle.disable_static()
-
-            result_1 = paddle.randperm(5)
+            out1 = paddle.randperm(5)
             # [4, 1, 2, 3, 0]  # random
 
-            result_2 = paddle.randperm(7, 'int32')
+            out2 = paddle.randperm(7, 'int32')
             # [1, 6, 2, 0, 4, 3, 5]  # random
  
     """
@@ -622,32 +677,20 @@ def randperm(n, dtype="int64", name=None):
 
 def rand(shape, dtype=None, name=None):
     """
-	:alias_main: paddle.rand
-	:alias: paddle.tensor.rand, paddle.tensor.random.rand
-
     This OP returns a Tensor filled with random values sampled from a uniform
     distribution in the range [0, 1), with ``shape`` and ``dtype``.
 
-    Examples:
-    ::
-
-        Input:
-          shape = [1, 2]
-
-        Output:
-          result=[[0.8505902, 0.8397286]]
-
     Args:
-        shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
+        shape (list|tuple|Tensor): The shape of the output Tensor. If ``shape``
             is a list or tuple, the elements of it should be integers or Tensors
             (with the shape [1], and the data type int32 or int64). If ``shape``
             is a Tensor, it should be a 1-D Tensor(with the data type int32 or
             int64).
-        dtype(str|np.dtype, optional): The data type of the output Tensor.
+        dtype (str|np.dtype, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
-        name(str, optional): The default value is None. Normally there is no
+        name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
@@ -655,26 +698,20 @@ def rand(shape, dtype=None, name=None):
         Tensor: A Tensor filled with random values sampled from a uniform
         distribution in the range [0, 1), with ``shape`` and ``dtype``.
 
-    Raises:
-        TypeError: If ``shape`` is not list, tuple, Tensor.
-        ValueError: If ``dtype`` is not float32, float64.
-
     Examples:
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            paddle.disable_static()
             # example 1: attr shape is a list which doesn't contain Tensor.
-            result_1 = paddle.rand(shape=[2, 3])
+            out1 = paddle.rand(shape=[2, 3])
             # [[0.451152  , 0.55825245, 0.403311  ],  # random
             #  [0.22550228, 0.22106001, 0.7877319 ]]  # random
 
             # example 2: attr shape is a list which contains Tensor.
-            dim_1 = paddle.fill_constant([1], "int64", 2)
-            dim_2 = paddle.fill_constant([1], "int32", 3)
-            result_2 = paddle.rand(shape=[dim_1, dim_2, 2])
+            dim1 = paddle.to_tensor([2], 'int64')
+            dim2 = paddle.to_tensor([3], 'int32')
+            out2 = paddle.rand(shape=[dim1, dim2, 2])
             # [[[0.8879919 , 0.25788337],  # random
             #   [0.28826773, 0.9712097 ],  # random
             #   [0.26438272, 0.01796806]],  # random
@@ -683,19 +720,10 @@ def rand(shape, dtype=None, name=None):
             #   [0.870881  , 0.2984597 ]]]  # random
 
             # example 3: attr shape is a Tensor, the data type must be int64 or int32.
-            var_shape = paddle.to_variable(np.array([2, 3]))
-            result_3 = paddle.rand(var_shape)
+            shape_tensor = paddle.to_tensor([2, 3])
+            out3 = paddle.rand(shape_tensor)
             # [[0.22920267, 0.841956  , 0.05981819],  # random
             #  [0.4836288 , 0.24573246, 0.7516129 ]]  # random
 
     """
-    if dtype is None:
-        dtype = paddle.framework.get_default_dtype()
-        if dtype not in ['float32', 'float64']:
-            raise TypeError(
-                "rand only supports [float32, float64], but the default dtype is %s"
-                % dtype)
-
-    out = uniform(shape, dtype, min=0.0, max=1.0, name=name)
-    out.stop_gradient = True
-    return out
+    return uniform(shape, dtype, min=0.0, max=1.0, name=name)
