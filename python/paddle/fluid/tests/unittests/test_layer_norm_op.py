@@ -120,11 +120,10 @@ class TestLayerNormOp(unittest.TestCase):
                                has_bias=True,
                                y_grad_scale=1.0,
                                use_mkldnn=False):
-        def test_with_place_and_dtype(place,
-                                      dtype,
-                                      shape,
-                                      begin_norm_axis,
-                                      use_mkldnn=use_mkldnn):
+        def test_with_place(place,
+                            shape,
+                            begin_norm_axis,
+                            use_mkldnn=use_mkldnn):
             # attr
             epsilon = 0.00001
             x_shape = shape
@@ -159,13 +158,9 @@ class TestLayerNormOp(unittest.TestCase):
             with fluid.program_guard(program):
                 block = program.global_block()
                 for name in ground_truth:
-                    tmp_dtype = "float32"
-                    if name in ['x', 'y']:
-                        tmp_dtype = dtype
-
                     block.create_var(
                         name=name,
-                        dtype=tmp_dtype,
+                        dtype='float32',
                         shape=ground_truth[name].shape)
                 inputs = {"X": block.var('x')}
                 fetch_list = [
@@ -234,11 +229,8 @@ class TestLayerNormOp(unittest.TestCase):
                 "layer_norm") and self.use_cudnn:
             places.append(core.CUDAPlace(0))
 
-        dtypes = ["float16", "float32"]
-
         for place in places:
-            for dtype in dtypes:
-                test_with_place_and_dtype(place, dtype, shape, begin_norm_axis)
+            test_with_place(place, shape, begin_norm_axis)
 
     def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
@@ -276,6 +268,178 @@ class TestLayerNormOp(unittest.TestCase):
             has_bias=False,
             y_grad_scale=0.1)
         self.check_forward_backward(
+            shape=[92, 513, 1134],
+            begin_norm_axis=2,
+            has_scale=False,
+            has_bias=False,
+            y_grad_scale=0.1)
+
+    def check_forward_backward_fp16(self,
+                                    shape,
+                                    begin_norm_axis,
+                                    has_scale=True,
+                                    has_bias=True,
+                                    y_grad_scale=1.0,
+                                    use_mkldnn=False):
+        def test_with_fp16(place,
+                           dtype,
+                           shape,
+                           begin_norm_axis,
+                           use_mkldnn=use_mkldnn):
+            # attr
+            epsilon = 0.00001
+            x_shape = shape
+            D = reduce(mul, x_shape[begin_norm_axis:len(x_shape)], 1)
+            scale_shape = [D]
+
+            np.random.seed(123)
+            x = np.random.random_sample(x_shape).astype(np.float16)
+            scale = np.random.random_sample(scale_shape).astype(
+                np.float32) if has_scale else None
+            bias = np.random.random_sample(scale_shape).astype(
+                np.float32) if has_bias else None
+            y_grad = (np.random.random_sample(x_shape) *
+                      y_grad_scale).astype(np.float16)
+
+            # reference forward & backward
+            y, mean, variance = _reference_layer_norm_naive(
+                x.astype(np.float32), scale, bias, epsilon, begin_norm_axis)
+            x_grad, scale_grad, bias_grad = _reference_layer_norm_grad(
+                x.astype(np.float32),
+                y_grad.astype(np.float32), scale, bias, mean, variance,
+                begin_norm_axis)
+
+            var_dict = locals()
+            var_dict['y@GRAD'] = y_grad
+            var_names = ['x', 'mean', 'variance', 'y', 'y@GRAD']
+            if has_scale:
+                var_names += ['scale']
+            if has_bias:
+                var_names += ['bias']
+            ground_truth = {name: var_dict[name] for name in var_names}
+
+            program = fluid.Program()
+            with fluid.program_guard(program):
+                block = program.global_block()
+                for name in ground_truth:
+                    tmp_dtype = "float32"
+                    if name in ['x', 'y', 'x@GRAD', 'y@GRAD']:
+                        tmp_dtype = dtype
+
+                    block.create_var(
+                        name=name,
+                        dtype=tmp_dtype,
+                        shape=ground_truth[name].shape)
+                inputs = {"X": block.var('x')}
+                fetch_list = [
+                    'y',
+                    'mean',
+                    'variance',
+                    'x@GRAD',
+                ]
+                if has_scale:
+                    inputs["Scale"] = block.var('scale')
+                    fetch_list += ['scale@GRAD']
+                if has_bias:
+                    inputs["Bias"] = block.var('bias')
+                    fetch_list += ['bias@GRAD']
+                layer_norm_op = block.append_op(
+                    type="layer_norm",
+                    inputs=inputs,
+                    outputs={
+                        "Y": block.var('y'),
+                        "Mean": block.var('mean'),  # share the same memory
+                        "Variance":
+                        block.var('variance'),  # share the same memory
+                    },
+                    attrs={
+                        "epsilon": epsilon,
+                        "begin_norm_axis": begin_norm_axis,
+                        "use_mkldnn": use_mkldnn
+                    })
+                # generate backward op_desc
+                grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+                    layer_norm_op.desc, set(), [])
+                grad_op_desc = grad_op_desc_list[0]
+                new_op_desc = block.desc.append_op()
+                new_op_desc.copy_from(grad_op_desc)
+                for var_name in grad_op_desc.output_arg_names():
+                    block.desc.var(var_name.encode("ascii"))
+                grad_op_desc.infer_var_type(block.desc)
+                grad_op_desc.infer_shape(block.desc)
+                for arg in grad_op_desc.output_arg_names():
+                    grad_var = block.desc.find_var(arg.encode("ascii"))
+                    grad_var.set_dtype(core.VarDesc.VarType.FP32)
+
+                program._sync_with_cpp()
+                exe = fluid.Executor(place)
+                out = exe.run(program,
+                              feed={
+                                  name: var_dict[name]
+                                  for name in ['x', 'scale', 'bias', 'y@GRAD']
+                              },
+                              fetch_list=fetch_list)
+                self.__assert_close(y.astype(np.float32), out[0], "y", 1e-1)
+                self.__assert_close(mean, out[1], "mean", 1e-1)
+                self.__assert_close(variance, out[2], "variance", 1e-3)
+                self.__assert_close(
+                    x_grad.astype(np.float32), out[3], "x_grad", 1e-1)
+                if has_scale:
+                    self.__assert_close(scale_grad,
+                                        out[fetch_list.index('scale@GRAD')],
+                                        "scale_grad", 1e-1)
+                if has_bias:
+                    self.__assert_close(bias_grad,
+                                        out[fetch_list.index('bias@GRAD')],
+                                        "bias_grad", 1e-1)
+
+        places = []
+        if core.is_compiled_with_cuda() and core.op_support_gpu(
+                "layer_norm") and self.use_cudnn:
+            places.append(core.CUDAPlace(0))
+
+        dtypes = ["float16"]
+
+        for place in places:
+            for dtype in dtypes:
+                test_with_fp16(place, dtype, shape, begin_norm_axis)
+
+    def test_check_forward_backward_fp16_with_scale_and_bias(self):
+        self.check_forward_backward_fp16(shape=[2, 3, 4, 5], begin_norm_axis=1)
+        self.check_forward_backward_fp16(
+            shape=[2, 3, 4, 5],
+            begin_norm_axis=1,
+            has_scale=False,
+            has_bias=True)
+        self.check_forward_backward_fp16(
+            shape=[2, 3, 4, 5],
+            begin_norm_axis=1,
+            has_scale=True,
+            has_bias=False)
+        self.check_forward_backward_fp16(
+            shape=[2, 3, 4, 5],
+            begin_norm_axis=1,
+            has_scale=False,
+            has_bias=False)
+        self.check_forward_backward_fp16(shape=[2, 3, 4, 5], begin_norm_axis=3)
+        self.check_forward_backward_fp16(
+            shape=[92, 513, 129], begin_norm_axis=2, y_grad_scale=0.1)
+        self.check_forward_backward_fp16(shape=[3, 34, 1134], begin_norm_axis=2)
+        self.check_forward_backward_fp16(
+            shape=[92, 513, 1134], begin_norm_axis=2, y_grad_scale=0.1)
+        self.check_forward_backward_fp16(
+            shape=[92, 513, 1134],
+            begin_norm_axis=2,
+            has_scale=False,
+            has_bias=True,
+            y_grad_scale=0.1)
+        self.check_forward_backward_fp16(
+            shape=[92, 513, 1134],
+            begin_norm_axis=2,
+            has_scale=True,
+            has_bias=False,
+            y_grad_scale=0.1)
+        self.check_forward_backward_fp16(
             shape=[92, 513, 1134],
             begin_norm_axis=2,
             has_scale=False,
