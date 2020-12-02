@@ -87,7 +87,11 @@ class TestTemporalShiftAPI(unittest.TestCase):
         out_from_function = paddle.nn.functional.temporal_shift(
             x=input, seg_num=2, shift_ratio=0.2)
 
-        np.testing.assert_allclose(out_from_function, out)
+        # dygraph
+        with paddle.fluid.dygraph.guard():
+            input = paddle.randn([6, 4, 2, 2])
+            out = paddle.nn.functional.temporal_shift(
+                x=input, seg_num=2, shift_ratio=0.2)
 
 
 if __name__ == "__main__":
