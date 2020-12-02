@@ -32,6 +32,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
@@ -73,7 +75,26 @@ class PSGPUWrapper {
                    const int hidden_size,
                    const int64_t total_length, const int batch_size);
   
-  void BuildGPUPS(const uint64_t table_id, int feature_dim);
+  void BuildGPUPS(const uint64_t table_id, int feature_dim, std::shared_ptr<GpuTask> gpu_task);
+  void InitializeGPU(const std::vector<int>& slot_vec) {
+    if (s_instance_ != NULL) {
+      VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
+      std::vector<cudaStream_t*> stream_list;
+      std::vector<int> dev_ids;
+      for (int i = 0; i < platform::GetCUDADeviceCount(); ++i) {
+        VLOG(3) << "before get context i[" << i << "]";
+        platform::CUDADeviceContext* context =
+            dynamic_cast<platform::CUDADeviceContext*>(
+                platform::DeviceContextPool::Instance().Get(
+                    platform::CUDAPlace(i)));
+        stream_list_[i] = context->stream();
+        stream_list.push_back(&stream_list_[i]);
+        dev_ids.push_back(i);
+      }
+      resource_ = std::make_shared<HeterBoxResource>(dev_ids);
+      resource_->enable_p2p();
+    }
+  }
   // PSGPUWrapper singleton
   static std::shared_ptr<PSGPUWrapper> GetInstance() {
     if (NULL == s_instance_) {
@@ -90,16 +111,13 @@ class PSGPUWrapper {
 
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
+  static cudaStream_t stream_list_[8];
   std::unordered_map<uint64_t, std::vector<std::unordered_map<uint64_t,std::vector<float>>>> local_tables_;
-//  std::shared_ptr<GpuPs<FeatureKey, FeatureValue, FeaturePushValue>> GpuPs_;
   HeterBoxBase* GpuPs_;
-  std::shared_ptr<GpuTask> GpuTask_;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
   std::shared_ptr<HeterBoxResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
   std::vector<int> slot_vector_;
-
-
 
  protected:
   static bool is_initialized_;

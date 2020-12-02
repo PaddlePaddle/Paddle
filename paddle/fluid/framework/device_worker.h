@@ -537,7 +537,7 @@ class HeterBoxWorker : public HogwildWorker {
 };
 #endif
 
-#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_PSLIB
 class PSGPUWorker : public HogwildWorker {
  public:
   PSGPUWorker() {}
@@ -558,10 +558,7 @@ class PSGPUWorker : public HogwildWorker {
 
  protected:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
-  void FillSparseValue(std::shared_ptr<HeterTask> task, size_t table_id);
   void PushGradients();
-  void CollectLabelInfo(std::shared_ptr<HeterTask> task, size_t table_id);
-  void AdjustInsWeight(std::shared_ptr<HeterTask> task);
   void DumpParam();
   void CopySparseTable();
   void CopyDenseTable();

@@ -68,7 +68,7 @@ REGISTER_TRAINER_CLASS(DistMultiTrainer);
 REGISTER_TRAINER_CLASS(HeterXpuTrainer);
 REGISTER_TRAINER_CLASS(HeterBoxTrainer);
 #endif
-#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_PSLIB
 REGISTER_TRAINER_CLASS(PSGPUTrainer);
 #endif
 #if defined(PADDLE_WITH_NCCL)

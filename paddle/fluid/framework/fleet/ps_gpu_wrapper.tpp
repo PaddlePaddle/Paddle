@@ -25,15 +25,17 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#pragma once
 
 #ifdef PADDLE_WITH_PSLIB
+/*
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include <algorithm>
 #include <utility>
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
+*/
 #include "paddle/fluid/platform/timer.h"
 
 
@@ -41,42 +43,25 @@ namespace paddle {
 namespace framework {
 
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
+cudaStream_t PSGPUWrapper::stream_list_[8];
 bool PSGPUWrapper::is_initialized_ = false;
 
-void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim, GpuTask* gpu_task) {
-  auto fleet_ptr = FleetWrapper::GetInstance();
+void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim, std::shared_ptr<GpuTask> gpu_task) {
   int shard_num = gpu_task->feature_keys_.size();
   if (shard_num == 0) {
     return;
   }
-  platform::Timer timeline;
-  std::vector<std::thread> threads(shard_num);
-  auto ptl_func = [this, &gpu_task, &table_id, &fleet_ptr](int i) {
-    size_t key_size = gpu_task->feature_keys_[i].size();
-    auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
-        gpu_task->feature_keys_[i].data(), table_id, (char**)(gpu_task->feature_values_[i].data()), key_size);
-    tt.wait();
-    auto status = tt.get();
-    if (status != 0) {
-      LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
-      sleep(sleep_seconds_before_fail_exit_);
-      exit(-1);
-    } else {
-      VLOG(3) << "FleetWrapper Pull sparse to local done with table size: "
-              << pull_result_ptr.size();
-    }
-  };
-  timeline.Start();
-  for (size_t i = 0; i < threads.size(); i++) {
-    threads[i] = std::thread(ptl_func, i);
-  }
-  for (std::thread& t : threads) {
-    t.join();
-  }
   
+  std::vector<size_t> feature_keys_count(shard_num);
+  size_t size_max = 0;
+  for (int i = 0; i < shard_num; i++) {
+    feature_keys_count[i] = gpu_task->feature_keys_[i].size();
+    size_max = std::max(size_max, feature_keys_count[i]);
+  }
+  GpuPs_ = HeterBoxBase::get_instance(size_max, resource_);
   for (int i = 0; i < shard_num; ++i) {
     std::cout << "building table: " << i << std::endl;
-    GpuPs_->build_ps(i, gpu_task->feature_keys_[i].data(), gpu_task->feature_keys_[i].data(), gpu_task->feature_keys_[i].size(), 10000, 2);
+    GpuPs_->build_ps(i, gpu_task->feature_keys_[i].data(), gpu_task->feature_values_[i].data(), feature_keys_count[i], 10000, 2);
   }
   
 }
@@ -180,7 +165,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     VLOG(3) << "Begin call PushSparseGPU in GPUPS";
     push_gpups_timer.Start();
     GpuPs_->push_sparse(table_id,
-        total_keys, total_grad_values_gpu, static_cast<int>(total_length), opt_);
+        total_keys, total_grad_values_gpu, static_cast<int>(total_length));
     push_gpups_timer.Pause();
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(

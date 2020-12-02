@@ -22,7 +22,7 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_PSLIB
 void PSGPUWrapper(py::module* m);
 #endif
 }  // namespace pybind
