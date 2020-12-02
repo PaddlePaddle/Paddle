@@ -18,8 +18,13 @@ from .. import framework
 import paddle.dataset.common
 
 __all__ = [
-    "Dataset", "IterableDataset", "TensorDataset", "ComposeDataset",
-    "ChainDataset", "random_split", "Subset"
+    "Dataset",
+    "IterableDataset",
+    "TensorDataset",
+    "ComposeDataset",
+    "ChainDataset",
+    "random_split",
+    "Subset",
 ]
 
 
@@ -429,7 +434,6 @@ class Subset(Dataset):
 
 def random_split(dataset, lengths, generator=None):
     """
-
     Randomly split a dataset into non-overlapping new datasets of given lengths.
     Optionally fix the generator for reproducible results, e.g.:
 
@@ -477,7 +481,8 @@ def random_split(dataset, lengths, generator=None):
         raise ValueError(
             "Sum of input lengths does not equal the length of the input dataset!"
         )
-
+    # TODO(@Joejiong): support Variable or Tensor type with class member function
+    # var.item() and var.tolist()
     indices = paddle.randperm(sum(lengths)).numpy().tolist()
     return [
         Subset(dataset, indices[offset - length:offset])
