@@ -439,7 +439,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         proto_txt = str(worker) + "\n" + str(server)
 
-        debug = bool(os.getenv("PSERVER_DEBUG", "0"))
+        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
 
         if debug:
             print("worker: \n{}".format(proto_txt))
@@ -458,7 +458,7 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode)
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
-        debug = bool(os.getenv("PSERVER_DEBUG", "0"))
+        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
 
         if debug:
             print("worker: \n{}".format(proto_txt))
