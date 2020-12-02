@@ -51,7 +51,6 @@ class HeterService : public ::paddle::PsService {
                            const MultiVarMsg* request, MultiVarMsg* response,
                            ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    int ret = 0;
     std::string message_name = request->message_name();
     auto itr = handler_map_.find(message_name);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
@@ -61,7 +60,7 @@ class HeterService : public ::paddle::PsService {
             "HeterService::SendAndRecvVariable Get illegal message_name: %s "
             "which is not in HeterService::handler_map_",
             message_name));
-    ret = itr->second(request, response, cntl);
+    itr->second(request, response, cntl);
   }
 
   void RegisterServiceHandler(std::string message_name,

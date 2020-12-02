@@ -81,7 +81,8 @@ class FleetDistHeterRunnerBase(object):
     def build_strategy(self, args):
         self.strategy = paddle.distributed.fleet.DistributedStrategy()
         self.strategy.a_sync = True
-        self.strategy.a_sync_configs = {"launch_barrier": True}
+        self.strategy.a_sync_configs = {
+            "launch_barrier": True, "heter_worker_device_guard": 'gpu'}
         return self.strategy
 
     def build_optimizer(self, avg_cost, strategy):
@@ -119,7 +120,8 @@ class TestFleetHeterBase(unittest.TestCase):
     """
 
     def _setup_config(self):
-        raise NotImplementedError("tests should have _setup_config implemented")
+        raise NotImplementedError(
+            "tests should have _setup_config implemented")
 
     def tearDown(self):
         t = time.time() - self.startTime
@@ -349,7 +351,8 @@ def runtime_main(test_class):
     parser.add_argument('--mode', type=str, required=False, default='async')
     parser.add_argument(
         '--geo_sgd_need_push_nums', type=int, required=False, default=2)
-    parser.add_argument('--reader', type=str, required=False, default='dataset')
+    parser.add_argument('--reader', type=str,
+                        required=False, default='dataset')
     args = parser.parse_args()
 
     model = test_class()
