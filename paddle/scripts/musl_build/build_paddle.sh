@@ -23,79 +23,99 @@ source "$CUR_DIR/config.sh"
 # exit when any command fails
 set -e
 
-# check build mode auto/man
-BUILD_AUTO=${BUILD_AUTO:-1}
+# setup default arguments
+BUILD_MAN="${BUILD_MAN-0}"
+WITH_PRUNE_CONTAINER="${WITH_PRUNE_CONTAINER-1}"
+WITH_TEST="${WITH_TEST-0}"
 
-
-declare -a ENV_ARGS
+declare -a RUN_ARGS
 if [ "$HTTP_PROXY" ]; then
-    ENV_ARGS+=("--env" "HTTP_PROXY=$HTTP_PROXY")
-    echo "using http proxy: $HTTP_PROXY"
+    RUN_ARGS+=("--env" "HTTP_PROXY=$HTTP_PROXY")
+    echo ">>> using http proxy: $HTTP_PROXY"
 fi
 
 if [ "$HTTPS_PROXY" ]; then
-    ENV_ARGS+=("--env" "HTTPS_PROXY=$HTTPS_PROXY")
-    echo "using https proxy: $HTTPS_PROXY"
+    RUN_ARGS+=("--env" "HTTPS_PROXY=$HTTPS_PROXY")
+    echo ">>> using https proxy: $HTTPS_PROXY"
 fi
 
-if [ "$PIP_INDEX" ]; then
-    ENV_ARGS+=("--env" "PIP_INDEX=$PIP_INDEX")
-fi
-
-echo "compile paddle in docker"
-echo "docker image: $BUILD_IMAGE"
+echo ">>> compile paddle in docker"
+echo ">>> docker image: $BUILD_IMAGE"
 
 BUILD_ID=$(docker images -q "$BUILD_IMAGE")
 if [ ! "$BUILD_ID" ]; then
-    echo "docker image is not existed, and try to build."
-
-    "$CUR_DIR/build_docker.sh"
+    echo ">>> docker image is not existed, and try to build."
+    WITH_REQUIREMENT=0 WITH_UT_REQUIREMENT=0 "$CUR_DIR/build_docker.sh"
 fi
 
-BUILD_NAME="paddle-musl-build-$(date +%Y%m%d-%H%M%S)"
-echo "container name: $BUILD_NAME"
+echo ">>> container name: $BUILD_CONTAINER"
+echo ">>> mount paddle: $PADDLE_DIR => $MOUNT_DIR"
 
-MOUNT_DIR="/paddle"
-echo "mount paddle: $PADDLE_DIR => $MOUNT_DIR"
+mkdir -p "$CCACHE_DIR"
+echo ">>> ccache dir: $CCACHE_DIR"
+
+mkdir -p "$CACHE_DIR"
+echo ">>> local cache dir: $CACHE_DIR"
+
+RUN_ARGS+=("--env" "WITH_REQUIREMENT=$MOUNT_DIR/$PYTHON_REQ")
+echo ">>> install python requirement"
 
 
-if [ "$BUILD_AUTO" -eq "1" ]; then
-    echo "enter automatic build mode"
-
-    # no exit when fails
-    set +e
+if [ "$BUILD_MAN" != "1" ]; then
+    echo ">>> ========================================"
+    echo ">>> automatic build mode"
+    echo ">>> ========================================"
 
     BUILD_SCRIPT=$MOUNT_DIR/paddle/scripts/musl_build/build_inside.sh
-    echo "build script: $BUILD_SCRIPT"
+    echo ">>> build script: $BUILD_SCRIPT"
 
     OUTPUT_DIR="output"
     mkdir -p $OUTPUT_DIR
     OUTPUT_DIR=$(realpath $OUTPUT_DIR)
-    echo "build output: $OUTPUT_DIR"
+    echo ">>> build output: $OUTPUT_DIR"
+
+    if [ "$WITH_TEST" == "1" ]; then
+        RUN_ARGS+=("--env" "WITH_TEST=1")
+        echo ">>> run with unit test"
+
+        RUN_ARGS+=("--env" "WITH_UT_REQUIREMENT=$MOUNT_DIR/$UNITTEST_REQ")
+        echo ">>> install unit test requirement"
+    fi
+  
+    if [ "$WITH_PRUNE_CONTAINER" == "1" ]; then
+        echo ">>> with prune container"
+        RUN_ARGS+=("--rm")
+    fi
 
     # shellcheck disable=2086,2068
     docker run \
         -v "$PADDLE_DIR":"$MOUNT_DIR" \
-        -v "$OUTPUT_DIR":/output \
-        --rm \
+        -v "$OUTPUT_DIR":"/output" \
+        -v "$CCACHE_DIR":"/root/.ccache" \
+        -v "$CACHE_DIR":"/root/.cache" \
         --workdir /root \
         --network host \
-        ${ENV_ARGS[*]} \
-        --name "$BUILD_NAME" \
+        ${RUN_ARGS[*]} \
+        --name "$BUILD_CONTAINER" \
         "$BUILD_IMAGE" \
         "$BUILD_SCRIPT" $@
 
-    echo "list output: $OUTPUT_DIR"
-    ls "$OUTPUT_DIR"
+    echo ">>> list output: $OUTPUT_DIR"
+    find "$OUTPUT_DIR" -type f
 else
-    echo "enter manual build mode"
+    echo ">>> ========================================"
+    echo ">>> manual build mode"
+    echo ">>> ========================================"
 
     # shellcheck disable=2086
     docker run \
         -it \
         -v "$PADDLE_DIR":"$MOUNT_DIR" \
+        -v "$CCACHE_DIR":"/root/.ccache" \
+        -v "$CACHE_DIR":"/root/.cache" \
         --workdir /root \
-        --network host ${ENV_ARGS[*]}\
-        --name "$BUILD_NAME" \
+        --network host \
+        ${RUN_ARGS[*]} \
+        --name "$BUILD_CONTAINER" \
         "$BUILD_IMAGE"
 fi

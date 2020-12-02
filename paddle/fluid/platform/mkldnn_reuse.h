@@ -51,6 +51,7 @@ class MKLDNNHandlerT {
     } else {
       key_ = key_common_ + "-t:" + ThreadIDasStr();
     }
+    key_ += dev_ctx.GetKeySuffix();
   }
 
   std::shared_ptr<TForward> AcquireForwardPrimitive() {
@@ -316,6 +317,7 @@ class MKLDNNHandler {
     } else {
       key_ = key_common_ + "-t:" + ThreadIDasStr();
     }
+    key_ += dev_ctx.GetKeySuffix();
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(

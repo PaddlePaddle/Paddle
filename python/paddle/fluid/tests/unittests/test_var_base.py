@@ -21,8 +21,6 @@ import six
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, in_dygraph_mode
 
 
 class TestVarBase(unittest.TestCase):
@@ -199,6 +197,57 @@ class TestVarBase(unittest.TestCase):
             t.set(np.random.random((1024, 1024)), fluid.CPUPlace())
             var = fluid.dygraph.to_variable(t)
             self.assertTrue(np.array_equal(t, var.numpy()))
+
+    def test_leaf_tensor(self):
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor(np.random.uniform(-1, 1, size=[10, 10]))
+            self.assertTrue(x.is_leaf)
+            y = x + 1
+            self.assertTrue(y.is_leaf)
+
+            x = paddle.to_tensor(
+                np.random.uniform(
+                    -1, 1, size=[10, 10]), stop_gradient=False)
+            self.assertTrue(x.is_leaf)
+            y = x + 1
+            self.assertFalse(y.is_leaf)
+
+            linear = paddle.nn.Linear(10, 10)
+            input = paddle.to_tensor(
+                np.random.uniform(
+                    -1, 1, size=[10, 10]).astype('float32'),
+                stop_gradient=False)
+            self.assertTrue(input.is_leaf)
+
+            out = linear(input)
+            self.assertTrue(linear.weight.is_leaf)
+            self.assertTrue(linear.bias.is_leaf)
+            self.assertFalse(out.is_leaf)
+
+    def test_detach(self):
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor(1.0, dtype="float64", stop_gradient=False)
+            detach_x = x.detach()
+            self.assertTrue(detach_x.stop_gradient, True)
+
+            detach_x[:] = 10.0
+            self.assertTrue(np.array_equal(x.numpy(), [10.0]))
+
+            y = x**2
+            y.backward()
+            self.assertTrue(np.array_equal(x.grad, [20.0]))
+            self.assertEqual(detach_x.grad, None)
+
+            detach_x.stop_gradient = False  # Set stop_gradient to be False, supported auto-grad
+            z = 3 * detach_x**2
+            z.backward()
+            self.assertTrue(np.array_equal(x.grad, [20.0]))
+            self.assertTrue(np.array_equal(detach_x.grad, [60.0]))
+            # Due to sharing of data with origin Tensor, There are some unsafe operations:
+            # with self.assertRaises(RuntimeError):
+            #     y = 2 * x
+            #     detach_x[:] = 5.0
+            #     y.backward()
 
     def test_write_property(self):
         with fluid.dygraph.guard():
@@ -490,9 +539,11 @@ class TestVarBaseSetitem(unittest.TestCase):
 
     def _test(self, value):
         paddle.disable_static()
-        id_origin = id(self.tensor_x)
+        self.assertEqual(self.tensor_x.inplace_version, 0)
 
+        id_origin = id(self.tensor_x)
         self.tensor_x[0] = value
+        self.assertEqual(self.tensor_x.inplace_version, 1)
 
         if isinstance(value, (six.integer_types, float)):
             result = np.zeros((2, 3)).astype(np.float32) + value
@@ -504,10 +555,12 @@ class TestVarBaseSetitem(unittest.TestCase):
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[1:2] = value
+        self.assertEqual(self.tensor_x.inplace_version, 2)
         self.assertTrue(np.array_equal(self.tensor_x[1].numpy(), result))
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[...] = value
+        self.assertEqual(self.tensor_x.inplace_version, 3)
         self.assertTrue(np.array_equal(self.tensor_x[3].numpy(), result))
         self.assertEqual(id_origin, id(self.tensor_x))
 
@@ -526,6 +579,31 @@ class TestVarBaseSetitem(unittest.TestCase):
     def test_value_float(self):
         paddle.disable_static()
         self._test(3.3)
+
+
+class TestVarBaseInplaceVersion(unittest.TestCase):
+    def test_setitem(self):
+        paddle.disable_static()
+
+        var = paddle.ones(shape=[4, 2, 3], dtype="float32")
+        self.assertEqual(var.inplace_version, 0)
+
+        var[1] = 1
+        self.assertEqual(var.inplace_version, 1)
+
+        var[1:2] = 1
+        self.assertEqual(var.inplace_version, 2)
+
+    def test_bump_inplace_version(self):
+        paddle.disable_static()
+        var = paddle.ones(shape=[4, 2, 3], dtype="float32")
+        self.assertEqual(var.inplace_version, 0)
+
+        var._bump_inplace_version()
+        self.assertEqual(var.inplace_version, 1)
+
+        var._bump_inplace_version()
+        self.assertEqual(var.inplace_version, 2)
 
 
 if __name__ == '__main__':

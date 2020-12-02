@@ -116,29 +116,23 @@ def concat(x, axis=0, name=None):
 
 def flip(x, axis, name=None):
     """
-	:alias_main: paddle.flip
-	:alias: paddle.flip,paddle.tensor.flip,paddle.tensor.manipulation.flip
-
-
     Reverse the order of a n-D tensor along given axis in axis.
 
     Args:
-        x (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
+        x (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
         axis (list): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: Tensor or LoDTensor calculated by flip layer. The data type is same with input x.
+        Tensor: Tensor or LoDTensor calculated by flip layer. The data type is same with input x.
 
     Examples:
         .. code-block:: python
 
           import paddle
           import numpy as np
-
-          paddle.disable_static()
 
           image_shape=(3, 2, 2)
           x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
@@ -169,7 +163,7 @@ def flip(x, axis, name=None):
 
 
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
-    """
+    r"""
     **Flatten op**
 
     Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
@@ -275,16 +269,13 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
 def roll(x, shifts, axis=None, name=None):
     """
-	:alias_main: paddle.roll
-	:alias: paddle.roll,paddle.tensor.roll,paddle.tensor.manipulation.roll
-
     Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that 
     roll beyond the last position are re-introduced at the first according to 'shifts'. 
     If a axis is not specified, 
     the tensor will be flattened before rolling and then restored to the original shape.
 
     Args:
-        x (Tensor): The x tensor variable as input.
+        x (Tensor): The x tensor as input.
         shifts (int|list|tuple): The number of places by which the elements
                            of the `x` tensor are shifted.
         axis (int|list|tuple|None): axis(axes) along which to roll.
@@ -300,12 +291,12 @@ def roll(x, shifts, axis=None, name=None):
                                   [4.0, 5.0, 6.0],
                                   [7.0, 8.0, 9.0]])
             out_z1 = paddle.roll(x, shifts=1)
-            print(out_z1.numpy())
+            print(out_z1)
             #[[9. 1. 2.]
             # [3. 4. 5.]
             # [6. 7. 8.]]
             out_z2 = paddle.roll(x, shifts=1, axis=0)
-            print(out_z2.numpy())
+            print(out_z2)
             #[[7. 8. 9.]
             # [1. 2. 3.]
             # [4. 5. 6.]]
@@ -354,9 +345,6 @@ def roll(x, shifts, axis=None, name=None):
 
 def stack(x, axis=0, name=None):
     """
-	:alias_main: paddle.stack
-	:alias: paddle.stack, paddle.tensor.stack, paddle.tensor.manipulation.stack
-
     This OP stacks all the input tensors ``x`` along ``axis`` dimemsion. 
     All tensors must be of the same shape and same dtype.
     
@@ -423,13 +411,12 @@ def stack(x, axis=0, name=None):
 
             import paddle
             
-            paddle.disable_static()
             x1 = paddle.to_tensor([[1.0, 2.0]])
             x2 = paddle.to_tensor([[3.0, 4.0]])
             x3 = paddle.to_tensor([[5.0, 6.0]])
             out = paddle.stack([x1, x2, x3], axis=0)
             print(out.shape)  # [3, 1, 2]
-            print(out.numpy())
+            print(out)
             # [[[1., 2.]],
             #  [[3., 4.]],
             #  [[5., 6.]]]
@@ -459,34 +446,31 @@ def split(x, num_or_sections, axis=0, name=None):
     Example:
         .. code-block:: python
             
-            import numpy as np
             import paddle
             
-            # x is a Tensor which shape is [3, 9, 5]
-            x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.to_tensor(x_np)
+            # x is a Tensor of shape [3, 9, 5]
+            x = paddle.rand([3, 9, 5])
 
-            out0, out1, out22 = paddle.split(x, num_or_sections=3, axis=1)
-            # out0.shape [3, 3, 5]
-            # out1.shape [3, 3, 5]
-            # out2.shape [3, 3, 5]
+            out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=1)
+            print(out0.shape)  # [3, 3, 5]
+            print(out1.shape)  # [3, 3, 5]
+            print(out2.shape)  # [3, 3, 5]
 
             out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, 4], axis=1)
-            # out0.shape [3, 2, 5]
-            # out1.shape [3, 3, 5]
-            # out2.shape [3, 4, 5]
+            print(out0.shape)  # [3, 2, 5]
+            print(out1.shape)  # [3, 3, 5]
+            print(out2.shape)  # [3, 4, 5]
 
             out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, -1], axis=1)
-            # out0.shape [3, 2, 5]
-            # out1.shape [3, 3, 5]
-            # out2.shape [3, 4, 5]
+            print(out0.shape)  # [3, 2, 5]
+            print(out1.shape)  # [3, 3, 5]
+            print(out2.shape)  # [3, 4, 5]
             
-            # axis is negative, the real axis is (rank(x) + axis) which real
-            # value is 1.
+            # axis is negative, the real axis is (rank(x) + axis)=1
             out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=-2)
-            # out0.shape [3, 3, 5]
-            # out1.shape [3, 3, 5]
-            # out2.shape [3, 3, 5]
+            print(out0.shape)  # [3, 3, 5]
+            print(out1.shape)  # [3, 3, 5]
+            print(out2.shape)  # [3, 3, 5]
     """
     return paddle.fluid.layers.split(
         input=x, num_or_sections=num_or_sections, dim=axis, name=name)
@@ -494,9 +478,6 @@ def split(x, num_or_sections, axis=0, name=None):
 
 def squeeze(x, axis=None, name=None):
     """
-	:alias_main: paddle.squeeze
-	:alias: paddle.squeeze, paddle.tensor.squeeze, paddle.tensor.manipulation.squeeze
-
     This OP will squeeze the dimension(s) of size 1 of input tensor x's shape. 
 
     If axis is provided, it will remove the dimension(s) by given axis that of size 1. 
@@ -552,12 +533,10 @@ def squeeze(x, axis=None, name=None):
         .. code-block:: python
 
             import paddle
-
-            paddle.disable_static()
             
             x = paddle.rand([5, 1, 10])
             output = paddle.squeeze(x, axis=1)
-            # output.shape [5, 10]
+            print(output.shape)  # [5, 10]
 
     """
     if axis is None:
@@ -577,7 +556,7 @@ def unique(x,
            axis=None,
            dtype="int64",
            name=None):
-    """
+    r"""
     Returns the unique elements of `x` in ascending order.
 
     Args:
@@ -695,9 +674,6 @@ def unique(x,
 
 def unsqueeze(x, axis, name=None):
     """
-	:alias_main: paddle.unsqueeze
-	:alias: paddle.unsqueeze, paddle.tensor.unsqueeze, paddle.tensor.manipulation.unsqueeze
-
     Insert single-dimensional entries to the shape of input Tensor ``x``. Takes one
     required argument axis, a dimension or list of dimensions that will be inserted.
     Dimension indices in axis are as seen in the output tensor.
@@ -718,7 +694,6 @@ def unsqueeze(x, axis, name=None):
 
             import paddle
 
-            paddle.disable_static()
             x = paddle.rand([5, 10])
             print(x.shape)  # [5, 10]
             
@@ -728,7 +703,7 @@ def unsqueeze(x, axis, name=None):
             out2 = paddle.unsqueeze(x, axis=[0, 2]) 
             print(out2.shape)  # [1, 5, 1, 10]
 
-            axis = paddle.fluid.dygraph.to_variable([0, 1, 2])
+            axis = paddle.to_tensor([0, 1, 2])
             out3 = paddle.unsqueeze(x, axis=axis) 
             print(out3.shape)  # [1, 1, 1, 5, 10]
             
@@ -878,6 +853,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
     Output is obtained by updating the input on selected indices based on updates.
     
     .. code-block:: python
+    
         import numpy as np
         #input:
         x = np.array([[1, 1], [2, 2], [3, 3]])
@@ -918,7 +894,6 @@ def scatter(x, index, updates, overwrite=True, name=None):
         .. code-block:: python
             
             import paddle
-            paddle.disable_static()
 
             x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
             index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
@@ -962,7 +937,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
 
 
 def scatter_nd_add(x, index, updates, name=None):
-    """
+    r"""
     **Scatter_nd_add Layer**
 
     Output is obtained by applying sparse addition to a single value
@@ -1199,7 +1174,7 @@ def expand_as(x, y, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
-        return core.ops.expand_as_v2(x, y)
+        return core.ops.expand_as_v2(x, 'target_shape', y.shape)
 
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand_as')
@@ -1211,12 +1186,106 @@ def expand_as(x, y, name=None):
             "you must set its stop_gradient to be False by "
             "some_var.stop_gradient = True, supporting "
             "some_var as the input 'x'.")
-    inputs = {"X": [x], "target_tensor": [y]}
+    inputs = {"X": [x]}
 
     helper = LayerHelper('expand_as', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type='expand_as_v2', inputs=inputs, outputs={'Out': out})
+    helper.append_op(
+        type='expand_as_v2',
+        inputs=inputs,
+        attrs={'target_shape': y.shape},
+        outputs={'Out': out})
+    return out
+
+
+def broadcast_to(x, shape, name=None):
+    """
+
+    Broadcast the input tensor to a given shape.
+
+    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. The dimension to broadcast to must have a value 1.
+
+
+    Args:
+        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
+        shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
+            should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32. 
+            The value -1 in shape means keeping the corresponding dimension unchanged.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        N-D Tensor: A Tensor with the given shape. The data type is the same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.to_tensor([1, 2, 3], dtype='int32')
+            out = paddle.broadcast_to(data, shape=[2, 3])
+            print(out)
+            # [[1, 2, 3], [1, 2, 3]]
+    """
+    if in_dygraph_mode():
+        return core.ops.expand_v2(x, 'shape', shape)
+
+    if isinstance(shape, Variable):
+        assert len(shape.shape) == 1, ('shape must be an 1-D Tensor.')
+    else:
+        for elem in shape:
+            if isinstance(elem, Variable):
+                assert len(elem.shape) == 1, (
+                    'Elements in shape must be 1-D Tensors or integers.')
+            else:
+                if six.PY3:
+                    type_tuple = (int, np.int32, np.int64)
+                elif six.PY2:
+                    type_tuple = (int, long, np.int32, np.int64)
+                assert isinstance(elem, type_tuple), (
+                    'Elements in shape must be 1-D Tensors or integers.')
+
+    check_variable_and_dtype(x, 'x',
+                             ['bool', 'float32', 'float64', 'int32', 'int64'],
+                             'broadcast_to')
+    check_type(shape, 'shape', (list, tuple, Variable), 'broadcast_to')
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+        raise ValueError(
+            "When the data type of input 'x' for broadcast_to is bool, "
+            "you must set its stop_gradient to be False by "
+            "some_var.stop_gradient = True, supporting "
+            "some_var as the input.")
+
+    inputs = {"X": [x]}
+    attrs = {}
+
+    helper = LayerHelper('expand', **locals())
+
+    def get_attr_expand_shape(list_expand_shape):
+        attrs_expand_shape = []
+        for idx, shape in enumerate(list_expand_shape):
+            if isinstance(shape, Variable):
+                attrs_expand_shape.append(-1)
+            else:
+                attrs_expand_shape.append(shape)
+                assert shape > 0 or shape == -1, (
+                    "All elements in shape of broadcast_to must be positive or -1."
+                )
+        return attrs_expand_shape
+
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        inputs['Shape'] = shape
+    elif isinstance(shape, (list, tuple)):
+        attrs['shape'] = get_attr_expand_shape(shape)
+        if utils._contain_var(shape):
+            inputs['expand_shapes_tensor'] = utils._convert_to_tensor_list(
+                shape)
+
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
@@ -1243,10 +1312,9 @@ def expand(x, shape, name=None):
 
             import paddle
 
-            paddle.disable_static()
             data = paddle.to_tensor([1, 2, 3], dtype='int32')
             out = paddle.expand(data, shape=[2, 3])
-            out = out.numpy()
+            print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
@@ -1306,9 +1374,6 @@ def expand(x, shape, name=None):
     helper.append_op(
         type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
-
-
-broadcast_to = expand
 
 
 def reshape(x, shape, name=None):

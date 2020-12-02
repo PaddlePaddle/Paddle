@@ -229,7 +229,7 @@ def _dygraph_only_(func):
 def _static_only_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
-        ), "We only support '%s()' in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
+        ), "In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '%s()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -643,6 +643,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.UINT8
     elif dtype == np.int8:
         return core.VarDesc.VarType.INT8
+    elif dtype == np.complex64:
+        return core.VarDesc.VarType.COMPLEX64
+    elif dtype == np.complex128:
+        return core.VarDesc.VarType.COMPLEX128
     else:
         raise ValueError("Not supported numpy dtype %s" % dtype)
 
@@ -1297,21 +1301,27 @@ class Variable(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                cur_program = fluid.Program()
+                paddle.enable_static()
+
+                cur_program = static.Program()
                 cur_block = cur_program.current_block()
                 new_variable = cur_block.create_var(name="X",
                                                     shape=[-1, 23, 48],
                                                     dtype='float32')
                 print(new_variable._to_readable_code())
         """
+        # VarType.LOD_TENSOR -> LOD_TENSOR
+        type_str = str(self.type).split('.')[1]
         if self.type == core.VarDesc.VarType.SELECTED_ROWS or self.type == core.VarDesc.VarType.LOD_TENSOR:
-            var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
-                format(i="{", e="}", name=self.name, type=self.type, shape=self.shape, dtype=self.dtype)
+            dtype_str = str(self.dtype).split('.')[1]
+            var_str = "{name} : {type}.shape{shape}.dtype({dtype}).stop_gradient({stop_gradient})".\
+                format(name=self.name, type=type_str, shape=self.shape, dtype=dtype_str, stop_gradient=self.stop_gradient)
         else:
-            var_str = "{name} : fluid.{type})".\
-                format(i="{", e="}", name=self.name, type=self.type)
+            var_str = "{name} : {type})".\
+                format(name=self.name, type=type_str)
 
         if type(self) == Parameter:
             if self.trainable:
@@ -2252,7 +2262,7 @@ class Operator(object):
         return self.desc.type()
 
     def input(self, name):
-        """
+        r"""
         Get the input arguments according to the input parameter name.
 
         Args:
@@ -2303,7 +2313,7 @@ class Operator(object):
         return self.desc.output_arg_names()
 
     def output(self, name):
-        """
+        r"""
         Get output arguments by the output parameter name.
 
         Args:
@@ -4270,9 +4280,12 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.static as static
 
-            cur_program = fluid.Program()
+            paddle.enable_static()
+
+            cur_program = static.Program()
             cur_block = cur_program.current_block()
             new_var = cur_block.create_var(name="X",
                                            shape=[-1, 23, 48],
@@ -4470,7 +4483,7 @@ class Program(object):
                     # Due to parameter sharing usage for train and test, so we need to use startup program of train
                     # instead of using test startup program, while nothing is in test's startup program
 
-                    # In Paddle Fluid we will share weights by using the same Variable name. In train and test program
+                    # In Paddle we will share weights by using the same Tensor name. In train and test program
                     # all parameters will have the same name and this can make train and test program sharing parameters,
                     # that's why we need to use startup program of train. And for startup program of test, it has nothing,
                     # since it is a new program.
@@ -4823,7 +4836,7 @@ class Program(object):
                 ## 0
                 ## the default random seed is 0
 
-                # Here we need to set random seed before we use fluid.layers.dropout
+                # Here we need to set random seed before we use paddle.nn.functional.dropout
                 prog.random_seed = 1
                 z_var = F.dropout(x_var, 0.7)
 
@@ -5098,8 +5111,8 @@ class Program(object):
                 for var in prog.list_vars():
                     print(var)
                 
-                # var img : fluid.VarType.LOD_TENSOR.shape(-1, 1, 28, 28).astype(VarType.FP32)
-                # var label : fluid.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)
+                # var img : paddle.VarType.LOD_TENSOR.shape(-1, 1, 28, 28).astype(VarType.FP32)
+                # var label : paddle.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)
         """
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
@@ -5132,8 +5145,8 @@ class Program(object):
                 # Here will print all parameters in current program, in this example,
                 # the result is like:
                 #
-                # persist trainable param fc_0.w_0 : fluid.VarType.LOD_TENSOR.shape(13, 10).astype(VarType.FP32)
-                # persist trainable param fc_0.b_0 : fluid.VarType.LOD_TENSOR.shape(10,).astype(VarType.FP32)
+                # persist trainable param fc_0.w_0 : paddle.VarType.LOD_TENSOR.shape(13, 10).astype(VarType.FP32)
+                # persist trainable param fc_0.b_0 : paddle.VarType.LOD_TENSOR.shape(10,).astype(VarType.FP32)
                 #
                 # Here print(param) will print out all the properties of a parameter,
                 # including name, type and persistable, you can access to specific
