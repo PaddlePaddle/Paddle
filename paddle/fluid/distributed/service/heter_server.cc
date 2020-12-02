@@ -51,10 +51,8 @@ void HeterServer::StartHeterService() {
 void HeterServer::SetEndPoint(std::string &endpoint) { endpoint_ = endpoint; }
 
 void HeterServer::WaitServerReady() {
-  VLOG(1) << "HeterServer is wait server ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
-  VLOG(1) << "HeterServer WaitSeverReady";
 }
 
 }  // end namespace distributed

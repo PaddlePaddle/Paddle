@@ -37,19 +37,16 @@ void HeterClient::CreateClient2XpuConnection() {
 
   xpu_channels_.resize(xpu_list_.size());
   for (size_t i = 0; i < xpu_list_.size(); ++i) {
-    VLOG(3) << "channel init: " << xpu_list_[i];
     xpu_channels_[i].reset(new brpc::Channel());
     if (xpu_channels_[i]->Init(xpu_list_[i].c_str(), "", &options) != 0) {
-      VLOG(0) << "server channel init fail";
+      VLOG(0) << "HeterServer channel init fail";
     }
   }
 }
 
 void HeterClient::SetXpuList(const std::vector<std::string>& xpu_list) {
-  VLOG(3) << "Going to set xpu list";
   for (auto& x : xpu_list) {
     xpu_list_.push_back(x);
-    VLOG(3) << "set xpu list:  " << x << " size: " << xpu_list_.size();
   }
 }
 
@@ -65,41 +62,10 @@ void HeterClient::SendAndRecvAsync(
   const std::vector<std::string> send_var_name_val = send_var_name;
   const std::vector<std::string> recv_var_name_val = recv_var_name;
 
-  // distributed::SerializeToMultiVarMsg(message_name_val, send_var_name_val,
-  //                       recv_var_name_val, *p_ctx, p_scope, &request);
-
-  VLOG(1) << "GRPCClient::SendAndRecv Begin, message_name: "
+  VLOG(3) << "GRPCClient::SendAndRecv Begin, message_name: "
           << message_name_val;
   // Todo: get correct channel
   int num = 0;
-
-  // distributed::OnHeterRpcDone* done = new OnHeterRpcDone([&](void* done) {
-  //   auto* closure = reinterpret_cast<distributed::OnHeterRpcDone*>(done);
-  //   if (closure->cntl.Failed()) {
-  //     VLOG(1) << "call heter_worker fail: " << closure->cntl.ErrorText();
-  //   } else {
-  //     VLOG(1) << "call heter_worker success! Server endpoint "<<
-  //     closure->cntl.remote_side(); auto &response_io_buffer =
-  //     closure->cntl.response_attachment();
-  //     distributed::DeserializeFromMultiVarMsgAndIOBuf(closure->response,
-  //     &response_io_buffer, ctx, p_scope);
-  //   }
-  // });
-
-  // VLOG(1) << "GRPCClient::SendAndRecv Get PsService_Stub";
-  // ::paddle::PsService_Stub stub(xpu_channels_[num].get());
-  // VLOG(1) << "GRPCClient::SendAndRecv SendAndRecvVariable";
-  // auto cid = &done->cntl.call_id();
-  // distributed::MultiVarMsg request;
-  // auto &request_io_buffer = &done->cntl.request_attachment();
-  // distributed::SerializeToMultiVarMsgAndIOBuf(message_name_val,
-  // send_var_name_val, recv_var_name_val, *p_ctx, p_scope, &request,
-  // &request_io_buffer);
-
-  // done->cntl.set_timeout_ms(FLAGS_rpc_deadline);
-  // stub.SendAndRecvVariable(&done->cntl, &request, &done->response, done);
-  // brpc::Join(cid);
-  VLOG(1) << "GRPCClient::SendAndRecv SendAndRecvVariable Finish";
 
   brpc::Controller cntl;
   cntl.set_timeout_ms(10800000);
@@ -110,14 +76,15 @@ void HeterClient::SendAndRecvAsync(
       message_name_val, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
       &request, &request_io_buffer);
   stub.SendAndRecvVariable(&cntl, &request, &response, NULL);
-  if (cntl.Failed()) {
-    VLOG(1) << "call heter_worker fail: " << cntl.ErrorText();
-  } else {
-    VLOG(1) << "call heter_worker success";
-    auto& response_io_buffer = cntl.response_attachment();
-    distributed::DeserializeFromMultiVarMsgAndIOBuf(
-        response, &response_io_buffer, ctx, p_scope);
-  }
+  PADDLE_ENFORCE_NE(
+      cntl.Failed(), true,
+      platform::errors::Unimplemented(
+          "HeterClient::SendAndRecv meets brpc error, error message is %s",
+          cntl.ErrorText()));
+  VLOG(4) << "call heter_worker success";
+  auto& response_io_buffer = cntl.response_attachment();
+  distributed::DeserializeFromMultiVarMsgAndIOBuf(response, &response_io_buffer,
+                                                  ctx, p_scope);
 }
 
 }  // end namespace distributed

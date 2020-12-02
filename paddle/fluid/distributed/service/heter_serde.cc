@@ -58,7 +58,6 @@ void SerializeToMultiVarMsgAndIOBuf(
     MultiVarMsg* request, butil::IOBuf* iobuf) {
   // 1. message_name
   request->set_message_name(message_name);
-  VLOG(1) << "SerializeToMultiVarMsg finsh set_message_name";
 
   // 2. var_names
   for (auto& send_var_name : send_var_name_val) {
@@ -67,13 +66,11 @@ void SerializeToMultiVarMsgAndIOBuf(
   for (auto& recv_var_name : recv_var_name_val) {
     request->add_recv_var_names(recv_var_name);
   }
-  VLOG(1) << "SerializeToMultiVarMsg finsh add_send_var_names";
 
   // 3. VarMessage
   for (auto& send_var_name : send_var_name_val) {
     auto* send_var_msg = request->add_var_messages();
     butil::IOBuf temp_iobuf;
-    VLOG(1) << "SerializeToMultiVarMsg set_varname " << send_var_name;
     send_var_msg->set_varname(send_var_name);
 
     framework::Variable* var = scope->FindVar(send_var_name);
@@ -85,7 +82,6 @@ void SerializeToMultiVarMsgAndIOBuf(
     }
     iobuf->append(temp_iobuf);
   }
-  VLOG(1) << "SerializeToMultiVarMsg finsh SerializeLodTensorToVarMsg";
 }
 
 void SerializeLodTensor(framework::Variable* var,
@@ -107,7 +103,6 @@ void SerializeLodTensor(framework::Variable* var,
   for (auto& dim : framework::vectorize(tensor->dims())) {
     var_msg->add_dims(dim);
   }
-  VLOG(1) << "SerializeLodTensor finsh set_lod_level & add_dims";
   // IO Buffer
   if (platform::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
@@ -131,7 +126,6 @@ void SerializeLodTensor(framework::Variable* var,
     delete[] temp_ptr;
 #endif
   }
-  VLOG(1) << "SerializeLodTensor finsh iobuf->append";
 }
 
 void SerializeSelectedRows(framework::Variable* var,
@@ -194,8 +188,6 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
                                         const butil::IOBuf* iobuf,
                                         const platform::DeviceContext& ctx,
                                         framework::Scope* scope) {
-  VLOG(1) << "DeserializeFromMultiVarMsgAndIOBuf Get io_buffer_itr";
-  VLOG(1) << "iobufer size: " << iobuf->size();
   butil::IOBufBytesIterator io_buffer_itr(*iobuf);
   // size_t shard_buffer_remain = res_io_buffer.size();
   for (int recv_var_index = 0; recv_var_index < multi_msg.send_var_names_size();
@@ -214,8 +206,6 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
                                         const butil::IOBuf* iobuf,
                                         const platform::DeviceContext& ctx,
                                         const framework::Scope* scope) {
-  VLOG(1) << "DeserializeFromMultiVarMsgAndIOBuf Get io_buffer_itr";
-  VLOG(1) << "iobufer size: " << iobuf->size();
   butil::IOBufBytesIterator io_buffer_itr(*iobuf);
   // size_t shard_buffer_remain = res_io_buffer.size();
   for (int recv_var_index = 0; recv_var_index < multi_msg.send_var_names_size();
@@ -237,7 +227,6 @@ void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
                           butil::IOBufBytesIterator& io_buffer_itr,
                           const platform::DeviceContext& ctx) {
   const auto place = ctx.GetPlace();
-  VLOG(1) << "DeserializeFromVarMsgAndIOBuf In LOD_TENSOR ";
   framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
   std::vector<int> vec_dim;
   for (auto& x : msg.dims()) {
@@ -255,30 +244,20 @@ void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
   }
   tensor->set_lod(lod);
 
-  VLOG(1) << "DeserializeFromVarMsgAndIOBuf get mutable_data ";
   void* tensor_data =
       tensor->mutable_data(place, VarMessageToVarType(msg.data_type()));
 
   // IO Buffer
   if (platform::is_cpu_place(place)) {
-    VLOG(1) << "DeserializeFromVarMsgAndIOBuf copy_and_forward ";
     unsigned long data_len;
     io_buffer_itr.copy_and_forward((void*)(&data_len), 8);
-    VLOG(1) << "DeserializeFromVarMsgAndIOBuf copy_and_forward data_len "
-            << data_len << " ,tensor type size "
-            << framework::SizeOfType(tensor->type());
     io_buffer_itr.copy_and_forward(tensor_data, data_len);
-    VLOG(1) << "DeserializeFromVarMsgAndIOBuf finish ";
   } else if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
-    VLOG(1) << "DeserializeFromVarMsgAndIOBuf ON GPU";
     unsigned long data_len;
     char* temp_ptr =
         new char[tensor->numel() * framework::SizeOfType(tensor->type())];
     io_buffer_itr.copy_and_forward((void*)(&data_len), 8);
-    VLOG(1) << "DeserializeFromVarMsgAndIOBuf copy_and_forward data_len "
-            << data_len << " ,tensor type size "
-            << framework::SizeOfType(tensor->type());
     io_buffer_itr.copy_and_forward((void*)temp_ptr, data_len);
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
@@ -286,7 +265,6 @@ void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
                  platform::CPUPlace(), (void*)temp_ptr,
                  tensor->numel() * framework::SizeOfType(tensor->type()),
                  stream);
-    VLOG(1) << "DeserializeFromVarMsgAndIOBuf finish ";
     delete[] temp_ptr;
 #endif
   }
@@ -311,24 +289,15 @@ void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
       tensor->mutable_data(place, VarMessageToVarType(msg.data_type()));
   // IO Buffer
   if (platform::is_cpu_place(place)) {
-    VLOG(1) << "DeserializeFromVarMsgAndIOBuf copy_and_forward ";
     unsigned long data_len;
     io_buffer_itr.copy_and_forward((void*)(&data_len), 8);
-    VLOG(1) << "DeserializeFromVarMsgAndIOBuf copy_and_forward data_len "
-            << data_len << " ,tensor type size "
-            << framework::SizeOfType(tensor->type());
     io_buffer_itr.copy_and_forward(tensor_data, data_len);
-    VLOG(1) << "DeserializeFromVarMsgAndIOBuf finish ";
   } else if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
-    VLOG(1) << "DeserializeFromVarMsgAndIOBuf ON GPU";
     char* temp_ptr =
         new char[tensor->numel() * framework::SizeOfType(tensor->type())];
     unsigned long data_len;
     io_buffer_itr.copy_and_forward((void*)(&data_len), 8);
-    VLOG(1) << "DeserializeFromVarMsgAndIOBuf copy_and_forward data_len "
-            << data_len << " ,tensor type size "
-            << framework::SizeOfType(tensor->type());
     io_buffer_itr.copy_and_forward(temp_ptr, data_len);
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
@@ -336,7 +305,6 @@ void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
                  platform::CPUPlace(), temp_ptr,
                  tensor->numel() * framework::SizeOfType(tensor->type()),
                  stream);
-    VLOG(1) << "DeserializeFromVarMsgAndIOBuf finish ";
     delete[] temp_ptr;
 #endif
   }
