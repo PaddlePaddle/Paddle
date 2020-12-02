@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
 #include "paddle/fluid/framework/fleet/gpu_task.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
@@ -61,22 +62,25 @@ void PSGPUTrainer::Run() {
 }
 void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
   VLOG(3) << "PSGPUTrainer::BuildGPUPSTask begin";
+  GpuTask* gpu_task;
   int shard_num = dataset->multi_output_channel_.size();
   auto gpu_ps_wrapper = PSGPUWrapper::GetInstance();
-  std::vector<std::unordered_set<uint64_t>> local_keys_set(shard_num);
+  auto& local_keys = gpu_task->feature_keys_;
+  local_keys.resize(shard_num);
+  auto& local_values = gpu_task->feature_values_;
+  local_values.resize(shard_num);
+  for (auto& ks : local_keys) {
+    ks.reserve(100000);
+  }
   // read thread
   std::vector<std::thread> threads(shard_num);
   dataset->consume_task_pool_.resize(shard_num);
   for (size_t i = 0; i < consume_task_pool_.size(); i++) {
     consume_task_pool_[i].reset(new ::ThreadPool(1));
   }
-  auto consume_func = [&local_keys_set](int shard_id, int feadim,
+  auto consume_func = [&local_keys](int shard_id, int feadim,
                                           std::vector<uint64_t>& keys) {
-    for (auto k : keys) {
-      if (local_keys_set.find(k) == local_keys_set.end()) {
-        local_keys_set.insert(k);
-      }
-    }
+    local_keys[shard_id].insert(local_keys[shard_id].end(), keys.begin(), keys.end());
   };
 
   if (dataset->input_channel_->Size() == 0) {
@@ -85,9 +89,12 @@ void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
     for (size_t i = 0; i < dataset->multi_output_channel_.size(); i++) {
       int cur_channel_size = multi_output_channel_[i]->Size();
       output_channels_data_size += cur_channel_size;
-      local_keys.reserve(cur_channel_size);
+      
     }
     CHECK(output_channels_data_size > 0);
+    for (auto& ks : local_keys) {
+      ks.reserve(output_channels_data_size * 10) // magic number
+    }
     auto gen_func = [&dataset, &shard_num, &feadim,
                    &consume_func](int i) {
       std::vector<Record> vec_data;
@@ -126,7 +133,9 @@ void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
     int input_channel_size = dataset->input_channel_->Size();
     CHECK(input_channel_size > 0);
     CHECK(shard_num > 0);
-    
+    for (auto& ks : local_keys) {
+      ks.reserve(input_channel_size * 10) // magic number
+    }
     std::vector<Record> vec_data;
     dataset->input_channel_->Close();
     dataset->input_channel_->ReadAll(vec_data);
@@ -169,21 +178,27 @@ void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
     dataset->input_channel_->Open();
     dataset->input_channel_->Write(std::move(vec_data));
   }
+
+  auto unique_func = [&local_keys](int i) {
+    std::sort(local_keys[i].begin(), local_keys[i].ene());
+    local_keys[i].erase(std::unique(local_keys[i].begin(), local_keys[i].end(), local_keys[i].ene()));
+  };
+  for (size_t i = 0; i < threads.size(); i++) {
+    threads[i] = std::thread(unique_func, i);
+  }
+  for (std::thread& t : threads) {
+    t.join();
+  }
   for (size_t i = 0; i < dataset->consume_task_pool_.size(); i++) {
     dataset->consume_task_pool_[i].reset();
   }
   dataset->consume_task_pool_.clear();
-  std::vector<GpuTask*> gpu_tasks(shard_num);
-  
-  std::vector<std::vector<uint64_t>> keys_vec(shaed_num);
+
   for (int i = 0; i < shard_num; i++) {
-    keys_vec[i].assign(local_keys_set[i].begin(), local_keys_set[i].end());
+    local_values[i].resize(local_keys[i].size());
   }
-  for (int i = 0; i < shard_num, i++) {
-    local_keys_set[i].clear();
-  }
-  local_keys_set.clear();
-  gpu_ps_wrapper->BuildGPUPS(table_id, feadim, keys_vec, gpu_tasks);
+  
+  gpu_ps_wrapper->BuildGPUPS(table_id, feadim, gpu_task);
 }
 
 Scope* PSGPUTrainer::GetWorkerScope(int thread_id) { return nullptr; }
