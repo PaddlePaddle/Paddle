@@ -100,6 +100,7 @@ using paddle::distributed::RecvCtxMap;
 using paddle::framework::Scope;
 using paddle::distributed::AsyncCommunicator;
 using paddle::distributed::SyncCommunicator;
+using paddle::distributed::GeoCommunicator;
 
 void BindDistCommunicator(py::module* m) {
   // Communicator is already used by nccl, change to DistCommunicator
