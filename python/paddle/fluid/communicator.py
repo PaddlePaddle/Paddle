@@ -65,10 +65,6 @@ class Communicator(object):
         if mode == DistributedMode.SYNC:
             envs["pserver_endpoints"] = ','.join(kwargs["pserver_endpoints"])
 
-        if mode == DistributedMode.GEO:
-            envs["trainers"] = str(kwargs["trainers"])
-            envs["sparse_attrs"] = str(kwargs["sparse_attrs"])
-
         envs["trainers"] = str(kwargs["trainers"])
         envs["trainer_id"] = str(kwargs["trainer_id"])
         envs["need_global_step"] = str(kwargs["need_global_step"])

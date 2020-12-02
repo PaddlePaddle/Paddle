@@ -59,7 +59,7 @@ class ConcurrentSet {
 
 class GeoRecorder {
  public:
-  GeoRecorder(int trainer_num) : trainer_num_(trainer_num) {
+  explicit GeoRecorder(int trainer_num) : trainer_num_(trainer_num) {
     trainer_rows_.reserve(trainer_num);
     for (auto i = 0; i < trainer_num; ++i) {
       trainer_rows_.emplace_back(new ConcurrentSet());
@@ -82,7 +82,7 @@ class GeoRecorder {
 
   void GetAndClear(uint32_t trainer_id, std::vector<uint64_t>* result) {
     VLOG(3) << "GetAndClear for trainer: " << trainer_id;
-    trainer_rows_[trainer_id]->GetAndClear(result).wait();
+    trainer_rows_.at(trainer_id)->GetAndClear(result).wait();
   }
 
  private:

@@ -116,6 +116,9 @@ void BindDistCommunicator(py::module* m) {
         } else if (mode == "SYNC") {
           Communicator::InitInstance<SyncCommunicator>(
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
+        } else if (mode == "GEO") {
+          Communicator::InitInstance<GeoCommunicator>(
+              send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "unsuported communicator MODE"));
