@@ -69,6 +69,7 @@ dygraph_class_to_static_api = {
 
 FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
 FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
+FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
 
 # FullArgSpec is valid from Python3. Defined a Namedtuple to
 # to make it available in Python2.
@@ -772,6 +773,20 @@ class NameNodeReplaceTransformer(gast.NodeTransformer):
 
     def __init__(self, root_node, target_name, replace_node):
         assert isinstance(target_name, str)
+
+        # NOTE(liym27):
+        # Use gast.Name to replace gast.Name, otherwise, errors may occur.
+        #
+        # For examples:
+        # If using a gast.Subscript to replace gast.Name, and the original gast.Name
+        # is in the arguments of FunctionDef, an exceptions will be raised.
+        #
+        # ```
+        # def func(x[i])) # x[i] can not be a argument
+        #    # ...
+        # ```
+
+        assert isinstance(replace_node, gast.Name)
         self.target_name = target_name
         self.replace_node = replace_node
 
@@ -908,10 +923,14 @@ class ForNodeVisitor(object):
         cond_stmt = self._build_cond_stmt(step_node, compare_node)
 
         body_stmts = self.body
-        var_slice_node = self._build_var_slice_node()
+
+        # NOTE(liym27): Here add a gast.Assign, and the target of it is gast.Name.
+        # In NameNodeReplaceTransformer, using gast.Name to replace gast.Name is safe.
+        target_node, assign_node = self._build_assign_var_slice_node()
+        body_stmts[0:0] = [assign_node]
         for body_node in body_stmts:
             NameNodeReplaceTransformer(body_node, self.iter_var_name,
-                                       var_slice_node)
+                                       target_node)
         body_stmts.append(self._build_index_increase_node(step_node))
 
         return init_stmts, cond_stmt, body_stmts
@@ -927,10 +946,13 @@ class ForNodeVisitor(object):
         cond_stmt = self._build_cond_stmt(step_node, compare_node)
 
         body_stmts = self.body
-        var_slice_node = self._build_var_slice_node()
+
+        target_node, assign_node = self._build_assign_var_slice_node()
+        body_stmts[0:0] = [assign_node]
         for body_node in body_stmts:
             NameNodeReplaceTransformer(body_node, self.iter_var_name,
-                                       var_slice_node)
+                                       target_node)
+
         body_stmts.append(self._build_index_increase_node(step_node))
         body_stmts.append(self._build_enum_increase_node())
 
@@ -1030,15 +1052,19 @@ class ForNodeVisitor(object):
             op=gast.Add(),
             value=step_node)
 
-    def _build_var_slice_node(self):
-        return gast.Subscript(
+    def _build_assign_var_slice_node(self):
+        var_slice_node = gast.Subscript(
             value=self.iter_node,
             slice=gast.Index(value=gast.Name(
                 id=self.iter_idx_name,
                 ctx=gast.Load(),
                 annotation=None,
                 type_comment=None)),
-            ctx=gast.Load())
+            ctx=gast.Load(), )
+        new_iter_var_name = unique_name.generate(FOR_ITER_VAR_NAME_PREFIX)
+        target_node, assign_node = create_assign_node(new_iter_var_name,
+                                                      var_slice_node)
+        return target_node, assign_node
 
     def _build_enum_increase_node(self):
         return gast.AugAssign(

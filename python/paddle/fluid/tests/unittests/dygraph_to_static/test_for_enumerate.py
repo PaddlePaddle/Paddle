@@ -210,6 +210,17 @@ def for_enumerate_var_list(x):
     return y, z
 
 
+# 15. for enumerate list[var] with a nested for range
+@declarative
+def for_enumerate_var_with_nested_range(x_array):
+    x = fluid.layers.fill_constant([1], 'int32', 0)
+    x_array = fluid.dygraph.to_variable(x_array)
+    for i, num in enumerate(x_array):
+        for idx in range(num):
+            x = x + num
+    return x
+
+
 class TestTransformBase(unittest.TestCase):
     def setUp(self):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
@@ -335,6 +346,11 @@ class TestForIterVar(TestForIterVarNumpy):
 class TestForEnumerateVar(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var
+
+
+class TestForEnumerateVarWithNestedRange(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = for_enumerate_var_with_nested_range
 
 
 class TestForIterVarList(TestForInRange):
