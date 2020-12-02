@@ -31,6 +31,14 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       parallel_ctx_(parallel_ctx),
       group_size_limits_(group_size_limits) {
   VLOG(3) << "Start construct the Reducer ...";
+
+  VLOG(0) << "group_indices: ";
+  for (int i = 0; i < group_indices.size(); ++i) {
+    auto indices = group_indices[i];
+    VLOG(0) << "group_indices[" << i << "] ";
+    for (auto index : indices) VLOG(0) << index;
+  }
+
   // initialize groups
   InitializeGroups(group_indices);
   for (size_t global_var_index = 0; global_var_index < vars_.size();
@@ -155,10 +163,6 @@ void Reducer::InitializeGroups(
       tensor->Resize(framework::make_ddim({all_length}))
           .mutable_data(place_, group.dtype_);
     }
-    // Debug Message For Reducer
-    VLOG(3) << "the groups_[" << group_index << "] basic message:";
-    VLOG(3) << "numul: " << all_length << " ;is_sparse: " << group.is_sparse_
-            << " ;var number: " << group.variable_indices_.size();
 
     // map variables to this group by VariableLocator
     size_t inside_group_index = 0;
@@ -170,6 +174,12 @@ void Reducer::InitializeGroups(
     }
     group.variable_indices_ = std::move(variable_indices_);
     groups_.emplace_back(std::move(group));
+
+    // Debug Message For Reducer
+    VLOG(3) << "the groups_[" << group_index << "] basic message:";
+    VLOG(3) << "numul: " << all_length
+            << " ;is_sparse: " << groups_.back().is_sparse_
+            << " ;var number: " << groups_.back().variable_indices_.size();
   }
 }
 
@@ -282,6 +292,13 @@ void Reducer::FinalizeBackward() {
       cudaStreamWaitEvent(compute_stream_, comm_enent_.get(), 0));
   if (!has_rebuilt_group_) {
     auto rebuild_group_index = RebuildGruops();
+    VLOG(0) << "rebuild_group_index: ";
+    for (int i = 0; i < rebuild_group_index.size(); ++i) {
+      auto indices = rebuild_group_index[i];
+      VLOG(0) << "rebuild_group_index[" << i << "] ";
+      for (auto index : indices) VLOG(0) << index;
+    }
+
     InitializeGroups(rebuild_group_index);
   }
   VLOG(3) << "In the batch, Reducer is finished...";
