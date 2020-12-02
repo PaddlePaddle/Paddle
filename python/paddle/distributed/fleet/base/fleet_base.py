@@ -176,7 +176,7 @@ class Fleet(object):
 
                 import paddle.distributed.fleet as fleet
                 strategy = fleet.DistributedStrategy()
-                fleet.init(strategy)
+                fleet.init(strategy=strategy)
 
         """
 
