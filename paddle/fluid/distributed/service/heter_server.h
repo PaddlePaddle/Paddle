@@ -51,23 +51,20 @@ class HeterService : public ::paddle::PsService {
                            const MultiVarMsg* request, MultiVarMsg* response,
                            ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    int ret = 0;
     std::string message_name = request->message_name();
     auto itr = handler_map_.find(message_name);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-    if (itr == handler_map_.end()) {
-    } else {
-      ret = itr->second(request, response, cntl);
-    }
-    if (ret != 0) {
-      // response->set_err_code(-1);
-      // response->set_err_msg("xpu service error");
-    }
+    PADDLE_ENFORCE_NE(
+        itr, handler_map_.end(),
+        platform::errors::InvalidArgument(
+            "HeterService::SendAndRecvVariable Get illegal message_name: %s "
+            "which is not in HeterService::handler_map_",
+            message_name));
+    itr->second(request, response, cntl);
   }
 
   void RegisterServiceHandler(std::string message_name,
                               HeterServiceHandler func) {
-    VLOG(4) << "register heter service";
     handler_map_[message_name] = func;
   }
 
