@@ -120,10 +120,11 @@ class TestLayerNormOp(unittest.TestCase):
                                has_bias=True,
                                y_grad_scale=1.0,
                                use_mkldnn=False):
-        def test_with_place(place,
-                            shape,
-                            begin_norm_axis,
-                            use_mkldnn=use_mkldnn):
+        def test_with_place_and_dtype(place,
+                                      dtype,
+                                      shape,
+                                      begin_norm_axis,
+                                      use_mkldnn=use_mkldnn):
             # attr
             epsilon = 0.00001
             x_shape = shape
@@ -158,9 +159,13 @@ class TestLayerNormOp(unittest.TestCase):
             with fluid.program_guard(program):
                 block = program.global_block()
                 for name in ground_truth:
+                    tmp_dtype = "float32"
+                    if name in ['x', 'y']:
+                        tmp_dtype = dtype
+
                     block.create_var(
                         name=name,
-                        dtype='float32',
+                        dtype=tmp_dtype,
                         shape=ground_truth[name].shape)
                 inputs = {"X": block.var('x')}
                 fetch_list = [
@@ -229,8 +234,11 @@ class TestLayerNormOp(unittest.TestCase):
                 "layer_norm") and self.use_cudnn:
             places.append(core.CUDAPlace(0))
 
+        dtypes = ["float16", "float32"]
+
         for place in places:
-            test_with_place(place, shape, begin_norm_axis)
+            for dtype in dtypes:
+                test_with_place_and_dtype(place, dtype, shape, begin_norm_axis)
 
     def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
