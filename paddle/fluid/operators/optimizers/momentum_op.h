@@ -555,6 +555,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
               param_out->mutable_data<T>(ctx.GetPlace()),
               velocity_out->mutable_data<MT>(ctx.GetPlace()), master_out_data);
           )CODE";
+          PADDLE_THROW("Confirm 558 line code execution!");
           DenseMomentumFunctor<T, MT, UseNesterov> functor(
               param->data<T>(), grad->data<T>(), velocity->data<MT>(),
               learning_rate->data<MPDType>(), master_in_data, mu, rescale_grad,
@@ -572,6 +573,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
               param_out->mutable_data<T>(ctx.GetPlace()),
               velocity_out->mutable_data<MT>(ctx.GetPlace()), master_out_data);
           )CODE";
+          PADDLE_THROW("Confirm 576 line code execution!");
           DenseMomentumFunctor<T, MT, NoNesterov> functor(
               param->data<T>(), grad->data<T>(), velocity->data<MT>(),
               learning_rate->data<MPDType>(), master_in_data, mu, rescale_grad,
