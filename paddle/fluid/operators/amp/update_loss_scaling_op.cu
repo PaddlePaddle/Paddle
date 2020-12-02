@@ -61,13 +61,14 @@ class LazyZeroInputs<platform::CUDADeviceContext, T> {
     bool has_inf{false};
     memory::Copy(platform::CPUPlace(), &has_inf, gpu_place, found_inf_data,
                  sizeof(bool), dev_ctx.stream());
+    dev_ctx.Wait();  // wait async copy
     if (has_inf) {
       VLOG(1) << "-- UpdateLossScaling: Infinite values are found in grads. --";
       for (size_t i = 0; i < xs.size(); ++i) {
         auto* out = outs[i];
         T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
         int num = out->numel();
-        cudaMemset(out_data, 0, num * sizeof(T));
+        cudaMemsetAsync(out_data, 0, num * sizeof(T), dev_ctx.stream());
       }
     }
   }

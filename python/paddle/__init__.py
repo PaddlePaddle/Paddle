@@ -13,9 +13,6 @@
 # limitations under the License.
 
 import os
-from paddle.check_import_scipy import check_import_scipy
-
-check_import_scipy(os.name)
 
 try:
     from paddle.version import full_version as __version__
@@ -186,6 +183,7 @@ from .tensor.math import mod  #DEFINE_ALIAS
 from .tensor.math import floor_mod  #DEFINE_ALIAS
 from .tensor.math import multiply  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
+from .tensor.math import subtract  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
 from .tensor.math import logsumexp  #DEFINE_ALIAS
 from .tensor.math import inverse  #DEFINE_ALIAS
@@ -274,6 +272,7 @@ from . import onnx
 from .hapi import Model
 from .hapi import callbacks
 from .hapi import summary
+from .hapi import flops
 import paddle.text
 import paddle.vision
 

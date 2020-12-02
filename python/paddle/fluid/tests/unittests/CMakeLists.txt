@@ -10,10 +10,12 @@ if(NOT WITH_NCCL)
 endif()
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
+list(APPEND DIST_TEST_OPS test_pipeline)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding_over_height)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
+list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
@@ -24,14 +26,18 @@ list(APPEND MIXED_DIST_TEST_OPS test_dgc_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
 list(APPEND MIXED_DIST_TEST_OPS test_recv_save_op)
 list(APPEND MIXED_DIST_TEST_OPS test_transpiler_ops)
-list(APPEND MIXED_DIST_TEST_OPS test_launch)
 list(APPEND MIXED_DIST_TEST_OPS test_c_comm_init_op)
-list(APPEND MIXED_DIST_TEST_OPS test_launch_ps)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ps)
+list(APPEND MIXED_DIST_TEST_OPS test_launch_coverage)
+list(APPEND MIXED_DIST_TEST_OPS test_fleetrun)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_run_random_port)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_async)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_cloud)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_checkpoint)
 list(APPEND MIXED_DIST_TEST_OPS test_collective_optimizer)
@@ -75,37 +81,59 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
 endif()
 
-#TODO(sunxiaolong01): Fix this unitest failed on GCC8.
-LIST(REMOVE_ITEM TEST_OPS test_conv2d_transpose_op)
 if(WIN32)
-    LIST(REMOVE_ITEM TEST_OPS test_boxps)
-    LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
-    LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
-    LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
+endif()
 
-    LIST(REMOVE_ITEM TEST_OPS test_distributed_strategy)
+if(WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
+    LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
+    LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
     LIST(REMOVE_ITEM TEST_OPS test_downpoursgd)
     LIST(REMOVE_ITEM TEST_OPS test_fleet)
-    LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1)
-    LIST(REMOVE_ITEM TEST_OPS test_fleet_ps)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
-    LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_3)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_unitaccessor)
-    LIST(REMOVE_ITEM TEST_OPS test_fleet_utils)
-    LIST(REMOVE_ITEM TEST_OPS test_lookup_sparse_table_split_op)
     LIST(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
 
     # TODO: Fix these unittests failed on Windows
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
+endif()
+
+if(NOT WITH_DISTRIBUTE OR WIN32)
+    # DISTRIBUTE related
+    LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
+    LIST(REMOVE_ITEM TEST_OPS test_distributed_strategy)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_ps)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_utils)
+    LIST(REMOVE_ITEM TEST_OPS test_lookup_sparse_table_split_op)
+
+    # TODO: Fix these unittests failed on Windows
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
     list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
     list(REMOVE_ITEM TEST_OPS test_split_ids_op)
     LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
 endif()
 
+if(NOT WITH_DISTRIBUTE)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
+    LIST(REMOVE_ITEM TEST_OPS test_desc_clone_dist)
+    LIST(REMOVE_ITEM TEST_OPS test_program_code_dist)
+endif()
+
+if(WITH_MUSL)
+    # TODO: In the musl docker environment provided by SEC, 
+    # the calculation accuracy of testcase in this unittest 
+    # cannot meet the requirement, error like:
+    # AssertionError: 
+    #   2.3044646853182973e-07 not less than or equal to 1e-07
+    # SEC needs to follow up on this issue, and need to be 
+    # resolved before CI requared
+    LIST(REMOVE_ITEM TEST_OPS test_sigmoid_focal_loss_op)
+endif()
 
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint1)
@@ -147,8 +175,11 @@ if (WITH_NCCL)
     endif()
 endif()
 
+if(NOT WITH_NCCL)
+    list(REMOVE_ITEM TEST_OPS test_imperative_group)
+endif()
+
 if(NOT WITH_GPU OR WIN32)
-    LIST(REMOVE_ITEM TEST_OPS test_pipeline)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
@@ -178,8 +209,12 @@ if(NOT WITH_MKL OR NOT WITH_AVX)
   list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
   list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
 endif()
+
 if(WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
+endif()
+
+if(NOT WITH_DISTRIBUTE OR WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
   list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 endif()
 
@@ -200,16 +235,16 @@ function(py_test_modules TARGET_NAME)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(WITH_COVERAGE)
-      add_test(NAME ${TARGET_NAME}
-          COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-          COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-          ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+        add_test(NAME ${TARGET_NAME}
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+            ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
-      add_test(NAME ${TARGET_NAME}
-          COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-          ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+        add_test(NAME ${TARGET_NAME}
+                COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+                ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 
     if (py_test_modules_SERIAL)
@@ -218,7 +253,7 @@ function(py_test_modules TARGET_NAME)
     if(WIN32)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
     else()
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 15)
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)
     endif()
   endif()
 endfunction()
@@ -277,7 +312,7 @@ function(parallel_bash_test_modules TARGET_NAME)
     cmake_parse_arguments(parallel_bash_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
 
-    set(timeout 15)
+    set(timeout 120)
     if(${parallel_bash_test_modules_TIMEOUT})
         set(timeout ${parallel_bash_test_modules_TIMEOUT})
     endif()
@@ -341,11 +376,9 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
-list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
-list(REMOVE_ITEM TEST_OPS test_sampling_id_op)
 
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
@@ -472,7 +505,6 @@ if(WITH_DISTRIBUTE)
            py_test_modules(test_fleet_sharding_meta_optimizer MODULES test_fleet_sharding_meta_optimizer ENVS ${dist_ENVS})
            py_test_modules(test_fleet_amp_meta_optimizer MODULES test_fleet_amp_meta_optimizer ENVS ${dist_ENVS})
            py_test_modules(test_fleet_fp16_allreduce_meta_optimizer MODULES test_fleet_fp16_allreduce_meta_optimizer ENVS ${dist_ENVS})
-    	   py_test_modules(test_fleet_pipeline_meta_optimizer MODULES test_fleet_pipeline_meta_optimizer ENVS ${dist_ENVS})
     	   py_test_modules(test_fleet_private_function MODULES test_fleet_private_function ENVS ${dist_ENVS})
 	   py_test_modules(test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS ${dist_ENVS})
 	   py_test_modules(test_fleet_distributed_strategy MODULES test_fleet_distributed_strategy)
@@ -497,14 +529,17 @@ if(WITH_DISTRIBUTE)
     endif()
     if(NOT APPLE)
         if(WITH_GPU)
-            # NOTE. test_launch only work in gpu collective mode
-            bash_test_modules(test_launch START_BASH test_launch.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
             bash_test_modules(test_c_comm_init_op START_BASH test_c_comm_init_op.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
             py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint)
+            py_test_modules(test_launch_coverage MODULES test_launch_coverage)
         endif()
 
-        bash_test_modules(test_launch_ps START_BASH test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-        bash_test_modules(test_fleet_launch START_BASH test_fleet_launch.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+        bash_test_modules(test_fleet_launch_ps START_BASH test_fleet_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+        bash_test_modules(test_fleetrun START_BASH test_fleetrun.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+        bash_test_modules(test_fleet_run_random_port START_BASH test_fleet_run_random_port.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+        bash_test_modules(test_fleet_launch_async START_BASH test_fleet_launch_async.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+        bash_test_modules(test_fleet_launch_cloud START_BASH test_fleet_launch_cloud.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+        bash_test_modules(test_fleet_launch_nproc START_BASH test_fleet_launch_nproc.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
         # port range (20000, 23000) is reserved for dist-ops
         set(dist_ut_port 20001)
@@ -546,7 +581,7 @@ if(NOT WIN32)
     set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 endif()
 
-if(NOT APPLE AND NOT WIN32)
+if(WITH_DISTRIBUTE AND NOT APPLE AND NOT WIN32)
     bash_test_modules(test_auto_checkpoint START_BASH dist_test.sh TIMEOUT 140 LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
     bash_test_modules(test_auto_checkpoint1 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
     bash_test_modules(test_auto_checkpoint2 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
@@ -616,6 +651,9 @@ if (NOT WIN32)
     set_tests_properties(test_multiprocess_reader_exception PROPERTIES TIMEOUT 120)
     set_tests_properties(test_layers PROPERTIES TIMEOUT 120)
     set_tests_properties(test_ir_memory_optimize_transformer PROPERTIES TIMEOUT 120)
+endif()
+
+if (WITH_DISTRIBUTE AND NOT WIN32)
     set_tests_properties(test_fleet_utils PROPERTIES TIMEOUT 120)
 endif()
 
@@ -627,9 +665,7 @@ if (WITH_DISTRIBUTE AND NOT APPLE)
     if(WITH_GPU)
         set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT 120)
         set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT 120)
-        set_tests_properties(test_launch PROPERTIES TIMEOUT 120)
     endif()
-    set_tests_properties(test_fleet_launch PROPERTIES TIMEOUT 120)
 endif()
 
 # setting timeout value as 15S
@@ -697,7 +733,9 @@ set_tests_properties(test_eager_deletion_lstm_net PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_save_load_v2 PROPERTIES TIMEOUT 120)
+set_tests_properties(test_conv2d_transpose_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_prroi_pool_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static PROPERTIES TIMEOUT 120)
 set_tests_properties(test_lstm_cudnn_op PROPERTIES TIMEOUT 120)
@@ -767,7 +805,7 @@ set_tests_properties(test_mean_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader_unkeep_order PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
-if(WITH_GPU AND WITH_NCCL)
+if(WITH_DISTRIBUTE AND WITH_GPU AND WITH_NCCL)
     if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
         set_tests_properties(test_parallel_dygraph_sparse_embedding PROPERTIES TIMEOUT 120)
         set_tests_properties(test_parallel_dygraph_transformer PROPERTIES TIMEOUT 120)
@@ -777,7 +815,9 @@ if(WITH_GPU AND NOT WIN32)
     set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_broadcast_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
+    if(WITH_DISTRIBUTE)
+        set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
+    endif()
     set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_broadcast PROPERTIES TIMEOUT 120)
     set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)

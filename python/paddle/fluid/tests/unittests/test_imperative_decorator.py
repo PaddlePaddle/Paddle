@@ -30,7 +30,7 @@ class TestTracerMode(unittest.TestCase):
 
     @fluid.dygraph.no_grad
     def no_grad_func(self, a):
-        self.assertEqual(self.tracer._train_mode, False)
+        self.assertEqual(self.tracer._has_grad, False)
         return a
 
     @framework.dygraph_not_support

@@ -1,0 +1,9 @@
+linux-headers=4.19.36-r0
+freetype-dev=2.10.0-r1
+libjpeg-turbo-dev=2.0.4-r1
+zlib-dev=1.2.11-r1
+lapack-dev=3.8.0-r1
+openblas-dev=0.3.6-r0
+openssl-dev=1.1.1g-r0
+libuv-dev=1.29.1-r0
+graphviz

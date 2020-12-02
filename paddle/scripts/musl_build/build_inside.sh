@@ -15,50 +15,84 @@
 # limitations under the License.
 
 PADDLE_DIR=/paddle
-BUILD_DIR=$PWD
+BUILD_DIR=$PWD/build
 
-echo "paddle: $PADDLE_DIR"
-echo "python: $PYTHON_VERSION"
-echo "http_proxy: $HTTP_PROXY"
-echo "https_proxy: $HTTPS_PROXY"
+echo ">>> paddle: $PADDLE_DIR"
+echo ">>> python: $PYTHON_VERSION"
 
 # exit when any command fails
 set -e
 
-echo "create build dir: $BUILD_DIR"
+# setup build dir
+echo ">>> setup build dir: $BUILD_DIR"
 mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
 
-if [ "$HTTP_PROXY" ]; then
+# setup root dir
+chown -R root:root /root
+
+if [ "$HTTP_PROXY" ]; then 
+    echo ">>> http_proxy: $HTTP_PROXY" 
     git config --global http.proxy "$HTTP_PROXY"
 fi
 
-if [ "$HTTP_PROXY" ]; then
+if [ "$HTTP_PROXY" ]; then 
+    echo ">>> https_proxy: $HTTPS_PROXY" 
     git config --global https.proxy "$HTTPS_PROXY"
 fi
 
-PIP_ARGS=""
-if [ "$PIP_INDEX" ]; then
-    PIP_DOMAIN=$(echo "$PIP_INDEX" | awk -F/ '{print $3}')
-    PIP_ARGS="-i $PIP_INDEX --trusted-host $PIP_DOMAIN"
-    echo "pip index: $PIP_INDEX"
+PIP_ARGS="--timeout 300"
+if [ "$pip_index" ]; then
+    PIP_DOMAIN=$(echo "$pip_index" | awk -F/ '{print $3}')
+    PIP_ARGS="$PIP_ARGS -i $pip_index --trusted-host $PIP_DOMAIN"
+    echo ">>> pip index: $pip_index"
 fi
 
-PYTHON_REQS=$PADDLE_DIR/python/requirements.txt
-echo "install python requirements: $PYTHON_REQS"
+if [ "$WITH_REQUIREMENT" ]; then
+    echo ">>> install python requirement: $WITH_REQUIREMENT";
+    pip install $PIP_ARGS -r "$WITH_REQUIREMENT";
+fi
 
-# shellcheck disable=2086
-pip install $PIP_ARGS --timeout 300 --no-cache-dir -r $PYTHON_REQS
+BUILD_ARG=""
+if [ "$WITH_TEST" == "1" ]; then
+    echo ">>> build paddle with testing"
+    BUILD_ARG="-DWITH_TESTING=ON"
+else
+    BUILD_ARG="-DWITH_TESTING=OFF"
+fi
 
-echo "configure with cmake"
+echo ">>> compile source code"
+set -x
+
+export FLAGS_call_stack_level=2
+
 cmake "$PADDLE_DIR" \
     -DWITH_MUSL=ON \
     -DWITH_CRYPTO=OFF \
     -DWITH_MKL=OFF \
-    -DWITH_GPU=OFF
+    -DWITH_GPU=OFF \
+    "$BUILD_ARG"
 
-echo "compile with make: $*"
 # shellcheck disable=2068
 make $@
+set +x
 
-echo "save python dist directory to /output"
-cp -r python/dist /output/
+OUTPUT_WHL="$(find python/dist/ -type f -name '*.whl'| head -n1)"
+echo ">>> paddle wheel: $OUTPUT_WHL"
+
+echo ">>> save paddle wheel package to /output"
+cp -f "$OUTPUT_WHL" /output/
+
+if [ "$WITH_TEST" == "1" ]; then
+
+    if [ "$WITH_UT_REQUIREMENT" ]; then
+        echo ">>> install unittest requirement: $WITH_UT_REQUIREMENT"
+        pip install $PIP_ARGS -r "$WITH_UT_REQUIREMENT"
+    fi
+
+    echo ">>> install paddle wheel package"
+    pip install "$OUTPUT_WHL"
+
+    echo ">>> run ctest"
+    ctest --output-on-failure
+fi

@@ -14,12 +14,14 @@
 
 from __future__ import print_function
 
-import unittest
-import numpy as np
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.jit import to_static
 from paddle.jit import ProgramTranslator
+
+import unittest
+import numpy as np
 
 from ifelse_simple_func import dyfunc_with_if_else
 
@@ -179,6 +181,26 @@ def test_return_tuple_many_values(x):
     return (x, y, z)
 
 
+def inner_func(x):
+    a = 2
+    if a < 0:
+        y = x + 1
+        return y
+    y = x * 2
+    return y
+
+
+@to_static
+def test_return_without_paddle_cond(x):
+    # y shape is [10]
+    y = paddle.ones([10])
+
+    # the shape of inner_func(y) should be [10], not [1]
+    y = inner_func(y)
+    y = paddle.reshape(y, [2, 5])
+    return y
+
+
 class TestReturnBase(unittest.TestCase):
     def setUp(self):
         self.input = np.ones((1)).astype('int32')
@@ -295,6 +317,11 @@ class TestReturnTupleOneValue(TestReturnBase):
 class TestReturnTupleManyValue(TestReturnBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_tuple_many_values
+
+
+class TestReturnSpecial(TestReturnBase):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_without_paddle_cond
 
 
 if __name__ == '__main__':

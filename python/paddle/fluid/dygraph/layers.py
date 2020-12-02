@@ -32,6 +32,7 @@ from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
+import paddle.utils.deprecated as deprecated
 
 __all__ = ['Layer']
 
@@ -388,20 +389,24 @@ class Layer(core.Layer):
         return self._helper.create_parameter(temp_attr, shape, dtype, is_bias,
                                              default_initializer)
 
-    # TODO: Add more parameter list when we need them
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.nn.Layer.create_tensor",
+        reason="New api in create_tensor, easier to use.")
     def create_variable(self, name=None, persistable=None, dtype=None):
-        """Create Variable for this layer.
+        """
+
+        Create Tensor for this layer.
 
         Parameters:
-            name(str, optional): name of the variable. Please refer to :ref:`api_guide_Name` . Default: None
-            persistable(bool, optional): if set this variable persistable. Default: False
-            dtype(str, optional): data type of this parameter.
-                If set str, it can be "bool",  "float16", "float32", "float64",
-                "int8", "int16", "int32", "int64", "uint8" or "uint16".
-                If set None, it will be "float32". Default: None
+            name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None
+
+            persistable(bool, optional): if set this tensor persistable. Default: False
+
+            dtype(str, optional): data type of this parameter. If set str, it can be "bool", "float16", "float32", "float64","int8", "int16", "int32", "int64", "uint8" or "uint16". If set None, it will be "float32". Default: None
 
         Returns:
-            Tensor, created Variable.
+            Tensor, created Tensor.
 
         Examples:
             .. code-block:: python
@@ -416,6 +421,56 @@ class Layer(core.Layer):
                         self.linear = paddle.nn.Linear( 10, 10)
                             
                         self.back_var = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
+                    
+                    def forward(self, input):
+                        out = self.linear(input)
+                        paddle.assign( out, self.back_var)
+                        
+                        return out
+
+        """
+        if name is not None:
+            var_name = ".".join([self._full_name, name])
+        else:
+            var_name = unique_name.generate(".".join(
+                [self._full_name, "_generated_var"]))
+
+        return self._helper.main_program.current_block().create_var(
+            name=var_name,
+            persistable=persistable,
+            dtype=dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR)
+
+    # TODO: Add more parameter list when we need them
+    def create_tensor(self, name=None, persistable=None, dtype=None):
+        """
+
+        Create Tensor for this layer.
+
+        Parameters:
+            name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None
+            persistable(bool, optional): if set this tensor persistable. Default: False
+            dtype(str, optional): data type of this parameter.
+                If set str, it can be "bool",  "float16", "float32", "float64",
+                "int8", "int16", "int32", "int64", "uint8" or "uint16".
+                If set None, it will be "float32". Default: None
+
+        Returns:
+            Tensor, created Tensor.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MyLinear(paddle.nn.Layer):
+                    def __init__(self,
+                                in_features,
+                                out_features):
+                        super(MyLinear, self).__init__()
+                        self.linear = paddle.nn.Linear( 10, 10)
+                            
+                        self.back_var = self.create_tensor(name = "linear_tmp_0", dtype=self._dtype)
                     
                     def forward(self, input):
                         out = self.linear(input)
@@ -810,30 +865,30 @@ class Layer(core.Layer):
         pass
 
     def __call__(self, *inputs, **kwargs):
-        for forward_pre_hook in self._forward_pre_hooks.values():
-            hook_result = forward_pre_hook(self, inputs)
-            if hook_result is not None:
-                if not isinstance(hook_result, tuple):
-                    hook_result = (hook_result, )
-                inputs = hook_result
-
-        if not self._built:
-            with program_desc_tracing_guard(False):
-                self._build_once(*inputs, **kwargs)
-                if parallel_helper._is_data_parallel_mode():
-                    parallel_helper._broadcast_parameters(
-                        self._parameters.values())
-            self._built = True
-
         with param_guard(self._parameters), param_guard(self._buffers):
+            for forward_pre_hook in self._forward_pre_hooks.values():
+                hook_result = forward_pre_hook(self, inputs)
+                if hook_result is not None:
+                    if not isinstance(hook_result, tuple):
+                        hook_result = (hook_result, )
+                    inputs = hook_result
+
+            if not self._built:
+                with program_desc_tracing_guard(False):
+                    self._build_once(*inputs, **kwargs)
+                    if parallel_helper._is_data_parallel_mode():
+                        parallel_helper._broadcast_parameters(
+                            self._parameters.values())
+                self._built = True
+
             outputs = self.forward(*inputs, **kwargs)
 
-        for forward_post_hook in self._forward_post_hooks.values():
-            hook_result = forward_post_hook(self, inputs, outputs)
-            if hook_result is not None:
-                outputs = hook_result
+            for forward_post_hook in self._forward_post_hooks.values():
+                hook_result = forward_post_hook(self, inputs, outputs)
+                if hook_result is not None:
+                    outputs = hook_result
 
-        return outputs
+            return outputs
 
     def forward(self, *inputs, **kwargs):
         """
@@ -1028,7 +1083,15 @@ class Layer(core.Layer):
                     # value via `assign`.
                     if type(value) == framework.Variable:
                         from paddle import assign
-                        assign(value, _buffers[name])
+                        # Note(zhhsplendid): the condition below happens in PaddleGan model,
+                        # but should all non-Variable _buffers[name] be re-assign? We
+                        # should consider it in the future. I current wrote this as
+                        # conservative code.
+                        if _buffers[name] is None or type(_buffers[
+                                name]) == core.VarBase:
+                            _buffers[name] = assign(value)
+                        else:
+                            assign(value, _buffers[name])
                     elif value is not None:
                         raise TypeError(
                             "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"
@@ -1053,7 +1116,7 @@ class Layer(core.Layer):
 
     def __dir__(self):
         """
-        Return a list. Get all parameters, buffers(non-parameter variables), sublayers, method and attr of Layer.
+        Return a list. Get all parameters, buffers(non-parameter tensors), sublayers, method and attr of Layer.
 
         Examples:
             .. code-block:: python

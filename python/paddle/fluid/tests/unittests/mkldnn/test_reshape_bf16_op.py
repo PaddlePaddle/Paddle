@@ -27,7 +27,6 @@ from paddle import enable_static
                  "place does not support BF16 evaluation")
 class TestReshapeBf16Op(OpTest):
     def setUp(self):
-        enable_static()
         self.op_type = "reshape2"
         self.use_mkldnn = True
         self.mkldnn_data_type = "bfloat16"
@@ -59,4 +58,5 @@ class TestReshapeBf16Op(OpTest):
 
 
 if __name__ == '__main__':
+    enable_static()
     unittest.main()

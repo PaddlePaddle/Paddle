@@ -59,7 +59,6 @@ class Imdb(Dataset):
                 def forward(self, doc, label):
                     return paddle.sum(doc), label
 
-            paddle.disable_static()
 
             imdb = Imdb(mode='train')
 
@@ -93,7 +92,7 @@ class Imdb(Dataset):
 
     def _build_work_dict(self, cutoff):
         word_freq = collections.defaultdict(int)
-        pattern = re.compile("aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$")
+        pattern = re.compile(r"aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$")
         for doc in self._tokenize(pattern):
             for word in doc:
                 word_freq[word] += 1
@@ -123,8 +122,8 @@ class Imdb(Dataset):
         return data
 
     def _load_anno(self):
-        pos_pattern = re.compile("aclImdb/{}/pos/.*\.txt$".format(self.mode))
-        neg_pattern = re.compile("aclImdb/{}/neg/.*\.txt$".format(self.mode))
+        pos_pattern = re.compile(r"aclImdb/{}/pos/.*\.txt$".format(self.mode))
+        neg_pattern = re.compile(r"aclImdb/{}/neg/.*\.txt$".format(self.mode))
 
         UNK = self.word_idx['<unk>']
 

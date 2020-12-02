@@ -279,8 +279,15 @@ inline std::string GetErrorSumaryString(StrType&& what, const char* file,
             "Summary:\n----------------------\n";
   }
   sout << string::Sprintf("%s (at %s:%d)", std::forward<StrType>(what), file,
-                          line)
-       << std::endl;
+                          line);
+  if (FLAGS_call_stack_level < 2) {
+    // NOTE(chenweihang): if no C++ backtrace, give a hint to tell users
+    // how to show C++ backtrace, this hint only show in 2.0-rc verison,
+    // and will be removed in 2.0 official version
+    sout << "\n  [Hint: If you need C++ stacktraces for debugging, please set "
+            "`FLAGS_call_stack_level=2`.]";
+  }
+  sout << std::endl;
   return sout.str();
 }
 

@@ -13,175 +13,76 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_XPU
+#include <algorithm>
 #include <string>
-#include <unordered_map>
+#include <tuple>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
-
-inline std::string get_xpu_error_message(int error_type) {
-  static std::unordered_map<int, std::string> xpu_error_map = {
-      {baidu::xpu::api::INVALID_PARAM, "Parameter is invalid."},
-      {baidu::xpu::api::RUNTIME_ERROR,
-       "Please check whether Baidu Kunlun Card "
-       "is properly installed."},
-      {baidu::xpu::api::NO_ENOUGH_WORKSPACE,
-       "There is not enough memory in Baidu"
-       " Kunlun Card."}};
-  if (xpu_error_map.find(error_type) == xpu_error_map.end()) {
-    return "Unknown error type!";
-  }
-  return xpu_error_map[error_type];
-}
-
-#define XPU_MALLOC(addr, num_bytes)                                        \
-  PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(addr), num_bytes), \
-                    XPU_SUCCESS,                                           \
-                    platform::errors::ResourceExhausted(                   \
-                        "\n\nOut of memory error on XPU, Cannot"           \
-                        "allocate %s memory on XPU. \n\nPlease "           \
-                        "check whether there is any other process "        \
-                        "using XPU.\n",                                    \
-                        string::HumanReadableSize(num_bytes)))
-
-#define DEFINE_XPU_GRAD_KERNEL(kernel_type, kernel_name, use_x_y_data)         \
-  template <typename DeviceContext, typename T>                                \
-  class Elementwise##kernel_type##GradXPUKernel                                \
-      : public ElemwiseGradKernel<T> {                                         \
-   public:                                                                     \
-    void Compute(const framework::ExecutionContext& ctx) const override {      \
-      ElemwiseGradKernel<T>::Compute(ctx);                                     \
-      using Tensor = framework::Tensor;                                        \
-      auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));           \
-      auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));              \
-      auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));              \
-      auto dx_dims = dout->dims();                                             \
-      auto dy_dims_untrimed = dout->dims();                                    \
-      T* dx_data = NULL;                                                       \
-      T* dy_data = NULL;                                                       \
-      const T* y_data = nullptr;                                               \
-      const T* x_data = nullptr;                                               \
-      T* y_broadcast = nullptr;                                                \
-      if (use_x_y_data) {                                                      \
-        auto* x = ctx.Input<Tensor>("X");                                      \
-        auto* y = ctx.Input<Tensor>("Y");                                      \
-        y_data = y->data<T>();                                                 \
-        x_data = x->data<T>();                                                 \
-      } else {                                                                 \
-        x_data = dout->data<T>();                                              \
-        y_data = dout->data<T>();                                              \
-      }                                                                        \
-      int axis = ctx.Attr<int>("axis");                                        \
-      PADDLE_ENFORCE_GE(                                                       \
-          dx_dims.size(), dy_dims_untrimed.size(),                             \
-          platform::errors::InvalidArgument(                                   \
-              "Rank of first input must >= rank of second input."));           \
-      if (dx != nullptr) {                                                     \
-        dx->mutable_data<T>(ctx.GetPlace());                                   \
-        dx_dims = dx->dims();                                                  \
-        dx_data = dx->data<T>();                                               \
-      }                                                                        \
-      if (dy != nullptr) {                                                     \
-        dy->mutable_data<T>(ctx.GetPlace());                                   \
-        dy_dims_untrimed = dy->dims();                                         \
-        dy_data = dy->data<T>();                                               \
-      }                                                                        \
-      int pre, n, post, is_run_common_broadcast;                               \
-      if (dx_dims == dy_dims_untrimed) {                                       \
-        pre = post = 1;                                                        \
-        n = dout->numel();                                                     \
-      } else {                                                                 \
-        axis = (axis == -1 ? dx_dims.size() - dy_dims_untrimed.size() : axis); \
-        PADDLE_ENFORCE_EQ(axis >= 0 && axis < dx_dims.size(), true,            \
-                          platform::errors::InvalidArgument(                   \
-                              "Axis should be in range [0, dx_dims)"));        \
-        auto dy_dims = trim_trailing_singular_dims(dy_dims_untrimed);          \
-        axis = (dy_dims.size() == 0) ? dx_dims.size() : axis;                  \
-        get_mid_dims(dx_dims, dy_dims, axis, &pre, &n, &post,                  \
-                     &is_run_common_broadcast);                                \
-      }                                                                        \
-      int len = pre * n * post;                                                \
-      auto& dev_ctx =                                                          \
-          ctx.template device_context<paddle::platform::XPUDeviceContext>();   \
-      if (dx == nullptr) {                                                     \
-        XPU_MALLOC(&dx_data, len * sizeof(float));                             \
-      }                                                                        \
-      if (dy == nullptr) {                                                     \
-        XPU_MALLOC(&dy_data, len * sizeof(float));                             \
-      } else {                                                                 \
-        if (len != n) {                                                        \
-          XPU_MALLOC(&dy_data, len * sizeof(float));                           \
-        }                                                                      \
-      }                                                                        \
-      if (use_x_y_data) {                                                      \
-        if (len != n) {                                                        \
-          XPU_MALLOC(&y_broadcast, len * sizeof(float));                       \
-          int res =                                                            \
-              xpu::broadcast_ew(dev_ctx.x_context(), y_data, y_broadcast, pre, \
-                                n, post, xpu::ElementwiseOp::ASSIGN);          \
-          PADDLE_ENFORCE_EQ(                                                   \
-              res, xpu::Error_t::SUCCESS,                                      \
-              platform::errors::External("XPU kernel error occur! %s",         \
-                                         get_xpu_error_message(res)));         \
-          y_data = y_broadcast;                                                \
-        }                                                                      \
-      }                                                                        \
-      int res = xpu::elementwise_##kernel_name##_grad(                         \
-          dev_ctx.x_context(), x_data, y_data, dout->data<T>() /*out*/,        \
-          dout->data<T>(), dx_data, dy_data, len);                             \
-      PADDLE_ENFORCE_EQ(                                                       \
-          res, xpu::Error_t::SUCCESS,                                          \
-          platform::errors::External("XPU kernel error occur! %s",             \
-                                     get_xpu_error_message(res)));             \
-      if ((dy != nullptr) && (len != n)) {                                     \
-        int res = xpu::reduce_ew(dev_ctx.x_context(), dy_data, dy->data<T>(),  \
-                                 pre, n, post, xpu::ElementwiseOp::ASSIGN);    \
-        PADDLE_ENFORCE_EQ(                                                     \
-            res, xpu::Error_t::SUCCESS,                                        \
-            platform::errors::External("XPU kernel error occur! %s",           \
-                                       get_xpu_error_message(res)));           \
-        dev_ctx.Wait();                                                        \
-        xpu_free(dy_data);                                                     \
-      }                                                                        \
-      if ((len != n || dx == nullptr || dy == nullptr) &&                      \
-          !(dy != nullptr && len != n)) {                                      \
-        dev_ctx.Wait();                                                        \
-      }                                                                        \
-      if (dx == nullptr) {                                                     \
-        xpu_free(dx_data);                                                     \
-      }                                                                        \
-      if (dy == nullptr) {                                                     \
-        xpu_free(dy_data);                                                     \
-      }                                                                        \
-      if (use_x_y_data) {                                                      \
-        if (len != n) {                                                        \
-          xpu_free(y_broadcast);                                               \
-        }                                                                      \
-      }                                                                        \
-    }                                                                          \
-  }
+#include "xpu/refactor/math.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct XPUAddFunctor {
-  int operator()(xpu::Context* ctx, const T* x, const T* y, T* z, int len) {
-    return xpu::elementwise_add(ctx, x, y, z, len);
+static std::pair<std::vector<int>, std::vector<int>> XPUDimsToBroadcastVector(
+    const framework::DDim& x, const framework::DDim& y) {
+  std::vector<int> x_v;
+  std::vector<int> y_v;
+  int y_size = y.size();
+  for (int i = 0; i < y_size; ++i) {
+    if (x[i] == y[i]) {
+      x_v.push_back(y[i]);
+      y_v.push_back(y[i]);
+      continue;
+    }
+    x_v.push_back(1);
+    x_v.push_back(x[i]);
+    y_v.push_back(y[i] / x[i]);
+    y_v.push_back(x[i]);
   }
-};
+  return std::make_pair(x_v, y_v);
+}
+
+static std::pair<std::vector<int>, std::vector<int>> XPUReducesAxisVector(
+    const framework::DDim& x, const framework::DDim& y) {
+  std::vector<int> x_vector;
+  std::vector<int> axis_v;
+  PADDLE_ENFORCE_GT(
+      x.size(), 0, platform::errors::OutOfRange("x size is less 1, x shape is ",
+                                                x.to_str()));
+  PADDLE_ENFORCE_GT(
+      y.size(), 0, platform::errors::OutOfRange("y size is less 1, y shape is ",
+                                                y.to_str()));
+
+  int y_nums = framework::product(y);
+  x_vector = framework::vectorize<int>(x);
+  if (y_nums == 1) {
+    for (int i = 0; i < x.size(); ++i) {
+      axis_v.push_back(i);
+    }
+    return std::make_pair(x_vector, axis_v);
+  }
+  int yidx = 0;
+  for (size_t i = 0; i < x_vector.size(); ++i) {
+    if (yidx >= y.size() || y[yidx] == 1) {
+      axis_v.push_back(i);
+      yidx++;
+      continue;
+    }
+    if (x_vector[i] != y[yidx]) {
+      axis_v.push_back(i);
+      continue;
+    }
+    yidx++;
+  }
+  return std::make_pair(x_vector, axis_v);
+}
 
 template <typename T>
-struct XPUMulFunctor {
-  int operator()(xpu::Context* ctx, const T* x, const T* y, T* z, int len) {
-    return xpu::elementwise_mul(ctx, x, y, z, len);
-  }
-};
-
-template <typename T, typename Functor>
-void XPUElementwise(const framework::ExecutionContext& ctx) {
-  PADDLE_ENFORCE_EQ(platform::is_xpu_place(ctx.GetPlace()), true,
-                    platform::errors::PreconditionNotMet(
-                        "This kernel only runs on XPU device."));
+void XPUElementwise(
+    const framework::ExecutionContext& ctx,
+    std::function<int(xpu::Context*, const T*, const T*, T*, int)> func) {
   auto x_var = ctx.InputVar("X");
   PADDLE_ENFORCE_NE(x_var, nullptr, platform::errors::InvalidArgument(
                                         "Cannot get input Variable X"));
@@ -194,74 +95,228 @@ void XPUElementwise(const framework::ExecutionContext& ctx) {
   auto* y = ctx.Input<framework::LoDTensor>("Y");
   auto* z = ctx.Output<framework::LoDTensor>("Out");
   z->mutable_data<T>(ctx.GetPlace());
-
-  int axis = ctx.Attr<int>("axis");
   auto x_dims = x.dims();
-  auto y_dims_untrimed = y->dims();
-  PADDLE_ENFORCE_GE(x_dims.size(), y_dims_untrimed.size(),
+  auto y_dims = y->dims();
+  int max_dim = std::max(x_dims.size(), y_dims.size());
+  int axis = ctx.Attr<int>("axis");
+  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+
+  PADDLE_ENFORCE_GE(
+      axis, 0,
+      platform::errors::InvalidArgument(
+          "Axis should be great than or equal to 0, but received axis is %d.",
+          axis));
+  PADDLE_ENFORCE_LT(axis, max_dim,
                     platform::errors::InvalidArgument(
-                        "Rank of first input must >= rank of second input."));
-  axis = (axis == -1 ? x_dims.size() - y_dims_untrimed.size() : axis);
-  PADDLE_ENFORCE_EQ(
-      axis >= 0 && axis < x_dims.size(), true,
-      platform::errors::InvalidArgument("Axis should be in range [0, x_dims)"));
-  auto y_dims = trim_trailing_singular_dims(y_dims_untrimed);
-  axis = (y_dims.size() == 0) ? x_dims.size() : axis;
-  int pre, n, post, is_common_broadcast;
-  get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post, &is_common_broadcast);
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim, axis));
 
-  PADDLE_ENFORCE_NE(is_common_broadcast, 1,
-                    platform::errors::Unimplemented(
-                        "X's shape should be equal to Y's shape."));
-
-  int len = pre * n * post;
+  std::vector<int> x_dims_array(max_dim);
+  std::vector<int> y_dims_array(max_dim);
+  std::vector<int> out_dims_array(max_dim);
+  GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
+                         y_dims_array.data(), out_dims_array.data(), max_dim,
+                         axis);
+  framework::DDim out_dim = framework::make_ddim(out_dims_array);
 
   const T* x_data = x.data<T>();
   const T* y_data = y->data<T>();
   T* z_data = z->data<T>();
-  T* y_broadcast = nullptr;
+  bool need_wait = false;
+  framework::Tensor x_broadcast_tensor;
+  framework::Tensor y_broadcast_tensor;
+  auto& dev_ctx =
+      ctx.template device_context<paddle::platform::XPUDeviceContext>();
+  int ret = xpu::SUCCESS;
+  // begin broadcast now
+  if (x.numel() != z->numel()) {
+    // broadcast x
+    std::pair<std::vector<int>, std::vector<int>> bcast_v =
+        XPUDimsToBroadcastVector(framework::make_ddim(x_dims_array), out_dim);
 
+    ret = xpu::broadcast<T>(dev_ctx.x_context(), x_data,
+                            x_broadcast_tensor.mutable_data<T>(
+                                ctx.GetPlace(), z->numel() * sizeof(T)),
+                            bcast_v.first, bcast_v.second);
+    PADDLE_ENFORCE_EQ(
+        ret, xpu::SUCCESS,
+        platform::errors::External(
+            "XPU kernel broadcast occur error in XPUElementwise error code %d",
+            ret));
+    need_wait = true;
+    x_data = x_broadcast_tensor.data<T>();
+  }
+
+  if (y->numel() != z->numel()) {
+    // broadcast y
+    std::vector<int> bcast_x_v;
+    std::vector<int> bcast_y_v;
+    std::pair<std::vector<int>, std::vector<int>> bcast_v =
+        XPUDimsToBroadcastVector(framework::make_ddim(y_dims_array), out_dim);
+    ret = xpu::broadcast<T>(dev_ctx.x_context(), y_data,
+                            y_broadcast_tensor.mutable_data<T>(
+                                ctx.GetPlace(), z->numel() * sizeof(T)),
+                            bcast_v.first, bcast_v.second);
+    PADDLE_ENFORCE_EQ(
+        ret, xpu::SUCCESS,
+        platform::errors::External(
+            "XPU kernel broadcast occur error in XPUElementwise error code %d",
+            ret));
+    need_wait = true;
+    y_data = y_broadcast_tensor.data<T>();
+  }
+  int len = z->numel();
+  ret = func(dev_ctx.x_context(), x_data, y_data, z_data, len);
+  PADDLE_ENFORCE_EQ(
+      ret, xpu::SUCCESS,
+      platform::errors::External(
+          "XPU kernel Elementwise occur error in XPUElementwise error code ",
+          ret));
+
+  if (need_wait && dev_ctx.x_context()->xpu_stream) {
+    dev_ctx.Wait();
+  }
+}
+
+template <typename T>
+void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
+                        std::function<int(xpu::Context*, const T*, const T*,
+                                          const T*, const T*, T*, T*, int len)>
+                            func,
+                        bool use_x_y_data) {
+  auto* x = ctx.Input<framework::Tensor>("X");
+  auto* y = ctx.Input<framework::Tensor>("Y");
+  auto* dz = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+  auto* z = dz;
+  auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+  auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+  int axis = ctx.Attr<int>("axis");
+  const framework::DDim& x_dims = x->dims();
+  const framework::DDim& y_dims = y->dims();
+  int max_dim = std::max(x_dims.size(), y_dims.size());
+  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+  PADDLE_ENFORCE_GE(
+      axis, 0,
+      platform::errors::InvalidArgument(
+          "Axis should be great than or equal to 0, but received axis is %d.",
+          axis));
+  PADDLE_ENFORCE_LT(axis, max_dim,
+                    platform::errors::InvalidArgument(
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim, axis));
+
+  std::vector<int> x_dims_array(max_dim);
+  std::vector<int> y_dims_array(max_dim);
+  std::vector<int> out_dims_array(max_dim);
+  GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
+                         y_dims_array.data(), out_dims_array.data(), max_dim,
+                         axis);
+  framework::DDim out_dim = framework::make_ddim(out_dims_array);
+
+  int len = framework::product(out_dim);
+
+  framework::Tensor x_broadcast_tensor;
+  framework::Tensor y_broadcast_tensor;
+
+  framework::Tensor dx_local_tensor;
+  framework::Tensor dy_local_tensor;
+
+  bool need_wait = false;
+  const T* x_data = use_x_y_data ? x->data<T>() : z->data<T>();
+  const T* y_data = use_x_y_data ? y->data<T>() : z->data<T>();
+
+  const T* z_data = z->data<T>();
+  const T* dz_data = (const T*)dz->data<T>();
+
+  bool dx_need_reduce = (dx != nullptr) && (dx->numel() != len);
+  bool dy_need_reduce = (dy != nullptr) && (dy->numel() != len);
+
+  T* dx_data =
+      ((dx == nullptr) || dx_need_reduce)
+          ? (dx_local_tensor.mutable_data<T>(ctx.GetPlace(), len * sizeof(T)))
+          : (dx->mutable_data<T>(ctx.GetPlace()));
+
+  T* dy_data =
+      ((dy == nullptr) || dy_need_reduce)
+          ? (dy_local_tensor.mutable_data<T>(ctx.GetPlace(), len * sizeof(T)))
+          : (dy->mutable_data<T>(ctx.GetPlace()));
+
+  int ret = xpu::SUCCESS;
   auto& dev_ctx =
       ctx.template device_context<paddle::platform::XPUDeviceContext>();
 
-  if (post == 1) {
-    if (std::is_same<Functor, XPUAddFunctor<T>>::value) {
-      int res = xpu::matrix_vector_add(dev_ctx.x_context(), x_data, y_data,
-                                       z_data, pre, n);
-      PADDLE_ENFORCE_EQ(res, xpu::Error_t::SUCCESS,
-                        platform::errors::External("XPU kernel error occur! %s",
-                                                   get_xpu_error_message(res)));
-      return;
-    }
-    if (std::is_same<Functor, XPUMulFunctor<T>>::value) {
-      int res = xpu::matrix_vector_mul(dev_ctx.x_context(), x_data, y_data,
-                                       z_data, pre, n);
-      PADDLE_ENFORCE_EQ(res, xpu::Error_t::SUCCESS,
-                        platform::errors::External("XPU kernel error occur! %s",
-                                                   get_xpu_error_message(res)));
-      return;
-    }
+  if (use_x_y_data && x->numel() != len) {
+    std::vector<int> bcast_x_v;
+    std::vector<int> bcast_y_v;
+    std::pair<std::vector<int>, std::vector<int>> bcast_v =
+        XPUDimsToBroadcastVector(framework::make_ddim(x_dims_array), out_dim);
+    ret = xpu::broadcast<T>(
+        dev_ctx.x_context(), x_data,
+        x_broadcast_tensor.mutable_data<T>(ctx.GetPlace(), len * sizeof(T)),
+        bcast_v.first, bcast_v.second);
+    PADDLE_ENFORCE_EQ(ret, xpu::SUCCESS,
+                      platform::errors::External(
+                          "XPU kernel broadcast error occur! %d", ret));
+    need_wait = true;
+    x_data = x_broadcast_tensor.data<T>();
   }
 
-  if (pre != 1 || post != 1) {
-    XPU_MALLOC(&y_broadcast, len * sizeof(T));
-    int res = xpu::broadcast_ew(dev_ctx.x_context(), y_data, y_broadcast, pre,
-                                n, post, xpu::ElementwiseOp::ASSIGN);
-    PADDLE_ENFORCE_EQ(res, xpu::Error_t::SUCCESS,
-                      platform::errors::External("XPU kernel error occur! %s",
-                                                 get_xpu_error_message(res)));
-    y_data = y_broadcast;
+  if (use_x_y_data && y->numel() != len) {
+    // broadcast y
+    std::vector<int> bcast_x_v;
+    std::vector<int> bcast_y_v;
+    std::pair<std::vector<int>, std::vector<int>> bcast_v =
+        XPUDimsToBroadcastVector(framework::make_ddim(y_dims_array), out_dim);
+    ret = xpu::broadcast<T>(
+        dev_ctx.x_context(), y_data,
+        y_broadcast_tensor.mutable_data<T>(ctx.GetPlace(), len * sizeof(T)),
+        bcast_v.first, bcast_v.second);
+    PADDLE_ENFORCE_EQ(ret, xpu::SUCCESS,
+                      platform::errors::External(
+                          "XPU kernel broadcast error occur! %d", ret));
+    need_wait = true;
+    y_data = y_broadcast_tensor.data<T>();
   }
 
-  Functor functor;
-  int res = functor(dev_ctx.x_context(), x_data, y_data, z_data, len);
-  PADDLE_ENFORCE_EQ(res, xpu::Error_t::SUCCESS,
-                    platform::errors::External("XPU kernel error occur! %s",
-                                               get_xpu_error_message(res)));
+  ret = func(dev_ctx.x_context(), x_data, y_data, z_data, dz_data, dx_data,
+             dy_data, len);
+  PADDLE_ENFORCE_EQ(ret, xpu::SUCCESS, platform::errors::External(
+                                           "XPU kernel binary occur error in "
+                                           "XPUElementwiseGrad, error code %d",
+                                           ret));
 
-  if (pre != 1 || post != 1) {
+  if (dx_need_reduce) {
+    const framework::DDim& dx_dims = dx->dims();
+    std::pair<std::vector<int>, std::vector<int>> reduce_v =
+        XPUReducesAxisVector(out_dim, dx_dims);
+    ret = xpu::reduce_sum<T>(dev_ctx.x_context(), dx_data,
+                             dx->mutable_data<T>(ctx.GetPlace()),
+                             reduce_v.first, reduce_v.second);
+    PADDLE_ENFORCE_EQ(
+        ret, xpu::SUCCESS,
+        platform::errors::External("XPU kernel reduce_sum occur error in "
+                                   "XPUElementwiseGrad, error code %d",
+                                   ret));
+    need_wait = true;
+  }
+
+  if (dy_need_reduce) {
+    const framework::DDim& dy_dims = dy->dims();
+    std::pair<std::vector<int>, std::vector<int>> reduce_v =
+        XPUReducesAxisVector(out_dim, dy_dims);
+    ret = xpu::reduce_sum<T>(dev_ctx.x_context(), dy_data,
+                             dy->mutable_data<T>(ctx.GetPlace()),
+                             reduce_v.first, reduce_v.second);
+    PADDLE_ENFORCE_EQ(
+        ret, xpu::SUCCESS,
+        platform::errors::External("XPU kernel reduce_sum occur error in "
+                                   "XPUElementwiseGrad, error code %d",
+                                   ret));
+    need_wait = true;
+  }
+
+  if (need_wait && dev_ctx.x_context()->xpu_stream) {
     dev_ctx.Wait();
-    xpu_free(y_broadcast);
   }
 }
 
