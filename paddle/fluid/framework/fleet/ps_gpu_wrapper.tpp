@@ -43,21 +43,18 @@ namespace framework {
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
 
-void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim, std::vector<std::vector<uint64_t>>& keys_vec) {
+void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim, GpuTask* gpu_task) {
   auto fleet_ptr = FleetWrapper::GetInstance();
-  int shard_num = keys_set.size();
+  int shard_num = gpu_task->feature_keys_.size();
   if (shard_num == 0) {
     return;
   }
-  std::vector<std::vector<uint64_t>> keys_vec(shard_num)
   platform::Timer timeline;
-  std::vector<std::vector<char*>> pull_result_ptr(shard_num);
   std::vector<std::thread> threads(shard_num);
-  auto ptl_func = [this, &keys_vec, &pull_result_ptr, &table_id, &fleet_ptr](int i) {
-    size_t key_size = keys_vec[i].size();
-    pull_result_ptr[i].resize(key_size);
+  auto ptl_func = [this, &gpu_task, &table_id, &fleet_ptr](int i) {
+    size_t key_size = gpu_task->feature_keys_[i].size();
     auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse(
-        pull_result_ptr[i].data(), table_id, keys_vec[i].data(), key_size);
+        gpu_task->feature_keys_[i].data(), table_id, gpu_task->feature_values_[i].data(), key_size);
     tt.wait();
     auto status = tt.get();
     if (status != 0) {
@@ -76,13 +73,11 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim, std::vector<st
   for (std::thread& t : threads) {
     t.join();
   }
-  // build GPUPSTask to build PS
-  GpuTask_.reset(new GpuTask());
-  GpuTask_->BuildTask(table_id, keys_vec, pull_result_ptr, GpuTask_);
-  // TODO shard -> device_num
   
-  //GpuPs_->build_ps(table_id, GpuTask_->feature_keys_[0].data(), GpuTask_->feature_values_[0].data(), GpuTask_->size(), 10000, 2);
-  
+  for (int i = 0; i < shard_num; ++i) {
+    std::cout << "building table: " << i << std::endl;
+    GpuPs_->build_ps(i, gpu_task->feature_keys_[i].data(), gpu_task->feature_keys_[i].data(), gpu_task->feature_keys_[i].size(), 10000, 2);
+  }
   
 }
 
