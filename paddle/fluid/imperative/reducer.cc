@@ -31,14 +31,6 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       parallel_ctx_(parallel_ctx),
       group_size_limits_(group_size_limits) {
   VLOG(3) << "Start construct the Reducer ...";
-
-  VLOG(0) << "group_indices: ";
-  for (size_t i = 0; i < group_indices.size(); ++i) {
-    auto indices = group_indices[i];
-    VLOG(0) << "group_indices[" << i << "] ";
-    for (auto index : indices) VLOG(0) << index;
-  }
-
   // initialize groups
   InitializeGroups(group_indices);
   for (size_t global_var_index = 0; global_var_index < vars_.size();
@@ -302,12 +294,9 @@ void Reducer::FinalizeBackward() {
       cudaStreamWaitEvent(compute_stream_, comm_enent_.get(), 0));
   if (!has_rebuilt_group_) {
     auto rebuild_group_index = RebuildGruops();
-    VLOG(0) << "rebuild_group_index: ";
-    for (size_t i = 0; i < rebuild_group_index.size(); ++i) {
-      auto indices = rebuild_group_index[i];
-      VLOG(0) << "rebuild_group_index[" << i << "] ";
-      for (auto index : indices) VLOG(0) << index;
-    }
+    VLOG(3) << "The number of groups changed from [" << group_indices_.size()
+            << "] to [" << rebuild_group_index.size() << "]";
+    group_indices_ = rebuild_group_index;
     CreateGroupEvents(rebuild_group_index.size());
     InitializeGroups(rebuild_group_index);
   }
