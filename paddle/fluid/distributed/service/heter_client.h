@@ -68,7 +68,7 @@ class HeterClient {
                         const std::vector<std::string>& send_var_name,
                         const std::vector<std::string>& recv_var_name);
 
-  // HeterWrapper singleton
+  // HeterClient singleton
   static std::shared_ptr<HeterClient> GetInstance(std::string endpoint) {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::distributed::HeterClient());
@@ -84,6 +84,7 @@ class HeterClient {
   void SetXpuList(const std::vector<std::string>& xpu_list);
 
  private:
+  // atomic<HeterClient*> s_instance_=nullptr;
   static std::shared_ptr<HeterClient> s_instance_;
 
  protected:
