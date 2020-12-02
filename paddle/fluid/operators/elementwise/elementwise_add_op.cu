@@ -78,11 +78,10 @@ static __global__ void SimpleElemwiseAddGradCUDAKernel(const T* dout,
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, plat::CUDADeviceContext>::value>::type
-elementwise_add_grad(const framework::ExecutionContext& ctx,
-                     const framework::Tensor* x, const framework::Tensor* y,
-                     const framework::Tensor* out,
-                     const framework::Tensor* dout, framework::Tensor* dx,
-                     framework::Tensor* dy) {
+ElementwiseAddGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy) {
   dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
   auto size = x->numel();
   dim3 grid_size =
@@ -219,8 +218,7 @@ static void ElemwiseYGradRank1CUDA(const framework::ExecutionContext& ctx,
                                    framework::Tensor* dy) {
   dim3 block_dim(WARPSIZE, std::min(rows, 1024 / WARPSIZE));
   dim3 grid_dim((cols + (WARPSIZE - 1)) / WARPSIZE, 1, 1);
-  if (grid_dim.x < 16)
-    grid_dim.y = std::min((rows + (WARPSIZE - 1)) / WARPSIZE, WARPSIZE);
+
   if (dx) {
     dx->mutable_data<T>(ctx.GetPlace());
     framework::TensorCopy(
@@ -228,13 +226,12 @@ static void ElemwiseYGradRank1CUDA(const framework::ExecutionContext& ctx,
         ctx.template device_context<platform::DeviceContext>(), dx);
   }
   if (dy) {
-    T init_sum = T(0);
     dy->mutable_data<T>(ctx.GetPlace());
     const T* dout_data = dout.data<T>();
     T* dy_data = dy->data<T>();
     auto stream = ctx.template device_context<DeviceContext>().stream();
     ReduceFirstAixsKernel<<<grid_dim, block_dim, 0, stream>>>(
-        dout_data, dy_data, rows, cols, AddFunctor<T>(), init_sum);
+        dout_data, dy_data, rows, cols, AddFunctor<T>(), static_cast<T>(0));
   }
 }
 
@@ -284,13 +281,13 @@ static void ElemwiseYGradRank2CUDA(const framework::ExecutionContext& ctx,
         ctx.template device_context<platform::DeviceContext>(), dx);
   }
   if (dy) {
-    T init_sum = T(0);
     dy->mutable_data<T>(ctx.GetPlace());
     const T* dout_data = dout.data<T>();
     T* dy_data = dy->data<T>();
     auto stream = ctx.template device_context<DeviceContext>().stream();
     ReduceFirstOrSecondAxisKernel<<<num_blocks, num_threads, 0, stream>>>(
-        dout_data, dy_data, planes, rows, cols, AddFunctor<T>(), init_sum);
+        dout_data, dy_data, planes, rows, cols, AddFunctor<T>(),
+        static_cast<T>(0));
   }
 }
 
@@ -308,17 +305,26 @@ static bool ElemwiseGradUseReduce(const framework::ExecutionContext& ctx,
     int rows = std::accumulate(x_dims_vec.begin(), x_dims_vec.end() - 1, 1,
                                std::multiplies<int>());
     int cols = dx->dims()[dx->dims().size() - 1];
-    ElemwiseYGradRank1CUDA<DeviceContext, T>(ctx, dout, rows, cols, dx, dy);
-    return true;
-  } else if (UseReduceFirstAxisRank2(dout.dims(), x_dims, y_dims, axis)) {
+    if (cols > 512 && cols < 4096) {
+      ElemwiseYGradRank1CUDA<DeviceContext, T>(ctx, dout, rows, cols, dx, dy);
+      return true;
+    }
+  }
+
+  if (UseReduceFirstAxisRank2(dout.dims(), x_dims, y_dims, axis)) {
     int rows = std::accumulate(x_dims_vec.begin(), x_dims_vec.end() - 2, 1,
                                std::multiplies<int>());
     int cols =
         dx->dims()[dx->dims().size() - 1] * dx->dims()[dx->dims().size() - 2];
-    ElemwiseYGradRank2CUDA<DeviceContext, T>(ctx, dout, 1, rows, cols, dx, dy);
-    return true;
-  } else if (UseReduceSecondAxisRank2(dout.dims(), x_dims, y_dims, axis, &start,
-                                      &end)) {
+    if (cols > 4096) {
+      ElemwiseYGradRank2CUDA<DeviceContext, T>(ctx, dout, 1, rows, cols, dx,
+                                               dy);
+      return true;
+    }
+  }
+
+  if (UseReduceSecondAxisRank2(dout.dims(), x_dims, y_dims, axis, &start,
+                               &end)) {
     int planes = std::accumulate(x_dims_vec.begin(), x_dims_vec.begin() + start,
                                  1, std::multiplies<int>());
     int rows = std::accumulate(x_dims_vec.begin() + start,
@@ -326,12 +332,14 @@ static bool ElemwiseGradUseReduce(const framework::ExecutionContext& ctx,
                                std::multiplies<int>());
     int cols = std::accumulate(x_dims_vec.begin() + end + 1, x_dims_vec.end(),
                                1, std::multiplies<int>());
-    ElemwiseYGradRank2CUDA<DeviceContext, T>(ctx, dout, planes, rows, cols, dx,
-                                             dy);
-    return true;
-  } else {
-    return false;
+    if (rows / (planes * cols) < 16) {
+      ElemwiseYGradRank2CUDA<DeviceContext, T>(ctx, dout, planes, rows, cols,
+                                               dx, dy);
+      return true;
+    }
   }
+
+  return false;
 }
 
 template <typename T>
@@ -366,8 +374,8 @@ class ElementwiseAddGradKernel<platform::CUDADeviceContext, T>
           *dout, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), dy);
     } else if (dx && dy && (dx->dims() == dy->dims())) {
-      elementwise_add_grad<platform::CUDADeviceContext, T>(ctx, x, y, out, dout,
-                                                           dx, dy);
+      ElementwiseAddGrad<platform::CUDADeviceContext, T>(ctx, x, y, out, dout,
+                                                         dx, dy);
     } else if (dx && dx->dims() == dout->dims() &&
                ElemwiseGradUseReduce<platform::CUDADeviceContext, T>(
                    ctx, axis, x->dims(), y->dims(), *dout, dx, dy)) {
@@ -375,8 +383,8 @@ class ElementwiseAddGradKernel<platform::CUDADeviceContext, T>
                ElemwiseGradUseReduce<platform::CUDADeviceContext, T>(
                    ctx, axis, x->dims(), y->dims(), *dout, dy, dx)) {
     } else {
-      default_elementwise_add_grad<platform::CUDADeviceContext, T>(
-          ctx, x, y, out, dout, dx, dy);
+      DefaultElementwiseAddGrad<platform::CUDADeviceContext, T>(ctx, x, y, out,
+                                                                dout, dx, dy);
     }
   }
 };
