@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include "paddle/fluid/framework/fleet/gpu_task.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
@@ -62,21 +63,18 @@ void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
   VLOG(3) << "PSGPUTrainer::BuildGPUPSTask begin";
   int shard_num = dataset->multi_output_channel_.size();
   auto gpu_ps_wrapper = PSGPUWrapper::GetInstance();
-  std::vector<std::vector<uint64_t>> local_feature_keys(shard_num);
-  std::vector<std::unordered_map<uint64_t, std::vector<float>>> local_map_tables;
-  local_map_tables.resize(shard_num);
+  std::vector<std::unordered_set<uint64_t>> local_keys_set(shard_num);
   // read thread
   std::vector<std::thread> threads(shard_num);
   dataset->consume_task_pool_.resize(shard_num);
   for (size_t i = 0; i < consume_task_pool_.size(); i++) {
     consume_task_pool_[i].reset(new ::ThreadPool(1));
   }
-  auto consume_func = [&local_map_tables](int shard_id, int feadim,
+  auto consume_func = [&local_keys_set](int shard_id, int feadim,
                                           std::vector<uint64_t>& keys) {
     for (auto k : keys) {
-      if (local_map_tables[shard_id].find(k) ==
-          local_map_tables[shard_id].end()) {
-        local_map_tables[shard_id][k] = std::vector<float>(feadim, 0);
+      if (local_keys_set.find(k) == local_keys_set.end()) {
+        local_keys_set.insert(k);
       }
     }
   };
@@ -87,10 +85,10 @@ void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
     for (size_t i = 0; i < dataset->multi_output_channel_.size(); i++) {
       int cur_channel_size = multi_output_channel_[i]->Size();
       output_channels_data_size += cur_channel_size;
-      local_feature_keys.reserve(cur_channel_size);
+      local_keys.reserve(cur_channel_size);
     }
     CHECK(output_channels_data_size > 0);
-    auto gen_func = [&dataset, &shard_num, &feadim, &local_map_tables,
+    auto gen_func = [&dataset, &shard_num, &feadim,
                    &consume_func](int i) {
       std::vector<Record> vec_data;
       std::vector<std::vector<uint64_t>> task_keys(shard_num);
@@ -132,7 +130,7 @@ void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
     std::vector<Record> vec_data;
     dataset->input_channel_->Close();
     dataset->input_channel_->ReadAll(vec_data);
-    auto gen_func = [&dataset, &vec_data, &shard_num, &input_channel_size, &feadim, &local_map_tables,
+    auto gen_func = [&dataset, &vec_data, &shard_num, &input_channel_size, &feadim,
                    &consume_func](int i) {
       std::vector<std::vector<uint64_t>> task_keys(shard_num);
       std::vector<std::future<void>> task_futures;
@@ -175,7 +173,17 @@ void PSGPUTrainer::BuildGPUPSTask(Dataset* dataset, int table_id, int feadim) {
     dataset->consume_task_pool_[i].reset();
   }
   dataset->consume_task_pool_.clear();
-  gpu_ps_wrapper->BuildGPUPS(table_id, feadim);
+  std::vector<GpuTask*> gpu_tasks(shard_num);
+  
+  std::vector<std::vector<uint64_t>> keys_vec(shaed_num);
+  for (int i = 0; i < shard_num; i++) {
+    keys_vec[i].assign(local_keys_set[i].begin(), local_keys_set[i].end());
+  }
+  for (int i = 0; i < shard_num, i++) {
+    local_keys_set[i].clear();
+  }
+  local_keys_set.clear();
+  gpu_ps_wrapper->BuildGPUPS(table_id, feadim, keys_vec, gpu_tasks);
 }
 
 Scope* PSGPUTrainer::GetWorkerScope(int thread_id) { return nullptr; }
