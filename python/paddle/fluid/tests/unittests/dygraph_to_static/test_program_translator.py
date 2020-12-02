@@ -63,7 +63,7 @@ def get_source_code(func):
 
 class StaticCode1():
     def dyfunc_with_if_else(x_v, label=None):
-         __return_value_init_0 = paddle.fluid.layers.fill_constant(
+        __return_value_init_0 = paddle.fluid.layers.fill_constant(
             shape=[1], dtype='float64', value=0.0)
         __return_value_0 = __return_value_init_0
 
