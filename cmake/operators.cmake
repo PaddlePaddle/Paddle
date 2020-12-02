@@ -1,3 +1,4 @@
+# CMake file `unity_build` is used to handle Unity Build compilation.
 include(unity_build)
 set(PART_CUDA_KERNEL_FILES)
 function(op_library TARGET)
@@ -16,6 +17,7 @@ function(op_library TARGET)
     set(mkldnn_cc_srcs)
     set(MKLDNN_FILE)
     set(op_common_deps operator op_registry math_function layer common_infer_shape_functions)
+    # Option `UNITY` is used to specify that operator `TARGET` will compiles with Unity Build.
     set(options UNITY)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
@@ -107,7 +109,9 @@ function(op_library TARGET)
     endforeach()
     endif(WIN32)
 
+    # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
     if(WITH_UNITY_BUILD AND op_library_UNITY)
+        # Generate the unity target name by the directory where source files located.
         string(REPLACE "${PADDLE_SOURCE_DIR}/paddle/fluid/" "" UNITY_TARGET ${CMAKE_CURRENT_SOURCE_DIR})
         string(REPLACE "/" "_" UNITY_TARGET ${UNITY_TARGET})
         set(UNITY_TARGET "paddle_${UNITY_TARGET}_unity")
@@ -123,14 +127,19 @@ function(op_library TARGET)
         set(DEPS_OPS ${TARGET} ${DEPS_OPS} PARENT_SCOPE)
     endif()
     if (WITH_GPU)
+        # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
         if(WITH_UNITY_BUILD AND op_library_UNITY)
+            # Combine the cc and cu source files.
             compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${mkldnn_cc_srcs})
             compose_unity_target_sources(${UNITY_TARGET} cu ${cudnn_cu_srcs} ${cu_srcs})
             if(TARGET ${UNITY_TARGET})
+                # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
                 target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources} ${unity_target_cu_sources})
             else()
+                # If `UNITY_TARGET` does not exist, create `UNITY_TARGET` with source files.
                 nv_library(${UNITY_TARGET} SRCS ${unity_target_cc_sources} ${unity_target_cu_sources} DEPS ${op_library_DEPS} ${op_common_deps})
             endif()
+            # Add alias library to handle dependencies.
             add_library(${TARGET} ALIAS ${UNITY_TARGET})
         else()
             nv_library(${TARGET} SRCS ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${cudnn_cu_srcs} ${mkldnn_cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
@@ -140,13 +149,18 @@ function(op_library TARGET)
         hip_library(${TARGET} SRCS ${cc_srcs} ${hip_cu_srcs} ${miopen_hip_cc_srcs} ${mkldnn_cc_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
     else()
+        # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
         if(WITH_UNITY_BUILD AND op_library_UNITY)
+            # Combine the cc source files.
             compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs})
             if(TARGET ${UNITY_TARGET})
+                # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
                 target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources})
             else()
+                # If `UNITY_TARGET` does not exist, create `UNITY_TARGET` with source files.
                 cc_library(${UNITY_TARGET} SRCS ${unity_target_cc_sources} DEPS ${op_library_DEPS} ${op_common_deps})
             endif()
+            # Add alias library to handle dependencies.
             add_library(${TARGET} ALIAS ${UNITY_TARGET})
         else()
             cc_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} DEPS ${op_library_DEPS}
@@ -295,6 +309,7 @@ function(register_operators)
         endif()
     endforeach()
 
+    # Complete the processing of `UNITY_TARGET`.
     if(WITH_UNITY_BUILD)
         finish_unity_target(cc)
         if(WITH_GPU)

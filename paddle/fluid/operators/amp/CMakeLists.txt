@@ -1,8 +1,6 @@
 include(operators)
 if(WITH_UNITY_BUILD)
-    register_unity_group(cc check_finite_and_unscale_op.cc update_loss_scaling_op.cc)
-    if(WITH_UNITY_BUILD)
-        register_unity_group(cu check_finite_and_unscale_op.cu update_loss_scaling_op.cu)
-    endif()
+    # Load Unity Build rules for operators in paddle/fluid/operators/amp.
+    include(unity_build_rule.cmake)
 endif()
 register_operators()

@@ -1,3 +1,4 @@
+# Add the following code before all include to avoid compilation failure.
 set(UNITY_BEFORE_CODE [[
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -6,6 +7,10 @@ set(UNITY_BEFORE_CODE [[
 #define _USE_MATH_DEFINES
 #endif]])
 
+# Group a list of source files that can be included together.
+# This combination is just a guiding rule, and the source file of group
+# do not have to exist.
+# Here you need to specify the source type which belongs to cc or cu.
 function(register_unity_group TYPE)
     # Get UNITY_TARGET from CMAKE_CURRENT_SOURCE_DIR.
     string(REPLACE "${PADDLE_SOURCE_DIR}/paddle/fluid/" "" UNITY_TARGET ${CMAKE_CURRENT_SOURCE_DIR})
@@ -29,6 +34,8 @@ function(register_unity_group TYPE)
         set_property(GLOBAL APPEND PROPERTY ${unity_group_sources} ${src})
     endforeach()
 
+    # If unity_file does not exists, nv_library or cc_library will use
+    # dummy_file. Touch unity_file to avoid to use dummy file.
     set(unity_file ${CMAKE_CURRENT_BINARY_DIR}/${UNITY_TARGET}_${unity_group_index}_${TYPE}.${TYPE})
     if(NOT EXISTS ${unity_file})
         file(TOUCH ${unity_file})
@@ -38,18 +45,32 @@ function(register_unity_group TYPE)
     set_property(GLOBAL PROPERTY ${UNITY_TARGET}_${TYPE}_group_index ${unity_group_index})
 endfunction(register_unity_group)
 
+# Combine the original source files used by `TARGET`, then use
+# `unity_target_${TYPE}_sources` to get the combined source files.
+# If the source file does not hit any registed groups, use itself.
+# This function put the actual combination relationship in variables instead of
+# writing the unity source file. The reason is that writing unity source file
+# will change the timestampe and affect the effect of retaining the build
+# directory on Windows.
+# Here you need to specify the source type which belongs to cc or cu.
 function(compose_unity_target_sources TARGET TYPE)
     # Variable unity_target_sources represents the source file used in TARGET
     set(unity_target_sources "")
     get_property(unity_group_index_max GLOBAL PROPERTY ${TARGET}_${TYPE}_group_index)
     foreach(src ${ARGN})
         set(unity_file "")
+        # UB use absolute path of source.
         if(IS_ABSOLUTE ${src})
             set(src_absolute_path ${src})
         else()
             set(src_absolute_path ${CMAKE_CURRENT_SOURCE_DIR}/${src})
         endif()
+        # If `unity_group_index_max` is empty, there is no combination
+        # relationship.
+        # TODO(Avin0323): Whether use target property `UNITY_BUILD` of CMAKE to
+        # combine source files.
         if(NOT "${unity_group_index_max}" STREQUAL "")
+            # Search in each registed group.
             foreach(unity_group_index RANGE ${unity_group_index_max})
                 if(${unity_group_index} GREATER_EQUAL ${unity_group_index_max})
                     break()
@@ -60,6 +81,7 @@ function(compose_unity_target_sources TARGET TYPE)
                     set(unity_file_sources ${TARGET}_${TYPE}_file_${unity_group_index}_sources)
                     get_property(set_unity_file_sources GLOBAL PROPERTY ${unity_file_sources} SET)
                     if(NOT ${set_unity_file_sources})
+                        # Add macro before include source files.
                         set_property(GLOBAL PROPERTY ${unity_file_sources} "// Generate by Unity Build")
                         set_property(GLOBAL APPEND PROPERTY ${unity_file_sources} ${UNITY_BEFORE_CODE})
                     endif()
@@ -69,6 +91,7 @@ function(compose_unity_target_sources TARGET TYPE)
                 endif()
             endforeach()
         endif()
+        # Use original source file.
         if("${unity_file}" STREQUAL "")
             set(unity_target_sources ${unity_target_sources} ${src})
         endif()
@@ -77,6 +100,9 @@ function(compose_unity_target_sources TARGET TYPE)
     set(unity_target_${TYPE}_sources ${unity_target_sources} PARENT_SCOPE)
 endfunction(compose_unity_target_sources)
 
+# Write the unity files used by `UNITY_TARGET`.
+# Write dependent on whether the contents of the unity file have changed, which
+# protects incremental compilation speed.
 function(finish_unity_target TYPE)
     # Get UNITY_TARGET from CMAKE_CURRENT_SOURCE_DIR.
     string(REPLACE "${PADDLE_SOURCE_DIR}/paddle/fluid/" "" UNITY_TARGET ${CMAKE_CURRENT_SOURCE_DIR})

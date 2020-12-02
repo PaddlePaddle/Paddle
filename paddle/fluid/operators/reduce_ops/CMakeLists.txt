@@ -1,9 +1,7 @@
 include(operators)
 if(WITH_UNITY_BUILD)
-    register_unity_group(cc reduce_all_op.cc reduce_any_op.cc reduce_prod_op.cc reduce_sum_op.cc)
-    if(WITH_GPU)
-        register_unity_group(cu reduce_all_op.cu reduce_any_op.cu reduce_prod_op.cu reduce_prod_op.part.cu reduce_sum_op.cu reduce_sum_op.part.cu)
-    endif()
+    # Load Unity Build rules for operators in paddle/fluid/operators/reduce_ops.
+    include(unity_build_rule.cmake)
 endif()
 if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
