@@ -177,6 +177,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
     // deleted_pass.
     auto all_passes = kTRTSubgraphPasses;
     auto other_passes = other.pass_builder()->AllPasses();
+    // We should sort them, because the user may call the SwitchIrDebug
+    // interface, which will change the pass.
+    std::sort(all_passes.begin(), all_passes.end());
+    std::sort(other_passes.begin(), other_passes.end());
     std::vector<std::string> deleted_passes;
     std::set_difference(all_passes.begin(), all_passes.end(),
                         other_passes.begin(), other_passes.end(),
