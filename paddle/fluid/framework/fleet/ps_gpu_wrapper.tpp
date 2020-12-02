@@ -53,8 +53,8 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim, GpuTask* gpu_t
   std::vector<std::thread> threads(shard_num);
   auto ptl_func = [this, &gpu_task, &table_id, &fleet_ptr](int i) {
     size_t key_size = gpu_task->feature_keys_[i].size();
-    auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse(
-        gpu_task->feature_keys_[i].data(), table_id, gpu_task->feature_values_[i].data(), key_size);
+    auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
+        gpu_task->feature_keys_[i].data(), table_id, (char**)(gpu_task->feature_values_[i].data()), key_size);
     tt.wait();
     auto status = tt.get();
     if (status != 0) {

@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "downpour_sparse_table.h"
 #include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -30,7 +31,7 @@ class GpuTask {
  public:
   Scope* scope_{nullptr};
   std::vector<std::vector<FeatureKey>> feature_keys_;
-  std::vector<std::vector<FeatureValue>> feature_values_;
+  std::vector<std::vector<DownpourFixedFeatureValue*>> feature_values_;
   void BuildTask(int table_id, std::vector<std::unordered_map<uint64_t, std::vector<float>>>& table_map) {
     feature_keys_.resize(1);
     feature_values_.resize(1);
