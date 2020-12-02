@@ -133,10 +133,11 @@ def monkey_patch_varbase():
     @framework.dygraph_only
     def backward(self, retain_graph=False):
         """
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
-
         Run backward of current Graph which starts from current Tensor.
+
+        The new gradient will accumulat on previous gradient.
+
+        You can clear gradient by ``Tensor.clear_grad()`` .
 
         Args:
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
@@ -150,21 +151,20 @@ def monkey_patch_varbase():
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle
-                paddle.disable_static()
+                x = paddle.to_tensor(5., stop_gradient=False)
+                for i in range(5):
+                    y = paddle.pow(x, 4.0)
+                    y.backward()
+                    print("{}: {}".format(i, x.grad))
+                # 0: [500.]
+                # 1: [1000.]
+                # 2: [1500.]
+                # 3: [2000.]
+                # 4: [2500.]
 
-                x = np.ones([2, 2], np.float32)
-                inputs = []
-                for _ in range(10):
-                    tmp = paddle.to_tensor(x)
-                    # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
-                    # there is no one need gradient on it.
-                    tmp.stop_gradient=False
-                    inputs.append(tmp)
-                ret = paddle.add_n(inputs)
-                loss = paddle.sum(ret)
-                loss.backward()
+                x.clear_grad()
+                print("{}".format(x.grad))
+                # 0.
 
         """
         if framework.in_dygraph_mode():
@@ -181,31 +181,21 @@ def monkey_patch_varbase():
     @framework.dygraph_only
     def gradient(self):
         """
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
-
-        Get the Gradient of Current Variable
+        Get the Gradient of Current Tensor.
 
         Returns:
-            ndarray: Numpy value of the gradient of current Variable
+            ndarray: Numpy value of the gradient of current Tensor
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                import numpy as np
+                import paddle
 
-                x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    inputs2 = []
-                    for _ in range(10):
-                        tmp = fluid.dygraph.base.to_variable(x)
-                        tmp.stop_gradient=False
-                        inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    loss2.backward()
-                    print(loss2.gradient())
+                x = paddle.to_tensor(5., stop_gradient=False)
+                y = paddle.pow(x, 4.0)
+                y.backward()
+                print("grad of x: {}".format(x.grad))
+                # [500.]
 
         """
         if self._grad_ivar() is None:
@@ -225,6 +215,33 @@ def monkey_patch_varbase():
         """
 
         return self.gradient()
+
+    def clear_grad(self):
+        """
+        The alias of clear_gradient().
+        """
+        self.clear_gradient()
+
+    @property
+    def inplace_version(self):
+        """
+        The inplace version of current Tensor.
+        The version number is incremented whenever the current Tensor is modified through an inplace operation.
+
+        **Notes: This is a read-only property**
+
+        Examples:
+          .. code-block:: python
+
+            import paddle
+            var = paddle.ones(shape=[4, 2, 3], dtype="float32")
+            print(var.inplace_version)  # 0
+
+            var[1] = 2.2
+            print(var.inplace_version)  # 1
+
+        """
+        return self._inplace_version()
 
     def __str__(self):
         """
@@ -263,7 +280,8 @@ def monkey_patch_varbase():
     for method_name, method in (
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
-        ("block", block), ("backward", backward), ("grad", grad),
+        ("block", block), ("backward", backward), ("clear_grad", clear_grad),
+        ("inplace_version", inplace_version), ("grad", grad),
         ("gradient", gradient), ("__str__", __str__), ("__repr__", __str__),
         ("__module__", "paddle"), ("__name__", "Tensor")):
         setattr(core.VarBase, method_name, method)

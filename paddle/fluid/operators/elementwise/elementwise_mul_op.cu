@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
@@ -100,19 +102,26 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int64_t>,
-    ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::float16>);
+    ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex64>,
+    ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mul_grad,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, float>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int64_t>,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::float16>);
+    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::complex64>,
+    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mul_grad_grad,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, float>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
-                                        plat::float16>);
+                                        plat::complex64>,
+    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
+                                        plat::complex128>);
