@@ -22,8 +22,8 @@ import paddle.fluid.dygraph as dg
 class TestComplexMatMulLayer(unittest.TestCase):
     def setUp(self):
         self._places = [fluid.CPUPlace()]
-        # if fluid.core.is_compiled_with_cuda():
-        #     self._places.append(fluid.CUDAPlace(0))
+        if fluid.core.is_compiled_with_cuda():
+            self._places.append(fluid.CUDAPlace(0))
 
     def compare_by_complex_api(self, x, y, np_result):
         for place in self._places:
@@ -32,11 +32,11 @@ class TestComplexMatMulLayer(unittest.TestCase):
                 y_var = dg.to_variable(y)
                 result = paddle.complex.matmul(x_var, y_var)
                 pd_result = result.numpy()
-            self.assertTrue(
-                np.allclose(pd_result, np_result),
-                "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
-                format(place, pd_result[~np.isclose(pd_result, np_result)],
-                       np_result[~np.isclose(pd_result, np_result)]))
+                self.assertTrue(
+                    np.allclose(pd_result, np_result),
+                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
+                    format(place, pd_result[~np.isclose(pd_result, np_result)],
+                           np_result[~np.isclose(pd_result, np_result)]))
 
     def compare_by_basic_api(self, x, y, np_result):
         for place in self._places:
@@ -55,11 +55,11 @@ class TestComplexMatMulLayer(unittest.TestCase):
                     name='')
                 result = paddle.matmul(x_var, y_var)
                 pd_result = result.numpy()
-            self.assertTrue(
-                np.allclose(pd_result, np_result),
-                "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
-                format(place, pd_result[~np.isclose(pd_result, np_result)],
-                       np_result[~np.isclose(pd_result, np_result)]))
+                self.assertTrue(
+                    np.allclose(pd_result, np_result),
+                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
+                    format(place, pd_result[~np.isclose(pd_result, np_result)],
+                           np_result[~np.isclose(pd_result, np_result)]))
 
     def compare_op_by_complex_api(self, x, y, np_result):
         for place in self._places:
@@ -68,11 +68,11 @@ class TestComplexMatMulLayer(unittest.TestCase):
                 y_var = dg.to_variable(y)
                 result = x_var.matmul(y_var)
                 pd_result = result.numpy()
-            self.assertTrue(
-                np.allclose(pd_result, np_result),
-                "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
-                format(place, pd_result[~np.isclose(pd_result, np_result)],
-                       np_result[~np.isclose(pd_result, np_result)]))
+                self.assertTrue(
+                    np.allclose(pd_result, np_result),
+                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
+                    format(place, pd_result[~np.isclose(pd_result, np_result)],
+                           np_result[~np.isclose(pd_result, np_result)]))
 
     def compare_op_by_basic_api(self, x, y, np_result):
         for place in self._places:
@@ -91,11 +91,11 @@ class TestComplexMatMulLayer(unittest.TestCase):
                     name='')
                 result = x_var.matmul(y_var)
                 pd_result = result.numpy()
-            self.assertTrue(
-                np.allclose(pd_result, np_result),
-                "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
-                format(place, pd_result[~np.isclose(pd_result, np_result)],
-                       np_result[~np.isclose(pd_result, np_result)]))
+                self.assertTrue(
+                    np.allclose(pd_result, np_result),
+                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
+                    format(place, pd_result[~np.isclose(pd_result, np_result)],
+                           np_result[~np.isclose(pd_result, np_result)]))
 
     def test_complex64_xy(self):
         x = np.random.random(
@@ -140,6 +140,7 @@ class TestComplexMatMulLayer(unittest.TestCase):
 
         # float32 -> complex64 type promotion
         self.compare_by_basic_api(x, y, np_result)
+        self.compare_op_by_basic_api(x, y, np_result)
 
     def test_complex128_xy(self):
         x = np.random.random(

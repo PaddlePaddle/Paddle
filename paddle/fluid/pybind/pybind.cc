@@ -514,6 +514,8 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
 
+  m.def("_promote_types", &paddle::framework::PromoteTypes);
+
   BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
