@@ -23,8 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"

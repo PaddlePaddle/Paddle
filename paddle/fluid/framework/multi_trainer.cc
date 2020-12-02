@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
 
 namespace paddle {
 namespace framework {

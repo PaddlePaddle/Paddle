@@ -21,7 +21,6 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/pscore/heter_listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -155,9 +154,11 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   auto &dev_ctx = *pool.Get(dev_place);
   VLOG(1) << "HeterListenAndServOp::RunImpl On gpu? "
           << platform::is_gpu_place(dev_place);
-  VLOG(1) << "HeterListenAndServOp::RunImpl Scope " << (void *)&scope;
+  VLOG(1) << "HeterListenAndServOp::RunImpl Scope "
+          << reinterpret_cast<void *>(&scope);
   framework::Scope &recv_scope = scope.NewScope();
-  VLOG(1) << "HeterListenAndServOp::RunImpl Recv_Scope " << (void *)&recv_scope;
+  VLOG(1) << "HeterListenAndServOp::RunImpl Recv_Scope "
+          << reinterpret_cast<void *>(&recv_scope);
 
   auto pserver_id = Attr<int>("pserver_id");
   auto inputs = Inputs("X");

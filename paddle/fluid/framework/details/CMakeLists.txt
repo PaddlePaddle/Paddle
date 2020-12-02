@@ -36,7 +36,7 @@ if(WITH_GPU)
 
     if(WITH_DISTRIBUTE)
         nv_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
-            ddim dynload_cuda selected_rows_functor sendrecvop_rpc)
+            ddim dynload_cuda selected_rows_functor)
     else()
         nv_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
             ddim dynload_cuda selected_rows_functor)
@@ -52,7 +52,7 @@ else()
             variable_visitor place device_memory_aligment)
     if(WITH_DISTRIBUTE)
         cc_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
-            ddim selected_rows_functor sendrecvop_rpc)
+            ddim selected_rows_functor)
     else()
         cc_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
             ddim selected_rows_functor)

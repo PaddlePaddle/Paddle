@@ -34,7 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_MKLDNN
