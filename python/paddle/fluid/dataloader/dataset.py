@@ -19,7 +19,7 @@ import paddle.dataset.common
 
 __all__ = [
     "Dataset", "IterableDataset", "TensorDataset", "ComposeDataset",
-    "ChainDataset"
+    "ChainDataset", "random_split", "Subset"
 ]
 
 
@@ -405,3 +405,110 @@ class ChainDataset(IterableDataset):
         for dataset in self.datasets:
             for sample in dataset:
                 yield sample
+
+
+class Subset(Dataset):
+    """
+    Subset of a dataset at specified indices.
+    
+    Args:
+        dataset (Dataset): The whole Dataset
+        indices (sequence): Indices in the whole set selected for subset
+    """
+
+    def __init__(self, dataset, indices):
+        self.dataset = dataset
+        self.indices = indices
+
+    def __getitem__(self, idx):
+        return self.dataset[self.indices[idx]]
+
+    def __len__(self):
+        return len(self.indices)
+
+
+def random_split(dataset, lengths, generator=None):
+    """
+
+    Randomly split a dataset into non-overlapping new datasets of given lengths.
+    Optionally fix the generator for reproducible results, e.g.:
+
+    Args:
+        dataset (Dataset): Dataset to be split
+        lengths (sequence): lengths of splits to be produced
+        generator (Generator): Generator used for the random permutation.
+
+    Example code:
+
+        import paddle
+        import numpy as np
+        from paddle.io import random_split
+
+        a_list = paddle.io.random_split(range(10), [3, 7])
+        # [<paddle.fluid.dataloader.dataset.Subset object at 0x7fafd73dcba8>, <paddle.fluid.dataloader.dataset.Subset object at 0x7fafbffd0940>]
+
+        a_list = paddle.fluid.dataloader.dataset.random_split(range(10), [3, 7])
+        print(len(a_list)) 
+        # 2
+
+        for idx, v in enumerate(a_list[0]):
+            print(idx, v)
+
+        # output of the first subset
+        # 0 1
+        # 1 3
+        # 2 9
+
+        for idx, v in enumerate(a_list[1]):
+            print(idx, v)
+        
+        # output of the second subset
+        # 0 5
+        # 1 7
+        # 2 8
+        # 3 6
+        # 4 0
+        # 5 2
+        # 6 4
+
+    """
+    # Cannot verify that dataset is Sized
+    if sum(lengths) != len(dataset):  # type: ignore
+        raise ValueError(
+            "Sum of input lengths does not equal the length of the input dataset!"
+        )
+
+    indices = paddle.randperm(sum(lengths)).numpy().tolist()
+    return [
+        Subset(dataset, indices[offset - length:offset])
+        for offset, length in zip(_accumulate(lengths), lengths)
+    ]
+
+
+# Taken from python 3.5 docs
+def _accumulate(iterable, fn=lambda x, y: x + y):
+    """
+    Return running totals
+    
+    Args:
+        iterable: any iterable object for example dataset.
+        y (x): one element in the iterable object.
+        fn (x, y): Defaults to lambdax.
+
+    Yields:
+        [offset]: index offset.
+
+    Example code:
+        _accumulate([1,2,3,4,5]) --> 1 3 6 10 15
+        _accumulate([1,2,3,4,5], operator.mul) --> 1 2 6 24 120
+    """
+
+    it = iter(iterable)
+    try:
+        total = next(it)
+    except StopIteration:
+        return
+    yield total
+    for element in it:
+        total = fn(total, element)
+        yield total
