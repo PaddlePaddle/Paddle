@@ -44,7 +44,7 @@ function make_centos_dockerfile(){
   sed -i "${dockerfile_line}i RUN ln -s /usr/lib64/libz.so /usr/local/lib/libz.so \\
     RUN ln -s /usr/local/lib/libnccl.so /usr/local/cuda/lib64/ \\
     RUN rm -rf /usr/include/NvInfer*" ${dockerfile_name}
-  sed -i $"${dockerfile_line}i RUN wget --no-check-certificate -q  https://paddle-edl.cdn.bcebos.com/hadoop-2.7.7.tar.gz \\
+  sed -i $"${dockerfile_line}i RUN wget --no-check-certificate -q  https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \\
     RUN tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
   sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" ${dockerfile_name}
 }
