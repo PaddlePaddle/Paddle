@@ -218,7 +218,7 @@ class TestNotToConvert(TestRecursiveCall2):
     def set_func(self):
         self.dygraph_func = func_not_to_static
 
-    def test_CONVERSION_OPTIONS(self):
+    def test_conversion_options(self):
         options = getattr(self.dygraph_func, CONVERSION_OPTIONS, None)
         self.assertIsNotNone(options)
         self.assertTrue(options.not_convert)

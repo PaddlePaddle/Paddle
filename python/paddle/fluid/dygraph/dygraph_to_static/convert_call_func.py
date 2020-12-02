@@ -33,7 +33,7 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
 from paddle.fluid.dygraph.layers import Layer
 
-__all__ = ["convert_call", "not_to_static"]
+__all__ = ["convert_call"]
 
 # TODO(liym27): A better way to do this.
 BUILTIN_LIKELY_MODULES = [
@@ -57,46 +57,6 @@ class ConversionOptions(object):
 
     def __init__(self, not_convert=False):
         self.not_convert = not_convert
-
-
-def not_to_static(func=None):
-    """
-    A Decorator to suppresses the convertion of a function.
-
-    Args:
-        func(callable): The function to decorate.
-
-    Returns:
-        callable: A function which won't be converted in Dynamic-to-Static.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            @paddle.jit.not_to_static
-            def func_not_to_static(x):
-                res = x - 1
-                return res
-
-            @paddle.jit.to_static
-            def func(x):
-                if paddle.mean(x) < 0:
-                    x_v = func_not_to_static(x)
-                else:
-                    x_v = x + 1
-                return x_v
-
-            x = paddle.ones([1, 2], dtype='float32')
-            x_v = func(x)
-            print(x_v) # [[2. 2.]]
-    """
-    if func is None:
-        return not_to_static
-
-    options = ConversionOptions(not_convert=True)
-    setattr(func, CONVERSION_OPTIONS, options)
-    return func
 
 
 def is_builtin(func):

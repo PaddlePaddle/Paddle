@@ -28,6 +28,7 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
+from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import ConversionOptions, CONVERSION_OPTIONS
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticFunction, unwrap_decorators
 from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
@@ -37,7 +38,6 @@ from paddle.fluid.framework import Block, ParamBase, Program, Variable
 from paddle.fluid.framework import _current_expected_place, _dygraph_guard, _dygraph_tracer
 from paddle.fluid.framework import dygraph_only, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import not_to_static
 
 __all__ = [
     'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
@@ -224,6 +224,46 @@ def declarative(function=None, input_spec=None):
 
     # for usage: `@declarative`
     return decorated
+
+
+def not_to_static(func=None):
+    """
+    A Decorator to suppresses the convertion of a function.
+
+    Args:
+        func(callable): The function to decorate.
+
+    Returns:
+        callable: A function which won't be converted in Dynamic-to-Static.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            @paddle.jit.not_to_static
+            def func_not_to_static(x):
+                res = x - 1
+                return res
+
+            @paddle.jit.to_static
+            def func(x):
+                if paddle.mean(x) < 0:
+                    out = func_not_to_static(x)
+                else:
+                    out = x + 1
+                return out
+
+            x = paddle.ones([1, 2], dtype='float32')
+            out = func(x)
+            print(out) # [[2. 2.]]
+    """
+    if func is None:
+        return not_to_static
+
+    options = ConversionOptions(not_convert=True)
+    setattr(func, CONVERSION_OPTIONS, options)
+    return func
 
 
 class _SaveLoadConfig(object):
