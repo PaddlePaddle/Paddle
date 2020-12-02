@@ -632,6 +632,7 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32 AND NOT APPLE)
+    set_tests_properties(test_imperative_signal_handler PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     # set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
