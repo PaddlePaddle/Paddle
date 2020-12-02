@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from .optimizer import Optimizer
-from ..fluid import core
+from ..fluid import core, layers
 from ..fluid import framework
 from ..fluid.framework import Variable
+from ..fluid.regularizer import append_regularization_ops
+from ..fluid.clip import append_gradient_clip_ops
 
 __all__ = ["Lamb"]
 
@@ -92,6 +94,7 @@ class Lamb(Optimizer):
                  epsilon=1e-6,
                  parameters=None,
                  grad_clip=None,
+                 exclude_from_weight_decay_fn=None,
                  name=None):
         assert learning_rate is not None
         assert beta1 is not None
@@ -108,6 +111,7 @@ class Lamb(Optimizer):
         self._beta2 = beta2
         self._epsilon = epsilon
         self._lamb_weight_decay = lamb_weight_decay
+        self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -144,7 +148,8 @@ class Lamb(Optimizer):
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
 
-        if param_and_grad[0].need_clip:
+        if self._exclude_from_weight_decay_fn is not None \
+            and self._exclude_from_weight_decay_fn(param_and_grad[0]):
             weight_decay = 0.0
         else:
             weight_decay = self._lamb_weight_decay
@@ -164,7 +169,9 @@ class Lamb(Optimizer):
             outputs={
                 "ParamOut": param_and_grad[0],
                 "Moment1Out": moment1,
-                "Moment2Out": moment2
+                "Moment2Out": moment2,
+                "Beta1PowOut": beta1_pow_acc,
+                "Beta2PowOut": beta2_pow_acc
             },
             attrs={
                 "beta1": self._beta1,
@@ -175,3 +182,60 @@ class Lamb(Optimizer):
             stop_gradient=True)
 
         return lamb_op
+
+    def apply_gradients(self, params_grads):
+        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
+        params_grads = self._clip_grad_by_global_norm(params_grads)
+
+        # 'optimizer(grad_clip)' or 'set_gradient_clip'
+        if self._grad_clip is not None:
+            params_grads = self._grad_clip(params_grads)
+        else:
+
+            params_grads = append_gradient_clip_ops(params_grads)
+
+        # Add regularization if any
+        params_grads = append_regularization_ops(params_grads,
+                                                 self.regularization)
+
+        optimize_ops = self._create_optimization_pass(params_grads)
+        return optimize_ops
+
+    def _clip_grad_by_global_norm(self, params_grads):
+        with framework.name_scope('global_norm_clip'):
+            sum_square_list = []
+            for p, g in params_grads:
+                if g is None:
+                    continue
+                merge_grad = g
+                with p.block.program._optimized_guard([p, g]):
+                    if g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                        merge_grad = layers.merge_selected_rows(g)
+                        merge_grad = layers.get_tensor_from_selected_rows(
+                            merge_grad)
+
+                    square = layers.square(merge_grad)
+                    sum_square = layers.reduce_sum(input=square)
+                    sum_square_list.append(sum_square)
+            if len(sum_square_list) == 0:
+                return params_grads
+
+            with p.block.program._optimized_guard([p, g]):
+                global_norm_var = layers.sums(sum_square_list)
+                global_norm_var = layers.sqrt(x=global_norm_var)
+                max_global_norm = layers.fill_constant(
+                    shape=[1], dtype=global_norm_var.dtype, value=1.0)
+                scale_var = layers.elementwise_div(
+                    x=max_global_norm,
+                    y=layers.elementwise_max(
+                        x=max_global_norm, y=global_norm_var))
+
+            for p, g in params_grads:
+                if g is None:
+                    continue
+
+                with p.block.program._optimized_guard([p, g]):
+                    new_grad = layers.elementwise_mul(x=g, y=scale_var)
+                    layers.assign(new_grad, g)
+        return params_grads

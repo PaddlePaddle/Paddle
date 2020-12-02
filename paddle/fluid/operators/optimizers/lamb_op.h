@@ -66,13 +66,20 @@ struct LambMomentUpdateFunctor {
     T mom1 = moment1_[i];
     T mom2 = moment2_[i];
     T p = param_[i];
+    T beta1_pow = *beta1_pow_;
+    T beta2_pow = *beta2_pow_;
+    T mom1_unbiased, mom2_unbiased;
 
     mom1 = beta1_ * mom1 + (1 - beta1_) * g;
     mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
 
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
-    trust_ratio_div_[i] = mom1 / (sqrt(mom2) + epsilon_) + weight_decay_ * p;
+
+    mom1_unbiased = mom1 / (1 - beta1_pow);
+    mom2_unbiased = mom2 / (1 - beta2_pow);
+    trust_ratio_div_[i] =
+        mom1_unbiased / (sqrt(mom2_unbiased) + epsilon_) + weight_decay_ * p;
   }
 };
 
@@ -125,13 +132,20 @@ struct SparseLambMomentUpdateFunctor {
     T mom1 = moment1_[i];
     T mom2 = moment2_[i];
     T p = param_[i];
+    T beta1_pow = *beta1_pow_;
+    T beta2_pow = *beta2_pow_;
+    T mom1_unbiased, mom2_unbiased;
 
     mom1 = beta1_ * mom1 + (1 - beta1_) * g;
     mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
 
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
-    trust_ratio_div_[i] = mom1 / (sqrt(mom2) + epsilon_) + weight_decay_ * p;
+
+    mom1_unbiased = mom1 / (1 - beta1_pow);
+    mom2_unbiased = mom2 / (1 - beta2_pow);
+    trust_ratio_div_[i] =
+        mom1_unbiased / (sqrt(mom2_unbiased) + epsilon_) + weight_decay_ * p;
   }
 
   inline HOSTDEVICE void operator()(size_t i) const {
@@ -211,6 +225,10 @@ class LambOpKernel : public framework::OpKernel<T> {
                                      "Output", "Moment1Out", "Lamb");
     auto& mom2_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Moment2Out"),
                                      "Output", "Moment2Out", "Lamb");
+    auto& beta1_pow_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Beta1PowOut"),
+                                          "Output", "Beta1PowOut", "Lamb");
+    auto& beta2_pow_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Beta2PowOut"),
+                                          "Output", "Beta2PowOut", "Lamb");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, param.numel());
@@ -220,16 +238,41 @@ class LambOpKernel : public framework::OpKernel<T> {
     // Update moments
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto& grad = *ctx.Input<LoDTensor>("Grad");
-
-      LambMomentUpdateFunctor<T> moment_update_functor(
-          weight_decay, beta1, beta2, epsilon, beta1_pow.template data<T>(),
-          beta2_pow.template data<T>(), mom1.template data<T>(),
-          mom1_out.template mutable_data<T>(ctx.GetPlace()),
-          mom2.template data<T>(),
-          mom2_out.template mutable_data<T>(ctx.GetPlace()),
-          grad.template data<T>(), param.template data<T>(),
-          trust_ratio_div.template data<T>());
-      for_range(moment_update_functor);
+      if (platform::is_gpu_place(ctx.GetPlace()) &&
+          beta1_pow.template place() == platform::CPUPlace() &&
+          beta2_pow.template place() == platform::CPUPlace()) {
+        LoDTensor beta1_pow_gpu, beta2_pow_gpu;
+        framework::TensorCopy(beta1_pow, platform::CUDAPlace(), &beta1_pow_gpu);
+        framework::TensorCopy(beta2_pow, platform::CUDAPlace(), &beta2_pow_gpu);
+        LambMomentUpdateFunctor<T> moment_update_functor(
+            weight_decay, beta1, beta2, epsilon,
+            beta1_pow_gpu.template data<T>(), beta2_pow_gpu.template data<T>(),
+            mom1.template data<T>(),
+            mom1_out.template mutable_data<T>(ctx.GetPlace()),
+            mom2.template data<T>(),
+            mom2_out.template mutable_data<T>(ctx.GetPlace()),
+            grad.template data<T>(), param.template data<T>(),
+            trust_ratio_div.template data<T>());
+        for_range(moment_update_functor);
+        beta1_pow_out.template mutable_data<T>(platform::CPUPlace())[0] =
+            beta1 * beta1_pow.template data<T>()[0];
+        beta2_pow_out.template mutable_data<T>(platform::CPUPlace())[0] =
+            beta2 * beta2_pow.template data<T>()[0];
+      } else {
+        LambMomentUpdateFunctor<T> moment_update_functor(
+            weight_decay, beta1, beta2, epsilon, beta1_pow.template data<T>(),
+            beta2_pow.template data<T>(), mom1.template data<T>(),
+            mom1_out.template mutable_data<T>(ctx.GetPlace()),
+            mom2.template data<T>(),
+            mom2_out.template mutable_data<T>(ctx.GetPlace()),
+            grad.template data<T>(), param.template data<T>(),
+            trust_ratio_div.template data<T>());
+        for_range(moment_update_functor);
+        beta1_pow_out.template mutable_data<T>(ctx.GetPlace())[0] =
+            beta1 * beta1_pow.template data<T>()[0];
+        beta2_pow_out.template mutable_data<T>(ctx.GetPlace())[0] =
+            beta2 * beta2_pow.template data<T>()[0];
+      }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto& grad = GET_DATA_SAFELY(ctx.Input<framework::SelectedRows>("Grad"),
                                    "Input", "Grad", "Lamb");
@@ -264,16 +307,41 @@ class LambOpKernel : public framework::OpKernel<T> {
       const T* grad_data = grad_tensor.template data<T>();
       const int64_t* rows = grad_merge.rows().Data(ctx.GetPlace());
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
-
-      SparseLambMomentUpdateFunctor<T> moment_update_functor(
-          weight_decay, beta1, beta2, epsilon, beta1_pow.template data<T>(),
-          beta2_pow.template data<T>(), mom1.template data<T>(),
-          mom1_out.template mutable_data<T>(ctx.GetPlace()),
-          mom2.template data<T>(),
-          mom2_out.template mutable_data<T>(ctx.GetPlace()), grad_data,
-          param.template data<T>(), trust_ratio_div.template data<T>(), rows,
-          row_numel, grad_merge.rows().size());
-      for_range(moment_update_functor);
+      if (platform::is_gpu_place(ctx.GetPlace()) &&
+          beta1_pow.template place() == platform::CPUPlace() &&
+          beta2_pow.template place() == platform::CPUPlace()) {
+        LoDTensor beta1_pow_gpu, beta2_pow_gpu;
+        framework::TensorCopy(beta1_pow, platform::CUDAPlace(), &beta1_pow_gpu);
+        framework::TensorCopy(beta2_pow, platform::CUDAPlace(), &beta2_pow_gpu);
+        SparseLambMomentUpdateFunctor<T> moment_update_functor(
+            weight_decay, beta1, beta2, epsilon,
+            beta1_pow_gpu.template data<T>(), beta2_pow_gpu.template data<T>(),
+            mom1.template data<T>(),
+            mom1_out.template mutable_data<T>(ctx.GetPlace()),
+            mom2.template data<T>(),
+            mom2_out.template mutable_data<T>(ctx.GetPlace()), grad_data,
+            param.template data<T>(), trust_ratio_div.template data<T>(), rows,
+            row_numel, grad_merge.rows().size());
+        for_range(moment_update_functor);
+        beta1_pow_out.template mutable_data<T>(platform::CPUPlace())[0] =
+            beta1 * beta1_pow.template data<T>()[0];
+        beta2_pow_out.template mutable_data<T>(platform::CPUPlace())[0] =
+            beta2 * beta2_pow.template data<T>()[0];
+      } else {
+        SparseLambMomentUpdateFunctor<T> moment_update_functor(
+            weight_decay, beta1, beta2, epsilon, beta1_pow.template data<T>(),
+            beta2_pow.template data<T>(), mom1.template data<T>(),
+            mom1_out.template mutable_data<T>(ctx.GetPlace()),
+            mom2.template data<T>(),
+            mom2_out.template mutable_data<T>(ctx.GetPlace()), grad_data,
+            param.template data<T>(), trust_ratio_div.template data<T>(), rows,
+            row_numel, grad_merge.rows().size());
+        for_range(moment_update_functor);
+        beta1_pow_out.template mutable_data<T>(ctx.GetPlace())[0] =
+            beta1 * beta1_pow.template data<T>()[0];
+        beta2_pow_out.template mutable_data<T>(ctx.GetPlace())[0] =
+            beta2 * beta2_pow.template data<T>()[0];
+      }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Variable type not supported by lamb_op. Expect LoDTensor or "
