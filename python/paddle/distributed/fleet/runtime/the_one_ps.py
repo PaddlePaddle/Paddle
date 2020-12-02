@@ -153,7 +153,9 @@ class CommonAccessor:
 
         for (formal_name, shape) in param_varnames:
             param = main_program.global_block().vars[oop.input(formal_name)[0]]
-            params.append(formal_name)
+            if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                warnings.warn("will support decay soon")
+                param = main_program.global_block().vars["learning_rate_0"]
 
             if shape is None:
                 if is_sparse:
