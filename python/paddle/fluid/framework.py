@@ -1144,6 +1144,12 @@ class Variable(object):
             return [subt.tolist() for subt in self]
         return []
 
+    def dim(self):
+        """
+        Returns the length of this tensor shape.
+        """
+        return len(self.shape)
+
     @fake_interface_only
     def set_value(self, value):
         """
