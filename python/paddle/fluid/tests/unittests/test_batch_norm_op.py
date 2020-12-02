@@ -671,5 +671,13 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             self.assertTrue(np.allclose(y1, y2))
 
 
+class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
+    def test_reservespace(self):
+        with program_guard(Program(), Program()):
+            # Set this FLAG, the BatchNorm API will pass "reserve_space" argument into batch_norm op
+            os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '1'
+            batch_norm = fluid.dygraph.BatchNorm(10)
+
+
 if __name__ == '__main__':
     unittest.main()
