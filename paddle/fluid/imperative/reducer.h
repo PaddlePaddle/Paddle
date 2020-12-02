@@ -179,6 +179,8 @@ class Reducer {
 
   std::vector<std::vector<size_t>> RebuildGruops();
 
+  void CreateGroupEvents(int group_num);
+
   // Reducer Singleton
   static std::shared_ptr<Reducer> SetInstance(
       const std::vector<std::shared_ptr<imperative::VarBase>>& vars,

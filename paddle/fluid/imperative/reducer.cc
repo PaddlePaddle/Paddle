@@ -33,7 +33,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
   VLOG(3) << "Start construct the Reducer ...";
 
   VLOG(0) << "group_indices: ";
-  for (int i = 0; i < group_indices.size(); ++i) {
+  for (size_t i = 0; i < group_indices.size(); ++i) {
     auto indices = group_indices[i];
     VLOG(0) << "group_indices[" << i << "] ";
     for (auto index : indices) VLOG(0) << index;
@@ -49,16 +49,13 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
               this->AddDistHook(grad, global_var_index);
             })));
   }
-
+  // create streams
   compute_stream_ = static_cast<platform::CUDADeviceContext *>(
                         platform::DeviceContextPool::Instance().Get(place_))
                         ->stream();
   comm_stream_ = platform::NCCLCommContext::Instance().Get(0, place_)->stream();
-  events_.resize(group_indices.size());
-  for (auto &event : events_) {
-    event = platform::CudaEventResourcePool::Instance().New(
-        BOOST_GET_CONST(platform::CUDAPlace, place_).device);
-  }
+  // create events
+  CreateGroupEvents(group_indices.size());
   comm_enent_ = platform::CudaEventResourcePool::Instance().New(
       BOOST_GET_CONST(platform::CUDAPlace, place_).device);
 
@@ -72,6 +69,19 @@ void Reducer::ReleaseReducer() {
     event.reset();
   }
   comm_enent_.reset();
+}
+
+void Reducer::CreateGroupEvents(int group_num) {
+  // release old events
+  for (auto &event : events_) {
+    event.reset();
+  }
+  events_.clear();
+  events_.resize(group_num);
+  for (auto &event : events_) {
+    event = platform::CudaEventResourcePool::Instance().New(
+        BOOST_GET_CONST(platform::CUDAPlace, place_).device);
+  }
 }
 
 int64_t Reducer::InitializeDenseGroups(
@@ -293,12 +303,12 @@ void Reducer::FinalizeBackward() {
   if (!has_rebuilt_group_) {
     auto rebuild_group_index = RebuildGruops();
     VLOG(0) << "rebuild_group_index: ";
-    for (int i = 0; i < rebuild_group_index.size(); ++i) {
+    for (size_t i = 0; i < rebuild_group_index.size(); ++i) {
       auto indices = rebuild_group_index[i];
       VLOG(0) << "rebuild_group_index[" << i << "] ";
       for (auto index : indices) VLOG(0) << index;
     }
-
+    CreateGroupEvents(rebuild_group_index.size());
     InitializeGroups(rebuild_group_index);
   }
   VLOG(3) << "In the batch, Reducer is finished...";
