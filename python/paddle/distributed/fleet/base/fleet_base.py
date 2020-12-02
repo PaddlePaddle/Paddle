@@ -93,7 +93,7 @@ class Fleet(object):
             paddle.enable_static()
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
-            fleet.init(strategy)
+            fleet.init(strategy=strategy)
 
             optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             optimizer = fleet.distributed_optimizer(optimizer)
