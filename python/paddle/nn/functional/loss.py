@@ -769,7 +769,6 @@ def nll_loss(input,
         .. code-block:: python
 
                 import paddle
-                import numpy as np
                 from paddle.nn.functional import nll_loss
                 log_softmax = paddle.nn.LogSoftmax(axis=1)
 
