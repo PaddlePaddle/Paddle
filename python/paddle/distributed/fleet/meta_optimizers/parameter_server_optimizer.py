@@ -125,6 +125,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             main_program = compiled_config.get_origin_main_program()
             ops = _get_optimize_ops(main_program)
 
+            if len(ops) == 0:
+                return _main, _startup
+
             for op in ops:
                 if op.type in ["sgd", "adam"]:
                     is_sgd_adam = True

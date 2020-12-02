@@ -100,6 +100,7 @@ using paddle::distributed::RecvCtxMap;
 using paddle::framework::Scope;
 using paddle::distributed::AsyncCommunicator;
 using paddle::distributed::SyncCommunicator;
+using paddle::distributed::GeoCommunicator;
 
 void BindDistCommunicator(py::module* m) {
   // Communicator is already used by nccl, change to DistCommunicator
@@ -115,6 +116,9 @@ void BindDistCommunicator(py::module* m) {
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else if (mode == "SYNC") {
           Communicator::InitInstance<SyncCommunicator>(
+              send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
+        } else if (mode == "GEO") {
+          Communicator::InitInstance<GeoCommunicator>(
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(

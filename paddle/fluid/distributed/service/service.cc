@@ -47,7 +47,7 @@ paddle::distributed::PSParameter load_from_prototxt(
 }
 
 void PSCore::init_gflag(const std::string& gflags) {
-  LOG(INFO) << "Pslib Init With Gflags:" << gflags;
+  LOG(INFO) << "Init With Gflags:" << gflags;
   std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.size() < 1) {  //不存在则填默认值，向前兼容hard-code的默认配置
     flags.push_back("-max_body_size=314217728");

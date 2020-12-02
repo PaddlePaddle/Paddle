@@ -153,7 +153,9 @@ class CommonAccessor:
 
         for (formal_name, shape) in param_varnames:
             param = main_program.global_block().vars[oop.input(formal_name)[0]]
-            params.append(formal_name)
+            if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                warnings.warn("will support decay soon")
+                param = main_program.global_block().vars["learning_rate_0"]
 
             if shape is None:
                 if is_sparse:
@@ -437,7 +439,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         proto_txt = str(worker) + "\n" + str(server)
 
-        debug = bool(os.getenv("PSERVER_DEBUG", "0"))
+        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
 
         if debug:
             print("worker: \n{}".format(proto_txt))
@@ -456,7 +458,7 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode)
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
-        debug = bool(os.getenv("PSERVER_DEBUG", "0"))
+        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
 
         if debug:
             print("worker: \n{}".format(proto_txt))
