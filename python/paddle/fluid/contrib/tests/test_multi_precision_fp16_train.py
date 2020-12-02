@@ -182,8 +182,8 @@ class TestImageMultiPrecision(unittest.TestCase):
             return
 
         def do_test(use_nesterov=False):
+            suffix = "with Nesterov" if use_nesterov else "without Nesterov"
             with self.scope_prog_guard():
-                suffix = "with Nesterov" if use_nesterov else "without Nesterov"
                 print("-----------------FP16 Train {}-----------------".format(
                     suffix))
                 train_loss_fp16, test_loss_fp16 = train(
@@ -198,16 +198,16 @@ class TestImageMultiPrecision(unittest.TestCase):
                 np.allclose(
                     np.array(train_loss_fp16),
                     np.array(train_loss_fp32),
-                    rtol=1e-03,
-                    atol=1e-06,
+                    rtol=1e-02,
+                    atol=1e-05,
                     equal_nan=True),
                 msg='Failed to train in pure FP16.')
             self.assertTrue(
                 np.allclose(
                     np.array(test_loss_fp16),
                     np.array(test_loss_fp32),
-                    rtol=1e-03,
-                    atol=1e-06,
+                    rtol=1e-02,
+                    atol=1e-05,
                     equal_nan=True),
                 msg='Failed to test in pure FP16.')
 
@@ -239,6 +239,15 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                     capacity=4,
                     iterable=False,
                     use_double_buffer=False)
+                zero_var = fluid.layers.fill_constant(
+                    shape=[1], dtype='int64', value=0)
+                one_var = fluid.layers.fill_constant(
+                    shape=[1], dtype='int64', value=1)
+                with fluid.layers.control_flow.Switch() as switch:
+                    with switch.case(label != zero_var):
+                        fluid.layers.assign(input=zero_var, output=label)
+                    with switch.default():
+                        fluid.layers.assign(input=one_var, output=label)
 
                 net = resnet_cifar10(image)
                 logits = fluid.layers.fc(input=net, size=10, act="softmax")
