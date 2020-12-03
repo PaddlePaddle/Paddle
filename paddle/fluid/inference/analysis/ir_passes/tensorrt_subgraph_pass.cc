@@ -147,9 +147,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   std::set<std::string> output_names;
   std::set<std::string> output_names_with_id;
+  std::vector<int> origin_output_dims;
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
+    origin_output_dims.push_back(x->Var()->GetShape().size());
   }
 
   std::unordered_map<std::string, std::string> output_name_map;
@@ -215,6 +217,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("workspace_size", Get<int>("workspace_size"));
   op_desc->SetAttr("gpu_id", Get<int>("gpu_device_id"));
   op_desc->SetAttr("output_name_mapping", output_mapping);
+  op_desc->SetAttr("origin_output_dims", origin_output_dims);
   op_desc->SetAttr("parameters", params);
 
   // we record all inputs' shapes in attr to check if they are consistent
