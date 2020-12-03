@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
+DECLARE_bool(use_mkldnn_interpolate);
 #endif
 
 namespace paddle {
@@ -322,16 +323,15 @@ class InterpolateOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
 #ifdef PADDLE_WITH_MKLDNN
-    if (platform::CanMKLDNNBeUsed(ctx)) {
-      auto align_corners = ctx.Attr<bool>("align_corners");
-      auto align_mode = ctx.Attr<int>("align_mode");
-      if (align_corners && align_mode == 1) {
-        framework::LibraryType library = framework::LibraryType::kMKLDNN;
-        framework::DataLayout layout = framework::DataLayout::kMKLDNN;
-        return framework::OpKernelType(
-            OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-            layout, library);
-      }
+    auto interp_method = ctx.Attr<std::string>("interp_method");
+    if (interp_method == "bicubic") {
+      VLOG(3) << "mkldnn interpolate does not support bicubic algorithm";
+    } else if (platform::CanMKLDNNBeUsed(ctx) && FLAGS_use_mkldnn_interpolate) {
+      framework::LibraryType library = framework::LibraryType::kMKLDNN;
+      framework::DataLayout layout = framework::DataLayout::kMKLDNN;
+      return framework::OpKernelType(
+          OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+          layout, library);
     }
 #endif
     return framework::OpKernelType(

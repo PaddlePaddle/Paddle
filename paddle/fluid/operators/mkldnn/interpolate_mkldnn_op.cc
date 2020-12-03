@@ -92,6 +92,9 @@ class InterpolateMKLDNNHandler
   }
 };
 
+// Nearest Neighbor
+// Linear (or Bilinear for 2D spatial tensor, Trilinear for 3D spatial tensor).
+
 template <typename T = float>
 class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
  public:
@@ -152,5 +155,9 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(nearest_interp, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>);
+REGISTER_OP_KERNEL(linear_interp, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::InterpolateMKLDNNKernel<float>);
 REGISTER_OP_KERNEL(bilinear_interp, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::InterpolateMKLDNNKernel<float>);
+REGISTER_OP_KERNEL(trilinear_interp, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>);
