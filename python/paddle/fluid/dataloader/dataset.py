@@ -416,7 +416,7 @@ class Subset(Dataset):
         import numpy as np
         from paddle.io import Subset
 
-        a = paddle.fluid.dataloader.dataset.Subset(dataset=range(1, 4), indices=[0, 2])
+        a = paddle.io.Subset(dataset=range(1, 4), indices=[0, 2])
         print(list(a))
         # [1, 3]
     """
