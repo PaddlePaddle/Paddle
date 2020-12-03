@@ -15,6 +15,3 @@ cc_library(tensor_table SRCS tensor_table.cc DEPS ps_framework_proto proto_desc 
 set_source_files_properties(table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
 cc_library(table SRCS table.cc DEPS common_table tensor_table tensor_accessor ps_framework_proto brpc string_helper device_context gflags glog boost)
-
-set_source_files_properties(table_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test(table_test SRCS table_test.cc DEPS common_table table tensor_accessor ps_framework_proto ${COMMON_DEPS})

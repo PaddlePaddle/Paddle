@@ -14,6 +14,7 @@ endif()
 
 add_subdirectory(table)
 add_subdirectory(service)
+add_subdirectory(test)
 
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 
