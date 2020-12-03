@@ -223,7 +223,11 @@ if(WITH_DISTRIBUTE)
             pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
-            graph_to_program_pass variable_helper timer monitor)
+            graph_to_program_pass variable_helper timer monitor fleet)
+    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(multi_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(hogwild_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   endif()
 elseif(WITH_PSLIB)
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
@@ -264,6 +268,7 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy collective_helper
         fast_threaded_ssa_graph_executor variable_helper)
 
+cc_library(executor_cache SRCS executor_cache.cc DEPS executor)
 cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
     conditional_block_op executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)

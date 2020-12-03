@@ -232,8 +232,8 @@ class TestMatMuklOp13(TestMatMulV2Op):
     """
 
     def config(self):
-        self.x_shape = (2, 2, 2, 50)
-        self.y_shape = (2, 2, 2, 50)
+        self.x_shape = (2, 2, 10, 10)
+        self.y_shape = (2, 2, 10, 10)
         self.trans_x = True
         self.trans_y = False
 
@@ -256,8 +256,8 @@ class TestMatMuklOp15(TestMatMulV2Op):
     """
 
     def config(self):
-        self.x_shape = (3, 1, 1, 2, 100)
-        self.y_shape = (1, 2, 2, 100, 1)
+        self.x_shape = (3, 1, 1, 10, 10)
+        self.y_shape = (1, 2, 2, 10, 10)
         self.trans_x = False
         self.trans_y = False
 
