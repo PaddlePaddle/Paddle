@@ -308,9 +308,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto dims = trt_context->getBindingDimensions(bind_index);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
-          if (dims.d[nb_dims - 1] != 1) break;
           // some 'x 1' of shape is normal, no need to remove it
-          if (nb_dims == origin_output_dims[output_index]) break;
+          if (dims.d[nb_dims - 1] != 1 ||
+              nb_dims == origin_output_dims[output_index])
+            break;
         }
         for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
 #endif
