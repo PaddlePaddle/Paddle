@@ -268,6 +268,7 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy collective_helper
         fast_threaded_ssa_graph_executor variable_helper)
 
+cc_library(executor_cache SRCS executor_cache.cc DEPS executor)
 cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
     conditional_block_op executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)
