@@ -28,7 +28,7 @@ endif()
 
 # eigen on cuda9.1 missing header of math_funtions.hpp
 # https://stackoverflow.com/questions/43113508/math-functions-hpp-not-found-when-using-cuda-with-eigen
-if(WITH_AMD_GPU)
+if(WITH_ROCM_PLATFORM)
     set(EIGEN_REPOSITORY ${GIT_URL}/sabreshao/hipeigen.git)
     set(EIGEN_TAG        7cb2b6e5a4b4a1efe658abb215cd866c6fb2275e)
 endif()

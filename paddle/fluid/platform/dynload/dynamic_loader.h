@@ -38,6 +38,14 @@ void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
 void* GetOpDsoHandle(const std::string& dso_name);
 
+#ifdef PADDLE_WITH_HIP
+void* GetRocblasDsoHandle();
+void* GetMIOPENDsoHandle();
+void* GetHiprandDsoHandle();
+void* GetHIPRTCDsoHandle();
+void* GetROCMDsoHandle();
+void* GetRCCLDsoHandle();
+#endif
 void SetPaddleLibPath(const std::string&);
 }  // namespace dynload
 }  // namespace platform

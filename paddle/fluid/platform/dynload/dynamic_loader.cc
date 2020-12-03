@@ -46,6 +46,24 @@ DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 
 DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
 
+#ifdef PADDLE_WITH_HIP
+
+DEFINE_string(miopen_dir, "",
+              "Specify path for loading libcudnn.so. For instance, "
+              "/usr/local/cudnn/lib. If empty [default], dlopen "
+              "will search cudnn from LD_LIBRARY_PATH");
+
+DEFINE_string(rocm_dir, "",
+              "Specify path for loading cuda library, such as libcublas, "
+              "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
+              "If default, dlopen will search cuda from LD_LIBRARY_PATH");
+
+DEFINE_string(rccl_dir, "",
+              "Specify path for loading nccl library, such as libnccl.so. "
+              "For instance, /usr/local/cuda/lib64. If default, "
+              "dlopen will search cuda from LD_LIBRARY_PATH");
+#endif
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -251,6 +269,12 @@ void* GetCublasDsoHandle() {
 #endif
 }
 
+#ifdef PADDLE_WITH_HIP
+void* GetRocblasDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocblas.so");
+}
+#endif
+
 void* GetCUDNNDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   std::string mac_warn_meg(
@@ -278,6 +302,12 @@ void* GetCUDNNDsoHandle() {
 #endif
 }
 
+#ifdef PADDLE_WITH_HIP
+void* GetMIOPENDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.so", false);
+}
+#endif
+
 void* GetCUPTIDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cupti_dir, "libcupti.dylib", false,
@@ -299,6 +329,12 @@ void* GetCurandDsoHandle() {
 #endif
 }
 
+#ifdef PADDLE_WITH_HIP
+void* GetRocrandDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprand.so");
+}
+#endif
+
 void* GetCusolverDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.dylib");
@@ -318,6 +354,12 @@ void* GetNVRTCDsoHandle() {
 #endif
 }
 
+#ifdef PADDLE_WITH_HIP
+void* GetHIPRTCDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprtc.so");
+}
+#endif
+
 void* GetCUDADsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib", false);
@@ -325,6 +367,12 @@ void* GetCUDADsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so", false);
 #endif
 }
+
+#ifdef PADDLE_WITH_HIP
+void* GetROCMDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhip_hcc.so");
+}
+#endif
 
 void* GetWarpCTCDsoHandle() {
   std::string warpctc_dir = "";
@@ -353,6 +401,11 @@ void* GetNCCLDsoHandle() {
                                     warning_msg);
 #endif
 }
+#if defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
+void* GetRCCLDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so",true);
+}
+#endif
 
 void* GetTensorRtDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)

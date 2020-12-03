@@ -209,11 +209,6 @@ include(external/warpctc)   # download, build, install warpctc
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
 list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
 
-if(WITH_AMD_GPU)
-    include(external/rocprim)   # download, build, install rocprim
-    list(APPEND third_party_deps extern_rocprim)
-endif()
-
 include(cblas)              	# find first, then download, build, install openblas
 if(${CBLAS_PROVIDER} STREQUAL MKLML)
     list(APPEND third_party_deps extern_mklml)
