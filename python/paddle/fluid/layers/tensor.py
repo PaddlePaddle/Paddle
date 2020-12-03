@@ -304,18 +304,25 @@ def concat(input, axis=0, name=None):
             axis = axis.item(0)
         return core.ops.concat(input, 'axis', axis)
 
-    check_type(input, 'input', (list, tuple, Variable), 'concat')
-    if not isinstance(input, Variable):
-        for id, x in enumerate(input):
-            check_variable_and_dtype(
-                x, 'input[' + str(id) + ']',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'concat')
-            if x.dtype != input[0].dtype:
-                raise TypeError(
-                    "All the Tensors in the input must have the same data type.")
-    else:
-        input = [input]
+    if not isinstance(input, (list, tuple)):
+        if isinstance(input, Variable) and input.desc.type(
+        ) == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            input = [input]
+        else:
+            raise TypeError(
+                "The type of '{}' in {} must be {}, but received {}".format(
+                    'input', 'concat',
+                    'list[Tensor], tuple[Tensor] or TensorArray', type(input)))
+
+    for id, x in enumerate(input):
+        check_variable_and_dtype(
+            x, 'input[' + str(id) + ']',
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'concat')
+        if x.dtype != input[0].dtype:
+            raise TypeError(
+                "All the Tensors in the input must have the same data type.")
+
     check_type(axis, 'axis', (int, Variable), 'concat')
 
     if isinstance(axis, Variable):
@@ -324,7 +331,8 @@ def concat(input, axis=0, name=None):
             "The data type of axis must be int32 or int64 when axis is a Tensor")
 
     helper = LayerHelper('concat', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype("input"))
 
     if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         # NOTE(liym27): Don't remove this if branch!
