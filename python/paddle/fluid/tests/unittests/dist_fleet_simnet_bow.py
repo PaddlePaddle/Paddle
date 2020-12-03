@@ -225,7 +225,8 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
         fleet.init_worker()
         batch_size = 4
         # reader
-        train_reader = paddle.batch(fake_simnet_reader(), batch_size=batch_size)
+        train_reader = paddle.batch(
+            fake_simnet_reader(), batch_size=batch_size)
         self.reader.decorate_sample_list_generator(train_reader)
         for epoch_id in range(1):
             self.reader.start()

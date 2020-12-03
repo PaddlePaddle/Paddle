@@ -26,10 +26,10 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-using framework::Variable;
-using framework::VarDesc;
 using framework::LoDTensor;
 using framework::ProgramDesc;
+using framework::VarDesc;
+using framework::Variable;
 
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
 std::shared_ptr<FleetWrapper> FleetWrapper::s_instance_ = NULL;
@@ -241,6 +241,7 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
         ++output_index;
         CHECK(output_index < outputs->size());  // NOLINT
         output = outputs->at(output_index);
+        output->set_lod(tensor->lod());
         output_data = output->mutable_data<float>(place);
         output_len = 0;
         CHECK(output->numel() % fea_dim == 0);  // NOLINT
