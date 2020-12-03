@@ -107,35 +107,52 @@ struct PairForLayerNormAddFunctor {
   }
 };
 
+template <typename T>
+__inline__ __device__ T rsqrt(const T val) {
+    return ::rsqrt(val);
+}
+
+template <>
+__inline__ __device__ float rsqrt(const float val) {
+    return rsqrtf(val);
+}
+
+template <>
+__inline__ __device__ half rsqrt(const half val) {
+    return hrsqrt(val);
+}
+
 template <typename T, typename U, int BlockDim>
 __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
                                  T *y, U *mean, U *var, float epsilon,
                                  int feature_size) {
-  using BlockReduce = cub::BlockReduce<PairForLayerNorm<double>, BlockDim>;
+  using BlockReduce = cub::BlockReduce<PairForLayerNorm<U>, BlockDim>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
+  __shared__ U mean_share;
+  __shared__ U var_share;
 
   int beg_idx = blockIdx.x * feature_size + threadIdx.x;
   int end_idx = (blockIdx.x + 1) * feature_size;
 
   // Step 1: Reduce to calculate mean and var
-  double mean_val = 0;
-  double var_val = 0;
+  U mean_val = 0;
+  U var_val = 0;
   for (int i = beg_idx; i < end_idx; i += BlockDim) {
     U tmp = static_cast<U>(x[i]);
     mean_val += tmp;
     var_val += (tmp * tmp);
   }
   auto pair = BlockReduce(temp_storage)
-                  .Reduce(PairForLayerNorm<double>(mean_val, var_val),
-                          PairForLayerNormAddFunctor<double>());
+                  .Reduce(PairForLayerNorm<U>(mean_val, var_val),
+                          PairForLayerNormAddFunctor<U>());
   if (threadIdx.x == 0) {
     auto tmp = pair.first_ / feature_size;
-    mean[blockIdx.x] = static_cast<U>(tmp);
-    var[blockIdx.x] = static_cast<U>(pair.second_ / feature_size - tmp * tmp);
+    mean[blockIdx.x] = mean_share = static_cast<U>(tmp);
+    var[blockIdx.x] = var_share = static_cast<U>(pair.second_ / feature_size - tmp * tmp);
   }
   __syncthreads();
-  mean_val = mean[blockIdx.x];
-  var_val = static_cast<U>(real_sqrt(var[blockIdx.x]) + epsilon);
+  mean_val = mean_share;
+  U invvar = rsqrt<U>(var_share + static_cast<U>(epsilon));
 
   // Step 2: Calculate y
   if (scale != nullptr) {
@@ -143,26 +160,26 @@ __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
       for (int i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         y[i] = static_cast<T>(
-            scale[j] * (static_cast<U>(x[i]) - mean_val) / var_val + bias[j]);
+            scale[j] * (static_cast<U>(x[i]) - mean_val) * invvar + bias[j]);
       }
     } else {
       for (int i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>(scale[j] * (static_cast<U>(x[i]) - mean_val) /
-                              var_val);
+        y[i] = static_cast<T>(scale[j] * (static_cast<U>(x[i]) - mean_val) *
+                              invvar);
       }
     }
   } else {  // scale == nullptr
     if (bias != nullptr) {
       for (int i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>((static_cast<U>(x[i]) - mean_val) / var_val +
+        y[i] = static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar +
                               bias[j]);
       }
     } else {
       for (int i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>((static_cast<U>(x[i]) - mean_val) / var_val);
+        y[i] = static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar);
       }
     }
   }
