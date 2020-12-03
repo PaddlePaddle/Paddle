@@ -21,6 +21,9 @@ import signal
 
 import numpy
 
+import paddle
+paddle.enable_static()
+
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.layers.io import ListenAndServ
@@ -29,9 +32,8 @@ from paddle.fluid.layers.io import Send
 import paddle.fluid.layers.ops as ops
 
 
+@unittest.skip("Windows does not support distribution")
 class TestProgram2Code(unittest.TestCase):
-    @unittest.skipIf(sys.platform == "win32",
-                     "Windows does not support distribution")
     def test_print(self):
         place = fluid.CPUPlace()
         self.init_serv(place)
