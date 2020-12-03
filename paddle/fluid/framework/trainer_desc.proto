@@ -49,6 +49,10 @@ message TrainerDesc {
   optional bool no_cvm = 21 [ default = false ];
   optional bool thread_barrier = 22;
   repeated string loss_names = 23;
+  repeated string item_sampling_slots = 24;
+  optional float sampling_bias_scalar = 25;
+  repeated string sample_output_varname = 26;
+  optional string item_sampling_ins_weight = 27;
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;

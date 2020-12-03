@@ -166,6 +166,19 @@ class FleetWrapper {
       const int batch_size, const bool use_cvm, const bool dump_slot,
       std::vector<uint64_t>* sparse_push_keys, const bool no_cvm);
 
+  // add need_hit_interval and hit_interval_new for hit_interval strategy
+  void PushSparseVarsWithLabelAsync(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<uint64_t>& fea_keys,
+      const std::vector<float>& fea_labels,
+      const std::vector<std::string>& sparse_key_names,
+      const std::vector<std::string>& sparse_grad_names, const int emb_dim,
+      std::vector<std::vector<float>>* push_values,
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      const int batch_size, const bool use_cvm, const bool dump_slot,
+      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm, 
+      const std::vector<int>& need_hit_interval, const std::vector<float>& hit_interval_new);
+
   // Push sparse variables to server in async mode
   void PushSparseFromTensorWithLabelAsync(
       const Scope& scope, const uint64_t table_id, int fea_dim,

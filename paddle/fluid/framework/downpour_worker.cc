@@ -119,6 +119,18 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
       }
     }
   }
+  minibatch_sn_ = 0.0;
+  sampling_bias_scalar_ = desc.sampling_bias_scalar();
+  sample_output_varname_.resize(desc.sample_output_varname_size());
+  for (int i = 0; i < desc.sample_output_varname_size(); ++i) {
+    sample_output_varname_[i] = desc.sample_output_varname(i);
+  }
+  item_sampling_slots_.resize(desc.item_sampling_slots_size());
+  for (int i = 0; i < desc.item_sampling_slots_size(); ++i) {
+    item_sampling_slots_[i] = desc.item_sampling_slots(i);
+  }
+  random_ins_weight_vec_.clear();
+  item_sampling_ins_weight_ = desc.item_sampling_ins_weight();
 }
 
 void DownpourWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
@@ -219,6 +231,14 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
   auto fea_idx = 0u;
 
   std::vector<float> init_value(table.fea_dim());
+  size_t batch_size = device_reader_->GetCurBatchSize();
+  if (item_sampling_slots_.size() > 0) {
+    item_freq_vec_.clear();
+    item_freq_vec_.resize(batch_size);
+    for (size_t vid = 0; vid < batch_size; vid++) {
+      item_freq_vec_[vid] = 0.0;
+    }
+  }
   for (size_t i = 0; i < sparse_key_names_[table_id].size(); ++i) {
     std::string slot_name = sparse_key_names_[table_id][i];
     std::string emb_slot_name = sparse_value_names_[table_id][i];
@@ -234,6 +254,8 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     if (var_emb == nullptr) {
       continue;
     }
+    // tensor_emb: slot对应feasign的embedding
+    // table.emb_dim(): embedx_dim 32 +1?
     LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
     float* ptr = tensor_emb->mutable_data<float>({len, table.emb_dim()},
                                                  platform::CPUPlace());
@@ -248,8 +270,28 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
       nid_show_.clear();
     }
     int nid_ins_index = 0;
-
+    int hit_sample_slots = 0;
+    int memcpy_offset = 0;
+    if (item_sampling_slots_.size() > 0) {
+      if (std::find(item_sampling_slots_.begin(), item_sampling_slots_.end(), 
+            slot_name) != item_sampling_slots_.end()) {
+        hit_sample_slots = 1;
+      }
+      memcpy_offset = 1;
+    }
     for (int index = 0; index < len; ++index) {
+      if (item_sampling_slots_.size() > 0) {
+        if (hit_sample_slots > 0) {
+          // here we assume item_sampling_slot only has one feasign in each instance
+          VLOG(0) << "fea_value[fea_idx][0]:" << fea_value[fea_idx][0];
+          if (fea_value[fea_idx][0] > 1e-5) {
+            CHECK(fea_idx < batch_size) << "item_sampling_slot: " << slot_name 
+                                 << " fesign_num " << fea_idx << " should be less than "
+                                 << "batch_size: " << batch_size;
+            item_freq_vec_[fea_idx] = 1.0 / fea_value[fea_idx][0];
+          }
+        }
+      }
       if (use_cvm_ || no_cvm_) {
         if (ids[index] == 0u) {
           memcpy(ptr + table.emb_dim() * index, init_value.data(),
@@ -260,11 +302,11 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
           }
           continue;
         }
-        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data(),
+        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + memcpy_offset,
                sizeof(float) * table.emb_dim());
         if (is_nid &&
             static_cast<size_t>(index) == tensor->lod()[0][nid_ins_index]) {
-          nid_show_.push_back(fea_value[fea_idx][0]);
+          nid_show_.push_back(fea_value[fea_idx][memcpy_offset]);
           ++nid_ins_index;
         }
         fea_idx++;
@@ -278,16 +320,17 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
           }
           continue;
         }
-        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2,
-               sizeof(float) * table.emb_dim());
+        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2 + memcpy_offset,
+              sizeof(float) * table.emb_dim());
         if (is_nid &&
             static_cast<size_t>(index) == tensor->lod()[0][nid_ins_index]) {
-          nid_show_.push_back(fea_value[fea_idx][0]);
+          nid_show_.push_back(fea_value[fea_idx][memcpy_offset]);
           ++nid_ins_index;
         }
         fea_idx++;
       }
     }
+    VLOG(0) << "  fea_value[fea_idx].size():" << fea_value[fea_idx].size() <<  " fea_value[fea_idx][1] " << fea_value[fea_idx][1] <<  " fea_value[fea_idx][2] " << fea_value[fea_idx][2];
   }
 }
 
@@ -394,6 +437,45 @@ void DownpourWorker::CopySparseTable() {
     std::unordered_set<uint64_t>().swap(feasign_set_[src_table]);
   }
   feasign_set_.clear();
+}
+
+void DownpourWorker::FillInsWeight() {
+#ifdef _LINUX
+  if (item_sampling_slots_.size() == 0) {
+     VLOG(0) << "item_sampling_slot is not configured, skip fill ins_weight var";
+     return;
+  }
+  Variable* ins_weight_var = thread_scope_->FindVar(item_sampling_ins_weight_);
+  if (ins_weight_var == nullptr) {
+    VLOG(0) << "ins weight var " << item_sampling_ins_weight_
+            << " is nullptr, skip fill ins_weight var";
+    return;
+  }
+  LoDTensor* ins_weight_tensor = ins_weight_var->GetMutable<LoDTensor>();
+  size_t len = item_freq_vec_.size();
+  float* ins_weights = ins_weight_tensor->mutable_data<float>({static_cast<int>(len),1}, place_);
+  // size_t len = ins_weight_tensor->numel();  // len = batch size
+  // // here we assume nid_show slot only has one feasign in each instance
+  // CHECK(len == item_freq_vec_.size()) << "ins_weight size should be equal to "
+  //                                << "item_freq size, " << len << " vs "
+  //                                << item_freq_vec_.size();
+  size_t ins_index = 0;
+  float item_weight;
+  for (size_t i = 0; i < len; ++i) {
+    float item_freq = item_freq_vec_[i];
+    VLOG(3) << "item_freq: " << item_freq;
+    item_weight = 1.0 - item_freq * sampling_bias_scalar_;
+    if (item_weight < 0.0) {
+      item_weight = 0.0;
+    }
+    if (item_weight > 1.0) {
+      item_weight = 1.0;
+    }
+    ins_weights[ins_index] = item_weight;
+    ++ins_index;
+    VLOG(0) << "ins_weights[" << ins_index << "] = " << item_weight;
+  }
+#endif
 }
 
 void DownpourWorker::CopyDenseTable() {
@@ -758,12 +840,13 @@ void DownpourWorker::TrainFilesWithProfiler() {
 }
 
 void DownpourWorker::TrainFiles() {
-  VLOG(3) << "Begin to train files";
+  VLOG(0) << "Begin to train files";
   platform::SetNumThreads(1);
   device_reader_->Start();
   int batch_cnt = 0;
   int cur_batch;
   while ((cur_batch = device_reader_->Next()) > 0) {
+    minibatch_sn_ += 1.0;
     if (copy_table_config_.need_copy()) {
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
         CopySparseTable();
@@ -794,10 +877,15 @@ void DownpourWorker::TrainFiles() {
       if (nid_iter != sparse_value_names_[tid].end()) {
         AdjustInsWeight();
       }
+      if (item_sampling_slots_.size() > 0) {
+        FillInsWeight();
+      }
     }
-    VLOG(3) << "fill sparse value for all sparse table done.";
+    VLOG(0) << "fill sparse value for all sparse table done.";
 
     // do computation here
+    // int shuffle_op_used = 0;
+    random_ins_weight_vec_.clear();
     for (auto& op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -810,6 +898,56 @@ void DownpourWorker::TrainFiles() {
 #ifdef PADDLE_WITH_PSLIB
         try {
           op->Run(*thread_scope_, place_);
+          // //get shuffle_batch shuffle_idx to get ordered ins_weight
+          // if (op->Type() == "shuffle_batch") {
+          //   shuffle_op_used += 1;
+          //   if (item_sampling_slots_.size() > 0) {
+          //     Variable* shuffle_idx_var = thread_scope_->FindVar(op->Outputs("ShuffleIdx")[0]);
+          //     LoDTensor* shuffle_idx_tensor = shuffle_idx_var->GetMutable<LoDTensor>();
+          //     int64_t* shuffle_idx = shuffle_idx_tensor->data<int64_t>();
+          //     // random_ins_weight_vec_.clear();
+          //     // random_ins_weight_vec_.resize(item_freq_vec_.size());
+          //     float item_freq;
+          //     float item_weight;
+          //     // right ordered ins_weight(shuffle batch fisrt block)
+          //     for (size_t i = 0; i < item_freq_vec_.size(); i++) {
+          //       random_ins_weight_vec_.push_back(1.0);
+          //     }
+          //     for (size_t i = 0; i < item_freq_vec_.size(); i++) {
+          //       item_freq = item_freq_vec_[shuffle_idx[i]];
+          //       item_weight = 1.0 - item_freq * sampling_bias_scalar_;
+          //       if (item_weight < 0.0) {
+          //         item_weight = 0.0;
+          //       }
+          //       if (item_weight > 1.0) {
+          //         item_weight = 1.0;
+          //       }
+          //       random_ins_weight_vec_.push_back(item_weight);
+          //       VLOG(0) << "shuffle_op_used:" << shuffle_op_used << " index:" << i << "  shuffle_idx[i]: " << shuffle_idx[i] << " random_ins_weight_vec_[" << i << "] = " << item_weight;
+          //     }
+          //   }
+          // }
+          // auto output_vars = op->OutputVars(true);
+          // for (auto& sample_output_varname : sample_output_varname_) {
+          //   if (std::find(output_vars.begin(), output_vars.end(), sample_output_varname) != output_vars.end()) {
+          //     VLOG(0) << "output_vars find varname: " << sample_output_varname;
+          //     if (random_ins_weight_vec_.size() == 0) {
+          //       continue;
+          //     }
+          //     Variable* loss_var = thread_scope_->FindVar(sample_output_varname);
+          //     LoDTensor* loss_tensor = loss_var->GetMutable<LoDTensor>();
+          //     // float* loss_data = loss_tensor->data<float>();
+          //     size_t len = loss_tensor->numel();
+          //     VLOG(0) << "loss_data size: " << len << " random_ins_weight_vec_:" << random_ins_weight_vec_.size();
+          //     // CHECK(len == random_ins_weight_vec_.size()) << "loss_data size should be equal to "
+          //     //                    << "random_ins_weight_vec_ size, " << len << " vs "
+          //     //                    << random_ins_weight_vec_.size();
+          //     // for (size_t i = 0; i < len; i++) {
+          //     //   loss_data[i] = loss_data[i] * random_ins_weight_vec_[i];
+          //     // }
+          //   }
+          // }
+          
         } catch (std::exception& e) {
           fprintf(stderr, "error message: %s\n", e.what());
           auto& ins_id_vec = device_reader_->GetInsIdVec();
@@ -883,11 +1021,65 @@ void DownpourWorker::TrainFiles() {
             break;
           }
         }
-        fleet_ptr_->PushSparseVarsWithLabelAsync(
-            *thread_scope_, tid, features_[tid], feature_labels_[tid],
-            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_);
+        if (item_sampling_slots_.size() > 0) {
+          need_hit_interval_.clear();
+          hit_interval_new_.clear();
+          need_hit_interval_.resize(features_[tid].size());
+          hit_interval_new_.resize(features_[tid].size());
+          size_t global_index = 0;
+          for (size_t i = 0; i < sparse_key_names_[tid].size(); ++i) {
+            int find_hit_slot = 0;
+            std::string slot_name = sparse_key_names_[tid][i];
+            if (std::find(item_sampling_slots_.begin(), item_sampling_slots_.end(), 
+                          slot_name) != item_sampling_slots_.end()) {
+              find_hit_slot = 1;
+            }
+            Variable* var = thread_scope_->FindVar(slot_name);
+            if (var == nullptr) {
+              continue;
+            }
+            LoDTensor* tensor = var->GetMutable<LoDTensor>();
+            CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
+            int64_t* ids = tensor->data<int64_t>();
+            int len = tensor->numel();
+            size_t fea_idx = 0;
+            for (int index = 0; index < len; ++index) {
+              if (ids[fea_idx] == 0u) {
+                continue;
+              }
+              if (find_hit_slot > 0) {
+                std::unordered_map<uint64_t, float>& last_hit_minibatch_sn = last_hit_minibatch_sn_;
+                float cur_minibatch_sn = minibatch_sn_;
+                float hit_interval_new = 1.0; // hit_interval_sgd_param.initial_value
+                auto it = last_hit_minibatch_sn.find(ids[fea_idx]);
+                if (it != last_hit_minibatch_sn.end()) {
+                  hit_interval_new = cur_minibatch_sn - it->second;
+                  it->second = cur_minibatch_sn;
+                } else {
+                  last_hit_minibatch_sn.emplace(ids[fea_idx], cur_minibatch_sn);
+                }
+                need_hit_interval_[global_index] = 1;
+                hit_interval_new_[global_index] = hit_interval_new;
+              } else {
+                need_hit_interval_[global_index] = 0;
+                hit_interval_new_[global_index] = 1.0;
+              }
+              VLOG(0) << "find slot" << slot_name << " need_hit_interval_[global_index]:" << need_hit_interval_[global_index] << "  hit_interval_new_[" << global_index << "] = " << hit_interval_new_[global_index];
+              global_index++;
+            }
+          }
+          fleet_ptr_->PushSparseVarsWithLabelAsync(
+              *thread_scope_, tid, features_[tid], feature_labels_[tid],
+              sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+              &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+              dump_slot_, &sparse_push_keys_[tid], no_cvm_, need_hit_interval_, hit_interval_new_);
+        } else {
+          fleet_ptr_->PushSparseVarsWithLabelAsync(
+              *thread_scope_, tid, features_[tid], feature_labels_[tid],
+              sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+              &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+              dump_slot_, &sparse_push_keys_[tid], no_cvm_);
+        }
       }
     }
 
@@ -933,7 +1125,7 @@ void DownpourWorker::TrainFiles() {
     }
 
     if (need_to_push_sparse_) {
-      VLOG(3) << "push sparse gradient done.";
+      VLOG(0) << "push sparse gradient done.";
       int32_t tmp_push_sparse_wait_times = -1;
       static uint32_t push_sparse_wait_times =
           static_cast<uint32_t>(tmp_push_sparse_wait_times);

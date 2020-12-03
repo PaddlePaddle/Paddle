@@ -920,11 +920,10 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "the data, please check if the data contains unresolvable "
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
-              "when we parse the %d th slots."
+              "when we parse the %d th slots.\n"
               "Maybe something wrong around this slot",
               "\nWe detect the feasign number of this slot is %d, "
-              "which is illegal.",
-              str, i, num));
+              "which is illegal.", str, i, num));
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {

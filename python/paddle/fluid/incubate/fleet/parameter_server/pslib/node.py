@@ -119,11 +119,12 @@ class DownpourServer(Server):
             # DownpourSparseValueAccessor : for general task, has embedding and sgd info
             # DownpourCtrDoubleAccessor   : for ctr task, which show clk are in double
             # DownpourUnitAccessor        : for ctr task, has cvm, slot, embedding and sgd info
+            # DownpourWeightAccessor      : for ctr task, has hit_interval, cvm, slot, embedding and sgd info
 
             support_accessor_class = [
                 'DownpourFeatureValueAccessor', 'DownpourCtrAccessor',
                 'DownpourSparseValueAccessor', 'DownpourCtrDoubleAccessor',
-                'DownpourUnitAccessor'
+                'DownpourUnitAccessor', 'DownpourWeightAccessor'
             ]
             if strategy.get('sparse_accessor_class') is not None:
                 accessor_class = strategy.get('sparse_accessor_class')
@@ -260,6 +261,26 @@ class DownpourServer(Server):
                                           strategy, "embed_")
                 self.add_sparse_optimizer(table.accessor.embedx_sgd_param,
                                           strategy, "embedx_")
+            elif accessor_class == 'DownpourWeightAccessor':
+                self.add_sparse_table_common_config(table, strategy)
+                table.accessor.fea_dim = int(table.accessor.embedx_dim) + 4
+                table.accessor.sparse_sgd_param.learning_rate = strategy.get(
+                    'sparse_learning_rate', 0.05)
+                table.accessor.sparse_sgd_param.initial_g2sum = strategy.get(
+                    'sparse_initial_g2sum', 3)
+                table.accessor.sparse_sgd_param.initial_range = strategy.get(
+                    'sparse_initial_range', 1e-4)
+                if strategy.get('sparse_weight_bounds') is None:
+                    table.accessor.sparse_sgd_param.weight_bounds.extend(
+                        [-10, 10])
+                else:
+                    table.accessor.sparse_sgd_param.weight_bounds.extend(
+                        strategy.get('sparse_weight_bounds'))
+                table.accessor.hit_interval_sgd_param.learning_rate = strategy.get(
+                    'sparse_hit_interval_learning_rate', 0.01)
+                table.accessor.hit_interval_sgd_param.initial_value = strategy.get(
+                    'sparse_hit_interval_initial_value', 1.0)
+                print("table.accessor.fea_dim:", table.accessor.fea_dim, " table.accessor.embedx_dim: ", table.accessor.embedx_dim)
 
     def add_dense_table(self, table_id, param_var, grad_var, strategy,
                         sparse_table_names):
