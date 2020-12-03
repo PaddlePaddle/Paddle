@@ -98,7 +98,7 @@ size_t SizeOfType(proto::VarType::Type type) {
                                                DataTypeToString(type)));
 }
 
-// Now only supports protomotion of complex type
+// Now only supports promotion of complex type
 bool NeedPromoteTypes(const proto::VarType::Type a,
                       const proto::VarType::Type b) {
   return (IsComplexType(a) || IsComplexType(b));
@@ -120,7 +120,7 @@ int DataTypeNumAlign(const proto::VarType::Type t) {
   return cast_type_num;
 }
 
-// Now only supports protomotion of complex type
+// Now only supports promotion of complex type
 proto::VarType::Type PromoteTypesIfComplexExists(
     const proto::VarType::Type type_a, const proto::VarType::Type type_b) {
   constexpr auto f4 = proto::VarType::FP32;        // 5
@@ -129,8 +129,8 @@ proto::VarType::Type PromoteTypesIfComplexExists(
   constexpr auto c8 = proto::VarType::COMPLEX128;  // 24
 
   if (!NeedPromoteTypes(type_a, type_b)) {
-    // NOTE(chenweihang): keep consistent with rule in current ops,
-    // kernel type based on the left tensor's dtype
+    // NOTE(chenweihang): keep consistent with rule in original op's impl,
+    // kernel type based on the first input tensor's dtype
     return type_a;
   }
 
@@ -138,7 +138,7 @@ proto::VarType::Type PromoteTypesIfComplexExists(
   int type_bn = DataTypeNumAlign(type_b);
 
   // Here is a complete rules table, but some rules are not used.
-  // It is still written this way because array access is still
+  // It is still written this way because array accessing is still
   // more efficient than if-else
   static constexpr proto::VarType::Type promote_types_table[4][4] = {
       /*        f4  f8  c4  c8*/
