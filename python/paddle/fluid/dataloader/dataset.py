@@ -18,13 +18,8 @@ from .. import framework
 import paddle.dataset.common
 
 __all__ = [
-    "Dataset",
-    "IterableDataset",
-    "TensorDataset",
-    "ComposeDataset",
-    "ChainDataset",
-    "random_split",
-    "Subset",
+    "Dataset", "IterableDataset", "TensorDataset", "ComposeDataset",
+    "ChainDataset", "random_split", "Subset"
 ]
 
 

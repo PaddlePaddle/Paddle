@@ -29,7 +29,7 @@ __all__ = [
     'RandomSampler',
     'WeightedRandomSampler',
     "random_split",
-    "Subset",
+    "Subset"
 ]
 
 from ..fluid.io import DataLoader
