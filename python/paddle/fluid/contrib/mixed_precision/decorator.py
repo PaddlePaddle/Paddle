@@ -61,6 +61,7 @@ class OptimizerWithMixedPrecision(object):
         self._param_grads = None
         self._train_program = None
 
+        self._is_distributed = False
         self._scaled_loss = None
         self._loss_scaling = None
         self._init_loss_scaling = init_loss_scaling
@@ -72,6 +73,12 @@ class OptimizerWithMixedPrecision(object):
             self._decr_ratio = decr_ratio
             self._num_good_steps = None
             self._num_bad_steps = None
+
+    def _set_distributed(self, flag):
+        # if distributed, all cards will communication with each other,
+        # overlap communication and computation by split the
+        # check_finite_and_unscale op.
+        self._is_distributed = flag
 
     def get_loss_scaling(self):
         """Return the real-time loss scaling factor.
@@ -168,13 +175,28 @@ class OptimizerWithMixedPrecision(object):
         """
 
         grads = [g for _, g in params_grads]
-        with self._train_program._optimized_guard(grads):
-            grads, found_inf = check_finite_and_unscale(
-                grads, self._loss_scaling, name="find_infinite_scale")
+        if not self._is_distributed:
+            with self._train_program._optimized_guard(grads):
+                grads, found_inf = check_finite_and_unscale(
+                    grads, self._loss_scaling, name="find_infinite_scale")
+        else:
+            # if distributed, split check_finite_and_unscale to overlap
+            # unscale with communication
+            found_infs = []
+            for p, g in params_grads:
+                with self._train_program._optimized_guard([p, g]):
+                    _, found_inf = check_finite_and_unscale(
+                        [g, ], self._loss_scaling, name="find_infinite_scale")
+                    found_infs.append(found_inf)
 
         if self._use_dynamic_loss_scaling:
-            with self._train_program._optimized_guard(grads):
-                grads = update_loss_scaling(
+            if self._is_distributed:
+                with self._train_program._optimized_guard([]):
+                    all_infs = layers.concat(found_infs)
+                    found_inf = layers.reduce_any(all_infs)
+
+            with self._train_program._optimized_guard([]):
+                update_loss_scaling(
                     grads,
                     found_inf,
                     self._loss_scaling,
@@ -186,13 +208,7 @@ class OptimizerWithMixedPrecision(object):
                     self._decr_ratio,
                     name="update_loss_scaling")
 
-        params_unscaled_grads = []
-        for pg, new_g in zip(params_grads, grads):
-            params_unscaled_grads.append((pg[0], new_g))
-        # apply_gradient append all ops in global block, thus we shouldn't
-        # apply gradient in the switch branch.
-        optimize_ops = self._optimizer.apply_gradients(params_unscaled_grads)
-
+        optimize_ops = self._optimizer.apply_gradients(params_grads)
         return optimize_ops
 
     def apply_optimize(self, loss, startup_program, params_grads):

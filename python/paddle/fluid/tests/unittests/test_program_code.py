@@ -12,32 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import time
-import unittest
-import sys
-from multiprocessing import Process
-import signal
+from __future__ import print_function
 
-import numpy
+import unittest
+
+import paddle
+paddle.enable_static()
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid.layers.io import ListenAndServ
-from paddle.fluid.layers.io import Recv
-from paddle.fluid.layers.io import Send
-import paddle.fluid.layers.ops as ops
 
 
+@unittest.skip("Windows does not support distribution")
 class TestProgram2Code(unittest.TestCase):
-    @unittest.skipIf(sys.platform == "win32",
-                     "Windows does not support distribution")
     def test_print(self):
         place = fluid.CPUPlace()
         self.init_serv(place)
         self.init_client(place, 9123)
 
     def init_serv(self, place):
+        import paddle.fluid.layers.ops as ops
+        from paddle.fluid.layers.io import ListenAndServ
+
         main = fluid.Program()
 
         with fluid.program_guard(main):
@@ -55,10 +51,11 @@ class TestProgram2Code(unittest.TestCase):
                     append_batch_size=False)
                 fluid.initializer.Constant(value=1.0)(x, main.global_block())
                 ops._scale(x=x, scale=10.0, out=out_var)
-
         print(main)
 
     def init_client(self, place, port):
+        from paddle.fluid.layers.io import Send
+        from paddle.fluid.layers.io import Recv
         main = fluid.Program()
         with fluid.program_guard(main):
             x = layers.data(

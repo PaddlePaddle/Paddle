@@ -375,6 +375,15 @@ if(WITH_MKLDNN)
 
   # resnet50 bfloat16
   inference_analysis_api_bfloat16_test_run(test_analyzer_bfloat16_resnet50 ${BF16_IMG_CLASS_TEST_APP} ${INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  
+  # googlenet bfloat16
+  inference_analysis_api_bfloat16_test_run(test_analyzer_bfloat16_googlenet ${BF16_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH})
+
+  # mobilenetv1 bfloat16
+  inference_analysis_api_bfloat16_test_run(test_analyzer_bfloat16_mobilenetv1 ${BF16_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV1_MODEL_DIR} ${IMAGENET_DATA_PATH})
+
+  # mobilenetv2 bfloat16
+  inference_analysis_api_bfloat16_test_run(test_analyzer_bfloat16_mobilenetv2 ${BF16_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
   ### Object detection models
   set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_300.bin")
@@ -630,7 +639,9 @@ set_tests_properties(test_analyzer_bert PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_mobilenet_depthwise_conv PROPERTIES TIMEOUT 120)
 if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT 120)
+    if(WITH_MKLDNN)
+        set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT 120)
+    endif()
 endif()
 if(ON_INFER OR WITH_GPU)
     set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT 120)

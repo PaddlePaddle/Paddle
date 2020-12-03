@@ -18,33 +18,8 @@ set +ex
 
 [ -z "$PADDLE_ROOT" ] && PADDLE_ROOT=$(cd $(dirname ${BASH_SOURCE[0]})/.. && pwd)
 
-# Paddle repo file name -> op name
-declare -A PADDLE_FILENAME_OP_MAP
-PADDLE_FILENAME_OP_MAP=(
-  ["arg_min_max_op_base.h"]="arg_min arg_max"
-  ["arg_min_max_op_base.cu.h"]="arg_min arg_max"
-  ["activation_op.cu"]="leaky_relu elu sqrt square pow exp abs log"
-  ["activation_op.h"]="relu leaky_relu elu sqrt square pow exp abs log"
-  ["activation_op.cc"]="relu leaky_relu elu sqrt square pow exp abs log"
-  ["interpolate_op.h"]="bilinear_interp nearest_interp trilinear_interp bicubic_interp linear_interp"
-  ["interpolate_op.cc"]="bilinear_interp nearest_interp trilinear_interp bicubic_interp linear_interp"
-  ["interpolate_op.cu"]="bilinear_interp nearest_interp trilinear_interp bicubic_interp linear_interp"
-)
-
-# Benchmark repo name -> op name
-declare -A BENCHMARK_APINAME_OP_MAP
-BENCHMARK_APINAME_OP_MAP=(
-  ["argmin"]="arg_min"
-  ["argmax"]="arg_max"
-  ["cos_sim"]="cosine_similarity"
-  ["elementwise_max"]="maximum"
-  ["elementwise_min"]="minimum"
-  ["bilinear_interp"]="interp_bilinear"
-  ["nearest_interp"]="interp_nearest"
-  ["trilinear_interp"]="interp_trilinear"
-  ["bicubic_interp"]="interp_bicubic"
-  ["linear_interp"]="interp_linear"
-)
+# PR modify op source files
+CHANGE_OP_FILES=()
 
 # ops that will run benchmark test
 declare -A CHANGE_OP_MAP
@@ -52,23 +27,67 @@ declare -A CHANGE_OP_MAP
 # ops that benchmark repo has
 declare -A BENCHMARK_OP_MAP
 
-# ops that benchmark repo missing
-declare -A BENCHMARK_MISS_OP_MAP
-
 function LOG {
   echo "[$0:${BASH_LINENO[0]}] $*" >&2
 }
 
-# Load ops that will run benchmark test
-function load_CHANGE_OP_MAP {
-  local op_name change_file change_file_name
+# Load op files by header file
+function load_CHANGE_OP_FILES_by_header_file {
+  local change_file
+  for change_file in $(grep -rl "${1}" paddle/fluid/operators)
+  do
+    if [[ "$change_file" =~ "_op.cu" ]]
+    then
+      LOG "[INFO] Found \"${1}\" include by \"${change_file}\"."
+      CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
+    elif [[ "$change_file" =~ ".h" ]]
+    then
+      LOG "[INFO] Found \"${1}\" include by \"${change_file}\", keep searching."
+      load_CHANGE_OP_FILES_by_header_file $change_file
+    fi
+  done
+}
+
+# Load op files that PR changes
+function load_CHANGE_OP_FILES {
+  local change_file
   for change_file in $(git diff --name-only origin/develop)
   do
     # match directory limit
     [[ "$change_file" =~ "paddle/fluid/operators/" ]] || continue
     # match file name limit
-    [[ "$change_file" =~ "_op." ]] || continue
-    LOG "[INFO] Found \"${change_file}\" changed."
+    if [[ "$change_file" =~ "_op.cu" ]]
+    then
+      LOG "[INFO] Found \"${change_file}\" changed."
+      CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
+    elif [[ "$change_file" =~ ".h" ]]
+    then
+      LOG "[INFO] Found \"${change_file}\" changed, keep searching."
+      load_CHANGE_OP_FILES_by_header_file $change_file
+    fi
+  done
+  [ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && exit 0
+}
+
+# Clone benchmark repo
+function prepare_benchmark_environment {
+  LOG "[INFO] Clone benchmark repo ..."
+  git clone https://github.com/PaddlePaddle/benchmark.git
+  [ $? -ne 0 ] && LOG "[FATAL] Clone benchmark repo fail." && exit -1
+  LOG "[INFO] Collect api info ..."
+  python benchmark/api/deploy/collect_api_info.py \
+      --test_module_name tests_v2                 \
+      --info_file api_info.txt >& 2
+  [ $? -ne 0 ] && LOG "[FATAL] Collect api info fail." && exit -1
+  [ ! -f benchmark/ci/scripts/op_benchmark.config ] && LOG "[FATAL] Missing op_benchmark.config!" && exit -1
+}
+
+# Load unique op name from CHANGE_OP_FILES
+function load_CHANGE_OP_MAP {
+  local op_name change_file change_file_name
+  source benchmark/ci/scripts/op_benchmark.config
+  for change_file in ${CHANGE_OP_FILES[@]}
+  do
     change_file_name=${change_file#*paddle/fluid/operators/}
     if [ -n "${PADDLE_FILENAME_OP_MAP[$change_file_name]}" ]
     then
@@ -83,25 +102,12 @@ function load_CHANGE_OP_MAP {
       CHANGE_OP_MAP[${change_file_name%_op*}]="$change_file"
     fi
   done
-  [ ${#CHANGE_OP_MAP[*]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && exit 0
 }
 
-# Clone benchmark repo
-function prepare_benchmark_environment {
-  LOG "[INFO] Clone benchmark repo ..."
-  git clone https://github.com/PaddlePaddle/benchmark.git
-  [ $? -ne 0 ] && LOG "[FATAL] Clone benchmark repo fail." && exit -1
-  LOG "[INFO] Collect api info ..."
-  python benchmark/api/deploy/collect_api_info.py \
-      --test_module_name tests_v2                 \
-      --info_file api_info.txt >& 2
-  [ $? -ne 0 ] && LOG "[FATAL] Collect api info fail." && exit -1
-}
-
-# Load ops that will
+# Load ops that will run benchmark test
 function load_BENCHMARK_OP_MAP {
   local line op_name api_name
-  prepare_benchmark_environment
+  source benchmark/ci/scripts/op_benchmark.config
   for line in $(cat api_info.txt)
   do
     api_name=${line%%,*}
@@ -129,6 +135,7 @@ function compile_install_paddlepaddle {
   export WITH_PYTHON=ON
   export WITH_TESTING=OFF
   export BUILD_TYPE=Release
+  export CUDA_ARCH_NAME=Auto
   export WITH_DISTRIBUTE=OFF
   export PYTHON_ABI=cp37-cp37m
   export CMAKE_BUILD_TYPE=Release
@@ -145,6 +152,8 @@ function compile_install_paddlepaddle {
 function run_op_benchmark_test {
   [ ${#BENCHMARK_OP_MAP[*]} -eq 0 ] && return
   local logs_dir op_name branch_name api_info_file
+  [ -z "$VISIBLE_DEVICES" ] && export VISIBLE_DEVICES=0
+  [ "$BENCHMARK_PRINT_FAIL_LOG" != "1" ] && export BENCHMARK_PRINT_FAIL_LOG=1
   api_info_file="$(pwd)/api_info.txt"
   [ -f "$api_info_file" ] && rm -f $api_info_file
   for api_info in ${BENCHMARK_OP_MAP[*]}
@@ -159,7 +168,6 @@ function run_op_benchmark_test {
     compile_install_paddlepaddle
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
-    [ -z "$VISIBLE_DEVICES" ] && export VISIBLE_DEVICES=0
     pushd benchmark/api > /dev/null
     bash deploy/main_control.sh tests_v2 \
                                 tests_v2/configs \
@@ -176,10 +184,14 @@ function run_op_benchmark_test {
 # diff benchmakr result and miss op
 function summary_problems {
   local op_name exit_code
-  python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
-      --develop_logs_dir $(pwd)/logs-develop \
-      --pr_logs_dir $(pwd)/logs-test_pr
-  exit_code=$?
+  exit_code=0
+  if [ ${#BENCHMARK_OP_MAP[*]} -ne 0 ]
+  then
+    python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
+        --develop_logs_dir $(pwd)/logs-develop \
+        --pr_logs_dir $(pwd)/logs-test_pr
+    exit_code=$?
+  fi
   for op_name in ${!CHANGE_OP_MAP[@]}
   do
     if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
@@ -193,6 +205,8 @@ function summary_problems {
 
 function main {
   LOG "[INFO] Start run op benchmark test ..."
+  load_CHANGE_OP_FILES
+  prepare_benchmark_environment
   load_CHANGE_OP_MAP
   load_BENCHMARK_OP_MAP
   run_op_benchmark_test
