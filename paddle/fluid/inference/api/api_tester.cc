@@ -67,7 +67,6 @@ TEST(paddle_inference_api, get_version) {
   ASSERT_FALSE(version.empty());
 }
 
-
 TEST(paddle_inference_api, AnalysisConfigCopyCtor) {
   AnalysisConfig cfg1;
   cfg1.EnableUseGpu(10);
