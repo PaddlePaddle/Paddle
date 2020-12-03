@@ -558,3 +558,17 @@ DEFINE_string(tracer_mkldnn_ops_on, "",
  */
 DEFINE_string(tracer_mkldnn_ops_off, "",
               "List of OneDNN operation types to be turned off");
+
+/**
+ * MKLDNN related FLAG
+ * Name: use_mkldnn_interpolate
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Since the interpolate in Paddle use different algorithm than oneDNN
+ * supported interpolate (Which is the same as used in TF).
+ *       In some cases, the accuracy will be slightly different, but performance
+ * are improved a lot
+ */
+DEFINE_bool(use_mkldnn_interpolate, false,
+            "Use MKLDNN interpolate algorithm to run");

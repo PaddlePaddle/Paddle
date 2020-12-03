@@ -325,8 +325,8 @@ class InterpolateOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     auto interp_method = ctx.Attr<std::string>("interp_method");
     if (interp_method == "bicubic") {
-      VLOG(3) << "mkldnn interpolate does not support bicubic algorithm";
-    } else if (platform::CanMKLDNNBeUsed(ctx) && FLAGS_use_mkldnn_interpolate) {
+      VLOG(3) << "oneDNN interpolate does not support bicubic algorithm";
+    } else if (this->CanMKLDNNBeUsed(ctx) && FLAGS_use_mkldnn_interpolate) {
       framework::LibraryType library = framework::LibraryType::kMKLDNN;
       framework::DataLayout layout = framework::DataLayout::kMKLDNN;
       return framework::OpKernelType(

@@ -30,6 +30,7 @@
 #include "pybind11/stl.h"
 
 // data processing
+DECLARE_bool(use_mkldnn_interpolate);
 DECLARE_bool(use_mkldnn);
 DECLARE_string(tracer_mkldnn_ops_on);
 DECLARE_string(tracer_mkldnn_ops_off);
@@ -352,7 +353,8 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_memory_fraction_of_eager_deletion, FLAGS_use_pinned_memory,
       FLAGS_benchmark, FLAGS_inner_op_parallelism, FLAGS_tracer_profile_fname,
       FLAGS_paddle_num_threads, FLAGS_use_mkldnn, FLAGS_max_inplace_grad_add,
-      FLAGS_tracer_mkldnn_ops_on, FLAGS_tracer_mkldnn_ops_off);
+      FLAGS_tracer_mkldnn_ops_on, FLAGS_tracer_mkldnn_ops_off,
+      FLAGS_use_mkldnn_interpolate);
 
 #ifdef PADDLE_WITH_CUDA
   REGISTER_PUBLIC_GLOBAL_VAR(
