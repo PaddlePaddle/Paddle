@@ -250,6 +250,7 @@ EOF
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
     set +e
+    ccache -z
     cmake .. \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
@@ -356,6 +357,7 @@ function build_base() {
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
+    ccache -s
 }
 
 function build_size() {
