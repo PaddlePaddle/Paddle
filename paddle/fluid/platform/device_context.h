@@ -560,6 +560,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
+  static thread_local int device_context_index;
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
   static DeviceContextPool& Instance() {

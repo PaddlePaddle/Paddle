@@ -171,7 +171,7 @@ struct TestGatherOpHandle {
     out_selected_rows->mutable_value()->ShareDataWith(
         in_selected_rows->value());
 
-    op_handle_->Run(false);
+    op_handle_->Run(false, false);
 
     WaitAll();
 

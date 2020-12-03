@@ -71,7 +71,7 @@ class OpHandleBase {
 
   virtual std::string Name() const = 0;
 
-  void Run(bool use_cuda);
+  void Run(bool use_cuda, bool use_xpu);
 
   virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
 
@@ -144,6 +144,7 @@ class OpHandleBase {
   virtual void RunImpl() = 0;
 
   virtual void InitCUDA();
+  virtual void InitXPU();
 
   ir::Node *node_;
   std::vector<VarHandleBase *> inputs_;

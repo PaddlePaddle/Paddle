@@ -85,7 +85,40 @@ void OpHandleBase::InitCUDA() {
 #endif
 }
 
-void OpHandleBase::Run(bool use_cuda) {
+void OpHandleBase::InitXPU() {
+#ifdef PADDLE_WITH_XPU
+  if (IsMultiDeviceTransfer() && dev_ctxes_.size() > 0) {
+    for (auto &out_var : outputs_) {
+      auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
+      if (out_var_handle) {
+        // ToDo: add XPU sync events
+        // int dev_id =
+        //    boost::get<platform::XPUPlace>(out_var_handle->place()).device;
+        // PADDLE_ENFORCE(false, "debug");
+      }
+    }
+  } else {
+    PADDLE_ENFORCE_EQ(dev_ctxes_.size(), 1UL,
+                      "%s should have only one dev_ctx.", Name());
+    auto &place = dev_ctxes_.begin()->first;
+    int dev_id = boost::get<platform::XPUPlace>(place).device;
+    PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS,
+                   "xpu_set_device failed");
+    for (auto &out_var : outputs_) {
+      auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
+      if (out_var_handle) {
+        PADDLE_ENFORCE(platform::is_same_place(place, out_var_handle->place()),
+                       "The place of output(%s) is not consistent with the "
+                       "place of current op(%s).",
+                       out_var_handle->Name(), Name());
+      }
+    }
+  }
+#endif
+}
+
+void OpHandleBase::Run(bool use_cuda, bool use_xpu) {
+  PADDLE_ENFORCE(!(use_cuda && use_xpu), "both use_cuda & use_xpu is true");
 #ifdef PADDLE_WITH_CUDA
   if (events_.empty() && use_cuda && dev_ctxes_.size() > 0) {
     InitCUDA();
