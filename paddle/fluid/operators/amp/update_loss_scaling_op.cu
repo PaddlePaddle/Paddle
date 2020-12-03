@@ -59,9 +59,10 @@ class LazyZeroInputs<platform::CUDADeviceContext, T> {
     const auto gpu_place =
         BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
     bool has_inf{false};
+    // NOTE. Async copy to pageable host memory will be sync. More details see
+    // https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html#api-sync-behavior
     memory::Copy(platform::CPUPlace(), &has_inf, gpu_place, found_inf_data,
                  sizeof(bool), dev_ctx.stream());
-    dev_ctx.Wait();  // wait async copy
     if (has_inf) {
       VLOG(1) << "-- UpdateLossScaling: Infinite values are found in grads. --";
       for (size_t i = 0; i < xs.size(); ++i) {
