@@ -11,7 +11,6 @@ include_directories("${ROCM_PATH}/hiprand/include")
 include_directories("${ROCM_PATH}/rocrand/include")
 include_directories("${ROCM_PATH}/rccl/include")
 
-#include_directories("${ROCM_PATH}/thrust")
 include_directories("${ROCM_PATH}/rocthrust/include/")
 include_directories("${ROCM_PATH}/hipcub/include/")
 include_directories("${ROCM_PATH}/rocprim/include/")
