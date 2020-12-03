@@ -25,7 +25,7 @@ elif [ "$VERSION" == "10.2" ] || [ "$VERSION" == "10.1" ] || [ "$VERSION" == "11
     wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm
     rpm -ivh libnccl-2.7.8-1+cuda10.2.x86_64.rpm
     rpm -ivh libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm
-    rpm -ivh libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm && rm -f /usr/local/include/nccl.h
+    rpm -ivh libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm && rm -f /usr/include/nccl.h 
     exit 0
   fi
   DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda10.2_1-1_amd64.deb"
