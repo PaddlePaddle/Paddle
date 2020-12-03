@@ -33,7 +33,7 @@ file_1="multi_process_fleetrun.check_1.log"
 distributed_args="--ips=${cluster_node_ips} --gpus=0,1 --log_dir=testlog"
 
 echo "paddle.distributed.fleet.launch async poll process test"
-if ! CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.fleet.launch ${distributed_args} multi_process.py fleetrun abort; then
+if ! CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.fleet.launch ${distributed_args} multi_process.py fullpath_launch abort; then
     echo "train abort as planned"
 fi
 
