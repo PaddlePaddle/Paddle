@@ -44,10 +44,12 @@ class SparseGeoTable : public CommonSparseTable {
   virtual int32_t push_sparse(const uint64_t* keys, const float* values,
                               size_t num) override;
 
-  virtual void init_geo_recorder() {
-    if (geo_recorder) return;
-    auto trainers = _config.common().trainer_num();
-    geo_recorder = std::make_shared<GeoRecorder>(trainers);
+  virtual int32_t initialize_recorder() {
+    if (!geo_recorder) {
+      auto trainers = _config.common().trainer_num();
+      geo_recorder = std::make_shared<GeoRecorder>(trainers);
+    }
+    return 0;
   }
 
  private:

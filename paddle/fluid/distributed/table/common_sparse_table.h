@@ -51,6 +51,7 @@ class CommonSparseTable : public SparseTable {
                                   const std::string& name);
   virtual int32_t initialize_value();
   virtual int32_t initialize_optimizer();
+  virtual int32_t initialize_recorder();
 
   int32_t load(const std::string& path, const std::string& param) override;
 

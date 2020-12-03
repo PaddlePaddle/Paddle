@@ -16,6 +16,7 @@
 #include <sstream>
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -220,8 +221,11 @@ int32_t CommonSparseTable::initialize() {
 
   initialize_value();
   initialize_optimizer();
+  initialize_recorder();
   return 0;
 }
+
+int32_t CommonSparseTable::initialize_recorder() { return 0; }
 
 int32_t CommonSparseTable::initialize_value() {
   auto common = _config.common();

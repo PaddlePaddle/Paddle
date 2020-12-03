@@ -54,13 +54,14 @@ class SSUM : public SparseOptimizer {
               const std::vector<uint64_t>& offsets,
               ValueBlock* block) override {
     auto blas = GetBlas<float>();
-    for (int x = 0; x < num; ++x) {
+    for (auto x : offsets) {
       auto id = keys[x];
       auto values = block->Get(id);
       float* param = values[param_idx]->data();
 
       std::vector<float> delta;
       delta.resize(update_numel);
+      blas.VCOPY(update_numel, update_values + x * update_numel, delta.data());
       blas.VADD(update_numel, delta.data(), param, param);
     }
   }
@@ -89,7 +90,7 @@ class SSGD : public SparseOptimizer {
               const std::vector<uint64_t>& offsets,
               ValueBlock* block) override {
     auto blas = GetBlas<float>();
-    for (int x = 0; x < num; ++x) {
+    for (auto x : offsets) {
       auto id = keys[x];
       auto values = block->Get(id);
       float* learning_rate = values[learning_rate_idx]->data();

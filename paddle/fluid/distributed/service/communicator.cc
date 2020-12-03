@@ -968,11 +968,9 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int table_id) {
           << param << " ids Size: " << keys.size()
           << "; values size: " << values.size();
 
-  auto *var_pserver = pserver_scope_->Var(param);
   auto *var_latest = recv_scope_->FindVar(param);
   auto *var_old = old_scope_->FindVar(param);
 
-  auto *t_pserver = var_pserver->GetMutable<framework::LoDTensor>();
   auto *t_latest = var_latest->GetMutable<framework::LoDTensor>();
   auto *t_old = var_old->GetMutable<framework::LoDTensor>();
 
@@ -989,16 +987,14 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int table_id) {
 
   for (auto j = 0; j < static_cast<int>(keys.size()); ++j) {
     float *latest_data = t_latest->data<float>() + keys[j] * dims1;
-    float *pserver_data = t_pserver->data<float>() + keys[j] * dims1;
     float *old_data = t_old->data<float>() + keys[j] * dims1;
-    // recv to pserver_scope
-    blas.VCOPY(dims1, values.data() + j * dims1, pserver_data);
     // pserver - old => delta
-    blas.VSUB(dims1, pserver_data, old_data, v_delta.data() + j * dims1);
+    blas.VSUB(dims1, values.data() + j * dims1, old_data,
+              v_delta.data() + j * dims1);
     // latest + delta => latest
     blas.VADD(dims1, latest_data, v_delta.data() + j * dims1, latest_data);
     // pserver => old
-    blas.VCOPY(dims1, pserver_data, old_data);
+    blas.VCOPY(dims1, values.data() + j * dims1, old_data);
   }
   VLOG(1) << "Finish Recv Sparse " << param << ", table_id: " << table_id;
 }
