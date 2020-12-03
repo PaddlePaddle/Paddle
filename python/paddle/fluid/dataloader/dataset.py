@@ -407,8 +407,18 @@ class Subset(Dataset):
     Subset of a dataset at specified indices.
     
     Args:
-        dataset (Dataset): The whole Dataset
-        indices (sequence): Indices in the whole set selected for subset
+        dataset (Dataset): The whole Dataset.
+        indices (sequence): Indices in the whole set selected for subset.
+    
+    Example code:
+        
+        import paddle
+        import numpy as np
+        from paddle.io import Subset
+
+        a = paddle.fluid.dataloader.dataset.Subset(dataset=range(1, 4), indices=[0, 2])
+        print(list(a))
+        # [1, 3]
     """
 
     def __init__(self, dataset, indices):

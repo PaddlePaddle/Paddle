@@ -20,8 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.io import Dataset, IterableDataset, TensorDataset, \
-        ComposeDataset, ChainDataset, DataLoader
-from paddle.fluid.dygraph.base import to_variable
+        ComposeDataset, ChainDataset, DataLoader, random_split, Subset
 
 IMAGE_SIZE = 32
 
@@ -118,8 +117,39 @@ class TestRandomSplitApi(unittest.TestCase):
         dataset1, dataset2 = paddle.fluid.layers.dataset.random_split(
             range(10), [3, 7])
 
-        assert len(dataset1) == 3
-        assert len(dataset2) == 7
+        self.assertTrue(len(dataset1) == 3)
+        self.assertTrue(len(dataset2) == 7)
+
+        elements_list = list(range(10))
+
+        for _, val in enumerate(dataset1):
+            elements_list.remove(val)
+
+        for _, val in enumerate(dataset2):
+            elements_list.remove(val)
+
+        self.assertTrue(len(elements_list) == 0)
+
+
+class TestSubsetDataset(unittest.TestCase):
+    def test_main(self):
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
+
+        dataset = RandomDataset(5)
+        even_subset = Subset(dataset, [0, 2, 4])
+        odd_subset = Subset(dataset, [1, 3])
+
+        self.assertTrue(len(even_subset) == 3)
+        self.assertTrue(len(odd_subset) == 2)
+
+        elements_list = list(dataset)
+
+        for _, val in enumerate(even_subset):
+            elements_list.remove(val)
+
+        odd_list = list(odd_subset)
+        self.assertEqual(odd_list, elements_list)
 
 
 class TestChainDataset(unittest.TestCase):
@@ -149,7 +179,7 @@ class TestChainDataset(unittest.TestCase):
     def test_main(self):
         places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(paddle.CUDAPlace(0))
         for p in places:
             self.run_main(num_workers=0, places=p)
 
