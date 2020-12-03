@@ -28,9 +28,10 @@ class ElementwiseDivXPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class ElementwiseDivGradXPUKernel : public framework::OpKernel<T> {
+class ElementwiseDivGradXPUKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
     XPUElementwiseGrad<T>(ctx, xpu::div_grad<T>, true);
   }
 };
