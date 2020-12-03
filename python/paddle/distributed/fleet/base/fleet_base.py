@@ -615,10 +615,10 @@ class Fleet(object):
 
         if strategy is not None:
             warnings.warn(
-                "It is recommended to pass in DistributedStrategy"
-                "in fleet.init. The strategy here is for compatibility."
-                "If the `strategy` in fleet.distributed_optimizer() is"
-                "not None, then it will overwrite the DistributedStrategy in fleet.init(),"
+                "It is recommended to use DistributedStrategy "
+                "in fleet.init(). The strategy here is only for compatibility. "
+                "If the strategy in fleet.distributed_optimizer() is "
+                "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
                 "which will take effect in distributed training.")
             self._user_defined_strategy = copy.deepcopy(strategy)
 
