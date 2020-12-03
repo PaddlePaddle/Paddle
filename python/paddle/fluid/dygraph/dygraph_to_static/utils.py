@@ -779,7 +779,7 @@ class NameNodeReplaceTransformer(gast.NodeTransformer):
         #
         # For examples:
         # If using a gast.Subscript to replace gast.Name, and the original gast.Name
-        # is in the arguments of FunctionDef, an exceptions will be raised.
+        # is in the arguments of FunctionDef, an exception will be raised.
         #
         # ```
         # def func(x[i])) # x[i] can not be a argument
