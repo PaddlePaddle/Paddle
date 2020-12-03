@@ -30,9 +30,8 @@ class ElementwiseMulOp : public ElementwiseOp {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::proto::VarType::Type input_data_type =
-        static_cast<framework::proto::VarType::Type>(-1);
-    input_data_type = OperatorWithKernel::PromoteVarDataTypes(ctx, "X", "Y");
+    auto input_data_type =
+        OperatorWithKernel::PromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx)) {

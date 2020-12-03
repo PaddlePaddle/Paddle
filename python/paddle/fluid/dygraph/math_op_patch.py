@@ -295,7 +295,8 @@ def monkey_patch_math_varbase():
                                           'elementwise_floordiv', False, None)),
         ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
                                      None)),
-        ('__matmul__', _binary_creator_('__matmul__', "matmul", False, None)),
+        ('__matmul__', _binary_creator_('__matmul__', "matmul_v2", False,
+                                        None)),
         ## for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),

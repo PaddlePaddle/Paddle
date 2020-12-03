@@ -505,11 +505,6 @@ def multiply(x, y, name=None):
     axis = -1
 
     if in_dygraph_mode():
-        if not isinstance(x, (paddle.Tensor)):
-            raise TypeError(
-                    'Input x must tensor type, but received type of x: %s'
-                    % (x.dtype))
-
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
 
