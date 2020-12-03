@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 from numpy.random import random as rand
 from paddle import complex as cpx
+from paddle import tensor
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 
@@ -34,6 +35,21 @@ class TestComplexSumLayer(unittest.TestCase):
             with dg.guard(place):
                 var_x = dg.to_variable(input)
                 result = cpx.sum(var_x, dim=[1, 2]).numpy()
+                target = np.sum(input, axis=(1, 2))
+                self.assertTrue(np.allclose(result, target))
+
+    def test_complex_basic_api(self):
+        input = rand([2, 10, 10]).astype(self._dtype) + 1j * rand(
+            [2, 10, 10]).astype(self._dtype)
+        for place in self._places:
+            with dg.guard(place):
+                var_x = fluid.core.VarBase(
+                    value=input,
+                    place=place,
+                    persistable=False,
+                    zero_copy=None,
+                    name='')
+                result = tensor.sum(var_x, axis=[1, 2]).numpy()
                 target = np.sum(input, axis=(1, 2))
                 self.assertTrue(np.allclose(result, target))
 

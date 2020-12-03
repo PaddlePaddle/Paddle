@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 from numpy.random import random as rand
 from paddle import complex as cpx
+from paddle import tensor
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 
@@ -34,6 +35,21 @@ class TestComplexTraceLayer(unittest.TestCase):
             with dg.guard(place):
                 var_x = dg.to_variable(input)
                 result = cpx.trace(var_x, offset=1, axis1=0, axis2=2).numpy()
+                target = np.trace(input, offset=1, axis1=0, axis2=2)
+                self.assertTrue(np.allclose(result, target))
+
+    def test_complex_basic_api(self):
+        input = rand([2, 20, 2, 3]).astype(self._dtype) + 1j * rand(
+            [2, 20, 2, 3]).astype(self._dtype)
+        for place in self._places:
+            with dg.guard(place):
+                var_x = fluid.core.VarBase(
+                    value=input,
+                    place=place,
+                    persistable=False,
+                    zero_copy=None,
+                    name='')
+                result = tensor.trace(var_x, offset=1, axis1=0, axis2=2).numpy()
                 target = np.trace(input, offset=1, axis1=0, axis2=2)
                 self.assertTrue(np.allclose(result, target))
 
