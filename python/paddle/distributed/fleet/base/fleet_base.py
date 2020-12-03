@@ -92,12 +92,11 @@ class Fleet(object):
             import paddle
             paddle.enable_static()
             import paddle.distributed.fleet as fleet
-
-            fleet.init()
-
             strategy = fleet.DistributedStrategy()
+            fleet.init(strategy=strategy)
+
             optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+            optimizer = fleet.distributed_optimizer(optimizer)
 
             if fleet.is_first_worker():
                 print("this is first worker")
@@ -127,7 +126,7 @@ class Fleet(object):
         self._util = None
         self._context = {}
 
-    def init(self, role_maker=None, is_collective=False):
+    def init(self, role_maker=None, is_collective=False, strategy=None):
         """
         Initialize role_maker in Fleet.
 
@@ -142,6 +141,10 @@ class Fleet(object):
             is_collective (Boolean, optional): A ``Boolean`` variable determines whether the program 
                 runs on the CPU or GPU. False means set distributed training using CPU, and True means
                 GPU.The default value is False.The default value is False.
+            strategy (DistributedStrategy): Extra properties for distributed training. 
+                For details, please refer to paddle.distributed.fleet.DistributedStrategy. Default: None.
+
+
         Returns:
             None
 
@@ -166,6 +169,14 @@ class Fleet(object):
                 import paddle.distributed.fleet as fleet
                 role = fleet.PaddleCloudRoleMaker()
                 fleet.init(role)
+
+        Examples4:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                fleet.init(strategy=strategy)
 
         """
 
@@ -208,6 +219,10 @@ class Fleet(object):
                     "The dygraph parallel environment has been initialized.")
             else:
                 paddle.distributed.init_parallel_env()
+
+        if strategy is None:
+            strategy = DistributedStrategy()
+        self._user_defined_strategy = copy.deepcopy(strategy)
 
     def is_first_worker(self):
         """
@@ -575,7 +590,11 @@ class Fleet(object):
 
         Args:
             optimizer(Optimizer): The executor to run for init server.
-            strategy(DistributedStrategy): Extra properties for distributed optimizer.
+            strategy(DistributedStrategy): Extra properties for distributed optimizer. 
+                It is recommended to use DistributedStrategy in fleet.init(). The strategy
+                here is for compatibility. If the strategy in fleet.distributed_optimizer() 
+                is not None, then it will overwrite the DistributedStrategy in fleet.init(), 
+                which will take effect in distributed training.
 
         Returns:
             Fleet: instance of fleet.
@@ -594,27 +613,25 @@ class Fleet(object):
         """
         self.user_defined_optimizer = optimizer
 
-        if strategy == None:
-            strategy = DistributedStrategy()
+        if strategy is not None:
+            warnings.warn(
+                "It is recommended to pass in DistributedStrategy"
+                "in fleet.init. The strategy here is for compatibility."
+                "If the `strategy` in fleet.distributed_optimizer() is"
+                "not None, then it will overwrite the DistributedStrategy in fleet.init(),"
+                "which will take effect in distributed training.")
+            self._user_defined_strategy = copy.deepcopy(strategy)
 
-        self._user_defined_strategy = copy.deepcopy(strategy)
         self._context = {}
         return self
 
     @dygraph_only
-    def distributed_model(self, model, group_size_limits=25,
-                          small_group_size=1):
+    def distributed_model(self, model):
         """
         Return distributed data parallel model (Only work in dygraph mode)
 
         Args:
             model (Layer): the user-defind model which inherits Layer.
-            group_size_limits(int, optional): It is up limited memory size(MB) of one group 
-                                          parameters' gradient which is the input of communication 
-                                          calling(e.g NCCLAllReduce). Default: 25.
-            small_group_size(int, optional): It is up limited memory size(MB) of last group in communication
-                                         calling. Making the last group small is useful to 
-                                         improve performance. Default: 1.
 
         Returns:
             distributed data parallel model which inherits Layer.
@@ -667,8 +684,9 @@ class Fleet(object):
         assert model is not None
         self.model = paddle.DataParallel(
             model,
-            group_size_limits=group_size_limits,
-            small_group_size=small_group_size)
+            comm_buffer_size=self._user_defined_strategy.fuse_grad_size_in_MB,
+            last_comm_buffer_size=self._user_defined_strategy.
+            last_comm_group_size_MB)
         return self.model
 
     @dygraph_only
