@@ -116,9 +116,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
                       ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, paddle::platform::complex64,
-                      ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, paddle::platform::complex128,
+    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::complex64, ops::SumFunctor>,
+    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::complex128,
+
                       ops::SumFunctor>);
 
 template <typename T>
