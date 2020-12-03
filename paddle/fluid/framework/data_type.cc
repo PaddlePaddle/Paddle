@@ -98,74 +98,55 @@ size_t SizeOfType(proto::VarType::Type type) {
                                                DataTypeToString(type)));
 }
 
-int DataTypeNumAlign(const proto::VarType::Type t) {
+// Now only supports float type protome to complex type
+bool NeedPromoteTypes(const proto::VarType::Type a,
+                      const proto::VarType::Type b) {
+  return ((IsFloatingType(a) && IsComplexType(b)) ||
+          (IsComplexType(a) && IsFloatingType(b)));
+}
+
+int ComplexDataTypeNumAlign(const proto::VarType::Type t) {
   int cast_type_num = -1;
-  if (t == proto::VarType::UINT8 || t == proto::VarType::INT8 ||
-      t == proto::VarType::BF16 || t == proto::VarType::COMPLEX64 ||
-      t == proto::VarType::COMPLEX128) {
-    cast_type_num = static_cast<int>(t) - 13;
-  } else if (t == proto::VarType::BOOL || t == proto::VarType::INT16 ||
-             t == proto::VarType::INT32 || t == proto::VarType::INT64 ||
-             t == proto::VarType::FP16 || t == proto::VarType::FP32 ||
-             t == proto::VarType::FP64) {
-    cast_type_num = static_cast<int>(t);
+  if (t == proto::VarType::FP32 || t == proto::VarType::FP64) {
+    cast_type_num = static_cast<int>(t) - 5;
+  } else if (t == proto::VarType::COMPLEX64 ||
+             t == proto::VarType::COMPLEX128) {
+    cast_type_num = static_cast<int>(t) - 21;
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
-        "Only supports align tensor data type, but received "
-        "proto::VarType::Type(%d) is not a tensor data type.",
-        static_cast<int>(t)));
+        "Only supports align data type include float32, float64, complex64 "
+        "and complex128, but received `s`.",
+        DataTypeToString(t)));
   }
   return cast_type_num;
 }
 
-proto::VarType::Type PromoteTypes(const proto::VarType::Type type_a,
-                                  const proto::VarType::Type type_b) {
-  constexpr auto b1 = proto::VarType::BOOL;   // 0
-  constexpr auto i2 = proto::VarType::INT16;  // 1
-  constexpr auto i4 = proto::VarType::INT32;  // 2
-  constexpr auto i8 = proto::VarType::INT64;  // 3
-  constexpr auto f2 = proto::VarType::FP16;   // 4
-  constexpr auto f4 = proto::VarType::FP32;   // 5
-  constexpr auto f8 = proto::VarType::FP64;   // 6
-
-  constexpr auto u1 = proto::VarType::UINT8;       // 20
-  constexpr auto i1 = proto::VarType::INT8;        // 21
-  constexpr auto bf = proto::VarType::BF16;        // 22
+// Now we only support promote complex data type
+proto::VarType::Type PromoteComplexTypes(const proto::VarType::Type type_a,
+                                         const proto::VarType::Type type_b) {
+  constexpr auto f4 = proto::VarType::FP32;        // 5
+  constexpr auto f8 = proto::VarType::FP64;        // 6
   constexpr auto c4 = proto::VarType::COMPLEX64;   // 23
   constexpr auto c8 = proto::VarType::COMPLEX128;  // 24
 
-  PADDLE_ENFORCE_EQ(IsDataType(type_a), true,
-                    platform::errors::InvalidArgument(
-                        "Only supports promote tensor data types, but received "
-                        "proto::VarType::Type(%d) is not a tensor data type.",
-                        static_cast<int>(type_a)));
-  PADDLE_ENFORCE_EQ(IsDataType(type_b), true,
-                    platform::errors::InvalidArgument(
-                        "Only supports promote tensor data types, but received "
-                        "proto::VarType::Type(%d) is not a tensor data type.",
-                        static_cast<int>(type_b)));
-
-  if (type_a == type_b) {
+  if (!NeedPromoteTypes(type_a, type_b)) {
+    // NOTE(chenweihang): keep consistent with rule in current ops,
+    // kernel type based on the left tensor's dtype
     return type_a;
   }
 
-  int type_an = DataTypeNumAlign(type_a);
-  int type_bn = DataTypeNumAlign(type_b);
+  int type_an = ComplexDataTypeNumAlign(type_a);
+  int type_bn = ComplexDataTypeNumAlign(type_b);
 
-  static constexpr proto::VarType::Type promote_types_table[12][12] = {
-      /*        b1  i2  i4  i8  f2  f4  f8  u1  i1  bf  c4  c8*/
-      /* b1 */ {b1, i2, i4, i8, f2, f4, f8, u1, i1, bf, c4, c8},
-      /* i2 */ {i2, i2, i4, i8, f2, f4, f8, i2, i2, bf, c4, c8},
-      /* i4 */ {i4, i4, i4, i8, f2, f4, f8, i4, i4, bf, c4, c8},
-      /* i8 */ {i8, i8, i8, i8, f2, f4, f8, i8, i8, bf, c4, c8},
-      /* f2 */ {f2, f2, f2, f2, f2, f4, f8, f2, f2, f4, c4, c8},
-      /* f4 */ {f4, f4, f4, f4, f4, f4, f8, f4, f4, f4, c4, c8},
-      /* f8 */ {f8, f8, f8, f8, f8, f8, f8, f8, f8, f8, c8, c8},
-      /* u1 */ {u1, i2, i4, i8, f2, f4, f8, u1, i2, bf, c4, c8},
-      /* i1 */ {i1, i2, i4, i8, f2, f4, f8, i2, i1, bf, c4, c8},
-      /* bf */ {bf, bf, bf, bf, f4, f4, f8, bf, bf, bf, c4, c8},
-      /* c4 */ {c4, c4, c4, c4, c4, c4, c8, c4, c4, c4, c4, c8},
-      /* c8 */ {c8, c8, c8, c8, c8, c8, c8, c8, c8, c8, c8, c8},
+  // Here is a complete rules table, but some rules are not used.
+  // It is still written this way because array access is still
+  // more efficient than if-else
+  static constexpr proto::VarType::Type promote_types_table[4][4] = {
+      /*        f4  f8  c4  c8*/
+      /* f4 */ {f4, f8, c4, c8},
+      /* f8 */ {f8, f8, c8, c8},
+      /* c4 */ {c4, c8, c4, c8},
+      /* c8 */ {c8, c8, c8, c8},
   };
 
   return promote_types_table[type_an][type_bn];

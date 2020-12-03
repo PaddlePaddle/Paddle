@@ -142,19 +142,19 @@ inline std::ostream& operator<<(std::ostream& out,
   return out;
 }
 
-extern inline bool IsDataType(const proto::VarType::Type t) {
-  return (t == proto::VarType::BOOL || t == proto::VarType::INT16 ||
-          t == proto::VarType::INT32 || t == proto::VarType::INT64 ||
-          t == proto::VarType::FP16 || t == proto::VarType::FP32 ||
-          t == proto::VarType::FP64 || t == proto::VarType::UINT8 ||
-          t == proto::VarType::INT8 || t == proto::VarType::BF16 ||
-          t == proto::VarType::COMPLEX64 || t == proto::VarType::COMPLEX128);
+extern inline bool IsFloatingType(const proto::VarType::Type type) {
+  // now only consider standard float types for complex promote
+  // if need check float16 or bfloat, please define other funtion
+  return (type == proto::VarType::FP32 || type == proto::VarType::FP64);
 }
 
-extern int DataTypeNumAlign(const proto::VarType::Type t);
+extern inline bool IsComplexType(const proto::VarType::Type type) {
+  return (type == proto::VarType::COMPLEX64 ||
+          type == proto::VarType::COMPLEX128);
+}
 
-extern proto::VarType::Type PromoteTypes(const proto::VarType::Type type_a,
-                                         const proto::VarType::Type type_b);
+extern proto::VarType::Type PromoteComplexTypes(
+    const proto::VarType::Type type_a, const proto::VarType::Type type_b);
 
 }  // namespace framework
 }  // namespace paddle

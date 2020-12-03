@@ -127,6 +127,13 @@ class TestMultiplyError(unittest.TestCase):
         y = paddle.to_tensor(y_data)
         self.assertRaises(ValueError, paddle.multiply, x, y)
 
+        # test dynamic computation graph: dtype must be same	
+        x_data = np.random.randn(200).astype(np.int64)
+        y_data = np.random.randn(200).astype(np.float64)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        self.assertRaises(ValueError, paddle.multiply, x, y)
+
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.int64)
         y_data = np.random.randn(200).astype(np.float64)

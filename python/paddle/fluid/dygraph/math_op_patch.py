@@ -37,7 +37,7 @@ _supported_int_dtype_ = [
 # correct type promotion on the APIs paddle quantum used.
 # Now only check in dygraph (paddle quantum based dygraph)
 # Full type promotion support will need to be fully verified later.
-_supported_promote_types_ = [
+_supported_promote_complex_types_ = [
     '__add__',
     '__radd__',
     '__sub__',
@@ -221,8 +221,12 @@ def monkey_patch_math_varbase():
             # 3. promote types or unify right var type to left var
             rhs_dtype = other_var.dtype
             if lhs_dtype != rhs_dtype:
-                if method_name in _supported_promote_types_:
-                    promote_dtype = core._promote_types(lhs_dtype, rhs_dtype)
+                if method_name in _supported_promote_complex_types_:
+                    # only when lhs_dtype or rhs_dtype is complex type,
+                    # the dtype will promote, in other cases, directly
+                    # use lhs_dtype, this is consistent will original rule
+                    promote_dtype = core._promote_complex_types(lhs_dtype,
+                                                                rhs_dtype)
                     self = self if lhs_dtype == promote_dtype else astype(
                         self, promote_dtype)
                     other_var = other_var if rhs_dtype == promote_dtype else astype(

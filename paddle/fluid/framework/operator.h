@@ -504,9 +504,9 @@ class OperatorWithKernel : public OperatorBase {
   proto::VarType::Type IndicateVarDataType(const ExecutionContext& ctx,
                                            const std::string& name) const;
 
-  proto::VarType::Type PromoteVarDataTypes(const ExecutionContext& ctx,
-                                           const std::string& name1,
-                                           const std::string& name2) const;
+  proto::VarType::Type IndicateOrPromoteVarDataTypes(
+      const ExecutionContext& ctx, const std::string& name1,
+      const std::string& name2) const;
 
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
 
