@@ -98,14 +98,13 @@ size_t SizeOfType(proto::VarType::Type type) {
                                                DataTypeToString(type)));
 }
 
-// Now only supports float type protome to complex type
+// Now only supports protomotion of complex type
 bool NeedPromoteTypes(const proto::VarType::Type a,
                       const proto::VarType::Type b) {
-  return ((IsFloatingType(a) && IsComplexType(b)) ||
-          (IsComplexType(a) && IsFloatingType(b)));
+  return (IsComplexType(a) || IsComplexType(b));
 }
 
-int ComplexDataTypeNumAlign(const proto::VarType::Type t) {
+int DataTypeNumAlign(const proto::VarType::Type t) {
   int cast_type_num = -1;
   if (t == proto::VarType::FP32 || t == proto::VarType::FP64) {
     cast_type_num = static_cast<int>(t) - 5;
@@ -114,16 +113,16 @@ int ComplexDataTypeNumAlign(const proto::VarType::Type t) {
     cast_type_num = static_cast<int>(t) - 21;
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
-        "Only supports align data type include float32, float64, complex64 "
-        "and complex128, but received `s`.",
+        "Only supports to align data type include float32, float64, complex64 "
+        "and complex128, but received data type is `s`.",
         DataTypeToString(t)));
   }
   return cast_type_num;
 }
 
-// Now we only support promote complex data type
-proto::VarType::Type PromoteComplexTypes(const proto::VarType::Type type_a,
-                                         const proto::VarType::Type type_b) {
+// Now only supports protomotion of complex type
+proto::VarType::Type PromoteTypesIfComplexExists(
+    const proto::VarType::Type type_a, const proto::VarType::Type type_b) {
   constexpr auto f4 = proto::VarType::FP32;        // 5
   constexpr auto f8 = proto::VarType::FP64;        // 6
   constexpr auto c4 = proto::VarType::COMPLEX64;   // 23
@@ -135,8 +134,8 @@ proto::VarType::Type PromoteComplexTypes(const proto::VarType::Type type_a,
     return type_a;
   }
 
-  int type_an = ComplexDataTypeNumAlign(type_a);
-  int type_bn = ComplexDataTypeNumAlign(type_b);
+  int type_an = DataTypeNumAlign(type_a);
+  int type_bn = DataTypeNumAlign(type_b);
 
   // Here is a complete rules table, but some rules are not used.
   // It is still written this way because array access is still

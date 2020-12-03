@@ -142,18 +142,12 @@ inline std::ostream& operator<<(std::ostream& out,
   return out;
 }
 
-extern inline bool IsFloatingType(const proto::VarType::Type type) {
-  // now only consider standard float types for complex promote
-  // if need check float16 or bfloat, please define other funtion
-  return (type == proto::VarType::FP32 || type == proto::VarType::FP64);
-}
-
 extern inline bool IsComplexType(const proto::VarType::Type type) {
   return (type == proto::VarType::COMPLEX64 ||
           type == proto::VarType::COMPLEX128);
 }
 
-extern proto::VarType::Type PromoteComplexTypes(
+extern proto::VarType::Type PromoteTypesIfComplexExists(
     const proto::VarType::Type type_a, const proto::VarType::Type type_b);
 
 }  // namespace framework

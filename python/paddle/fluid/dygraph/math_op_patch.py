@@ -225,8 +225,8 @@ def monkey_patch_math_varbase():
                     # only when lhs_dtype or rhs_dtype is complex type,
                     # the dtype will promote, in other cases, directly
                     # use lhs_dtype, this is consistent will original rule
-                    promote_dtype = core._promote_complex_types(lhs_dtype,
-                                                                rhs_dtype)
+                    promote_dtype = core._promote_types_if_complex_exists(
+                        lhs_dtype, rhs_dtype)
                     self = self if lhs_dtype == promote_dtype else astype(
                         self, promote_dtype)
                     other_var = other_var if rhs_dtype == promote_dtype else astype(

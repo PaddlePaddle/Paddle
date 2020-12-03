@@ -552,7 +552,7 @@ class OperatorWithKernel : public OperatorBase {
   // used for IndicateDataType
   void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,
                           proto::VarType::Type* type) const;
-  // used for PromoteVarDataTypes
+  // used for IndicateOrPromoteVarDataTypes
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
 

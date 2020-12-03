@@ -1535,7 +1535,7 @@ proto::VarType::Type OperatorWithKernel::IndicateOrPromoteVarDataTypes(
   auto type_b = tensor_b->type();
 
   // 3. Get first input type or promote complex types
-  auto target_type = PromoteComplexTypes(type_a, type_b);
+  auto target_type = PromoteTypesIfComplexExists(type_a, type_b);
 
   return target_type;
 }

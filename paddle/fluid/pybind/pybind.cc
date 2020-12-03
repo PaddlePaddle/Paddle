@@ -514,7 +514,8 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
 
-  m.def("_promote_complex_types", &paddle::framework::PromoteComplexTypes);
+  m.def("_promote_types_if_complex_exists",
+        &paddle::framework::PromoteTypesIfComplexExists);
 
   BindImperative(&m);
 
