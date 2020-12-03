@@ -712,11 +712,11 @@ void AnalyzeEvent(
       }
     }
     for (size_t j = 0; j < table_size; ++j) {
-      if (child_index[j] == 0) {                    // pushes and counts only parents, ensures that time will not be counted twice
+      if (child_index[j] == 0) {
         main_event_items.push_back(event_items[j]);
         total += event_items[j].total_time;
       }
-      else if (child_index[j] == 1 && event_items[j].name.find("reorder") != std::string::npos){
+      else if ((child_index[j] == 1 && event_items[j].name.find("ext_reorder") != std::string::npos) || platform::GetTracerOption() == TracerOption::kAllOpDetail){
         size_t first_slash_pos = event_items[j].name.find('/');
         if(first_slash_pos != std::string::npos){
           std::string fname = event_items[j].name.substr(0, first_slash_pos);
