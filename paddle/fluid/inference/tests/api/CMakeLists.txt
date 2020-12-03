@@ -54,6 +54,12 @@ function(inference_analysis_api_test target install_dir filename)
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt --refer_result=${install_dir}/result.txt)
 endfunction()
 
+function(inference_multiple_models_analysis_api_test target install_dir filename)
+    inference_analysis_test(${target} SRCS ${filename}
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${install_dir}/mobilenet_v2_models/1 --infer_model2=${install_dir}/mobilenet_v2_models/xx --infer_model3=${install_dir}/mobilenet_v2_models/3)
+endfunction()
+
 function(inference_analysis_api_test_build TARGET_NAME filename)
 	inference_analysis_test_build(${TARGET_NAME} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS})
@@ -462,6 +468,11 @@ set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
 download_model_and_data(${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
 
+# multiple models prediction
+set(MMP_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_model_prediction")
+download_data(${MMP_INSTALL_DIR} PaddleInference/mobilenet_v2_models.tar.gz) 
+inference_multiple_models_analysis_api_test(test_analyzer_multi_model_prediction ${MMP_INSTALL_DIR} analyzer_mmp_tester.cc)
+
 if(WITH_GPU AND TENSORRT_FOUND)
     set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt_models")
     if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models.tar.gz)
@@ -636,6 +647,7 @@ set_tests_properties(test_analyzer_googlenet PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_small_dam PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_bert PROPERTIES TIMEOUT 120)
+set_tests_properties(test_analyzer_multi_model_prediction PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_mobilenet_depthwise_conv PROPERTIES TIMEOUT 120)
 if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 120)
