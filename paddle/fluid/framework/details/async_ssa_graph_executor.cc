@@ -16,6 +16,10 @@
 
 #include "paddle/fluid/framework/variable_helper.h"
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/distributed/service/communicator.h"
+#endif
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -134,12 +138,12 @@ FetchResultType AsyncSSAGraphExecutor::Run(
                         "results to be fetched!"));
   // init once
   if (run_futures_.size() == 0 && places_.size() > 1) {
-    //     if (strategy_.thread_barrier_) {
-    // #ifdef PADDLE_WITH_DISTRIBUTE
-    //       operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
-    //           places_.size());
-    // #endif
-    //     }
+#ifdef PADDLE_WITH_DISTRIBUTE
+    if (strategy_.thread_barrier_) {
+      operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
+          places_.size());
+#endif
+    }
     exception_holder_.Clear();
     StartOffPythonTrainLoop(return_merged);
   }
