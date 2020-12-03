@@ -140,7 +140,7 @@ FetchResultType AsyncSSAGraphExecutor::Run(
   if (run_futures_.size() == 0 && places_.size() > 1) {
 #ifdef PADDLE_WITH_DISTRIBUTE
     if (strategy_.thread_barrier_) {
-      operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
+      paddle::distributed::Communicator::GetInstance()->BarrierTriggerReset(
           places_.size());
 #endif
     }
