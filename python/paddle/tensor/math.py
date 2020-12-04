@@ -503,19 +503,15 @@ def multiply(x, y, name=None):
     act = None
     axis = -1
 
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+
     if x.dtype != y.dtype:
         raise TypeError(
             'Input tensors must be same type, but received type of x: %s, type of y: %s '
             % (x.dtype, y.dtype))
 
-    if in_dygraph_mode():
-        if not isinstance(x, (paddle.Tensor)):
-            raise TypeError(
-                    'Input x must tensor type, but received type of x: %s'
-                    % (x.dtype))
-
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 def maximum(x, y, name=None):

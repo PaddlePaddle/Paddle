@@ -135,6 +135,11 @@ if(WITH_MUSL)
     LIST(REMOVE_ITEM TEST_OPS test_sigmoid_focal_loss_op)
 endif()
 
+if(WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_rnn_decode_api)
+    LIST(REMOVE_ITEM TEST_OPS test_complex_matmul)
+endif()
+
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint1)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
@@ -632,6 +637,7 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32 AND NOT APPLE)
+    set_tests_properties(test_imperative_signal_handler PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     # set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
