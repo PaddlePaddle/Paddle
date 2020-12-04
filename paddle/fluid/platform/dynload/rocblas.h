@@ -64,6 +64,7 @@ extern void *rocblas_dso_handle;
   __macro(rocblas_dgemm);                \
   __macro(rocblas_hgemm);                   \
   __macro(rocblas_dgeam);                   \
+  /*rocblas_gemm_ex function not support at rocm3.5*/                                      \
   /*__macro(rocblas_gemm_ex);                 */\
   __macro(rocblas_sgemm_batched);            \
   __macro(rocblas_dgemm_batched);            \
@@ -94,6 +95,7 @@ ROCBLAS_BLAS_ROUTINE_EACH_R3(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
 #define ROCBLAS_BLAS_ROUTINE_EACH_R4(__macro) \
   __macro(rocblas_gemm_batched_ex);              \
+//rocm not support now(rocm3.5)
 //  __macro(rocblas_gemm_strided_batched_ex);
 
 ROCBLAS_BLAS_ROUTINE_EACH_R4(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)

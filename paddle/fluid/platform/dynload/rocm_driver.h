@@ -50,6 +50,7 @@ extern bool HasROCMDriver();
   __macro(hipModuleLoadData);                            \
   __macro(hipModuleGetFunction);                         \
   __macro(hipModuleUnload);                              \
+  /*rocm3.5 not support the function*/ \
  /* __macro(hipOccupancyMaxActiveBlocksPerMultiprocessor);*/ \
   __macro(hipModuleLaunchKernel);                              \
   __macro(hipLaunchKernel);                              \

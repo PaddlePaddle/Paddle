@@ -49,19 +49,19 @@ DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
 #ifdef PADDLE_WITH_HIP
 
 DEFINE_string(miopen_dir, "",
-              "Specify path for loading libcudnn.so. For instance, "
-              "/usr/local/cudnn/lib. If empty [default], dlopen "
-              "will search cudnn from LD_LIBRARY_PATH");
+              "Specify path for loading libMIOpen.so. For instance, "
+              "/opt/rocm/miopen/lib. If empty [default], dlopen "
+              "will search miopen from LD_LIBRARY_PATH");
 
 DEFINE_string(rocm_dir, "",
-              "Specify path for loading cuda library, such as libcublas, "
-              "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
-              "If default, dlopen will search cuda from LD_LIBRARY_PATH");
+              "Specify path for loading rocm library, such as librocblas, "
+              "libcurand, libcusolver. For instance, /opt/rocm/lib. "
+              "If default, dlopen will search rocm from LD_LIBRARY_PATH");
 
 DEFINE_string(rccl_dir, "",
-              "Specify path for loading nccl library, such as libnccl.so. "
-              "For instance, /usr/local/cuda/lib64. If default, "
-              "dlopen will search cuda from LD_LIBRARY_PATH");
+              "Specify path for loading rccl library, such as librccl.so. "
+              "For instance, /opt/rocm/rccl/lib. If default, "
+              "dlopen will search rccl from LD_LIBRARY_PATH");
 #endif
 
 namespace paddle {
