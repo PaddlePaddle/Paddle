@@ -35,3 +35,6 @@ register_unity_group(cu
     adadelta_op.cu
     lamb_op.cu
     rmsprop_op.cu)
+# The following groups are to make better use of `/MP` which MSVC's parallel
+# compilation instruction when compiling in Unity Build.
+register_unity_group(cu proximal_adagrad_op.cu)

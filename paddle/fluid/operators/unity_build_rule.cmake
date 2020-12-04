@@ -477,3 +477,20 @@ register_unity_group(cu
     unstack_op.cu
     where_index_op.cu
     where_op.cu)
+# The following groups are to make better use of `/MP` which MSVC's parallel
+# compilation instruction when compiling in Unity Build.
+register_unity_group(cu activation_op.cu)
+register_unity_group(cu arg_max_op.cu)
+register_unity_group(cu arg_min_op.cu)
+register_unity_group(cu batch_norm_op.cu)
+register_unity_group(cu crop_tensor_op.cu)
+register_unity_group(cu dist_op.cu)
+register_unity_group(cu expand_as_op.cu)
+register_unity_group(cu expand_as_v2_op.cu)
+register_unity_group(cu gru_unit_op.cu)
+register_unity_group(cu instance_norm_op.cu)
+register_unity_group(cu kldiv_loss_op.cu)
+register_unity_group(cu partial_concat_op.cu)
+register_unity_group(cu softmax_with_cross_entropy_op.cu)
+register_unity_group(cu squared_l2_distance_op.cu)
+register_unity_group(cu top_k_op.cu)
