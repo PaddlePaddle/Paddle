@@ -27,4 +27,5 @@ from .adadelta import Adadelta
 from .sgd import SGD
 from .momentum import Momentum
 from .lamb import Lamb
+from .lambopt import LAMBOptimizer
 from . import lr
