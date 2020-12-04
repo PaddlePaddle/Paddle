@@ -35,6 +35,8 @@ class VariableWrapper {
 
   explicit VariableWrapper(const std::string& name) : name_(name) {}
 
+  ~VariableWrapper() { VLOG(10) << "Destruct VariableWrapper: " << Name(); }
+
   const framework::Variable& Var() const { return var_; }
 
   framework::Variable* MutableVar() { return &var_; }

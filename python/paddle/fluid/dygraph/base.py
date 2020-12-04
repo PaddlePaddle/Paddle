@@ -326,13 +326,13 @@ class no_grad_:
     def __enter__(self):
         tracer = framework._dygraph_tracer()
         if tracer:
-            self.orig = tracer._train_mode
-            tracer._train_mode = False
+            self.orig = tracer._has_grad
+            tracer._has_grad = False
 
     def __exit__(self, *args):
         tracer = framework._dygraph_tracer()
         if tracer:
-            tracer._train_mode = self.orig
+            tracer._has_grad = self.orig
 
 
 @signature_safe_contextmanager
