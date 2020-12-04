@@ -185,7 +185,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // For in-place execution which sum does not have we need to fake it
     // so from oneDNN dst memory we reorder data into input
     if (in_place) {
-      std::string reorder_key =
+      const std::string reorder_key =
           platform::CreateKey(dev_ctx, framework::vectorize(output->dims()),
                               ctx.OutputName("Out") + "-I");
 

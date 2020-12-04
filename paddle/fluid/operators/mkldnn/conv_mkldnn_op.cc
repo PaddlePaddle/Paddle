@@ -515,17 +515,17 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // This is workaround for hacky implementation
     // of conv int8 mkl-dnn. Once conv fp32 and conv int8
     // are merged/unified, this will disappear
-    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+    auto key_tid = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
-    auto prim_key = key + "@conv_p";
-    auto dst_key = key + "@dst_mem_p";
-    auto src_key = key + "@src_mem_p";
-    auto weights_key = key + "@weights_mem_p";
-    auto bias_key = key + "@bias_mem_p";
-    auto user_src_key = key + "@user_src_mem_p";
-    auto user_residual_key = key + "@user_residual_data_mem_p";
-    auto src_reorder_key = key + "@src_mem_preorder_p";
-    auto residual_reorder_key = key + "@residual_data_mem_preorder_p";
+    auto prim_key = key_tid + "@conv_p";
+    auto dst_key = key_tid + "@dst_mem_p";
+    auto src_key = key_tid + "@src_mem_p";
+    auto weights_key = key_tid + "@weights_mem_p";
+    auto bias_key = key_tid + "@bias_mem_p";
+    auto user_src_key = key_tid + "@user_src_mem_p";
+    auto user_residual_key = key_tid + "@user_residual_data_mem_p";
+    auto src_reorder_key = key_tid + "@src_mem_preorder_p";
+    auto residual_reorder_key = key_tid + "@residual_data_mem_preorder_p";
 
     conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
         dev_ctx.GetBlob(prim_key));
