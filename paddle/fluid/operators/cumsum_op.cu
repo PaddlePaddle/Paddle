@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
-#include <thrust/gather.h>
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
 #include "cub/cub.cuh"
@@ -95,8 +94,6 @@ struct BlockPrefixCallbackOp {
 };
 
 // No bank-conflict transpose
-// Same as transposeCoalesced except the first tile dimension is padded
-// to avoid shared memory bank conflicts.
 template <typename T, int TILE_DIM, int BLOCK_ROWS>
 __global__ void MatrixTranspose(T* odata, const T* idata, size_t height,
                                 size_t width) {
