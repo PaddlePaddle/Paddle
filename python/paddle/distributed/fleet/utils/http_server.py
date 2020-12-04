@@ -112,8 +112,8 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         _, scope, key = paths
         with self.server.delete_kv_lock:
             if self.server.delete_kv.get(scope) is None:
-                self.server.delete_kv[scope] = []
-            self.server.delete_kv[scope].append(key)
+                self.server.delete_kv[scope] = 0
+            self.server.delete_kv[scope] += 1
         self.send_status_code(200)
         _http_server_logger.info(log_str)
 
@@ -164,7 +164,7 @@ class KVServer:
         """Init."""
         self.http_server = KVHTTPServer(port, KVHandler)
         self.listen_thread = None
-        self.size = {}
+        self.size = size
 
     def start(self):
         """
