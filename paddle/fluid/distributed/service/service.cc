@@ -89,7 +89,7 @@ int PSCore::init_worker(
   _ps_env = paddle::distributed::PaddlePSEnvironment();
   _ps_env.set_ps_servers(host_sign_list, node_num);
   int ret = 0;
-
+  VLOG(1) << "PSCore::init_worker";
   auto* communicator = Communicator::GetInstance();
   ret = communicator->GetPsClient()->configure(_ps_param, regions, _ps_env,
                                                index);
@@ -124,5 +124,5 @@ int PSCore::stop_server() {
   return 0;
 }
 paddle::distributed::PSParameter* PSCore::get_param() { return &_ps_param; }
-}
-}
+}  // namespace distributed
+}  // namespace paddle

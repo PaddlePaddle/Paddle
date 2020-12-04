@@ -336,7 +336,7 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
       auto &table_id = iter.first;
       auto &varnames = iter.second;
       RpcSendDenseParam(varnames, table_id, *recv_scope_);
-      VLOG(0) << "push dense param to table " << table_id
+      VLOG(1) << "push dense param to table " << table_id
               << " from 0' trainer done";
     }
     BarrierWithTable(1);
@@ -346,7 +346,7 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
       auto &table_id = iter.first;
       auto &varnames = iter.second;
       RpcRecvDense(varnames, table_id, recv_scope_);
-      VLOG(0) << "pull dense param to table " << table_id
+      VLOG(1) << "pull dense param to table " << table_id
               << " from 0' trainer done";
     }
   }

@@ -148,8 +148,9 @@ void StartSendAndRecvServer(std::string endpoint) {
   b_rpc_service->SetEndPoint(endpoint);
   LOG(INFO) << "before HeterServer::RegisterServiceHandler";
   b_rpc_service->RegisterServiceHandler(
-      in_var_name, [&](const MultiVarMsg* request, MultiVarMsg* response,
-                       brpc::Controller* cntl) -> int {
+      in_var_name,
+      [&](const MultiVarMsg* request, MultiVarMsg* response,
+          brpc::Controller* cntl) -> int {
         return b_req_handler->Handle(request, response, cntl);
       });
 
