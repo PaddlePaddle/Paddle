@@ -27,64 +27,68 @@ class ComplexKronTestCase(unittest.TestCase):
 
     def setUp(self):
         self.ref_result = np.kron(self.x, self.y)
+        self._places = [paddle.CPUPlace()]
+        if fluid.is_compiled_with_cuda():
+            self._places.append(paddle.CUDAPlace(0))
 
     def runTest(self):
-        place = fluid.CPUPlace()
-        self.test_identity(place)
+        for place in self._places:
+            self.test_complex_api(place)
+            self.test_basic_api(place)
 
-        if fluid.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
-            self.test_identity(place)
-            self.test_identity_1(place)
-
-    def test_identity(self, place):
+    def test_complex_api(self, place):
         with dg.guard(place):
             x_var = dg.to_variable(self.x)
             y_var = dg.to_variable(self.y)
             out_var = paddle.complex.kron(x_var, y_var)
-            np.testing.assert_allclose(out_var.numpy(), self.ref_result)
+            self.assertTrue(np.allclose(out_var.numpy(), self.ref_result))
 
-    def test_identity_1(self, place):
-        x = np.random.randn(2, 2) + 1j * np.random.randn(2, 2)
-        y = np.random.randn(3, 3) + 1j * np.random.randn(3, 3)
+    def test_basic_api(self, place):
         with dg.guard(place):
-            x_var = fluid.core.VarBase(
-                value=x,
-                place=fluid.framework._current_expected_place(),
+            x_var = paddle.Tensor(
+                value=self.x,
+                place=place,
                 persistable=False,
                 zero_copy=None,
-                name='')
-            y_var = fluid.core.VarBase(
-                value=y,
-                place=fluid.framework._current_expected_place(),
+                stop_gradient=True)
+
+            y_var = paddle.Tensor(
+                value=self.y,
+                place=place,
                 persistable=False,
                 zero_copy=None,
-                name='')
+                stop_gradient=True)
 
             out_var = tensor.math.kron(x_var, y_var)
-
-            np.testing.assert_allclose(out_var.numpy(), np.kron(x, y))
+            self.assertTrue(np.allclose(out_var.numpy(), self.ref_result))
 
 
 def load_tests(loader, standard_tests, pattern):
     suite = unittest.TestSuite()
-    suite.addTest(
-        ComplexKronTestCase(
-            x=np.random.randn(2, 2) + 1j * np.random.randn(2, 2),
-            y=np.random.randn(3, 3) + 1j * np.random.randn(3, 3)))
-    suite.addTest(
-        ComplexKronTestCase(
-            x=np.random.randn(2, 2),
-            y=np.random.randn(3, 3) + 1j * np.random.randn(3, 3)))
-    suite.addTest(
-        ComplexKronTestCase(
-            x=np.random.randn(2, 2) + 1j * np.random.randn(2, 2),
-            y=np.random.randn(3, 3)))
+    for dtype in ["float32", "float64"]:
+        suite.addTest(
+            ComplexKronTestCase(
+                x=np.random.randn(2, 2).astype(dtype) + 1j * np.random.randn(
+                    2, 2).astype(dtype),
+                y=np.random.randn(3, 3).astype(dtype) + 1j * np.random.randn(
+                    3, 3).astype(dtype)))
+        suite.addTest(
+            ComplexKronTestCase(
+                x=np.random.randn(2, 2).astype(dtype),
+                y=np.random.randn(3, 3).astype(dtype) + 1j * np.random.randn(
+                    3, 3).astype(dtype)))
+        suite.addTest(
+            ComplexKronTestCase(
+                x=np.random.randn(2, 2).astype(dtype) + 1j * np.random.randn(
+                    2, 2).astype(dtype),
+                y=np.random.randn(3, 3).astype(dtype)))
 
-    suite.addTest(
-        ComplexKronTestCase(
-            x=np.random.randn(2, 2) + 1j * np.random.randn(2, 2),
-            y=np.random.randn(2, 2, 3)))
+        suite.addTest(
+            ComplexKronTestCase(
+                x=np.random.randn(2, 2).astype(dtype) + 1j * np.random.randn(
+                    2, 2).astype(dtype),
+                y=np.random.randn(2, 2, 3).astype(dtype)))
+
     return suite
 
 
