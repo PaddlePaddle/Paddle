@@ -1000,9 +1000,10 @@ std::ostream& print_tensor<paddle::platform::complex64>(
 
   os << "  - data: [";
   if (element_num > 0) {
-    os << signed(inspect[0].real) << signed(inspect[0].imag) << "j";
+    os << signed(inspect[0].real) << "+" << signed(inspect[0].imag) << "j";
     for (int j = 1; j < element_num; ++j) {
-      os << signed(inspect[j].real) << signed(inspect[j].imag) << "j";
+      os << " " << signed(inspect[j].real) << "+" << signed(inspect[j].imag)
+         << "j";
     }
   }
   os << "]";
@@ -1017,9 +1018,10 @@ std::ostream& print_tensor<paddle::platform::complex128>(
 
   os << "  - data: [";
   if (element_num > 0) {
-    os << signed(inspect[0].real) << signed(inspect[0].imag) << "j";
+    os << signed(inspect[0].real) << "+" << signed(inspect[0].imag) << "j";
     for (int j = 1; j < element_num; ++j) {
-      os << signed(inspect[j].real) << signed(inspect[j].imag) << "j";
+      os << " " << signed(inspect[j].real) << "+" << signed(inspect[j].imag)
+         << "j";
     }
   }
   os << "]";
