@@ -20,6 +20,70 @@ namespace imperative {
 #if defined(PADDLE_WITH_NCCL)
 std::shared_ptr<Reducer> Reducer::s_instance_ = NULL;
 
+// context is used to select the stream for concat
+void Group::ConcatTensors(const platform::CUDADeviceContext &context) {
+  switch (dtype_) {
+    case framework::proto::VarType::FP16:
+      ConcatTensorsForAllReduce<platform::float16>(context, dense_tensors_,
+                                                   &dense_contents_);
+      break;
+    case framework::proto::VarType::FP32:
+      ConcatTensorsForAllReduce<float>(context, dense_tensors_,
+                                       &dense_contents_);
+      break;
+    case framework::proto::VarType::FP64:
+      ConcatTensorsForAllReduce<double>(context, dense_tensors_,
+                                        &dense_contents_);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when it concats tensors for "
+          "allreduce.",
+          framework::DataTypeToString(dtype_)));
+  }
+}
+
+// context is used to select the stream for split
+void Group::SplitTensors(const platform::CUDADeviceContext &context) {
+  switch (dtype_) {
+    case framework::proto::VarType::FP16:
+      SplitTensorsForAllReduce<platform::float16>(context, &dense_contents_,
+                                                  &dense_tensors_);
+      break;
+    case framework::proto::VarType::FP32:
+      SplitTensorsForAllReduce<float>(context, &dense_contents_,
+                                      &dense_tensors_);
+      break;
+    case framework::proto::VarType::FP64:
+      SplitTensorsForAllReduce<double>(context, &dense_contents_,
+                                       &dense_tensors_);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when it splits tensors for "
+          "allreduce.",
+          framework::DataTypeToString(dtype_)));
+  }
+}
+
+std::ostream &operator<<(std::ostream &out, const Group &group) {
+  const auto &vars = group.variable_indices_;
+  out << "numul: " << group.all_length_ << " ;is_sparse: " << group.is_sparse_
+      << " ;var number: " << vars.size() << "\n";
+  auto begin = vars.begin();
+  auto end = vars.end();
+  out << "[";
+  for (int i = 0; begin != end && i < 100; ++i, ++begin) {
+    if (i > 0) out << ' ';
+    out << *begin;
+  }
+  if (begin != end) {
+    out << " ...";
+  }
+  out << "]\n";
+  return out;
+}
+
 Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
                  const std::vector<std::vector<size_t>> &group_indices,
                  const std::vector<bool> &is_sparse_gradient,
@@ -76,7 +140,7 @@ void Reducer::CreateGroupEvents(int group_num) {
   }
 }
 
-int64_t Reducer::InitializeDenseGroups(
+void Reducer::InitializeDenseGroups(
     const std::vector<size_t> &variable_indices_, Group *p_group) {
   int64_t all_length = 0;
   for (size_t index = 0; index < variable_indices_.size(); ++index) {
@@ -124,7 +188,7 @@ int64_t Reducer::InitializeDenseGroups(
       place_ = place;
     }
   }
-  return all_length;
+  p_group->all_length_ = all_length;
 }
 
 // Each parameter will be initialized according to the group information.
@@ -148,7 +212,7 @@ void Reducer::InitializeGroups(
         platform::errors::PreconditionNotMet(
             "The number of group_index[`%d`]'s elements is 0.", group_index));
     Group group;
-    int64_t all_length = 0;
+
     // It's just for check the sparse or dense
     auto first_varbase = vars_[variable_indices_.front()];
     if (variable_indices_.size() == 1 &&
@@ -159,10 +223,10 @@ void Reducer::InitializeGroups(
       group.is_sparse_ = true;
     } else {
       // process the dense gradient.
-      all_length = InitializeDenseGroups(variable_indices_, &group);
+      InitializeDenseGroups(variable_indices_, &group);
       // Alloc the continuous space
       auto tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
-      tensor->Resize(framework::make_ddim({all_length}))
+      tensor->Resize(framework::make_ddim({group.all_length_}))
           .mutable_data(place_, group.dtype_);
     }
 
@@ -178,10 +242,8 @@ void Reducer::InitializeGroups(
     groups_.emplace_back(std::move(group));
 
     // Debug Message For Reducer
-    VLOG(3) << "the groups_[" << group_index << "] basic message:";
-    VLOG(3) << "numul: " << all_length
-            << " ;is_sparse: " << groups_.back().is_sparse_
-            << " ;var number: " << groups_.back().variable_indices_.size();
+    VLOG(3) << "The Group[" << group_index << "]:";
+    VLOG(3) << groups_.back();
   }
 }
 
@@ -278,14 +340,14 @@ void Reducer::MarkGroupReady(size_t group_index) {
 std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
   std::reverse(rebuild_vars_.begin(), rebuild_vars_.end());
   std::reverse(rebuild_var_indices_.begin(), rebuild_var_indices_.end());
-  auto rebuild_group_index =
+  auto rebuild_group_indices =
       AssignGroupBySize(rebuild_vars_, is_sparse_gradient_, group_size_limits_,
                         rebuild_var_indices_);
   has_rebuilt_group_ = true;
   rebuild_vars_.clear();
   rebuild_var_indices_.clear();
-  std::reverse(rebuild_group_index.begin(), rebuild_group_index.end());
-  return rebuild_group_index;
+  std::reverse(rebuild_group_indices.begin(), rebuild_group_indices.end());
+  return rebuild_group_indices;
 }
 
 void Reducer::FinalizeBackward() {
@@ -293,12 +355,12 @@ void Reducer::FinalizeBackward() {
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaStreamWaitEvent(compute_stream_, comm_enent_.get(), 0));
   if (!has_rebuilt_group_) {
-    auto rebuild_group_index = RebuildGruops();
+    auto rebuild_group_indices = RebuildGruops();
     VLOG(3) << "The number of groups changed from [" << group_indices_.size()
-            << "] to [" << rebuild_group_index.size() << "]";
-    group_indices_ = rebuild_group_index;
-    CreateGroupEvents(rebuild_group_index.size());
-    InitializeGroups(rebuild_group_index);
+            << "] to [" << rebuild_group_indices.size() << "]";
+    group_indices_ = rebuild_group_indices;
+    CreateGroupEvents(rebuild_group_indices.size());
+    InitializeGroups(rebuild_group_indices);
   }
   VLOG(3) << "In the batch, Reducer is finished...";
 }
