@@ -466,6 +466,7 @@ class MKLDNNDeviceContextThreadLocals {
 
   typedef MKLDNNDeviceContextThreadLocals self;
   struct Body {
+    bool said_once;
     size_t cur_mkldnn_session_id;
     // Current data input shape string.
     // - For fixed-shape, it's a null string in default.
@@ -485,6 +486,7 @@ class MKLDNNDeviceContextThreadLocals {
     void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
     void set_cur_paddle_data_layout(framework::DataLayout dl);
     framework::DataLayout get_cur_paddle_data_layout(void);
+    void announce(void);
   };
   MKLDNNDeviceContextThreadLocals() = default;
   MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =
