@@ -527,9 +527,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
   member_->use_cuda_ = exec_strategy.use_cuda_;
-#if defined(PADDLE_WITH_XPU)
   member_->use_xpu_ = exec_strategy.use_xpu_;
-#endif
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
                              BuildStrategy::ReduceStrategy::kAllReduce;
