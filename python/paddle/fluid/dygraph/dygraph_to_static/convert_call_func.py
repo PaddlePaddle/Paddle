@@ -226,7 +226,7 @@ def convert_call(func):
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
                 setattr(func, 'forward', forward_func.__get__(func))
-            except Exception:
+            except (IOError, OSError, TypeError):
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self
             converted_call = func
@@ -235,7 +235,7 @@ def convert_call(func):
                 call_func = func.__class__.__call__
                 converted_call = convert_to_static(call_func)
                 func_self = func
-            except Exception:
+            except (IOError, OSError, TypeError):
                 # NOTE:
                 # If `func` is a class which is being initialized, for example `convert_call(Foo)()`,
                 # it doesn't need to be transformed
