@@ -78,13 +78,17 @@ class ReduceSumXPUKernel : public framework::OpKernel<T> {
                            x->numel() * sizeof(T));
       PADDLE_ENFORCE_EQ(
           r == xpu::Error_t::SUCCESS, true,
-          platform::errors::External("XPU kernel error in reduce_sum op!"));
+          platform::errors::External("XPU copy in reduce_sum op return "
+                                     "wrong value[%d %s].",
+                                     r, XPUAPIErrorMsg[r]));
     } else {
       int r = xpu::reduce_sum<T>(dev_ctx.x_context(), x_data, y_data, xdims,
                                  reduce_dims);
       PADDLE_ENFORCE_EQ(
           r == xpu::Error_t::SUCCESS, true,
-          platform::errors::External("XPU kernel error in reduce_sum op!"));
+          platform::errors::External("XPU reduce_sum in reduce_sum op return"
+                                     " wrong value[%d %s].",
+                                     r, XPUAPIErrorMsg[r]));
     }
   }
 };
@@ -136,7 +140,9 @@ class ReduceSumGradXPUKernel : public framework::OpKernel<T> {
                               xdims);
     PADDLE_ENFORCE_EQ(
         r == xpu::Error_t::SUCCESS, true,
-        platform::errors::External("XPU kernel error in reduce_sum_grad op!"));
+        platform::errors::External("XPU broadcast in reduce_sum_grad op return"
+                                   " wrong value[%d %s].",
+                                   r, XPUAPIErrorMsg[r]));
   }
 };
 
