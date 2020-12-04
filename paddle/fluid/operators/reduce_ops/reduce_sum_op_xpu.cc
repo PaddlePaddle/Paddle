@@ -14,7 +14,6 @@
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
-#include <algorithm>
 #include <memory>
 #include <string>
 #include "paddle/fluid/platform/xpu_header.h"
