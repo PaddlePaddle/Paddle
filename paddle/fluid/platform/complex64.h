@@ -70,14 +70,16 @@ struct PADDLE_ALIGN(8) complex64 {
   }
 #endif
 
-  HOSTDEVICE complex64(const float& val) { real = val; }
-  HOSTDEVICE complex64(const double& val) { real = static_cast<float>(val); }
-  HOSTDEVICE complex64(const int& val) { real = static_cast<float>(val); }
-  HOSTDEVICE complex64(const int64_t& val) { real = static_cast<float>(val); }
-  HOSTDEVICE complex64(const complex128& val) {
-    real = static_cast<float>(val.real);
-    imag = static_cast<float>(val.imag);
-  }
+  HOSTDEVICE complex64(const float& val) : real(val), imag(0) {}
+  HOSTDEVICE complex64(const double& val)
+      : real(static_cast<float>(val)), imag(0) {}
+  HOSTDEVICE complex64(const int& val)
+      : real(static_cast<float>(val)), imag(0) {}
+  HOSTDEVICE complex64(const int64_t& val)
+      : real(static_cast<float>(val)), imag(0) {}
+  HOSTDEVICE complex64(const complex128& val)
+      : real(static_cast<float>(val.real)),
+        imag(static_cast<float>(val.imag)) {}
 
   HOSTDEVICE inline explicit operator std::complex<float>() {
     return static_cast<std::complex<float>>(std::complex<float>(real, imag));
@@ -98,21 +100,25 @@ struct PADDLE_ALIGN(8) complex64 {
 
   HOSTDEVICE inline complex64& operator=(int8_t val) {
     real = static_cast<float>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(uint8_t val) {
     real = static_cast<float>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(int16_t val) {
     real = static_cast<float>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(uint16_t val) {
     real = static_cast<float>(val);
+    imag = 0;
     return *this;
   }
 
@@ -123,26 +129,31 @@ struct PADDLE_ALIGN(8) complex64 {
 
   HOSTDEVICE inline complex64& operator=(uint32_t val) {
     real = static_cast<float>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(int64_t val) {
     real = static_cast<float>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(uint64_t val) {
     real = static_cast<float>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(float val) {
     real = val;
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(double val) {
     real = static_cast<float>(val);
+    imag = 0;
     return *this;
   }
 
