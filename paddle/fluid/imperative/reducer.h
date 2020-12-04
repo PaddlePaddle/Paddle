@@ -190,19 +190,6 @@ class Reducer {
   std::vector<std::shared_ptr<imperative::VarBase>> rebuild_vars_;
   std::vector<int64_t> rebuild_var_indices_;
   const std::vector<size_t> group_size_limits_;
-
-  // //just for debug
-  // inline void PrintSequence(std::ostream& out, Iter begin, Iter end) {
-  //   // Output at most 100 elements -- appropriate if used for logging.
-  //   for (int i = 0; begin != end && i < 100; ++i, ++begin) {
-  //     if (i > 0)
-  //       out << ' ';
-  //     out << *begin;
-  //   }
-  //   if (begin != end) {
-  //     out << " ...";
-  //   }
-  // }
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
