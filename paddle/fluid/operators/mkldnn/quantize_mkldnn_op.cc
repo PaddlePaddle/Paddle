@@ -67,7 +67,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
     std::string key =
         platform::CreateKey(dev_ctx, src_tz, scale_data, scale_shift,
                             is_negative_input, ctx.OutputName("Output"));
-    key = platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, key);
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
     const std::string key_prim = key + "@r";
     const std::string key_src_mem = key + "@s";

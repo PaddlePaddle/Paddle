@@ -188,8 +188,6 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       std::string reorder_key =
           platform::CreateKey(dev_ctx, framework::vectorize(output->dims()),
                               ctx.OutputName("Out") + "-I");
-      reorder_key =
-          platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, reorder_key);
 
       auto& in_out = in_vars[0]->Get<framework::LoDTensor>();
       auto output_tz = framework::vectorize<int64_t>(output->dims());

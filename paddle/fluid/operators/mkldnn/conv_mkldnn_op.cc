@@ -515,7 +515,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // This is workaround for hacky implementation
     // of conv int8 mkl-dnn. Once conv fp32 and conv int8
     // are merged/unified, this will disappear
-    key = platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, key);
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
     auto prim_key = key + "@conv_p";
     auto dst_key = key + "@dst_mem_p";
@@ -940,7 +940,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // This name will be used as key when saving info into device context
     std::string key = platform::CreateKey(
         dev_ctx, src_tz, ctx.InputName("Input") + ctx.InputName("Filter"));
-    key = platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, key);
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
     const std::string key_conv_pd = key + "@fwd_pd";
     std::vector<primitive> pipeline;
@@ -1059,7 +1059,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                    : mkldnn::memory::format_tag::goihw;
         std::string key = platform::CreateKey(dev_ctx, weights_tz, filter_fmt,
                                               out_format, in_type);
-        key = platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, key);
+        key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
         platform::ReorderMKLDNNHandler handler(weights_tz, filter_grad->type(),
                                                in_type, dev_ctx, mkldnn_engine,

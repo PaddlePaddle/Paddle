@@ -534,7 +534,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
   // Disable adding  thread ID to the key
   void DisableThreadInfoInKey(void) { key_attach_thread_id_ = false; };
-  bool UseThreadID(void) const { return key_attach_thread_id_; };
+  bool IsThreadIdUsedInKey(void) const { return key_attach_thread_id_; };
 
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
@@ -557,8 +557,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
-  std::string key_suffix_ =
-      std::string("");  // Key identifying current Executor
+  std::string key_suffix_;  // Key identifying current Executor
   bool key_attach_thread_id_ = true;
 };
 #endif

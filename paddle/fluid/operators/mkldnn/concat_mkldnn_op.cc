@@ -161,7 +161,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         dev_ctx, paddle::framework::vectorize<int>(multi_input[0]->dims()),
         multi_input.size(), ctx.OutputName("Out"), dt,
         platform::ThreadIDasStr());
-    key = platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, key);
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
     const std::string key_prim = key + "@concat_p";
     const std::string key_concat_pd = key + "@concat_pd";

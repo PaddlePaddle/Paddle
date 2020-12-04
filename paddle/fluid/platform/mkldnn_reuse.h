@@ -43,7 +43,7 @@ class MKLDNNHandlerT {
         engine_(engine),
         place_(cpu_place),
         key_common_(base_key),
-        key_(platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, base_key)),
+        key_(platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, base_key)),
         fwd_pd_(nullptr),
         bwd_pd_(nullptr) {}
 
@@ -306,7 +306,7 @@ class MKLDNNHandler {
       : dev_ctx_(dev_ctx),
         engine_(engine),
         key_common_(base_key),
-        key_(platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, base_key)) {}
+        key_(platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, base_key)) {}
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const mkldnn::memory::desc& md, void* ptr) {

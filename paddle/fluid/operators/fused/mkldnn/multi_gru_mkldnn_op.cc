@@ -109,14 +109,8 @@ class MultiGRUHandler {
     const std::string unique_name = ctx.OutputName("Hidden");
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
-
-    memory_key_ = CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>());
-    if ((dev_ctx.UseThreadID() == true) &&
-        (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() ==
-         platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default)) {
-      memory_key_ =
-          platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, memory_key_);
-    }
+    memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(
+        dev_ctx, CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>()));
     key_ = memory_key_;
     key_.append("T").append(std::to_string(Ti_));
 

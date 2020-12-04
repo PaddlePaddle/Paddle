@@ -362,7 +362,7 @@ class FCPrimitiveFactory {
   void CacheWeightsAndBias(const MKLDNNDeviceContext& dev_ctx,
                            const ExecutionContext& ctx) {
     std::string key = platform::CreateKey(dev_ctx);
-    key = platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, key);
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
     const std::string weights_key = key + ctx.InputName("W");
     const std::string bias_key = key + ctx.InputName("Bias");
@@ -536,7 +536,7 @@ static void ExecuteFc(const ExecutionContext& ctx, const LoDTensor* input,
   std::string prim_key = platform::CreateKey(
       dev_ctx, input->format(), input->dims()[0],
       framework::vectorize<int>(w->dims()), ctx.OutputName("Out"));
-  prim_key = platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, prim_key);
+  prim_key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, prim_key);
 
   constexpr bool is_int8 =
       std::is_same<T_in, int8_t>::value || std::is_same<T_in, uint8_t>::value;

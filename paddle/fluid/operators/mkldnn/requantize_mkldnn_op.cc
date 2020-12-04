@@ -67,7 +67,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
     std::string key = platform::CreateKey(dev_ctx, src_tz, scale_in, scale_out,
                                           ctx.OutputName("Output"));
-    key = platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, key);
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
     const std::string key_prim = key + "@r";
     const std::string key_src_mem = key + "@s";
     const std::string key_dst_mem = key + "@d";

@@ -50,7 +50,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::string key =
         platform::CreateKey(dev_ctx, nchw_tz, ctx.OutputName("Out"));
-    key = platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, key);
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
     platform::TransposeMKLDNNHandler<T> handler(nchw_tz, axis, dev_ctx,
                                                 mkldnn_engine, key);
@@ -106,7 +106,6 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     std::string key = platform::CreateKey(
         dev_ctx, nchw_tz, ctx.OutputName(framework::GradVarName("X")));
-    key = platform::ExtendKeyWithThreadingInfoIfNeeded(dev_ctx, key);
 
     platform::TransposeMKLDNNHandler<T> handler(nchw_tz, reversed_axis, dev_ctx,
                                                 mkldnn_engine, key);

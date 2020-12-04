@@ -454,9 +454,9 @@ inline std::string CreateKey(const platform::MKLDNNDeviceContext& dev_ctx,
   return key;
 }
 
-inline std::string ExtendKeyWithThreadingInfoIfNeeded(
+inline std::string ExtendKeyWithThreadInfoIfNeeded(
     const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
-  return ((dev_ctx.UseThreadID() == true) &&
+  return ((dev_ctx.IsThreadIdUsedInKey() == true) &&
           (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() ==
            platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default))
              ? key + "-t:" + ThreadIDasStr()
