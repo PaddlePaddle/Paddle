@@ -842,6 +842,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
 def crf_decoding(input, param_attr, label=None, length=None):
     """
     :api_attr: Static Graph
+
     ${comment}
 
     Args:
@@ -849,7 +850,7 @@ def crf_decoding(input, param_attr, label=None, length=None):
 
         param_attr (ParamAttr|None): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_guide_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_fluid_param_attr_ParamAttr` .
 
         label(${label_type}, optional): ${label_comment}
 

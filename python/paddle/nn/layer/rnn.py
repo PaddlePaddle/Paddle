@@ -1180,6 +1180,8 @@ class SimpleRNN(RNNBase):
             `bias_ih` of each cells. Defaults to None.
         bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh` of each cells. Defaults to None.
+        name (str, optional): Name for the operation (optional, default is 
+            None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
         inputs (Tensor): the input sequence. 
@@ -1207,7 +1209,7 @@ class SimpleRNN(RNNBase):
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
 
-    Attributes:
+    Variables:
         weight_ih_l[k]: the learnable input-hidden weights of the k-th layer,
             If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise,
             the shape is `[hidden_size, num_directions * hidden_size]`.
@@ -1249,7 +1251,8 @@ class SimpleRNN(RNNBase):
                  weight_ih_attr=None,
                  weight_hh_attr=None,
                  bias_ih_attr=None,
-                 bias_hh_attr=None):
+                 bias_hh_attr=None,
+                 name=None):
         if activation == "tanh":
             mode = "RNN_TANH"
         elif activation == "relu":
@@ -1313,6 +1316,8 @@ class LSTM(RNNBase):
             `bias_ih` of each cells. Default: None.
         bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh` of each cells. Default: None.
+        name (str, optional): Name for the operation (optional, default is 
+            None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
         inputs (Tensor): the input sequence. 
@@ -1341,7 +1346,7 @@ class LSTM(RNNBase):
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
 
-    Attributes:
+    Variables:
         weight_ih_l[k]: the learnable input-hidden weights of the k-th layer,
             If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise,
             the shape is `[hidden_size, num_directions * hidden_size]`.
@@ -1385,7 +1390,8 @@ class LSTM(RNNBase):
                  weight_ih_attr=None,
                  weight_hh_attr=None,
                  bias_ih_attr=None,
-                 bias_hh_attr=None):
+                 bias_hh_attr=None,
+                 name=None):
         super(LSTM, self).__init__(
             "LSTM", input_size, hidden_size, num_layers, direction, time_major,
             dropout, weight_ih_attr, weight_hh_attr, bias_ih_attr, bias_hh_attr)
@@ -1438,6 +1444,8 @@ class GRU(RNNBase):
             `bias_ih` of each cells. Default: None.
         bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh` of each cells. Default: None.
+        name (str, optional): Name for the operation (optional, default is 
+            None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
         inputs (Tensor): the input sequence. 
@@ -1466,7 +1474,7 @@ class GRU(RNNBase):
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
 
-    Attributes:
+    Variables:
         weight_ih_l[k]: the learnable input-hidden weights of the k-th layer,
             If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise,
             the shape is `[hidden_size, num_directions * hidden_size]`.
@@ -1507,7 +1515,8 @@ class GRU(RNNBase):
                  weight_ih_attr=None,
                  weight_hh_attr=None,
                  bias_ih_attr=None,
-                 bias_hh_attr=None):
+                 bias_hh_attr=None,
+                 name=None):
         super(GRU, self).__init__(
             "GRU", input_size, hidden_size, num_layers, direction, time_major,
             dropout, weight_ih_attr, weight_hh_attr, bias_ih_attr, bias_hh_attr)

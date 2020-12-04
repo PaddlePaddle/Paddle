@@ -643,7 +643,7 @@ class TransformerDecoderLayer(Layer):
             for linear in FFN. Otherwise, the three sub-layers all uses it as
             `weight_attr` to create parameters. Default: None, which means the
             default weight parameter property is used. See usage for details
-            in :ref:`api_guide_ParamAttr` . 
+            in :ref:`api_paddle_fluid_param_attr_ParamAttr` . 
         bias_attr (ParamAttr|tuple|bool, optional): To specify the bias parameter property.
             If it is a tuple, `bias_attr[0]` would be used as `bias_attr` for
             self attention, `bias_attr[1]` would be used as `bias_attr` for
