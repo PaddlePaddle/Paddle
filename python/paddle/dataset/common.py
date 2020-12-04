@@ -34,7 +34,8 @@ __all__ = [
     'cluster_files_reader',
 ]
 
-DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
+HOME = os.path.expanduser('~')
+DATA_HOME = os.path.join(HOME, '.cache', 'paddle', 'dataset')
 
 
 # When running unit tests, there could be multiple processes that

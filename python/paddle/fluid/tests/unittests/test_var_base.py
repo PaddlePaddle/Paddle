@@ -243,11 +243,12 @@ class TestVarBase(unittest.TestCase):
             z.backward()
             self.assertTrue(np.array_equal(x.grad, [20.0]))
             self.assertTrue(np.array_equal(detach_x.grad, [60.0]))
+
             # Due to sharing of data with origin Tensor, There are some unsafe operations:
-            # with self.assertRaises(RuntimeError):
-            #     y = 2 * x
-            #     detach_x[:] = 5.0
-            #     y.backward()
+            with self.assertRaises(RuntimeError):
+                y = 2**x
+                detach_x[:] = 5.0
+                y.backward()
 
     def test_write_property(self):
         with fluid.dygraph.guard():
