@@ -144,6 +144,32 @@ void PSGPUWorker::SetNeedDump(bool need_dump_field) {
 void PSGPUWorker::DumpParam() {}
 
 void PSGPUWorker::TrainFiles() {
+  VLOG(3) << "train file A";
+  platform::SetNumThreads(1);
+
+  VLOG(3) << "train file B";
+  // how to accumulate fetched values here
+  device_reader_->Start();
+  VLOG(3) << "train file C";
+  int cur_batch;
+  while ((cur_batch = device_reader_->Next()) > 0) {
+    VLOG(3) << "train file D";
+    for (auto &op : ops_) {
+      bool need_skip = false;
+      for (auto t = 0u; t < skip_ops_.size(); ++t) {
+        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+          need_skip = true;
+          break;
+        }
+      }
+      if (!need_skip) {
+        op->Run(*thread_scope_, place_);
+      }
+    }
+
+    PrintFetchVars();
+    thread_scope_->DropKids();
+  }
   return;
 }
 

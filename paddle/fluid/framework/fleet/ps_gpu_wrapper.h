@@ -76,21 +76,9 @@ class PSGPUWrapper {
                    const int64_t total_length, const int batch_size);
   
   void BuildGPUPS(const uint64_t table_id, int feature_dim, std::shared_ptr<GpuTask> gpu_task);
-  void InitializeGPU(const std::vector<int>& slot_vec) {
+  void InitializeGPU(const std::vector<int>& dev_ids) {
     if (s_instance_ != NULL) {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
-      std::vector<cudaStream_t*> stream_list;
-      std::vector<int> dev_ids;
-      for (int i = 0; i < platform::GetCUDADeviceCount(); ++i) {
-        VLOG(3) << "before get context i[" << i << "]";
-        platform::CUDADeviceContext* context =
-            dynamic_cast<platform::CUDADeviceContext*>(
-                platform::DeviceContextPool::Instance().Get(
-                    platform::CUDAPlace(i)));
-        stream_list_[i] = context->stream();
-        stream_list.push_back(&stream_list_[i]);
-        dev_ids.push_back(i);
-      }
       resource_ = std::make_shared<HeterBoxResource>(dev_ids);
       resource_->enable_p2p();
     }
@@ -111,7 +99,6 @@ class PSGPUWrapper {
 
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
-  static cudaStream_t stream_list_[8];
   std::unordered_map<uint64_t, std::vector<std::unordered_map<uint64_t,std::vector<float>>>> local_tables_;
   HeterBoxBase* GpuPs_;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
@@ -126,5 +113,4 @@ class PSGPUWrapper {
 
 }  // end namespace framework
 }  // end namespace paddle
-#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.tpp"
 #endif

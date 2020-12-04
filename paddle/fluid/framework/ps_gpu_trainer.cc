@@ -33,6 +33,48 @@ namespace framework {
 
 void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
                                  Dataset* dataset) {
+  dataset_ = dataset;
+  thread_num_ = trainer_desc.thread_num();
+  param_ = trainer_desc.downpour_param();
+  for (int i = 0; i < param_.dense_table_size(); ++i) {
+    uint64_t table_id = static_cast<uint64_t>(param_.dense_table(i).table_id());
+    auto table = param_.dense_table(i);
+    dense_grad_names_[table_id].resize(table.dense_grad_name_size());
+    for (int j = 0; j < table.dense_grad_name_size(); ++j) {
+      dense_grad_names_[table_id][j] = table.dense_grad_name(j);
+    }
+  }
+  scale_datanorm_ = trainer_desc.scale_datanorm();
+  int place_num = trainer_desc.worker_places_size();
+  const std::vector<paddle::framework::DataFeed*> readers =
+      dataset->GetReaders();
+  std::vector<int> dev_ids;
+  for (int i = 0; i < place_num; ++i) {
+    int num = trainer_desc.worker_places(i);
+    platform::CUDAPlace place = platform::CUDAPlace(num);
+    places_.push_back(place);
+    dev_ids.push_back(num);
+  }
+  for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
+       i++) {
+    need_merge_var_names_.push_back(
+        trainer_desc.downpour_param().stat_var_names(i));
+  }
+  VLOG(3) << "going to initialize pull dense worker";
+  SetDebug(trainer_desc.debug());
+  fleet_ptr_ = FleetWrapper::GetInstance();
+  trainer_desc_ = trainer_desc;
+  workers_.resize(place_num);
+  for (int i = 0; i < place_num; ++i) {
+    workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
+        trainer_desc.device_worker_name());
+    workers_[i]->SetDeviceIndex(i);
+    workers_[i]->SetDataFeed(readers[i]);
+    workers_[i]->Initialize(trainer_desc);
+    workers_[i]->SetWorkerNum(place_num);
+  }
+  auto gpu_ps_wrapper = PSGPUWrapper::GetInstance();
+  gpu_ps_wrapper->InitializeGPU(dev_ids);
   return;
 }
 
@@ -49,6 +91,34 @@ void PSGPUTrainer::RegisterHeterCallback() {
 
 void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                      const platform::Place& place) {
+  for (size_t i = 0; i < places_.size(); ++i) {
+    workers_[i]->SetPlace(places_[i]);
+    workers_[i]->SetReaderPlace(places_[i]);
+    workers_[i]->SetRootScope(root_scope_);
+    workers_[i]->CreateDeviceResource(main_program);  // Program
+    workers_[i]->BindingDataFeedMemory();
+  }
+  for (size_t num = 0; num < places_.size(); ++num) {
+    auto place = places_[num];
+    Scope* scope = workers_[num]->GetThreadScope();
+    auto& block = main_program.Block(0);
+    for (auto& var : block.AllVars()) {
+      if (var->Persistable()) {
+        auto name = var->Name();
+        Variable* root_var = root_scope_->FindVar(name);
+        if (!root_var) {
+          continue;
+        }
+        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+        auto* ptr = scope->Var(name);
+        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+        LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
+        TensorCopy(*root_tensor, place, thread_tensor);
+
+      }
+    }
+  }
+  place_ = place;
   return;
 }
 
@@ -58,21 +128,28 @@ void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
 }
 
 void PSGPUTrainer::Run() {
-  
+  BuildGPUPSTask(0, 8);
+  for (size_t thidx = 0; thidx < places_.size(); ++thidx) {
+    threads_.push_back(
+        std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
+  }
 }
-void PSGPUTrainer::BuildGPUPSTask(DatasetImpl<Record>* dataset, int table_id, int feadim) {
+void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
   VLOG(3) << "PSGPUTrainer::BuildGPUPSTask begin";
+  MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
   auto fleet_ptr = FleetWrapper::GetInstance();
   std::shared_ptr<GpuTask>  gpu_task = std::make_shared<GpuTask>();
   auto& multi_output_channel = dataset->GetMultiOutputChannel();
   auto& input_channel = dataset->GetInputChannelRef();
   int gen_shard_num = multi_output_channel.size();
-  int device_num = platform::GetCUDADeviceCount();
+  int device_num = places_.size();
   auto gpu_ps_wrapper = PSGPUWrapper::GetInstance();
   auto& local_keys = gpu_task->feature_keys_;
   local_keys.resize(device_num);
   auto& local_values = gpu_task->feature_values_;
   local_values.resize(device_num);
+  auto& local_ptr = gpu_task->value_ptr_;
+  local_ptr.resize(device_num);
   for (auto& ks : local_keys) {
     ks.reserve(100000);
   }
@@ -187,6 +264,7 @@ void PSGPUTrainer::BuildGPUPSTask(DatasetImpl<Record>* dataset, int table_id, in
     }
     input_channel->Open();
     input_channel->Write(std::move(vec_data));
+    input_channel->Close();
   }
 
   auto unique_func = [&local_keys](int i) {
@@ -207,15 +285,16 @@ void PSGPUTrainer::BuildGPUPSTask(DatasetImpl<Record>* dataset, int table_id, in
 
   for (int i = 0; i < device_num; i++) {
     local_values[i].resize(local_keys[i].size());
+    local_ptr[i].resize(local_keys[i].size());
   }
   
-  auto ptl_func = [this, &local_keys, &local_values, &table_id, &fleet_ptr](int i) {
-    //size_t key_size = local_keys[i].size();
-    //auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
-    //    local_keys[i].data(), table_id, (char**)(local_values[i].data()), key_size);
-    //tt.wait();
-    //auto status = tt.get();
-    auto status = 0;
+  auto ptl_func = [this, &local_keys, &local_values, &local_ptr, &table_id, &fleet_ptr](int i) {
+    size_t key_size = local_keys[i].size();
+    auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
+        (char**)(local_ptr[i].data()), table_id, local_keys[i].data(), key_size);
+    tt.wait();
+    auto status = tt.get();
+    //auto status = 0;
     if (status != 0) {
       LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
       sleep(300);
@@ -223,6 +302,25 @@ void PSGPUTrainer::BuildGPUPSTask(DatasetImpl<Record>* dataset, int table_id, in
     } else {
       VLOG(3) << "FleetWrapper Pull sparse to local done with table size: "
               << local_keys[i].size();
+    }
+    for (size_t num = 0; num < local_ptr[i].size(); ++num) {
+      float* ptr_val = local_ptr[i][num]->data();
+      FeatureValue& val = local_values[i][num];
+      size_t dim = local_ptr[i][num]->size();
+
+      val.delta_score = ptr_val[1];
+      val.show = ptr_val[2];
+      val.clk = ptr_val[3];
+      val.slot = ptr_val[6];
+      val.lr = ptr_val[4];
+      val.lr_g2sum = ptr_val[5];
+
+      if (dim > 7) {
+        val.mf_size = MF_DIM + 1;
+        for (int x = 0; x < val.mf_size; x++) {
+          val.mf[x] = ptr_val[x + 7];
+        }
+      }
     }
   };
   for (size_t i = 0; i < threads.size(); i++) {
@@ -253,9 +351,6 @@ void PSGPUTrainer::MergeToRootScope(LoDTensor* root_tensor,
 }
 
 void PSGPUTrainer::Finalize() {
-  for (auto& th : pull_threads_) {
-    th.join();
-  }
   for (auto& th : threads_) {
     th.join();
   }
@@ -290,7 +385,7 @@ void PSGPUTrainer::Finalize() {
       _ForEachDataType_(MergeCallback);
     }
   }
-  pull_dense_worker_->MergeDenseParam();
+  //pull_dense_worker_->MergeDenseParam();
   root_scope_->DropKids();
 }
 }  // namespace framework

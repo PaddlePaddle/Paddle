@@ -25,11 +25,9 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#pragma once
 
 #ifdef PADDLE_WITH_PSLIB
 /*
-#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include <algorithm>
 #include <utility>
 #include "paddle/fluid/framework/io/fs.h"
@@ -37,13 +35,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 */
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 
 
 namespace paddle {
 namespace framework {
 
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
-cudaStream_t PSGPUWrapper::stream_list_[8];
 bool PSGPUWrapper::is_initialized_ = false;
 
 void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim, std::shared_ptr<GpuTask> gpu_task) {
@@ -62,6 +60,7 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim, std::shared_pt
   for (int i = 0; i < shard_num; ++i) {
     std::cout << "building table: " << i << std::endl;
     GpuPs_->build_ps(i, gpu_task->feature_keys_[i].data(), gpu_task->feature_values_[i].data(), feature_keys_count[i], 10000, 2);
+    //GpuPs_->show_one_table(i);
   }
   
 }

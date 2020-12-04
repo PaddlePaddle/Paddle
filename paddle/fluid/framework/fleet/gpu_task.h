@@ -19,10 +19,10 @@ limitations under the License. */
 #include <map>
 #include <unordered_map>
 #include <vector>
-// #include <downpour_sparse_table.h>
 
 #include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
 #include "paddle/fluid/framework/scope.h"
+#include "common_value.h"
 
 namespace paddle {
 namespace framework {
@@ -31,7 +31,7 @@ class GpuTask {
  public:
   Scope* scope_{nullptr};
   std::vector<std::vector<FeatureKey>> feature_keys_;
-  // std::vector<std::vector<DownpourFixedFeatureValue*>> feature_values_;
+  std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>> value_ptr_;
   std::vector<std::vector<FeatureValue>> feature_values_;
   uint64_t size() {
     uint64_t total_size = 0;

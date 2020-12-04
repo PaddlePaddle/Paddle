@@ -295,7 +295,7 @@ class PSGPUTrainer : public TrainerBase {
   }
   virtual std::string GetDumpPath(int tid) { return ""; }
   virtual void InitDumpEnv() {}
-  void BuildGPUPSTask(DatasetImpl<Record>* dataset, int table_id, int feadim);
+  void BuildGPUPSTask(int table_id, int feadim);
   /*
   template <typename T>
   void HeterMemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
@@ -308,6 +308,7 @@ class PSGPUTrainer : public TrainerBase {
   
 
  protected:
+  Dataset* dataset_;
   DownpourWorkerParameter param_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
   std::vector<std::string> need_merge_var_names_;
@@ -315,16 +316,13 @@ class PSGPUTrainer : public TrainerBase {
   paddle::platform::Place place_;
   ProgramDesc program_;
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
-  std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  //std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
   std::vector<platform::Place> places_;
   // ps-gpu
-  std::vector<std::thread> pull_threads_;
   std::vector<std::thread> threads_;
   int use_ps_gpu_;
   int thread_num_;
-  std::vector<cudaStream_t> copy_streams_;
-  std::vector<cudaEvent_t> events_;
 };
 #endif
 
