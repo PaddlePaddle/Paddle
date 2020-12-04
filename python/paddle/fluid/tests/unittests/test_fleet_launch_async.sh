@@ -27,8 +27,8 @@ export PADDLE_TRAINER_ID=0
 
 export TRAINER_PORTS_NUM=2
 
-file_0="multi_process_fleetrun.check_0.log"
-file_1="multi_process_fleetrun.check_1.log"
+file_0="multi_process_fullpath_launch.check_0.log"
+file_1="multi_process_fullpath_launch.check_1.log"
 
 distributed_args="--ips=${cluster_node_ips} --gpus=0,1 --log_dir=testlog"
 
