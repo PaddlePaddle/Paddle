@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+echo ">>> get cpu information in coverage"
+lscpu
+
 CUR_DIR=$(dirname "${BASH_SOURCE[0]}")
 CUR_DIR=$(realpath "$CUR_DIR")
 
