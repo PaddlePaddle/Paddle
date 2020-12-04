@@ -348,18 +348,6 @@ class TestDeformConv2DFunctional(TestCase):
 
 
 # testcases for DeformConv2D
-class TestDeformConv2DLargeKernelSize(TestDeformConv2D):
-    def setUp(self):
-        self.in_channels = 3
-        self.out_channels = 5
-        self.kernel_size = [5, 5]
-        self.padding = [0, 0]
-        self.stride = [1, 1]
-        self.dilation = [1, 1]
-        self.groups = 1
-        self.no_bias = True
-
-
 class TestDeformConv2DWithPadding(TestDeformConv2D):
     def setUp(self):
         self.in_channels = 3
@@ -433,18 +421,6 @@ class TestDeformConv2DWithGroups(TestDeformConv2D):
 
 
 # testcases for deform_conv2d
-class TestDeformConv2DFunctionalLargeKernelSize(TestDeformConv2DFunctional):
-    def setUp(self):
-        self.in_channels = 3
-        self.out_channels = 5
-        self.kernel_size = [5, 5]
-        self.padding = [0, 0]
-        self.stride = [1, 1]
-        self.dilation = [1, 1]
-        self.groups = 1
-        self.no_bias = True
-
-
 class TestDeformConv2DFunctionalWithPadding(TestDeformConv2DFunctional):
     def setUp(self):
         self.in_channels = 3
