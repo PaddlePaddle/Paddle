@@ -139,8 +139,11 @@ class QuantOpKernel : public framework::OpKernel<T> {
     }
 
     mkldnn::stream astream(engine);
-    reorder_p->execute(astream, *src_memory, *dst_memory);
-    astream.wait();
+    {
+      platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+      reorder_p->execute(astream, *src_memory, *dst_memory);
+      astream.wait();
+    }
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory));

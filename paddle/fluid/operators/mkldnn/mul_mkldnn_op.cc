@@ -110,8 +110,11 @@ class MulPrimitiveFactory {
     auto reorder = mkldnn::reorder(reorder_pd);
 
     mkldnn::stream astream(engine_);
-    reorder.execute(astream, src_mem, dst_mem);
-    astream.wait();
+    {
+      platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+      reorder.execute(astream, src_mem, dst_mem);
+      astream.wait();
+    }
 
     return dst_mem;
   }
@@ -267,8 +270,12 @@ class MulPrimitiveFactory {
     auto reorder = mkldnn::reorder(src_mem, dst_mem);
 
     mkldnn::stream astream(engine_);
-    reorder.execute(astream, src_mem, dst_mem);
-    astream.wait();
+
+    {
+      platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+      reorder.execute(astream, src_mem, dst_mem);
+      astream.wait();
+    }
 
     return dst_mem;
   }
