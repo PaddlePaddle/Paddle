@@ -85,6 +85,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     dump_fields_[i] = desc.dump_fields(i);
   }
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
+  recall_ins_weight_config_ = desc.recall_ins_weight_config();
   need_dump_param_ = false;
   dump_param_.resize(desc.dump_param_size());
   for (int i = 0; i < desc.dump_param_size(); ++i) {
@@ -120,17 +121,10 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     }
   }
   minibatch_sn_ = 0.0;
-  sampling_bias_scalar_ = desc.sampling_bias_scalar();
-  sample_output_varname_.resize(desc.sample_output_varname_size());
-  for (int i = 0; i < desc.sample_output_varname_size(); ++i) {
-    sample_output_varname_[i] = desc.sample_output_varname(i);
+  item_sampling_slots_.resize(recall_ins_weight_config_.item_sampling_slot_size());
+  for (int i = 0; i < recall_ins_weight_config_.item_sampling_slot_size(); ++i) {
+    item_sampling_slots_[i] = recall_ins_weight_config_.item_sampling_slot(i);
   }
-  item_sampling_slots_.resize(desc.item_sampling_slots_size());
-  for (int i = 0; i < desc.item_sampling_slots_size(); ++i) {
-    item_sampling_slots_[i] = desc.item_sampling_slots(i);
-  }
-  random_ins_weight_vec_.clear();
-  item_sampling_ins_weight_ = desc.item_sampling_ins_weight();
 }
 
 void DownpourWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
@@ -283,7 +277,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
       if (item_sampling_slots_.size() > 0) {
         if (hit_sample_slots > 0) {
           // here we assume item_sampling_slot only has one feasign in each instance
-          VLOG(0) << "fea_value[fea_idx][0]:" << fea_value[fea_idx][0];
+          VLOG(3) << "fea_value[fea_idx][0]:" << fea_value[fea_idx][0];
           if (fea_value[fea_idx][0] > 1e-5) {
             CHECK(fea_idx < batch_size) << "item_sampling_slot: " << slot_name 
                                  << " fesign_num " << fea_idx << " should be less than "
@@ -330,7 +324,6 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
         fea_idx++;
       }
     }
-    VLOG(0) << "  fea_value[fea_idx].size():" << fea_value[fea_idx].size() <<  " fea_value[fea_idx][1] " << fea_value[fea_idx][1] <<  " fea_value[fea_idx][2] " << fea_value[fea_idx][2];
   }
 }
 
@@ -445,26 +438,21 @@ void DownpourWorker::FillInsWeight() {
      VLOG(0) << "item_sampling_slot is not configured, skip fill ins_weight var";
      return;
   }
-  Variable* ins_weight_var = thread_scope_->FindVar(item_sampling_ins_weight_);
+  Variable* ins_weight_var = thread_scope_->FindVar(recall_ins_weight_config_.item_sampling_ins_weight());
   if (ins_weight_var == nullptr) {
-    VLOG(0) << "ins weight var " << item_sampling_ins_weight_
+    VLOG(0) << "ins weight var " << recall_ins_weight_config_.item_sampling_ins_weight()
             << " is nullptr, skip fill ins_weight var";
     return;
   }
   LoDTensor* ins_weight_tensor = ins_weight_var->GetMutable<LoDTensor>();
   size_t len = item_freq_vec_.size();
   float* ins_weights = ins_weight_tensor->mutable_data<float>({static_cast<int>(len),1}, place_);
-  // size_t len = ins_weight_tensor->numel();  // len = batch size
-  // // here we assume nid_show slot only has one feasign in each instance
-  // CHECK(len == item_freq_vec_.size()) << "ins_weight size should be equal to "
-  //                                << "item_freq size, " << len << " vs "
-  //                                << item_freq_vec_.size();
   size_t ins_index = 0;
   float item_weight;
   for (size_t i = 0; i < len; ++i) {
     float item_freq = item_freq_vec_[i];
     VLOG(3) << "item_freq: " << item_freq;
-    item_weight = 1.0 - item_freq * sampling_bias_scalar_;
+    item_weight = 1.0 - item_freq * recall_ins_weight_config_.sampling_bias_scalar();
     if (item_weight < 0.0) {
       item_weight = 0.0;
     }
@@ -472,8 +460,8 @@ void DownpourWorker::FillInsWeight() {
       item_weight = 1.0;
     }
     ins_weights[ins_index] = item_weight;
-    ++ins_index;
     VLOG(0) << "ins_weights[" << ins_index << "] = " << item_weight;
+    ++ins_index;
   }
 #endif
 }
@@ -574,6 +562,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
   double read_time = 0.0;
   double pull_sparse_time = 0.0;
   double adjust_ins_weight_time = 0.0;
+  double recall_ins_weight_time = 0.0;
   double collect_label_time = 0.0;
   double fill_sparse_time = 0.0;
   double push_sparse_time = 0.0;
@@ -589,6 +578,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
     total_time += timeline.ElapsedSec();
 
     timeline.Start();
+    minibatch_sn_ += 1.0;
     if (copy_table_config_.need_copy()) {
       VLOG(3) << "copy_sparse_tables_.size " << copy_sparse_tables_.size();
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
@@ -639,6 +629,13 @@ void DownpourWorker::TrainFilesWithProfiler() {
       }
       timeline.Pause();
       adjust_ins_weight_time += timeline.ElapsedSec();
+      total_time += timeline.ElapsedSec();
+      timeline.Start();
+      if (item_sampling_slots_.size() > 0) {
+        FillInsWeight();
+      }
+      timeline.Pause();
+      recall_ins_weight_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
     }
     VLOG(3) << "Fill sparse value for all sparse table done.";
@@ -691,15 +688,77 @@ void DownpourWorker::TrainFilesWithProfiler() {
             break;
           }
         }
-        timeline.Start();
-        fleet_ptr_->PushSparseVarsWithLabelAsync(
-            *thread_scope_, tid, features_[tid], feature_labels_[tid],
-            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_);
-        timeline.Pause();
-        push_sparse_time += timeline.ElapsedSec();
-        total_time += timeline.ElapsedSec();
+        if (item_sampling_slots_.size() > 0) {
+          timeline.Start();
+          need_hit_interval_.clear();
+          hit_interval_new_.clear();
+          need_hit_interval_.resize(features_[tid].size());
+          hit_interval_new_.resize(features_[tid].size());
+          size_t global_index = 0;
+          for (size_t i = 0; i < sparse_key_names_[tid].size(); ++i) {
+            int find_hit_slot = 0;
+            std::string slot_name = sparse_key_names_[tid][i];
+            if (std::find(item_sampling_slots_.begin(), item_sampling_slots_.end(), 
+                          slot_name) != item_sampling_slots_.end()) {
+              find_hit_slot = 1;
+            }
+            Variable* var = thread_scope_->FindVar(slot_name);
+            if (var == nullptr) {
+              continue;
+            }
+            LoDTensor* tensor = var->GetMutable<LoDTensor>();
+            CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
+            int64_t* ids = tensor->data<int64_t>();
+            int len = tensor->numel();
+            size_t fea_idx = 0;
+            for (int index = 0; index < len; ++index) {
+              if (ids[fea_idx] == 0u) {
+                continue;
+              }
+              if (find_hit_slot > 0) {
+                std::unordered_map<uint64_t, float>& last_hit_minibatch_sn = last_hit_minibatch_sn_;
+                float cur_minibatch_sn = minibatch_sn_;
+                float hit_interval_new = 1.0; // hit_interval_sgd_param.initial_value
+                auto it = last_hit_minibatch_sn.find(ids[fea_idx]);
+                if (it != last_hit_minibatch_sn.end()) {
+                  hit_interval_new = cur_minibatch_sn - it->second;
+                  it->second = cur_minibatch_sn;
+                } else {
+                  last_hit_minibatch_sn.emplace(ids[fea_idx], cur_minibatch_sn);
+                }
+                need_hit_interval_[global_index] = 1;
+                hit_interval_new_[global_index] = hit_interval_new;
+              } else {
+                need_hit_interval_[global_index] = 0;
+                hit_interval_new_[global_index] = 1.0;
+              }
+              VLOG(3) << "find slot: " << slot_name << " need_hit_interval:" 
+                    << need_hit_interval_[global_index] << "  hit_interval_new_[" 
+                    << global_index << "] = " << hit_interval_new_[global_index];
+              global_index++;
+            }
+          }
+          timeline.Pause();
+          recall_ins_weight_time += timeline.ElapsedSec();
+          total_time += timeline.ElapsedSec();
+          timeline.Start();
+          fleet_ptr_->PushSparseVarsWithLabelAsync(
+              *thread_scope_, tid, features_[tid], feature_labels_[tid],
+              sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+              &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+              dump_slot_, &sparse_push_keys_[tid], no_cvm_, need_hit_interval_, hit_interval_new_);
+          push_sparse_time += timeline.ElapsedSec();
+          total_time += timeline.ElapsedSec();
+        } else {
+          timeline.Start();
+          fleet_ptr_->PushSparseVarsWithLabelAsync(
+              *thread_scope_, tid, features_[tid], feature_labels_[tid],
+              sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+              &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+              dump_slot_, &sparse_push_keys_[tid], no_cvm_);
+          push_sparse_time += timeline.ElapsedSec();
+          total_time += timeline.ElapsedSec();
+        }
       }
     }
 
@@ -809,6 +868,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
                 collect_label_time / batch_cnt);
         fprintf(stderr, "adjust ins weight time: %fs\n",
                 adjust_ins_weight_time / batch_cnt);
+        fprintf(stderr, "recall ins weight time: %fs\n",
+                recall_ins_weight_time / batch_cnt);
         fprintf(stderr, "copy table time: %fs\n", copy_table_time / batch_cnt);
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
@@ -817,6 +878,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
                 pull_sparse_time / total_time * 100);
         fprintf(stderr, "adjust ins weight time percent: %f\n",
                 adjust_ins_weight_time / total_time * 100);
+        fprintf(stderr, "recall ins weight time percent: %f\n",
+                recall_ins_weight_time / total_time * 100);
         fprintf(stderr, "copy table time percent: %f\n",
                 copy_table_time / total_time * 100);
         fprintf(stderr, "collect label time percent: %f\n",
@@ -840,7 +903,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
 }
 
 void DownpourWorker::TrainFiles() {
-  VLOG(0) << "Begin to train files";
+  VLOG(3) << "Begin to train files";
   platform::SetNumThreads(1);
   device_reader_->Start();
   int batch_cnt = 0;
@@ -881,11 +944,9 @@ void DownpourWorker::TrainFiles() {
         FillInsWeight();
       }
     }
-    VLOG(0) << "fill sparse value for all sparse table done.";
+    VLOG(3) << "fill sparse value for all sparse table done.";
 
     // do computation here
-    // int shuffle_op_used = 0;
-    random_ins_weight_vec_.clear();
     for (auto& op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -898,55 +959,6 @@ void DownpourWorker::TrainFiles() {
 #ifdef PADDLE_WITH_PSLIB
         try {
           op->Run(*thread_scope_, place_);
-          // //get shuffle_batch shuffle_idx to get ordered ins_weight
-          // if (op->Type() == "shuffle_batch") {
-          //   shuffle_op_used += 1;
-          //   if (item_sampling_slots_.size() > 0) {
-          //     Variable* shuffle_idx_var = thread_scope_->FindVar(op->Outputs("ShuffleIdx")[0]);
-          //     LoDTensor* shuffle_idx_tensor = shuffle_idx_var->GetMutable<LoDTensor>();
-          //     int64_t* shuffle_idx = shuffle_idx_tensor->data<int64_t>();
-          //     // random_ins_weight_vec_.clear();
-          //     // random_ins_weight_vec_.resize(item_freq_vec_.size());
-          //     float item_freq;
-          //     float item_weight;
-          //     // right ordered ins_weight(shuffle batch fisrt block)
-          //     for (size_t i = 0; i < item_freq_vec_.size(); i++) {
-          //       random_ins_weight_vec_.push_back(1.0);
-          //     }
-          //     for (size_t i = 0; i < item_freq_vec_.size(); i++) {
-          //       item_freq = item_freq_vec_[shuffle_idx[i]];
-          //       item_weight = 1.0 - item_freq * sampling_bias_scalar_;
-          //       if (item_weight < 0.0) {
-          //         item_weight = 0.0;
-          //       }
-          //       if (item_weight > 1.0) {
-          //         item_weight = 1.0;
-          //       }
-          //       random_ins_weight_vec_.push_back(item_weight);
-          //       VLOG(0) << "shuffle_op_used:" << shuffle_op_used << " index:" << i << "  shuffle_idx[i]: " << shuffle_idx[i] << " random_ins_weight_vec_[" << i << "] = " << item_weight;
-          //     }
-          //   }
-          // }
-          // auto output_vars = op->OutputVars(true);
-          // for (auto& sample_output_varname : sample_output_varname_) {
-          //   if (std::find(output_vars.begin(), output_vars.end(), sample_output_varname) != output_vars.end()) {
-          //     VLOG(0) << "output_vars find varname: " << sample_output_varname;
-          //     if (random_ins_weight_vec_.size() == 0) {
-          //       continue;
-          //     }
-          //     Variable* loss_var = thread_scope_->FindVar(sample_output_varname);
-          //     LoDTensor* loss_tensor = loss_var->GetMutable<LoDTensor>();
-          //     // float* loss_data = loss_tensor->data<float>();
-          //     size_t len = loss_tensor->numel();
-          //     VLOG(0) << "loss_data size: " << len << " random_ins_weight_vec_:" << random_ins_weight_vec_.size();
-          //     // CHECK(len == random_ins_weight_vec_.size()) << "loss_data size should be equal to "
-          //     //                    << "random_ins_weight_vec_ size, " << len << " vs "
-          //     //                    << random_ins_weight_vec_.size();
-          //     // for (size_t i = 0; i < len; i++) {
-          //     //   loss_data[i] = loss_data[i] * random_ins_weight_vec_[i];
-          //     // }
-          //   }
-          // }
           
         } catch (std::exception& e) {
           fprintf(stderr, "error message: %s\n", e.what());
@@ -1064,7 +1076,9 @@ void DownpourWorker::TrainFiles() {
                 need_hit_interval_[global_index] = 0;
                 hit_interval_new_[global_index] = 1.0;
               }
-              VLOG(0) << "find slot" << slot_name << " need_hit_interval_[global_index]:" << need_hit_interval_[global_index] << "  hit_interval_new_[" << global_index << "] = " << hit_interval_new_[global_index];
+              VLOG(3) << "find slot: " << slot_name << " need_hit_interval:" 
+                      << need_hit_interval_[global_index] << " hit_interval_new_[" 
+                      << global_index << "] = " << hit_interval_new_[global_index];
               global_index++;
             }
           }
@@ -1125,7 +1139,7 @@ void DownpourWorker::TrainFiles() {
     }
 
     if (need_to_push_sparse_) {
-      VLOG(0) << "push sparse gradient done.";
+      VLOG(3) << "push sparse gradient done.";
       int32_t tmp_push_sparse_wait_times = -1;
       static uint32_t push_sparse_wait_times =
           static_cast<uint32_t>(tmp_push_sparse_wait_times);

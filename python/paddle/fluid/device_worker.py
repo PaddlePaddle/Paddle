@@ -256,7 +256,7 @@ class DownpourSGD(DeviceWorker):
                     self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                         i].accessor.fea_dim
                 sparse_table.fea_dim = sparse_table.emb_dim
-            elif "item_sampling_slot" in opt_info:
+            elif "recall_ins_weight" in opt_info and "item_sampling_slot" in opt_info["recall_ins_weight"]:
                 sparse_table.emb_dim = \
                     self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                         i].accessor.fea_dim - 3

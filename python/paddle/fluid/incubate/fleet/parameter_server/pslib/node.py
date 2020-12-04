@@ -280,7 +280,6 @@ class DownpourServer(Server):
                     'sparse_hit_interval_learning_rate', 0.01)
                 table.accessor.hit_interval_sgd_param.initial_value = strategy.get(
                     'sparse_hit_interval_initial_value', 1.0)
-                print("table.accessor.fea_dim:", table.accessor.fea_dim, " table.accessor.embedx_dim: ", table.accessor.embedx_dim)
 
     def add_dense_table(self, table_id, param_var, grad_var, strategy,
                         sparse_table_names):

@@ -278,17 +278,14 @@ class DownpourWorker : public HogwildWorker {
   // std::map<uint64_t, uint64_t> table_dependency_;
   // std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
 
-  // hit interval
+  // recall hit interval ins weight
+  RecallInsWeightConfig recall_ins_weight_config_;
   std::vector<std::string> item_sampling_slots_;
-  float sampling_bias_scalar_;
-  std::vector<std::string> sample_output_varname_;
   float minibatch_sn_;
   std::unordered_map<uint64_t, float> last_hit_minibatch_sn_;
   std::vector<float> item_freq_vec_;
-  std::string item_sampling_ins_weight_;
   std::vector<float> hit_interval_new_;
   std::vector<int> need_hit_interval_;
-  std::vector<float> random_ins_weight_vec_;
 };
 
 class DownpourWorkerOpt : public DownpourWorker {

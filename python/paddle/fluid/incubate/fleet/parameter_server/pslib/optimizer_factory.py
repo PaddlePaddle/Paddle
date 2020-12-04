@@ -541,10 +541,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["adjust_ins_weight"] = strategy.get("adjust_ins_weight", {})
         opt_info["copy_table"] = strategy.get("copy_table", {})
         opt_info["loss_names"] = strategy.get("loss_names", [])
-        opt_info["item_sampling_slot"] = strategy.get("item_sampling_slot", {})
-        opt_info["item_sampling_ins_weight"] = strategy.get("item_sampling_ins_weight", "")
-        opt_info["sampling_bias_scalar"] = strategy.get("sampling_bias_scalar", 1.0)
-        opt_info["sample_output_varname"] = strategy.get("sample_output_varname", "")
+        opt_info["recall_ins_weight"] = strategy.get("recall_ins_weight", {})
 
         for loss in losses:
             loss.block.program._fleet_opt = opt_info

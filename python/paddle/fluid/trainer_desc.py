@@ -136,19 +136,15 @@ class TrainerDesc(object):
         self.proto_desc.adjust_ins_weight_config.ins_weight_slot = \
                 config_dict.get("ins_weight_slot", "")
 
-    def _set_item_sampling_slots(self, item_sampling_slots):
-        for slot in item_sampling_slots:
-            self.proto_desc.item_sampling_slots.append(slot)
-
-    def _set_item_sampling_ins_weight(self, item_sampling_ins_weight):
-        self.proto_desc.item_sampling_ins_weight = item_sampling_ins_weight
-
-    def _set_sampling_bias_scalar(self, sampling_bias_scalar):
-        self.proto_desc.sampling_bias_scalar = sampling_bias_scalar
-
-    def _set_sample_output_varname(self, sample_output_varname):
-        for var in sample_output_varname:
-            self.proto_desc.sample_output_varname.append(var)
+    def _set_recall_ins_weight(self, config_dict):
+        # self.proto_desc.recall_ins_weight_config.item_sampling_slot = []
+        for slot in config_dict.get("item_sampling_slot", []):
+            self.proto_desc.recall_ins_weight_config.item_sampling_slot.extend(slot)
+        print("self.proto_desc.recall_ins_weight_config.item_sampling_slot:", self.proto_desc.recall_ins_weight_config.item_sampling_slot)
+        self.proto_desc.recall_ins_weight_config.item_sampling_ins_weight = \
+                config_dict.get("item_sampling_ins_weight", "")
+        self.proto_desc.recall_ins_weight_config.sampling_bias_scalar = \
+                config_dict.get("sampling_bias_scalar", 1.0)
 
     def _set_copy_table_config(self, config_dict):
         config = self.proto_desc.copy_table_config

@@ -92,14 +92,8 @@ class TrainerFactory(object):
                         "check_nan_var_names"])
                 if opt_info.get("loss_names") is not None:
                     trainer._set_loss_names(opt_info["loss_names"])
-                if opt_info.get("item_sampling_slot") is not None:
-                    trainer._set_item_sampling_slots(opt_info["item_sampling_slot"])
-                if opt_info.get("item_sampling_ins_weight") is not None:
-                    trainer._set_item_sampling_ins_weight(opt_info["item_sampling_ins_weight"])
-                if opt_info.get("sampling_bias_scalar") is not None:
-                    trainer._set_sampling_bias_scalar(opt_info["sampling_bias_scalar"])
-                if opt_info.get("sample_output_varname") is not None:
-                    trainer._set_sample_output_varname(opt_info["sample_output_varname"])
+                if opt_info.get("recall_ins_weight") is not None:
+                    trainer._set_recall_ins_weight(opt_info["recall_ins_weight"])
             trainer._set_device_worker(device_worker)
         return trainer
 
