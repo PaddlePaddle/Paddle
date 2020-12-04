@@ -59,6 +59,7 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
+    df -lh
 }
 
 function cmake_base() {
