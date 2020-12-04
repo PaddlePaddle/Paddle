@@ -40,6 +40,7 @@ class InferencePassTest(unittest.TestCase):
         self.enable_mkldnn = False
         self.enable_trt = False
         self.trt_parameters = None
+        self.dynamic_shape_params = None
         self.enable_lite = False
         self.lite_parameters = None
         self.path = "./inference_pass/" + self.__class__.__name__ + "/"
@@ -114,6 +115,14 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.precision,
                     self.trt_parameters.use_static,
                     self.trt_parameters.use_calib_mode)
+
+                if self.dynamic_shape_params:
+                    config.set_trt_dynamic_shape_info(
+                        self.dynamic_shape_params.min_input_shape,
+                        self.dynamic_shape_params.max_input_shape,
+                        self.dynamic_shape_params.optim_input_shape,
+                        self.dynamic_shape_params.disable_trt_plugin_fp16)
+
         elif use_mkldnn:
             config.enable_mkldnn()
 
@@ -167,6 +176,12 @@ class InferencePassTest(unittest.TestCase):
                 self._get_analysis_config(
                     use_gpu=use_gpu, use_trt=self.enable_trt))
 
+            if self.trt_parameters.use_static:
+                #deserialize
+                tensorrt_outputs = self._get_analysis_outputs(
+                    self._get_analysis_config(
+                        use_gpu=use_gpu, use_trt=self.enable_trt))
+
             self.assertTrue(
                 len(tensorrt_outputs) == len(outs),
                 "The number of outputs is different between GPU and TensorRT. ")
@@ -208,6 +223,18 @@ class InferencePassTest(unittest.TestCase):
             self.precision = precision
             self.use_static = use_static
             self.use_calib_mode = use_calib_mode
+
+    class DynamicShapeParam:
+        '''
+        Prepare TensorRT subgraph engine dynamic shape parameters. 
+        '''
+
+        def __init__(self, min_input_shape, max_input_shape, optim_input_shape,
+                     disable_trt_plugin_fp16):
+            self.min_input_shape = min_input_shape
+            self.max_input_shape = max_input_shape
+            self.optim_input_shape = optim_input_shape
+            self.disable_trt_plugin_fp16 = disable_trt_plugin_fp16
 
     class LiteParam:
         '''

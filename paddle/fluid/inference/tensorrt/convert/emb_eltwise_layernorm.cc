@@ -152,12 +152,13 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                                  {output_name, std::string("qkv_plugin_mask")},
                                  test_mode);
       } else {
-        bool use_fp16 = engine_->WithFp16();
+        bool with_fp16 =
+            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
         float eps = boost::get<float>(op_desc.GetAttr("epsilon"));
         plugin::DynamicPluginTensorRT* plugin = nullptr;
         plugin = new plugin::EmbEltwiseLayernormPluginDynamic(
             input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
-            eps, use_fp16);
+            eps, with_fp16);
         layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
         auto output_name = op_desc.Output("Out")[0];
         RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm", {output_name},
