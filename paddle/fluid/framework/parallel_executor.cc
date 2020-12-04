@@ -423,25 +423,26 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   }
 #endif
 
-  gcs_.emplace(place, std::move(gc));
-}
+    gcs_.emplace(place, std::move(gc));
+  }
 
-if (!gcs_.empty()) {
-  auto eager_deletion_pass =
-      ir::PassRegistry::Instance().Get("eager_deletion_pass");
-  eager_deletion_pass->SetNotOwned(ir::kMemOptVarInfoMapList,
-                                   &mem_opt_var_infos_);
-  eager_deletion_pass->SetNotOwned(ir::kGarbageCollector, &gcs_);
-  eager_deletion_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
-                                   &last_live_ops_of_vars);
-  eager_deletion_pass->SetNotOwned(ir::kAllPlaces, &places_);
-  graph = eager_deletion_pass->Apply(graph);
-  VLOG(10) << "EagerDeletionPass Applied";
-  VLOG(1) << "Garbage collection strategy is enabled, when "
-          << "FLAGS_eager_delete_tensor_gb = " << FLAGS_eager_delete_tensor_gb;
+  if (!gcs_.empty()) {
+    auto eager_deletion_pass =
+        ir::PassRegistry::Instance().Get("eager_deletion_pass");
+    eager_deletion_pass->SetNotOwned(ir::kMemOptVarInfoMapList,
+                                     &mem_opt_var_infos_);
+    eager_deletion_pass->SetNotOwned(ir::kGarbageCollector, &gcs_);
+    eager_deletion_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
+                                     &last_live_ops_of_vars);
+    eager_deletion_pass->SetNotOwned(ir::kAllPlaces, &places_);
+    graph = eager_deletion_pass->Apply(graph);
+    VLOG(10) << "EagerDeletionPass Applied";
+    VLOG(1) << "Garbage collection strategy is enabled, when "
+            << "FLAGS_eager_delete_tensor_gb = "
+            << FLAGS_eager_delete_tensor_gb;
+  }
+  return graph;
 }
-return graph;
-}  // namespace framework
 
 class ResetHasFeedGuard {
  public:
@@ -522,9 +523,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
-  PADDLE_ENFORCE(places.size() > 0 && !is_xpu_place(places[0]),
-                 platform::errors::Unavailable(
-                     "XPU is not supported in ParallelExecutor"));
+  // PADDLE_ENFORCE(places.size() > 0 && !is_xpu_place(places[0]),
+  //                platform::errors::Unavailable(
+  //                    "XPU is not supported in ParallelExecutor"));
   InitP2P(places);
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
@@ -675,22 +676,22 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         member_->nranks_, member_->use_cuda_, member_->nccl_ctxs_);
   }
 #else
-    if (member_->build_strategy_.async_mode_) {
-      VLOG(3) << "use local async mode";
-      graph = member_->build_strategy_.Apply(
-          graph, {member_->places_[0]}, loss_var_name,
-          {member_->local_scopes_[0]}, 1, member_->use_cuda_);
-      for (size_t i = 1; i < member_->places_.size(); ++i) {
-        graphs[i] = member_->build_strategy_.Apply(
-            graphs[i], {member_->places_[i]}, loss_var_name,
-            {member_->local_scopes_[i]}, 1, member_->use_cuda_);
-        async_graphs[i] = graphs[i];
-      }
-    } else {
-      graph = member_->build_strategy_.Apply(
-          graph, member_->places_, loss_var_name, member_->local_scopes_,
-          member_->nranks_, member_->use_cuda_);
+  if (member_->build_strategy_.async_mode_) {
+    VLOG(3) << "use local async mode";
+    graph = member_->build_strategy_.Apply(
+        graph, {member_->places_[0]}, loss_var_name,
+        {member_->local_scopes_[0]}, 1, member_->use_cuda_);
+    for (size_t i = 1; i < member_->places_.size(); ++i) {
+      graphs[i] = member_->build_strategy_.Apply(
+          graphs[i], {member_->places_[i]}, loss_var_name,
+          {member_->local_scopes_[i]}, 1, member_->use_cuda_);
+      async_graphs[i] = graphs[i];
     }
+  } else {
+    graph = member_->build_strategy_.Apply(
+        graph, member_->places_, loss_var_name, member_->local_scopes_,
+        member_->nranks_, member_->use_cuda_);
+  }
 #endif
 
   graph = member_->ApplyMemoryOptimizePass(graph);
@@ -756,8 +757,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       }
     }
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Paddle should be compiled with CUDA for ParallelGraph Execution."));
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Paddle should be compiled with CUDA for ParallelGraph Execution."));
 #endif
   } else {
     bool has_drop_last_read_op = details::HasDropLastReadOp(*graph);
@@ -1152,7 +1153,7 @@ const ir::Graph &ParallelExecutor::Graph() const {
   return member_->executor_->Graph();
 }
 
-}  // namespace paddle
+}  // namespace framework
 }  // namespace paddle
 
 USE_PASS(reference_count_pass);
