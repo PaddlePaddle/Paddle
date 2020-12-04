@@ -44,21 +44,7 @@ XPUThreadedSSAGraphExecutor::XPUThreadedSSAGraphExecutor(
       graph_(graph),
       prepare_pool_(1),
       multi_device_op_pool_(1) {
-  multi_stream_num_ = 1;
-  if (std::getenv("XPU_PADDLE_MULTI_STREAM_NUM") != nullptr) {
-    sscanf(std::getenv("XPU_PADDLE_MULTI_STREAM_NUM"), "%d",
-           &multi_stream_num_);
-  }
-  PADDLE_ENFORCE(multi_stream_num_ >= 1, "%d less than 1", multi_stream_num_);
-  stream_op_count_.reset(new int[multi_stream_num_ * places.size()]);
-  PADDLE_ENFORCE(stream_op_count_.get() != nullptr, "no enough memory\n");
-  for (uint32_t i = 0; i < places.size() * multi_stream_num_; i++) {
-    pool_.emplace_back(std::unique_ptr<::ThreadPool>(new ::ThreadPool(1)));
-    stream_op_count_[i] = 0;
-  }
-  printf("multi_stream_num: %d place_num:%lu mode:%s\n", multi_stream_num_,
-         places.size(), std::getenv("XPU_PADDLE_MULTI_STREAM") ? "MULTI_STREM"
-                                                               : "MAIN_STREAM");
+  pool_.emplace_back(std::unique_ptr<::ThreadPool>(new ::ThreadPool(1)));
   int index = 0;
   for (uint32_t i = 0; i < places.size(); i++) {
     // int id = boost::get<platform::XPUPlace>(places[i]).device;
@@ -100,18 +86,6 @@ static std::vector<OpHandleBase *> get_parents(OpHandleBase *op) {
   return ret;
 }
 
-int XPUThreadedSSAGraphExecutor::get_pool_thread_index(int device_id) {
-  int cur_index = multi_stream_num_ * place_to_index_[device_id];
-  int min_num = stream_op_count_[cur_index];
-  int index = 0;
-  for (int i = 1; i < multi_stream_num_; i++) {
-    if (min_num > stream_op_count_[cur_index + i]) {
-      index = i;
-      min_num = stream_op_count_[cur_index + i];
-    }
-  }
-  return cur_index + index;
-}
 
 FetchResultType XPUThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
@@ -165,16 +139,14 @@ FetchResultType XPUThreadedSSAGraphExecutor::RunMainStream(
       break;
     }
     auto dev_ctxes_ = cur_op->DeviceContext();
-    if (dev_ctxes_.size() > 1) {
-      RunMultiDeviceOpAsync(cur_op, op_deps.get(), ready_ops);
-      continue;
-    } else if (dev_ctxes_.size() == 1) {
+    if (dev_ctxes_.size() == 1) {
+      VLOG(3)<<"dev_ctxes_.size()"<<dev_ctxes_.size();
       cur_place = boost::get<platform::XPUPlace>(dev_ctxes_.begin()->first);
     } else {
       cur_place = boost::get<platform::XPUPlace>(
           dynamic_cast<ComputationOpHandle *>(cur_op)->GetPlace());
     }
-    int cur_index = multi_stream_num_ * place_to_index_[cur_place.device];
+    int cur_index = place_to_index_[cur_place.device];
     RunOpAsyncMainStream(cur_op, op_deps.get(), ready_ops, cur_index);
   }
   while (exec_op_count_ < op_deps_.size()) {
@@ -282,7 +254,7 @@ void XPUThreadedSSAGraphExecutor::RunOpAsyncMainStream(
     std::shared_ptr<BlockingQueue<OpHandleBase *>> ready_ops, int index) {
   pool_[index]->enqueue([=] {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    pool.device_context_index = index % multi_stream_num_;
+    pool.device_context_index = index;
     try {
       if (error_state == 0 && LIKELY(!strategy_.dry_run_)) {
         struct timeval t1;
