@@ -44,16 +44,6 @@ def _get_global_parallel_env():
     return _global_parallel_env
 
 
-def _start_kv_server(port, http_server_d):
-    from paddle.distributed.fleet.utils.http_server import KVServer
-    http_server = KVServer(int(port))
-    http_server.start()
-    wait_seconds = 5
-    while http_server_d.get("running", False) or not http_server.should_stop():
-        time.sleep(wait_seconds)
-    http_server.stop()
-
-
 def init_parallel_env():
     """
     Initialize parallel training environment in dynamic graph mode.
@@ -141,21 +131,7 @@ def init_parallel_env():
     _check_var_exists("PADDLE_TRAINERS_NUM")
     _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
-    # 3: init gloo context (step 1: httpsever start)
-    ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
-    ep_rank = parallel_env.trainer_endpoints[parallel_env.rank].split(":")
-    manager = Manager()
-    # glboal dict to store status
-    http_server_d = manager.dict()
-    http_server_d["running"] = False
-    if parallel_env.rank == 0:
-        http_server = Process(
-            target=_start_kv_server, args=(int(ep_rank_0[1]), http_server_d))
-        http_server.daemon = True
-        http_server_d["running"] = True
-        http_server.start()
-
-    # 4. init NCCL ParallelStrategy
+    # 3. init NCCL ParallelStrategy
     strategy = ParallelStrategy()
     if parallel_helper._is_parallel_ctx_initialized():
         warnings.warn("The parallel environment has been initialized.")
@@ -177,23 +153,19 @@ def init_parallel_env():
     parallel_helper._set_parallel_ctx(core.NCCLParallelContext(strategy, place))
     parallel_helper._init_parallel_ctx()
 
-    # 5: init gloo context (step 2: gloo init)
-    # dividing init_gloo into two part beacause nccl and gloo
-    # are separately looking for free ports which sometimes
-    # leads to port-conflict.
+    # 4: init gloo context
+    if int(os.getenv("PADDLE_WITH_GLOO", -1)) == 0:
+        return
     wait_server_ready([parallel_env.trainer_endpoints[0]])
 
-    gloo_strategy = core.GlooParallelStrategy()
-    gloo_strategy.rank = parallel_env.rank
-    gloo_strategy.rank_num = parallel_env.world_size
-    gloo_strategy.ip_address = ep_rank_0[0]
-    gloo_strategy.ip_port = int(ep_rank_0[1])
-    default_init_timeout_seconds = 3600
-    default_run_timeout_seconds = 9999999
-    gloo_strategy.init_seconds = default_init_timeout_seconds
-    gloo_strategy.run_seconds = default_run_timeout_seconds
-    gloo = core.GlooParallelContext(gloo_strategy)
-    gloo.init()
+    http_server_d = manager.dict()
+    ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
+    http_server, _, _, _ = init_gloo_with_http(
+        ep_rank_0[0],
+        int(ep_rank_0[1]), "", "", 3600, 9999999, parallel_env.world_size, 0,
+        parallel_env.rank, "WORKER", parallel_env.rank == 0, False,
+        http_server_d)
+
     if parallel_env.rank == 0:
         http_server_d["running"] = False
         http_server.join()

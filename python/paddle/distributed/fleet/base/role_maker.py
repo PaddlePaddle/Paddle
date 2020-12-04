@@ -21,6 +21,7 @@ from multiprocessing import Process, Manager
 import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+from paddle.distributed.fleet.utils.init_gloo import init_gloo_with_http
 
 
 class Role:
@@ -46,7 +47,7 @@ class Gloo(object):
         self._nodes_comm = None
 
         self._comm_world = ["worker", "server", "all"]
-        self._err_init = "gloo is not initialized, will not communicator with other nodes"
+        self._err_init = "gloo is not initialized, will not communicate with other nodes"
         self._err_type = "gloo initialized error, please check arguments"
         self._err_world = "argument error, comm_world must in {}".format(
             self._comm_world)
@@ -107,8 +108,28 @@ class Gloo(object):
 
             if not ip or not port:
                 raise ValueError(self._err_type)
-            http_server = self._init_http(ip, port, self._prefix,
-                                          start_http_server, http_server_d)
+
+            if role == Role.WORKER:
+                role_str = "WORKER"
+            elif role == Role.SERVER:
+                role_str = "SERVER"
+            else:
+                raise ValueError("role must be one of 'WORKER or 'SERVER'")
+            rank, nodes = self._get_rank_nodes(role)
+            http_server, self._worker_comm, self._server_comm, self._nodes_comm = \
+                init_gloo_with_http(ip,
+                                    port,
+                                    self._prefix,
+                                    self._iface,
+        self._init_timeout_seconds,
+                                    self._run_timeout_seconds,
+                                    self._worker_num,
+                                    self._server_num,
+                                    rank,
+                                    role_str,
+                                    start_http_server,
+                                    self._need_init_all,
+                                    http_server_d)
         else:
             raise ValueError(self._err_type)
 
@@ -168,70 +189,6 @@ class Gloo(object):
             rank, nodes = self._get_rank_nodes(Role.ALL)
             gloo = init(rank, nodes, "ALL")
             self._nodes_comm = gloo
-
-    def _init_http(self, ip, port, prefix, start_http_server, http_server_d):
-        def __start_kv_server(http_server_d, size_d):
-            from paddle.distributed.fleet.utils.http_server import KVServer
-            http_server = KVServer(port, size_d)
-            http_server.start()
-            wait_seconds = 5
-            while http_server_d.get("running",
-                                    False) or not http_server.should_stop():
-                time.sleep(wait_seconds)
-            http_server.stop()
-
-        def init_kv_server(http_server_d):
-            size_d = {
-                "trainer": self._worker_num,
-                "pserver": self._server_num,
-                "all": self._worker_num + self._server_num
-            }
-
-            http_server_d["running"] = True
-            # child process for http server
-            _http_server = Process(
-                target=__start_kv_server, args=(http_server_d, size_d))
-            _http_server.daemon = True
-            # set running status to True
-            # start child process
-            _http_server.start()
-            return _http_server
-
-        def init(rank, nodes, role):
-            gloo = fluid.core.Gloo()
-            gloo.set_rank(rank)
-            gloo.set_size(nodes)
-            gloo.set_prefix(prefix)
-            gloo.set_iface(self._iface)
-            gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                     self._run_timeout_seconds)
-            gloo.set_http_store(ip, port, role)
-            ep = ":".join([ip, str(port)])
-            wait_server_ready([ep])
-            gloo.init()
-            return gloo
-
-        port = int(port)
-
-        if start_http_server:
-            http_server = init_kv_server(http_server_d)
-
-        if self._role == Role.WORKER:
-            rank, nodes = self._get_rank_nodes(Role.WORKER)
-            gloo = init(rank, nodes, "WORKER")
-            self._worker_comm = gloo
-        else:
-            rank, nodes = self._get_rank_nodes(Role.SERVER)
-            gloo = init(rank, nodes, "SERVER")
-            self._server_comm = gloo
-
-        if self._need_init_all:
-            rank, nodes = self._get_rank_nodes(Role.ALL)
-            gloo = init(rank, nodes, "ALL")
-            self._nodes_comm = gloo
-        if start_http_server:
-            http_server_d["running"] = False
-            http_server.join()
 
     def _get_rank_nodes(self, role):
         nodes = 0
