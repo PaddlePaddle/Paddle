@@ -58,7 +58,10 @@ namespace paddle {
 namespace platform {
 
 #ifdef PADDLE_WITH_CUDA
-extern bool allow_tf32_cublas;
+/*Set the value of the global variable allow_tf32_cublas*/
+void SetAllowTF32Cublas(bool active);
+/*Get the global variable allow_tf32_cublas value*/
+bool AllowTF32Cublas();
 #endif  // PADDLE_WITH_CUDA
 
 class DeviceContext {
@@ -162,7 +165,7 @@ class CUDAContext {
   template <typename Callback>
   inline void CublasCall(Callback&& callback) {
 #if CUDA_VERSION >= 11000
-    if (allow_tf32_cublas) {
+    if (AllowTF32Cublas()) {
       cublas_handle_.reset(
           new CublasHandleHolder(RawStream(), CUBLAS_TF32_TENSOR_OP_MATH));
     }
@@ -253,11 +256,6 @@ class CUDADeviceContext : public DeviceContext {
  public:
   explicit CUDADeviceContext(CUDAPlace place);
   virtual ~CUDADeviceContext();
-
-  /*! \brief Set the value of the global variable allow_tf32_cublas*/
-  void SetAllowTF32Cublas(bool active);
-  /*! \brief Get the global variable allow_tf32_cublas value*/
-  bool AllowTF32Cublas() const;
 
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;

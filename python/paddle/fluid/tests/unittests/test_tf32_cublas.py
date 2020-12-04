@@ -24,14 +24,13 @@ class TestTF32Switch(unittest.TestCase):
     def test_on_off(self):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            ctx = core.CUDADeviceContext(place)
-            self.assertTrue(ctx.get_cublas_switch())  # default
-            ctx.set_cublas_switch(0)
-            self.assertFalse(ctx.get_cublas_switch())  # turn off
-            ctx.set_cublas_switch(1)
-            self.assertTrue(ctx.get_cublas_switch())  # turn on
+            self.assertTrue(core.get_cublas_switch())  # default
+            core.set_cublas_switch(False)
+            self.assertFalse(core.get_cublas_switch())  # turn off
+            core.set_cublas_switch(True)
+            self.assertTrue(core.get_cublas_switch())  # turn on
 
-            ctx.set_cublas_switch(1)  # restore the switch
+            core.set_cublas_switch(True)  # restore the switch
         else:
             pass
 
@@ -40,8 +39,7 @@ class TestTF32OnMatmul(unittest.TestCase):
     def test_dygraph_without_out(self):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            tmp_ctx = core.CUDADeviceContext(place)
-            tmp_ctx.set_cublas_switch(0)  # turn off
+            core.set_cublas_switch(False)  # turn off
             with fluid.dygraph.guard(place):
                 input_array1 = np.random.rand(4, 12, 64, 88).astype("float32")
                 input_array2 = np.random.rand(4, 12, 88, 512).astype("float32")
@@ -50,7 +48,7 @@ class TestTF32OnMatmul(unittest.TestCase):
                 out = paddle.matmul(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
             self.assertTrue(np.allclose(expected_result, out.numpy(), 1e-03))
-            tmp_ctx.set_cublas_switch(1)  # restore the switch
+            core.set_cublas_switch(True)  # restore the switch
         else:
             pass
 
