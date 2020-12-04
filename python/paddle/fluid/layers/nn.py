@@ -1675,7 +1675,7 @@ def conv3d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        input (Variable): The input is 5-D Tensor with shape [N, C, D, H, W], the data
+        input (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
             type of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -1749,11 +1749,19 @@ def conv3d(input,
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
           import paddle
+          import numpy as np
+	  
           paddle.enable_static()
-          data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
-          conv3d = fluid.layers.conv3d(input=data, num_filters=2, filter_size=3, act="relu")
+          data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
+          param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
+          res = paddle.static.nn.conv3d(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
+          place = paddle.CPUPlace()
+          exe = paddle.static.Executor(place)
+          exe.run(paddle.static.default_startup_program())
+          x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
+          output = exe.run(feed={"data": x}, fetch_list=[res])
+          print(output)
     """
 
     l_type = 'conv3d'
@@ -4093,7 +4101,7 @@ def conv3d_transpose(input,
           conv3d_transpose can compute the kernel size automatically.
 
     Args:
-        input(Variable): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
+        input(Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
             of input is float32 or float64.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
@@ -4176,11 +4184,19 @@ def conv3d_transpose(input,
     Examples:
        .. code-block:: python
 
-          import paddle.fluid as fluid
           import paddle
+          import numpy as np
+	    
           paddle.enable_static()
-          data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
-          conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
+          data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
+          param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
+          res = paddle.static.nn.conv3d_transpose(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
+          place = paddle.CPUPlace()
+          exe = paddle.static.Executor(place)
+          exe.run(paddle.static.default_startup_program())
+          x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
+          output = exe.run(feed={"data": x}, fetch_list=[res])
+          print(output)
     """
     assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
     if data_format not in ['NCDHW', 'NDHWC']:
@@ -9512,36 +9528,35 @@ def pow(x, factor=1.0, name=None):
 @templatedoc()
 def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
     """
+    stanh activation.
 
-    ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        scale_a(${scale_a_type}|2.0 / 3.0): ${scale_a_comment}
-        scale_b(${scale_b_type}|1.7159): ${scale_b_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+    .. math::
+
+        out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        scale_a (float, optional): The scale factor a of the input. Default is 0.67.
+        scale_b (float, optional): The scale factor b of the output. Default is 1.7159.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        output(Tensor): ${out_comment}.
+        A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-
         .. code-block:: python
 
             import paddle
 
-            data = paddle.rand(shape=[3, 3], dtype='float32')
-            output = paddle.stanh(data, scale_a=0.67, scale_b=1.72)
-            print(data)
-            # [[0.19412413, 0.66871136, 0.77059180],
-            #  [0.89738929, 0.35827777, 0.60592669],
-            #  [0.66346580, 0.78424633, 0.46533889]]
-            print(output)
-            # [[0.22245567, 0.72288811, 0.81671900],
-            #  [0.92525512, 0.40512756, 0.66227961],
-            #  [0.71790355, 0.82885355, 0.51953089]]
+            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            out = paddle.stanh(x, scale_a=0.67, scale_b=1.72) # [1.00616539, 1.49927628, 1.65933108, 1.70390463]
 
     """
+
+    if in_dygraph_mode():
+        return core.ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
+
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'stanh')
 
     helper = LayerHelper('stanh', **locals())
@@ -13325,7 +13340,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
             import paddle.nn.functional as F
 
             input = paddle.randn([6, 4, 2, 2])
-            out = paddle.fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
+            out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     helper = LayerHelper("temporal_shift", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
@@ -14688,9 +14703,10 @@ def deformable_roi_pooling(input,
     return output
 
 
+@deprecated(since="2.0.0", update_to="paddle.shard_index")
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    This operator recomputes the `input` indices according to the offset of the
+    Recompute the `input` indices according to the offset of the
     shard. The length of the indices is evenly divided into N shards, and if
     the `shard_id` matches the shard with the input index inside, the index is
     recomputed on the basis of the shard offset, elsewise it is set to
@@ -14703,44 +14719,27 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     NOTE: If the length of indices cannot be evely divided by the shard number,
     the size of the last shard will be less than the calculated `shard_size`
 
-    Examples:
-    ::
-
-        Input:
-          X.shape = [4, 1]
-          X.data = [[1], [6], [12], [19]]
-          index_num = 20
-          nshards = 2
-          ignore_value = -1
-
-        if shard_id == 0, we get:
-          Out.shape = [4, 1]
-          Out.data = [[1], [6], [-1], [-1]]
-
-        if shard_id == 1, we get:
-          Out.shape = [4, 1]
-          Out.data = [[-1], [-1], [2], [9]]
-
     Args:
-        - **input** (Variable): Input indices, last dimension must be 1.
-        - **index_num** (scalar): An integer defining the range of the index.
-        - **nshards** (scalar): The number of shards
-        - **shard_id** (scalar): The index of the current shard
-        - **ignore_value** (scalar): An integer value out of sharded index range
+        input (Tensor): Input indices with data type int64. It's last dimension must be 1.
+        index_num (int): An integer defining the range of the index.
+        nshards (int): The number of shards.
+        shard_id (int): The index of the current shard.
+        ignore_value (int): An integer value out of sharded index range.
 
     Returns:
-        Variable: The sharded index of input.
+        Tensor: The sharded index of input.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            batch_size = 32
-            label = fluid.data(name="label", shape=[batch_size, 1], dtype="int64")
-            shard_label = fluid.layers.shard_index(input=label,
-                                                   index_num=20,
-                                                   nshards=2,
-                                                   shard_id=0)
+            import paddle
+            label = paddle.to_tensor([[16], [1]], "int64")
+            shard_label = paddle.shard_index(input=label,
+                                             index_num=20,
+                                             nshards=2,
+                                             shard_id=0)
+            print(shard_label)
+            # [[-1], [1]]
     """
     check_variable_and_dtype(input, 'input', ['int64'], 'shard_index')
     op_type = 'shard_index'
