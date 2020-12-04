@@ -171,15 +171,13 @@ class TestDeformConv2D(TestCase):
         np.testing.assert_array_almost_equal(static_dcn_v1, dy_dcn_v1)
         np.testing.assert_array_almost_equal(static_dcn_v2, dy_dcn_v2)
 
-    def test_identity_cpu(self):
+    def test_identity(self):
         self.place = paddle.CPUPlace()
         self._test_identity()
 
-    @unittest.skipIf(not paddle.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
-    def test_identity_gpu(self):
-        self.place = paddle.CUDAPlace(0)
-        self._test_identity()
+        if paddle.is_compiled_with_cuda():
+            self.place = paddle.CUDAPlace(0)
+            self._test_identity()
 
 
 class TestDeformConv2DFunctional(TestCase):
@@ -340,15 +338,13 @@ class TestDeformConv2DFunctional(TestCase):
         np.testing.assert_array_almost_equal(static_dcn_v1, dy_dcn_v1)
         np.testing.assert_array_almost_equal(static_dcn_v2, dy_dcn_v2)
 
-    def test_identity_cpu(self):
+    def test_identity(self):
         self.place = paddle.CPUPlace()
         self._test_identity()
 
-    @unittest.skipIf(not paddle.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
-    def test_identity_gpu(self):
-        self.place = paddle.CUDAPlace(0)
-        self._test_identity()
+        if paddle.is_compiled_with_cuda():
+            self.place = paddle.CUDAPlace(0)
+            self._test_identity()
 
 
 # testcases for DeformConv2D
