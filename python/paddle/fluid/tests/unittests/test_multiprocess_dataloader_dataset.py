@@ -114,8 +114,7 @@ class TestRandomSplitApi(unittest.TestCase):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
 
-        dataset1, dataset2 = paddle.fluid.layers.dataset.random_split(
-            range(10), [3, 7])
+        dataset1, dataset2 = paddle.io.random_split(range(10), [3, 7])
 
         self.assertTrue(len(dataset1) == 3)
         self.assertTrue(len(dataset2) == 7)
@@ -132,24 +131,66 @@ class TestRandomSplitApi(unittest.TestCase):
 
 
 class TestSubsetDataset(unittest.TestCase):
+    def run_main(self, num_workers, places):
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
+
+        input_np = np.random.random([5, 3, 4]).astype('float32')
+        input = paddle.to_tensor(input_np)
+        label_np = np.random.random([5, 1]).astype('int32')
+        label = paddle.to_tensor(label_np)
+
+        dataset = TensorDataset([input, label])
+        even_subset = paddle.io.Subset(dataset, [0, 2, 4])
+        odd_subset = paddle.io.Subset(dataset, [1, 3])
+
+        assert len(dataset) == 5
+
+        def prepare_dataloader(dataset):
+            return DataLoader(
+                dataset,
+                places=places,
+                num_workers=num_workers,
+                batch_size=1,
+                drop_last=True)
+
+        dataloader = prepare_dataloader(dataset)
+        dataloader_even = prepare_dataloader(even_subset)
+        dataloader_odd = prepare_dataloader(odd_subset)
+
+        def assert_basic(input, label):
+            assert len(input) == 1
+            assert len(label) == 1
+            assert input.shape == [1, 3, 4]
+            assert label.shape == [1, 1]
+            assert isinstance(input, paddle.Tensor)
+            assert isinstance(label, paddle.Tensor)
+
+        elements_list = list()
+        for _, (input, label) in enumerate(dataloader()):
+            assert_basic(input, label)
+            elements_list.append(label)
+
+        for _, (input, label) in enumerate(dataloader_even()):
+            assert_basic(input, label)
+            elements_list.remove(label)
+
+        odd_list = list()
+        for _, (input, label) in enumerate(dataloader_odd()):
+            assert_basic(input, label)
+            odd_list.append(label)
+
+        self.assertEqual(odd_list, elements_list)
+
     def test_main(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
 
-        dataset = RandomDataset(5)
-        even_subset = Subset(dataset, [0, 2, 4])
-        odd_subset = Subset(dataset, [1, 3])
-
-        self.assertTrue(len(even_subset) == 3)
-        self.assertTrue(len(odd_subset) == 2)
-
-        elements_list = list(dataset)
-
-        for _, val in enumerate(even_subset):
-            elements_list.remove(val)
-
-        odd_list = list(odd_subset)
-        self.assertEqual(odd_list, elements_list)
+        places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for p in places:
+            self.run_main(num_workers=0, places=p)
 
 
 class TestChainDataset(unittest.TestCase):
