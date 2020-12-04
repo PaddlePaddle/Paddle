@@ -168,28 +168,25 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
 
         .. code-block:: python
 
+            import numpy as np
             import paddle
             import paddle.nn as nn
 
-            weight = prog.global_block().create_parameter(
-                attr=self._param_attr,
-                shape=param_shape,
-                dtype=self._dtype,
-                default_initializer=Constant(1.0))
+            x0 = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
+            w0 = np.full(shape=(10, 3), fill_value=2).astype(np.float32)
 
-            prog = paddle.static.Program()
+            # x.data = [[3], [4], [5]]
+            # x.shape = [3, 1]
+            x = paddle.to_tensor(x0, stop_gradient=False)
 
-            weight = prog.global_block().create_parameter(
-                    (128, 100), dtype="float32", default_initializer=Constant(1.0))
+            # w.data = [[2. 2. 2.] ... [2. 2. 2.]]
+            # w.shape = [10, 3]
+            w = paddle.to_tensor(w0, stop_gradient=False)
 
-            label = paddle.static.data(
-                    name="label",
-                    shape=[4],
-                    append_batch_size=False,
-                    dtype="int64")
-
-            emb = nn.embedding(
-                    x=label, weight=weight, sparse=True, name="embedding")
+            # emb.data = [[[2., 2., 2.]], [[2., 2., 2.]], [[2., 2., 2.]]]
+            # emb.shape = [3, 1, 3]
+            emb = nn.functional.embedding(
+                    x=x, weight=w, sparse=True, name="embedding")
 
     """
     padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
