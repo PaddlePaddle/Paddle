@@ -60,11 +60,19 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext,
                          platform::float16>,
     ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::complex64>,
+    ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     trace_grad, ops::TraceGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::TraceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::TraceGradKernel<paddle::platform::CUDADeviceContext,
                          platform::float16>,
     ops::TraceGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::TraceGradKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::TraceGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TraceGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::complex64>,
+    ops::TraceGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::complex128>);
