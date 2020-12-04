@@ -635,11 +635,11 @@ class DeformConv2D(Layer):
             H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
-    
+
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
-        kernel_size(int|list|tuple, optional): The size of the convolving kernel.
+        kernel_size(int|list|tuple): The size of the convolving kernel.
         stride(int|list|tuple, optional): The stride size. If stride is a tuple, it must
             contain three integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. The default value is 1.
