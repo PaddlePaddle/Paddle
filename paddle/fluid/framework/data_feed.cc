@@ -644,7 +644,7 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
@@ -700,7 +700,7 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
@@ -920,8 +920,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "the data, please check if the data contains unresolvable "
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
-              "when we parse the %d th slots.\n"
-              "Maybe something wrong around this slot",
+              "when we parse the %d th slots."
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.", str, i, num));
       if (idx != -1) {
@@ -990,7 +990,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));

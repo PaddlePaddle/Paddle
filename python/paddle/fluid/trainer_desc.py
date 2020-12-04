@@ -106,6 +106,9 @@ class TrainerDesc(object):
     def _set_dump_file_num(self, dump_file_num):
         self.proto_desc.dump_file_num = dump_file_num
 
+    def _set_user_define_dump_filename(self, user_define_dump_filename):
+        self.proto_desc.user_define_dump_filename = user_define_dump_filename
+
     def _set_dump_converter(self, converter):
         self.proto_desc.dump_converter = converter
 

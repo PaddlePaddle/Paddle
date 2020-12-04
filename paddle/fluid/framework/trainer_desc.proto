@@ -52,6 +52,8 @@ message TrainerDesc {
   // recall ins weight
   optional RecallInsWeightConfig recall_ins_weight_config = 24;
 
+  optional string user_define_dump_filename = 24;
+
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
   optional DownpourWorkerParameter downpour_param = 103;

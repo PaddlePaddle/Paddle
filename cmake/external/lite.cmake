@@ -36,7 +36,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG 42ab4d559f6659edfc35040fb30fdcec3dc3f8aa)
+    set(LITE_GIT_TAG release/v2.7)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
@@ -84,10 +84,8 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                           ${EXTERNAL_OPTIONAL_ARGS}
                           ${LITE_OPTIONAL_ARGS}
     )
-    set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8)
   else()
     set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
-    set(LITE_OUTPUT_BIN_DIR inference_lite_lib)
     set(LITE_OPTIONAL_ARGS -DWITH_MKL=ON
                            -DLITE_WITH_CUDA=${WITH_GPU}
                            -DWITH_MKLDNN=OFF
@@ -133,6 +131,12 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_BINARY_DIR ${BINARY_DIR})
   set(LITE_SOURCE_DIR ${SOURCE_DIR})
 
+endif()
+
+if (WITH_ARM)
+  set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8)
+else()
+  set(LITE_OUTPUT_BIN_DIR inference_lite_lib)
 endif()
 
 message(STATUS "Paddle-lite BINARY_DIR: ${LITE_BINARY_DIR}")

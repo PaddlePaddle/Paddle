@@ -56,6 +56,19 @@ class TrainerBase {
   Scope* root_scope_;
   bool debug_;
   Dataset* dataset_ptr_;
+  TrainerDesc trainer_desc_;
+
+  // For dump param or field
+  bool need_dump_field_ = false;
+  std::string user_define_dump_filename_;
+  bool need_dump_param_ = false;
+  std::string dump_fields_path_;
+  std::string dump_converter_;
+  std::vector<std::string> dump_param_;
+  std::vector<std::string> dump_fields_;
+  int dump_thread_num_;
+  std::vector<std::thread> dump_thread_;
+  std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;
 };
 
 // general trainer for async execution
