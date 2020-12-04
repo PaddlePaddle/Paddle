@@ -208,6 +208,8 @@ class VarBase {
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
 
+  void CopyFrom(const imperative::VarBase& src, bool blocking);
+
   void BumpInplaceVersion();
 
  private:

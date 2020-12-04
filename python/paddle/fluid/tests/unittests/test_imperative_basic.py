@@ -287,7 +287,6 @@ class TestImperative(unittest.TestCase):
             with paddle.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
-                print(tmp)
                 self.assertTrue(tmp.stop_gradient)
             x = fluid.dygraph.to_variable(data)
             y = l0(x) + tmp
@@ -485,15 +484,15 @@ class TestImperative(unittest.TestCase):
             for i in range(10):
                 y = paddle.pow(x, 4.0)
                 y.backward()
-                print(x.grad)
                 self.assertEqual(x.grad, (i + 1) * 500)
             x.clear_gradient()
             self.assertEqual(x.grad, 0.)
-            for i in range(5):
+            for i in range(10):
                 y = paddle.pow(x, 4.0)
                 y.backward()
-                print(x.grad)
                 self.assertEqual(x.grad, (i + 1) * 500)
+            x.clear_grad()
+            self.assertEqual(x.grad, 0.)
 
         def test_simple_net(sort_sum_gradient):
             fluid.set_flags({'FLAGS_sort_sum_gradient': sort_sum_gradient})
@@ -504,9 +503,18 @@ class TestImperative(unittest.TestCase):
             def fun(x, y, z):
                 loss1 = x * x * y
                 loss2 = x * z
+                loss1.backward(retain_graph=True)
+                loss2.backward(retain_graph=True)
+                self.assertTrue(np.array_equal(x.grad, [23.]))
+                self.assertTrue(np.array_equal(y.grad, [25.]))
+                self.assertTrue(np.array_equal(z.grad, [5.]))
+                x.clear_grad()
+                y.clear_grad()
+                z.clear_grad()
+
                 dx = paddle.grad([loss1], x, create_graph=True)[0]
-                # loss = x*x*y + x*z + 2*x*y 
                 loss = loss1 + loss2 + dx
+                # loss = x*x*y + x*z + 2*x*y
                 return loss
 
             loss = fun(x, y, z)
@@ -539,12 +547,12 @@ class TestImperative(unittest.TestCase):
             # generate the gradient of each step
             mlp2 = MLP(input_size=input_size)
 
-            expected_weight1_grad = np.zeros(mlp2._linear1.weight.shape)
-            expected_bias1_grad = np.zeros(mlp2._linear1.bias.shape)
-            expected_weight2_grad = np.zeros(mlp2._linear2.weight.shape)
-            expected_bias2_grad = np.zeros(mlp2._linear2.bias.shape)
+            expected_weight1_grad = 0.
+            expected_bias1_grad = 0.
+            expected_weight2_grad = 0.
+            expected_bias2_grad = 0.
 
-            for batch_id in range(24):
+            for batch_id in range(100):
                 x = paddle.uniform([10, input_size])
                 detach_x = x.detach()
                 clear_loss = mlp2(detach_x)
@@ -571,12 +579,12 @@ class TestImperative(unittest.TestCase):
 
                 mlp2.clear_gradients()
                 self.assertTrue(np.array_equal(clear_loss.grad, [1]))
-                if ((batch_id + 1) % 8) == 0:
+                if ((batch_id + 1) % 10) == 0:
                     mlp1.clear_gradients()
-                    expected_weight1_grad = np.zeros(mlp2._linear1.weight.shape)
-                    expected_bias1_grad = np.zeros(mlp2._linear1.bias.shape)
-                    expected_weight2_grad = np.zeros(mlp2._linear2.weight.shape)
-                    expected_bias2_grad = np.zeros(mlp2._linear2.bias.shape)
+                    expected_weight1_grad = 0.
+                    expected_bias1_grad = 0.
+                    expected_weight2_grad = 0.
+                    expected_bias2_grad = 0.
 
         with fluid.dygraph.guard():
             test_single_api(False)
