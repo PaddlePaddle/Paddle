@@ -34,7 +34,7 @@ def yolo_loss(x,
               use_label_smooth=True,
               name=None,
               scale_x_y=1.):
-    """
+    r"""
 
     This operator generates YOLOv3 loss based on given predict result and ground
     truth boxes.
@@ -242,7 +242,7 @@ def yolo_box(x,
              clip_bbox=True,
              name=None,
              scale_x_y=1.):
-    """
+    r"""
 
     This operator generates YOLO detection boxes from output of YOLOv3 network.
     
