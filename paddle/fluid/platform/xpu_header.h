@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/platform/errors.h"
 #include "xpu/api.h"
+#include "xpu/refactor/math.h"
 #include "xpu/refactor/nn.h"
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
