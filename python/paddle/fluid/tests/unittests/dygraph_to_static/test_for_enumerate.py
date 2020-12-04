@@ -17,15 +17,15 @@ from __future__ import print_function
 import numpy as np
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.jit import declarative
 
 program_translator = ProgramTranslator()
 
 
 # 0. for in range var.numpy()[0]
-@declarative
+@paddle.jit.to_static
 def for_in_range(x):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x = fluid.dygraph.to_variable(x)
@@ -35,7 +35,7 @@ def for_in_range(x):
 
 
 # 1. for iter list 
-@declarative
+@paddle.jit.to_static
 def for_iter_list(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     for x in x_array:
@@ -44,7 +44,7 @@ def for_iter_list(x_array):
 
 
 # 2. for enumerate list
-@declarative
+@paddle.jit.to_static
 def for_enumerate_list(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     for i, x in enumerate(x_array):
@@ -53,7 +53,7 @@ def for_enumerate_list(x_array):
 
 
 # 3. for iter var.numpy()
-@declarative
+@paddle.jit.to_static
 def for_iter_var_numpy(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
@@ -63,7 +63,7 @@ def for_iter_var_numpy(x_array):
 
 
 # 4. for enumerate var.numpy()
-@declarative
+@paddle.jit.to_static
 def for_enumerate_var_numpy(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
@@ -75,7 +75,7 @@ def for_enumerate_var_numpy(x_array):
 
 
 # 5. for enumerate var.numpy() with start
-@declarative
+@paddle.jit.to_static
 def for_enumerate_var_numpy_with_start(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
@@ -87,7 +87,7 @@ def for_enumerate_var_numpy_with_start(x_array):
 
 
 # 6. for in range with break
-@declarative
+@paddle.jit.to_static
 def for_in_range_with_break(x):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x = fluid.dygraph.to_variable(x)
@@ -99,7 +99,7 @@ def for_in_range_with_break(x):
 
 
 # 7. for enumerate var.numpy() with break
-@declarative
+@paddle.jit.to_static
 def for_enumerate_var_numpy_with_break(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
@@ -113,7 +113,7 @@ def for_enumerate_var_numpy_with_break(x_array):
 
 
 # 8. for enumerate var.numpy() with continue
-@declarative
+@paddle.jit.to_static
 def for_enumerate_var_numpy_with_continue(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
@@ -127,7 +127,7 @@ def for_enumerate_var_numpy_with_continue(x_array):
 
 
 # 9. for enumerate var.numpy() with start & break
-@declarative
+@paddle.jit.to_static
 def for_enumerate_var_numpy_with_start_break(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
@@ -141,7 +141,7 @@ def for_enumerate_var_numpy_with_start_break(x_array):
 
 
 # 10. for enumerate var.numpy() with start & continue
-@declarative
+@paddle.jit.to_static
 def for_enumerate_var_numpy_with_start_continue(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
@@ -155,7 +155,7 @@ def for_enumerate_var_numpy_with_start_continue(x_array):
 
 
 # 11. for iter var
-@declarative
+@paddle.jit.to_static
 def for_iter_var(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
@@ -165,7 +165,7 @@ def for_iter_var(x_array):
 
 
 # 12. for enumerate var
-@declarative
+@paddle.jit.to_static
 def for_enumerate_var(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
@@ -177,7 +177,7 @@ def for_enumerate_var(x_array):
 
 
 # 13. for iter list[var]
-@declarative
+@paddle.jit.to_static
 def for_iter_var_list(x):
     # 1. prepare data, ref test_list.py
     x = fluid.dygraph.to_variable(x)
@@ -193,7 +193,7 @@ def for_iter_var_list(x):
 
 
 # 14. for enumerate list[var]
-@declarative
+@paddle.jit.to_static
 def for_enumerate_var_list(x):
     # 1. prepare data, ref test_list.py
     x = fluid.dygraph.to_variable(x)
@@ -208,6 +208,17 @@ def for_enumerate_var_list(x):
         y = y + i
         z = z + x
     return y, z
+
+
+# 15. for enumerate list[var] with a nested for range
+@paddle.jit.to_static
+def for_enumerate_var_with_nested_range(x_array):
+    x = fluid.layers.fill_constant([1], 'int32', 0)
+    x_array = fluid.dygraph.to_variable(x_array)
+    for i, num in enumerate(x_array):
+        for idx in range(num):
+            x = x + num
+    return x
 
 
 class TestTransformBase(unittest.TestCase):
@@ -335,6 +346,11 @@ class TestForIterVar(TestForIterVarNumpy):
 class TestForEnumerateVar(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var
+
+
+class TestForEnumerateVarWithNestedRange(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = for_enumerate_var_with_nested_range
 
 
 class TestForIterVarList(TestForInRange):
