@@ -109,17 +109,17 @@ struct PairForLayerNormAddFunctor {
 
 template <typename T>
 __inline__ __device__ T rsqrt(const T val) {
-    return ::rsqrt(val);
+  return ::rsqrt(val);
 }
 
 template <>
 __inline__ __device__ float rsqrt(const float val) {
-    return rsqrtf(val);
+  return rsqrtf(val);
 }
 
 template <>
 __inline__ __device__ half rsqrt(const half val) {
-    return hrsqrt(val);
+  return hrsqrt(val);
 }
 
 template <typename T, typename U, int BlockDim>
@@ -148,7 +148,8 @@ __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
   if (threadIdx.x == 0) {
     auto tmp = pair.first_ / feature_size;
     mean[blockIdx.x] = mean_share = static_cast<U>(tmp);
-    var[blockIdx.x] = var_share = static_cast<U>(pair.second_ / feature_size - tmp * tmp);
+    var[blockIdx.x] = var_share =
+        static_cast<U>(pair.second_ / feature_size - tmp * tmp);
   }
   __syncthreads();
   mean_val = mean_share;
@@ -186,10 +187,12 @@ __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
 }
 
 template <typename T, typename U, int VPT>
-__inline__ __device__ void cuLoadAddStridedInputs(const int i1_block, const int thr_load_row_off, const int thr_load_col_off,
-                                       const int i2_off, const int row_stride, U* warp_buf1, U* warp_buf2,
-                                       const T* input, const T* dout, const int i1_end, const int n2,
-                                       const U* __restrict__ mean, const U* __restrict__ var, const float epsilon) {
+__inline__ __device__ void cuLoadAddStridedInputs(
+    const int i1_block, const int thr_load_row_off, const int thr_load_col_off,
+    const int i2_off, const int row_stride, U *warp_buf1, U *warp_buf2,
+    const T *input, const T *dout, const int i1_end, const int n2,
+    const U *__restrict__ mean, const U *__restrict__ var,
+    const float epsilon) {
   const int i1 = i1_block + thr_load_row_off;
   if (i1 >= i1_end) return;
   U curr_mean = mean[i1];
@@ -202,37 +205,46 @@ __inline__ __device__ void cuLoadAddStridedInputs(const int i1_block, const int 
       U curr_input = static_cast<U>(input[load_idx]);
       U curr_dout = static_cast<U>(dout[load_idx]);
       warp_buf1[write_idx] += curr_dout;
-      warp_buf2[write_idx] += curr_dout * (curr_input - curr_mean) * curr_invvar;
+      warp_buf2[write_idx] +=
+          curr_dout * (curr_input - curr_mean) * curr_invvar;
     }
   }
 }
 
 template <typename T, typename U, int BDIMX, int BDIMY, int VPTX>
-__global__ void LayernormBackwardPartGradGammaBeta(const T* __restrict__ dout, const T* __restrict__ input, const int n1,
-                                           const int n2, const U* __restrict__ mean, const U* __restrict__ var,
-                                           float epsilon, U* part_grad_gamma, U* part_grad_beta) {
-  // VPTX -> value per thread.x, BDIMX -> blockDim.x, BDIMY -> blockDim.y, BDIMX -> blockDim.x
+__global__ void LayerNormBackwardPartGradGammaBeta(
+    const T *__restrict__ dout, const T *__restrict__ input, const int n1,
+    const int n2, const U *__restrict__ mean, const U *__restrict__ var,
+    float epsilon, U *part_grad_gamma, U *part_grad_beta) {
+  // VPTX -> value per thread.x, BDIMX -> blockDim.x, BDIMY -> blockDim.y, BDIMX
+  // -> blockDim.x
   // template for compile time optimizations
 
   constexpr int row_stride = BDIMX + 1;
   const int thr_load_col_off = (threadIdx.x * VPTX) & (BDIMX - 1);
-  const int thr_load_row_off = (threadIdx.x * VPTX) / BDIMX + threadIdx.y * BDIMY;
+  const int thr_load_row_off =
+      (threadIdx.x * VPTX) / BDIMX + threadIdx.y * BDIMY;
   const int i2_off = blockIdx.x * BDIMX + thr_load_col_off;
 
-  constexpr int shared_cap = (BDIMX * BDIMY > 2 * VPTX * BDIMY * row_stride) ? BDIMX * BDIMY : 2 * VPTX * BDIMY * row_stride;
+  constexpr int shared_cap = (BDIMX * BDIMY > 2 * VPTX * BDIMY * row_stride)
+                                 ? BDIMX * BDIMY
+                                 : 2 * VPTX * BDIMY * row_stride;
   __shared__ U buf[shared_cap];
 
-  U* warp_buf1 = (U*)buf;
-  U* warp_buf2 = warp_buf1 + VPTX * BDIMY * row_stride;
+  U *warp_buf1 = reinterpret_cast<U *>(buf);
+  U *warp_buf2 = warp_buf1 + VPTX * BDIMY * row_stride;
 
-  for (int idx = threadIdx.y * blockDim.x + threadIdx.x; idx < 2 * VPTX * BDIMY * row_stride; idx += BDIMX * BDIMY) {
+  for (int idx = threadIdx.y * blockDim.x + threadIdx.x;
+       idx < 2 * VPTX * BDIMY * row_stride; idx += BDIMX * BDIMY) {
     buf[idx] = U(0);
   }
   __syncthreads();
 
-  for (int i1_block = blockIdx.y * BDIMY * VPTX; i1_block < n1; i1_block += VPTX * BDIMY * gridDim.y) {
-    cuLoadAddStridedInputs<T, U, VPTX>(i1_block, thr_load_row_off, thr_load_col_off, i2_off, row_stride, warp_buf1, warp_buf2,
-                           input, dout, n1, n2, mean, var, epsilon);
+  for (int i1_block = blockIdx.y * BDIMY * VPTX; i1_block < n1;
+       i1_block += VPTX * BDIMY * gridDim.y) {
+    cuLoadAddStridedInputs<T, U, VPTX>(
+        i1_block, thr_load_row_off, thr_load_col_off, i2_off, row_stride,
+        warp_buf1, warp_buf2, input, dout, n1, n2, mean, var, epsilon);
   }
   __syncthreads();
 
@@ -241,7 +253,7 @@ __global__ void LayernormBackwardPartGradGammaBeta(const T* __restrict__ dout, c
   U acc1 = U(0);
   U acc2 = U(0);
   for (int k = 0; k < VPTX; ++k) {
-    int row1 = threadIdx.y + k * VPTX; 
+    int row1 = threadIdx.y + k * VPTX;
     int idx1 = row1 * row_stride + threadIdx.x;
     acc1 += warp_buf1[idx1];
     acc2 += warp_buf2[idx1];
@@ -273,9 +285,10 @@ __global__ void LayernormBackwardPartGradGammaBeta(const T* __restrict__ dout, c
 }
 
 template <typename T, typename U, int BDIMX, int BDIMY>
-__global__ void LayerNormBackwardSumGradGammaBeta(const U* part_grad_gamma, const U* part_grad_beta, const int part_size,
-                                       // const int n1, const int n2, T* grad_gamma, T* grad_beta) {
-                                       const int n1, const int n2, U* grad_gamma, U* grad_beta) {
+__global__ void LayerNormBackwardSumGradGammaBeta(
+    const U *part_grad_gamma, const U *part_grad_beta, const int part_size,
+    // const int n1, const int n2, T* grad_gamma, T* grad_beta) {
+    const int n1, const int n2, U *grad_gamma, U *grad_beta) {
   // sum partial gradients for gamma and beta
   __shared__ U buf[BDIMX * BDIMY];
   int i2 = blockIdx.x * BDIMX + threadIdx.x;
@@ -284,9 +297,12 @@ __global__ void LayerNormBackwardSumGradGammaBeta(const U* part_grad_gamma, cons
     int num_warp_reductions = part_size / BDIMY;
     U sum_gamma = U(0);
     U sum_beta = U(0);
-    const U* part_grad_gamma_ptr = part_grad_gamma + threadIdx.y * num_warp_reductions * n2 + i2;
-    const U* part_grad_beta_ptr = part_grad_beta + threadIdx.y * num_warp_reductions * n2 + i2;
-    for (int warp_offset = 0; warp_offset < num_warp_reductions; ++warp_offset) {
+    const U *part_grad_gamma_ptr =
+        part_grad_gamma + threadIdx.y * num_warp_reductions * n2 + i2;
+    const U *part_grad_beta_ptr =
+        part_grad_beta + threadIdx.y * num_warp_reductions * n2 + i2;
+    for (int warp_offset = 0; warp_offset < num_warp_reductions;
+         ++warp_offset) {
       sum_gamma += part_grad_gamma_ptr[warp_offset * n2];
       sum_beta += part_grad_beta_ptr[warp_offset * n2];
     }
@@ -317,17 +333,20 @@ __global__ void LayerNormBackwardSumGradGammaBeta(const U* part_grad_gamma, cons
 }
 
 template <typename T, typename U, int BDIMX, int BDIMY>
-__global__ void LayerNormBackwardComputeGradInput(const T* __restrict__ dout, const T* __restrict__ input, const int n1, const int n2,
-                                   // const U* __restrict__ mean, const U* __restrict__ var, const float epsilon, const T* gamma,
-                                   const U* __restrict__ mean, const U* __restrict__ var, const float epsilon, const U* gamma,
-                                   T* grad_input) {
+__global__ void LayerNormBackwardComputeGradInput(
+    const T *__restrict__ dout, const T *__restrict__ input, const int n1,
+    const int n2,
+    // const U* __restrict__ mean, const U* __restrict__ var, const float
+    // epsilon, const T* gamma,
+    const U *__restrict__ mean, const U *__restrict__ var, const float epsilon,
+    const U *gamma, T *grad_input) {
   for (auto i1 = blockIdx.y; i1 < n1; i1 += gridDim.y) {
     U sum_loss1 = U(0);
     U sum_loss2 = U(0);
     const U c_mean = mean[i1];
     const U c_invvar = rsqrt<U>(var[i1] + epsilon);
-    const T* k_input = input + i1 * n2;
-    const T* k_dout = dout + i1 * n2;
+    const T *k_input = input + i1 * n2;
+    const T *k_dout = dout + i1 * n2;
     constexpr int numx = BDIMX * BDIMY;
     const int thrx = threadIdx.x + threadIdx.y * BDIMX;
     if (gamma != NULL) {
@@ -365,8 +384,12 @@ __global__ void LayerNormBackwardComputeGradInput(const T* __restrict__ dout, co
     }
     // intra-warp reductions
     for (int mask = BDIMX / 2; mask > 0; mask /= 2) {
-      sum_loss1 += __shfl_xor_sync(0xffffffff, sum_loss1, mask, warpSize); // WARP_SHFL_XOR(sum_loss1, mask);
-      sum_loss2 += __shfl_xor_sync(0xffffffff, sum_loss2, mask, warpSize); // WARP_SHFL_XOR(sum_loss2, mask);
+      sum_loss1 +=
+          __shfl_xor_sync(0xffffffff, sum_loss1, mask,
+                          warpSize);  // WARP_SHFL_XOR(sum_loss1, mask);
+      sum_loss2 +=
+          __shfl_xor_sync(0xffffffff, sum_loss2, mask,
+                          warpSize);  // WARP_SHFL_XOR(sum_loss2, mask);
     }
     // inter-warp reductions
     if (BDIMY > 1) {
@@ -400,7 +423,7 @@ __global__ void LayerNormBackwardComputeGradInput(const T* __restrict__ dout, co
     // all threads now have the two sums over l
     U fH = (U)n2;
     U term1 = (U(1) / fH) * c_invvar;
-    T* k_grad_input = grad_input + i1 * n2;
+    T *k_grad_input = grad_input + i1 * n2;
     if (gamma != NULL) {
       for (int l = thrx; l < n2; l += numx) {
         const U c_h = static_cast<U>(k_input[l]);
@@ -641,9 +664,9 @@ template <typename T, typename U>
 static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
                               const U *mean, const U *var, T *d_x, U *d_scale,
                               U *d_bias, float epsilon, int batch_size,
-                              int feature_size, const framework::ExecutionContext &ctx) {
-
-  auto& dev_ctx = ctx.cuda_device_context();
+                              int feature_size,
+                              const framework::ExecutionContext &ctx) {
+  auto &dev_ctx = ctx.cuda_device_context();
   auto stream = dev_ctx.stream();
 
   const int kMaxBlockDim = 512;
@@ -750,25 +773,33 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
       constexpr int VPT = 4;
       constexpr dim3 threads2(32, 4, 1);
       constexpr int part_size = threads2.y * VPT;
-      const dim3 blocks2((feature_size + threads2.x - 1) / threads2.x, part_size, 1);
+      const dim3 blocks2((feature_size + threads2.x - 1) / threads2.x,
+                         part_size, 1);
 
-      auto part_grad_gamma_ptr = memory::Alloc(dev_ctx, part_size * feature_size * sizeof(U));
-      auto part_grad_beta_ptr = memory::Alloc(dev_ctx, part_size * feature_size * sizeof(U));
-      U* part_grad_gamma = reinterpret_cast<U*>(part_grad_gamma_ptr->ptr());
-      U* part_grad_beta = reinterpret_cast<U*>(part_grad_beta_ptr->ptr());
+      auto part_grad_gamma_ptr =
+          memory::Alloc(dev_ctx, part_size * feature_size * sizeof(U));
+      auto part_grad_beta_ptr =
+          memory::Alloc(dev_ctx, part_size * feature_size * sizeof(U));
+      U *part_grad_gamma = reinterpret_cast<U *>(part_grad_gamma_ptr->ptr());
+      U *part_grad_beta = reinterpret_cast<U *>(part_grad_beta_ptr->ptr());
 
-      LayernormBackwardPartGradGammaBeta<T, U, threads2.x, threads2.y, 4><<<blocks2, threads2, 0, stream>>>(d_y, x, batch_size, feature_size,
-        mean, var, epsilon, part_grad_gamma, part_grad_beta); // compute part_grad_gamma, beta
-	  
+      LayerNormBackwardPartGradGammaBeta<T, U, threads2.x, threads2.y,
+                                         4><<<blocks2, threads2, 0, stream>>>(
+          d_y, x, batch_size, feature_size, mean, var, epsilon, part_grad_gamma,
+          part_grad_beta);  // compute part_grad_gamma, beta
+
       constexpr dim3 threads3(32, 8, 1);
       const dim3 blocks3((feature_size + threads2.x - 1) / threads2.x, 1, 1);
-      LayerNormBackwardSumGradGammaBeta<T, U, threads3.x, threads3.y><<<blocks3, threads3, 0, stream>>>(
-	    part_grad_gamma, part_grad_beta, part_size, batch_size, feature_size, d_scale, d_bias); 
+      LayerNormBackwardSumGradGammaBeta<
+          T, U, threads3.x, threads3.y><<<blocks3, threads3, 0, stream>>>(
+          part_grad_gamma, part_grad_beta, part_size, batch_size, feature_size,
+          d_scale, d_bias);
 
       constexpr dim3 threads1(32, 4, 1);
       const dim3 blocks1(1, batch_size, 1);
-      LayerNormBackwardComputeGradInput<T, U, threads1.x, threads1.y><<<blocks1, threads1, 0, stream>>>(
-		d_y, x, batch_size, feature_size, mean, var, epsilon, scale, d_x);
+      LayerNormBackwardComputeGradInput<
+          T, U, threads1.x, threads1.y><<<blocks1, threads1, 0, stream>>>(
+          d_y, x, batch_size, feature_size, mean, var, epsilon, scale, d_x);
       break;
     }
     default:
