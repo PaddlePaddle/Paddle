@@ -42,9 +42,10 @@ XPUThreadedSSAGraphExecutor::XPUThreadedSSAGraphExecutor(
       local_exec_scopes_(local_exec_scopes),
       places_(places),
       graph_(graph),
+      pool_(1),
       prepare_pool_(1),
       multi_device_op_pool_(1) {
-  pool_.emplace_back(std::unique_ptr<::ThreadPool>(new ::ThreadPool(1)));
+  // pool_.emplace_back(std::unique_ptr<::ThreadPool>(new ::ThreadPool(1)));
   int index = 0;
   for (uint32_t i = 0; i < places.size(); i++) {
     // int id = boost::get<platform::XPUPlace>(places[i]).device;
@@ -85,7 +86,6 @@ static std::vector<OpHandleBase *> get_parents(OpHandleBase *op) {
   }
   return ret;
 }
-
 
 FetchResultType XPUThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
@@ -140,14 +140,14 @@ FetchResultType XPUThreadedSSAGraphExecutor::RunMainStream(
     }
     auto dev_ctxes_ = cur_op->DeviceContext();
     if (dev_ctxes_.size() == 1) {
-      VLOG(3)<<"dev_ctxes_.size()"<<dev_ctxes_.size();
+      VLOG(3) << "dev_ctxes_.size()" << dev_ctxes_.size();
       cur_place = boost::get<platform::XPUPlace>(dev_ctxes_.begin()->first);
     } else {
       cur_place = boost::get<platform::XPUPlace>(
           dynamic_cast<ComputationOpHandle *>(cur_op)->GetPlace());
     }
-    int cur_index = place_to_index_[cur_place.device];
-    RunOpAsyncMainStream(cur_op, op_deps.get(), ready_ops, cur_index);
+    // int cur_index = place_to_index_[cur_place.device];
+    RunOpAsyncMainStream(cur_op, op_deps.get(), ready_ops);
   }
   while (exec_op_count_ < op_deps_.size()) {
   }
@@ -211,50 +211,14 @@ void XPUThreadedSSAGraphExecutor::InsertFetchOps(
   }
 }
 
-void XPUThreadedSSAGraphExecutor::RunMultiDeviceOpAsync(
-    OpHandleBase *op,
-    std::unordered_map<OpHandleBase *, struct RunningItem> *op_deps,
-    std::shared_ptr<BlockingQueue<OpHandleBase *>> ready_ops) {
-  multi_device_op_pool_.enqueue([=] {
-    try {
-      if (error_state == 0 && LIKELY(!strategy_.dry_run_)) {
-        auto dev_ctxes = op->DeviceContext();
-        auto &inputs = op->Inputs();
-        for (auto &input : inputs) {
-          auto dev_ctxes = input->GeneratedOp()->DeviceContext();
-          for (auto &item : dev_ctxes) {
-            ((platform::XPUDeviceContext *)(item.second))->Wait();
-          }
-        }
-        op->Run(strategy_.use_cuda_, strategy_.use_xpu_);
-        auto &outputs = op->Outputs();
-        for (auto &output : outputs) {
-          for (auto &pending_op : output->PendingOps()) {
-            std::atomic<int> &deps = op_deps->at(pending_op).dep_num;
-            if (deps.fetch_sub(1) == 1) {
-              ready_ops->Push(pending_op);
-            }
-          }
-        }
-      } else if (error_state) {
-        ready_ops->Push(nullptr);
-      }
-    } catch (...) {
-      error_state = 1;
-      ready_ops->Push(nullptr);
-      exception_.Catch(std::current_exception());
-    }
-    exec_op_count_++;
-  });
-}
-
 void XPUThreadedSSAGraphExecutor::RunOpAsyncMainStream(
     OpHandleBase *op,
     std::unordered_map<OpHandleBase *, struct RunningItem> *op_deps,
-    std::shared_ptr<BlockingQueue<OpHandleBase *>> ready_ops, int index) {
-  pool_[index]->enqueue([=] {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    pool.device_context_index = index;
+    std::shared_ptr<BlockingQueue<OpHandleBase *>> ready_ops) {
+  pool_.enqueue([=] {
+    // platform::DeviceContextPool &pool =
+    // platform::DeviceContextPool::Instance();
+    // pool.device_context_index = index;
     try {
       if (error_state == 0 && LIKELY(!strategy_.dry_run_)) {
         struct timeval t1;

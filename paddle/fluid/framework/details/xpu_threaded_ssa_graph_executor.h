@@ -55,8 +55,6 @@ class XPUThreadedSSAGraphExecutor : public SSAGraphExecutor {
  private:
   FetchResultType RunMainStream(const std::vector<std::string> &fetch_tensors,
                                 bool return_merged);
-  FetchResultType RunMultiStream(const std::vector<std::string> &fetch_tensors,
-                                 bool return_merged);
 
   // Note(zcd): the ThreadPool should be placed last so that ThreadPool should
   // be destroyed first.
@@ -77,8 +75,7 @@ class XPUThreadedSSAGraphExecutor : public SSAGraphExecutor {
       atomic_op_deps_;
   ExceptionHolder exception_;
 
-  int multi_stream_num_;
-  std::vector<std::unique_ptr<::ThreadPool>> pool_;
+  ::ThreadPool pool_;
   ::ThreadPool prepare_pool_;
   ::ThreadPool multi_device_op_pool_;
 
@@ -88,11 +85,6 @@ class XPUThreadedSSAGraphExecutor : public SSAGraphExecutor {
                   platform::XPUPlace place);
 
   void RunOpAsyncMainStream(
-      OpHandleBase *op,
-      std::unordered_map<OpHandleBase *, struct RunningItem> *op_deps,
-      std::shared_ptr<BlockingQueue<OpHandleBase *>> ready_ops, int index);
-
-  void RunMultiDeviceOpAsync(
       OpHandleBase *op,
       std::unordered_map<OpHandleBase *, struct RunningItem> *op_deps,
       std::shared_ptr<BlockingQueue<OpHandleBase *>> ready_ops);

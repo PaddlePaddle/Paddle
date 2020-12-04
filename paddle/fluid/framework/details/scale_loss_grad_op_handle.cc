@@ -58,6 +58,19 @@ struct ScaleLossGradFunctor {
     auto *out_data = out_->mutable_data<OutT>(place_);
     if (platform::is_cpu_place(place_)) {
       *out_data = static_cast<OutT>(coeff_);
+    } else if (platform::is_xpu_place(place_)) {
+#if defined(PADDLE_WITH_XPU)
+      paddle::platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *ctx = pool.GetByPlace(boost::get<platform::XPUPlace>(place_));
+      ctx->Wait();
+      OutT cast_coeff = static_cast<OutT>(coeff_);
+      memory::Copy(boost::get<platform::XPUPlace>(place_), out_data,
+                   platform::CPUPlace(), &cast_coeff, SizeOfType(out_dtype_));
+      VLOG(10) << place_ << "RUN Scale loss grad op";
+#else
+      PADDLE_THROW("Not Compiled with XPU");
+#endif
     } else {
 #ifdef PADDLE_WITH_CUDA
       OutT cast_coeff = static_cast<OutT>(coeff_);
