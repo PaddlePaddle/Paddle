@@ -69,8 +69,10 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-register_operators(EXCLUDES py_func_op warpctc_op dgc_op lstm_op eye_op recurrent_op
+register_operators(EXCLUDES py_func_op warpctc_op dgc_op lstm_op run_program_op eye_op recurrent_op
     sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+
+op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above

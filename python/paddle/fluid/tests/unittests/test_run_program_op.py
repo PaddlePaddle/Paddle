@@ -167,6 +167,9 @@ class RunProgramOpTest(unittest.TestCase):
         return outputs
 
     def calc_dygraph_output(self, place):
+        self.program_desc, self.fwd_op_num = self.get_program_desc()
+        self.attrs = self.prepare_attrs()
+
         with fluid.dygraph.guard(place):
             inputs = self.prepare_dygraph_input(place)
             outputs = self.prepare_dygraph_output()
@@ -179,6 +182,9 @@ class RunProgramOpTest(unittest.TestCase):
             return outputs['Out']
 
     def calc_dygraph_grad(self, place):
+        self.program_desc, self.fwd_op_num = self.get_program_desc()
+        self.attrs = self.prepare_attrs()
+
         with fluid.dygraph.guard(place):
             # Step 1. run forward
             inputs, input_param_list = self.prepare_dygraph_input(place, True)
@@ -241,10 +247,6 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
             }
         }
 
-        self.program_desc, self.fwd_op_num = self.get_program_desc()
-
-        self.attrs = self.prepare_attrs()
-
     def test_check_output(self):
         self.check_output()
 
@@ -297,10 +299,6 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
                 'emb_weight': np.random.random(size=(10, 16)).astype("float32")
             }
         }
-
-        self.program_desc, self.fwd_op_num = self.get_program_desc()
-
-        self.attrs = self.prepare_attrs()
 
     def test_check_output(self):
         self.check_output()

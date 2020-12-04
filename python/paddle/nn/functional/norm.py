@@ -293,7 +293,8 @@ def layer_norm(x,
                                             'begin_norm_axis', begin_norm_axis)
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
-    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'LayerNorm')
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
+                             'LayerNorm')
 
     inputs = dict()
     inputs['X'] = [x]
@@ -305,11 +306,13 @@ def layer_norm(x,
 
     # create output
     helper = LayerHelper('layer_norm', **locals())
+
+    dtype = x.dtype
     mean_out = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
+        dtype=dtype, stop_gradient=True)
     variance_out = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
-    layer_norm_out = helper.create_variable_for_type_inference(x.dtype)
+        dtype=dtype, stop_gradient=True)
+    layer_norm_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type="layer_norm",

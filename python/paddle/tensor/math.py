@@ -504,19 +504,15 @@ def multiply(x, y, name=None):
     act = None
     axis = -1
 
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+
     if x.dtype != y.dtype:
         raise TypeError(
             'Input tensors must be same type, but received type of x: %s, type of y: %s '
             % (x.dtype, y.dtype))
 
-    if in_dygraph_mode():
-        if not isinstance(x, (paddle.Tensor)):
-            raise TypeError(
-                    'Input x must tensor type, but received type of x: %s'
-                    % (x.dtype))
-
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 def maximum(x, y, name=None):
@@ -953,9 +949,6 @@ def mm(input, mat2, name=None):
 
 def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     """
-	:alias_main: paddle.addmm
-	:alias: paddle.addmm,paddle.tensor.addmm,paddle.tensor.math.addmm
-
     **addmm**
 
     This operator is used to perform matrix multiplication for input $x$ and $y$.

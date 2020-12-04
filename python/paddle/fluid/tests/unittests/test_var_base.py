@@ -198,6 +198,32 @@ class TestVarBase(unittest.TestCase):
             var = fluid.dygraph.to_variable(t)
             self.assertTrue(np.array_equal(t, var.numpy()))
 
+    def test_leaf_tensor(self):
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor(np.random.uniform(-1, 1, size=[10, 10]))
+            self.assertTrue(x.is_leaf)
+            y = x + 1
+            self.assertTrue(y.is_leaf)
+
+            x = paddle.to_tensor(
+                np.random.uniform(
+                    -1, 1, size=[10, 10]), stop_gradient=False)
+            self.assertTrue(x.is_leaf)
+            y = x + 1
+            self.assertFalse(y.is_leaf)
+
+            linear = paddle.nn.Linear(10, 10)
+            input = paddle.to_tensor(
+                np.random.uniform(
+                    -1, 1, size=[10, 10]).astype('float32'),
+                stop_gradient=False)
+            self.assertTrue(input.is_leaf)
+
+            out = linear(input)
+            self.assertTrue(linear.weight.is_leaf)
+            self.assertTrue(linear.bias.is_leaf)
+            self.assertFalse(out.is_leaf)
+
     def test_detach(self):
         with fluid.dygraph.guard():
             x = paddle.to_tensor(1.0, dtype="float64", stop_gradient=False)
@@ -217,11 +243,12 @@ class TestVarBase(unittest.TestCase):
             z.backward()
             self.assertTrue(np.array_equal(x.grad, [20.0]))
             self.assertTrue(np.array_equal(detach_x.grad, [60.0]))
+
             # Due to sharing of data with origin Tensor, There are some unsafe operations:
-            # with self.assertRaises(RuntimeError):
-            #     y = 2 * x
-            #     detach_x[:] = 5.0
-            #     y.backward()
+            with self.assertRaises(RuntimeError):
+                y = 2**x
+                detach_x[:] = 5.0
+                y.backward()
 
     def test_write_property(self):
         with fluid.dygraph.guard():
