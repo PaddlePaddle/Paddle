@@ -38,7 +38,10 @@ def parse_log_file(log_file):
             except ValueError:
                 pass  # do nothing
 
-    assert result != None, "Parse log file fail!"
+    if result is None:
+        logging.warning("Parse %s fail!" % log_file)
+
+    return result
 
 
 def load_benchmark_result_from_logs_dir(logs_dir):
