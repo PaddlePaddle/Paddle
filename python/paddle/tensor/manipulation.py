@@ -838,6 +838,8 @@ def unbind(input, axis=0):
         helper.create_variable_for_type_inference(dtype=helper.input_dtype())
         for i in range(num)
     ]
+    if in_dygraph_mode():
+        return core.ops.unbind(input, num, 'axis', axis)
 
     helper.append_op(
         type="unbind",
