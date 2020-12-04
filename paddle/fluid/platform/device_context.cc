@@ -55,7 +55,7 @@ namespace paddle {
 namespace platform {
 
 #ifdef PADDLE_WITH_CUDA
-bool allow_tf32_cublas = 1;
+bool allow_tf32_cublas = true;
 #endif  // PADDLE_WITH_CUDA
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
@@ -394,7 +394,7 @@ Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
 }
 
 bool CUDADeviceContext::tensor_core_available() const {
-  return context()->CublasTensorCoreHandle() != nullptr;
+  return TensorCoreAvailable();
 }
 
 dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {

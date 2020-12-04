@@ -158,18 +158,16 @@ class CUDAContext {
     return cublas_handle_;
   }
 
-  const std::unique_ptr<CublasHandleHolder>& CublasTensorCoreHandle() const {
-    return cublas_tensor_core_handle_;
-  }
-
   /*! \brief  Call cublas function safely. */
   template <typename Callback>
-  inline void CublasCall(Callback&& callback) const {
-    if (cublas_tf32_tensor_core_handle_ && allow_tf32_cublas) {
-      cublas_tf32_tensor_core_handle_->Call(std::forward<Callback>(callback));
-    } else {
-      cublas_handle_->Call(std::forward<Callback>(callback));
+  inline void CublasCall(Callback&& callback) {
+#if CUDA_VERSION >= 11000
+    if (allow_tf32_cublas) {
+      cublas_handle_.reset(
+          new CublasHandleHolder(RawStream(), CUBLAS_TF32_TENSOR_OP_MATH));
     }
+#endif  // CUDA_VERSION >= 11000
+    cublas_handle_->Call(std::forward<Callback>(callback));
   }
 
   /*! \brief  Check whether tensor core is supported */
@@ -179,11 +177,7 @@ class CUDAContext {
       Tensor Core is not available, use DEFAULT_MATH instead. */
   template <typename Callback>
   inline void TensorCoreCublasCallIfAvailable(Callback&& callback) const {
-    if (cublas_tensor_core_handle_) {
-      cublas_tensor_core_handle_->Call(std::forward<Callback>(callback));
-    } else {
-      cublas_handle_->Call(std::forward<Callback>(callback));
-    }
+    cublas_handle_->Call(std::forward<Callback>(callback));
   }
 
  private:
@@ -193,14 +187,10 @@ class CUDAContext {
     cublas_handle_.reset(
         new CublasHandleHolder(RawStream(), CUBLAS_DEFAULT_MATH));
     if (TensorCoreAvailable()) {
-#if CUDA_VERSION >= 9000
-      cublas_tensor_core_handle_.reset(
+#if CUDA_VERSION >= 9000 && CUDA_VERSION < 11000
+      cublas_handle_.reset(
           new CublasHandleHolder(RawStream(), CUBLAS_TENSOR_OP_MATH));
-#if CUDA_VERSION >= 11000
-      cublas_tf32_tensor_core_handle_.reset(
-          new CublasHandleHolder(RawStream(), CUBLAS_TF32_TENSOR_OP_MATH));
-#endif  // CUDA_VERSION >= 11000
-#endif  // CUDA_VERSION >= 9000
+#endif  // CUDA_VERSION >= 9000 && CUDA_VERSION < 11000
     }
   }
 
@@ -240,11 +230,7 @@ class CUDAContext {
     cudnn_handle_ = nullptr;
   }
 
-  void DestoryCuBlasContext() {
-    cublas_handle_.reset();
-    cublas_tensor_core_handle_.reset();
-    cublas_tf32_tensor_core_handle_.reset();
-  }
+  void DestoryCuBlasContext() { cublas_handle_.reset(); }
 
   void DestoryCuSolverContext() {
     if (cusolver_dn_handle_) {
@@ -259,8 +245,6 @@ class CUDAContext {
   std::unique_ptr<stream::CUDAStream> stream_;
   cudnnHandle_t cudnn_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
-  std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
-  std::unique_ptr<CublasHandleHolder> cublas_tf32_tensor_core_handle_;
   cusolverDnHandle_t cusolver_dn_handle_;
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
