@@ -402,27 +402,26 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
     } else {
 #elif defined(PADDLE_WITH_XPU)
-    if (platform::is_xpu_place(place)) {
-      gc.reset(new XPUGarbageCollector(boost::get<platform::XPUPlace>(place),
-                                       max_memory_size));
-      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
-    } else {
-#endif
-      if (platform::is_cpu_place(place)) {
-        gc.reset(new CPUGarbageCollector(
-            BOOST_GET_CONST(platform::CPUPlace, place), max_memory_size));
-        VLOG(10) << "Created GarbageCollector at " << place;
+      if (platform::is_xpu_place(place)) {
+        gc.reset(new XPUGarbageCollector(boost::get<platform::XPUPlace>(place),
+                                         max_memory_size));
+        VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
       } else {
-        PADDLE_THROW(platform::errors::PreconditionNotMet(
-            "Unsupported place for garbage collection"));
-      }
+#endif
+        if (platform::is_cpu_place(place)) {
+          gc.reset(new CPUGarbageCollector(
+              BOOST_GET_CONST(platform::CPUPlace, place), max_memory_size));
+          VLOG(10) << "Created GarbageCollector at " << place;
+        } else {
+          PADDLE_THROW(platform::errors::PreconditionNotMet(
+              "Unsupported place for garbage collection"));
+        }
 #ifdef PADDLE_WITH_XPU
-    }
+      }
 #endif
 #ifdef PADDLE_WITH_CUDA
-  }
+    }
 #endif
-
     gcs_.emplace(place, std::move(gc));
   }
 
@@ -757,8 +756,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       }
     }
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Paddle should be compiled with CUDA for ParallelGraph Execution."));
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "Paddle should be compiled with CUDA for ParallelGraph Execution."));
 #endif
   } else {
     bool has_drop_last_read_op = details::HasDropLastReadOp(*graph);
@@ -789,7 +788,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 #if defined(PADDLE_WITH_XPU)
         if (member_->use_xpu_) {
           VLOG(3) << "use XPUThreadedSSAGraphExecutor";
-          member_->executor_.reset(new details::XPUThreadedSSAGraphExecutor(
+          member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
               exec_strategy, member_->local_scopes_,
               member_->local_exec_scopes_, member_->places_, graph));
         } else {
