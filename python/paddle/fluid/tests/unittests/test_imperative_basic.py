@@ -288,13 +288,13 @@ class TestImperative(unittest.TestCase):
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
                 print(tmp)
-                self.assertFalse(tmp.stop_gradient)
+                self.assertTrue(tmp.stop_gradient)
             x = fluid.dygraph.to_variable(data)
             y = l0(x) + tmp
             o = l1(y)
             o.backward()
 
-            self.assertTrue(tmp._grad_ivar() is not None)
+            self.assertTrue(tmp._grad_ivar() is None)
             self.assertTrue(l0.weight._grad_ivar() is not None)
 
     def test_sum_op(self):
