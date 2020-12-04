@@ -771,10 +771,11 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
     case 7:  // d_x != nullptr, d_scale != nullptr, d_bias != nullptr
     {
       constexpr int VPT = 4;
-      constexpr dim3 threads2(32, 4, 1);
-      constexpr int part_size = threads2.y * VPT;
-      const dim3 blocks2((feature_size + threads2.x - 1) / threads2.x,
-                         part_size, 1);
+      constexpr int BDIMX2 = 32;
+      constexpr int BDIMY2 = 4;
+      dim3 threads2(BDIMX2, BDIMY2, 1);
+      constexpr int part_size = BDIMY2 * VPT;
+      const dim3 blocks2((feature_size + BDIMX2 - 1) / BDIMX2, part_size, 1);
 
       auto part_grad_gamma_ptr =
           memory::Alloc(dev_ctx, part_size * feature_size * sizeof(U));
@@ -783,22 +784,26 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
       U *part_grad_gamma = reinterpret_cast<U *>(part_grad_gamma_ptr->ptr());
       U *part_grad_beta = reinterpret_cast<U *>(part_grad_beta_ptr->ptr());
 
-      LayerNormBackwardPartGradGammaBeta<T, U, threads2.x, threads2.y,
-                                         4><<<blocks2, threads2, 0, stream>>>(
+      LayerNormBackwardPartGradGammaBeta<T, U, BDIMX2, BDIMY2,
+                                         VPT><<<blocks2, threads2, 0, stream>>>(
           d_y, x, batch_size, feature_size, mean, var, epsilon, part_grad_gamma,
           part_grad_beta);  // compute part_grad_gamma, beta
 
-      constexpr dim3 threads3(32, 8, 1);
-      const dim3 blocks3((feature_size + threads2.x - 1) / threads2.x, 1, 1);
+      constexpr int BDIMX3 = 32;
+      constexpr int BDIMY3 = 8;
+      dim3 threads3(BDIMX3, BDIMY3, 1);
+      const dim3 blocks3((feature_size + BDIMX2 - 1) / BDIMX2, 1, 1);
       LayerNormBackwardSumGradGammaBeta<
-          T, U, threads3.x, threads3.y><<<blocks3, threads3, 0, stream>>>(
+          T, U, BDIMX3, BDIMY3><<<blocks3, threads3, 0, stream>>>(
           part_grad_gamma, part_grad_beta, part_size, batch_size, feature_size,
           d_scale, d_bias);
 
-      constexpr dim3 threads1(32, 4, 1);
+      constexpr int BDIMX1 = 32;
+      constexpr int BDIMY1 = 4;
+      dim3 threads1(BDIMX1, BDIMY1, 1);
       const dim3 blocks1(1, batch_size, 1);
       LayerNormBackwardComputeGradInput<
-          T, U, threads1.x, threads1.y><<<blocks1, threads1, 0, stream>>>(
+          T, U, BDIMX1, BDIMY1><<<blocks1, threads1, 0, stream>>>(
           d_y, x, batch_size, feature_size, mean, var, epsilon, scale, d_x);
       break;
     }
