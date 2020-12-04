@@ -341,9 +341,9 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
         self.place = fluid.CUDAPlace(0) \
             if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 
-    def set_program(self, use_paddle_api):
+    def set_program(self, use_fluid_api):
         paddle.enable_static()
-        if not use_paddle_api:
+        if use_fluid_api:
             self.program = fluid.Program()
             with fluid.program_guard(self.program):
                 input = fluid.layers.assign(self.x)
@@ -371,13 +371,13 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
                 self.out_var = paddle.concat(tensor_array, axis=self.axis)
 
     def test_fluid_api(self):
-        self._run_static_mode(use_paddle_api=False)
+        self._run_static_mode(use_fluid_api=True)
 
     def test_paddle_api(self):
-        self._run_static_mode(use_paddle_api=True)
+        self._run_static_mode(use_fluid_api=False)
 
-    def _run_static_mode(self, use_paddle_api):
-        self.set_program(use_paddle_api)
+    def _run_static_mode(self, use_fluid_api):
+        self.set_program(use_fluid_api)
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
