@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Defination of gloo initialization with http server."""
-
 import time
+from multiprocessing import Process
+import paddle.fluid as fluid
 
 
 def init_gloo_with_http(ip, port, prefix, iface, init_timeout_sec,
@@ -65,7 +66,7 @@ def init_gloo_with_http(ip, port, prefix, iface, init_timeout_sec,
         return _http_server
 
     def init(rank, nodes, role, ip, port):
-        gloo_strategy = core.GlooParallelStrategy()
+        gloo_strategy = fluid.core.GlooParallelStrategy()
         gloo_strategy.rank = rank
         gloo_strategy.rank_num = nodes
         gloo_strategy.ip_address = ip
@@ -73,6 +74,7 @@ def init_gloo_with_http(ip, port, prefix, iface, init_timeout_sec,
         gloo_strategy.init_seconds = init_timeout_seconds
         gloo_strategy.run_seconds = run_timeout_seconds
         gloo_strategy.scope = role
+        gloo = fluid.core.GlooParallelContext(gloo_strategy)
         gloo.init()
         return gloo
 
