@@ -121,7 +121,7 @@ class Gloo(object):
                                     port,
                                     self._prefix,
                                     self._iface,
-        self._init_timeout_seconds,
+                                    self._init_timeout_seconds,
                                     self._run_timeout_seconds,
                                     self._worker_num,
                                     self._server_num,
