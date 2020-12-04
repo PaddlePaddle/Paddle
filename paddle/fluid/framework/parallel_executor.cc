@@ -288,9 +288,7 @@ class ParallelExecutorPrivate {
 #endif
   bool own_local_scope_;
   bool use_cuda_;
-#if defined(PADDLE_WITH_XPU)
   bool use_xpu_;
-#endif
   bool use_all_reduce_;
   size_t nranks_;
 
