@@ -794,11 +794,11 @@ def unbind(input, axis=0):
     """
 
     Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
+
     Args:
         input (Tensor): The input variable which is an N-D Tensor, data type being float32, float64, int32 or int64.
-       
-        axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind. If :math:`axis < 0`, the
-            dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
+        axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind. 
+            If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
     Returns:
         list(Tensor): The list of segmented Tensor variables.
 
