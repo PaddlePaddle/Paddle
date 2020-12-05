@@ -27,9 +27,6 @@ from ...fluid.layers.layer_function_generator import templatedoc
 
 def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     """
-	:alias_main: paddle.nn.functional.diag_embed
-	:alias: paddle.nn.functional.diag_embed,paddle.nn.functional.extension.diag_embed
-
     This OP creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2) 
     are filled by ``input``. By default, a 2D plane formed by the last two dimensions 
     of the returned tensor will be selected.
@@ -41,60 +38,59 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     - If offset < 0, it is below the main diagonal.
 
     Args:
-        input(Variable|numpy.ndarray): The input tensor. Must be at least 1-dimensional. The input data type should be float32, float64, int32, int64.
+        input(Tensor|numpy.ndarray): The input tensor. Must be at least 1-dimensional. The input data type should be float32, float64, int32, int64.
         offset(int, optional): Which diagonal to consider. Default: 0 (main diagonal).
         dim1(int, optional): The first dimension with respect to which to take diagonal. Default: -2.
         dim2(int, optional): The second dimension with respect to which to take diagonal. Default: -1.
     
     Returns:
-        Variable, the output data type is the same as input data type.
+        Tensor, the output data type is the same as input data type.
     
     Examples:
         .. code-block:: python
 
             import paddle.nn.functional as F
-            import paddle.fluid.dygraph as dg
             import numpy as np
             
             diag_embed = np.random.randn(2, 3).astype('float32')
             # [[ 0.7545889 , -0.25074545,  0.5929117 ],
             #  [-0.6097662 , -0.01753256,  0.619769  ]]
-            with dg.guard():
-                data1 = F.diag_embed(diag_embed)
-                data1.numpy()
-                # [[[ 0.7545889 ,  0.        ,  0.        ],
-                #  [ 0.        , -0.25074545,  0.        ],
-                #   [ 0.        ,  0.        ,  0.5929117 ]],
 
-                # [[-0.6097662 ,  0.        ,  0.        ],
-                #  [ 0.        , -0.01753256,  0.        ],
-                #  [ 0.        ,  0.        ,  0.619769  ]]]
+            data1 = F.diag_embed(diag_embed)
+            data1.numpy()
+            # [[[ 0.7545889 ,  0.        ,  0.        ],
+            #  [ 0.        , -0.25074545,  0.        ],
+            #   [ 0.        ,  0.        ,  0.5929117 ]],
 
-                data2 = F.diag_embed(diag_embed, offset=-1, dim1=0, dim2=2)
-                data2.numpy()
-                # [[[ 0.        ,  0.        ,  0.        ,  0.        ],
-                #   [ 0.7545889 ,  0.        ,  0.        ,  0.        ],
-                #   [ 0.        , -0.25074545,  0.        ,  0.        ],
-                #   [ 0.        ,  0.        ,  0.5929117 ,  0.        ]],
-                #
-                #  [[ 0.        ,  0.        ,  0.        ,  0.        ],
-                #   [-0.6097662 ,  0.        ,  0.        ,  0.        ],
-                #   [ 0.        , -0.01753256,  0.        ,  0.        ],
-                #   [ 0.        ,  0.        ,  0.619769  ,  0.        ]]]
+            # [[-0.6097662 ,  0.        ,  0.        ],
+            #  [ 0.        , -0.01753256,  0.        ],
+            #  [ 0.        ,  0.        ,  0.619769  ]]]
 
-                data3 = F.diag_embed(diag_embed, offset=1, dim1=0, dim2=2)
-                data3.numpy()
-                # [[[ 0.        ,  0.7545889 ,  0.        ,  0.        ],
-                #   [ 0.        , -0.6097662 ,  0.        ,  0.        ]],
-                #
-                #  [[ 0.        ,  0.        , -0.25074545,  0.        ],
-                #   [ 0.        ,  0.        , -0.01753256,  0.        ]],
-                #
-                #  [[ 0.        ,  0.        ,  0.        ,  0.5929117 ],
-                #   [ 0.        ,  0.        ,  0.        ,  0.619769  ]],
-                #
-                #  [[ 0.        ,  0.        ,  0.        ,  0.        ],
-                #   [ 0.        ,  0.        ,  0.        ,  0.        ]]]
+            data2 = F.diag_embed(diag_embed, offset=-1, dim1=0, dim2=2)
+            data2.numpy()
+            # [[[ 0.        ,  0.        ,  0.        ,  0.        ],
+            #   [ 0.7545889 ,  0.        ,  0.        ,  0.        ],
+            #   [ 0.        , -0.25074545,  0.        ,  0.        ],
+            #   [ 0.        ,  0.        ,  0.5929117 ,  0.        ]],
+            #
+            #  [[ 0.        ,  0.        ,  0.        ,  0.        ],
+            #   [-0.6097662 ,  0.        ,  0.        ,  0.        ],
+            #   [ 0.        , -0.01753256,  0.        ,  0.        ],
+            #   [ 0.        ,  0.        ,  0.619769  ,  0.        ]]]
+
+            data3 = F.diag_embed(diag_embed, offset=1, dim1=0, dim2=2)
+            data3.numpy()
+            # [[[ 0.        ,  0.7545889 ,  0.        ,  0.        ],
+            #   [ 0.        , -0.6097662 ,  0.        ,  0.        ]],
+            #
+            #  [[ 0.        ,  0.        , -0.25074545,  0.        ],
+            #   [ 0.        ,  0.        , -0.01753256,  0.        ]],
+            #
+            #  [[ 0.        ,  0.        ,  0.        ,  0.5929117 ],
+            #   [ 0.        ,  0.        ,  0.        ,  0.619769  ]],
+            #
+            #  [[ 0.        ,  0.        ,  0.        ,  0.        ],
+            #   [ 0.        ,  0.        ,  0.        ,  0.        ]]]
     """
     inputs = {'Input': [input]}
     attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
@@ -151,15 +147,15 @@ def row_conv(input, weight, act=None):
     ${comment}
 
     Args:
-        input (Variable):  the input(X) is a LodTensor or tensor, LodTensor(X) 
-            supports variable  time-length input sequences. The underlying 
+        input (Tensor):  the input(X) is a LodTensor or tensor, LodTensor(X) 
+            supports variable time-length input sequences. The underlying 
             tensor in this LoDTensor is a matrix with shape (T, D), where 
             T is the total time steps in this mini-batch and D is the input 
             data dimension. 
             If the input is a padded minibatch, the shape of the input is 
             (N, T, D), N is batch size, T is the max time steps in the batch,
              D is the input data dimension.
-        weight (Variable): The weight. A Tensor with shape 
+        weight (Tensor): The weight. A Tensor with shape 
             (future_context_size + 1, D), where future_context_size is the 
             context size of the RowConv operator.
         act (str): Non-linear activation to be applied to output variable.
@@ -171,7 +167,6 @@ def row_conv(input, weight, act=None):
         .. code-block:: python
 
             from paddle import fluid, nn
-            import paddle.fluid.dygraph as dg
             import paddle.nn.functional as F
             import numpy as np
 
@@ -182,16 +177,12 @@ def row_conv(input, weight, act=None):
             x = np.random.randn(batch_size, time_steps, feature_size).astype(np.float32)
             weight = np.random.randn(context_size + 1, feature_size).astype(np.float32)
 
-            place = fluid.CPUPlace()
-            with dg.guard(place):
-                x_var = dg.to_variable(x)
-                w_var = dg.to_variable(weight)
-                y_var = F.extension.row_conv(x_var, w_var)
-                y_np = y_var.numpy()
+            x_var = paddle.to_tensor(x)
+            w_var = paddle.to_tensor(weight)
+            y_var = F.extension.row_conv(x_var, w_var)
+            print(y_var.shape)
 
-            print(y_np.shape)
-
-            # (4, 8, 6)
+            # [4, 8, 6]
     """
 
     if in_dygraph_mode():
