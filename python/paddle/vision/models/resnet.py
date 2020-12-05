@@ -52,17 +52,17 @@ class BasicBlock(nn.Layer):
                  norm_layer=None):
         super(BasicBlock, self).__init__()
         if norm_layer is None:
-            norm_layer = nn.BatchNorm2d
+            norm_layer = nn.BatchNorm2D
 
         if dilation > 1:
             raise NotImplementedError(
                 "Dilation > 1 not supported in BasicBlock")
 
-        self.conv1 = nn.Conv2d(
+        self.conv1 = nn.Conv2D(
             inplanes, planes, 3, padding=1, stride=stride, bias_attr=False)
         self.bn1 = norm_layer(planes)
         self.relu = nn.ReLU()
-        self.conv2 = nn.Conv2d(planes, planes, 3, padding=1, bias_attr=False)
+        self.conv2 = nn.Conv2D(planes, planes, 3, padding=1, bias_attr=False)
         self.bn2 = norm_layer(planes)
         self.downsample = downsample
         self.stride = stride
@@ -101,13 +101,13 @@ class BottleneckBlock(nn.Layer):
                  norm_layer=None):
         super(BottleneckBlock, self).__init__()
         if norm_layer is None:
-            norm_layer = nn.BatchNorm2d
+            norm_layer = nn.BatchNorm2D
         width = int(planes * (base_width / 64.)) * groups
 
-        self.conv1 = nn.Conv2d(inplanes, width, 1, bias_attr=False)
+        self.conv1 = nn.Conv2D(inplanes, width, 1, bias_attr=False)
         self.bn1 = norm_layer(width)
 
-        self.conv2 = nn.Conv2d(
+        self.conv2 = nn.Conv2D(
             width,
             width,
             3,
@@ -118,7 +118,7 @@ class BottleneckBlock(nn.Layer):
             bias_attr=False)
         self.bn2 = norm_layer(width)
 
-        self.conv3 = nn.Conv2d(
+        self.conv3 = nn.Conv2D(
             width, planes * self.expansion, 1, bias_attr=False)
         self.bn3 = norm_layer(planes * self.expansion)
         self.relu = nn.ReLU()
@@ -183,12 +183,12 @@ class ResNet(nn.Layer):
         layers = layer_cfg[depth]
         self.num_classes = num_classes
         self.with_pool = with_pool
-        self._norm_layer = nn.BatchNorm2d
+        self._norm_layer = nn.BatchNorm2D
 
         self.inplanes = 64
         self.dilation = 1
 
-        self.conv1 = nn.Conv2d(
+        self.conv1 = nn.Conv2D(
             3,
             self.inplanes,
             kernel_size=7,
@@ -197,13 +197,13 @@ class ResNet(nn.Layer):
             bias_attr=False)
         self.bn1 = self._norm_layer(self.inplanes)
         self.relu = nn.ReLU()
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.maxpool = nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         if with_pool:
-            self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+            self.avgpool = nn.AdaptiveAvgPool2D((1, 1))
 
         if num_classes > 0:
             self.fc = nn.Linear(512 * block.expansion, num_classes)
@@ -217,7 +217,7 @@ class ResNet(nn.Layer):
             stride = 1
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                nn.Conv2d(
+                nn.Conv2D(
                     self.inplanes,
                     planes * block.expansion,
                     1,
@@ -245,7 +245,7 @@ class ResNet(nn.Layer):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        if self.with_pool > 0:
+        if self.with_pool:
             x = self.avgpool(x)
 
         if self.num_classes > 0:

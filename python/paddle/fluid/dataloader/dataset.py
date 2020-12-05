@@ -17,7 +17,10 @@ from __future__ import print_function
 from .. import framework
 import paddle.dataset.common
 
-__all__ = ["Dataset", "IterableDataset", "TensorDataset"]
+__all__ = [
+    "Dataset", "IterableDataset", "TensorDataset", "ComposeDataset",
+    "ChainDataset"
+]
 
 
 class Dataset(object):
@@ -123,8 +126,8 @@ class IterableDataset(Dataset):
         .. code-block:: python
 
             import math
+            import paddle
             import numpy as np
-            import paddle.fluid as fluid
             from paddle.io import IterableDataset, DataLoader, get_worker_info
 
             class SplitedIterableDataset(IterableDataset):
@@ -148,17 +151,15 @@ class IterableDataset(Dataset):
                     for i in range(iter_start, iter_end):
                         yield np.array([i])
 
-            place = fluid.CPUPlace()
-            with fluid.dygraph.guard(place):
-                dataset = SplitedIterableDataset(start=2, end=9)
-                dataloader = DataLoader(
-                    dataset,
-                    places=place,
-                    num_workers=2,
-                    batch_size=1,
-                    drop_last=True)
+            dataset = SplitedIterableDataset(start=2, end=9)
+            dataloader = DataLoader(
+                dataset,
+                num_workers=2,
+                batch_size=1,
+                drop_last=True)
 
-                print(list(dataloader))
+            for data in dataloader:
+                print(data)
                 # outputs: [2, 5, 3, 6, 4, 7]
 
     Example 2: splitting data copy in each worker by :code:`worker_init_fn`
@@ -166,8 +167,8 @@ class IterableDataset(Dataset):
         .. code-block:: python
 
             import math
+            import paddle
             import numpy as np
-            import paddle.fluid as fluid
             from paddle.io import IterableDataset, DataLoader, get_worker_info
 
             class RangeIterableDataset(IterableDataset):
@@ -179,33 +180,31 @@ class IterableDataset(Dataset):
                     for i in range(self.start, self.end):
                         yield np.array([i])
 
-            place = fluid.CPUPlace()
-            with fluid.dygraph.guard(place):
-                dataset = RangeIterableDataset(start=2, end=9)
+            dataset = RangeIterableDataset(start=2, end=9)
 
-                def worker_init_fn(worker_id):
-                    worker_info = get_worker_info()
+            def worker_init_fn(worker_id):
+                worker_info = get_worker_info()
 
-                    dataset = worker_info.dataset
-                    start = dataset.start
-                    end = dataset.end
-                    num_per_worker = int(
-                        math.ceil((end - start) / float(worker_info.num_workers)))
+                dataset = worker_info.dataset
+                start = dataset.start
+                end = dataset.end
+                num_per_worker = int(
+                    math.ceil((end - start) / float(worker_info.num_workers)))
 
-                    worker_id = worker_info.id
-                    dataset.start = start + worker_id * num_per_worker
-                    dataset.end = min(dataset.start + num_per_worker, end)
+                worker_id = worker_info.id
+                dataset.start = start + worker_id * num_per_worker
+                dataset.end = min(dataset.start + num_per_worker, end)
 
-                dataloader = DataLoader(
-                    dataset,
-                    places=place,
-                    num_workers=2,
-                    batch_size=1,
-                    drop_last=True,
-                    worker_init_fn=worker_init_fn)
+            dataloader = DataLoader(
+                dataset,
+                num_workers=2,
+                batch_size=1,
+                drop_last=True,
+                worker_init_fn=worker_init_fn)
 
-                print(list(dataloader))
-                # outputs: [2, 5, 3, 6, 4, 7]
+            for data in dataloader:
+                print(data) 
+            # outputs: [2, 5, 3, 6, 4, 7]
 
     """
 
@@ -247,7 +246,6 @@ class TensorDataset(Dataset):
             import paddle
             from paddle.io import TensorDataset
 
-            paddle.disable_static()
 
             input_np = np.random.random([2, 3, 4]).astype('float32')
             input = paddle.to_tensor(input_np)
@@ -275,3 +273,130 @@ class TensorDataset(Dataset):
 
     def __len__(self):
         return self.tensors[0].shape[0]
+
+
+def to_list(value):
+    if value is None:
+        return value
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return [value]
+
+
+class ComposeDataset(Dataset):
+    """
+    A Dataset which composes fields of multiple datasets.
+
+    This dataset is used for composing fileds of multiple map-style
+    datasets of same length.
+
+    Args:
+        datasets(list of Dataset): List of datasets to be composed.
+
+    Returns:
+        Dataset: A Dataset which composes fields of multiple datasets.
+
+    Examples:
+
+        .. code-block:: python
+        
+            import numpy as np
+            import paddle
+            from paddle.io import Dataset, ComposeDataset
+
+
+            # define a random dataset
+            class RandomDataset(Dataset):
+                def __init__(self, num_samples):
+                    self.num_samples = num_samples
+
+                def __getitem__(self, idx):
+                    image = np.random.random([32]).astype('float32')
+                    label = np.random.randint(0, 9, (1, )).astype('int64')
+                    return image, label
+                
+                def __len__(self):
+                    return self.num_samples
+
+            dataset = ComposeDataset([RandomDataset(10), RandomDataset(10)])
+            for i in range(len(dataset)):
+                image1, label1, image2, label2 = dataset[i]
+                print(image1)
+                print(label1)
+                print(image2)
+                print(label2)
+            
+    """
+
+    def __init__(self, datasets):
+        self.datasets = list(datasets)
+        assert len(self.datasets) > 0, "input datasets shoule not be empty"
+        for i, dataset in enumerate(self.datasets):
+            assert isinstance(dataset, Dataset), \
+                    "each input dataset should be paddle.io.Dataset"
+            assert not isinstance(dataset, IterableDataset), \
+                    "paddle.io.IterableDataset not supported"
+            if i > 0:
+                assert len(dataset) == len(self.datasets[i-1]), \
+                        "lengths of datasets should be same"
+
+    def __len__(self):
+        return len(self.datasets[0])
+
+    def __getitem__(self, idx):
+        sample = []
+        for dataset in self.datasets:
+            sample.extend(to_list(dataset[idx]))
+        return tuple(sample)
+
+
+class ChainDataset(IterableDataset):
+    """
+    A Dataset which chains multiple iterable-tyle datasets.
+
+    This dataset is used for assembling multiple datasets which should
+    be :code:`paddle.io.IterableDataset`.
+
+    Args:
+        datasets(list of Dataset): List of datasets to be chainned.
+
+    Returns:
+        Dataset: A Dataset which chains fields of multiple datasets.
+
+    Examples:
+
+        .. code-block:: python
+        
+            import numpy as np
+            import paddle
+            from paddle.io import IterableDataset, ChainDataset
+
+
+            # define a random dataset
+            class RandomDataset(IterableDataset):
+                def __init__(self, num_samples):
+                    self.num_samples = num_samples
+
+                def __iter__(self):
+                    for i in range(10):
+                        image = np.random.random([32]).astype('float32')
+                        label = np.random.randint(0, 9, (1, )).astype('int64')
+                        yield image, label
+                
+            dataset = ChainDataset([RandomDataset(10), RandomDataset(10)])
+            for image, label in iter(dataset):
+                print(image, label)
+            
+    """
+
+    def __init__(self, datasets):
+        self.datasets = list(datasets)
+        assert len(self.datasets) > 0, "input datasets shoule not be empty"
+        for i, dataset in enumerate(self.datasets):
+            assert isinstance(dataset, IterableDataset), \
+                    "ChainDataset only support paddle.io.IterableDataset"
+
+    def __iter__(self):
+        for dataset in self.datasets:
+            for sample in dataset:
+                yield sample

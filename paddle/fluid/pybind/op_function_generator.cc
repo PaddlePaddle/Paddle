@@ -52,6 +52,9 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"hierarchical_sigmoid",
      {"X", "W", "Label", "PathTable", "PathCode", "Bias"}},
     {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
+    {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
+    {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
+    {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -74,9 +77,13 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"unique", {"Out", "Index", "Indices", "Counts"}},
     {"generate_proposals", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"collect_fpn_proposals", {"FpnRois", "RoisNum"}},
+    {"matrix_nms", {"Out", "Index", "RoisNum"}},
     {"distribute_fpn_proposals",
      {"MultiFpnRois", "RestoreIndex", "MultiLevelRoIsNum"}},
     {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
+    {"multiclass_nms3", {"Out", "NmsRoisNum"}},
+    {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
+    {"momentum", {"ParamOut", "VelocityOut"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -162,10 +169,10 @@ const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
 
 const char* CAST_VAR_TEMPLATE = R"(
-  auto %s = CastPyHandleToVarBase("%s", "%s", %d, %s);)";
+  auto %s = CastPyHandleToVarBase("%s", "%s", %d, %s, %s);)";
 
 const char* CAST_VAR_LIST_TEMPLATE = R"(
-  auto %s = CastPyHandleToVarBaseList("%s", "%s", %d, %s);)";
+  auto %s = CastPyHandleToVarBaseList("%s", "%s", %d, %s, %s);)";
 
 
 const char* ARG_TEMPLATE = R"(const %s& %s)";
@@ -259,9 +266,10 @@ GenerateOpFunctions(const std::string& module_name) {
       input_args_num++;
       const auto in_cast_type =
           input.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
+      auto dispensable = input.dispensable() ? "true" : "false";
       ins_cast_str +=
           paddle::string::Sprintf(in_cast_type, in_name, op_type, in_name,
-                                  arg_idx++, TempName(in_name));
+                                  arg_idx++, TempName(in_name), dispensable);
 
       if (input.dispensable()) {
         const auto in_template = input.duplicable()

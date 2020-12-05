@@ -16,7 +16,9 @@ from .meta_optimizer_base import MetaOptimizerBase
 from paddle.fluid import core
 import subprocess
 import re
+import os
 import platform
+from ..base.private_helper_function import wait_server_ready
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
@@ -96,6 +98,18 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             compiled_config.set_origin_ps_main_program(_main)
             compiled_config.set_origin_ps_startup_program(_startup)
 
+        launch_barrier = self.user_defined_strategy.a_sync_configs[
+            "launch_barrier"]
+        launch_barrier_flag = int(os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
+        if launch_barrier and launch_barrier_flag:
+            # for trainer wait server ready
+            wait_server_ready(self.role_maker._get_pserver_endpoints())
+
+            # for ps-heter mode, wait heter worker ready
+            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
+            ):
+                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
+
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):
@@ -144,13 +158,13 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     ['vm_stat'], stdout=subprocess.PIPE).communicate()[0]
                 # Process vm_stat
                 vmLines = vm.split('\n')
-                sep = re.compile(':[\s]+')
+                sep = re.compile(r':[\s]+')
                 vmStats = {}
                 for row in range(1, len(vmLines) - 2):
                     rowText = vmLines[row].strip()
                     rowElements = sep.split(rowText)
                     vmStats[(rowElements[0]
-                             )] = int(rowElements[1].strip('\.')) * 4096
+                             )] = int(rowElements[1].strip(r'\.')) * 4096
                 return vmStats["Pages free"]
             elif platform.system() == "Linux":
                 mems = {}

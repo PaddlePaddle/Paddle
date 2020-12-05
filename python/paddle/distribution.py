@@ -166,7 +166,7 @@ class Distribution(object):
 
 
 class Uniform(Distribution):
-    """Uniform distribution with `low` and `high` parameters.
+    r"""Uniform distribution with `low` and `high` parameters.
 
     Mathematical Details
 
@@ -197,11 +197,9 @@ class Uniform(Distribution):
     Examples:
         .. code-block:: python
 
-          import numpy as np
           import paddle
           from paddle.distribution import Uniform
 
-          paddle.disable_static()
           # Without broadcasting, a single uniform distribution [3, 4]:
           u1 = Uniform(low=3.0, high=4.0)
           # 2 distributions [1, 3], [2, 4]
@@ -214,8 +212,7 @@ class Uniform(Distribution):
           u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
 
           # Complete example
-          value_npdata = np.array([0.8], dtype="float32")
-          value_tensor = paddle.to_tensor(value_npdata)
+          value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
           uniform = Uniform([0.], [2.])
 
@@ -374,7 +371,7 @@ class Uniform(Distribution):
         return elementwise_div((lb * ub), (self.high - self.low), name=name)
 
     def entropy(self):
-        """Shannon entropy in nats.
+        r"""Shannon entropy in nats.
 
         The entropy is
 
@@ -391,7 +388,7 @@ class Uniform(Distribution):
 
 
 class Normal(Distribution):
-    """The Normal distribution with location `loc` and `scale` parameters.
+    r"""The Normal distribution with location `loc` and `scale` parameters.
 
     Mathematical details
 
@@ -419,11 +416,9 @@ class Normal(Distribution):
     Examples:
         .. code-block:: python
           
-          import numpy as np
           import paddle
           from paddle.distribution import Normal
 
-          paddle.disable_static()
           # Define a single scalar Normal distribution.
           dist = Normal(loc=0., scale=3.)
           # Define a batch of two scalar valued Normals.
@@ -437,8 +432,7 @@ class Normal(Distribution):
           dist = Normal(loc=1., scale=[11., 22.])
 
           # Complete example
-          value_npdata = np.array([0.8], dtype="float32")
-          value_tensor = paddle.to_tensor(value_npdata)
+          value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
           normal_a = Normal([0.], [1.])
           normal_b = Normal([0.5], [2.])
@@ -534,7 +528,7 @@ class Normal(Distribution):
                 return output
 
     def entropy(self):
-        """Shannon entropy in nats.
+        r"""Shannon entropy in nats.
 
         The entropy is
 
@@ -599,7 +593,7 @@ class Normal(Distribution):
             name=name)
 
     def kl_divergence(self, other):
-        """The KL-divergence between two normal distributions.
+        r"""The KL-divergence between two normal distributions.
 
         The probability density function (pdf) is
 
@@ -644,7 +638,7 @@ class Normal(Distribution):
 
 
 class Categorical(Distribution):
-    """
+    r"""
     Categorical distribution is a discrete probability distribution that 
     describes the possible results of a random variable that can take on 
     one of K possible categories, with the probability of each category 
@@ -670,22 +664,22 @@ class Categorical(Distribution):
             import paddle
             from paddle.distribution import Categorical
 
-            paddle.manual_seed(100) # on CPU device
+            paddle.seed(100) # on CPU device
             x = paddle.rand([6])
-            print(x.numpy())
+            print(x)
             # [0.5535528  0.20714243 0.01162981
             #  0.51577556 0.36369765 0.2609165 ]
 
-            paddle.manual_seed(200) # on CPU device
+            paddle.seed(200) # on CPU device
             y = paddle.rand([6])
-            print(y.numpy())
+            print(y)
             # [0.77663314 0.90824795 0.15685187
             #  0.04279523 0.34468332 0.7955718 ]
 
             cat = Categorical(x)
             cat2 = Categorical(y)
 
-            paddle.manual_seed(1000) # on CPU device
+            paddle.seed(1000) # on CPU device
             cat.sample([2,3])
             # [[0, 0, 5],
             #  [3, 4, 5]]
@@ -744,15 +738,15 @@ class Categorical(Distribution):
                 import paddle
                 from paddle.distribution import Categorical
 
-                paddle.manual_seed(100) # on CPU device
+                paddle.seed(100) # on CPU device
                 x = paddle.rand([6])
-                print(x.numpy())
+                print(x)
                 # [0.5535528  0.20714243 0.01162981
                 #  0.51577556 0.36369765 0.2609165 ]
 
                 cat = Categorical(x)
 
-                paddle.manual_seed(1000) # on CPU device
+                paddle.seed(1000) # on CPU device
                 cat.sample([2,3])
                 # [[0, 0, 5],
                 #  [3, 4, 5]]
@@ -791,15 +785,15 @@ class Categorical(Distribution):
                 import paddle
                 from paddle.distribution import Categorical
 
-                paddle.manual_seed(100) # on CPU device
+                paddle.seed(100) # on CPU device
                 x = paddle.rand([6])
-                print(x.numpy())
+                print(x)
                 # [0.5535528  0.20714243 0.01162981
                 #  0.51577556 0.36369765 0.2609165 ]
 
-                paddle.manual_seed(200) # on CPU device
+                paddle.seed(200) # on CPU device
                 y = paddle.rand([6])
-                print(y.numpy())
+                print(y)
                 # [0.77663314 0.90824795 0.15685187
                 #  0.04279523 0.34468332 0.7955718 ]
 
@@ -842,9 +836,9 @@ class Categorical(Distribution):
                 import paddle
                 from paddle.distribution import Categorical
 
-                paddle.manual_seed(100) # on CPU device
+                paddle.seed(100) # on CPU device
                 x = paddle.rand([6])
-                print(x.numpy())
+                print(x)
                 # [0.5535528  0.20714243 0.01162981
                 #  0.51577556 0.36369765 0.2609165 ]
 
@@ -887,9 +881,9 @@ class Categorical(Distribution):
                 import paddle
                 from paddle.distribution import Categorical
 
-                paddle.manual_seed(100) # on CPU device
+                paddle.seed(100) # on CPU device
                 x = paddle.rand([6])
-                print(x.numpy())
+                print(x)
                 # [0.5535528  0.20714243 0.01162981
                 #  0.51577556 0.36369765 0.2609165 ]
 
@@ -953,9 +947,9 @@ class Categorical(Distribution):
                 import paddle
                 from paddle.distribution import Categorical
 
-                paddle.manual_seed(100) # on CPU device
+                paddle.seed(100) # on CPU device
                 x = paddle.rand([6])
-                print(x.numpy())
+                print(x)
                 # [0.5535528  0.20714243 0.01162981
                 #  0.51577556 0.36369765 0.2609165 ]
 

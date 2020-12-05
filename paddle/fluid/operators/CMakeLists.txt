@@ -64,8 +64,10 @@ if(WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
     SET(OP_MKL_DEPS ${OP_MKL_DEPS} pyramid_hash_op)
 endif()
 
-register_operators(EXCLUDES py_func_op warpctc_op dgc_op
+register_operators(EXCLUDES py_func_op warpctc_op dgc_op lstm_op run_program_op
     sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+
+op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
@@ -79,6 +81,7 @@ if (WITH_GPU)
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
+op_library(lstm_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS} lstm_compute)
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
 
@@ -104,6 +107,7 @@ endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} tensor_formatter)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry)
 
 # FIXME(typhoonzero): operator deps may not needed.
 # op_library(lod_tensor_to_array_op DEPS lod_rank_table_op)

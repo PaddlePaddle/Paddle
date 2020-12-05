@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+
 #include <algorithm>
 #include <map>
 #include <set>
@@ -20,7 +22,6 @@
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
@@ -150,9 +151,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   std::set<std::string> output_names;
   std::set<std::string> output_names_with_id;
+  std::vector<int> origin_output_dims;
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
+    origin_output_dims.push_back(x->Var()->GetShape().size());
   }
 
   std::unordered_map<std::string, std::string> output_name_map;
@@ -223,6 +226,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("workspace_size", Get<int>("workspace_size"));
   op_desc->SetAttr("gpu_id", Get<int>("gpu_device_id"));
   op_desc->SetAttr("output_name_mapping", output_mapping);
+  op_desc->SetAttr("origin_output_dims", origin_output_dims);
   op_desc->SetAttr("parameters", params);
 
   // we record all inputs' shapes in attr to check if they are consistent
@@ -308,6 +312,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   precision_mode, calibrator.get(), Get<int>("gpu_device_id"),
                   min_input_shape, max_input_shape, opt_input_shape,
                   disable_trt_plugin_fp16);
+  trt_engine->SetUseOSS(Get<bool>("use_oss"));
+
+  trt_engine->SetWithErnie(
+      graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+      graph->Has(framework::ir::kMultiheadMatmulPass));
 
   bool need_serialize = (use_static_engine && !load_from_memory);
   if (need_serialize) {
@@ -363,13 +372,13 @@ REGISTER_PASS(tensorrt_subgraph_pass,
 REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
+            .LE("conv2d", 1)
             .EQ("pool2d", 0)
             .EQ("relu", 0)
             .EQ("softmax", 0)
             .EQ("sigmoid", 0)
             .EQ("hard_swish", 0)
-            .EQ("depthwise_conv2d", 0)
+            .LE("depthwise_conv2d", 1)
             .EQ("batch_norm", 0)
             .EQ("concat", 0)
             .EQ("tanh", 0)
@@ -386,4 +395,5 @@ REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
             .EQ("instance_norm", 0)
             .EQ("gelu", 0)
             .EQ("layer_norm", 0)
-            .EQ("scale", 0));
+            .EQ("scale", 0)
+            .EQ("matmul", 0));

@@ -77,7 +77,7 @@ class TestTranslatedLayer(unittest.TestCase):
         paddle.disable_static(place)
 
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
         # create network
@@ -94,7 +94,7 @@ class TestTranslatedLayer(unittest.TestCase):
             batch_size=BATCH_SIZE,
             shuffle=True,
             drop_last=True,
-            num_workers=2)
+            num_workers=0)
 
         # train
         train(self.layer, self.loader, self.loss_fn, self.sgd)

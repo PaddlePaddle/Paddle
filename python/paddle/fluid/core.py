@@ -224,7 +224,7 @@ def less_than_ver(a, b):
     import operator
 
     def to_list(s):
-        s = re.sub('(\.0+)+$', '', s)
+        s = re.sub(r'(\.0+)+$', '', s)
         return [int(x) for x in s.split('.')]
 
     return operator.lt(to_list(a), to_list(b))
@@ -272,6 +272,7 @@ if avx_supported():
         from .core_avx import _load_dygraph_dict
         from .core_avx import _create_loaded_parameter
         from .core_avx import _cuda_synchronize
+        from .core_avx import _promote_types_if_complex_exists
         if sys.platform != 'win32':
             from .core_avx import _set_process_pids
             from .core_avx import _erase_process_pids
@@ -317,6 +318,7 @@ if load_noavx:
         from .core_noavx import _load_dygraph_dict
         from .core_noavx import _create_loaded_parameter
         from .core_noavx import _cuda_synchronize
+        from .core_noavx import _promote_types_if_complex_exists
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
             from .core_noavx import _erase_process_pids

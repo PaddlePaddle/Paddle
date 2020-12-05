@@ -22,7 +22,6 @@ from collections import defaultdict
 import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
-from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 from ..fluid import framework
 from ..fluid import layers
@@ -47,7 +46,7 @@ __all__ = ['Optimizer']
 
 
 class Optimizer(object):
-    """Optimizer Base class.
+    r"""Optimizer Base class.
 
     Define the common interface of an optimizer.
     User should not use this class directly,
@@ -349,52 +348,61 @@ class Optimizer(object):
                 },
                 stop_gradient=True)
 
-    @framework.dygraph_only
     def get_lr(self):
         """
-        :api_attr: imperative
-        
-        Get current step learning rate. The return value is all the same When LRScheduler is not used,
-        otherwise return the current step learning rate.
-
+        Get current learning rate of optimizer. 
+        If 'LRScheduler' is not used, the return value is all the same.
+        If 'LRScheduler' is used, the return value is the current scheduled learing rete.
 
         Returns:
-            float: The learning rate of the current step.
+            float: The current learning rate of optimizer.
 
         Examples:
             .. code-block:: python
 
-                import numpy as np
+                # train on default dynamic graph mode
                 import paddle
-                # example1: LRScheduler is not used, return value is all the same
-                emb = paddle.nn.Embedding(10, 10)
-                adam = paddle.optimizer.Adam(0.001, parameters = emb.parameters())
-                lr = adam.get_lr()
-                print(lr) # 0.001
+                import numpy as np
+                emb = paddle.nn.Embedding(10, 3)
 
-                # example2: PiecewiseDecay is used, return the scheduled learning rate
-                inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
-                linear = paddle.nn.Linear(10, 10)
-                inp = paddle.to_tensor(inp)
-                out = linear(inp)
-                loss = paddle.mean(out)
-                
-                bd = [2, 4, 6, 8]
-                value = [0.2, 0.4, 0.6, 0.8, 1.0]
-                scheduler = paddle.optimizer.lr.PiecewiseDecay(bd, value, 0)
-                adam = paddle.optimizer.Adam(scheduler,
-                                       parameters=linear.parameters())
-
-                # first step: learning rate is 0.2
-                np.allclose(adam.get_lr(), 0.2, rtol=1e-06, atol=0.0) # True
-
-                # learning rate for different steps
-                ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
-                for i in range(12):
+                ## example1: LRScheduler is not used, return the same value is all the same
+                adam = paddle.optimizer.Adam(0.01, parameters = emb.parameters())
+                for batch in range(10):
+                    input = paddle.randint(low=0, high=5, shape=[5])
+                    out = emb(input)
+                    out.backward()
+                    print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.01
                     adam.step()
-                    lr = adam.get_lr()
+
+                ## example2: StepDecay is used, return the scheduled learning rate
+                scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
+                adam = paddle.optimizer.Adam(scheduler, parameters = emb.parameters())
+                for batch in range(10):
+                    input = paddle.randint(low=0, high=5, shape=[5])
+                    out = emb(input)
+                    out.backward()
+                    print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05...
+                    adam.step()
                     scheduler.step()
-                    np.allclose(lr, ret[i], rtol=1e-06, atol=0.0) # True
+
+                # train on static graph mode
+                paddle.enable_static()
+                main_prog = paddle.static.Program()
+                start_prog = paddle.static.Program()
+                with paddle.static.program_guard(main_prog, start_prog):
+                    x = paddle.static.data(name='x', shape=[None, 10])
+                    z = paddle.static.nn.fc(x, 100)
+                    loss = paddle.mean(z)
+                    scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
+                    adam = paddle.optimizer.Adam(learning_rate=scheduler)
+                    adam.minimize(loss)
+
+                exe = paddle.static.Executor()
+                exe.run(start_prog)
+                for batch in range(10):
+                    print("Learning rate of step{}: {}", adam.get_lr())     # 0.5->0.05->0.005...
+                    out = exe.run(main_prog, feed={'x': np.random.randn(3, 10).astype('float32')})
+                    scheduler.step()
 
         """
         if isinstance(self._learning_rate, float):
@@ -672,9 +680,6 @@ class Optimizer(object):
             parameter_list = parameters if parameters \
                 else self._parameter_list
 
-            if paddle.distributed.get_world_size() > 1:
-                apply_collective_grads(parameter_list)
-
             params_grads = []
             for param in parameter_list:
                 if not param.trainable:
@@ -788,6 +793,8 @@ class Optimizer(object):
     def clear_grad(self):
         """
         Clear the gradients of all optimized parameters for model.
+
+        If not, new gradient will accumulat on previous gradient.
         
         Returns:
             None
@@ -903,9 +910,6 @@ class Optimizer(object):
                 adam.step()
                 adam.clear_grad()
         """
-        if paddle.distributed.get_world_size() > 1:
-            apply_collective_grads(self._parameter_list)
-
         self._dtype = None
         params_grads = []
         for param in self._parameter_list:

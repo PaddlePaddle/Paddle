@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -257,7 +258,7 @@ class PoolGradKernel : public framework::OpKernel<T> {
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
       paddle::operators::math::SetConstant<DeviceContext, T> set_constant;
-      set_constant(dev_ctx, in_x_grad, 0.0);
+      set_constant(dev_ctx, in_x_grad, static_cast<T>(0.0));
 
       switch (ksize.size()) {
         case 2: {

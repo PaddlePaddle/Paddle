@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
@@ -121,6 +122,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
+  CP_MEMBER(trt_use_oss_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -174,6 +176,24 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #undef CP_MEMBER
 
   Update();
+  if (use_tensorrt_) {
+    // Update() will reset all the passes, when some tensorRT pass is deleted in
+    // other.pass_builder(), it will set again, so we just remove the
+    // deleted_pass.
+    auto all_passes = kTRTSubgraphPasses;
+    auto other_passes = other.pass_builder()->AllPasses();
+    // We should sort them, because the user may call the SwitchIrDebug
+    // interface, which will change the pass.
+    std::sort(all_passes.begin(), all_passes.end());
+    std::sort(other_passes.begin(), other_passes.end());
+    std::vector<std::string> deleted_passes;
+    std::set_difference(all_passes.begin(), all_passes.end(),
+                        other_passes.begin(), other_passes.end(),
+                        std::inserter(deleted_passes, deleted_passes.begin()));
+    for (auto ps : deleted_passes) {
+      pass_builder_->DeletePass(ps);
+    }
+  }
 }
 
 void AnalysisConfig::EnableCUDNN() {
@@ -222,7 +242,12 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 
 void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
-  use_mkldnn_bfloat16_ = true;
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_core)) {
+    use_mkldnn_bfloat16_ = true;
+  } else {
+    LOG(INFO) << "CPU does not support BFLOAT16 calculations";
+    use_mkldnn_bfloat16_ = false;
+  }
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnBfloat16";
   use_mkldnn_bfloat16_ = false;
@@ -273,6 +298,8 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   optim_input_shape_ = optim_input_shape;
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
+
+void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
@@ -375,7 +402,7 @@ void AnalysisConfig::Update() {
   }
 
   if (use_xpu_) {
-#ifndef PADDLE_WITH_XPU
+#ifndef LITE_SUBGRAPH_WITH_XPU
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use an XPU device, but Paddle was not compiled "
         "with XPU-runtime."));

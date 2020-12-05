@@ -209,8 +209,8 @@ def interpolate(x,
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
-             If a Tensor Variable, its dimensions size should be a 1.
+             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             If a Tensor, its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is either a list or a tuple or a Tensor.
@@ -258,7 +258,6 @@ def interpolate(x,
 	    import paddle
 	    import numpy as np
             import paddle.nn.functional as F
-            paddle.disable_static()
             
             # given out size
             input_data = np.random.rand(2,3,6,10).astype("float32")
@@ -366,10 +365,18 @@ def interpolate(x,
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
-        if isinstance(out_shape, Variable):
+
+        if isinstance(out_shape, Variable) and not in_dygraph_mode():
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
+
         else:
+            if in_dygraph_mode():
+                if isinstance(out_shape, Variable):
+                    out_shape = list(out_shape.numpy())
+                for i, dim in enumerate(out_shape):
+                    if isinstance(dim, Variable):
+                        out_shape[i] = dim.numpy()[0]
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError("size should be a list or tuple or Variable.")
             # Validate the shape
@@ -435,6 +442,8 @@ def interpolate(x,
                     attrs['out_w'] = out_shape[2]
 
     else:
+        if in_dygraph_mode() and isinstance(scale, Variable):
+            scale = list(scale.numpy())
         if isinstance(scale, Variable):
             scale.stop_gradient = True
             inputs["Scale"] = scale
@@ -631,8 +640,8 @@ def upsample(x,
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
-             If a Tensor Variable, its dimensions size should be a 1.
+             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if 
@@ -679,10 +688,10 @@ def upsample(x,
             import paddle
             import numpy as np
             import paddle.nn.functional as F
-            paddle.disable_static()
 
+            input_data = np.random.rand(2,3,6,10).astype("float32")
             input = paddle.to_tensor(input_data)
-            output = F.upsample(input=input, size=[12,12])
+            output = F.upsample(x=input, size=[12,12])
             print(output.shape)
             # [2L, 3L, 12L, 12L]
 
@@ -715,7 +724,6 @@ def bilinear(x1, x2, weight, bias=None, name=None):
         import numpy
         import paddle.nn.functional as F
 
-        paddle.disable_static()
         x1 = numpy.random.random((5, 5)).astype('float32')
         x2 = numpy.random.random((5, 4)).astype('float32')
         w = numpy.random.random((1000, 5, 4)).astype('float32')
@@ -761,7 +769,7 @@ def dropout(x,
         p (float | int): Probability of setting units to zero. Default 0.5.
         axis (int | list): The axis along which the dropout is performed. Default None.
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        mode(str): ['upscale_in_train'(default) | 'downscale_in_infer']
+        mode(str): ['upscale_in_train'(default) | 'downscale_in_infer'].
 
                            1. upscale_in_train(default), upscale the output at training time
 
@@ -777,9 +785,14 @@ def dropout(x,
     Returns:
         A Tensor representing the dropout, has same shape and data type as `x` .
 
+
     Examples:
         We use ``p=0.5`` in the following description for simplicity.
+
         1. When ``axis=None`` , this is commonly used dropout, which dropout each element of x randomly.
+
+        ..  code-block:: text
+
             Let's see a simple case when x is a 2d tensor with shape 2*3:
             [[1 2 3]
              [4 5 6]]
@@ -805,7 +818,12 @@ def dropout(x,
             [[0.5 1.  1.5]
              [2.  2.5 3. ]]
 
+
+
         2. When ``axis!=None`` , this is useful for dropping whole channels from an image or sequence.
+
+        ..  code-block:: text
+
             Let's see the simple case when x is a 2d tensor with shape 2*3 again:
             [[1 2 3]
              [4 5 6]]
@@ -845,18 +863,15 @@ def dropout(x,
                 [[0 0 0]
                  [0 0 0]]
                 Actually this is not what we want because all elements may set to zero~
-            When x is a 4d tensor with shape `NCHW`, we can set ``axis=[0,1]`` and the dropout will be performed
-            in channel `N` and `C`, `H` and `W` is tied, i.e.
-            paddle.nn.dropout(x, p, axis=[0,1])
-            Please refer to ``paddle.nn.functional.dropout2d`` for more details.
-            Similarly, when x is a 5d tensor with shape `NCDHW`, we can set ``axis=[0,1]`` to perform
-            dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
+
+        When x is a 4d tensor with shape `NCHW`, we can set ``axis=[0,1]`` and the dropout will be performed in channel `N` and `C`, `H` and `W` is tied, i.e. paddle.nn.dropout(x, p, axis=[0,1]) . Please refer to ``paddle.nn.functional.dropout2d`` for more details.
+        Similarly, when x is a 5d tensor with shape `NCDHW`, we can set ``axis=[0,1]`` to perform dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
 
         .. code-block:: python
+
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.array([[1,2,3], [4,5,6]]).astype('float32')
             x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.dropout(x, 0.5)
@@ -864,12 +879,12 @@ def dropout(x,
             y_0 = paddle.nn.functional.dropout(x, axis=0)
             y_1 = paddle.nn.functional.dropout(x, axis=1)
             y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
-            print(x.numpy())
-            print(y_train.numpy())
-            print(y_test.numpy())
-            print(y_0.numpy())
-            print(y_1.numpy())
-            print(y_01.numpy())
+            print(x)
+            print(y_train)
+            print(y_test)
+            print(y_0)
+            print(y_1)
+            print(y_01)
 
     """
     if not isinstance(p, (float, int)):
@@ -979,21 +994,19 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
                      The data type is float32 or float64.
         p (float): Probability of setting units to zero. Default 0.5.
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-                                     will be consistent with that of the input. An optional string from:
-                                    `NCHW` , `NHWC` . The default is `NCHW` . When it is `NCHW` , the data is
-                                    stored in the order of: [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC` . The default is `NCHW` . When it is `NCHW` , the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor representing the dropout2d, has same shape and data type as `x` .
 
+
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
             x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.dropout2d(x)  #train
@@ -1036,21 +1049,19 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
                      The data type is float32 or float64.
         p (float): Probability of setting units to zero. Default 0.5.
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-                                     will be consistent with that of the input. An optional string from:
-                                    ``NCDHW``, ``NDHWC``. The default is ``NCDHW`` . When it is ``NCDHW`` , the data is
-                                    stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from ``NCDHW`` or ``NDHWC``. The default is ``NCDHW`` . When it is ``NCDHW`` , the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor representing the dropout3d, has same shape and data type with `x` .
 
+
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
             x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.dropout3d(x)  #train
@@ -1097,18 +1108,18 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.array([[-1, 1], [-1, 1]]).astype('float32')
             x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
             y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False)
-            print(x.numpy())
-            print(y_train.numpy())
+            print(x)
+            print(y_train)
             # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
-            print(y_test.numpy())
+            print(y_test)
     """
     if not isinstance(p, (float, int)):
         raise TypeError("p argument should be a float or int")
@@ -1158,6 +1169,9 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     """
     Pad tensor according to 'pad' and 'mode'.
+    If mode is 'constant' and length of pad is twice as length of x dimension,
+    then the padding will be started from the first dimension and moved back onto x
+    according to 'pad' and 'value'.
     If mode is 'reflect', pad[0] and pad[1] must be no greater
     than width-1. The height and depth dimension has the same condition.
 
@@ -1226,26 +1240,23 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     Code Examples:
         .. code-block:: python
+
             import numpy as np
             import paddle
             import paddle.nn.functional as F
             
-            paddle.disable_static()
-            
             # example 1
             x_shape = (1, 1, 3)
-            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
-            tensor_x = paddle.to_tensor(x)
-            y = F.pad(tensor_x, pad=[2, 3], value=1, mode='constant')
-            print(y.numpy())
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
+            print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
             
             # example 2
             x_shape = (1, 1, 2, 3)
-            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
-            tensor_x = paddle.to_tensor(x)
-            y = F.pad(tensor_x, pad=[1, 2, 1, 1], value=1, mode='circular')
-            print(y.numpy())
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = F.pad(x, [1, 2, 1, 1], value=1, mode='circular')
+            print(y)
             # [[[[6. 4. 5. 6. 4. 5.]
             #    [3. 1. 2. 3. 1. 2.]
             #    [6. 4. 5. 6. 4. 5.]
@@ -1275,6 +1286,9 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         x_dim, supported_format_map[x_dim], data_format)
 
     unsqueezed_dim = []
+
+    if mode == "constant" and isinstance(pad, list) and len(pad) == x_dim * 2:
+        return layers.pad(x, pad, pad_value=value)
 
     if isinstance(pad, Variable):
         if data_format in ["NCL", "NCHW", "NCDHW"]:
@@ -1361,6 +1375,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
     Examples:
         .. code-block:: text
+
             Case 0:
                 x1 = [[0.8024077  0.9927354  0.27238318 0.8344984 ]
                      [0.48949873 0.5797396  0.65444374 0.66510963]
@@ -1376,10 +1391,10 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
     Code Examples:
         .. code-block:: python
+
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             np.random.seed(0)
             x1 = np.random.rand(2,3)
@@ -1387,7 +1402,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
             x1 = paddle.to_tensor(x1)
             x2 = paddle.to_tensor(x2)
             result = paddle.nn.functional.cosine_similarity(x1, x2, axis=0)
-            print(result.numpy())
+            print(result)
             # [0.99806249 0.9817672  0.94987036]
             
     """
@@ -1400,7 +1415,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
 
 def linear(x, weight, bias=None, name=None):
-    """
+    r"""
 
     Fully-connected linear transformation operator. For each input :math:`X` ,
     the equation is:
@@ -1487,7 +1502,7 @@ def linear(x, weight, bias=None, name=None):
 
 
 def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
-    """
+    r"""
     Label smoothing is a mechanism to regularize the classifier layer and is called
     label-smoothing regularization (LSR).
 

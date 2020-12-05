@@ -54,7 +54,7 @@ __all__ = [
 
 @dygraph_only
 def to_tensor(data, dtype=None, place=None, stop_gradient=True):
-    """
+    r"""
     Constructs a ``paddle.Tensor`` or ``paddle.ComplexTensor`` from ``data`` , 
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor, paddle\.ComplexTensor.
 
@@ -90,69 +90,46 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     .. code-block:: python
 
         import paddle
-        import numpy as np
-        paddle.disable_static()
                 
         type(paddle.to_tensor(1))
         # <class 'paddle.Tensor'>
 
         paddle.to_tensor(1)
-        # Tensor: generated_tensor_0
-        # - place: CUDAPlace(0)   # allocate on global default place CPU:0
-        # - shape: [1]
-        # - layout: NCHW
-        # - dtype: int64_t
-        # - data: [1]
+        # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        #        [1])
 
         x = paddle.to_tensor(1)
         paddle.to_tensor(x, dtype='int32', place=paddle.CPUPlace()) # A new tensor will be constructed due to different dtype or place
-        # Tensor: generated_tensor_01
-        # - place: CPUPlace
-        # - shape: [1]
-        # - layout: NCHW
-        # - dtype: int
-        # - data: [1]
+        # Tensor(shape=[1], dtype=int32, place=CPUPlace, stop_gradient=True,
+        #        [1])
 
         paddle.to_tensor((1.1, 2.2), place=paddle.CUDAPinnedPlace())
-        # Tensor: generated_tensor_1
-        #   - place: CUDAPinnedPlace
-        #   - shape: [2]
-        #   - layout: NCHW
-        #   - dtype: double
-        #   - data: [1.1 2.2]
+        # Tensor(shape=[1], dtype=float32, place=CUDAPinnedPlace, stop_gradient=True,
+        #        [1])
 
         paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CUDAPlace(0), stop_gradient=False)
-        # Tensor: generated_tensor_2
-        #   - place: CUDAPlace(0)
-        #   - shape: [2, 2]
-        #   - layout: NCHW
-        #   - dtype: double
-        #   - data: [0.1 0.2 0.3 0.4]
+        # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+        #        [[0.10000000, 0.20000000],
+        #         [0.30000001, 0.40000001]])
 
         type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]]), dtype='complex64')
         # <class 'paddle.ComplexTensor'>
 
         paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
-        # ComplexTensor[real]: generated_tensor_0.real
-        #   - place: CUDAPlace(0)
-        #   - shape: [2, 2]
-        #   - layout: NCHW
-        #   - dtype: float
-        #   - data: [1 2 3 4]
-        # ComplexTensor[imag]: generated_tensor_0.imag
-        #   - place: CUDAPlace(0)
-        #   - shape: [2, 2]
-        #   - layout: NCHW
-        #   - dtype: float
-        #   - data: [1 0 2 0]
+        # ComplexTensor[real](shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #                     [[1., 2.],
+        #                      [3., 4.]])
+        # ComplexTensor[imag](shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #                     [[1., 0.],
+        #                      [2., 0.]])
     """
 
     if place is None:
         place = _current_expected_place()
-    elif not isinstance(place,
-                        (core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
+    elif not isinstance(place, (core.Place, core.CPUPlace, core.CUDAPinnedPlace,
+                                core.CUDAPlace)):
         raise ValueError(
-            "'place' must be any of paddle.Place, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
+            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
         )
 
     #Todo(zhouwei): Support allocate tensor on any other specified card
@@ -247,7 +224,6 @@ def full_like(x, fill_value, dtype=None, name=None):
           import paddle
           import numpy as np
           
-          paddle.disable_static()  # Now we are in imperative mode 
           input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
           output = paddle.full_like(input, 2.0)
           # [[2. 2. 2.]
@@ -300,7 +276,6 @@ def ones(shape, dtype=None, name=None):
         .. code-block:: python
 
           import paddle 
-          paddle.disable_static()
           
           # default dtype for ones OP
           data1 = paddle.ones(shape=[3, 2]) 
@@ -325,9 +300,6 @@ def ones(shape, dtype=None, name=None):
 
 def ones_like(x, dtype=None, name=None):
     """
-	:alias_main: paddle.ones_like
-	:alias: paddle.tensor.ones_like, paddle.tensor.creation.ones_like
-
     This OP returns a Tensor filled with the value 1, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
@@ -348,18 +320,16 @@ def ones_like(x, dtype=None, name=None):
 
     Raise:
         TypeError: If ``dtype`` is not None and is not bool, float16, float32,
-            float64, int32 or int64.
+        float64, int32 or int64.
 
     Examples:
         .. code-block:: python
 
             import paddle
 
-            paddle.disable_static()
-
             x = paddle.to_tensor([1,2,3])
-            out1 = paddle.zeros_like(x) # [1., 1., 1.]
-            out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
+            out1 = paddle.ones_like(x) # [1., 1., 1.]
+            out2 = paddle.ones_like(x, dtype='int32') # [1, 1, 1]
 
     """
     return full_like(x=x, fill_value=1, dtype=dtype, name=name)
@@ -384,7 +354,6 @@ def zeros(shape, dtype=None, name=None):
 
           import paddle
           
-          paddle.disable_static()  # Now we are in imperative mode
           data = paddle.zeros(shape=[3, 2], dtype='float32') 
           # [[0. 0.]
           #  [0. 0.]
@@ -406,9 +375,6 @@ def zeros(shape, dtype=None, name=None):
 
 def zeros_like(x, dtype=None, name=None):
     """
-	:alias_main: paddle.zeros_like
-	:alias: paddle.tensor.zeros_like, paddle.tensor.creation.zeros_like
-
     This OP returns a Tensor filled with the value 0, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
@@ -429,16 +395,14 @@ def zeros_like(x, dtype=None, name=None):
 
     Raise:
         TypeError: If ``dtype`` is not None and is not bool, float16, float32,
-            float64, int32 or int64.
+        float64, int32 or int64.
 
     Examples:
         .. code-block:: python
 
             import paddle
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor([1,2,3])
+            x = paddle.to_tensor([1, 2, 3])
             out1 = paddle.zeros_like(x) # [0., 0., 0.]
             out2 = paddle.zeros_like(x, dtype='int32') # [0, 0, 0]
 
@@ -469,7 +433,6 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
           
           import paddle
 
-          paddle.disable_static()  # Now we are in imperative mode
           data = paddle.eye(3, dtype='int32')
           # [[1 0 0]
           #  [0 1 0]
@@ -516,7 +479,6 @@ def full(shape, fill_value, dtype=None, name=None):
 
           import paddle
 
-          paddle.disable_static()  # Now we are in imperative mode
           data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') 
           #[[0]
           # [0]]
@@ -547,9 +509,6 @@ def full(shape, fill_value, dtype=None, name=None):
 
 def arange(start=0, end=None, step=1, dtype=None, name=None):
     """
-	:alias_main: paddle.arange
-	:alias: paddle.tensor.arange, paddle.tensor.creation.arange
-
     This OP returns a 1-D Tensor with spaced values within a given interval.
 
     Values are generated into the half-open interval [``start``, ``end``) with
@@ -580,33 +539,30 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     Returns: 
         Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
-            taken with common difference ``step`` beginning from ``start``. Its
-            data type is set by ``dtype``.
+        taken with common difference ``step`` beginning from ``start``. Its
+        data type is set by ``dtype``.
 
     Raises:
         TypeError: If ``dtype`` is not int32, int64, float32, float64.
 
-    examples:
-
+    Examples:
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        paddle.disable_static()
+            out1 = paddle.arange(5)
+            # [0, 1, 2, 3, 4]
 
-        out1 = paddle.arange(5)
-        # [0, 1, 2, 3, 4]
+            out2 = paddle.arange(3, 9, 2.0)
+            # [3, 5, 7]
 
-        out2 = paddle.arange(3, 9, 2.0)
-        # [3, 5, 7]
+            # use 4.999 instead of 5.0 to avoid floating point rounding errors
+            out3 = paddle.arange(4.999, dtype='float32')
+            # [0., 1., 2., 3., 4.]
 
-        # use 4.999 instead of 5.0 to avoid floating point rounding errors
-        out3 = paddle.arange(4.999, dtype='float32')
-        # [0., 1., 2., 3., 4.]
-
-        start_var = paddle.to_tensor([3])
-        out4 = paddle.arange(start_var, 7)
-        # [3, 4, 5, 6]
+            start_var = paddle.to_tensor([3])
+            out4 = paddle.arange(start_var, 7)
+            # [3, 4, 5, 6]
              
     """
     if dtype is None:
@@ -653,17 +609,14 @@ def _tril_triu_op(helper):
 
 
 def tril(x, diagonal=0, name=None):
-    """
-	:alias_main: paddle.tril
-	:alias: paddle.tril,paddle.tensor.tril,paddle.tensor.creation.tril
-
+    r"""
     This op returns the lower triangular part of a matrix (2-D tensor) or batch
     of matrices :attr:`x`, the other elements of the result tensor are set 
     to 0. The lower triangular part of the matrix is defined as the elements 
     on and below the diagonal.
 
     Args:
-        x (Variable): The input variable x which is a Tensor.
+        x (Tensor): The input x which is a Tensor.
             Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and below the main diagonal are
@@ -676,7 +629,7 @@ def tril(x, diagonal=0, name=None):
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Tensor, results of lower triangular operation by the specified diagonal of input tensor x,
+        Tensor: Results of lower triangular operation by the specified diagonal of input tensor x,
         it's data type is the same as x's Tensor.
 
     Raises:
@@ -694,7 +647,6 @@ def tril(x, diagonal=0, name=None):
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
 
-            paddle.disable_static()
 
             x = paddle.to_tensor(data)
             
@@ -724,17 +676,14 @@ def tril(x, diagonal=0, name=None):
 
 
 def triu(x, diagonal=0, name=None):
-    """
-	:alias_main: paddle.triu
-	:alias: paddle.triu,paddle.tensor.triu,paddle.tensor.creation.triu
-
+    r"""
     This op returns the upper triangular part of a matrix (2-D tensor) or batch of matrices
     :attr:`x`, the other elements of the result tensor are set to 0.
     The upper triangular part of the matrix is defined as the elements on and
     above the diagonal.
 
     Args:
-        x (Variable): The input variable x which is a Tensor.
+        x (Tensor): The input x which is a Tensor.
             Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and above the main diagonal are
@@ -747,7 +696,7 @@ def triu(x, diagonal=0, name=None):
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Tensor, results of upper triangular operation by the specified diagonal of input tensor x,
+        Tensor: Results of upper triangular operation by the specified diagonal of input tensor x,
         it's data type is the same as x's Tensor.
 
     Raises:
@@ -765,7 +714,6 @@ def triu(x, diagonal=0, name=None):
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
 
-            paddle.disable_static()
 
             # example 1, default diagonal
             x = paddle.to_tensor(data)
@@ -796,9 +744,6 @@ def triu(x, diagonal=0, name=None):
 
 def meshgrid(*args, **kwargs):
     """
-	:alias_main: paddle.meshgrid
-	:alias: paddle.meshgrid,paddle.tensor.meshgrid,paddle.tensor.creation.meshgrid
-
     This op takes a list of N tensors as input *args, each of which is 1-dimensional 
     vector, and creates N-dimensional grids.
     
@@ -980,7 +925,6 @@ def empty(shape, dtype=None, name=None):
           import paddle
           import numpy as np
 
-          paddle.disable_static()   # Now we are in imperative mode
           paddle.set_device("cpu")  # and use cpu device
 
           # example 1: argument ``shape`` is a list which doesn't contain Tensor.
@@ -1064,7 +1008,6 @@ def empty_like(x, dtype=None, name=None):
           import paddle
           import numpy as np
 
-          paddle.disable_static()   # Now we are in imperative mode
           paddle.set_device("cpu")  # and use cpu device
 
           x = paddle.randn([2, 3], 'float32')

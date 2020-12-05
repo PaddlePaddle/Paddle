@@ -18,7 +18,7 @@ import paddle.fluid as fluid
 
 
 class L1Decay(fluid.regularizer.L1Decay):
-    """
+    r"""
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
     
     It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
@@ -61,11 +61,11 @@ class L1Decay(fluid.regularizer.L1Decay):
             # Example2: set Regularizer in parameters
             # Set L1 regularization in parameters.
             # Global regularizer does not take effect on my_conv2d for this case.
-            from paddle.nn import Conv2d
+            from paddle.nn import Conv2D
             from paddle import ParamAttr
             from paddle.regularizer import L2Decay
 
-            my_conv2d = Conv2d(
+            my_conv2d = Conv2D(
                     in_channels=10,
                     out_channels=10,
                     kernel_size=1,
@@ -80,7 +80,7 @@ class L1Decay(fluid.regularizer.L1Decay):
 
 
 class L2Decay(fluid.regularizer.L2Decay):
-    """
+    r"""
     Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
     
     It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
@@ -123,11 +123,11 @@ class L2Decay(fluid.regularizer.L2Decay):
             # Example2: set Regularizer in parameters
             # Set L2 regularization in parameters.
             # Global regularizer does not take effect on my_conv2d for this case.
-            from paddle.nn import Conv2d
+            from paddle.nn import Conv2D
             from paddle import ParamAttr
             from paddle.regularizer import L2Decay
 
-            my_conv2d = Conv2d(
+            my_conv2d = Conv2D(
                     in_channels=10,
                     out_channels=10,
                     kernel_size=1,

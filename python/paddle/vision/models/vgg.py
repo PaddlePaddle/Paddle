@@ -36,9 +36,10 @@ class VGG(nn.Layer):
     `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
 
     Args:
-        features (nn.Layer): vgg features create by function make_layers.
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+        features (nn.Layer): Vgg features create by function make_layers.
+        num_classes (int): Output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 1000.
+        with_pool (bool): Use pool before the last three fc layer or not. Default: True.
 
     Examples:
         .. code-block:: python
@@ -54,24 +55,35 @@ class VGG(nn.Layer):
 
     """
 
-    def __init__(self, features, num_classes=1000):
+    def __init__(self, features, num_classes=1000, with_pool=True):
         super(VGG, self).__init__()
         self.features = features
-        self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
-        self.classifier = nn.Sequential(
-            nn.Linear(512 * 7 * 7, 4096),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(4096, 4096),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(4096, num_classes), )
+        self.num_classes = num_classes
+        self.with_pool = with_pool
+
+        if with_pool:
+            self.avgpool = nn.AdaptiveAvgPool2D((7, 7))
+
+        if num_classes > 0:
+            self.classifier = nn.Sequential(
+                nn.Linear(512 * 7 * 7, 4096),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(4096, 4096),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(4096, num_classes), )
 
     def forward(self, x):
         x = self.features(x)
-        x = self.avgpool(x)
-        x = paddle.flatten(x, 1)
-        x = self.classifier(x)
+
+        if self.with_pool:
+            x = self.avgpool(x)
+
+        if self.num_classes > 0:
+            x = paddle.flatten(x, 1)
+            x = self.classifier(x)
+
         return x
 
 
@@ -80,11 +92,11 @@ def make_layers(cfg, batch_norm=False):
     in_channels = 3
     for v in cfg:
         if v == 'M':
-            layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+            layers += [nn.MaxPool2D(kernel_size=2, stride=2)]
         else:
-            conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
+            conv2d = nn.Conv2D(in_channels, v, kernel_size=3, padding=1)
             if batch_norm:
-                layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU()]
+                layers += [conv2d, nn.BatchNorm2D(v), nn.ReLU()]
             else:
                 layers += [conv2d, nn.ReLU()]
             in_channels = v
@@ -107,10 +119,7 @@ cfgs = {
 
 
 def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
-    model = VGG(make_layers(
-        cfgs[cfg], batch_norm=batch_norm),
-                num_classes=1000,
-                **kwargs)
+    model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
 
     if pretrained:
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(

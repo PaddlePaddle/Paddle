@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
+from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, ComplexVariable
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 
@@ -28,6 +28,27 @@ _supported_int_dtype_ = [
     core.VarDesc.VarType.INT16,
     core.VarDesc.VarType.INT32,
     core.VarDesc.VarType.INT64,
+]
+
+# NOTE(chenweihang): We currently do not fully support the type promotion 
+# between tensors. Parting support here is because the interoperation of 
+# real and complex numbers in paddle quantum is very frequent, such as the 
+# binary operation between `float` and `complex64`, so we must support the 
+# correct type promotion on the APIs paddle quantum used.
+# Now only check in dygraph (paddle quantum based dygraph)
+# Full type promotion support will need to be fully verified later.
+_supported_promote_complex_types_ = [
+    '__add__',
+    '__radd__',
+    '__sub__',
+    '__rsub__',
+    '__mul__',
+    '__rmul__',
+    '__div__',
+    '__truediv__',
+    '__rdiv__',
+    '__rtruediv__',
+    '__matmul__',
 ]
 
 _already_patch_varbase = False
@@ -149,21 +170,46 @@ def monkey_patch_math_varbase():
                          reverse=False,
                          scalar_method=None):
         def __impl__(self, other_var):
-            # FIXME(zjl): elementwise_div between integers cannot be converted to scale,
-            # which may lose accuracy. This is a hot fix for release 1.6.
-            if scalar_method is not None and not (
-                    op_type == 'elementwise_div' and
-                    self.dtype in _supported_int_dtype_):
-                if isinstance(other_var, float):
-                    if self.dtype in _supported_int_dtype_:
-                        assert other_var == int(other_var), \
-                            "float value {} cannot convert to integer".format(other_var)
+            # 0. check tensor and ComplexVariable opetator
+            if isinstance(other_var, ComplexVariable):
+                # need import paddle in closure
+                import paddle
+                math_op = getattr(paddle.incubate.complex.tensor, op_type)
+                return math_op(self, other_var)
+
+            # 1. scalar exists cases
+            # we need combine the tensor.dtype and scalar.dtype, cast correct object
+            if isinstance(other_var, float):
+                # in all cases(+, -, *, /, **, //, %), we need cast tensor.dtype to float
+                if self.dtype in _supported_int_dtype_:
+                    self = astype(self, 'float32')
+                # here use `scale` replace `elementwise` to get better performance
+                # but only +, -, *, / can use this method
+                if scalar_method is not None:
                     return scalar_method(self, other_var)
-                elif isinstance(other_var, int):
-                    return scalar_method(self, float(other_var))
+            elif isinstance(other_var, int):
+                # in all cases(+, -, *, /, **, //, %), we can cast it to float
+                # because the output tensor.dtype depend on the type of input tensor
+                other_var = float(other_var)
+                # division is a special case
+                # NOTE(chenweihang): because we cast tensor to float32 instead float64,
+                # the division result can only guarantee the numerical accuracy of 6 digits 
+                # after the decimal point. The result of numpy calculation is of float64 type, 
+                # so the calculation result here and the calculation result of numpy are 
+                # different after 6 decimal point. If necessary, we can also use float64 here.
+                # torch's behavior here is consistent with ours
+                if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
+                    self = astype(self, 'float32')
+                # here use `scale` replace `elementwise` to get better performance
+                # but only +, -, *, / can use this method
+                if scalar_method is not None:
+                    return scalar_method(self, other_var)
+            else:
+                # do nothing
+                pass
 
+            # 2. create varbase for scalar
             lhs_dtype = self.dtype
-
             if not isinstance(other_var, core.VarBase):
                 if reverse:
                     other_var = create_tensor(
@@ -172,14 +218,28 @@ def monkey_patch_math_varbase():
                     # add fill_op 
                     other_var = create_scalar(value=other_var, dtype=lhs_dtype)
 
+            # 3. promote types or unify right var type to left var
             rhs_dtype = other_var.dtype
             if lhs_dtype != rhs_dtype:
-                other_var = astype(other_var, lhs_dtype)
+                if method_name in _supported_promote_complex_types_:
+                    # only when lhs_dtype or rhs_dtype is complex type,
+                    # the dtype will promote, in other cases, directly
+                    # use lhs_dtype, this is consistent will original rule
+                    promote_dtype = core._promote_types_if_complex_exists(
+                        lhs_dtype, rhs_dtype)
+                    self = self if lhs_dtype == promote_dtype else astype(
+                        self, promote_dtype)
+                    other_var = other_var if rhs_dtype == promote_dtype else astype(
+                        other_var, promote_dtype)
+                else:
+                    other_var = astype(other_var, lhs_dtype)
+
             if reverse:
                 tmp = self
                 self = other_var
                 other_var = tmp
 
+            # 4. calculation
             axis = -1
             math_op = getattr(core.ops, op_type)
             return math_op(self, other_var, 'axis', axis)
@@ -239,6 +299,8 @@ def monkey_patch_math_varbase():
                                           'elementwise_floordiv', False, None)),
         ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
                                      None)),
+        ('__matmul__', _binary_creator_('__matmul__', "matmul_v2", False,
+                                        None)),
         ## for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),

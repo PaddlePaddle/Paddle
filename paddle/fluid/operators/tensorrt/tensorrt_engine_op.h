@@ -278,14 +278,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (type == framework::proto::VarType::INT64) {
         buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
+      } else if (type == framework::proto::VarType::INT32) {
+        buffers[bind_index] = static_cast<void *>(t.data<int32_t>());
       } else {
         PADDLE_THROW(platform::errors::Fatal(
-            "The TRT Engine OP only support float and int64_t input."));
+            "The TRT Engine OP only support float/int32_t/int64_t input."));
       }
     }
 
     // Bind output tensor to TRT.
     int output_index = 0;
+    std::vector<int> origin_output_dims =
+        Attr<std::vector<int>>("origin_output_dims");
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
       const int bind_index =
@@ -304,7 +308,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto dims = trt_context->getBindingDimensions(bind_index);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
-          if (dims.d[nb_dims - 1] != 1) break;
+          // some 'x 1' of shape is normal, no need to remove it
+          if (dims.d[nb_dims - 1] != 1 ||
+              nb_dims == origin_output_dims[output_index])
+            break;
         }
         for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
 #endif

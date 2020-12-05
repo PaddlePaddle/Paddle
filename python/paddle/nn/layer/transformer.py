@@ -157,7 +157,7 @@ class MultiHeadAttention(Layer):
             embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
 
     def _prepare_qkv(self, query, key, value, cache=None):
-        """
+        r"""
         Prapares linear projected queries, keys and values for usage of subsequnt
         multiple parallel attention. If `cache` is not None, using cached results
         to reduce redundant calculations.
@@ -212,7 +212,7 @@ class MultiHeadAttention(Layer):
         return (q, k, v) if cache is None else (q, k, v, cache)
 
     def compute_kv(self, key, value):
-        """
+        r"""
         Applies linear projection on input keys and values, then splits heads
         (reshape and transpose) to get keys and values from different representation
         subspaces. The results are used as key-values pairs for subsequent multiple
@@ -312,7 +312,7 @@ class MultiHeadAttention(Layer):
             return self.Cache(key, value)
 
     def forward(self, query, key, value, attn_mask=None, cache=None):
-        """
+        r"""
         Applies multi-head attention to map queries and a set of key-value pairs
         to outputs.
 
@@ -499,7 +499,7 @@ class TransformerEncoderLayer(Layer):
         self.activation = getattr(F, activation)
 
     def forward(self, src, src_mask=None):
-        """
+        r"""
         Applies a Transformer encoder layer on the input.
 
         Parameters:
@@ -575,7 +575,7 @@ class TransformerEncoder(Layer):
         self.norm = norm
 
     def forward(self, src, src_mask=None):
-        """
+        r"""
         Applies a stack of N Transformer encoder layers on inputs. If `norm` is
         provided, also applies layer normalization on the output of last encoder
         layer.
@@ -725,7 +725,7 @@ class TransformerDecoderLayer(Layer):
         self.activation = getattr(F, activation)
 
     def forward(self, tgt, memory, tgt_mask=None, memory_mask=None, cache=None):
-        """
+        r"""
         Applies a Transformer decoder layer on the input.
 
         Parameters:
@@ -801,7 +801,7 @@ class TransformerDecoderLayer(Layer):
                                                 static_cache))
 
     def gen_cache(self, memory):
-        """
+        r"""
         Generates cache for `forward` usage. The generated cache is a tuple
         composed of an instance of `MultiHeadAttention.Cache` and an instance
         of `MultiHeadAttention.StaticCache`.
@@ -873,7 +873,7 @@ class TransformerDecoder(Layer):
         self.norm = norm
 
     def forward(self, tgt, memory, tgt_mask=None, memory_mask=None, cache=None):
-        """
+        r"""
         Applies a stack of N Transformer decoder layers on inputs. If `norm` is
         provided, also applies layer normalization on the output of last decoder
         layer.
@@ -937,7 +937,7 @@ class TransformerDecoder(Layer):
         return output if cache is None else (output, new_caches)
 
     def gen_cache(self, memory, do_zip=False):
-        """
+        r"""
         Generates cache for `forward` usage. The generated cache is a list, and
         each element in it is a tuple( :code:`(incremental_cache, static_cache)` )
         produced by `TransformerDecoderLayer.gen_cache`. See `TransformerDecoderLayer.gen_cache`
@@ -1139,7 +1139,7 @@ class Transformer(Layer):
         self.nhead = nhead
 
     def forward(self, src, tgt, src_mask=None, tgt_mask=None, memory_mask=None):
-        """
+        r"""
         Applies a Transformer model on the inputs.
 
         Parameters:

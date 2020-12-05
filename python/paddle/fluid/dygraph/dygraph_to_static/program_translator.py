@@ -20,6 +20,7 @@ import inspect
 import six
 import textwrap
 import threading
+import warnings
 import weakref
 
 from paddle.fluid import framework
@@ -145,19 +146,25 @@ class CacheKey(object):
     Cached key for ProgramCache.
     """
 
-    __slots__ = ['function_spec', 'input_with_spec', 'class_instance']
+    __slots__ = [
+        'function_spec', 'input_args_with_spec', 'input_kwargs_with_spec',
+        'class_instance'
+    ]
 
-    def __init__(self, function_spec, input_with_spec, class_instance):
+    def __init__(self, function_spec, input_args_with_spec,
+                 input_kwargs_with_spec, class_instance):
         """
         Initializes a cache key.
 
         Args:
             functions_spec(FunctionSpec): a FunctionSpec instance of decorated function.
-            input_with_spec(list[InputSpec]): actual inputs with some arguments replaced by InputSpec.
+            input_args_with_spec(list[InputSpec]): actual input args with some arguments replaced by InputSpec.
+            input_kwargs_with_spec(list[{string:InputSpec}]): actual input kwargs with some arguments replaced by InputSpec.
             class_instance(object): a instance of class `Layer`.
         """
         self.function_spec = function_spec
-        self.input_with_spec = input_with_spec
+        self.input_args_with_spec = input_args_with_spec
+        self.input_kwargs_with_spec = input_kwargs_with_spec
         self.class_instance = class_instance
 
     @classmethod
@@ -176,15 +183,18 @@ class CacheKey(object):
             args = args[1:]
         # 2. convert tensor and numpy array into InputSpec
         _args, _kwargs = function_spec.unified_args_and_kwargs(args, kwargs)
-        input_with_spec = function_spec.args_to_input_spec(_args, _kwargs)
+        input_args_with_spec, input_kwargs_with_spec = function_spec.args_to_input_spec(
+            _args, _kwargs)
 
         # 3. check whether hit the cache or build a new program for the input arguments
-        return CacheKey(function_spec, input_with_spec, class_instance)
+        return CacheKey(function_spec, input_args_with_spec,
+                        input_kwargs_with_spec, class_instance)
 
     def __hash__(self):
         error_msg = "Arguments to a `@paddle.jit.to_static` must be a hashable Python objects (or nested structures of these types)."
         return hash((id(self.function_spec),
-                     make_hashable(self.input_with_spec, error_msg),
+                     make_hashable(self.input_args_with_spec, error_msg),
+                     make_hashable(self.input_kwargs_with_spec, error_msg),
                      self.class_instance))
 
     def __eq__(self, other):
@@ -194,8 +204,9 @@ class CacheKey(object):
         return not self == other
 
     def __repr__(self):
-        return "id(function_spec): {}, input_with_spec: {}, class_instance: {}".format(
-            id(self.function_spec), self.input_with_spec, self.class_instance)
+        return "id(function_spec): {}, input_args_with_spec: {}, input_kwargs_with_spec: {}, class_instance: {}".format(
+            id(self.function_spec), self.input_args_with_spec,
+            self.input_kwargs_with_spec, self.class_instance)
 
 
 def unwrap_decorators(func):
@@ -298,7 +309,11 @@ class StaticFunction(object):
 
         # 1. call dygraph function directly if not enable `declarative`
         if not self._program_trans.enable_to_static:
-            logging_utils.warn(
+            # NOTE(liym27):
+            # Here calls `warnings.warn` but not `logging_utils.warn` because by default warnings.warn(message)
+            # will show up **only once**. StaticFunction.__call__ will run many times, it is appropriate to
+            # display this warning message only once.
+            warnings.warn(
                 "The decorator '@paddle.jit.to_static' does NOT work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. If you would like to get static graph output, please call API "
                 "ProgramTranslator.enable(True)")
@@ -375,11 +390,12 @@ class StaticFunction(object):
         if len(args) != len(self._function_spec.args_name):
             args, kwargs = self._function_spec.unified_args_and_kwargs(args,
                                                                        kwargs)
-        input_with_spec = self._function_spec.args_to_input_spec(args, kwargs)
+        input_args_with_spec, input_kwargs_with_spec = self._function_spec.args_to_input_spec(
+            args, kwargs)
 
         # 2. generate cache key
-        cache_key = CacheKey(self._function_spec, input_with_spec,
-                             self._class_instance)
+        cache_key = CacheKey(self._function_spec, input_args_with_spec,
+                             input_kwargs_with_spec, self._class_instance)
 
         # 3. check whether hit the cache or build a new program for the input arguments
         concrete_program, partial_program_layer = self._program_cache[cache_key]
@@ -559,7 +575,8 @@ class ConcreteProgram(object):
 
     @staticmethod
     @switch_to_static_graph
-    def from_func_spec(func_spec, input_spec, class_instance):
+    def from_func_spec(func_spec, input_spec, input_kwargs_spec,
+                       class_instance):
         """
         Builds the main_program with specialized inputs and returns outputs
         of program as fetch_list.
@@ -588,6 +605,8 @@ class ConcreteProgram(object):
                 # 1. Adds `fluid.data` layers for input if needed
                 inputs = func_spec.to_static_inputs_with_spec(input_spec,
                                                               main_program)
+                kwargs = func_spec.to_static_inputs_with_spec(input_kwargs_spec,
+                                                              main_program)
                 if class_instance:
                     inputs = tuple([class_instance] + list(inputs))
 
@@ -600,15 +619,23 @@ class ConcreteProgram(object):
                         class_instance, False)), param_guard(
                             get_buffers(class_instance, False)):
                     try:
-                        outputs = static_func(*inputs)
+                        if kwargs:
+                            outputs = static_func(*inputs, **kwargs)
+                        else:
+                            outputs = static_func(*inputs)
                     except BaseException as e:
                         # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
                         error.attach_error_data(e)
+                        error_data = getattr(e, error.ERROR_DATA, None)
+                        if error_data:
+                            error_data.raise_new_exception()
                         raise
 
-                if not isinstance(outputs,
-                                  (tuple, list)) and outputs is not None:
-                    outputs = [outputs]
+                if outputs is not None:
+                    need_wrap_into_list = not isinstance(outputs, (
+                        tuple, list)) or len(outputs) == 1
+                    if need_wrap_into_list:
+                        outputs = [outputs]
 
         main_program = update_op_callstack_with_origin_info(main_program)
 
@@ -643,7 +670,8 @@ class ProgramCache(object):
     def _build_once(self, cache_key):
         concrete_program = ConcreteProgram.from_func_spec(
             func_spec=cache_key.function_spec,
-            input_spec=cache_key.input_with_spec,
+            input_spec=cache_key.input_args_with_spec,
+            input_kwargs_spec=cache_key.input_kwargs_with_spec,
             class_instance=cache_key.class_instance)
         return concrete_program, partial_program_from(concrete_program)
 
@@ -782,7 +810,7 @@ class ProgramTranslator(object):
 
                 x = paddle.ones([1, 2])
                 # ProgramTranslator is disabled so the func is run in dygraph
-                print(func(x).numpy())  # [[0. 0.]]
+                print(func(x))  # [[0. 0.]]
 
         """
         check_type(enable_to_static, "enable_to_static", bool,
@@ -821,7 +849,7 @@ class ProgramTranslator(object):
 
                 x = paddle.ones([1, 2])
                 x_v = prog_trans.get_output(func, x)
-                print(x_v.numpy())  # [[0. 0.]]
+                print(x_v)  # [[0. 0.]]
 
         """
         assert callable(
@@ -829,7 +857,9 @@ class ProgramTranslator(object):
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
 
         if not self.enable_to_static:
-            logging_utils.warn(
+            # Here calls `warnings.warn` but not `logging_utils.warn` because by default warnings.warn(message)
+            # will show up **only once**.
+            warnings.warn(
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. "
                 "Please call ProgramTranslator.enable(True) if you would like to get static output."

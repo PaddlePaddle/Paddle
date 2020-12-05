@@ -54,6 +54,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -467,6 +468,12 @@ PYBIND11_MODULE(core_noavx, m) {
             << ", sci_mode=" << print_opt.sci_mode;
   });
 
+  m.def("broadcast_shape", [](const std::vector<int64_t> &x_dim,
+                              const std::vector<int64_t> &y_dim) {
+    return vectorize(operators::details::BroadcastTwoDims(
+        make_ddim(x_dim), make_ddim(y_dim), -1));
+  });
+
   m.def(
       "_append_python_callable_object_and_return_id",
       [](py::object py_obj) -> size_t {
@@ -506,6 +513,9 @@ PYBIND11_MODULE(core_noavx, m) {
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
+
+  m.def("_promote_types_if_complex_exists",
+        &paddle::framework::PromoteTypesIfComplexExists);
 
   BindImperative(&m);
 
@@ -1365,7 +1375,6 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle
 
           place = paddle.CUDAPlace(0)
-          paddle.disable_static(place)
 
         )DOC")
       .def("__init__",
@@ -1421,6 +1430,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_get_device_id",
            [](platform::CUDAPlace &self) -> int { return self.GetDeviceId(); })
 #endif
+      .def("__repr__", string::to_string<const platform::CUDAPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<platform::XPUPlace>(m, "XPUPlace", R"DOC(
@@ -1479,6 +1489,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_device_id",
            [](const platform::XPUPlace &self) { return self.GetDeviceId(); })
 #endif
+      .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
@@ -1500,6 +1511,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CPUPlace, platform::CUDAPinnedPlace>)
+      .def("__repr__", string::to_string<const platform::CPUPlace &>)
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
@@ -1536,6 +1548,7 @@ All parameter, weight, gradient are variables in Paddle.
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CUDAPinnedPlace>)
+      .def("__repr__", string::to_string<const platform::CUDAPinnedPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPinnedPlace &>);
 
   py::class_<platform::Place>(m, "Place")
@@ -1578,10 +1591,13 @@ All parameter, weight, gradient are variables in Paddle.
            [](platform::Place &self, const platform::CUDAPlace &gpu_place) {
              self = gpu_place;
            })
-      .def("set_place", [](platform::Place &self,
-                           const platform::CUDAPinnedPlace &cuda_pinned_place) {
-        self = cuda_pinned_place;
-      });
+      .def("set_place",
+           [](platform::Place &self,
+              const platform::CUDAPinnedPlace &cuda_pinned_place) {
+             self = cuda_pinned_place;
+           })
+      .def("__repr__", string::to_string<const platform::Place &>)
+      .def("__str__", string::to_string<const platform::Place &>);
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static(
@@ -1700,8 +1716,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("load_op_library", framework::LoadOpLib);
-  m.def("init_devices",
-        [](bool init_p2p) { framework::InitDevices(init_p2p); });
+  m.def("init_devices", []() { framework::InitDevices(); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
@@ -2266,7 +2281,7 @@ All parameter, weight, gradient are variables in Paddle.
                                   "configured again."));
             self.gradient_scale_ = strategy;
           },
-          R"DOC((fluid.BuildStrategy.GradientScaleStrategy, optional): there are three
+          R"DOC((paddle.static.BuildStrategy.GradientScaleStrategy, optional): there are three
                 ways of defining :math:`loss@grad` in ParallelExecutor, that is, CoeffNumDevice,
                 One and Customized. By default, ParallelExecutor sets the :math:`loss@grad`
                 according to the number of devices. If you want to customize :math:`loss@grad`,
@@ -2492,6 +2507,31 @@ All parameter, weight, gradient are variables in Paddle.
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.fuse_bn_act_ops = True
+                     )DOC")
+      .def_property(
+          "fuse_bn_add_act_ops",
+          [](const BuildStrategy &self) { return self.fuse_bn_add_act_ops_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fuse_bn_add_act_ops_ = b;
+          },
+          R"DOC((bool, optional): fuse_bn_add_act_ops indicate whether
+                to fuse batch_norm, elementwise_add and activation_op,
+                it may make the execution faster. Default is True
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_bn_add_act_ops = True
                      )DOC")
       .def_property(
           "enable_auto_fusion",

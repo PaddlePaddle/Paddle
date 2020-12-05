@@ -17,10 +17,33 @@ from __future__ import print_function
 import gast
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
+cmpop_type_to_str = {
+    gast.Eq: "==",
+    gast.NotEq: "!=",
+    gast.Lt: "<",
+    gast.LtE: "<=",
+    gast.Gt: ">",
+    gast.GtE: ">=",
+    gast.Is: "is",
+    gast.IsNot: "is not",
+    gast.In: "in",
+    gast.NotIn: "not in"
+}
+
+
+def cmpop_node_to_str(node):
+    return cmpop_type_to_str[type(node)]
+
 
 class LogicalTransformer(gast.NodeTransformer):
     """
-    Transform python boolean op into Paddle logical op
+    Transform python boolean op into Paddle logical op.
+
+    For example:
+        a = x > 1 and y < 1
+
+    Transformed code:
+        a = paddle.jit.dy2static.convert_logical_and(lambda:x>1, lambda:y<1)
     """
 
     def __init__(self, wrapper_root):
@@ -41,6 +64,29 @@ class LogicalTransformer(gast.NodeTransformer):
             return new_node
         return node
 
+    def visit_Compare(self, node):
+        self.generic_visit(node)
+        left_str = ast_to_source_code(node.left).strip()
+        if left_str.startswith("paddle.jit.dy2static.convert_var_shape"):
+            # check left and comparators are all converted var shape
+            compare_arg_strs = left_str
+            for i, comparator in enumerate(node.comparators):
+                comparator_str = ast_to_source_code(comparator).strip()
+                if not comparator_str.startswith(
+                        "paddle.jit.dy2static.convert_var_shape"):
+                    return node
+                op_str = cmpop_node_to_str(node.ops[i])
+                compare_arg_strs += (", '" + op_str + "', " + comparator_str)
+
+            # Now all left and comparators are converted shape
+            # Replace some comparsion operation because of difference between
+            # Python and Paddle
+            new_node_str = "paddle.jit.dy2static.convert_shape_compare({})".format(
+                compare_arg_strs)
+            new_node = gast.parse(new_node_str).body[0].value
+            return new_node
+        return node
+
     def visit_BoolOp(self, node):
         self.generic_visit(node)
         if isinstance(node.op, gast.And):
@@ -53,6 +99,12 @@ class LogicalTransformer(gast.NodeTransformer):
         return new_node
 
     def _create_bool_op_node(self, nodes, api_type):
+        '''
+        NOTE(liym27):
+           The arguments of function convert_logical_XX should be callable so that they can be run
+          according to the actual order. In `convert_logical_and(lambda:x>1, lambda:y<1)`, `lambda:y<1`
+          must be run after `lambda:x>1`, If `x>1` is False, `y<1` should NOT be run.
+        '''
         assert len(
             nodes
         ) > 1, "The length of BoolOp should be at least 2, but received {}.".format(
@@ -67,7 +119,7 @@ class LogicalTransformer(gast.NodeTransformer):
             nodes = [pre_logic_node] + [post_logic_node]
 
         args = [ast_to_source_code(child) for child in nodes]
-        new_node_str = "paddle.jit.dy2static.convert_logical_{}(x={}, y={})".format(
+        new_node_str = "paddle.jit.dy2static.convert_logical_{}(lambda:{}, lambda:{})".format(
             api_type, args[0], args[1])
         # NOTE: gast.parse return Module(body=[expr(...)])
         new_node = gast.parse(new_node_str).body[0].value
