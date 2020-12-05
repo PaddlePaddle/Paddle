@@ -182,7 +182,7 @@ def conv1d(x,
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -209,7 +209,7 @@ def conv1d(x,
 
         .. math::
 
-            L_{out}&= \\frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
+            L_{out} = \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
     Args:
         x (Tensor): The input is 3-D Tensor with shape [N, C, L], the data type 
@@ -583,7 +583,7 @@ def conv1d_transpose(x,
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -693,13 +693,12 @@ def conv1d_transpose(x,
           x=np.array([[[4, 0, 9, 7],
                        [8, 0, 9, 2,]]]).astype(np.float32)
           # shape: (2, 1, 2)
-          y=np.array([[[7, 0]],
+          w=np.array([[[7, 0]],
                       [[4, 2]]]).astype(np.float32)
           x_var = paddle.to_tensor(x)
           w_var = paddle.to_tensor(w)
           y_var = F.conv1d_transpose(x_var, w_var)
-          y_np = y_var.numpy()
-          print y_np
+          print(y_var)
           
           # [[[60. 16. 99. 75.  4.]]]
     """
@@ -1116,7 +1115,7 @@ def conv3d(x,
     Args:
         x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data 
             type of input is float16 or float32 or float64.
-        weight (Variable): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
+        weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M, ].
@@ -1152,21 +1151,9 @@ def conv3d(x,
 
     Returns:
         A Tensor representing the conv3d, whose data type is 
-        the same with input. If act is None, the tensor variable storing the 
-        convolution result, and if act is not None, the tensor variable storing 
+        the same with input. If act is None, the tensor storing the 
+        convolution result, and if act is not None, the tensor storing 
         convolution and non-linearity activation result.
-
-    Raises:
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If the channel dimension of the input is less than or equal to zero.
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
-            or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 5-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels * groups.
-        ShapeError: If the number of output channels is not be divided by groups.
 
     Examples:
         .. code-block:: python

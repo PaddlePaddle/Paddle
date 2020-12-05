@@ -28,6 +28,7 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
+from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import ConversionOptions, CONVERSION_OPTIONS
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticFunction, unwrap_decorators
 from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
@@ -40,7 +41,7 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
     'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
-    'set_verbosity', 'save', 'load'
+    'set_verbosity', 'save', 'load', 'not_to_static'
 ]
 
 
@@ -223,6 +224,46 @@ def declarative(function=None, input_spec=None):
 
     # for usage: `@declarative`
     return decorated
+
+
+def not_to_static(func=None):
+    """
+    A Decorator to suppresses the convertion of a function.
+
+    Args:
+        func(callable): The function to decorate.
+
+    Returns:
+        callable: A function which won't be converted in Dynamic-to-Static.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            @paddle.jit.not_to_static
+            def func_not_to_static(x):
+                res = x - 1
+                return res
+
+            @paddle.jit.to_static
+            def func(x):
+                if paddle.mean(x) < 0:
+                    out = func_not_to_static(x)
+                else:
+                    out = x + 1
+                return out
+
+            x = paddle.ones([1, 2], dtype='float32')
+            out = func(x)
+            print(out) # [[2. 2.]]
+    """
+    if func is None:
+        return not_to_static
+
+    options = ConversionOptions(not_convert=True)
+    setattr(func, CONVERSION_OPTIONS, options)
+    return func
 
 
 class _SaveLoadConfig(object):
@@ -581,6 +622,16 @@ def save(layer, path, input_spec=None, **configs):
             "The input layer of paddle.jit.save should be 'Layer', but received layer type is %s."
             % type(layer))
 
+    # NOTE(chenweihang): If the input layer be wrapped by DataParallel,
+    # the args and kwargs of forward method will can't be parsed by
+    # function_spec, so here we save DataParallel._layers instead 
+    # DataParallel it self
+    # NOTE(chenweihang): using inner_layer, do not change input layer
+    if isinstance(layer, paddle.DataParallel):
+        inner_layer = layer._layers
+    else:
+        inner_layer = layer
+
     # path check
     file_prefix = os.path.basename(path)
     if file_prefix == "":
@@ -596,8 +647,8 @@ def save(layer, path, input_spec=None, **configs):
     # avoid change user given input_spec
     inner_input_spec = None
     if input_spec is not None:
-        for attr_func in dir(layer):
-            static_func = getattr(layer, attr_func, None)
+        for attr_func in dir(inner_layer):
+            static_func = getattr(inner_layer, attr_func, None)
             if isinstance(static_func,
                           StaticFunction) and 'forward' != attr_func:
                 raise ValueError(
@@ -623,14 +674,14 @@ def save(layer, path, input_spec=None, **configs):
     configs = _parse_save_configs(configs)
     scope = core.Scope()
     extra_var_info = dict()
-    for attr_func in dir(layer):
-        static_func = getattr(layer, attr_func, None)
+    for attr_func in dir(inner_layer):
+        static_func = getattr(inner_layer, attr_func, None)
         if isinstance(static_func, StaticFunction):
             concrete_program = static_func.concrete_program
         elif 'forward' == attr_func:
             # transform in jit.save, if input_spec is incomplete, declarative will throw error
             static_forward = declarative(
-                layer.forward, input_spec=inner_input_spec)
+                inner_layer.forward, input_spec=inner_input_spec)
             concrete_program = static_forward.concrete_program
             # the input_spec has been used in declarative, which is equal to 
             # @declarative with input_spec and jit.save without input_spec,
@@ -663,7 +714,7 @@ def save(layer, path, input_spec=None, **configs):
         # saved to inference program may not need by dygraph Layer, 
         # we only record the state_dict variable's structured name
         state_names_dict = dict()
-        for structured_name, var in six.iteritems(layer.state_dict()):
+        for structured_name, var in six.iteritems(inner_layer.state_dict()):
             state_names_dict[var.name] = structured_name
 
         # 4. share parameters from Layer to scope & record var info        

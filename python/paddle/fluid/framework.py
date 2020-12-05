@@ -229,7 +229,7 @@ def _dygraph_only_(func):
 def _static_only_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
-        ), "We only support '%s()' in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
+        ), "In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '%s()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -643,6 +643,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.UINT8
     elif dtype == np.int8:
         return core.VarDesc.VarType.INT8
+    elif dtype == np.complex64:
+        return core.VarDesc.VarType.COMPLEX64
+    elif dtype == np.complex128:
+        return core.VarDesc.VarType.COMPLEX128
     else:
         raise ValueError("Not supported numpy dtype %s" % dtype)
 
@@ -1309,12 +1313,15 @@ class Variable(object):
                                                     dtype='float32')
                 print(new_variable._to_readable_code())
         """
+        # VarType.LOD_TENSOR -> LOD_TENSOR
+        type_str = str(self.type).split('.')[1]
         if self.type == core.VarDesc.VarType.SELECTED_ROWS or self.type == core.VarDesc.VarType.LOD_TENSOR:
-            var_str = "{name} : paddle.{type}.shape{shape}.astype({dtype})".\
-                format(i="{", e="}", name=self.name, type=self.type, shape=self.shape, dtype=self.dtype)
+            dtype_str = str(self.dtype).split('.')[1]
+            var_str = "{name} : {type}.shape{shape}.dtype({dtype}).stop_gradient({stop_gradient})".\
+                format(name=self.name, type=type_str, shape=self.shape, dtype=dtype_str, stop_gradient=self.stop_gradient)
         else:
-            var_str = "{name} : paddle.{type})".\
-                format(i="{", e="}", name=self.name, type=self.type)
+            var_str = "{name} : {type})".\
+                format(name=self.name, type=type_str)
 
         if type(self) == Parameter:
             if self.trainable:

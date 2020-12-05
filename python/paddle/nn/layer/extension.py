@@ -20,9 +20,6 @@ from .. import functional as F
 
 class RowConv(layers.Layer):
     """
-	:alias_main: paddle.nn.RowConv
-	:alias: paddle.nn.RowConv,paddle.nn.layer.RowConv,paddle.nn.layer.extension.RowConv
-
     **Row-convolution operator**
 
     The row convolution is called lookahead convolution.  This operator was 
@@ -50,7 +47,7 @@ class RowConv(layers.Layer):
             of convolution kernel is [future_context_size + 1, D].
         param_attr (ParamAttr): Attributes of parameters, including
             name, initializer etc. Default: None.
-        act (str): Non-linear activation to be applied to output variable. Default: None.
+        act (str): Non-linear activation to be applied to output tensor. Default: None.
         dtype (str, optional): Data type, it can be "float32". Default: "float32".
 
     Attributes:
@@ -63,8 +60,7 @@ class RowConv(layers.Layer):
     Examples:
         .. code-block:: python
 
-          from paddle import fluid, nn
-          import paddle.fluid.dygraph as dg
+          from paddle import nn
           import paddle.nn.functional as F
           import numpy as np
 
@@ -75,15 +71,12 @@ class RowConv(layers.Layer):
 
           x = np.random.randn(batch_size, time_steps, feature_size).astype(np.float32)
 
-          place = fluid.CPUPlace()
-          with dg.guard(place):
-              x_var = dg.to_variable(x)
-              conv = nn.RowConv(feature_size, context_size)
-              y_var = conv(x_var)
-              y_np = y_var.numpy()
-          print(y_np.shape)
+          x = paddle.to_tensor(x)
+          conv = nn.RowConv(feature_size, context_size)
+          y = conv(x)
+          print(y.shape)
 
-          # (4, 8, 6)
+          # [4, 8, 6]
     """
 
     def __init__(self,

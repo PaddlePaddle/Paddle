@@ -36,6 +36,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
+                
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -62,6 +63,7 @@ class DataGenerator(object):
 
         Example:
             .. code-block:: python
+                
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -100,6 +102,7 @@ class DataGenerator(object):
         Example:
         
             .. code-block:: python
+                
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -171,6 +174,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
+                
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -202,6 +206,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
+                
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 

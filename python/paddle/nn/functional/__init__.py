@@ -128,6 +128,7 @@ from .loss import binary_cross_entropy  #DEFINE_ALIAS
 from .loss import binary_cross_entropy_with_logits  #DEFINE_ALIAS
 # from .loss import bpr_loss  #DEFINE_ALIAS
 # from .loss import center_loss  #DEFINE_ALIAS
+#from .loss import cross_entropy  #DEFINE_ALIAS
 from .loss import cross_entropy  #DEFINE_ALIAS
 from .loss import dice_loss  #DEFINE_ALIAS
 from .loss import hsigmoid_loss  #DEFINE_ALIAS
@@ -215,3 +216,4 @@ from .vision import pixel_shuffle  #DEFINE_ALIAS
 from .input import one_hot  #DEFINE_ALIAS
 from .input import embedding  #DEFINE_ALIAS
 from ...fluid.layers import gather_tree
+from ...fluid.layers import temporal_shift

@@ -18,11 +18,13 @@ from __future__ import print_function
 
 import unittest
 
+import gast
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import cmpop_node_to_str
 
 program_translator = ProgramTranslator()
 
@@ -149,6 +151,26 @@ def test_logical_not_and_or(x):
     return x
 
 
+@paddle.jit.to_static
+def test_shape_equal(x):
+    x = paddle.to_tensor(x)
+    y = paddle.zeros([1, 2, 3])
+    if x.shape == y.shape:
+        return y
+    else:
+        return paddle.ones([1, 2, 3])
+
+
+@paddle.jit.to_static
+def test_shape_not_equal(x):
+    x = paddle.to_tensor(x)
+    y = paddle.zeros([1, 2, 3])
+    if x.shape != y.shape:
+        return y
+    else:
+        return paddle.ones([1, 2, 3])
+
+
 class TestLogicalBase(unittest.TestCase):
     def setUp(self):
         self.input = np.array([3]).astype('int32')
@@ -222,6 +244,36 @@ class TestLogicalOr2(TestLogicalNot):
 class TestLogicalNotAndOr(TestLogicalNot):
     def _set_test_func(self):
         self.dygraph_func = test_logical_not_and_or
+
+
+class TestShapeEqual(TestLogicalNot):
+    def _set_test_func(self):
+        self.input = np.ones([1, 2, 3]).astype('float32')
+        self.dygraph_func = test_shape_equal
+
+
+class TestShapeNotEqual(TestLogicalNot):
+    def _set_test_func(self):
+        self.input = np.ones([1, 2, 3]).astype('float32')
+        self.dygraph_func = test_shape_not_equal
+
+
+class TestCmpopNodeToStr(unittest.TestCase):
+    def test_exception(self):
+        with self.assertRaises(KeyError):
+            cmpop_node_to_str(gast.Or())
+
+    def test_expected_result(self):
+        self.assertEqual(cmpop_node_to_str(gast.Eq()), "==")
+        self.assertEqual(cmpop_node_to_str(gast.NotEq()), "!=")
+        self.assertEqual(cmpop_node_to_str(gast.Lt()), "<")
+        self.assertEqual(cmpop_node_to_str(gast.LtE()), "<=")
+        self.assertEqual(cmpop_node_to_str(gast.Gt()), ">")
+        self.assertEqual(cmpop_node_to_str(gast.GtE()), ">=")
+        self.assertEqual(cmpop_node_to_str(gast.Is()), "is")
+        self.assertEqual(cmpop_node_to_str(gast.IsNot()), "is not")
+        self.assertEqual(cmpop_node_to_str(gast.In()), "in")
+        self.assertEqual(cmpop_node_to_str(gast.NotIn()), "not in")
 
 
 if __name__ == '__main__':

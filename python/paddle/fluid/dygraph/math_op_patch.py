@@ -30,6 +30,27 @@ _supported_int_dtype_ = [
     core.VarDesc.VarType.INT64,
 ]
 
+# NOTE(chenweihang): We currently do not fully support the type promotion 
+# between tensors. Parting support here is because the interoperation of 
+# real and complex numbers in paddle quantum is very frequent, such as the 
+# binary operation between `float` and `complex64`, so we must support the 
+# correct type promotion on the APIs paddle quantum used.
+# Now only check in dygraph (paddle quantum based dygraph)
+# Full type promotion support will need to be fully verified later.
+_supported_promote_complex_types_ = [
+    '__add__',
+    '__radd__',
+    '__sub__',
+    '__rsub__',
+    '__mul__',
+    '__rmul__',
+    '__div__',
+    '__truediv__',
+    '__rdiv__',
+    '__rtruediv__',
+    '__matmul__',
+]
+
 _already_patch_varbase = False
 
 
@@ -197,10 +218,22 @@ def monkey_patch_math_varbase():
                     # add fill_op 
                     other_var = create_scalar(value=other_var, dtype=lhs_dtype)
 
-            # 3. unify right var type to left var
+            # 3. promote types or unify right var type to left var
             rhs_dtype = other_var.dtype
             if lhs_dtype != rhs_dtype:
-                other_var = astype(other_var, lhs_dtype)
+                if method_name in _supported_promote_complex_types_:
+                    # only when lhs_dtype or rhs_dtype is complex type,
+                    # the dtype will promote, in other cases, directly
+                    # use lhs_dtype, this is consistent will original rule
+                    promote_dtype = core._promote_types_if_complex_exists(
+                        lhs_dtype, rhs_dtype)
+                    self = self if lhs_dtype == promote_dtype else astype(
+                        self, promote_dtype)
+                    other_var = other_var if rhs_dtype == promote_dtype else astype(
+                        other_var, promote_dtype)
+                else:
+                    other_var = astype(other_var, lhs_dtype)
+
             if reverse:
                 tmp = self
                 self = other_var
@@ -266,6 +299,8 @@ def monkey_patch_math_varbase():
                                           'elementwise_floordiv', False, None)),
         ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
                                      None)),
+        ('__matmul__', _binary_creator_('__matmul__', "matmul_v2", False,
+                                        None)),
         ## for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),

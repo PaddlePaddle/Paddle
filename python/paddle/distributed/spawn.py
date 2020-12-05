@@ -21,8 +21,8 @@ import six
 import sys
 import warnings
 
-from paddle.distributed.launch import get_cluster_and_pod, _print_arguments
-from paddle.distributed.utils import _prepare_trainer_env
+from paddle.distributed.utils import _print_arguments, _prepare_trainer_env
+from paddle.distributed.cloud_utils import get_cluster_and_pod
 from paddle.device import get_device
 
 # deprecated module import
@@ -30,10 +30,6 @@ from paddle.fluid import core
 from paddle.fluid.framework import _cpu_num
 
 
-# NOTE(chenweihang): The existence of this class leads to 
-# the maintenance of two arguments. When the launch.py arguments 
-# is updated, the arguments here also need to be updated, 
-# but I have not thought of a better way here
 class ParallelEnvArgs(object):
     def __init__(self):
         # Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..
@@ -66,6 +62,18 @@ def _py_supported_check():
             "requires python version greater than 3.4, if your python "
             "is lower than this version, please use "
             "`paddle.distributed.launch` instead.")
+
+
+def _options_valid_check(options):
+    supported_options = [
+        'start_method', 'cluster_node_ips', 'node_ip', 'started_port',
+        'selected_gpus', 'print_config', 'use_paddlecloud'
+    ]
+    for key in options:
+        if key not in supported_options:
+            raise ValueError(
+                "The config option (%s) of `paddle.distributed.spawn` is not supported."
+                % key)
 
 
 def _get_subprocess_env_list(nprocs, options):
@@ -124,7 +132,6 @@ def _get_subprocess_env_list(nprocs, options):
     args.use_paddlecloud = options.get('use_paddlecloud', False)
     args.print_config = options.get('print_config', False)
 
-    # reuse code of launch.py
     cluster, pod = get_cluster_and_pod(args)
 
     # prepare subprocess env list
@@ -139,7 +146,7 @@ def _get_subprocess_env_list(nprocs, options):
 
 
 def _remove_risky_env():
-    # remove useless env vars, same as launch.py
+    # remove useless env vars
     # no copy, each process will hold env vars itself
     os.environ.pop("http_proxy", None)
     os.environ.pop("https_proxy", None)
@@ -290,14 +297,11 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
                 def forward(self, x):
                     return self._linear2(self._linear1(x))
 
-            def train(print_result=False):
-                # 1. enable dynamic mode
-                paddle.disable_static()
-                
-                # 2. initialize parallel environment
+            def train(print_result=False): 
+                # 1. initialize parallel environment
                 dist.init_parallel_env()
 
-                # 3. create data parallel layer & optimizer
+                # 2. create data parallel layer & optimizer
                 layer = LinearNet()
                 dp_layer = paddle.DataParallel(layer)
 
@@ -305,7 +309,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
                 adam = opt.Adam(
                     learning_rate=0.001, parameters=dp_layer.parameters())
 
-                # 4. run layer
+                # 3. run layer
                 inputs = paddle.randn([10, 10], 'float32')
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
@@ -344,13 +348,13 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             # Usage 4: pass function, arguments, nprocs and selected_gpus.
             # If your training method need some arguments, and 
             # only use part of visible devices for parallel training,
-            # but you can't set your machine's environment varibale 
+            # but you can't set your machine's environment variable 
             # CUDA_VISIBLE_DEVICES, such as it is None or all cards
-            # {0,1,2,3,4,5,6,7}, you can pass `selelcted_gpus` to 
+            # {0,1,2,3,4,5,6,7}, you can pass `selected_gpus` to 
             # select the GPU cards you want to use. For example,
             # this case will use cards {4,5} if your machine hold 8 cards.
             if __name__ == '__main__':
-                dist.spawn(train, args=(True,), nprocs=2, selelcted_gpus='4,5')
+                dist.spawn(train, args=(True,), nprocs=2, selected_gpus='4,5')
     """
     # NOTE(chenweihang): [ why only supports python3.4+ ? ]
     # Python supported setting the child process startup method
@@ -358,6 +362,10 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     # method, while the default startup method of Unix is fork, which 
     # cannot support CUDA runtime multi-process
     _py_supported_check()
+
+    # Give an error hint when the users enter a configuration option 
+    # that does not exist
+    _options_valid_check(options)
 
     # get default nprocs
     if nprocs == -1:

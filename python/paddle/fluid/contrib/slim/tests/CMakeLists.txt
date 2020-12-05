@@ -239,7 +239,7 @@ if(LINUX AND WITH_MKLDNN)
 	set(QUANT2_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
 	set(QUANT2_GRU_MODEL_DIR "${QUANT_INSTALL_DIR}/GRU_quant2")
 	download_quant_model(${QUANT2_GRU_MODEL_DIR} ${QUANT2_GRU_MODEL_ARCHIVE})
-	set(QUANT2_GRU_OPS_TO_QUANTIZE "fusion_gru")
+	set(QUANT2_GRU_OPS_TO_QUANTIZE "multi_gru")
 
 	### Save FP32 model or INT8 model from Quant model
         

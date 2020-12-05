@@ -16,7 +16,10 @@ from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import Assert, Print
+from paddle.fluid.layers import array_length, array_read, array_write, create_array
+from paddle.fluid.layers import assign, fill_constant, slice, reduce_all, reduce_any
 from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
+from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 
 
 def convert_while_loop(cond, body, loop_vars):
@@ -24,12 +27,12 @@ def convert_while_loop(cond, body, loop_vars):
     A function representation of a Python ``while`` statement.
 
     Args:
-        cond(Callable): A callable object that returns a boolean variable to control whether to execute the loop body.  It takes  ``loop_vars`` as arguments.
+        cond(Callable): A callable object that returns a boolean variable to control whether to execute the loop body. It takes ``loop_vars`` as arguments.
         body(Callable): A callable object that returns a tuple or list of variables with the same arguments ``loops_vars`` as ``cond`` .
         loop_vars(list|tuple): A list or tuple of variables passed to ``cond`` and ``body`` .
 
     Returns:
-        A list or tuple of variables which returned by ``body`` .
+        A list or tuple of variables which returned by ``body``.
     """
 
     # NOTE: It may be slower if cond is very expensive, but usually cond is just O(1).
@@ -269,6 +272,67 @@ def convert_var_shape(x):
         return x.shape
 
 
+def convert_shape_compare(left, *args):
+    """
+    A function handles comparison difference between Paddle and Python.
+    For example, if x and y are Tensors, x.shape == y.shape will return single
+    boolean Value (True/False). However, paddle.shape(x) == paddle.shape(y) is
+    an element-wise comparison. The difference can cause dy2stat error. So we
+    create this function to handle the difference.
+
+    Args:
+        left: variable
+        *args: compare_op(str), variable, compare_op(str), variable, where
+            compare_op means "<", ">", "==", "!=", etc.
+    Returns:
+        If the variables to compare are NOT Paddle Variables, we will return as
+        Python like "a op1 b and b op2 c and ... ".
+        If the variables to compare are Paddle Variables, we will do elementwise
+        comparsion first and then reduce to a boolean whose numel is 1.
+        
+    """
+    args_len = len(args)
+    assert args_len >= 2, "convert_shape_compare needs at least one right compare variable"
+    assert args_len % 2 == 0, "Illegal input for convert_shape_compare, *args should be op(str), var, op(str), var ..."
+    num_cmp = args_len // 2
+    if isinstance(left, Variable):
+
+        def reduce_compare(x, op_str, y):
+            element_wise_result = eval("x " + op_str + " y")
+            if op_str == "!=":
+                return reduce_any(element_wise_result)
+            elif op_str == "is" or op_str == "is not" or op_str == "in" or op_str == "not in":
+                return element_wise_result
+            else:
+                return reduce_all(element_wise_result)
+
+        final_result = reduce_compare(left, args[0], args[1])
+        for i in range(1, num_cmp):
+            cmp_left = args[i * 2 - 1]
+            cmp_op = args[i * 2]
+            cmp_right = args[i * 2 + 1]
+            cur_result = reduce_compare(cmp_left, cmp_op, cmp_right)
+            final_result = convert_logical_and(lambda: final_result,
+                                               lambda: cur_result)
+        return final_result
+    else:
+        cmp_left = left
+        final_result = None
+        for i in range(num_cmp):
+            cmp_op = args[i * 2]
+            cmp_right = args[i * 2 + 1]
+            cur_result = eval("cmp_left " + cmp_op + " cmp_right")
+            if final_result is None:
+                final_result = cur_result
+            else:
+                final_result = final_result and cur_result
+
+            if final_result is False:
+                return False
+            cmp_left = cmp_right
+        return final_result
+
+
 def cast_bool_if_necessary(var):
     assert isinstance(var, Variable)
     if convert_dtype(var.dtype) not in ['bool']:
@@ -320,3 +384,85 @@ def convert_print(*args):
             var = Print(var)
         else:
             print(var)
+
+
+def convert_pop(target, *args):
+    """
+    A function representation of a Python pop statement for a list or dict.
+
+    Args:
+        target(list|dict|Tensor): A variable to pop item from.
+        *args(tuple): index or default value to parse.
+
+    Returns:
+        A item poped from target.
+    """
+
+    is_variable = isinstance(target, Variable)
+    if is_variable:
+        is_tensor_array = target.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+
+    if is_variable and is_tensor_array:
+        return _run_paddle_pop(target, *args)
+    else:
+        return _run_python_pop(target, *args)
+
+
+def _run_paddle_pop(array, *args):
+    if len(args) == 0:
+        idx = -1
+    else:
+        idx = args[0]
+
+    assert isinstance(idx, int)
+
+    def cond(i, new_array):
+        return less_than(i, arr_len)
+
+    def body(i, new_array):
+        item = array_read(array=array, i=i)
+        array_write(item, array_length(new_array), new_array)
+        i = increment(i)
+        return i, new_array
+
+    arr_len = array_length(array)
+    if idx < 0:
+        idx = idx + arr_len
+    else:
+        idx = fill_constant(shape=[1], dtype="int64", value=idx)
+
+    pop_item = array_read(array, idx)
+
+    new_array = _slice_tensor_array(array, 0, idx)
+    i = idx + 1
+    _, new_array = while_loop(cond, body, [i, new_array])
+    assign(input=new_array, output=array)
+
+    return pop_item
+
+
+# TODO(liym27): A better way to slice tensor array.
+#  Maybe support start == end for slice op.
+def _slice_tensor_array(array, start, end):
+    def true_fn():
+        null_array = create_array("float32")
+        return null_array
+
+    def false_fn(array, start, end):
+        new_array = slice(array, starts=[start], ends=[end], axes=[0])
+        return new_array
+
+    new_array = cond(start == end, true_fn, lambda: false_fn(array, start, end))
+    return new_array
+
+
+def _run_python_pop(target, *args):
+    # 1. pop for a dict
+    if len(args) == 2:
+        idx, default = args
+        return target.pop(idx, default)
+
+    # 2. pop for a list or dict
+    else:
+        idx = args[0] if args else -1
+        return target.pop(idx)
