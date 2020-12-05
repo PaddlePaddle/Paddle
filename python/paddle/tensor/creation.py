@@ -167,8 +167,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if dtype and convert_dtype(dtype) != data.dtype:
         data = data.astype(dtype)
 
-    if dtype and convert_dtype(dtype) != data.dtype:
-        data = data.astype(dtype)
     return paddle.Tensor(
         value=data,
         place=place,
