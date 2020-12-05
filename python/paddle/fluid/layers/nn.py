@@ -842,52 +842,52 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
 def crf_decoding(input, param_attr, label=None, length=None):
     """
     :api_attr: Static Graph
+
     ${comment}
 
     Args:
-        input(${emission_type}): ${emission_comment}
+        input(Tensor): ${emission_comment}
 
         param_attr (ParamAttr|None): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_fluid_param_attr_ParamAttr` .
 
         label(${label_type}, optional): ${label_comment}
 
         length(${length_type}, optional): ${length_comment}
 
     Returns:
-        Variable: ${viterbi_path_comment}
+        Tensor: ${viterbi_path_comment}
 
     Examples:
         .. code-block:: python
 
-           import paddle.fluid as fluid
            import paddle
            paddle.enable_static()
 
            # LoDTensor-based example
            num_labels = 10
-           feature = fluid.data(name='word_emb', shape=[-1, 784], dtype='float32', lod_level=1)
-           label = fluid.data(name='label', shape=[-1, 1], dtype='int64', lod_level=1)
-           emission = fluid.layers.fc(input=feature, size=num_labels)
+           feature = paddle.static.data(name='word_emb', shape=[-1, 784], dtype='float32', lod_level=1)
+           label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64', lod_level=1)
+           emission = paddle.static.nn.fc(feature, size=num_labels)
 
-           crf_cost = fluid.layers.linear_chain_crf(input=emission, label=label,
-                     param_attr=fluid.ParamAttr(name="crfw"))
-           crf_decode = fluid.layers.crf_decoding(input=emission,
-                     param_attr=fluid.ParamAttr(name="crfw"))
+           crf_cost = paddle.fluid.layers.linear_chain_crf(input=emission, label=label,
+                     param_attr=paddle.ParamAttr(name="crfw"))
+           crf_decode = paddle.static.nn.crf_decoding(input=emission,
+                     param_attr=paddle.ParamAttr(name="crfw"))
 
            # Common tensor example
            num_labels, max_len = 10, 20
-           feature = fluid.data(name='word_emb_pad', shape=[-1, max_len, 784], dtype='float32')
-           label = fluid.data(name='label_pad', shape=[-1, max_len, 1], dtype='int64')
-           length = fluid.data(name='length', shape=[-1, 1], dtype='int64')
-           emission = fluid.layers.fc(input=feature, size=num_labels,
+           feature = paddle.static.data(name='word_emb_pad', shape=[-1, max_len, 784], dtype='float32')
+           label = paddle.static.data(name='label_pad', shape=[-1, max_len, 1], dtype='int64')
+           length = paddle.static.data(name='length', shape=[-1, 1], dtype='int64')
+           emission = paddle.static.nn.fc(feature, size=num_labels,
                                       num_flatten_dims=2)
 
-           crf_cost = fluid.layers.linear_chain_crf(input=emission, label=label, length=length,
-                     param_attr=fluid.ParamAttr(name="crfw_pad"))
-           crf_decode = fluid.layers.crf_decoding(input=emission, length=length,
-                     param_attr=fluid.ParamAttr(name="crfw_pad"))
+           crf_cost = paddle.fluid.layers.linear_chain_crf(input=emission, label=label, length=length,
+                     param_attr=paddle.ParamAttr(name="crfw_pad"))
+           crf_decode = paddle.static.nn.crf_decoding(input=emission, length=length,
+                     param_attr=paddle.ParamAttr(name="crfw_pad"))
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'crf_decoding')
@@ -3427,7 +3427,7 @@ def layer_norm(input,
     - :math:`b`: the trainable bias parameter.
 
     Args:
-        input(Variable): A multi-dimension ``Tensor`` , and the data type is float32 or float64.
+        input(Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64.
         scale(bool, optional): Whether to learn the adaptive gain :math:`g` after
             normalization. Default: True.
         shift(bool, optional): Whether to learn the adaptive bias :math:`b` after
@@ -3452,24 +3452,17 @@ def layer_norm(input,
         name(str): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: ``Tensor``  indicating the normalized result, the data type is the same as  ``input`` , and the return dimension is the same as  ``input`` .
+        Tensor: ``Tensor``  indicating the normalized result, the data type is the same as  ``input`` , and the return dimension is the same as  ``input`` .
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
             import paddle
             paddle.enable_static()
-            x = fluid.data(name='x', shape=[-1, 32, 32], dtype='float32')
-            hidden1 = fluid.layers.layer_norm(input=x, begin_norm_axis=1)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            np_x = np.random.random(size=(8, 3, 32, 32)).astype('float32')
-            output = exe.run(feed={"x": np_x}, fetch_list = [hidden1])
-            print(output)
+            x = paddle.static.data(name='x', shape=[8, 32, 32], dtype='float32')
+            output = paddle.static.nn.layer_norm(input=x, begin_norm_axis=1)
+            print(output.shape)  # [8, 32, 32]
     """
     assert in_dygraph_mode(
     ) is not True, "please use LayerNorm instead of layer_norm in dygraph mode!"
@@ -9737,7 +9730,7 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
     alpha_shape = [1]
-    # NOTE(): The input of this API should be ``N,C,...`` format, 
+    # NOTE(): The input of this API should be ``N,C,...`` format,
     # which means x.shape[0] is batch_size and x.shape[0] is channel.
     if mode == 'channel':
         assert len(
