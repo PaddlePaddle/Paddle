@@ -228,6 +228,7 @@ class TestConcatOpError(unittest.TestCase):
 
 class TestConcatAPI(unittest.TestCase):
     def test_fluid_api(self):
+        paddle.enable_static()
         x_1 = fluid.data(shape=[None, 1, 4, 5], dtype='int32', name='x_1')
         fluid.layers.concat([x_1, x_1], 0)
 
@@ -253,6 +254,7 @@ class TestConcatAPI(unittest.TestCase):
         assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
 
     def test_api(self):
+        paddle.enable_static()
         x_1 = paddle.fluid.data(
             shape=[None, 1, 4, 5], dtype='int32', name='x_1')
         paddle.concat([x_1, x_1], 0)
@@ -338,21 +340,44 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
         self.x = np.random.random(self.input_shape).astype("float32")
         self.place = fluid.CUDAPlace(0) \
             if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-        self.set_program()
 
-    def set_program(self):
-        self.program = fluid.Program()
-        with fluid.program_guard(self.program):
-            input = fluid.layers.assign(self.x)
-            tensor_array = fluid.layers.create_array(dtype='float32')
-            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+    def set_program(self, use_fluid_api):
+        paddle.enable_static()
+        if use_fluid_api:
+            self.program = fluid.Program()
+            with fluid.program_guard(self.program):
+                input = fluid.layers.assign(self.x)
+                tensor_array = fluid.layers.create_array(dtype='float32')
+                zero = fluid.layers.fill_constant(
+                    shape=[1], value=0, dtype="int64")
 
-            for i in range(self.iter_num):
-                fluid.layers.array_write(input, zero + i, tensor_array)
+                for i in range(self.iter_num):
+                    fluid.layers.array_write(input, zero + i, tensor_array)
 
-            self.out_var = fluid.layers.concat(tensor_array, axis=self.axis)
+                self.out_var = fluid.layers.concat(tensor_array, axis=self.axis)
+        else:
+            self.program = paddle.static.Program()
+            with paddle.static.program_guard(self.program):
+                input = paddle.assign(self.x)
+                tensor_array = fluid.layers.create_array(
+                    dtype='float32'
+                )  # Api create_array is not supported in paddle 2.0 yet.
+                zero = paddle.zeros(shape=[1], dtype="int64")
 
-    def test_case(self):
+                for i in range(self.iter_num):
+                    # Api array_write is not supported in paddle 2.0 yet.
+                    fluid.layers.array_write(input, zero + i, tensor_array)
+
+                self.out_var = paddle.concat(tensor_array, axis=self.axis)
+
+    def test_fluid_api(self):
+        self._run_static_mode(use_fluid_api=True)
+
+    def test_paddle_api(self):
+        self._run_static_mode(use_fluid_api=False)
+
+    def _run_static_mode(self, use_fluid_api):
+        self.set_program(use_fluid_api)
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
