@@ -30,14 +30,11 @@ class TestComplexVariable(unittest.TestCase):
         with dg.guard():
             x = dg.to_variable(a, "x")
             y = dg.to_variable(b)
-            out = paddle.complex.elementwise_add(x, y)
+            out = paddle.fluid.layers.elementwise_add(x, y)
             self.assertIsNotNone("{}".format(out))
 
         self.assertTrue(np.allclose(out.numpy(), a + b))
-        self.assertEqual(x.name, {'real': 'x.real', 'imag': 'x.imag'})
-        x.name = "new_x"
-        self.assertEqual(x.name, {'real': 'new_x.real', 'imag': 'new_x.imag'})
-        self.assertEqual(out.dtype, self._dtype)
+        self.assertEqual(out.dtype, convert_np_dtype_to_dtype_(self._dtype))
         self.assertEqual(out.shape, x.shape)
 
     def test_attrs(self):
