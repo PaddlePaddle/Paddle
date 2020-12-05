@@ -1554,7 +1554,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
             paddle.disable_static()
             x = paddle.to_tensor(x_data, stop_gradient=False)
             output = paddle.nn.functional.label_smooth(x)
-            print(output.numpy())
+            print(output)
             
             #[[[0.03333334 0.93333334 0.03333334]
             #  [0.93333334 0.03333334 0.93333334]]]
