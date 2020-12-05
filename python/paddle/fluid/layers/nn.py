@@ -1482,7 +1482,7 @@ def conv2d(input,
           
           data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
           conv2d = paddle.static.nn.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
-	  print(conv2d.shape) # [-1, 2, 30, 30]
+          print(conv2d.shape) # [-1, 2, 30, 30]
     """
 
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
@@ -3904,7 +3904,7 @@ def conv2d_transpose(input,
 
           data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
           conv2d_transpose = paddle.static.nn.conv2d_transpose(input=data, num_filters=2, filter_size=3)
-	  print(conv2d_transpose.shape) # [-1, 2, 34, 34]
+          print(conv2d_transpose.shape) # [-1, 2, 34, 34]
     """
     assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
     if data_format not in ['NCHW', 'NHWC']:
