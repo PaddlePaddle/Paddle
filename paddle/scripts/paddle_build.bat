@@ -92,7 +92,10 @@ if %ERRORLEVEL% EQU 0 (
 
 :mkbuild
 if not exist build (
+    echo Windows build cache FALSE
     mkdir build
+) else (
+    echo Windows build cache TRUE
 )
 cd /d build
 dir .
@@ -282,6 +285,8 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo Build Paddle successfully!
+echo 0 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 
 goto:eof
 
@@ -624,8 +629,6 @@ taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
-echo 0 > %cache_dir%\error_code.txt
-type %cache_dir%\error_code.txt
 echo Windows CI run successfully!
 exit /b 0
 
