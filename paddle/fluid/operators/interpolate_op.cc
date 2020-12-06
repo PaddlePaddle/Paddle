@@ -324,9 +324,13 @@ class InterpolateOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
 #ifdef PADDLE_WITH_MKLDNN
     auto interp_method = ctx.Attr<std::string>("interp_method");
+    const auto* x = ctx.Input<Tensor>("X");
+    auto dim_x = x->dims();
+
     if (interp_method == "bicubic") {
       VLOG(3) << "oneDNN interpolate does not support bicubic algorithm";
-    } else if (this->CanMKLDNNBeUsed(ctx) && FLAGS_use_mkldnn_interpolate) {
+    } else if (this->CanMKLDNNBeUsed(ctx) /*&& FLAGS_use_mkldnn_interpolate*/ &&
+               (dim_x.size() == 3 || dim_x.size() == 4)) {
       framework::LibraryType library = framework::LibraryType::kMKLDNN;
       framework::DataLayout layout = framework::DataLayout::kMKLDNN;
       return framework::OpKernelType(
