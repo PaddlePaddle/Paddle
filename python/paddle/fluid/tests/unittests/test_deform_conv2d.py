@@ -331,12 +331,73 @@ class TestDeformConv2DFunctional(TestCase):
 
         return out_v1, out_v2
 
+    def new_api_static_graph_case_dcn(self):
+        main = paddle.static.Program()
+        start = paddle.static.Program()
+        paddle.enable_static()
+        with paddle.static.program_guard(main, start):
+            x = paddle.static.data(
+                "input", (-1, self.in_channels, -1, -1), dtype=self.dtype)
+            offset = paddle.static.data(
+                "offset",
+                (-1, 2 * self.filter_shape[0] * self.filter_shape[1], -1, -1),
+                dtype=self.dtype)
+            mask = paddle.static.data(
+                "mask",
+                (-1, self.filter_shape[0] * self.filter_shape[1], -1, -1),
+                dtype=self.dtype)
+
+            weight = paddle.static.data(
+                "weight", list(self.weight.shape), dtype=self.dtype)
+
+            if not self.no_bias:
+                bias = paddle.static.data("bias", [-1], dtype=self.dtype)
+
+            y_v1 = paddle.vision.ops.deform_conv2d(
+                x=x,
+                offset=offset,
+                weight=weight,
+                bias=None if self.no_bias else bias,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
+                groups=self.groups, )
+
+            y_v2 = paddle.vision.ops.deform_conv2d(
+                x=x,
+                offset=offset,
+                mask=mask,
+                weight=weight,
+                bias=None if self.no_bias else bias,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
+                groups=self.groups, )
+
+        exe = paddle.static.Executor(self.place)
+        exe.run(start)
+        feed_dict = {
+            "input": self.input,
+            "offset": self.offset,
+            "mask": self.mask,
+            "weight": self.weight
+        }
+        if not self.no_bias:
+            feed_dict["bias"] = self.bias
+
+        out_v1, out_v2 = exe.run(main, feed=feed_dict, fetch_list=[y_v1, y_v2])
+        return out_v1, out_v2
+
     def _test_identity(self):
         self.prepare()
         static_dcn_v1, static_dcn_v2 = self.static_graph_case_dcn()
         dy_dcn_v1, dy_dcn_v2 = self.dygraph_case_dcn()
+        new_static_dcn_v1, new_static_dcn_v2 = self.new_api_static_graph_case_dcn(
+        )
         np.testing.assert_array_almost_equal(static_dcn_v1, dy_dcn_v1)
         np.testing.assert_array_almost_equal(static_dcn_v2, dy_dcn_v2)
+        np.testing.assert_array_almost_equal(static_dcn_v1, new_static_dcn_v1)
+        np.testing.assert_array_almost_equal(static_dcn_v2, new_static_dcn_v2)
 
     def test_identity(self):
         self.place = paddle.CPUPlace()
