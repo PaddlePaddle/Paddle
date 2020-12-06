@@ -209,21 +209,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     dnnl::algorithm algo = (interp_method == "nearest")
                                ? dnnl::algorithm::resampling_nearest
                                : dnnl::algorithm::resampling_linear;
-    // // high priority
-    // if (ctx.HasInput("OutSize")) {
-    //   auto* out_size = ctx.Input<Tensor>("OutSize");
-    //   auto* out_size_data = out_size->data<int>();
-    //   framework::DDim dim_out;
-    //   const DataLayout data_layout =
-    //       framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
-    //   auto dim_x = x->dims();
-    //   if (data_layout == DataLayout::kNCHW) {
-    //     dim_out = {dim_x[0], dim_x[1], out_size_data[0], out_size_data[1]};
-    //   } else {
-    //     dim_out = {dim_x[0], out_size_data[0], out_size_data[1], dim_x[3]};
-    //   }
-    //   z->Resize(dim_out);
-    // }
+
     auto dim_x = x->dims();
     if (dim_x.size() == 3) {
       Interpolate1D<T>(ctx, x, z);
