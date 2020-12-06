@@ -140,7 +140,7 @@ class InferencePassTest(unittest.TestCase):
         for place_ in use_gpu:
             self.check_output_with_option(place_, atol)
 
-    def check_output_with_option(self, use_gpu, atol=1e-5):
+    def check_output_with_option(self, use_gpu, atol=1e-5, flatten=False):
         '''
         Check whether calculating on CPU and GPU, enable TensorRT 
         or disable TensorRT, enable MKLDNN or disable MKLDNN 
@@ -163,6 +163,9 @@ class InferencePassTest(unittest.TestCase):
 
         for out, analysis_output in zip(outs, analysis_outputs):
             out = np.array(out)
+            if flatten:
+                out = out.flatten()
+                analysis_output = analysis_output.flatten()
 
             self.assertTrue(
                 np.allclose(
@@ -188,6 +191,9 @@ class InferencePassTest(unittest.TestCase):
 
             for out, tensorrt_output in zip(outs, tensorrt_outputs):
                 out = np.array(out)
+                if flatten:
+                    out = out.flatten()
+                    tensorrt_output = tensorrt_output.flatten()
 
                 self.assertTrue(
                     np.allclose(

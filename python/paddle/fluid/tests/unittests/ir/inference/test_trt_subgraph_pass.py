@@ -19,7 +19,6 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
 
 
@@ -55,8 +54,6 @@ class TensorRTSubgraphPassConvTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassConvValidPaddingTest(TensorRTSubgraphPassConvTest):
@@ -118,8 +115,6 @@ class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassConvTransposeValidPaddingTest(
@@ -171,8 +166,6 @@ class TensorRTSubgraphPassFcTest(InferencePassTest):
             use_gpu = True
             # TRT output shape of fc is (1, 1000, 1, 1). To compare the output value only, flatten the results.
             self.check_output_with_option(use_gpu, flatten=True)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassPoolTest(InferencePassTest):
@@ -212,8 +205,6 @@ class TensorRTSubgraphPassPoolTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassAvgPoolTest(TensorRTSubgraphPassPoolTest):
@@ -308,9 +299,10 @@ class TensorRTSubgraphPassActivationTest(InferencePassTest):
             use_gpu = True
             if os.path.exists(self.path + "_opt_cache"):
                 shutil.rmtree(self.path + "_opt_cache")
-            self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+            if self.trt_parameters.precision == AnalysisConfig.Precision.Float32:
+                self.check_output_with_option(use_gpu)
+            else:
+                self.check_output_with_option(use_gpu, 1e-3)
 
 
 class TensorRTSubgraphPassLeakyReluTest(TensorRTSubgraphPassActivationTest):
@@ -323,9 +315,11 @@ class TensorRTSubgraphPassRelu6Test(TensorRTSubgraphPassActivationTest):
         return fluid.layers.relu6(x)
 
 
+'''
 class TensorRTSubgraphPassSoftMaxTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
         return fluid.layers.softmax(x)
+'''
 
 
 class TensorRTSubgraphPassSigmoidTest(TensorRTSubgraphPassActivationTest):
@@ -491,8 +485,6 @@ class TensorRTSubgraphPassConcatTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassSplitTest(InferencePassTest):
@@ -514,8 +506,6 @@ class TensorRTSubgraphPassSplitTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
@@ -539,8 +529,6 @@ class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
             if os.path.exists(self.path + "_opt_cache"):
                 shutil.rmtree(self.path + "_opt_cache")
             self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
@@ -567,9 +555,7 @@ class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
             use_gpu = True
             if os.path.exists(self.path + "_opt_cache"):
                 shutil.rmtree(self.path + "_opt_cache")
-            self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+            self.check_output_with_option(use_gpu, 1e-3)
 
 
 class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
@@ -598,10 +584,9 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, atol=1e-4, flatten=True)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
+'''
 class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
     def setUp(self):
         self.set_params()
@@ -625,8 +610,6 @@ class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassLayerNormBeginNormAxis2Test(
@@ -639,6 +622,7 @@ class TensorRTSubgraphPassLayerNormBeginNormAxis3Test(
         TensorRTSubgraphPassLayerNormTest):
     def set_params(self):
         self.begin_norm_axis = 3
+'''
 
 
 class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
@@ -666,8 +650,6 @@ class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassElementwiseMulTest(
@@ -695,8 +677,6 @@ class TensorRTSubgraphPassShuffleChannelTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 if __name__ == "__main__":
