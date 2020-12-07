@@ -39,9 +39,27 @@ static inline int SizeOutAxis(const int axis, DDim dims) {
   return size;
 }
 
+template <typename T, int VLEN>
+union vec_t {
+  static_assert(sizeof(T) == -1 &&
+                "vec_t is only available by specialization.");
+};
+
+template <>
+union vec_t<float, 4> {
+  float4 s;
+  float v[4];
+};
+
+template <>
+union vec_t<platform::float16, 4> {
+  int2 s;
+  platform::float16 v[4];
+};
+
 template <typename T, typename VECT, int VPT, int WARP_PER_BLOCK>
-__global__ void VecSoftmaxKernel(T* dst, const T* src, const int batch_size,
-                                 const int softmax_ele) {
+__global__ void VecSoftmaxForward(T* dst, const T* src, const int batch_size,
+                                  const int softmax_ele) {
   int offset = blockIdx.x * softmax_ele * WARP_PER_BLOCK;
   int idx = threadIdx.x * VPT;
 
@@ -67,6 +85,36 @@ __global__ void VecSoftmaxKernel(T* dst, const T* src, const int batch_size,
   reinterpret_cast<VECT*>(&dst[offset + idx])[0] = buf;
 }
 
+template <typename T, int VPT, int WARP_PER_BLOCK>
+__global__ void VecSoftmaxBackward(T* dst, const T* grad, const T* src,
+                                   const int batch_size,
+                                   const int softmax_ele) {
+  const int offset =
+      blockIdx.x * softmax_ele * WARP_PER_BLOCK + threadIdx.x * VPT;
+
+  float local_sum_gy = 0.f;
+  vec_t<T, VPT> local_grad;
+  vec_t<T, VPT> local_src;
+
+  local_grad.s =
+      reinterpret_cast<const decltype(local_grad.s)*>(&grad[offset])[0];
+  local_src.s = reinterpret_cast<const decltype(local_src.s)*>(&src[offset])[0];
+
+  for (int i = 0; i < VPT; ++i) {
+    local_sum_gy += static_cast<float>(local_grad.v[i]) *
+                    static_cast<float>(local_src.v[i]);
+  }
+  float sum_gy = math::warpReduceSum<float>(local_sum_gy, 0xffffffff);
+
+  vec_t<T, VPT> local_dst;
+  for (int i = 0; i < VPT; ++i) {
+    local_dst.v[i] =
+        static_cast<T>(static_cast<float>(local_src.v[i]) *
+                       (static_cast<float>(local_grad.v[i]) - sum_gy));
+  }
+  reinterpret_cast<decltype(local_dst.s)*>(&dst[offset])[0] = local_dst.s;
+}
+
 template <typename T>
 class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
  public:
@@ -83,18 +131,18 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
     const int N = SizeToAxis(axis, dims);
     const int D = SizeOutAxis(axis, dims);
 
-    if (D == 1 && dim == 128 && N % 4 == 0 && sizeof(T) <= 4) {
+    constexpr int warps_per_block = 4;
+    if (D == 1 && dim == 128 && N % warps_per_block == 0 && sizeof(T) <= 4) {
       // a warp for a batch, 4 elements for a thread, only support the softmax
       // dim size = 128 currently
-      constexpr int warps_per_block = 4;
       if (sizeof(T) == 2) {
-        VecSoftmaxKernel<
+        VecSoftmaxForward<
             T, int2, 4,
             warps_per_block><<<N / warps_per_block, warps_per_block * WARP_SIZE,
                                0, ctx.cuda_device_context().stream()>>>(
             out_data, x->data<T>(), N, dim);
       } else if (sizeof(T) == 4) {
-        VecSoftmaxKernel<
+        VecSoftmaxForward<
             T, int4, 4,
             warps_per_block><<<N / warps_per_block, warps_per_block * WARP_SIZE,
                                0, ctx.cuda_device_context().stream()>>>(
@@ -139,20 +187,49 @@ class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
     const int N = SizeToAxis(axis, dims);
     const int D = SizeOutAxis(axis, dims);
 
-    ScopedTensorDescriptor desc;
-    std::vector<int> tensor_dims = {N, dim, D, 1};
-    DataLayout layout = DataLayout::kNCHW;
-    cudnnTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
+    constexpr int warps_per_block = 4;
+    constexpr bool warp_softmax_available =
+        std::is_same<T, float>::value ||
+        std::is_same<T, platform::float16>::value;
+    if (D == 1 && dim == 128 && N % warps_per_block == 0 &&
+        warp_softmax_available) {
+      if (std::is_same<T, float>::value) {
+        VecSoftmaxBackward<
+            float, 4,
+            warps_per_block><<<N / warps_per_block, warps_per_block * WARP_SIZE,
+                               0, ctx.cuda_device_context().stream()>>>(
+            dx->data<float>(), dout->data<float>(), out->data<float>(), N, dim);
+      } else if (std::is_same<T, platform::float16>::value) {
+        VecSoftmaxBackward<
+            platform::float16, 4,
+            warps_per_block><<<N / warps_per_block, warps_per_block * WARP_SIZE,
+                               0, ctx.cuda_device_context().stream()>>>(
+            dx->data<platform::float16>(), dout->data<platform::float16>(),
+            out->data<platform::float16>(), N, dim);
+      } else {
+        PADDLE_ENFORCE_EQ(
+            warp_softmax_available, true,
+            platform::errors::Unimplemented(
+                "Warp softmax backward is only available for fp32 and fp16"));
+      }
+    } else {
+      ScopedTensorDescriptor desc;
+      std::vector<int> tensor_dims = {N, dim, D, 1};
+      DataLayout layout = DataLayout::kNCHW;
+      cudnnTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto handle = dev_ctx.cudnn_handle();
-    auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
-                                 : CUDNN_SOFTMAX_MODE_CHANNEL;
+      auto& dev_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+      auto handle = dev_ctx.cudnn_handle();
+      auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
+                                   : CUDNN_SOFTMAX_MODE_CHANNEL;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
-        handle, CUDNN_SOFTMAX_ACCURATE, mode,
-        platform::CudnnDataType<T>::kOne(), desc_, out->data<T>(), desc_,
-        dout->data<T>(), platform::CudnnDataType<T>::kZero(), desc_, dx_data));
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
+          handle, CUDNN_SOFTMAX_ACCURATE, mode,
+          platform::CudnnDataType<T>::kOne(), desc_, out->data<T>(), desc_,
+          dout->data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
+          dx_data));
+    }
   }
 };
 
