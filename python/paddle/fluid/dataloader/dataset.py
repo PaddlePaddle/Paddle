@@ -409,6 +409,9 @@ class Subset(Dataset):
     Args:
         dataset (Dataset): The whole Dataset.
         indices (sequence): Indices in the whole set selected for subset.
+
+    Returns:
+        Dataset: A Dataset which is the subset of the original dataset.
     
     Example code:
 
@@ -449,16 +452,15 @@ def random_split(dataset, lengths, generator=None):
         lengths (sequence): lengths of splits to be produced
         generator (Generator, optional): Generator used for the random permutation. Default is None then the DefaultGenerator is used in manual_seed().
 
+     Returns:
+        Datasets: A list of subset Datasets, which are the non-overlapping subsets of the original Dataset.
+
     Example code:
 
         .. code-block:: python
 
             import paddle
             from paddle.io import random_split
-
-            a_list = paddle.io.random_split(range(10), [3, 7])
-            print(a_list)
-            # [<paddle.fluid.dataloader.dataset.Subset object at 0x7fafd73dcba8>, <paddle.fluid.dataloader.dataset.Subset object at 0x7fafbffd0940>]
 
             a_list = paddle.io.random_split(range(10), [3, 7])
             print(len(a_list)) 
