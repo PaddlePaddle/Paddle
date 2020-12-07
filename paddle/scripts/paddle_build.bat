@@ -267,14 +267,21 @@ echo Build third_party successfully!
 
 set build_times=1
 :build_paddle
+:: reset clcache zero stats for collect PR's actual hit rate
+if "%CACHE_HIT_STATISTICS%"=="ON" clcache.exe -z
+
 echo Build Paddle the %build_times% time:
 if "%WITH_CLCACHE%"=="OFF" (
     msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
 ) else (
     msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
 )
+set build_error=%ERRORLEVEL%
 
-if %ERRORLEVEL% NEQ 0 (
+:: ci will collect clcache hit rate
+if "%CACHE_HIT_STATISTICS%"=="ON" goto :collect_clcache_hits
+
+if %build_error% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 1 (
         exit /b 7
@@ -609,6 +616,17 @@ set /a ss=100%ss%%%100
 set /a end_secs=dd*86400+hh*3600+nn*60+ss
 set /a cost_secs=end_secs-start_sec
 echo "Windows %~3 Time: %cost_secs%s"
+goto:eof
+
+
+:collect_clcache_hits
+for /f "tokens=2,4" %%i in ('clcache.exe -s ^| findstr "entries hits"') do set %%i=%%j
+if %hits% EQU 0 (
+    echo "clcache hit rate: 0%"
+) else (
+    set /a rate=%hits%*10000/%entries%
+    echo "clcache hit rate: %rate:~0,-2%.%rate:~-2%%%"
+)
 goto:eof
 
 

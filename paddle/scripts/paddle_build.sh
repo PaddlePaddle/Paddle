@@ -356,12 +356,17 @@ function build_base() {
         make clean
     fi
 
-    ccache -z
+    # reset ccache zero stats for collect PR's actual hit rate
+    [ "${CACHE_HIT_STATISTICS}" == "ON" ] && ccache -z
+
     make install -j ${parallel_number};build_error=$?
+
+    # ci will collect ccache hit rate
+    [ "${CACHE_HIT_STATISTICS}" == "ON" ] && collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
-    ccache -s
 }
 
 function build_size() {
@@ -425,10 +430,19 @@ EOF
     if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
         make clean
     fi
+
+    # reset ccache zero stats for collect PR's actual hit rate
+    [ "${CACHE_HIT_STATISTICS}" == "ON" ] && ccache -z
+
     make install -j 8;build_error=$?
+
+    # ci will collect ccache hit rate
+    [ "${CACHE_HIT_STATISTICS}" == "ON" ] && collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
+
     set -e
     build_size
 }
@@ -1547,13 +1561,22 @@ EOF
     startTime_s=`date +%s`
     set +e
     cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto};build_error=$?
+
+    # reset ccache zero stats for collect PR's actual hit rate
+    [ "${CACHE_HIT_STATISTICS}" == "ON" ] && ccache -z
+
     make -j ${parallel_number} fluid_lib_dist;build_error=$?
     make -j ${parallel_number} inference_lib_dist;build_error=$?
+
+    # ci will collect ccache hit rate
+    [ "${CACHE_HIT_STATISTICS}" == "ON" ] && collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+
     build_size "paddle_inference"
 }
 
@@ -1624,6 +1647,13 @@ function example() {
       exit 5
     fi
 }
+
+
+function collect_ccache_hits() {
+    rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
+    echo "ccache hit rate: ${rate}%"
+}
+
 
 function test_op_benchmark() {
     bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
