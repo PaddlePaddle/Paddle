@@ -13,9 +13,6 @@
 # limitations under the License.
 
 import os
-from paddle.check_import_scipy import check_import_scipy
-
-check_import_scipy(os.name)
 
 try:
     from paddle.version import full_version as __version__
@@ -35,7 +32,6 @@ monkey_patch_variable()
 monkey_patch_math_varbase()
 import paddle.framework
 from .framework import VarBase as Tensor
-from .framework import ComplexVariable as ComplexTensor
 import paddle.compat
 import paddle.distributed
 import paddle.sysconfig
@@ -46,7 +42,6 @@ import paddle.distributed.fleet
 import paddle.optimizer
 import paddle.metric
 import paddle.device
-import paddle.incubate.complex as complex
 import paddle.regularizer
 
 # TODO: define alias in tensor and framework directory
@@ -276,6 +271,7 @@ from . import onnx
 from .hapi import Model
 from .hapi import callbacks
 from .hapi import summary
+from .hapi import flops
 import paddle.text
 import paddle.vision
 

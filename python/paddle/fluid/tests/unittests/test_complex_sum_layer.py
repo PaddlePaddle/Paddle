@@ -14,28 +14,30 @@
 
 import unittest
 import numpy as np
+import paddle
 from numpy.random import random as rand
-from paddle import complex as cpx
+from paddle import tensor
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 
 
 class TestComplexSumLayer(unittest.TestCase):
     def setUp(self):
-        self._dtype = "float64"
-        self._places = [fluid.CPUPlace()]
+        self._dtypes = ["float32", "float64"]
+        self._places = [paddle.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
-            self._places.append(fluid.CUDAPlace(0))
+            self._places.append(paddle.CUDAPlace(0))
 
-    def test_complex_x(self):
-        input = rand([2, 10, 10]).astype(self._dtype) + 1j * rand(
-            [2, 10, 10]).astype(self._dtype)
-        for place in self._places:
-            with dg.guard(place):
-                var_x = dg.to_variable(input)
-                result = cpx.sum(var_x, dim=[1, 2]).numpy()
-                target = np.sum(input, axis=(1, 2))
-                self.assertTrue(np.allclose(result, target))
+    def test_complex_basic_api(self):
+        for dtype in self._dtypes:
+            input = rand([2, 10, 10]).astype(dtype) + 1j * rand(
+                [2, 10, 10]).astype(dtype)
+            for place in self._places:
+                with dg.guard(place):
+                    var_x = dg.to_variable(input)
+                    result = tensor.sum(var_x, axis=[1, 2]).numpy()
+                    target = np.sum(input, axis=(1, 2))
+                    self.assertTrue(np.allclose(result, target))
 
 
 if __name__ == '__main__':

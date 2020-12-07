@@ -13,8 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
+
+import numpy
 import six
+import warnings
 from six.moves import reduce
+
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
@@ -27,8 +31,7 @@ from .layer_function_generator import templatedoc
 from . import utils
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.utils import deprecated
-import numpy
-import warnings
+
 from .utils import check_shape
 
 __all__ = [
@@ -200,7 +203,7 @@ def create_global_var(shape,
 def cast(x, dtype):
     """
 
-    This OP takes in the Variable :attr:`x` with :attr:`x.dtype` and casts it
+    This OP takes in the Tensor :attr:`x` with :attr:`x.dtype` and casts it
     to the output with :attr:`dtype`. It's meaningless if the output dtype
     equals the input dtype, but it's fine if you do so.
 
@@ -221,6 +224,11 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
+    if in_dygraph_mode():
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        out = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+
     check_variable_and_dtype(
         x, 'x',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
@@ -231,7 +239,8 @@ def cast(x, dtype):
     ], 'cast')
 
     helper = LayerHelper('cast', **locals())
-    out = helper.create_variable_for_type_inference(dtype=dtype)
+    out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=x.stop_gradient)
     helper.append_op(
         type='cast',
         inputs={'X': [x]},
@@ -318,6 +327,10 @@ def concat(input, axis=0, name=None):
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
 
     if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        # NOTE(liym27): Don't remove this if branch!
+        # This feature is supported for Dynamic-to-Static, because after transformed, the type of inputs[0]
+        # is LOD_TENSOR_ARRAY in some scenarios. And this feature can be used in static mode.
+
         assert len(input) == 1, "If the elements of 'input' in concat are Variable(LoDTensorArray), " \
                 "number of the elements must be 1, but received %s." % len(input)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
@@ -532,20 +545,20 @@ def assign(input, output=None):
     The OP copies the :attr:`input` to the :attr:`output`.
 
     Parameters:
-        input (Variable|numpy.ndarray): A tensor or numpy ndarray, its data type supports
+        input (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
             float16, float32, float64, int32 and int64.
-        output (Variable, optional): A tensor. If :attr:`output` is None, a new tensor will
+        output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
 
     Returns:
-        Variable: A tensor with the same shape, data type and value as :attr:`input`.
+        Tensor: A tensor with the same shape, data type and value as :attr:`input`.
 
     Examples:
         .. code-block:: python
 
           import paddle
           import numpy as np
-          data = paddle.fill_constant(shape=[3, 2], value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           array = np.array([[1, 1],
                             [3, 4],
                             [1, 3]]).astype(np.int64)
@@ -556,6 +569,8 @@ def assign(input, output=None):
     """
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
+    is_inplace = True if output is not None else False
+
     if isinstance(input, Variable):
         check_dtype(
             input.dtype, 'input',
@@ -599,6 +614,9 @@ def assign(input, output=None):
                 'shape': list(input.shape),
                 value_name: values
             })
+
+    if is_inplace and in_dygraph_mode():
+        output._bump_inplace_version()
 
     return output
 
@@ -1477,6 +1495,8 @@ def linspace(start, stop, num, dtype=None, name=None):
                 'Num': tensor_num},
         attrs={'dtype': dtype},
         outputs={'Out': [out]})
+    if isinstance(num, int):
+        out.desc.set_shape((num, ))
     return out
 
 
