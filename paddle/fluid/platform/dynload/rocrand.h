@@ -40,12 +40,12 @@ extern void *curand_dso_handle;
   };                                                                         \
   extern DynLoad__##__name __name
 
-#define CURAND_RAND_ROUTINE_EACH(__macro)      \
-  __macro(rocrand_create_generator);              \
-  __macro(rocrand_set_stream);                    \
-  __macro(rocrand_generate_uniform);              \
-  __macro(rocrand_generate_uniform_double);        \
-  __macro(rocrand_generate_normal);               \
+#define CURAND_RAND_ROUTINE_EACH(__macro)   \
+  __macro(rocrand_create_generator);        \
+  __macro(rocrand_set_stream);              \
+  __macro(rocrand_generate_uniform);        \
+  __macro(rocrand_generate_uniform_double); \
+  __macro(rocrand_generate_normal);         \
   __macro(rocrand_destroy_generator);
 
 CURAND_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CURAND_WRAP);

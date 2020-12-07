@@ -26,18 +26,18 @@ namespace dynload {
 extern std::once_flag hiprand_dso_flag;
 extern void *hiprand_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                             \
-  struct DynLoad__##__name {                                                 \
-    template <typename... Args>                                              \
-    hiprandStatus_t operator()(Args... args) {                                \
-      using hiprandFunc = decltype(&::__name);                                \
-      std::call_once(hiprand_dso_flag, []() {                                 \
+#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                               \
+  struct DynLoad__##__name {                                                   \
+    template <typename... Args>                                                \
+    hiprandStatus_t operator()(Args... args) {                                 \
+      using hiprandFunc = decltype(&::__name);                                 \
+      std::call_once(hiprand_dso_flag, []() {                                  \
         hiprand_dso_handle = paddle::platform::dynload::GetHiprandDsoHandle(); \
-      });                                                                    \
-      static void *p_##__name = dlsym(hiprand_dso_handle, #__name);           \
-      return reinterpret_cast<hiprandFunc>(p_##__name)(args...);              \
-    }                                                                        \
-  };                                                                         \
+      });                                                                      \
+      static void *p_##__name = dlsym(hiprand_dso_handle, #__name);            \
+      return reinterpret_cast<hiprandFunc>(p_##__name)(args...);               \
+    }                                                                          \
+  };                                                                           \
   extern DynLoad__##__name __name
 
 #define HIPRAND_RAND_ROUTINE_EACH(__macro)      \

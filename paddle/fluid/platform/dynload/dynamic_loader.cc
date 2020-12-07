@@ -403,7 +403,7 @@ void* GetNCCLDsoHandle() {
 }
 #if defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
 void* GetRCCLDsoHandle() {
-  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so",true);
+  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so", true);
 }
 #endif
 

@@ -28,7 +28,6 @@ extern std::once_flag miopen_dso_flag;
 extern void* miopen_dso_handle;
 extern bool HasMIOpen();
 
-
 inline const char* miopenGetErrorString(miopenStatus_t status) {
   switch (status) {
     case miopenStatusSuccess:
@@ -52,88 +51,87 @@ inline const char* miopenGetErrorString(miopenStatus_t status) {
 }
 
 extern void EnforceCUDNNLoaded(const char* fn_name);
-#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                            \
-  struct DynLoad__##__name {                                               \
-    template <typename... Args>                                            \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
-      using miopen_func = decltype(&::__name);                              \
-      std::call_once(miopen_dso_flag, []() {                                \
+#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                              \
+  struct DynLoad__##__name {                                                 \
+    template <typename... Args>                                              \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {         \
+      using miopen_func = decltype(&::__name);                               \
+      std::call_once(miopen_dso_flag, []() {                                 \
         miopen_dso_handle = paddle::platform::dynload::GetMIOPENDsoHandle(); \
-      });                                                                  \
-      EnforceCUDNNLoaded(#__name);                                         \
-      static void* p_##__name = dlsym(miopen_dso_handle, #__name);          \
-      return reinterpret_cast<miopen_func>(p_##__name)(args...);            \
-    }                                                                      \
-  };                                                                       \
+      });                                                                    \
+      EnforceCUDNNLoaded(#__name);                                           \
+      static void* p_##__name = dlsym(miopen_dso_handle, #__name);           \
+      return reinterpret_cast<miopen_func>(p_##__name)(args...);             \
+    }                                                                        \
+  };                                                                         \
   extern struct DynLoad__##__name __name
-
 
 /**
  * include all needed miopen functions in HPPL
  **/
-#define MIOPEN_DNN_ROUTINE_EACH(__macro)                   \
-  __macro(miopenSet4dTensorDescriptor);                    \
-  __macro(miopenSetTensorDescriptor);                    \
-  __macro(miopenInitConvolutionNdDescriptor);              \
+#define MIOPEN_DNN_ROUTINE_EACH(__macro)                  \
+  __macro(miopenSet4dTensorDescriptor);                   \
+  __macro(miopenSetTensorDescriptor);                     \
+  __macro(miopenInitConvolutionNdDescriptor);             \
   __macro(miopenFindConvolutionForwardAlgorithm);         \
-  __macro(miopenGetConvolutionNdForwardOutputDim);         \
-  __macro(miopenFindConvolutionBackwardDataAlgorithm);     \
-  __macro(miopenFindConvolutionBackwardWeightsAlgorithm);  \
-  __macro(miopenGetTensorDescriptor);                      \
-  __macro(miopenCreateTensorDescriptor);                   \
-  __macro(miopenDestroyTensorDescriptor);                  \
-  __macro(miopenSet2dPoolingDescriptor);                   \
-  __macro(miopenGet2dPoolingDescriptor);                   \
-  __macro(miopenGetPoolingNdForwardOutputDim);                   \
-  __macro(miopenCreateConvolutionDescriptor);              \
-  __macro(miopenCreatePoolingDescriptor);                  \
-  __macro(miopenDestroyPoolingDescriptor);                 \
-  __macro(miopenPoolingGetWorkSpaceSize);                  \
-  __macro(miopenPoolingGetWorkSpaceSizeV2);                \
-  __macro(miopenSetNdPoolingDescriptor);                   \
+  __macro(miopenGetConvolutionNdForwardOutputDim);        \
+  __macro(miopenFindConvolutionBackwardDataAlgorithm);    \
+  __macro(miopenFindConvolutionBackwardWeightsAlgorithm); \
+  __macro(miopenGetTensorDescriptor);                     \
+  __macro(miopenCreateTensorDescriptor);                  \
+  __macro(miopenDestroyTensorDescriptor);                 \
+  __macro(miopenSet2dPoolingDescriptor);                  \
+  __macro(miopenGet2dPoolingDescriptor);                  \
+  __macro(miopenGetPoolingNdForwardOutputDim);            \
+  __macro(miopenCreateConvolutionDescriptor);             \
+  __macro(miopenCreatePoolingDescriptor);                 \
+  __macro(miopenDestroyPoolingDescriptor);                \
+  __macro(miopenPoolingGetWorkSpaceSize);                 \
+  __macro(miopenPoolingGetWorkSpaceSizeV2);               \
+  __macro(miopenSetNdPoolingDescriptor);                  \
   __macro(miopenInitConvolutionDescriptor);               \
-  __macro(miopenDestroyConvolutionDescriptor);             \
-  __macro(miopenGetConvolutionNdDescriptor);               \
-  __macro(miopenDeriveBNTensorDescriptor);                 \
-  __macro(miopenCreate);                                   \
-  __macro(miopenDestroy);                                  \
-  __macro(miopenSetStream);                                \
-  __macro(miopenActivationForward);                        \
-  __macro(miopenActivationBackward);                       \
-  __macro(miopenConvolutionBackwardWeights);               \
-  __macro(miopenConvolutionForward);                       \
-  __macro(miopenConvolutionBackwardBias);                  \
-  __macro(miopenConvolutionForwardGetWorkSpaceSize);       \
-  __macro(miopenConvolutionBackwardDataGetWorkSpaceSize);  \
-  __macro(miopenTransformTensor);                          \
-  __macro(miopenPoolingForward);                           \
-  __macro(miopenPoolingBackward);                          \
-  __macro(miopenSoftmaxBackward);                          \
-  __macro(miopenSoftmaxForward);                           \
-  __macro(miopenCreateDropoutDescriptor);                  \
-  __macro(miopenDropoutGetStatesSize);                     \
-  __macro(miopenSetDropoutDescriptor);                     \
-  __macro(miopenCreateRNNDescriptor);                      \
-  __macro(miopenSetRNNDescriptor);                         \
-  __macro(miopenGetRNNParamsSize);                         \
-  __macro(miopenGetRNNWorkspaceSize);                      \
-  __macro(miopenGetRNNTrainingReserveSize);                \
-  __macro(miopenRNNForwardTraining);                       \
-  __macro(miopenRNNBackwardData);                          \
-  __macro(miopenRNNBackwardWeights);                       \
-  __macro(miopenRNNForwardInference);                      \
-  __macro(miopenDestroyDropoutDescriptor);                 \
-  __macro(miopenDestroyRNNDescriptor);                     \
+  __macro(miopenDestroyConvolutionDescriptor);            \
+  __macro(miopenGetConvolutionNdDescriptor);              \
+  __macro(miopenDeriveBNTensorDescriptor);                \
+  __macro(miopenCreate);                                  \
+  __macro(miopenDestroy);                                 \
+  __macro(miopenSetStream);                               \
+  __macro(miopenActivationForward);                       \
+  __macro(miopenActivationBackward);                      \
+  __macro(miopenConvolutionBackwardWeights);              \
+  __macro(miopenConvolutionForward);                      \
+  __macro(miopenConvolutionBackwardBias);                 \
+  __macro(miopenConvolutionForwardGetWorkSpaceSize);      \
+  __macro(miopenConvolutionBackwardDataGetWorkSpaceSize); \
+  __macro(miopenTransformTensor);                         \
+  __macro(miopenPoolingForward);                          \
+  __macro(miopenPoolingBackward);                         \
+  __macro(miopenSoftmaxBackward);                         \
+  __macro(miopenSoftmaxForward);                          \
+  __macro(miopenCreateDropoutDescriptor);                 \
+  __macro(miopenDropoutGetStatesSize);                    \
+  __macro(miopenSetDropoutDescriptor);                    \
+  __macro(miopenCreateRNNDescriptor);                     \
+  __macro(miopenSetRNNDescriptor);                        \
+  __macro(miopenGetRNNParamsSize);                        \
+  __macro(miopenGetRNNWorkspaceSize);                     \
+  __macro(miopenGetRNNTrainingReserveSize);               \
+  __macro(miopenRNNForwardTraining);                      \
+  __macro(miopenRNNBackwardData);                         \
+  __macro(miopenRNNBackwardWeights);                      \
+  __macro(miopenRNNForwardInference);                     \
+  __macro(miopenDestroyDropoutDescriptor);                \
+  __macro(miopenDestroyRNNDescriptor);
 
 MIOPEN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 #define MIOPEN_DNN_ROUTINE_EACH_R2(__macro) \
-  __macro(miopenConvolutionBackwardData);   
+  __macro(miopenConvolutionBackwardData);
 MIOPEN_DNN_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 // APIs available after R3:
-#define MIOPEN_DNN_ROUTINE_EACH_AFTER_R3(__macro)           \
-  __macro(miopenConvolutionBackwardWeightsGetWorkSpaceSize);  
+#define MIOPEN_DNN_ROUTINE_EACH_AFTER_R3(__macro) \
+  __macro(miopenConvolutionBackwardWeightsGetWorkSpaceSize);
 MIOPEN_DNN_ROUTINE_EACH_AFTER_R3(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 // APIs available after R4:
@@ -153,25 +151,25 @@ MIOPEN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 // APIs in R6
 #define MIOPEN_DNN_ROUTINE_EACH_R6(__macro) \
-  /*__macro(miopenSetRNNDescriptor_v6);*/
+/*__macro(miopenSetRNNDescriptor_v6);*/
 MIOPEN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
-#define MIOPEN_DNN_ROUTINE_EACH_R7(__macro)                \
-  __macro(miopenSetConvolutionGroupCount);                 \
-  __macro(miopenCreateCTCLossDescriptor);                  \
-  __macro(miopenDestroyCTCLossDescriptor);                 \
-  __macro(miopenGetCTCLossDescriptor);                     \
-  __macro(miopenSetCTCLossDescriptor);                     \
-  __macro(miopenGetCTCLossWorkspaceSize);                  \
-  __macro(miopenCTCLoss);                                  
+#define MIOPEN_DNN_ROUTINE_EACH_R7(__macro) \
+  __macro(miopenSetConvolutionGroupCount);  \
+  __macro(miopenCreateCTCLossDescriptor);   \
+  __macro(miopenDestroyCTCLossDescriptor);  \
+  __macro(miopenGetCTCLossDescriptor);      \
+  __macro(miopenSetCTCLossDescriptor);      \
+  __macro(miopenGetCTCLossWorkspaceSize);   \
+  __macro(miopenCTCLoss);
 MIOPEN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
-#define MIOPEN_DNN_ROUTINE_EACH_AFTER_R7(__macro)                     \
-  /*__macro(cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize); \
-  __macro(cudnnBatchNormalizationForwardTrainingEx);                 \
-  __macro(cudnnGetBatchNormalizationBackwardExWorkspaceSize);        \
-  __macro(cudnnBatchNormalizationBackwardEx);                        \
-  __macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);*/
+#define MIOPEN_DNN_ROUTINE_EACH_AFTER_R7(__macro)                    \
+/*__macro(cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize); \
+__macro(cudnnBatchNormalizationForwardTrainingEx);                   \
+__macro(cudnnGetBatchNormalizationBackwardExWorkspaceSize);          \
+__macro(cudnnBatchNormalizationBackwardEx);                          \
+__macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);*/
 MIOPEN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 }  // namespace dynload
 }  // namespace platform

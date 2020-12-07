@@ -50,7 +50,7 @@ math_library(cos_sim_functor)
 math_library(depthwise_conv)
 math_library(im2col)
 math_library(sample_prob)
-math_library(sampler)
+math_library(sampler DEPS generator)
 
 math_library(gru_compute DEPS activation_functions math_function)
 math_library(lstm_compute DEPS activation_functions)

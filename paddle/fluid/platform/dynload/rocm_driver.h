@@ -45,16 +45,16 @@ extern bool HasROCMDriver();
 /**
  * include all needed cuda driver functions
  **/
-#define ROCM_ROUTINE_EACH(__macro)                      \
-  __macro(hipGetErrorString);                            \
-  __macro(hipModuleLoadData);                            \
-  __macro(hipModuleGetFunction);                         \
-  __macro(hipModuleUnload);                              \
-  /*rocm3.5 not support the function*/ \
- /* __macro(hipOccupancyMaxActiveBlocksPerMultiprocessor);*/ \
-  __macro(hipModuleLaunchKernel);                              \
-  __macro(hipLaunchKernel);                              \
-  __macro(hipGetDevice);                                 \
+#define ROCM_ROUTINE_EACH(__macro)                            \
+  __macro(hipGetErrorString);                                 \
+  __macro(hipModuleLoadData);                                 \
+  __macro(hipModuleGetFunction);                              \
+  __macro(hipModuleUnload);                                   \
+  /*rocm3.5 not support the function*/                        \
+  /* __macro(hipOccupancyMaxActiveBlocksPerMultiprocessor);*/ \
+  __macro(hipModuleLaunchKernel);                             \
+  __macro(hipLaunchKernel);                                   \
+  __macro(hipGetDevice);                                      \
   __macro(hipDevicePrimaryCtxGetState)
 
 ROCM_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_ROCM_WRAP);

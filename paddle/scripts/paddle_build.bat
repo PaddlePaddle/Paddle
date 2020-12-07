@@ -41,6 +41,7 @@ if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
 if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_TPCACHE set WITH_TPCACHE=ON
+if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
 rem -------set cache build work directory-----------
@@ -92,7 +93,10 @@ if %ERRORLEVEL% EQU 0 (
 
 :mkbuild
 if not exist build (
+    echo Windows build cache FALSE
     mkdir build
+) else (
+    echo Windows build cache TRUE
 )
 cd /d build
 dir .
@@ -224,13 +228,13 @@ echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT%
+-DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD%
 
 cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT%
+-DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD%
 goto:eof
 
 :cmake_error
@@ -282,6 +286,8 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo Build Paddle successfully!
+echo 0 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 
 goto:eof
 
@@ -624,8 +630,6 @@ taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
-echo 0 > %cache_dir%\error_code.txt
-type %cache_dir%\error_code.txt
 echo Windows CI run successfully!
 exit /b 0
 
