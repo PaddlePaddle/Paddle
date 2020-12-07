@@ -246,6 +246,7 @@ function cmake_base() {
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
         -DLITE_GIT_TAG=develop
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -279,7 +280,8 @@ EOF
 	    -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=develop \
         -DWITH_XPU=${WITH_XPU:-OFF} \
-        -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
+        -DWITH_LITE=${WITH_LITE:-OFF} \
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
