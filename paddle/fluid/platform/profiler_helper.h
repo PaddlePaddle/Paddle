@@ -649,8 +649,14 @@ void PrintProfiler(
       }
       std::cout << std::setw(data_width) << event_item.min_time
                 << std::setw(data_width) << event_item.max_time
-                << std::setw(data_width) << event_item.ave_time
-                << std::setw(data_width) << event_item.ratio << std::endl;
+                << std::setw(data_width) << event_item.ave_time;
+      if(event_item.name.find("ext_reorder") != std::string::npos || event_item.name.find("int_reorder") != std::string::npos){
+        std::cout << event_item.ratio << '*';
+      }
+      else{
+        std::cout << std::setw(data_width) << event_item.ratio;
+      }
+      std::cout << std::endl;
 
       PrintProfiler(child_table, child_map, sorted_func, sorted_by, overhead,
                     sorted_domain, name_width, data_width, merge_thread,
@@ -712,14 +718,21 @@ void AnalyzeEvent(
       }
     }
     for (size_t j = 0; j < table_size; ++j) {
-      if (child_index[j] == 0) {                    // pushes and counts only parents, ensures that time will not be counted twice
+      if (child_index[j] == 0) {  // pushes and counts only parents, ensures
+                                  // that time will not be counted twice
         main_event_items.push_back(event_items[j]);
         total += event_items[j].total_time;
-      } else if ((child_index[j] == 1 && (event_items[j].name.find("ext_reorder") != std::string::npos || event_items[j].name.find("int_reorder") != std::string::npos )) || platform::GetTracerOption() == TracerOption::kAllOpDetail) {
+      } else if ((child_index[j] == 1 &&
+                  (event_items[j].name.find("ext_reorder") !=
+                       std::string::npos ||
+                   event_items[j].name.find("int_reorder") !=
+                       std::string::npos)) &&
+                 platform::GetTracerOption() != TracerOption::kAllOpDetail) {
         size_t first_slash_pos = event_items[j].name.find('/');
-        if(first_slash_pos != std::string::npos){
+        if (first_slash_pos != std::string::npos) {
           std::string fname = event_items[j].name.substr(0, first_slash_pos);
-          child_map->insert(std::pair<std::string, EventItem>(fname, event_items[j]));
+          child_map->insert(
+              std::pair<std::string, EventItem>(fname, event_items[j]));
         }
       }
     }
@@ -727,6 +740,14 @@ void AnalyzeEvent(
     for (auto &item : main_event_items) {
       item.ave_time = item.total_time / item.calls;
       item.ratio = item.total_time / total;
+      if(platform::GetTracerOption() != TracerOption::kAllOpDetail){
+        for(auto it = child_map->begin(); it != child_map->end(); ++it){
+          if((*it).first == item.name){
+            (*it).second.ratio = (*it).second.total_time / item.total_time;
+            break; // to find only first item
+          }
+        }
+      }
     }
     for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
       it->second.ratio = it->second.total_time / total;

@@ -239,7 +239,8 @@ class MKLDNNHandlerT {
 
     mkldnn::stream astream(engine_);
 
-    platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+    platform::RecordEvent record_reorder("int_reorder",
+                                         platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                  {MKLDNN_ARG_TO, *target_memory_p}});
     astream.wait();
@@ -266,7 +267,8 @@ class MKLDNNHandlerT {
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
 
         mkldnn::stream astream(engine_);
-        platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                      {MKLDNN_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -285,7 +287,8 @@ class MKLDNNHandlerT {
       auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
-        platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                      {MKLDNN_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -431,7 +434,8 @@ class MKLDNNHandler {
           std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
       dev_ctx_.SetBlob(key_reorder_p, reorder_p);
       mkldnn::stream astream(engine_);
-      platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
       reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                    {MKLDNN_ARG_TO, *target_memory_p}});
       astream.wait();
@@ -479,7 +483,8 @@ class MKLDNNHandler {
             std::shared_ptr<mkldnn::reorder>(new mkldnn::reorder(*reorder_pd));
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
 
-        platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                      {MKLDNN_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -490,7 +495,8 @@ class MKLDNNHandler {
       auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
-        platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                      {MKLDNN_ARG_TO, *target_memory_p}});
         astream.wait();

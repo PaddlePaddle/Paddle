@@ -809,7 +809,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             dev_ctx.GetBlob(user_src_key));
         user_src_memory_p->set_data_handle(to_void_cast<T>(input_data));
         {
-          platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+          platform::RecordEvent record_reorder("int_reorder",
+                                               platform::EventRole::kUniqueOp);
           src_memory_reorder_p->execute(astream, *user_src_memory_p,
                                         *src_memory_p);
           astream.wait();
@@ -844,7 +845,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         auto user_residual_data_p = std::static_pointer_cast<mkldnn::memory>(
             dev_ctx.GetBlob(user_residual_key));
         {
-          platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+          platform::RecordEvent record_reorder("int_reorder",
+                                               platform::EventRole::kUniqueOp);
           residual_reorder_p->execute(astream, *user_residual_data_p,
                                       *dst_memory_p);
           astream.wait();
@@ -1101,9 +1103,10 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
             handler.AcquireReorder(reorder_dst_memory_p, diff_weights_memory_p);
 
         {
-          platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+          platform::RecordEvent record_reorder("int_reorder",
+                                               platform::EventRole::kUniqueOp);
           reorder_p->execute(astream, *diff_weights_memory_p,
-                            *reorder_dst_memory_p);
+                             *reorder_dst_memory_p);
           astream.wait();
         }
 

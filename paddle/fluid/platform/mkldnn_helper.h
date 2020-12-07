@@ -189,7 +189,8 @@ inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
                     const mkldnn::engine& engine) {
   auto reorder_prim = mkldnn::reorder(src, dst);
   mkldnn::stream astream(engine);
-  platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+  platform::RecordEvent record_reorder("int_reorder",
+                                       platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
 }

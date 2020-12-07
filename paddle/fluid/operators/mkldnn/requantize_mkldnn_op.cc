@@ -139,7 +139,8 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
     dnnl::stream astream(engine);
     {
-      platform::RecordEvent record_reorder("int_reorder", platform::EventRole::kUniqueOp);
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
       reorder_p->execute(astream, *src_memory, *dst_memory);
       astream.wait();
     }
