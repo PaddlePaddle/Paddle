@@ -439,11 +439,18 @@ if(WITH_GPU AND TENSORRT_FOUND)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_unserialized.tgz")
     endif()
 
-    inference_analysis_test(test_trt_dynamic_shape_ernie_ser_deser SRCS trt_dynamic_shape_ernie_deserialize_test.cc
+    inference_analysis_test(test_trt_dynamic_shape_ernie_ser_deser SRCS trt_dynamic_shape_ernie_serialize_deserialize_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized)
 
+    set(TEST_TRT_ERNIE_UNSER_FP16_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_fp16_unserialized/")
+    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_FP16_MODEL}/ernie_model_4_unserialized.tgz)
+        inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_fp16_unserialized.tgz")
+    endif()
 
+    inference_analysis_test(test_trt_dynamic_shape_ernie_fp16_ser_deser SRCS trt_dynamic_shape_ernie_fp16_serialize_deserialize_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_fp16_unserialized)
 endif()
 
 set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")
