@@ -1,10 +1,10 @@
-# CMake file `unity_build` is used to handle Unity Build compilation.
+#CMake file `unity_build` is used to handle Unity Build compilation.
 include(unity_build)
 set(PART_CUDA_KERNEL_FILES)
 function(op_library TARGET)
-    # op_library is a function to create op library. The interface is same as
-    # cc_library. But it handle split GPU/CPU code and link some common library
-    # for ops.
+#op_library is a function to create op library.The interface is same as
+#cc_library.But it handle split GPU / CPU code and link some common library
+#for ops.
     set(cc_srcs)
     set(cu_srcs)
     set(hip_cu_srcs)
@@ -19,7 +19,8 @@ function(op_library TARGET)
     set(mkldnn_cc_srcs)
     set(MKLDNN_FILE)
     set(op_common_deps operator op_registry math_function layer common_infer_shape_functions)
-    # Option `UNITY` is used to specify that operator `TARGET` will compiles with Unity Build.
+#Option `UNITY` is used to specify that operator `TARGET` will compiles with \
+    Unity Build.
     set(options UNITY)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
@@ -121,7 +122,8 @@ function(op_library TARGET)
         message(FATAL_ERROR "The op library ${TARGET} should contains at least one .cc file")
     endif()
     if (WIN32)
-    # remove windows unsupported op, because windows has no nccl, no warpctc such ops.
+#remove windows unsupported op, because windows has no nccl, \
+    no warpctc such ops.
     foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op")
         if ("${TARGET}" STREQUAL "${windows_unsupport_op}")
           return()
@@ -129,9 +131,10 @@ function(op_library TARGET)
     endforeach()
     endif(WIN32)
 
-    # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
+#Unity Build relies on global option `WITH_UNITY_BUILD` and local \
+    option `UNITY`.
     if(WITH_UNITY_BUILD AND op_library_UNITY)
-        # Generate the unity target name by the directory where source files located.
+#Generate the unity target name by the directory where source files located.
         string(REPLACE "${PADDLE_SOURCE_DIR}/paddle/fluid/" "" UNITY_TARGET ${CMAKE_CURRENT_SOURCE_DIR})
         string(REPLACE "/" "_" UNITY_TARGET ${UNITY_TARGET})
         set(UNITY_TARGET "paddle_${UNITY_TARGET}_unity")
@@ -147,40 +150,42 @@ function(op_library TARGET)
         set(DEPS_OPS ${TARGET} ${DEPS_OPS} PARENT_SCOPE)
     endif()
     if (WITH_GPU)
-        # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
+#Unity Build relies on global option `WITH_UNITY_BUILD` and local \
+    option `UNITY`.
         if(WITH_UNITY_BUILD AND op_library_UNITY)
-            # Combine the cc and cu source files.
+#Combine the cc and cu source files.
             compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${mkldnn_cc_srcs})
             compose_unity_target_sources(${UNITY_TARGET} cu ${cudnn_cu_srcs} ${cu_srcs})
             if(TARGET ${UNITY_TARGET})
-                # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
+#If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
                 target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources} ${unity_target_cu_sources})
             else()
-                # If `UNITY_TARGET` does not exist, create `UNITY_TARGET` with source files.
+#If `UNITY_TARGET` does not exist, create `UNITY_TARGET` with source files.
                 nv_library(${UNITY_TARGET} SRCS ${unity_target_cc_sources} ${unity_target_cu_sources} DEPS ${op_library_DEPS} ${op_common_deps})
             endif()
-            # Add alias library to handle dependencies.
+#Add alias library to handle dependencies.
             add_library(${TARGET} ALIAS ${UNITY_TARGET})
         else()
             nv_library(${TARGET} SRCS ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${cudnn_cu_srcs} ${mkldnn_cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
         endif()
-    elseif (WITH_AMD_GPU)
-        hip_library(${TARGET} SRCS ${cc_srcs} ${hip_cu_srcs} ${miopen_hip_cc_srcs} ${mkldnn_cc_srcs} DEPS ${op_library_DEPS}
+    elseif (WITH_ROCM_PLATFORM)
+	hip_library_ops(${TARGET} SRCS ${cc_srcs} ${hip_cu_cc_srcs} ${hip_cu_srcs} ${miopen_hip_cu_cc_srcs} ${miopen_hip_cu_srcs} ${mkldnn_cc_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
     else()
-        # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
+#Unity Build relies on global option `WITH_UNITY_BUILD` and local \
+    option `UNITY`.
         if(WITH_UNITY_BUILD AND op_library_UNITY)
-            # Combine the cc source files.
+#Combine the cc source files.
             compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs})
             if(TARGET ${UNITY_TARGET})
-                # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
+#If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
                 target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources})
             else()
-                # If `UNITY_TARGET` does not exist, create `UNITY_TARGET` with source files.
+#If `UNITY_TARGET` does not exist, create `UNITY_TARGET` with source files.
                 cc_library(${UNITY_TARGET} SRCS ${unity_target_cc_sources} DEPS ${op_library_DEPS} ${op_common_deps})
             endif()
-            # Add alias library to handle dependencies.
+#Add alias library to handle dependencies.
             add_library(${TARGET} ALIAS ${UNITY_TARGET})
         else()
             cc_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} DEPS ${op_library_DEPS}
@@ -188,7 +193,7 @@ function(op_library TARGET)
         endif()
     endif()
 
-    # Define operators that don't need pybind here.
+#Define operators that don't need pybind here.
     foreach(manual_pybind_op "compare_all_op" "compare_op" "logical_op" "nccl_op"
 "tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op"
 "fusion_transpose_flatten_concat_op" "fusion_conv_inception_op"
@@ -200,12 +205,14 @@ function(op_library TARGET)
         endif()
     endforeach()
 
-    # The registration of USE_OP, please refer to paddle/fluid/framework/op_registry.h.
-    # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
-    # And for detail pybind information, please see generated paddle/pybind/pybind.h.
+#The registration of USE_OP, \
+    please refer to paddle / fluid / framework / op_registry.h.
+#Note that it's enough to just adding one operator to pybind in a *_op.cc file.
+#And for detail pybind information, \
+    please see generated paddle / pybind / pybind.h.
     file(READ ${TARGET}.cc TARGET_CONTENT)
     string(REGEX MATCH "REGISTER_OPERATOR\\(.*REGISTER_OPERATOR\\(" multi_register "${TARGET_CONTENT}")
-    # [ \t\r\n]* is used for blank characters
+#[ \t\r\n] * is used for blank characters
     string(REGEX MATCH "REGISTER_OPERATOR\\([ \t\r\n]*[a-z0-9_]*," one_register "${multi_register}")
 
     if (one_register STREQUAL "")
@@ -213,13 +220,13 @@ function(op_library TARGET)
     else ()
         string(REPLACE "REGISTER_OPERATOR(" "" TARGET "${one_register}")
         string(REPLACE "," "" TARGET "${TARGET}")
-        # [ \t\r\n]+ is used for blank characters.
-        # Here we use '+' instead of '*' since it is a REPLACE operation.
+#[ \t\r\n] + is used for blank characters.
+#Here we use '+' instead of '*' since it is a REPLACE operation.
         string(REGEX REPLACE "[ \t\r\n]+" "" TARGET "${TARGET}")
     endif()
 
-    # pybind USE_NO_KERNEL_OP
-    # HACK: if REGISTER_OP_CPU_KERNEL presents the operator must have kernel
+#pybind USE_NO_KERNEL_OP
+#HACK : if REGISTER_OP_CPU_KERNEL presents the operator must have kernel
     string(REGEX MATCH "REGISTER_OP_CPU_KERNEL" regex_result "${TARGET_CONTENT}")
     string(REPLACE "_op" "" TARGET "${TARGET}")
     if (${pybind_flag} EQUAL 0 AND regex_result STREQUAL "")
@@ -227,7 +234,7 @@ function(op_library TARGET)
         set(pybind_flag 1)
     endif()
 
-    # pybind USE_CPU_ONLY_OP
+#pybind USE_CPU_ONLY_OP
     list(LENGTH cu_srcs cu_srcs_len)
     list(LENGTH cu_cc_srcs cu_cc_srcs_len)
     list(LENGTH mkldnn_cc_srcs mkldnn_cc_srcs_len)
@@ -240,7 +247,7 @@ function(op_library TARGET)
         set(pybind_flag 1)
     endif()
 
-    # pybind USE_OP_DEVICE_KERNEL for CUDNN
+#pybind USE_OP_DEVICE_KERNEL for CUDNN
     list(LENGTH cudnn_cu_cc_srcs cudnn_cu_cc_srcs_len)
     if (WITH_GPU AND ${cudnn_cu_cc_srcs_len} GREATER 0)
       if(${TARGET} STREQUAL "activation")
@@ -250,13 +257,13 @@ function(op_library TARGET)
       endif()
     endif()
 
-    # pybind USE_OP_DEVICE_KERNEL for CUDNN
+#pybind USE_OP_DEVICE_KERNEL for CUDNN
     list(LENGTH cudnn_cu_srcs cudnn_cu_srcs_len)
     if (WITH_GPU AND ${cudnn_cu_srcs_len} GREATER 0)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
     endif()
 
-    # pybind USE_OP_DEVICE_KERNEL for MIOPEN
+#pybind USE_OP_DEVICE_KERNEL for MIOPEN
     list(LENGTH miopen_hip_cu_cc_srcs miopen_hip_cu_cc_srcs_len)
     if (WITH_ROCM_PLATFORM AND ${miopen_hip_cu_cc_srcs_len} GREATER 0)
       if(${TARGET} STREQUAL "activation")
@@ -265,8 +272,8 @@ function(op_library TARGET)
        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
       endif()
     endif()
- 
-    # pybind USE_OP_DEVICE_KERNEL for MIOPEN
+
+#pybind USE_OP_DEVICE_KERNEL for MIOPEN
     list(LENGTH miopen_hip_cu_srcs miopen_hip_cu_srcs_len)
     if (WITH_ROCM_PLATFORM AND ${miopen_hip_cu_srcs_len} GREATER 0)
        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
@@ -276,9 +283,9 @@ function(op_library TARGET)
     if (WITH_XPU AND ${xpu_cc_srcs_len} GREATER 0)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
     endif()
-    # pybind USE_OP_DEVICE_KERNEL for MKLDNN
+#pybind USE_OP_DEVICE_KERNEL for MKLDNN
     if (WITH_MKLDNN AND ${mkldnn_cc_srcs_len} GREATER 0)
-      # Append first implemented MKLDNN activation operator
+#Append first implemented MKLDNN activation operator
       if (${MKLDNN_FILE} STREQUAL "activation_mkldnn_op")
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(relu, MKLDNN);\n")
       elseif(${MKLDNN_FILE} STREQUAL "conv_mkldnn_op")
@@ -298,9 +305,9 @@ function(op_library TARGET)
       endif()
     endif()
 
-    # pybind USE_OP
+#pybind USE_OP
     if (${pybind_flag} EQUAL 0)
-      # NOTE(*): activation use macro to regist the kernels, set use_op manually.
+#NOTE(*) : activation use macro to regist the kernels, set use_op manually.
       if(${TARGET} STREQUAL "activation")
         file(APPEND ${pybind_file} "USE_OP(relu);\n")
       elseif(${TARGET} STREQUAL "fake_dequantize")
@@ -341,7 +348,7 @@ function(register_operators)
         endif()
     endforeach()
 
-    # Complete the processing of `UNITY_TARGET`.
+#Complete the processing of `UNITY_TARGET`.
     if(WITH_UNITY_BUILD)
         finish_unity_target(cc)
         if(WITH_GPU)
