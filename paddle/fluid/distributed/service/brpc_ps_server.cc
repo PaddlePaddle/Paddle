@@ -51,20 +51,25 @@ int32_t BrpcPsServer::initialize() {
 }
 
 uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
+  std::unique_lock<std::mutex> lock(mutex_);
+
   std::string ip_port = ip + ":" + std::to_string(port);
   VLOG(3) << "server of rank " << _rank << " starts at " << ip_port;
   brpc::ServerOptions options;
   options.num_threads = 50;
+
   if (_server.Start(ip_port.c_str(), &options) != 0) {
     LOG(ERROR) << "BrpcPsServer start failed, ip_port=" << ip_port;
     return 0;
   }
+
   _environment->registe_ps_server(ip, port, _rank);
+  cv_.wait(lock, [&] { return stoped_; });
+
   PSHost host;
   host.ip = ip;
   host.port = port;
   host.rank = _rank;
-  _server.RunUntilAskedToQuit();
   return host.serialize_to_uint64();
 }
 
