@@ -64,6 +64,7 @@ uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
   host.ip = ip;
   host.port = port;
   host.rank = _rank;
+  _server.RunUntilAskedToQuit();
   return host.serialize_to_uint64();
 }
 

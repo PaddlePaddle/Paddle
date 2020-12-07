@@ -520,8 +520,7 @@ class TheOnePSRuntime(RuntimeBase):
             # for ps-heter mode, wait heter worker ready
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
             ):
-                wait_server_ready(
-                    self.role_maker._get_heter_worker_endpoints())
+                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
     def _get_executor(self):
         executor = fluid.Executor(fluid.CPUPlace())
@@ -549,8 +548,7 @@ class TheOnePSRuntime(RuntimeBase):
             accessor.accessor_class = "CommMergeAccessor"
             accessor.optimizer = None
             accessor.feature_dim = 0 if ctx.is_sparse() else ctx.sections()[0]
-            accessor.embedding_dim = ctx.sections()[
-                0] if ctx.is_sparse() else 1
+            accessor.embedding_dim = ctx.sections()[0] if ctx.is_sparse() else 1
             return accessor
 
         def _build_barrier_table(idx):
@@ -681,8 +679,7 @@ class TheOnePSRuntime(RuntimeBase):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 
         dist_varnames = get_sparse_tablenames(self.origin_main_program, True)
-        sparse_varnames = get_sparse_tablenames(
-            self.origin_main_program, False)
+        sparse_varnames = get_sparse_tablenames(self.origin_main_program, False)
 
         distributed_varnames = dist_varnames + sparse_varnames
 
@@ -728,14 +725,6 @@ class TheOnePSRuntime(RuntimeBase):
         ep = self.compiled_strategy.get_ps_endpoint()
         host, port = ep.split(":")
         self._server.run_server(host, int(port))
-
-        CRED = '\033[91m'
-        CEND = '\033[0m'
-        print(CRED + "WARNING: running parameter server for ever" + CEND)
-
-        import time
-        while True:
-            time.sleep(1000)
 
     def _init_heter_worker(self):
         executor = self._get_executor()
