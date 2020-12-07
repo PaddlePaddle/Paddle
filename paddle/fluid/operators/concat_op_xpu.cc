@@ -11,18 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
+#ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/operators/concat_op.h"
-
 #include <memory>
 #include <string>
 #include <vector>
-
-#ifdef PADDLE_WITH_MKLDNN
-#include <paddle/fluid/platform/mkldnn_helper.h>
-#endif
-
-#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu_header.h"
 
 namespace paddle {
 namespace operators {
@@ -32,8 +26,8 @@ template <typename DeviceContext, typename T>
 class ConcatXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
+    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
     int axis = ctx.Attr<int>("axis");
     PADDLE_ENFORCE_NE(ins[0], nullptr, platform::errors::InvalidArgument(
                                            "The input should not be null."));
@@ -47,6 +41,7 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LT(axis, ins[0]->dims().size(),
                       platform::errors::InvalidArgument(
                           "concat: axis shoud < ins[0]->dims()!"));
+
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
     std::vector<int> choose_idx;
@@ -57,43 +52,54 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
         n++;
       }
     }
-    PADDLE_ENFORCE_LE(n, 8, platform::errors::InvalidArgument(
-                                "XPU only surpport at most 8 tensors for now"));
     PADDLE_ENFORCE_GT(
         n, 0, platform::errors::InvalidArgument("No tensor need concat?"));
-    int h = 1;
-    int w_except_axis = 1;
-    for (int i = 0; i < axis; ++i) {
-      h *= (ins[choose_idx[0]]->dims())[i];
-    }
-    for (int i = axis + 1; i < ins[0]->dims().size(); ++i) {
-      w_except_axis *= (ins[choose_idx[0]]->dims())[i];
-    }
-    for (int i = 1; i < n; ++i) {
-      int hh = 1;
-      int ww = 1;
-      for (int j = 0; j < axis; ++j) {
-        hh *= (ins[choose_idx[i]]->dims())[j];
+
+    // If axis is 0, the lod of the output is not the same as inputs.
+    if (axis == 0 && ins[0]->lod().size() > 0) {
+      size_t lod_size_0 = ins[0]->lod().size();
+      size_t lod_size = lod_size_0;
+      for (size_t i = 1; i < ins.size(); ++i) {
+        if (ins[i]->lod().size() > 0) {
+          PADDLE_ENFORCE_EQ(
+              ins[i]->lod().size(), lod_size_0,
+              platform::errors::Unimplemented(
+                  "The lod level of all input LoDTensors should be same. "
+                  "Maybe different lod level of input LoDTensors can concat,"
+                  "it is not supported currently. The lod level of %dth input "
+                  "is %d and first input is %d.",
+                  i, ins[i]->lod().size(), lod_size_0));
+        } else {
+          lod_size = 0;
+          break;
+        }
       }
-      for (int j = axis + 1; j < ins[i]->dims().size(); ++j) {
-        ww *= (ins[choose_idx[i]]->dims())[j];
+      if (lod_size) {
+        auto* out_lod = out->mutable_lod();
+        for (size_t i = 1; i < ins.size(); ++i) {
+          auto in_lod = ConvertToLengthBasedLoD(ins[i]->lod());
+          AppendLoD(out_lod, in_lod);
+        }
       }
-      PADDLE_ENFORCE_EQ(hh, h, platform::errors::InvalidArgument(
-                                   "concat: h should be eual!"));
-      PADDLE_ENFORCE_EQ(ww, w_except_axis,
-                        platform::errors::InvalidArgument(
-                            "concat: w should be eual except for axis!"));
     }
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    std::unique_ptr<int[]> in_w_host(new int[n]);
-    std::unique_ptr<const float* []> ptrs(new const float*[n]);
+
+    auto input_dims = ins[0]->dims();
+    std::vector<std::vector<int>> xdims_list(n);
     for (int i = 0; i < n; ++i) {
-      ptrs[i] = ins[choose_idx[i]]->data<T>();
-      in_w_host[i] = w_except_axis * (ins[choose_idx[i]]->dims())[axis];
+      std::vector<int> tmp_dims(input_dims.size());
+      for (int j = 0; j < input_dims.size(); ++j) {
+        tmp_dims[j] = ins[i]->dims()[j];
+      }
+      xdims_list[i] = tmp_dims;
     }
-    int r =
-        xpu::concat<float>(dev_ctx.x_context(), h, (const int*)in_w_host.get(),
-                           n, (const float**)ptrs.get(), out->data<T>());
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    std::vector<const T*> ptrs;
+    for (int i = 0; i < n; ++i) {
+      ptrs.push_back(ins[choose_idx[i]]->data<T>());
+    }
+    int r = xpu::concat<T>(dev_ctx.x_context(), ptrs, out->data<T>(),
+                           xdims_list, axis);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External(
@@ -102,6 +108,7 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
             r));
   }
 };
+
 template <typename DeviceContext, typename T>
 class ConcatGradXPUKernel : public framework::OpKernel<T> {
  public:
@@ -132,13 +139,15 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
                        static_cast<int64_t>(ins[0]->dims().size()));
     // get output tensor that the name is not kEmptyVarName
     std::vector<framework::Tensor*> outputs;
+    std::vector<int> choose_idx;
+    int n = 0;
     for (size_t j = 0; j < outs.size(); ++j) {
       if (out_var_names[j] != framework::kEmptyVarName &&
           outs[j]->numel() != 0UL) {
         outs[j]->mutable_data<T>(ctx.GetPlace());
         outputs.push_back(outs[j]);
-      } else {
-        outputs.push_back(nullptr);
+        choose_idx.push_back(j);
+        n++;
       }
     }
     PADDLE_ENFORCE_GE(axis, 0, platform::errors::InvalidArgument(
@@ -146,23 +155,31 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LT(axis, out_grad->dims().size(),
                       platform::errors::InvalidArgument(
                           "concat_grad: axis shoud < ins[0]->dims()!"));
-    auto out_grad_stride = framework::stride_numel(out_grad->dims());
-    int n = outputs.size();
-    PADDLE_ENFORCE_LE(n, 16,
-                      platform::errors::InvalidArgument(
-                          "XPU only surpport at most 16 tensors for now"));
-    int h = out_grad_stride[0] / out_grad_stride[axis];
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    std::unique_ptr<int[]> in_w_host(new int[n]);
-    std::unique_ptr<float* []> ptrs(new float*[n]);
+
+    auto input_dims = ins[0]->dims();
+    std::vector<int> split_list(n);
+    std::vector<int> xdims_list(input_dims.size());
+    int total_length = 0;
     for (int i = 0; i < n; ++i) {
-      auto out_stride = framework::stride_numel(outputs[i]->dims());
-      ptrs[i] = outputs[i]->data<T>();
-      in_w_host[i] = out_stride[axis];
+      split_list[i] = ins[i]->dims()[axis];
+      total_length += ins[i]->dims()[axis];
     }
-    int r = xpu::concat_grad(dev_ctx.x_context(), h, in_w_host.get(), n,
-                             reinterpret_cast<float**>(ptrs.get()),
-                             out_grad->data<T>());
+    for (int i = 0; i < input_dims.size(); ++i) {
+      if (i == axis) {
+        continue;
+      }
+      xdims_list[i] = input_dims[i];
+    }
+    xdims_list[axis] = total_length;
+
+    std::vector<T*> ptrs(n);
+    for (int i = 0; i < n; ++i) {
+      ptrs[i] = outputs[i]->data<T>();
+    }
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    int r = xpu::split<T>(dev_ctx.x_context(), out_grad->data<T>(), ptrs,
+                          xdims_list, split_list, axis);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External(

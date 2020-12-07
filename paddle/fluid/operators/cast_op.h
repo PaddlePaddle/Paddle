@@ -82,6 +82,17 @@ class CastOpKernel : public framework::OpKernel<InT> {
       CastFunction<DeviceContext, InT, uint8_t>(context);
     } else if (out_type == paddle::framework::proto::VarType::BOOL) {
       CastFunction<DeviceContext, InT, bool>(context);
+    } else if (out_type == paddle::framework::proto::VarType::COMPLEX64) {
+      CastFunction<DeviceContext, InT, paddle::platform::complex64>(context);
+    } else if (out_type == paddle::framework::proto::VarType::COMPLEX128) {
+      CastFunction<DeviceContext, InT, paddle::platform::complex128>(context);
+    } else {
+      // NOTE(chenweihang): if else branch do nothing, the output var will
+      // be non-initialized in dygraph, which will throw error if the
+      // non-initialized var is used as the next op's input
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Now does not support casting Tensor to `%s` data type.",
+          framework::DataTypeToString(out_type)));
     }
   }
 };

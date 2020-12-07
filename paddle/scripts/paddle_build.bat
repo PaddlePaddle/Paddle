@@ -92,7 +92,10 @@ if %ERRORLEVEL% EQU 0 (
 
 :mkbuild
 if not exist build (
+    echo Windows build cache FALSE
     mkdir build
+) else (
+    echo Windows build cache TRUE
 )
 cd /d build
 dir .
@@ -282,6 +285,8 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo Build Paddle successfully!
+echo 0 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 
 goto:eof
 
@@ -409,7 +414,7 @@ test_parallel_executor_transformer^|test_parallel_executor_transformer_auto_grow
 test_fuse_bn_add_act_pass^|test_activation_mkldnn_op^|test_tsm^|test_gru_rnn_op^|test_rnn_op^|test_simple_rnn_op^|test_pass_builder^|test_lstm_cudnn_op^|test_inplace_addto_strategy^|^
 test_ir_inplace_pass^|test_ir_memory_optimize_pass^|test_memory_reuse_exclude_feed_var^|test_mix_precision_all_reduce_fuse^|test_parallel_executor_pg^|test_print_op^|test_py_func_op^|^
 test_weight_decay^|test_mobile_net^|test_graph^|test_imperative_out_scale^|test_imperative_qat^|test_imperative_qat_channelwise^|test_moving_average_abs_max_scale_op^|^
-test_quantization_pass^|test_quantization_scale_pass^|test_user_defined_quantization^|test_matmul_v2_op^|test_conv2d_int8_mkldnn_op^|^
+test_quantization_pass^|test_quantization_scale_pass^|test_user_defined_quantization^|test_conv2d_int8_mkldnn_op^|^
 test_crypto^|test_callbacks^|test_program_prune_backward^|test_imperative_ocr_attention_model
 rem /*===============================================================*/
 
@@ -624,8 +629,6 @@ taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
-echo 0 > %cache_dir%\error_code.txt
-type %cache_dir%\error_code.txt
 echo Windows CI run successfully!
 exit /b 0
 

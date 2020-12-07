@@ -152,6 +152,17 @@ class TensorShapeTransformer(gast.NodeTransformer):
                         setattr(parent_node, field,
                                 create_convert_shape_node(var_shape_node))
                         break
+                    # Some child_node may be in a list such as gast.Compare
+                    if isinstance(value, list):
+                        has_converted_shape = False
+                        for i, v in enumerate(value):
+                            if child_node is v:
+                                value[i] = create_convert_shape_node(
+                                    var_shape_node)
+                                has_converted_shape = True
+                                break
+                        if has_converted_shape:
+                            break
         return need_transformed
 
     def _used_by_paddle_api(self, node):
