@@ -718,8 +718,7 @@ void AnalyzeEvent(
       }
     }
     for (size_t j = 0; j < table_size; ++j) {
-      if (child_index[j] == 0) {  // pushes and counts only parents, ensures
-                                  // that time will not be counted twice
+      if (child_index[j] == 0) {
         main_event_items.push_back(event_items[j]);
         total += event_items[j].total_time;
       } else if ((child_index[j] == 1 &&
