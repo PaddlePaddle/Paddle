@@ -650,10 +650,10 @@ void PrintProfiler(
       std::cout << std::setw(data_width) << event_item.min_time
                 << std::setw(data_width) << event_item.max_time
                 << std::setw(data_width) << event_item.ave_time;
-      if(event_item.name.find("ext_reorder") != std::string::npos || event_item.name.find("int_reorder") != std::string::npos){
+      if (event_item.name.find("ext_reorder") != std::string::npos ||
+          event_item.name.find("int_reorder") != std::string::npos) {
         std::cout << event_item.ratio << '*';
-      }
-      else{
+      } else {
         std::cout << std::setw(data_width) << event_item.ratio;
       }
       std::cout << std::endl;
@@ -740,11 +740,11 @@ void AnalyzeEvent(
     for (auto &item : main_event_items) {
       item.ave_time = item.total_time / item.calls;
       item.ratio = item.total_time / total;
-      if(platform::GetTracerOption() != TracerOption::kAllOpDetail){
-        for(auto it = child_map->begin(); it != child_map->end(); ++it){
-          if((*it).first == item.name){
+      if (platform::GetTracerOption() != TracerOption::kAllOpDetail) {
+        for (auto it = child_map->begin(); it != child_map->end(); ++it) {
+          if ((*it).first == item.name) {
             (*it).second.ratio = (*it).second.total_time / item.total_time;
-            break; // to find only first item
+            break;  // to find only first item
           }
         }
       }
