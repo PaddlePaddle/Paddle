@@ -41,8 +41,7 @@ static inline int SizeOutAxis(const int axis, DDim dims) {
 
 template <typename T, int VLEN>
 union vec_t {
-  static_assert(sizeof(T) == -1 &&
-                "vec_t is only available by specialization.");
+  static_assert(sizeof(T) == -1, "vec_t is only available by specialization.");
 };
 
 template <>
