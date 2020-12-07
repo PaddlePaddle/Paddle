@@ -343,6 +343,11 @@ class TensorRTSubgraphPassHardSigmoidTest(TensorRTSubgraphPassActivationTest):
         return fluid.layers.hard_sigmoid(x)
 
 
+class TensorRTSubgraphPassClipTest(TensorRTSubgraphPassActivationTest):
+    def append_act(self, x):
+        return fluid.layers.clip(x, 0, 1)
+
+
 class TensorRTSubgraphPassTanhTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
         return fluid.layers.tanh(x)
