@@ -443,31 +443,30 @@ def cuda_places(device_ids=None):
 def xpu_places(device_ids=None):
     """
     **Note**:
-        For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
-        The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
-    This function creates a list of :code:`paddle.CUDAPlace` objects.
+        For multi-card tasks, please use `FLAGS_selected_xpus` environment variable to set the visible XPU device.
+    This function creates a list of :code:`paddle.XPUPlace` objects.
     If :code:`device_ids` is None, environment variable of
-    :code:`FLAGS_selected_gpus` would be checked first. For example, if
-    :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
-    be [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
-    If :code:`FLAGS_selected_gpus` is not set, all visible
-    gpu places would be returned according to the :code:`CUDA_VISIBLE_DEVICES` environment variable.
+    :code:`FLAGS_selected_xpus` would be checked first. For example, if
+    :code:`FLAGS_selected_xpus=0,1,2`, the returned list would
+    be [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+    If :code:`FLAGS_selected_xpus` is not set, all visible
+    gpu places would be returned.
     If :code:`device_ids` is not None, it should be the device
-    ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
+    ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
     the returned list would be 
-    [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
+    [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
     
     Parameters:
-        device_ids (list or tuple of int, optional): list of GPU device ids.
+        device_ids (list or tuple of int, optional): list of XPU device ids.
     Returns:
-        list of paddle.CUDAPlace: Created GPU place list.
+        list of paddle.XPUPlace: Created XPU place list.
     Examples:
         .. code-block:: python
             import paddle
             import paddle.static as static
             
             paddle.enable_static()
-            cuda_places = static.cuda_places()
+            xpu_places = static.xpu_places()
     """
     assert core.is_compiled_with_xpu(), \
         "Not compiled with XPU"
