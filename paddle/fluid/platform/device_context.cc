@@ -47,6 +47,8 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
   if (platform::is_xpu_place(place)) {
     LOG(WARNING) << "Should consider xpu stream later";
     return Alloc(place, size);
+  } else {
+    return Alloc(place, size);
   }
 #else
   return Alloc(place, size);

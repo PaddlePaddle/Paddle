@@ -1489,8 +1489,10 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
       .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
-
-  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
+#ifdef PADDLE_WITH_XPU
+  m.def("get_xpu_device_count", platform::GetXPUDeviceCount)
+#endif
+      py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device.
     It represents a CPU device on which a tensor will be allocated and a model will run.
 
@@ -1501,16 +1503,16 @@ All parameter, weight, gradient are variables in Paddle.
           cpu_place = paddle.CPUPlace()
 
         )DOC")
-      .def(py::init<>())
-      .def("_type", &PlaceIndex<platform::CPUPlace>)
-      .def("_equals", &IsSamePlace<platform::CPUPlace, platform::Place>)
-      .def("_equals", &IsSamePlace<platform::CPUPlace, platform::XPUPlace>)
-      .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CUDAPlace>)
-      .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CPUPlace>)
-      .def("_equals",
-           &IsSamePlace<platform::CPUPlace, platform::CUDAPinnedPlace>)
-      .def("__repr__", string::to_string<const platform::CPUPlace &>)
-      .def("__str__", string::to_string<const platform::CPUPlace &>);
+          .def(py::init<>())
+          .def("_type", &PlaceIndex<platform::CPUPlace>)
+          .def("_equals", &IsSamePlace<platform::CPUPlace, platform::Place>)
+          .def("_equals", &IsSamePlace<platform::CPUPlace, platform::XPUPlace>)
+          .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CUDAPlace>)
+          .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CPUPlace>)
+          .def("_equals",
+               &IsSamePlace<platform::CPUPlace, platform::CUDAPinnedPlace>)
+          .def("__repr__", string::to_string<const platform::CPUPlace &>)
+          .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
     CUDAPinnedPlace is a descriptor of a device.
