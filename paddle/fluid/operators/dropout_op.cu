@@ -61,6 +61,41 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   }
 }
 
+template <typename T, int VLEN>
+union vec_t {
+  static_assert(sizeof(T) == -1, "vec_t is only available by specialization.");
+};
+
+template <>
+union vec_t<float, 4> {
+  float4 s;
+  float v[4];
+};
+
+template <>
+union vec_t<platform::float16, 4> {
+  int2 s;
+  platform::float16 v[4];
+};
+
+template <>
+union vec_t<platform::float16, 8> {
+  int4 s;
+  platform::float16 v[8];
+};
+
+template <>
+union vec_t<uint8_t, 4> {
+  uint32_t s;
+  uint8_t v[4];
+};
+
+template <>
+union vec_t<uint8_t, 8> {
+  uint2 s;
+  uint8_t v[8];
+};
+
 template <typename T, typename MaskType>
 __global__ void RandomGeneratorWithSeed(const size_t n, const int* seed,
                                         const float dropout_prob, const T* src,
@@ -132,6 +167,65 @@ __global__ void RandomGeneratorWithGenerator(const size_t n, uint64_t seed,
   }
 }
 
+template <typename T, typename MaskType, int VPT, bool UPSCALE_IN_TRAIN>
+__global__ void VecRandomGeneratorWithGenerator(const size_t n, uint64_t seed,
+                                                const float dropout_prob,
+                                                const T* src,
+                                                MaskType* mask_data, T* dst,
+                                                const int increment) {
+  int tid = blockDim.x * blockIdx.x + threadIdx.x;
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, tid, increment, &state);
+
+  T inv_upscale = static_cast<T>(1.f - dropout_prob);
+
+  for (int idx = tid * VPT; idx < n; idx += blockDim.x * gridDim.x * VPT) {
+    if (idx + VPT < n) {
+      vec_t<MaskType, VPT> mask;
+      vec_t<T, VPT> dest;
+      const float4 rn4 = curand_uniform4(&state);
+      const float* rn4p = reinterpret_cast<const float*>(&rn4);
+      vec_t<T, VPT> s;
+      s.s = reinterpret_cast<const decltype(s.s)*>(&src[idx])[0];
+      for (int i = 0; i < VPT; ++i) {
+        if (rn4p[i] < dropout_prob) {
+          mask.v[i] = 0;
+          dest.v[i] = 0;
+        } else {
+          mask.v[i] = 1;
+          if (UPSCALE_IN_TRAIN) {
+            dest.v[i] = s.v[i] * inv_upscale;
+          } else {
+            dest.v[i] = s.v[i];
+          }
+        }
+      }
+      reinterpret_cast<decltype(mask.s)*>(&mask_data[idx])[0] = mask.s;
+      reinterpret_cast<decltype(dest.s)*>(&dst[idx])[0] = dest.s;
+    } else {
+      for (int k = idx; k < n; ++k) {
+        const float rn = curand_uniform(&state);
+        T s = src[k];
+        MaskType mask;
+        T dest;
+        if (rn < dropout_prob) {
+          mask = 0;
+          dest = 0;
+        } else {
+          mask = 0;
+          if (UPSCALE_IN_TRAIN) {
+            dest = s * inv_upscale;
+          } else {
+            dest = s;
+          }
+        }
+        mask_data[k] = mask;
+        dst[k] = dest;
+      }
+    }
+  }
+}
+
 // It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
@@ -191,9 +285,49 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
       if (gen_cuda->GetIsInitPy() && (!context.Attr<bool>("fix_seed"))) {
         auto seed_offset = gen_cuda->IncrementOffset(1);
-        RandomGeneratorWithGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
-            size, seed_offset.first, dropout_prob, x_data, mask_data, y_data,
-            upscale_in_train, seed_offset.second);
+        grid = 160;
+        threads = 128;
+        constexpr int VPT = 4;
+        if (std::is_same<T, float>::value && size % VPT == 0) {
+          if (upscale_in_train) {
+            VecRandomGeneratorWithGenerator<float, uint8_t, VPT,
+                                            true><<<grid, threads, 0, stream>>>(
+                size, seed_offset.first, dropout_prob, x->data<float>(),
+                mask->mutable_data<uint8_t>(context.GetPlace()),
+                y->mutable_data<float>(context.GetPlace()), seed_offset.second);
+          } else {
+            VecRandomGeneratorWithGenerator<
+                float, uint8_t, VPT, false><<<grid, threads, 0, stream>>>(
+                size, seed_offset.first, dropout_prob, x->data<float>(),
+                mask->mutable_data<uint8_t>(context.GetPlace()),
+                y->mutable_data<float>(context.GetPlace()), seed_offset.second);
+          }
+        } else if (std::is_same<T, platform::float16>::value &&
+                   size % VPT == 0) {
+          if (upscale_in_train) {
+            VecRandomGeneratorWithGenerator<platform::float16, uint8_t, VPT,
+                                            true><<<grid, threads, 0, stream>>>(
+                size, seed_offset.first, dropout_prob,
+                x->data<platform::float16>(),
+                mask->mutable_data<uint8_t>(context.GetPlace()),
+                y->mutable_data<platform::float16>(context.GetPlace()),
+                seed_offset.second);
+          } else {
+            VecRandomGeneratorWithGenerator<
+                platform::float16, uint8_t, VPT,
+                false><<<grid, threads, 0, stream>>>(
+                size, seed_offset.first, dropout_prob,
+                x->data<platform::float16>(),
+                mask->mutable_data<uint8_t>(context.GetPlace()),
+                y->mutable_data<platform::float16>(context.GetPlace()),
+                seed_offset.second);
+          }
+        } else {
+          RandomGeneratorWithGenerator<T,
+                                       uint8_t><<<grid, threads, 0, stream>>>(
+              size, seed_offset.first, dropout_prob, x_data, mask_data, y_data,
+              upscale_in_train, seed_offset.second);
+        }
         return;
       }
 
