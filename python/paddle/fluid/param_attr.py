@@ -225,8 +225,8 @@ class WeightNormParamAttr(ParamAttr):
     Note:
         ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
-        There are three clipping strategies: :ref:`api_paddle_nn_GradientClipByGlobalNorm` , 
-        :ref:`api_fluid_clip_GradientClipByNorm` , :ref:`api_fluid_clip_GradientClipByValue` .
+        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` , 
+        :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
         
 
     Args:
@@ -244,8 +244,8 @@ class WeightNormParamAttr(ParamAttr):
             optimizer is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
             Default 1.0.
         regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are
-            two method: :ref:`api_paddle_fluid_regularizer_L1Decay` ,
-            :ref:`api_paddle_fluid_regularizer_L2DecayRegularizer`.
+            two method: :ref:`api_paddle_regularizer_L1Decay` ,
+            :ref:`api_paddle_regularizer_L2Decay`.
             If regularizer isralso set in ``optimizer``
             (such as :ref:`api_paddle_optimizer_SGD` ), that regularizer setting in
             optimizer will be ignored. Default None, meaning there is no regularization.
