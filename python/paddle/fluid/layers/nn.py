@@ -1403,7 +1403,7 @@ def conv2d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-        input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type
+        input (Tensor): The input is 4-D Tensor with shape [N, C, H, W], the data type
             of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -1456,9 +1456,9 @@ def conv2d(input,
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv2d, whose data type is the
-        same with input. If act is None, the tensor variable storing the convolution
-        result, and if act is not None, the tensor variable storing convolution
+        A Tensor representing the conv2d, whose data type is the
+        same with input. If act is None, the tensor storing the convolution
+        result, and if act is not None, the tensor storing convolution
         and non-linearity activation result.
 
     Raises:
@@ -1477,12 +1477,12 @@ def conv2d(input,
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
           import paddle
           paddle.enable_static()
           
-          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
+          data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
+          conv2d = paddle.static.nn.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
+          print(conv2d.shape) # [-1, 2, 30, 30]
     """
 
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
@@ -3805,7 +3805,7 @@ def conv2d_transpose(input,
           conv2d_transpose can compute the kernel size automatically.
 
     Args:
-        input(Variable): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
+        input(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
                          its data type is float32 or float64.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
@@ -3823,15 +3823,14 @@ def conv2d_transpose(input,
         stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
             If stride is a tuple, it must contain two integers, (stride_height, stride_width).
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
-        padding(int|list|str|tuple, optional): The padding size. The padding argument effectively adds
-             `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a
-             string, either 'VALID' or 'SAME' supported, which is the padding algorithm.
-             If `padding` is a tuple or list, it could be in three forms:
-             `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and
-            when `data_format` is `'NCHW'`,
-            `padding` can be in the form `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `'NHWC'`, `padding` can be in the form
+        padding(str|int|list|tuple, optional): The padding size. It means the number of zero-paddings 
+            on both sides for each dimension. If `padding` is a string, either 'VALID' or 
+            'SAME' which is the padding algorithm. If `padding` is a tuple or list,
+            it could be in three forms: `[pad_height, pad_width]` or 
+            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            and when `data_format` is `"NCHW"`, `padding` can be in the form 
+            `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NHWC"`, `padding` can be in the form 
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points.
@@ -3869,11 +3868,11 @@ def conv2d_transpose(input,
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv2d_transpose, whose
+        A Tensor representing the conv2d_transpose, whose
         data type is the same with input and shape is (num_batches, channels, out_h,
-        out_w) or (num_batches, out_h, out_w, channels). If act is None, the tensor variable
+        out_w) or (num_batches, out_h, out_w, channels). If act is None, the tensor 
         storing the transposed convolution result, and if act is not None, the
-        tensor variable storing transposed convolution and non-linearity activation
+        tensor storing transposed convolution and non-linearity activation
         result.
 
     Raises:
@@ -3892,11 +3891,12 @@ def conv2d_transpose(input,
     Examples:
        .. code-block:: python
 
-          import paddle.fluid as fluid
           import paddle
           paddle.enable_static()
-          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-          conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
+
+          data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
+          conv2d_transpose = paddle.static.nn.conv2d_transpose(input=data, num_filters=2, filter_size=3)
+          print(conv2d_transpose.shape) # [-1, 2, 34, 34]
     """
     assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
     if data_format not in ['NCHW', 'NHWC']:
