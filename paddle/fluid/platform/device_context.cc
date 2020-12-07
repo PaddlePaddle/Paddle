@@ -43,7 +43,7 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
     return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
         desired_dev_ctx, size);
   }
-#else
+#elif PADDLE_WITH_XPU
   if (platform::is_xpu_place(place)) {
     LOG(WARNING) << "Should consider xpu stream later";
     return Alloc(place, size);
@@ -59,7 +59,6 @@ namespace paddle {
 namespace platform {
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
-thread_local int DeviceContextPool::device_context_index = 0;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
