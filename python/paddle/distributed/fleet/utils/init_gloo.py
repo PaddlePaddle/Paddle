@@ -52,8 +52,8 @@ def init_gloo_with_http(ip, port, prefix, iface, init_timeout_sec,
     def init_kv_server(http_server_d):
         size_d = {
             "trainer": worker_num,
-            "pserver": ps_num,
-            "all": worker_num + ps_num
+            "pserver": server_num,
+            "all": worker_num + server_num
         }
 
         http_server_d["running"] = True
