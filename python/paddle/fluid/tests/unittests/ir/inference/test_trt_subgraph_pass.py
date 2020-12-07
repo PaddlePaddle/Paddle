@@ -343,6 +343,12 @@ class TensorRTSubgraphPassHardSigmoidTest(TensorRTSubgraphPassActivationTest):
         return fluid.layers.hard_sigmoid(x)
 
 
+class TensorRTSubgraphPassHardSigmoidPluginTest(
+        TensorRTSubgraphPassActivationTest):
+    def append_act(self, x):
+        return fluid.layers.hard_sigmoid(x, threshold=4.0, scale=8.0)
+
+
 class TensorRTSubgraphPassTanhTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
         return fluid.layers.tanh(x)
