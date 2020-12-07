@@ -107,9 +107,6 @@ hash -r
 curl --version
 curl-config --features
 
-# Now we can delete our built SSL
-rm -rf /usr/local/ssl
-
 # Install patchelf (latest with unreleased bug fixes)
 # FIXME(typhoonzero): restore this when the link is fixed.
 # curl -sLO http://nipy.bic.berkeley.edu/manylinux/patchelf-0.9njs2.tar.gz
