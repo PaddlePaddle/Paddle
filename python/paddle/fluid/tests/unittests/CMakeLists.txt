@@ -845,4 +845,3 @@ set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
 if(WIN32)
     set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 300)
 endif()
-
