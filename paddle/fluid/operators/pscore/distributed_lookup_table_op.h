@@ -51,6 +51,7 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
 
     auto fleet = distributed::FleetWrapper::GetInstance();
+
     if (platform::is_cpu_place(context.GetPlace())) {
       fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
                                     static_cast<uint64_t>(padding_idx),

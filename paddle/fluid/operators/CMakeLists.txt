@@ -60,10 +60,15 @@ if(WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
     SET(OP_MKL_DEPS ${OP_MKL_DEPS} pyramid_hash_op)
 endif()
 
-register_operators(EXCLUDES py_func_op warpctc_op dgc_op lstm_op run_program_op
-    sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+if(WITH_UNITY_BUILD)
+    # Load Unity Build rules for operators in paddle/fluid/operators.
+    include(unity_build_rule.cmake)
+endif()
 
-op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+register_operators(EXCLUDES py_func_op warpctc_op dgc_op lstm_op run_program_op
+sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+
+op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
@@ -77,7 +82,10 @@ if (WITH_GPU)
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
-op_library(lstm_op DEPS ${OP_HEADER_DEPS} lstm_compute)
+
+op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
+op_library(eye_op DEPS ${OP_HEADER_DEPS})
+op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
 
@@ -145,4 +153,11 @@ cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_o
 if(WITH_MKLDNN)
 include(mkldnn/inplace_op_tests.cmake)
 include(mkldnn/nhwc_op_tests.cmake)
+endif()
+
+if(WITH_UNITY_BUILD)
+    # Using Unity Build to compile operators, `register_operator` will cause
+    # the unity library to lose some symbols.
+    # The specified link dependency needs to be displayed here.
+    target_link_libraries(paddle_operators_unity ${OP_HEADER_DEPS} ${COMMON_OP_DEPS})
 endif()

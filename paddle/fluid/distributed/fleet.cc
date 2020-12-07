@@ -72,8 +72,9 @@ void FleetWrapper::InitServer(const std::string& dist_desc,
 void FleetWrapper::InitWorker(
     const std::string& dist_desc, const std::vector<uint64_t>& host_sign_list,
     Scope* scope, const RpcCtxMap& send_ctx,
-    const std::unordered_map<uint64_t, std::vector<std::string>> dense_varnames,
-    std::map<std::string, std::string>& envs, int node_num, int index) {
+    const std::unordered_map<uint64_t, std::vector<std::string>>&
+        dense_varnames,
+    const std::map<std::string, std::string>& envs, int node_num, int index) {
   if (!is_initialized_) {
     VLOG(3) << "Going to init worker";
 

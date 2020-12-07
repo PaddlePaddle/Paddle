@@ -1480,6 +1480,66 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   return data_type;
 }
 
+Tensor* OperatorWithKernel::GetTensorFormInputSafely(
+    const ExecutionContext& ctx, const std::string& name) const {
+  // 1. get variable and check
+  // NOTE: only supports signal input var now
+  // NOTE: using const_cast is because we don't have method
+  // can get single mutable var, and here will not change
+  // the var's data, only use some attribute
+  Variable* var = const_cast<Variable*>(ctx.InputVar(name));
+  PADDLE_ENFORCE_NOT_NULL(
+      var,
+      platform::errors::NotFound(
+          "The variable %s is not found when promote complex types.", name));
+  // 2. get tensor and check
+  Tensor* t = nullptr;
+  if (var->IsType<Tensor>()) {
+    t = var->GetMutable<Tensor>();
+  } else if (var->IsType<LoDTensor>()) {
+    t = var->GetMutable<LoDTensor>();
+  } else if (var->IsType<SelectedRows>()) {
+    t = var->GetMutable<SelectedRows>()->mutable_value();
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported input variable type in complex type promotion."));
+  }
+  PADDLE_ENFORCE_NOT_NULL(
+      t,
+      platform::errors::InvalidArgument(
+          "The Tensor of variable %s is nullptr when promote complex types."));
+  PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                    platform::errors::InvalidArgument(
+                        "The Tensor in the %s Op's Input Variable %s(%s) is "
+                        "not initialized.",
+                        Type(), name, ctx.InputName(name)));
+  return t;
+}
+
+/** NOTE(chenweihang): For safety reasons, we now only
+ * perform type promotes for binary operations with
+ * complex type inputs, which is used to support the
+ * paddle quantum function.
+ * In other cases, the first input data type is used as
+ * the kernel data type.
+ */
+proto::VarType::Type OperatorWithKernel::IndicateOrPromoteVarDataTypes(
+    const ExecutionContext& ctx, const std::string& name1,
+    const std::string& name2) const {
+  // 1. Get tensor
+  auto* tensor_a = GetTensorFormInputSafely(ctx, name1);
+  auto* tensor_b = GetTensorFormInputSafely(ctx, name2);
+
+  // 2. Get two input types
+  auto type_a = tensor_a->type();
+  auto type_b = tensor_b->type();
+
+  // 3. Get first input type or promote complex types
+  auto target_type = PromoteTypesIfComplexExists(type_a, type_b);
+
+  return target_type;
+}
+
 OpKernelType OperatorWithKernel::GetExpectedKernelType(
     const ExecutionContext& ctx) const {
   return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());

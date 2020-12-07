@@ -308,7 +308,10 @@ class TensorRTSubgraphPassActivationTest(InferencePassTest):
             use_gpu = True
             if os.path.exists(self.path + "_opt_cache"):
                 shutil.rmtree(self.path + "_opt_cache")
-            self.check_output_with_option(use_gpu)
+            if self.trt_parameters.precision == AnalysisConfig.Precision.Float32:
+                self.check_output_with_option(use_gpu)
+            else:
+                self.check_output_with_option(use_gpu, 1e-3)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
@@ -341,6 +344,11 @@ class TensorRTSubgraphPassHardSwishTest(TensorRTSubgraphPassActivationTest):
 class TensorRTSubgraphPassHardSigmoidTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
         return fluid.layers.hard_sigmoid(x)
+
+
+class TensorRTSubgraphPassClipTest(TensorRTSubgraphPassActivationTest):
+    def append_act(self, x):
+        return fluid.layers.clip(x, 0, 1)
 
 
 class TensorRTSubgraphPassTanhTest(TensorRTSubgraphPassActivationTest):
@@ -567,7 +575,7 @@ class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
             use_gpu = True
             if os.path.exists(self.path + "_opt_cache"):
                 shutil.rmtree(self.path + "_opt_cache")
-            self.check_output_with_option(use_gpu)
+            self.check_output_with_option(use_gpu, 1e-3)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 

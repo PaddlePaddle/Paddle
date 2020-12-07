@@ -158,10 +158,11 @@ class FleetWrapper {
   void InitWorker(const std::string& dist_desc,
                   const std::vector<uint64_t>& host_sign_list, Scope* scope,
                   const RpcCtxMap& send_ctx,
-                  const std::unordered_map<uint64_t, std::vector<std::string>>
+                  const std::unordered_map<uint64_t, std::vector<std::string>>&
                       dense_varnames,
-                  std::map<std::string, std::string>& envs, int node_num,
+                  const std::map<std::string, std::string>& envs, int node_num,
                   int index);
+
   // stop server
   void StopServer();
   // finalize worker to make worker can be stop

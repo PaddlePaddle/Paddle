@@ -142,8 +142,8 @@ FetchResultType AsyncSSAGraphExecutor::Run(
     if (strategy_.thread_barrier_) {
       paddle::distributed::Communicator::GetInstance()->BarrierTriggerReset(
           places_.size());
-#endif
     }
+#endif
     exception_holder_.Clear();
     StartOffPythonTrainLoop(return_merged);
   }

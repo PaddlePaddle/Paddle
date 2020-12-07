@@ -514,6 +514,9 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
 
+  m.def("_promote_types_if_complex_exists",
+        &paddle::framework::PromoteTypesIfComplexExists);
+
   BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
@@ -1372,7 +1375,6 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle
 
           place = paddle.CUDAPlace(0)
-          paddle.disable_static(place)
 
         )DOC")
       .def("__init__",

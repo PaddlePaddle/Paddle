@@ -395,11 +395,10 @@ class DataParallel(layers.Layer):
                                              1024)
             self.init_reducer()
         else:
-            warnings.warn(
-                "nranks is less than 2, "
-                "maybe you need to check the current system environment."
-                " Need to use spawn or fleetrun to "
-                "start distributed programs.")
+            warnings.warn("The program will return to single-card operation. "
+                          "Please check 1, whether you use spawn or fleetrun "
+                          "to start the program. 2. Whether it is a multi-card "
+                          "program. 3. Is the current environment multi-card.")
 
     def init_reducer(self):
         layers_param = []

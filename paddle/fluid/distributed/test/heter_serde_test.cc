@@ -128,7 +128,14 @@ void RunMultiVarMsg(platform::Place place) {
     EXPECT_FLOAT_EQ(tensor_data3[i], 32.7);
 }
 
-TEST(MultiVarMsg, Run) {
+TEST(MultiVarMsgCPU, Run) {
   platform::CPUPlace place;
   RunMultiVarMsg(place);
 }
+
+// #ifdef PADDLE_WITH_CUDA
+// TEST(MultiVarMsgGPU, Run) {
+//   platform::CUDAPlace place;
+//   RunMultiVarMsg(place);
+// }
+// #endif
