@@ -181,11 +181,8 @@ class Gloo(object):
             http_server.stop()
 
         def init_kv_server(http_server_d):
-            size_d = {
-                "trainer": self._worker_num,
-                "pserver": self._server_num,
-                "all": self._worker_num + self._server_num
-            }
+            worker_key = prefix + '_' + 'worker'
+            size_d = {worker_key: self._worker_num, }
 
             http_server_d["running"] = True
             # child process for http server
