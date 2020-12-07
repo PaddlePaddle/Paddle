@@ -17,9 +17,12 @@
 #include <ThreadPool.h>
 #include <assert.h>
 #include <pthread.h>
+#include <memory>
 #include <mutex>  // NOLINT
 #include <string>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 #include "Eigen/Dense"
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/common_table.h"
@@ -34,51 +37,51 @@ namespace distributed {
 
 class CommonSparseTable : public SparseTable {
  public:
-  explicit CommonSparseTable() { rwlock_.reset(new framework::RWLock); }
+  CommonSparseTable() { rwlock_.reset(new framework::RWLock); }
   virtual ~CommonSparseTable() {}
 
   // unused method begin
-  virtual int32_t pull_dense(float* pull_values, size_t num) { return 0; };
+  virtual int32_t pull_dense(float* pull_values, size_t num) { return 0; }
   virtual int32_t push_dense_param(const float* values, size_t num) {
     return 0;
-  };
-  virtual int32_t push_dense(const float* values, size_t num) { return 0; };
+  }
+  virtual int32_t push_dense(const float* values, size_t num) { return 0; }
   // unused method end
 
-  virtual int32_t initialize() override;
-  virtual int32_t initialize_shard() override { return 0; }
+  virtual int32_t initialize();
+  virtual int32_t initialize_shard() { return 0; }
   virtual void create_initializer(const std::string& attr,
                                   const std::string& name);
   virtual int32_t initialize_value();
   virtual int32_t initialize_optimizer();
   virtual int32_t initialize_recorder();
 
-  int32_t load(const std::string& path, const std::string& param) override;
+  int32_t load(const std::string& path, const std::string& param);
 
-  int32_t save(const std::string& path, const std::string& param) override;
+  int32_t save(const std::string& path, const std::string& param);
 
-  virtual std::pair<int64_t, int64_t> print_table_stat() override;
+  virtual std::pair<int64_t, int64_t> print_table_stat();
   virtual int32_t pull_sparse(float* pull_values, const uint64_t* keys,
-                              size_t num) override;
+                              size_t num);
 
   virtual int32_t push_sparse(const uint64_t* keys, const float* values,
-                              size_t num) override;
+                              size_t num);
 
   // only for sparse geo table
   virtual int32_t push_sparse_param(const uint64_t* keys, const float* values,
-                                    size_t num) override;
+                                    size_t num);
 
-  virtual int32_t pour() override;
-  virtual int32_t flush() override;
-  virtual int32_t shrink() override;
-  virtual void clear() override;
+  virtual int32_t pour();
+  virtual int32_t flush();
+  virtual int32_t shrink();
+  virtual void clear();
 
  protected:
   virtual int32_t _push_sparse(const uint64_t* keys, const float* values,
                                size_t num);
 
  private:
-  const int task_pool_size_ = 10;
+  const int task_pool_size_ = 11;
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
 
   bool sync = false;
