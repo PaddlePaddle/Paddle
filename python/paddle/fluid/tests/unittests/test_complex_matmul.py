@@ -26,48 +26,12 @@ class TestComplexMatMulLayer(unittest.TestCase):
         if fluid.core.is_compiled_with_cuda():
             self._places.append(fluid.CUDAPlace(0))
 
-    def compare_by_complex_api(self, x, y, np_result):
-        for place in self._places:
-            with dg.guard(place):
-                x_var = dg.to_variable(x)
-                y_var = dg.to_variable(y)
-                result = paddle.complex.matmul(x_var, y_var)
-                pd_result = result.numpy()
-                self.assertTrue(
-                    np.allclose(pd_result, np_result),
-                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
-                    format(place, pd_result[~np.isclose(pd_result, np_result)],
-                           np_result[~np.isclose(pd_result, np_result)]))
-
     def compare_by_basic_api(self, x, y, np_result):
         for place in self._places:
             with dg.guard(place):
-                x_var = fluid.core.VarBase(
-                    value=x,
-                    place=place,
-                    persistable=False,
-                    zero_copy=None,
-                    name='')
-                y_var = fluid.core.VarBase(
-                    value=y,
-                    place=place,
-                    persistable=False,
-                    zero_copy=None,
-                    name='')
-                result = paddle.matmul(x_var, y_var)
-                pd_result = result.numpy()
-                self.assertTrue(
-                    np.allclose(pd_result, np_result),
-                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
-                    format(place, pd_result[~np.isclose(pd_result, np_result)],
-                           np_result[~np.isclose(pd_result, np_result)]))
-
-    def compare_op_by_complex_api(self, x, y, np_result):
-        for place in self._places:
-            with dg.guard(place):
                 x_var = dg.to_variable(x)
                 y_var = dg.to_variable(y)
-                result = x_var.matmul(y_var)
+                result = paddle.matmul(x_var, y_var)
                 pd_result = result.numpy()
                 self.assertTrue(
                     np.allclose(pd_result, np_result),
@@ -78,18 +42,8 @@ class TestComplexMatMulLayer(unittest.TestCase):
     def compare_op_by_basic_api(self, x, y, np_result):
         for place in self._places:
             with dg.guard(place):
-                x_var = fluid.core.VarBase(
-                    value=x,
-                    place=place,
-                    persistable=False,
-                    zero_copy=None,
-                    name='')
-                y_var = fluid.core.VarBase(
-                    value=y,
-                    place=place,
-                    persistable=False,
-                    zero_copy=None,
-                    name='')
+                x_var = dg.to_variable(x)
+                y_var = dg.to_variable(y)
                 result = x_var.matmul(y_var)
                 pd_result = result.numpy()
                 self.assertTrue(
@@ -109,9 +63,6 @@ class TestComplexMatMulLayer(unittest.TestCase):
 
             np_result = np.matmul(x, y)
 
-            self.compare_by_complex_api(x, y, np_result)
-            self.compare_op_by_complex_api(x, y, np_result)
-
             self.compare_by_basic_api(x, y, np_result)
             self.compare_op_by_basic_api(x, y, np_result)
 
@@ -123,9 +74,6 @@ class TestComplexMatMulLayer(unittest.TestCase):
             y = np.random.random((2, 3, 5, 4)).astype(dtype)
 
             np_result = np.matmul(x, y)
-
-            self.compare_by_complex_api(x, y, np_result)
-            self.compare_op_by_complex_api(x, y, np_result)
 
             # float -> complex type promotion
             self.compare_by_basic_api(x, y, np_result)
@@ -139,8 +87,6 @@ class TestComplexMatMulLayer(unittest.TestCase):
                     (2, 3, 5, 4)).astype(dtype)
 
             np_result = np.matmul(x, y)
-
-            self.compare_by_complex_api(x, y, np_result)
 
             # float -> complex type promotion
             self.compare_by_basic_api(x, y, np_result)
