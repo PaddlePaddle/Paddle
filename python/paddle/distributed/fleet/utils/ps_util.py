@@ -13,8 +13,59 @@
 # limitations under the License.
 """Parameter Server utils"""
 
+import numpy as np
 
-def distributed_estimate(main_program, distributed_metrics=[], fleet=None):
+
+def distribtued_auc(stat_pos, stat_neg, scope, util):
+    stat_pos = np.array(scope.find_var(stat_pos.name).get_tensor())
+    stat_neg = np.array(scope.find_var(stat_neg.name).get_tensor())
+
+    # auc pos bucket shape
+    old_pos_shape = np.array(stat_pos.shape)
+    # reshape to one dim
+    stat_pos = stat_pos.reshape(-1)
+    global_pos = np.copy(stat_pos) * 0
+    # reshape to its original shape
+
+    global_pos = util.all_reduce(stat_pos, "sum")
+    global_pos = global_pos.reshape(old_pos_shape)
+
+    # auc neg bucket
+    old_neg_shape = np.array(stat_neg.shape)
+    stat_neg = stat_neg.reshape(-1)
+    global_neg = np.copy(stat_neg) * 0
+
+    global_neg = util.all_reduce(stat_neg, "sum")
+    global_neg = global_neg.reshape(old_neg_shape)
+
+    # calculate auc
+    num_bucket = len(global_pos[0])
+    area = 0.0
+    pos = 0.0
+    neg = 0.0
+    new_pos = 0.0
+    new_neg = 0.0
+    total_ins_num = 0
+    for i in range(num_bucket):
+        index = num_bucket - 1 - i
+        new_pos = pos + global_pos[0][index]
+        total_ins_num += global_pos[0][index]
+        new_neg = neg + global_neg[0][index]
+        total_ins_num += global_neg[0][index]
+        area += (new_neg - neg) * (pos + new_pos) / 2
+        pos = new_pos
+        neg = new_neg
+
+    auc_value = None
+    if pos * neg == 0 or total_ins_num == 0:
+        auc_value = 0.5
+    else:
+        auc_value = area / (pos * neg)
+
+    return auc_value
+
+
+def distributed_estimate(main_program):
     def distributed_ops_pass(program):
         SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
 
