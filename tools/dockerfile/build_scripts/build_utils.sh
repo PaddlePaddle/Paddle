@@ -139,7 +139,7 @@ function build_cpythons {
 
 
 function do_openssl_build {
-    ./config no-ssl2 shared -fPIC --prefix=/usr/local/ssl > /dev/null
+    ./config no-ssl2 no-shared -fPIC --prefix=/usr/local/ssl > /dev/null
     make > /dev/null
     make install > /dev/null
 }
