@@ -411,20 +411,22 @@ class Subset(Dataset):
         indices (sequence): Indices in the whole set selected for subset.
     
     Example code:
-        
-        import paddle
-        import numpy as np
-        from paddle.io import Subset
 
-        # example 1:
-        a = paddle.io.Subset(dataset=range(1, 4), indices=[0, 2])
-        print(list(a))
-        # [1, 3]
+        .. code-block:: python
 
-        # example 2:
-        b = paddle.io.Subset(dataset=range(1, 4), indices=[1, 1])
-        print(list(b))
-        # [2, 2]
+            import paddle
+            import numpy as np
+            from paddle.io import Subset
+
+            # example 1:
+            a = paddle.io.Subset(dataset=range(1, 4), indices=[0, 2])
+            print(list(a))
+            # [1, 3]
+
+            # example 2:
+            b = paddle.io.Subset(dataset=range(1, 4), indices=[1, 1])
+            print(list(b))
+            # [2, 2]
     """
 
     def __init__(self, dataset, indices):
@@ -450,35 +452,37 @@ def random_split(dataset, lengths, generator=None):
 
     Example code:
 
-        import paddle
-        import numpy as np
-        from paddle.io import random_split
+        .. code-block:: python
 
-        a_list = paddle.io.random_split(range(10), [3, 7])
-        # [<paddle.fluid.dataloader.dataset.Subset object at 0x7fafd73dcba8>, <paddle.fluid.dataloader.dataset.Subset object at 0x7fafbffd0940>]
+            import paddle
+            import numpy as np
+            from paddle.io import random_split
 
-        a_list = paddle.fluid.dataloader.dataset.random_split(range(10), [3, 7])
-        print(len(a_list)) 
-        # 2
+            a_list = paddle.io.random_split(range(10), [3, 7])
+            # [<paddle.fluid.dataloader.dataset.Subset object at 0x7fafd73dcba8>, <paddle.fluid.dataloader.dataset.Subset object at 0x7fafbffd0940>]
 
-        for idx, v in enumerate(a_list[0]):
-            print(idx, v)
+            a_list = paddle.fluid.dataloader.dataset.random_split(range(10), [3, 7])
+            print(len(a_list)) 
+            # 2
 
-        # output of the first subset
-        # 0 1
-        # 1 3
-        # 2 9
+            for idx, v in enumerate(a_list[0]):
+                print(idx, v)
 
-        for idx, v in enumerate(a_list[1]):
-            print(idx, v)
-        # output of the second subset
-        # 0 5
-        # 1 7
-        # 2 8
-        # 3 6
-        # 4 0
-        # 5 2
-        # 6 4
+            # output of the first subset
+            # 0 1
+            # 1 3
+            # 2 9
+
+            for idx, v in enumerate(a_list[1]):
+                print(idx, v)
+            # output of the second subset
+            # 0 5
+            # 1 7
+            # 2 8
+            # 3 6
+            # 4 0
+            # 5 2
+            # 6 4
     """
     # Cannot verify that dataset is Sized
     if sum(lengths) != len(dataset):  # type: ignore
