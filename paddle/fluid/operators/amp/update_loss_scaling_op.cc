@@ -135,7 +135,7 @@ class UpdateLossScalingFunctor<platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
-class LazyZeroInputs<platform::CPUDeviceContext, T> {
+class LazyZeros<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& dev_ctx,
                   const bool* found_inf_data,
