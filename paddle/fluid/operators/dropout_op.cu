@@ -17,6 +17,7 @@ limitations under the License. */
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
+#include <algorithm>
 #include <string>
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/dropout_op.h"
@@ -25,6 +26,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+// aligned vector generates vectorized load/store on CUDA
+template <typename T, int Size>
+struct alignas(sizeof(T) * Size) aligned_vector {
+  T val[Size];
+};
 
 template <typename T, typename MaskType>
 __global__ void RandomGenerator(const size_t n, const int seed,
@@ -96,6 +103,7 @@ __global__ void RandomGeneratorWithSeed(const size_t n, const int* seed,
   }
 }
 
+/*
 template <typename T, typename MaskType>
 __global__ void RandomGeneratorWithGenerator(const size_t n, uint64_t seed,
                                              const float dropout_prob,
@@ -129,6 +137,54 @@ __global__ void RandomGeneratorWithGenerator(const size_t n, uint64_t seed,
     }
     mask_data[idx] = mask;
     dst[idx] = dest;
+  }
+}
+*/
+
+template <typename T, typename MaskType>
+__global__ void RandomGeneratorWithGenerator(const size_t n, uint64_t seed,
+                                             const float dropout_prob,
+                                             const T* src, MaskType* mask_data,
+                                             T* dst, bool is_upscale_in_train,
+                                             uint64_t increment) {
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, idx, increment, &state);
+
+  MaskType mask;
+  T dest;
+  using LoadT = aligned_vector<T, 4>;
+  using MaskLoadT = aligned_vector<MaskType, 4>;
+  T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
+  for (int i = idx * 4; i < n; i += blockDim.x * gridDim.x * 4) {
+    T src_vec[4];
+    LoadT* value = reinterpret_cast<LoadT*>(&src_vec);
+    float4 rand = curand_uniform4(&state);
+    rand.x = rand.x < dropout_prob;
+    rand.y = rand.y < dropout_prob;
+    rand.z = rand.z < dropout_prob;
+    rand.w = rand.w < dropout_prob;
+    *value = *reinterpret_cast<LoadT*>(const_cast<T*>(&src[i]));
+
+    T dest_vec[4];
+    T mask_vec[4];
+
+#pragma unroll
+    for (int ii = 0; ii < 4; ii++) {
+      if (is_upscale_in_train) {
+        dest_vec[ii] = src_vec[ii] * static_cast<T>((&rand.x)[ii]) * factor;
+      } else {
+        dest_vec[ii] = src_vec[ii] * static_cast<T>((&rand.x)[ii]);
+      }
+      mask_vec[ii] = (uint8_t)(&rand.x)[ii];
+    }
+
+    *(reinterpret_cast<LoadT*>(&dst[i])) =
+        *reinterpret_cast<LoadT*>(&dest_vec[0]);
+    *(reinterpret_cast<MaskLoadT*>(&mask_data[i])) =
+        *reinterpret_cast<MaskLoadT*>(&mask_vec[0]);
+
+    __syncthreads();
   }
 }
 
@@ -170,6 +226,10 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 
       int threads = 512;
       int grid = (x_numel + threads - 1) / threads;
+      const auto& dev_ctx = context.cuda_device_context();
+      int blocks_per_sm =
+          dev_ctx.GetMaxPhysicalThreadCount() / dev_ctx.GetSMCount() / threads;
+      grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
       if (seed && platform::is_gpu_place(seed->place())) {
         auto seed_gpu_data = seed->data<int>();
         RandomGeneratorWithSeed<T, uint8_t><<<grid, threads, 0, stream>>>(
