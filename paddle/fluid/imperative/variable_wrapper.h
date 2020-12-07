@@ -81,7 +81,7 @@ class VariableWrapper {
   }
 
   bool IsLeafGrad() const {
-    if (!HasGradVar() && !HasGradNode() && !OverridedStopGradient()) {
+    if (!HasGradNode() && !OverridedStopGradient()) {
       return true;
     }
     return false;
