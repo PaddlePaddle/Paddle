@@ -623,7 +623,7 @@ goto:eof
 :collect_clcache_hits
 for /f "tokens=2,4" %%i in ('clcache.exe -s ^| findstr "entries hits"') do set %%i=%%j
 if %hits% EQU 0 (
-    echo "clcache hit rate: 0%"
+    echo "clcache hit rate: 0%%"
 ) else (
     set /a rate=%hits%*10000/%entries%
     echo "clcache hit rate: %rate:~0,-2%.%rate:~-2%%%"
