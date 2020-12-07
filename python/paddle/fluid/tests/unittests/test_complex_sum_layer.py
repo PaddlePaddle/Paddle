@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 import paddle
 from numpy.random import random as rand
-from paddle import complex as cpx
 from paddle import tensor
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
@@ -29,29 +28,13 @@ class TestComplexSumLayer(unittest.TestCase):
         if fluid.core.is_compiled_with_cuda():
             self._places.append(paddle.CUDAPlace(0))
 
-    def test_complex_x(self):
-        for dtype in self._dtypes:
-            input = rand([2, 10, 10]).astype(dtype) + 1j * rand(
-                [2, 10, 10]).astype(dtype)
-            for place in self._places:
-                with dg.guard(place):
-                    var_x = dg.to_variable(input)
-                    result = cpx.sum(var_x, dim=[1, 2]).numpy()
-                    target = np.sum(input, axis=(1, 2))
-                    self.assertTrue(np.allclose(result, target))
-
     def test_complex_basic_api(self):
         for dtype in self._dtypes:
             input = rand([2, 10, 10]).astype(dtype) + 1j * rand(
                 [2, 10, 10]).astype(dtype)
             for place in self._places:
                 with dg.guard(place):
-                    var_x = paddle.Tensor(
-                        value=input,
-                        place=place,
-                        persistable=False,
-                        zero_copy=None,
-                        stop_gradient=True)
+                    var_x = dg.to_variable(input)
                     result = tensor.sum(var_x, axis=[1, 2]).numpy()
                     target = np.sum(input, axis=(1, 2))
                     self.assertTrue(np.allclose(result, target))
