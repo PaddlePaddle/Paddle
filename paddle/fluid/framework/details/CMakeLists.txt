@@ -16,11 +16,11 @@ cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_ro
 
 if(WITH_DISTRIBUTE)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
-else()
-    set(DISTRIBUTE_COMPILE_FLAGS "")
+    set_source_files_properties(reduce_op_handle.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(threaded_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(async_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 endif()
 
-set_source_files_properties(reduce_op_handle.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
 if(WITH_GPU)
     nv_library(nan_inf_utils SRCS nan_inf_utils_detail.cc nan_inf_utils_detail.cu DEPS framework_proto scope place)
@@ -79,7 +79,6 @@ set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto
         add_reader_dependency_pass)
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
 
-set_source_files_properties(threaded_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
         simple_threadpool device_context)
 
@@ -87,7 +86,6 @@ cc_library(parallel_ssa_graph_executor SRCS parallel_ssa_graph_executor.cc DEPS 
 
 set(ASYNC_SSA_GRAPH_EXECUTOR_DEPS threaded_ssa_graph_executor)
 
-set_source_files_properties(async_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 cc_library(async_ssa_graph_executor SRCS async_ssa_graph_executor.cc DEPS ${ASYNC_SSA_GRAPH_EXECUTOR_DEPS})
 
 cc_test(broadcast_op_test SRCS broadcast_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
