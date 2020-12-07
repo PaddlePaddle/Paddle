@@ -1009,7 +1009,8 @@ class TestGradientMergeOptimizer(unittest.TestCase):
         opt = optimizer.GradientMergeOptimizer(opt, k_steps=4)
         with framework.program_guard(main_program, init_program):
             ops, params_grads = opt.minimize(cost)
-
+        print(main_program.num_blocks)
+        print(main_program)
         self.assertEqual(main_program.num_blocks, 4)
 
         # main block
