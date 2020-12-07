@@ -670,6 +670,7 @@ void BindImperative(py::module *m_ptr) {
              return TensorToPyArray(tensor, true);
            },
            R"DOC(
+
         Returns a numpy array shows the value of current Tensor.
         
         Returns:
@@ -688,6 +689,7 @@ void BindImperative(py::module *m_ptr) {
                 data = paddle.to_tensor(data)
                 x = linear(data)
                 print(x.numpy())
+
        )DOC")
       .def(
           "detach",
@@ -1065,35 +1067,6 @@ void BindImperative(py::module *m_ptr) {
               return std::vector<int>();
             }
           })
-      .def_property_readonly("is_leaf", &imperative::VarBase::IsLeaf,
-                             R"DOC(
-      Whether a Tensor is leaf Tensor.
-
-      For the Tensor whose stop_gradient is ``True`` , it will be leaf Tensor. 
-      
-      For the Tensor whose stop_gradient is ``False`` , it will be leaf Tensor too if it is created by user.
-
-      Returns:
-          bool: Whether a Tensor is leaf Tensor.
-
-      Examples:
-          .. code-block:: python
-
-              import paddle
-
-              x = paddle.to_tensor(1.)
-              print(x.is_leaf) # True
-
-              x = paddle.to_tensor(1., stop_gradient=True)
-              y = x + 1
-              print(x.is_leaf) # True
-              print(y.is_leaf) # True
-
-              x = paddle.to_tensor(1., stop_gradient=False)
-              y = x + 1
-              print(x.is_leaf) # True
-              print(y.is_leaf) # False
-       )DOC")
       .def_property_readonly(
           "place", [](imperative::VarBase &self) { return self.Place(); },
           py::return_value_policy::copy)

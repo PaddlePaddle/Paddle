@@ -70,49 +70,9 @@ class VariableWrapper {
     }
   }
 
-  bool IsLeaf() const {
-    if (OverridedStopGradient()) {
-      return true;
-    }
-    if (HasGradVar() && !GetGradVar()->HasGradNode()) {
-      return true;
-    }
-    return false;
-  }
-
-  bool IsLeafGrad() const {
-    if (!HasGradVar() && !HasGradNode() && !OverridedStopGradient()) {
-      return true;
-    }
-    return false;
-  }
-
   void SetPersistable(bool persistable) { persistable_ = persistable; }
 
   bool Persistable() const { return persistable_; }
-
-  bool IsEmpty() const {
-    bool is_empty = true;
-    if (var_.IsInitialized()) {
-      const framework::Tensor* tensor = nullptr;
-      if (var_.IsType<framework::LoDTensor>()) {
-        tensor = &(var_.Get<framework::LoDTensor>());
-      } else if (var_.IsType<framework::SelectedRows>()) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
-      } else {
-        PADDLE_THROW(platform::errors::PermissionDenied(
-            "Only support LoDTensor and SelectedRows for gradient var"));
-      }
-      if (tensor && tensor->IsInitialized()) {
-        is_empty = false;
-      }
-    }
-    return is_empty || is_empty_;
-  }
-
-  // TODO(zhouwei): fix Tensor.clear_gradient() bug, function SetIsEmpty() isn't
-  // need
-  void SetIsEmpty(bool is_empty) { is_empty_ = is_empty; }
 
   const std::string& Name() const { return name_; }
 
@@ -137,8 +97,6 @@ class VariableWrapper {
   std::shared_ptr<GradOpNode> GetGradNode() const { return grad_node_.lock(); }
 
   bool HasGradNode() const { return !grad_node_.expired(); }
-
-  bool HasGradVar() const { return !grad_var_.expired(); }
 
   framework::proto::VarType::Type DataType() const {
     const framework::Tensor* tensor = nullptr;
@@ -308,10 +266,6 @@ class VariableWrapper {
 
   std::weak_ptr<VariableWrapper> grad_var_;
   std::weak_ptr<GradOpNode> grad_node_;
-
-  // TODO(zhouwei): fix bug of Tensor.clear_gradient(), function SetIsEmpty()
-  // isn't need
-  bool is_empty_{false};
 
   // NOTE: only grad var can hold hooks now
   // only interior var can hold interior hooks
