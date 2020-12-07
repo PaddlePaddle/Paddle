@@ -448,7 +448,7 @@ def random_split(dataset, lengths, generator=None):
     Args:
         dataset (Dataset): Dataset to be split
         lengths (sequence): lengths of splits to be produced
-        generator (Generator): Generator used for the random permutation.
+        generator (Generator): Generator used for the random permutation. Default is None then the DefaultCPUGenerator is used in manual_seed().
 
     Example code:
 
@@ -459,9 +459,10 @@ def random_split(dataset, lengths, generator=None):
             from paddle.io import random_split
 
             a_list = paddle.io.random_split(range(10), [3, 7])
+            print(a_list)
             # [<paddle.fluid.dataloader.dataset.Subset object at 0x7fafd73dcba8>, <paddle.fluid.dataloader.dataset.Subset object at 0x7fafbffd0940>]
 
-            a_list = paddle.fluid.dataloader.dataset.random_split(range(10), [3, 7])
+            a_list = paddle.io.random_split(range(10), [3, 7])
             print(len(a_list)) 
             # 2
 
