@@ -18,7 +18,7 @@ import numpy as np
 
 class Distributed:
     @staticmethod
-    def distribtued_auc(stat_pos, stat_neg, scope, util):
+    def auc(stat_pos, stat_neg, scope, util):
         stat_pos = np.array(scope.find_var(stat_pos.name).get_tensor())
         stat_neg = np.array(scope.find_var(stat_neg.name).get_tensor())
 
@@ -67,7 +67,7 @@ class Distributed:
         return auc_value
 
     @staticmethod
-    def distributed_estimate(main_program):
+    def estimate(main_program, varname2tables):
         def distributed_ops_pass(program):
             SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
 
@@ -86,12 +86,21 @@ class Distributed:
                 for param, ops in pull_sparse_ops.items():
                     all_ops = program.global_block().ops
                     op_idxs = [all_ops.index(op) for op in ops]
+
                     inputs = [
                         program.global_block().vars[op.input("Ids")[0]]
                         for op in ops
                     ]
+
                     w = program.global_block().vars[ops[0].input("W")[0]]
-                    table_id = -1
+
+                    if w.name not in varname2tables.keys():
+                        raise ValueError(
+                            "can not find variable {}, please check your configuration".
+                            format(w.name))
+
+                    table_id = varname2tables[w.name]
+
                     padding_idx = ops[0].attr("padding_idx")
                     is_distributed = ops[0].attr("is_distributed")
                     op_type = ops[0].type
