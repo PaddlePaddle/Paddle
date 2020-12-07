@@ -923,7 +923,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "when we parse the %d th slots."
               "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
-              "which is illegal.", str, i, num));
+              "which is illegal.",
+              str, i, num));
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {
