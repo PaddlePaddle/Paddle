@@ -20,6 +20,7 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
+from op_test_xpu import XPUOpTest
 from scipy.special import expit, erf
 import paddle
 import paddle.fluid as fluid
@@ -30,7 +31,7 @@ from paddle.fluid import compiler, Program, program_guard
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUActivation(OpTest):
+class TestXPUActivation(XPUOpTest):
     def setUp(self):
         self.op_type = "exp"
         self.init_dtype()
@@ -163,6 +164,34 @@ def gelu(x, approximate):
             np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
     else:
         y_ref = 0.5 * x * (1 + erf(x / np.sqrt(2)))
+    return y_ref.astype(x.dtype)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXPUHardSwish(TestXPUActivation):
+    def setUp(self):
+        self.op_type = "hard_swish"
+        self.init_dtype()
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        offset = 3.0
+        threshold = 6.0
+        scale = 6.0
+        out = hard_swish(x, offset, threshold, scale)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'use_xpu': True}
+
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ['X'], 'Out')
+
+
+def hard_swish(x, offset, threshold, scale):
+    y_ref = np.minimum(threshold, np.maximum(0, x + offset)) * x / scale
     return y_ref.astype(x.dtype)
 
 
