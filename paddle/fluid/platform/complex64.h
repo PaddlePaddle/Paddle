@@ -124,6 +124,7 @@ struct PADDLE_ALIGN(8) complex64 {
 
   HOSTDEVICE inline complex64& operator=(int32_t val) {
     real = static_cast<float>(val);
+    imag = 0;
     return *this;
   }
 
