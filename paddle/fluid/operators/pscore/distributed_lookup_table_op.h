@@ -29,7 +29,8 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto &scope = context.scope();
 
     auto padding_idx = context.Attr<int64_t>("padding_idx");
-    auto table_id = context.Attr<int>("table_id");
+    auto table_id_ = context.Attr<int>("table_id");
+    int table_id = table_id_;
 
     auto embedding_name = context.InputNames("W").front();
     int64_t emb_dim = 0;
@@ -51,6 +52,16 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
 
     auto fleet = distributed::FleetWrapper::GetInstance();
+
+    if (table_id == -1) {
+      table_id = fleet->SparseVarname2TableId(embedding_name);
+      if (table_id == -1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "can not find sparse var: %s, please check your config",
+            embedding_name));
+      }
+    }
+
     if (platform::is_cpu_place(context.GetPlace())) {
       fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
                                     static_cast<uint64_t>(padding_idx),

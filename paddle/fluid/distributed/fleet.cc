@@ -72,10 +72,17 @@ void FleetWrapper::InitServer(const std::string& dist_desc,
 void FleetWrapper::InitWorker(
     const std::string& dist_desc, const std::vector<uint64_t>& host_sign_list,
     Scope* scope, const RpcCtxMap& send_ctx,
-    const std::unordered_map<uint64_t, std::vector<std::string>> dense_varnames,
-    std::map<std::string, std::string>& envs, int node_num, int index) {
+    const std::unordered_map<uint64_t, std::vector<std::string>>&
+        dense_varnames,
+    const std::map<std::string, std::string>& envs, int node_num, int index) {
   if (!is_initialized_) {
     VLOG(3) << "Going to init worker";
+
+    for (auto& send : send_ctx) {
+      if (ctx.is_sparse) {
+        sparse_varname2id_[send.first] = send.second.table_id;
+      }
+    }
 
     Communicator::InitInstance<AsyncCommunicator>(
         send_ctx, dense_varnames, dist_desc, host_sign_list, scope, envs);
