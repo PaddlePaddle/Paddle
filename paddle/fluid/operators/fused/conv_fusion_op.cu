@@ -15,6 +15,7 @@ limitations under the License. */
 #include <array>
 #include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/conv_cudnn_helper.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/operators/math/padding.h"
@@ -204,7 +205,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     auto x_dims = framework::vectorize(transformed_input.dims());
     auto f_dims = framework::vectorize(filter->dims());
     if (!exhaustive_search) {
-#if CUDNN_VERSION >= 8000
+#if CUDNN_VERSION >= 7001
       int perf_count;
       int best_algo_idx = 0;
       size_t tmp_size = 0;
@@ -220,16 +221,40 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
           platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
               handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
               cudnn_output_desc, algo, &workspace_size_in_bytes));
-      if (workspace_size_in_bytes > workspace_size_limit)
-        workspace_size_limit = workspace_size_in_bytes;
+      if (workspace_size_in_bytes > workspace_size_limit) {
+#if CUDNN_VERSION >= 8000
+        // cudnnGetConvolutionForwardAlgorithm is removed in CUDNN-8
+        ChooseAlgoByWorkspace<cudnnConvolutionFwdAlgoPerf_t,
+                              cudnnConvolutionFwdAlgo_t>(
+            perf_results.get(), kNUM_CUDNN_FWD_ALGS, workspace_size_limit,
+            &algo);
+#else
+        VLOG(1) << "Fallback to non-v7 method to find conv algorithm because "
+                   "the workspace size request("
+                << workspace_size_in_bytes << ") exceeds the limit("
+                << workspace_size_limit << ")";
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            platform::dynload::cudnnGetConvolutionForwardAlgorithm(
+                handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
+                cudnn_output_desc,
+                CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+                workspace_size_limit, &algo));
+
+#endif
+      } else {
+        ChooseAlgoByWorkspace<cudnnConvolutionFwdAlgoPerf_t,
+                              cudnnConvolutionFwdAlgo_t>(
+            perf_results.get(), kNUM_CUDNN_FWD_ALGS, workspace_size_in_bytes,
+            &algo);
+      }
 #else
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardAlgorithm(
               handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
               cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
               workspace_size_limit, &algo));
-      VLOG(3) << "cuDNN forward algo " << algo;
 #endif
+      VLOG(3) << "cuDNN forward algo: " << algo;
     } else {
       std::function<cudnnConvolutionFwdAlgo_t()> search_func =
           [&]() -> cudnnConvolutionFwdAlgo_t {
