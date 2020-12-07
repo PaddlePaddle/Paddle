@@ -569,7 +569,10 @@ class CompileTimeStrategy(object):
 
     def get_the_one_send_context(self,
                                  split_dense_table=False,
-                                 use_origin_program=False):
+                                 use_origin_program=False,
+                                 ep_list=None):
+        if ep_list is None:
+            ep_list = ["127.0.0.1:6071"]
         send_ctx = {}
         trainer_id = self.get_role_id()
         idx = 0
@@ -586,15 +589,18 @@ class CompileTimeStrategy(object):
             param, grad = merged
             grad_name = grad.merged_var.name
             param_name = param.merged_var.name
+            splited_varname = []
+            for i in range(len(ep_list)):
+                splited_varname.append("{}.block{}".format(param_name, i))
             is_distributed = True if param_name in distibuted_varnames else False
 
             var = self.origin_main_program.global_block().vars[
                 grad.merged_var.name]
             var_numel = reduce(lambda x, y: x * y, var.shape[1:])
 
-            sparse_ctx = CommContext(
-                grad_name, [grad_name], ["127.0.0.1:6071"], [var_numel],
-                [grad_name], trainer_id, True, True, is_distributed, idx)
+            sparse_ctx = CommContext(grad_name, splited_varname, ep_list,
+                                     [var_numel], [grad_name], trainer_id, True,
+                                     True, is_distributed, idx)
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
         return send_ctx

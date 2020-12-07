@@ -404,57 +404,86 @@ void AsyncCommunicator::RecvNoBarrier() {
 }
 
 void AsyncCommunicator::SendByCommunicator() {
+  std::vector<std::future<void>> tasks;
+  tasks.reserve(send_varname_to_ctx_.size());
+
   for (auto &iter : send_varname_to_ctx_) {
     auto &ctx = iter.second;
-    auto &varnames = ctx.origin_varnames;
-    auto &table_id = ctx.table_id;
-    size_t var_nums = varnames.size();
 
-    auto &check_queue = send_varname_to_queue_[varnames[0]];
-    std::vector<std::vector<std::shared_ptr<Variable>>> vars;
-    vars.resize(var_nums);
-    int merged_var_num = 0;
-    int wait_times = 0;
-    while (merged_var_num < max_merge_var_num_) {
-      if (check_queue->Size() == 0) {
-        VLOG(4) << "wait_times -> " << wait_times;
-        if (wait_times >= send_wait_times_) {
-          break;
+    auto send_recv_task = [this, &ctx] {
+      auto &varnames = ctx.origin_varnames;
+      auto &table_id = ctx.table_id;
+      size_t var_nums = varnames.size();
+      auto &check_queue = send_varname_to_queue_[varnames[0]];
+      std::vector<std::vector<std::shared_ptr<Variable>>> vars;
+      vars.resize(var_nums);
+      int merged_var_num = 0;
+      int wait_times = 0;
+      while (merged_var_num < max_merge_var_num_) {
+        if (check_queue->Size() == 0) {
+          VLOG(4) << "wait_times -> " << wait_times;
+          if (wait_times >= send_wait_times_) {
+            break;
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+          wait_times++;
+          continue;
+        } else {
+          wait_times = 0;
+          for (size_t i = 0; i < var_nums; i++) {
+            auto &var_name = varnames[i];
+            auto &var_queue = send_varname_to_queue_[var_name];
+            vars[i].push_back(var_queue->Pop());
+          }
+          merged_var_num++;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        wait_times++;
-        continue;
-      } else {
-        wait_times = 0;
-        for (size_t i = 0; i < var_nums; i++) {
-          auto &var_name = varnames[i];
-          auto &var_queue = send_varname_to_queue_[var_name];
-          vars[i].push_back(var_queue->Pop());
-        }
-        merged_var_num++;
       }
-    }
-    if (merged_var_num == 0) continue;
+      if (merged_var_num == 0) return;
 
-    for (size_t i = 0; i < var_nums; i++) {
-      auto &var_name = varnames[i];
-      MergeVars<float>(var_name, vars[i], send_scope_.get(), 1);
-    }
+      for (size_t i = 0; i < var_nums; i++) {
+        auto &var_name = varnames[i];
+        MergeVars<float>(var_name, vars[i], send_scope_.get(), 1);
+      }
 
-    if (ctx.is_sparse) {
-      PADDLE_ENFORCE_EQ(varnames.size(), 1, "");
-      RpcSendSparse(varnames[0], table_id, *send_scope_);
-    } else {
-      RpcSendDense(ctx, *send_scope_);
-    }
-    if (independent_recv_) {
-      grad_num_.fetch_add(1, std::memory_order_relaxed);
-    }
+      if (ctx.is_sparse) {
+        PADDLE_ENFORCE_EQ(varnames.size(), 1, "");
+        RpcSendSparse(varnames[0], table_id, *send_scope_);
+      } else {
+        RpcSendDense(ctx, *send_scope_);
+        if (!independent_recv_ &&
+            recv_varname_to_ctx_.find(table_id) != recv_varname_to_ctx_.end()) {
+          auto recv_varnames = recv_varname_to_ctx_.at(table_id);
+          RpcRecvDense(recv_varnames, table_id, recv_scope_);
+        }
+      }
+      if (independent_recv_) {
+        grad_num_.fetch_add(1, std::memory_order_relaxed);
+      }
+    };
+    tasks.emplace_back(send_threadpool_->enqueue(std::move(send_recv_task)));
   }
+  for (auto &task : tasks) {
+    task.wait();
+  }
+  return;
 }
 
 void AsyncCommunicator::MainThread() {
-  VLOG(3) << "MainThread start and wait";
+  VLOG(3) << "AsyncCommunicator MainThread start and wait";
+
+  while (waiting_ && running_) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    VLOG(3) << "wait for running";
+  }
+
+  while (running_) {
+    SendByCommunicator();
+  }
+  VLOG(1) << "communicator stopped, send thread exit";
+}
+
+void HalfAsyncCommunicator::MainThread() {
+  VLOG(3) << "HalfAsyncCommunicator MainThread start and wait";
 
   while (waiting_ && running_) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -464,11 +493,9 @@ void AsyncCommunicator::MainThread() {
   while (running_) {
     SendByCommunicator();
     BarrierSend();
-    if (!independent_recv_) {
-      RecvByCommunicator();
-      BarrierRecv();
-      BarrierWeakUp();
-    }
+    RecvByCommunicator();
+    BarrierRecv();
+    BarrierWeakUp();
   }
   VLOG(1) << "communicator stopped, send thread exit";
 }
@@ -627,28 +654,38 @@ void HalfAsyncCommunicator::SendByCommunicator() {
   VLOG(1) << "HalfAsyncCommunicator::BatchesCounter = " << batches;
   if (batches <= 0) return;
 
+  std::vector<std::future<void>> tasks;
+  tasks.reserve(send_varname_to_ctx_.size());
+
   for (auto &iter : send_varname_to_ctx_) {
     auto &ctx = iter.second;
-    auto &varnames = ctx.origin_varnames;
-    auto &table_id = ctx.table_id;
-    size_t var_nums = varnames.size();
+    auto send_recv_task = [this, &ctx, batches] {
+      auto &varnames = ctx.origin_varnames;
+      auto &table_id = ctx.table_id;
+      size_t var_nums = varnames.size();
 
-    std::vector<std::vector<std::shared_ptr<Variable>>> vars;
-    vars.resize(var_nums);
-    for (size_t i = 0; i < var_nums; i++) {
-      auto &var_name = varnames[i];
-      auto &var_queue = send_varname_to_queue_[var_name];
-      for (int j = 0; j < batches; j++) vars[i].push_back(var_queue->Pop());
-      MergeVars<float>(var_name, vars[i], send_scope_.get(), 1);
-    }
+      std::vector<std::vector<std::shared_ptr<Variable>>> vars;
+      vars.resize(var_nums);
+      for (size_t i = 0; i < var_nums; i++) {
+        auto &var_name = varnames[i];
+        auto &var_queue = send_varname_to_queue_[var_name];
+        for (int j = 0; j < batches; j++) vars[i].push_back(var_queue->Pop());
+        MergeVars<float>(var_name, vars[i], send_scope_.get(), 1);
+      }
 
-    if (ctx.is_sparse) {
-      PADDLE_ENFORCE_EQ(varnames.size(), 1, "");
-      RpcSendSparse(varnames[0], table_id, *send_scope_);
-    } else {
-      RpcSendDense(ctx, *send_scope_);
-    }
+      if (ctx.is_sparse) {
+        PADDLE_ENFORCE_EQ(varnames.size(), 1, "");
+        RpcSendSparse(varnames[0], table_id, *send_scope_);
+      } else {
+        RpcSendDense(ctx, *send_scope_);
+      }
+    };
+    tasks.emplace_back(send_threadpool_->enqueue(std::move(send_recv_task)));
   }
+  for (auto &task : tasks) {
+    task.wait();
+  }
+  return;
 }
 
 void HalfAsyncCommunicator::BarrierWeakUp() {
@@ -673,19 +710,41 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const framework::Scope &scope) {
   waiting_ = false;
   auto before_send = GetCurrentUS();
-  auto *var = scope.FindVar(var_names[0]);
+  auto table_name = var_names[0];
+
+  size_t splited_var_nums =
+      send_varname_to_ctx_[table_name].splited_varnames.size();
+
+  std::unordered_map<std::string, std::unordered_set<int64_t>> ids_table;
+
+  for (size_t j = 0; j < splited_var_nums; j++) {
+    ids_table.insert(std::pair<std::string, std::unordered_set<int64_t>>(
+        send_varname_to_ctx_[table_name].splited_varnames[j],
+        std::unordered_set<int64_t>()));
+  }
+
+  auto *var = scope.FindVar(table_name);
 
   PADDLE_ENFORCE_EQ(var->IsType<framework::SelectedRows>(), true,
                     "Only need to send Sparse Grad in Geo mode.");
   auto &rows = var->Get<framework::SelectedRows>().rows();
 
-  std::unordered_set<int64_t> ids(rows.begin(), rows.end());
-  auto sparse_ids_vec = std::make_shared<std::vector<int64_t>>();
-  sparse_ids_vec->assign(ids.begin(), ids.end());
+  // insert ids which has not been record
+  for (size_t j = 0; j < rows.size(); j++) {
+    auto ep_idx = rows[j] % splited_var_nums;
+    ids_table.at(send_varname_to_ctx_[table_name].splited_varnames[ep_idx])
+        .insert(rows[j]);
+  }
 
-  sparse_id_queues_.at(var_names[0])->Push(sparse_ids_vec);
-  VLOG(2) << "push " << sparse_ids_vec->size() << " ids to " << var_names[0]
-          << "'s queue";
+  for (auto &iter : ids_table) {
+    auto &key = iter.first;
+    auto &sparse_ids_set = iter.second;
+    auto sparse_ids_vec = std::make_shared<std::vector<int64_t>>();
+    sparse_ids_vec->assign(sparse_ids_set.begin(), sparse_ids_set.end());
+    sparse_id_queues_.at(key)->Push(sparse_ids_vec);
+    VLOG(3) << "push " << sparse_ids_vec->size() << " ids to " << key
+            << "'s queue";
+  }
 
   auto after_send = GetCurrentUS();
   VLOG(2) << "run send op finish. use time " << (after_send - before_send);
@@ -707,14 +766,16 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     if (!ctx.is_sparse) continue;
     auto &varnames = ctx.origin_varnames;
     PADDLE_ENFORCE_EQ(varnames.size(), 1, "");
-
-    sparse_id_queues_.insert(
-        std::pair<std::string, std::shared_ptr<BlockingQueue<
-                                   std::shared_ptr<std::vector<int64_t>>>>>(
-            varnames[0],
-            std::make_shared<
-                BlockingQueue<std::shared_ptr<std::vector<int64_t>>>>(
-                send_queue_size_)));
+    for (auto &splited_var : ctx.splited_varnames) {
+      parallel_task_nums_ += 1;
+      sparse_id_queues_.insert(
+          std::pair<std::string, std::shared_ptr<BlockingQueue<
+                                     std::shared_ptr<std::vector<int64_t>>>>>(
+              splited_var,
+              std::make_shared<
+                  BlockingQueue<std::shared_ptr<std::vector<int64_t>>>>(
+                  send_queue_size_)));
+    }
   }
 
   send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
@@ -906,11 +967,13 @@ std::vector<int64_t> GeoCommunicator::MergeSparseIds(
 }
 
 void GeoCommunicator::SendSparse(const std::string &varname,
-                                 std::vector<int64_t> &sparse_ids,
-                                 int table_id) {
-  VLOG(1) << "In GeoCommunicator::SendSparse(" << varname
-          << ", ids.size = " << sparse_ids.size() << ", table_id: " << table_id;
-  std::string param_name = GradToParam(varname);
+                                 std::vector<int64_t> &sparse_ids, int table_id,
+                                 int ep_idx) {
+  std::string param_name = SplitedGradToParam(varname);
+  VLOG(1) << "In GeoCommunicator::SendSparse(" << varname << " " << param_name
+          << ", ids.size = " << sparse_ids.size() << ", table_id: " << table_id
+          << ", ep_idx: " << ep_idx;
+
   auto *var_latest = recv_scope_->FindVar(param_name);
   auto *var_old = old_scope_->FindVar(param_name);
 
@@ -941,6 +1004,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
           cpu_ctx);
   float coefficient = 1.0 / static_cast<float>(trainers_);
 
+  std::vector<float *> push_g_vec;
   for (auto j = 0; j < static_cast<int>(sparse_ids.size()); ++j) {
     blas.VSUB(dims1, t_latest.data<float>() + sparse_ids[j] * dims1,
               t_old->data<float>() + sparse_ids[j] * dims1,
@@ -949,23 +1013,40 @@ void GeoCommunicator::SendSparse(const std::string &varname,
     blas.VADD(dims1, t_old->data<float>() + sparse_ids[j] * dims1,
               t_value + j * dims1,
               t_old->data<float>() + sparse_ids[j] * dims1);
+    push_g_vec.push_back(t_value + j * dims1);
   }
-  RpcSendSparse(varname, table_id, *delta_scope_);
+
+  ++_async_call_num;
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [this](void *done) {
+    int ret = 0;
+    auto *closure = (DownpourBrpcClosure *)done;
+    if (closure->check_response(0, PS_PUSH_SPARSE_TABLE) != 0) {
+      ret = -1;
+    }
+    closure->set_promise_value(ret);
+    --_async_call_num;
+  });
+  auto status = _worker_ptr->push_sparse_raw_gradient_partial(
+      table_id, (const uint64_t *)sparse_ids.data(),
+      (const float **)push_g_vec.data(), sparse_ids.size(), closure, ep_idx);
+  status.wait();
+
   VLOG(1) << "Finish Send Sparse " << varname
           << ", ids.size = " << sparse_ids.size() << ", table_id: " << table_id;
   return;
 }
 
-void GeoCommunicator::RecvSparse(const std::string &varname, int table_id) {
+void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
+                                 int ep_idx) {
   // 1. recv from pserver
   std::vector<uint64_t> keys;
   std::vector<float> values;
-  auto status = _worker_ptr->pull_geo_param(table_id, &values, &keys);
+  auto status = _worker_ptr->pull_geo_param(table_id, &values, &keys, ep_idx);
   status.wait();
 
-  auto param = GradToParam(varname);
-  VLOG(1) << "RecvSparse receive var: " << varname << " " << table_id << " "
-          << param << " ids Size: " << keys.size()
+  std::string param = SplitedGradToParam(varname);
+  VLOG(1) << "RecvSparse receive var: " << varname << " " << param << ", "
+          << table_id << "; ids Size: " << keys.size()
           << "; values size: " << values.size();
 
   auto *var_latest = recv_scope_->FindVar(param);
@@ -1009,25 +1090,35 @@ void GeoCommunicator::MainThread() {
 
   while (running_) {
     std::vector<std::future<void>> tasks;
-    tasks.reserve(send_varname_to_ctx_.size());
+    tasks.reserve(parallel_task_nums_);
 
     for (auto &iter : send_varname_to_ctx_) {
       auto &ctx = iter.second;
       auto &varnames = ctx.origin_varnames;
       auto &table_id = ctx.table_id;
 
-      auto send_recv_task = [this, table_id, &varnames, &ctx] {
-        if (ctx.is_sparse) {
-          PADDLE_ENFORCE_EQ(varnames.size(), 1, "");
-          auto sparse_ids = MergeSparseIds(varnames[0]);
-          SendSparse(varnames[0], sparse_ids, table_id);
-          RecvSparse(varnames[0], table_id);
-        } else {
+      if (ctx.is_sparse) {
+        PADDLE_ENFORCE_EQ(varnames.size(), 1, "");
+        int pserver_num = static_cast<int>(ctx.epmap.size());
+        for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
+          // varname: emb@GRAD, param_name: emb, splited_varname: emb.delta0
+          auto send_recv_task = [this, table_id, ep_idx, &ctx] {
+            auto splited_varname = ctx.splited_varnames[ep_idx];
+            auto sparse_ids = MergeSparseIds(splited_varname);
+            SendSparse(splited_varname, sparse_ids, table_id, ep_idx);
+            RecvSparse(splited_varname, table_id, ep_idx);
+          };
+          tasks.emplace_back(
+              send_threadpool_->enqueue(std::move(send_recv_task)));
+        }
+      } else {
+        auto send_recv_task = [this, &ctx] {
           SendDense(ctx);
           RecvDense(ctx);
-        }
-      };
-      tasks.emplace_back(send_threadpool_->enqueue(std::move(send_recv_task)));
+        };
+        tasks.emplace_back(
+            send_threadpool_->enqueue(std::move(send_recv_task)));
+      }
     }
     for (auto &task : tasks) {
       task.wait();

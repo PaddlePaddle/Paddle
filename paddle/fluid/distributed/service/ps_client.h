@@ -122,7 +122,8 @@ class PSClient {
 
   virtual std::future<int32_t> pull_geo_param(size_t table_id,
                                               std::vector<float> *values,
-                                              std::vector<uint64_t> *keys) = 0;
+                                              std::vector<uint64_t> *keys,
+                                              int pserver_idx) = 0;
 
   virtual void finalize_worker() = 0;
   // client to client, 消息发送
@@ -170,6 +171,10 @@ class PSClient {
   virtual std::future<int32_t> push_sparse_raw_gradient(
       size_t table_id, const uint64_t *keys, const float **update_values,
       size_t num, void *done) = 0;
+
+  virtual std::future<int32_t> push_sparse_raw_gradient_partial(
+      size_t table_id, const uint64_t *keys, const float **update_values,
+      uint32_t num, void *done, int pserver_idx) = 0;
 
   virtual std::future<int32_t> push_sparse_param(size_t table_id,
                                                  const uint64_t *keys,

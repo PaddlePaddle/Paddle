@@ -148,7 +148,8 @@ class BrpcPsClient : public PSClient {
 
   virtual std::future<int32_t> pull_geo_param(size_t table_id,
                                               std::vector<float> *values,
-                                              std::vector<uint64_t> *keys);
+                                              std::vector<uint64_t> *keys,
+                                              int pserver_idx);
 
   // 确保所有积攒中的请求都发送完成
   virtual std::future<int32_t> flush();
@@ -197,6 +198,10 @@ class BrpcPsClient : public PSClient {
   virtual std::future<int32_t> push_sparse_raw_gradient(
       size_t table_id, const uint64_t *keys, const float **update_values,
       size_t num, void *done) override;
+
+  virtual std::future<int32_t> push_sparse_raw_gradient_partial(
+      size_t table_id, const uint64_t *keys, const float **update_values,
+      uint32_t num, void *done, int pserver_idx) override;
 
   virtual std::future<int32_t> push_sparse_param(size_t table_id,
                                                  const uint64_t *keys,

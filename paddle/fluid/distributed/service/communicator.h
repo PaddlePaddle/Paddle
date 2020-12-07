@@ -400,6 +400,7 @@ class AsyncCommunicator : public Communicator {
   int send_queue_size_;
   bool need_global_step_ = false;
   bool independent_recv_ = true;
+  int parallel_task_nums_ = 0;
 
   std::unique_ptr<std::thread> main_thread_{nullptr};
   std::unique_ptr<std::thread> recv_thread_{nullptr};
@@ -428,6 +429,8 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
 
     VLOG(0) << "HalfAsyncCommunicator Initialized";
   }
+
+  void MainThread() override;
 
   void SendByCommunicator() override;
 
@@ -500,8 +503,8 @@ class GeoCommunicator : public AsyncCommunicator {
 
   std::vector<int64_t> MergeSparseIds(const std::string &varname);
   void SendSparse(const std::string &varname, std::vector<int64_t> &sparse_ids,
-                  int table_id);
-  void RecvSparse(const std::string &varname, int table_id);
+                  int table_id, int ep_idx);
+  void RecvSparse(const std::string &varname, int table_id, int ep_idx);
 
   void MainThread() override;
 
@@ -530,14 +533,10 @@ class GeoCommunicator : public AsyncCommunicator {
     return param_name;
   }
 
-  inline std::string ParamToDelta(const std::string param_name) {
-    std::stringstream ss;
-    ss << param_name << ".delta";
-    return ss.str();
-  }
-
-  inline std::string DeltaToParam(const std::string delta_name) {
-    std::string param_name = delta_name.substr(0, delta_name.size() - 6);
+  inline std::string SplitedGradToParam(const std::string delta_name) {
+    // delta_name: emb.delta0
+    auto pos = delta_name.find(".block");
+    std::string param_name = delta_name.substr(0, pos);
     return param_name;
   }
 

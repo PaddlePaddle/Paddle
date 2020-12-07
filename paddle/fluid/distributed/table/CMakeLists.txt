@@ -1,3 +1,5 @@
+set_property(GLOBAL PROPERTY TABLE_DEPS string_helper)
+
 get_property(TABLE_DEPS GLOBAL PROPERTY TABLE_DEPS)
 
 set_source_files_properties(common_dense_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
