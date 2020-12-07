@@ -37,7 +37,10 @@ template <typename T>
 __global__ void FillIf(T* data, const int num, const T& value,
                        const bool* has_inf) {
   if (*has_inf) {
-    thrust::fill_n(data, num, value);
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    for (int i = tid; i < num; i += blockDim.x * gridDim.x) {
+      data[i] = value;
+    }
   }
 }
 
@@ -69,8 +72,10 @@ class LazyZeros<platform::CUDADeviceContext, T> {
       auto* out = outs[i];
       T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
       int num = out->numel();
-      FillIf<T><<<1, 1, 0, dev_ctx.stream()>>>(out_data, num, static_cast<T>(0),
-                                               found_inf_data);
+      int block = 1024;
+      int grid = (block - 1 + num) / block;
+      FillIf<<<grid, block, 0, dev_ctx.stream()>>>(
+          out_data, num, static_cast<T>(0), found_inf_data);
     }
   }
 };
