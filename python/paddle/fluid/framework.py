@@ -1133,43 +1133,6 @@ class Variable(object):
         """
         pass
 
-    def tolist(self):
-        """
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
-
-        Returns a nested list represenation of this tensor.
-            
-        Returns:
-            list: The list of nested python primitives.
-
-        Returns type:
-            list: type is same as current Variable.dtype
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-
-                vars = paddle.ones([1, 2])
-                print(vars)
-                # [[1, 1]] dtype as Tensor
-                print(vars.tolist())
-                # [[1, 1]] type as python List[List[float]] primitive type
-        """
-        dim = self.dim()
-        if dim == 1:
-            return [v for v in self]
-        elif dim > 0:
-            return [subt.tolist() for subt in self]
-        return []
-
-    def dim(self):
-        """
-        Returns the length of this tensor shape.
-        """
-        return len(self.shape)
-
     @fake_interface_only
     def set_value(self, value):
         """

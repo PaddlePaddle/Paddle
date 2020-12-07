@@ -182,6 +182,9 @@ class TestSubsetDataset(unittest.TestCase):
 
         self.assertEqual(odd_list, elements_list)
 
+    def test_error(self):
+        pass
+
     def test_main(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1

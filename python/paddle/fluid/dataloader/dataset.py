@@ -465,7 +465,6 @@ def random_split(dataset, lengths, generator=None):
 
         for idx, v in enumerate(a_list[1]):
             print(idx, v)
-        
         # output of the second subset
         # 0 5
         # 1 7
@@ -474,15 +473,14 @@ def random_split(dataset, lengths, generator=None):
         # 4 0
         # 5 2
         # 6 4
-
     """
     # Cannot verify that dataset is Sized
     if sum(lengths) != len(dataset):  # type: ignore
         raise ValueError(
             "Sum of input lengths does not equal the length of the input dataset!"
         )
-    # TODO(@Joejiong): support Variable or Tensor type with class member function
-    # var.item() and var.tolist()
+    # TODO(@Joejiong): support Variable or Tensor type with .tolist class member function.
+    # For example var.item() and var.tolist()
     indices = paddle.randperm(sum(lengths)).numpy().tolist()
     return [
         Subset(dataset, indices[offset - length:offset])
