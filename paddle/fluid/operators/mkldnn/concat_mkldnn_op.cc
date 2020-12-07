@@ -144,6 +144,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The axis is expected to be in range of [%d, %d), but got %d",
             -rank, rank, concat_axis));
+    platform::MKLDNNDeviceContext::tls().started_info();
     if (concat_axis < 0) {
       concat_axis = concat_axis + rank;
     }

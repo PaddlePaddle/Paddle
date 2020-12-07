@@ -572,6 +572,7 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(ctx.GetPlace()), true,
         platform::errors::PreconditionNotMet("FC MKL-DNN must use CPUPlace."));
+    platform::MKLDNNDeviceContext::tls().started_info();
     auto input = ctx.Input<LoDTensor>("Input");
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");

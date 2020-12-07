@@ -466,7 +466,7 @@ MKLDNNDeviceContextThreadLocals::Body::get_cur_paddle_data_layout(void) {
   return cur_paddle_data_layout;
 }
 
-void MKLDNNDeviceContextThreadLocals::Body::announce(void) {
+void MKLDNNDeviceContextThreadLocals::Body::started_info(void) {
   if (!said_once) {
     said_once = true;
     auto dv = dnnl::version();

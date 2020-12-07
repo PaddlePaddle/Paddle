@@ -353,6 +353,7 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL Mul must use CPUPlace"));
+    platform::MKLDNNDeviceContext::tls().started_info();
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto &mkldnn_engine = dev_ctx.GetEngine();
 
