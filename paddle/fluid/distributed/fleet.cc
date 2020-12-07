@@ -78,12 +78,6 @@ void FleetWrapper::InitWorker(
   if (!is_initialized_) {
     VLOG(3) << "Going to init worker";
 
-    for (auto& send : send_ctx) {
-      if (ctx.is_sparse) {
-        sparse_varname2id_[send.first] = send.second.table_id;
-      }
-    }
-
     Communicator::InitInstance<AsyncCommunicator>(
         send_ctx, dense_varnames, dist_desc, host_sign_list, scope, envs);
 

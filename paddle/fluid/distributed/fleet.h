@@ -163,19 +163,6 @@ class FleetWrapper {
                   const std::map<std::string, std::string>& envs, int node_num,
                   int index);
 
-  int SparseVarname2TableId(const std::string& varname) {
-    auto has = std::find(sparse_varname2id_.begin(), sparse_varname2id_.end(),
-                         varname) == sparse_varname2id_.end()
-                   ? false
-                   : true;
-
-    if (has) {
-      return sparse_varname2id_[varname];
-    } else {
-      return -1;
-    }
-  }
-
   // stop server
   void StopServer();
   // finalize worker to make worker can be stop
@@ -244,7 +231,6 @@ class FleetWrapper {
 
  protected:
   static bool is_initialized_;
-  std::map<std::string, int> sparse_varname2id_;
   std::map<uint64_t, std::vector<paddle::distributed::Region>> _regions;
   bool scale_sparse_gradient_with_batch_size_;
   int32_t sleep_seconds_before_fail_exit_;
