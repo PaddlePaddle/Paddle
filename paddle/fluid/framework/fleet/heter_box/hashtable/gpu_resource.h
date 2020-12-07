@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 #include <cstddef>
 #include <memory>
+#include <map>
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
@@ -52,12 +53,14 @@ class HeterBoxResource {
   virtual ~HeterBoxResource() {}
   void enable_p2p();
   int total_gpu();
+  int get_index_by_devid(int devid);
   cudaStream_t stream(int num);
   cudaStream_t copy_stream(int num);
   int dev_id(int num);
 
   std::vector<std::shared_ptr<GPUResource>> resources_;
   std::vector<int> dev_ids_;
+  std::map<int, int> devid_2_index_;
 };
 
 }  // end namespace framework

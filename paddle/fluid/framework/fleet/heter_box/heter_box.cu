@@ -39,6 +39,10 @@ void HeterBox::build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals, size_
     gpu_ps_->build_ps(num, h_keys, h_vals, len, chunk_size, stream_num);
 }
 
+int HeterBox::get_index_by_devid(int devid) {
+  return gpu_ps_->get_index_by_devid(devid);
+}
+
 void HeterBox::dump() {
 }
 

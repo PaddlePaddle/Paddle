@@ -316,7 +316,7 @@ class PSGPUTrainer : public TrainerBase {
   paddle::platform::Place place_;
   ProgramDesc program_;
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
-  //std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
   std::vector<platform::Place> places_;
   // ps-gpu

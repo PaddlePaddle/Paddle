@@ -41,9 +41,12 @@ namespace framework {
 
 class PSGPUWrapper {
  public:
-  virtual ~PSGPUWrapper() {}
+  virtual ~PSGPUWrapper() {
+    delete GpuPs_;
+  }
 
   PSGPUWrapper() {
+    GpuPs_ = NULL;
     sleep_seconds_before_fail_exit_ = 300;
   }
   
@@ -81,6 +84,7 @@ class PSGPUWrapper {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
       resource_ = std::make_shared<HeterBoxResource>(dev_ids);
       resource_->enable_p2p();
+      keys_tensor.resize(resource_->total_gpu());
     }
   }
   // PSGPUWrapper singleton

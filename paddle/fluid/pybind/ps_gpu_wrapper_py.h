@@ -23,7 +23,7 @@ namespace paddle {
 namespace pybind {
 
 #ifdef PADDLE_WITH_PSLIB
-void PSGPUWrapper(py::module* m);
+void BindPSGPUWrapper(py::module* m);
 #endif
 }  // namespace pybind
 }  // namespace paddle

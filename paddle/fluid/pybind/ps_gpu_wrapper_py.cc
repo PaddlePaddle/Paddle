@@ -35,7 +35,10 @@ namespace pybind {
 void BindPSGPUWrapper(py::module* m) {
   py::class_<framework::PSGPUWrapper, std::shared_ptr<framework::PSGPUWrapper>>(
       *m, "PSGPU")
-      .def(py::init([]() { return framework::PSGPUWrapper::GetInstance(); }));
+      .def(py::init([]() { return framework::PSGPUWrapper::GetInstance(); }))
+      .def("set_slot_vector",
+           &framework::PSGPUWrapper::SetSlotVector,
+           py::call_guard<py::gil_scoped_release>());
 }  // end PSGPUWrapper
 #endif
 }  // end namespace pybind

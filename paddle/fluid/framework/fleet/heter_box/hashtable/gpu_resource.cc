@@ -60,6 +60,9 @@ void HeterBoxResource::enable_p2p() {
         if (p2p_flag == 1) {
           cudaError_t ret = cudaDeviceEnablePeerAccess(dev_ids_[j], 0);
           if (ret != cudaSuccess && ret != cudaErrorPeerAccessAlreadyEnabled) {
+            VLOG(0) << " Cuda error(" << ret << "), " << cudaGetErrorString(ret) << ".";
+          } else {
+            cudaGetLastError();
           }
         }
 
@@ -73,6 +76,7 @@ HeterBoxResource::HeterBoxResource(const std::vector<int>& dev_ids) {
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
     std::shared_ptr<GPUResource> resource = std::make_shared<GPUResource>(dev_ids_[i], i);
     resources_.push_back(resource);
+    devid_2_index_[dev_ids_[i]] = i;
   }
 }
 
@@ -86,6 +90,10 @@ cudaStream_t HeterBoxResource::stream(int num) {
 
 int HeterBoxResource::dev_id(int num) {
   return dev_ids_[num];
+}
+
+int HeterBoxResource::get_index_by_devid(int devid) {
+  return devid_2_index_[devid];
 }
 
 int HeterBoxResource::total_gpu() {

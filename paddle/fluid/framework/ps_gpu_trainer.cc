@@ -61,6 +61,8 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
         trainer_desc.downpour_param().stat_var_names(i));
   }
   VLOG(3) << "going to initialize pull dense worker";
+  pull_dense_worker_ = PullDenseWorker::GetInstance();
+  pull_dense_worker_->Initialize(trainer_desc);
   SetDebug(trainer_desc.debug());
   fleet_ptr_ = FleetWrapper::GetInstance();
   trainer_desc_ = trainer_desc;
@@ -123,7 +125,10 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 }
 
 void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
-  
+  pull_dense_worker_->SetRootScope(root_scope_);
+  for (size_t i = 0; i < places_.size(); ++i) {
+    pull_dense_worker_->AddThreadScope(workers_[i]->GetThreadScope());
+  }
   VLOG(3) << "init other env done.";
 }
 
@@ -136,10 +141,12 @@ void PSGPUTrainer::Run() {
 }
 void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
   VLOG(3) << "PSGPUTrainer::BuildGPUPSTask begin";
+  platform::Timer timeline;
+  timeline.Start();
   MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
   auto fleet_ptr = FleetWrapper::GetInstance();
   std::shared_ptr<GpuTask>  gpu_task = std::make_shared<GpuTask>();
-  auto& multi_output_channel = dataset->GetMultiOutputChannel();
+  auto& multi_output_channel = dataset->GetCurOutputChannel();
   auto& input_channel = dataset->GetInputChannelRef();
   int gen_shard_num = multi_output_channel.size();
   int device_num = places_.size();
@@ -178,11 +185,9 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
     }
     auto gen_func = [&dataset, &device_num, &feadim, &consume_task_pool, &multi_output_channel,
                    &consume_func](int i) {
-      std::vector<Record> vec_data;
+      const std::deque<Record>& vec_data = multi_output_channel[i]->GetData();
       std::vector<std::vector<uint64_t>> task_keys(device_num);
       std::vector<std::future<void>> task_futures;
-      multi_output_channel[i]->Close();
-      multi_output_channel[i]->ReadAll(vec_data);
       for (size_t j = 0; j < vec_data.size(); j++) {
         for (auto& feature : vec_data[j].uint64_feasigns_) {
           int shard = feature.sign().uint64_feasign_ % device_num;
@@ -195,11 +200,6 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
             consume_func, shard_id, feadim, task_keys[shard_id]));
       }
 
-      multi_output_channel[i]->Open();
-      multi_output_channel[i]->Write(std::move(vec_data));
-      vec_data.clear();
-      vec_data.shrink_to_fit();
-      
       for (auto& tf : task_futures) {
         tf.wait();
       }
@@ -223,9 +223,7 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
     for (auto& ks : local_keys) {
       ks.reserve(input_channel_size * 10); // magic number
     }
-    std::vector<Record> vec_data;
-    input_channel->Close();
-    input_channel->ReadAll(vec_data);
+    const std::deque<Record>& vec_data = input_channel->GetData();
     auto gen_func = [&dataset, &vec_data, &device_num, &gen_shard_num, &input_channel_size, &feadim, &consume_task_pool, multi_output_channel,
                    &consume_func](int i) {
       std::vector<std::vector<uint64_t>> task_keys(device_num);
@@ -262,11 +260,10 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
     for (std::thread& t : threads) {
       t.join();
     }
-    input_channel->Open();
-    input_channel->Write(std::move(vec_data));
-    input_channel->Close();
   }
-
+  timeline.Pause();
+  VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
+  timeline.Start(); 
   auto unique_func = [&local_keys](int i) {
     auto& cur_keys = local_keys[i];
     std::sort(cur_keys.begin(), cur_keys.end());
@@ -278,6 +275,11 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
   for (std::thread& t : threads) {
     t.join();
   }
+  timeline.Pause();
+  
+  VLOG(0) << "GpuPs task unique cost " << timeline.ElapsedSec() << " seconds.";
+
+  timeline.Start();
   for (size_t i = 0; i < consume_task_pool.size(); i++) {
     consume_task_pool[i].reset();
   }
@@ -320,6 +322,11 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
         for (int x = 0; x < val.mf_size; x++) {
           val.mf[x] = ptr_val[x + 7];
         }
+      } else {
+        val.mf_size = 0;
+        for (int x = 0; x < MF_DIM + 1; x++) {
+          val.mf[x] = 0;
+        }
       }
     }
   };
@@ -329,7 +336,8 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
   for (std::thread& t : threads) {
     t.join();
   }
-  
+  timeline.Pause(); 
+  VLOG(0) << "GpuPs pull sparse cost " << timeline.ElapsedSec() << " seconds.";
   gpu_ps_wrapper->BuildGPUPS(table_id, feadim, gpu_task);
 }
 
@@ -385,7 +393,7 @@ void PSGPUTrainer::Finalize() {
       _ForEachDataType_(MergeCallback);
     }
   }
-  //pull_dense_worker_->MergeDenseParam();
+  pull_dense_worker_->MergeDenseParam();
   root_scope_->DropKids();
 }
 }  // namespace framework

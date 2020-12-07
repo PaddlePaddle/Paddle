@@ -232,6 +232,15 @@ class DatasetImpl : public Dataset {
   std::vector<paddle::framework::Channel<T>>& GetMultiOutputChannel() {
     return multi_output_channel_;
   }
+  
+  std::vector<paddle::framework::Channel<T>>& GetCurOutputChannel() {
+    if (cur_channel_ == 0) {
+      return multi_output_channel_;
+    } else {
+      return multi_consume_channel_;
+    }
+  }
+  
   Channel<T>& GetInputChannelRef() { return input_channel_; }
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,

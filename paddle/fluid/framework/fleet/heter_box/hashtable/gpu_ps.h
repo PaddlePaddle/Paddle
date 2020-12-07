@@ -59,6 +59,7 @@ class GpuPs {
   void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len, size_t chunk_size, int stream_num);
   void dump();
   void show_one_table(int gpu_num);
+  int get_index_by_devid(int devid);
   
   template <typename Sgd>
   void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len, Sgd& sgd);

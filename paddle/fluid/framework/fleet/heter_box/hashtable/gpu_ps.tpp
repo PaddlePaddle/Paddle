@@ -139,6 +139,11 @@ int GpuPs<KeyType, ValType, GradType>::log2i(int x) {
 }
 
 template<typename KeyType, typename ValType, typename GradType>
+int GpuPs<KeyType, ValType, GradType>::get_index_by_devid(int devid) {
+  return resource_->get_index_by_devid(devid);
+}
+
+template<typename KeyType, typename ValType, typename GradType>
 void GpuPs<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len, size_t chunk_size, int stream_num) {
   if (len <= 0) {
     return;

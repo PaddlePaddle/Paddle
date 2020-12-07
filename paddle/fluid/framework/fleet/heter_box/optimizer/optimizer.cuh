@@ -22,6 +22,30 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+__device__ double cuda_double_random(unsigned long long seed) {
+    // copy from MurmurHash3
+    seed ^= seed >> 33;
+    seed *= 0xff51afd7ed558ccd;
+    seed ^= seed >> 33;
+    seed *= 0xc4ceb9fe1a85ec53;
+    seed ^= seed >> 33;
+    return ((double)seed / 18446744073709551615.0);
+}
+
+__device__ float cuda_normal_random(unsigned long long idx) {
+    static double pi = 3.1415926897932384;
+    unsigned long long x = clock64() + idx;
+    double x1, x2, res;
+    while (1) {
+        x1 = cuda_double_random(x);
+        x2 = cuda_double_random(x + 33);
+        res = sqrt(-2.0 * log(x1)) * cos(2.0 * pi * x2);
+        if (-10 < res && res < 10) break;
+        x += 207;
+    }
+    return res;
+}
+
 template<typename ValType, typename GradType>
 class Optimizer {
  public:
@@ -75,13 +99,12 @@ class Optimizer {
       update_lr(val.lr, val.lr_g2sum, grad.lr_g, 1.0);
 
       if (val.mf_size == 0) {
-        if (0) {
-          val.mf_size = MF_DIM;
-          for (int i = 0; i < MF_DIM; ++i) {
-          //  val.mf[i + 1] = (cuda_normal_random((int)grad.show) * 2 - 1) * optimizer_config::mf_initial_range;
-            
-          }
+        if (optimizer_config::mf_create_thresholds <= optimizer_config::nonclk_coeff * (val.show - val.clk) + optimizer_config::clk_coeff * val.clk) {
+          val.mf_size = MF_DIM + 1;
           val.mf[0] = 0;
+          for (int i = 0; i < MF_DIM; ++i) {
+            val.mf[i + 1] = (cuda_normal_random((int)grad.show) * 2 - 1) * optimizer_config::mf_initial_range;
+          }
         }
       } else {
         update_mf(MF_DIM, &val.mf[1], val.mf[0], grad.mf_g, 1.0);
