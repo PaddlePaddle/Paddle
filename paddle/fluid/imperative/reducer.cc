@@ -225,7 +225,7 @@ void Reducer::MarkVariableReady(const VariableIndex &var_index,
 
 void Reducer::MarkGroupReady(size_t group_index) {
   if (group_index > next_group_) {
-    LOG(WARNING) << "Maybe it need adjust the order of group";
+    VLOG(3) << "Maybe it need adjust the order of group";
     return;
   }
 

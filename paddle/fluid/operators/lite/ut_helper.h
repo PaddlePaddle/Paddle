@@ -42,6 +42,16 @@ void AddTensorToBlockDesc(framework::proto::BlockDesc* block,
   desc.SetPersistable(persistable);
   *var = *desc.Proto();
 }
+
+void AddFetchListToBlockDesc(framework::proto::BlockDesc* block,
+                             const std::string& name) {
+  using framework::proto::VarType;
+  auto* var = block->add_vars();
+  framework::VarDesc desc(name);
+  desc.SetType(VarType::FETCH_LIST);
+  *var = *desc.Proto();
+}
+
 void serialize_params(std::string* str, framework::Scope* scope,
                       const std::vector<std::string>& params) {
   std::ostringstream os;

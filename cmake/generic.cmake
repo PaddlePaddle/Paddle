@@ -267,7 +267,7 @@ function(merge_static_libs TARGET_NAME)
 endfunction(merge_static_libs)
 
 function(check_coverage_opt TARGET_NAME SRCS)
-  if(WITH_COVERAGE)
+  if(WITH_COVERAGE AND WITH_INCREMENTAL_COVERAGE)
     if ("$ENV{PADDLE_GIT_DIFF_H_FILE}" STREQUAL "")
       if (NOT ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" STREQUAL ""))
         string(REPLACE "," ";" CC_FILE_LIST $ENV{PADDLE_GIT_DIFF_CC_FILE})
@@ -790,23 +790,13 @@ function(py_test TARGET_NAME)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(WITH_COVERAGE)
-      if ("$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL "")
-        add_test(NAME ${TARGET_NAME}
-                COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
-                FLAGS_cpu_deterministic=true
-                PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
-                ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-      else()
-        add_test(NAME ${TARGET_NAME}
-                COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
-                FLAGS_cpu_deterministic=true
-                PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
-                COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-                ${PYTHON_EXECUTABLE} -m coverage run --branch -p --include=$ENV{PADDLE_GIT_DIFF_PY_FILE} ${py_test_SRCS} ${py_test_ARGS}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      endif()
+      add_test(NAME ${TARGET_NAME}
+        COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+        FLAGS_cpu_deterministic=true
+        PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+        COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+        ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
       add_test(NAME ${TARGET_NAME}
                COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true

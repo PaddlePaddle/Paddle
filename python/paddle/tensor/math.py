@@ -185,9 +185,6 @@ def pow(x, y, name=None):
         if isinstance(y, (int, float)):
             return core.ops.pow(x, 'factor', y)
         elif isinstance(y, (paddle.Tensor, Variable)):
-            if x.dtype != y.dtype:
-                y = cast(y, dtype='float64')
-                x = cast(x, dtype='float64')
             return _elementwise_op_in_dygraph(
                 x, y, axis=-1, act=None, op_name='elementwise_pow')
         else:
@@ -205,9 +202,6 @@ def pow(x, y, name=None):
         elif isinstance(y, (paddle.Tensor, Variable)):
             # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
             helper = LayerHelper('elementwise_pow', **locals())
-            if x.dtype != y.dtype:
-                y = cast(y, dtype='float64')
-                x = cast(x, dtype='float64')
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
             return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
         else:
@@ -511,19 +505,15 @@ def multiply(x, y, name=None):
     act = None
     axis = -1
 
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+
     if x.dtype != y.dtype:
         raise TypeError(
             'Input tensors must be same type, but received type of x: %s, type of y: %s '
             % (x.dtype, y.dtype))
 
-    if in_dygraph_mode():
-        if not isinstance(x, (paddle.Tensor)):
-            raise TypeError(
-                    'Input x must tensor type, but received type of x: %s'
-                    % (x.dtype))
-
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 def maximum(x, y, name=None):
@@ -960,9 +950,6 @@ def mm(input, mat2, name=None):
 
 def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     """
-	:alias_main: paddle.addmm
-	:alias: paddle.addmm,paddle.tensor.addmm,paddle.tensor.math.addmm
-
     **addmm**
 
     This operator is used to perform matrix multiplication for input $x$ and $y$.

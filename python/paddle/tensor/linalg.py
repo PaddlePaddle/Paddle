@@ -173,8 +173,6 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
 def norm(x, p='fro', axis=None, keepdim=False, name=None):
     """
-	:alias_main: paddle.norm
-	:alias: paddle.norm,paddle.tensor.norm,paddle.tensor.linalg.norm
 
     Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
     or 2-norm, and in general the p-norm for p > 0) of a given tensor.
@@ -206,7 +204,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             
             import paddle
             import numpy as np
-            paddle.disable_static()
             shape=[2, 3, 4]
             np_input = np.arange(24).astype('float32') - 12
             np_input = np_input.reshape(shape)
@@ -792,9 +789,6 @@ def cholesky(x, upper=False, name=None):
 
 def bmm(x, y, name=None):
     """
-	:alias_main: paddle.bmm
-	:alias: paddle.bmm,paddle.tensor.bmm,paddle.tensor.linalg.bmm
-
     Applies batched matrix multiplication to two tensors.
 
     Both of the two input tensors must be three-dementional and share the same batch size.

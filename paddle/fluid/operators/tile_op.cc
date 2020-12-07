@@ -167,6 +167,7 @@ class TileGradOp : public framework::OperatorWithKernel {
                    framework::GradVarName("Out"), "TileGrad");
 
     auto x_dims = ctx->GetInputDim("X");
+
     std::vector<int> repeat_times =
         ctx->Attrs().Get<std::vector<int>>("repeat_times");
     if (repeat_times.size() == 0) {
