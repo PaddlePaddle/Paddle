@@ -415,7 +415,6 @@ class Subset(Dataset):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             from paddle.io import Subset
 
             # example 1:
@@ -455,7 +454,6 @@ def random_split(dataset, lengths, generator=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             from paddle.io import random_split
 
             a_list = paddle.io.random_split(range(10), [3, 7])
