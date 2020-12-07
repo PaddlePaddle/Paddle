@@ -1271,7 +1271,6 @@ def cross_entropy(input,
     else:
         if input_dims - 1 == label_dims:
             out = paddle.squeeze(out, axis=axis)
- 
         return out
 
 
