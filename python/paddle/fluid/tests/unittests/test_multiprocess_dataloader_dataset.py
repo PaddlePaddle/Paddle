@@ -130,6 +130,17 @@ class TestRandomSplitApi(unittest.TestCase):
         self.assertTrue(len(elements_list) == 0)
 
 
+class TestRandomSplitError(unittest.TestCase):
+    def test_errors(self):
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
+
+        self.assertRaises(ValueError, paddle.io.random_split, range(10), [3, 7])
+        self.assertRaises(ValueError, paddle.io.random_split, range(10), [3, 8])
+        self.assertRaises(ValueError, paddle.io.random_split, range(10), [8])
+        self.assertRaises(ValueError, paddle.io.random_split, range(10), [])
+
+
 class TestSubsetDataset(unittest.TestCase):
     def run_main(self, num_workers, places):
         paddle.static.default_startup_program().random_seed = 1
@@ -181,9 +192,6 @@ class TestSubsetDataset(unittest.TestCase):
             odd_list.append(label)
 
         self.assertEqual(odd_list, elements_list)
-
-    def test_error(self):
-        pass
 
     def test_main(self):
         paddle.static.default_startup_program().random_seed = 1
