@@ -315,11 +315,9 @@ class TensorRTSubgraphPassRelu6Test(TensorRTSubgraphPassActivationTest):
         return fluid.layers.relu6(x)
 
 
-'''
 class TensorRTSubgraphPassSoftMaxTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
         return fluid.layers.softmax(x)
-'''
 
 
 class TensorRTSubgraphPassSigmoidTest(TensorRTSubgraphPassActivationTest):
@@ -586,7 +584,6 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
             self.check_output_with_option(use_gpu, atol=1e-4, flatten=True)
 
 
-'''
 class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
     def setUp(self):
         self.set_params()
@@ -609,7 +606,7 @@ class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu)
+            self.check_output_with_option(use_gpu, atol=1e-3)
 
 
 class TensorRTSubgraphPassLayerNormBeginNormAxis2Test(
@@ -622,7 +619,6 @@ class TensorRTSubgraphPassLayerNormBeginNormAxis3Test(
         TensorRTSubgraphPassLayerNormTest):
     def set_params(self):
         self.begin_norm_axis = 3
-'''
 
 
 class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
