@@ -57,6 +57,7 @@ void BindDistFleetWrapper(py::module* m) {
       .def("save_all_model", &FleetWrapper::SaveModel)
       .def("save_one_model", &FleetWrapper::SaveModelOneTable)
       .def("sparse_table_stat", &FleetWrapper::PrintTableStat)
+      .def("stop_server", &FleetWrapper::StopServer)
       .def("stop_worker", &FleetWrapper::FinalizeWorker)
       .def("barrier", &FleetWrapper::BarrierWithTable);
 }  // end BindDistFleetWrapper

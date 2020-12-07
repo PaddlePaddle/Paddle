@@ -94,7 +94,9 @@ void FleetWrapper::InitWorker(
 
 void FleetWrapper::StopServer() {
   VLOG(3) << "Going to stop server";
-  pserver_ptr_->stop_server();
+  auto* communicator = Communicator::GetInstance();
+  auto status = communicator->_worker_ptr->stop_server();
+  status.wait();
 }
 
 void FleetWrapper::FinalizeWorker() {
