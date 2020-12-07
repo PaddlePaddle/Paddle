@@ -940,9 +940,9 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // This name will be used as key when saving info into device context
     std::string key = platform::CreateKey(
         dev_ctx, src_tz, ctx.InputName("Input") + ctx.InputName("Filter"));
-    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
     const std::string key_conv_pd = key + "@fwd_pd";
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
     std::vector<primitive> pipeline;
 
     // Create user memory descriptors
