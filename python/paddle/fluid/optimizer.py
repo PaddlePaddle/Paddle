@@ -3751,7 +3751,9 @@ class PipelineOptimizer(object):
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
         if not isinstance(optimizer, Optimizer) and not isinstance(
-                optimizer, paddle.optimizer.Optimizer):
+                optimizer, paddle.optimizer.Optimizer) and not isinstance(
+                    optimizer, paddle.fluid.contrib.mixed_precision.decorator.
+                    OptimizerWithMixedPrecision):
             raise ValueError("The 'optimizer' parameter for "
                              "PipelineOptimizer must be an instance of "
                              "Optimizer, but the given type is {}.".format(
