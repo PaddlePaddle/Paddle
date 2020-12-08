@@ -32,8 +32,10 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(5130)
     teller_set.insert("relu6");
     teller_set.insert("hard_sigmoid");
+    teller_set.insert("clip");
     int8_teller_set.insert("relu6");
     int8_teller_set.insert("hard_sigmoid");
+    int8_teller_set.insert("clip");
 #endif
 #if IS_TRT_VERSION_GE(6000)
     teller_set.insert("fused_embedding_eltwise_layernorm");
@@ -132,8 +134,9 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
           if (shape.size() < 3) {
-            VLOG(1) << "matmul op dims < 3 not supported in tensorrt, but got dims " 
-              << shape.size() << ", so jump it.";
+            VLOG(1)
+                << "matmul op dims < 3 not supported in tensorrt, but got dims "
+                << shape.size() << ", so jump it.";
             return false;
           }
         }
