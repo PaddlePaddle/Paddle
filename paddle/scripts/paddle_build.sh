@@ -1208,6 +1208,16 @@ set +x
                 exit 8;
             fi
         fi
+    if [ ! -d "$PADDLE_ROOT/added_ut" ];then
+        added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$^");print}' $PADDLE_ROOT/added_ut)$
+        ctest --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+        if [ "$added_ut_error" != 0 ];then
+            echo "========================================"
+            echo "Added UT should not exceed 15 seconds"
+            echo "========================================"
+            exit 8;
+        fi
+    fi
 set -ex
     fi
 }
