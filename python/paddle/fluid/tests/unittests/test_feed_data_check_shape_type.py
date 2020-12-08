@@ -78,6 +78,13 @@ class TestFeedData(unittest.TestCase):
                     'use_cuda': use_cuda,
                     'use_parallel_executor': use_parallel_executor,
                 })
+
+                if use_parallel_exe and os.name == "nt":
+                    print(
+                        "Skip use_parallel_exe=True in Windows because Windows GPU doesn't support mult-GPU now."
+                    )
+                    continue
+
                 # Test feeding without error
                 self._test_feed_data_match_shape_type(use_cuda,
                                                       use_parallel_executor)
