@@ -90,6 +90,7 @@ def compare_benchmark_result(develop_result, pr_result):
             logging.info("\t%s" % line)
     else:
         if develop_result.get("diff") != 0 or pr_result.get("diff") != 0:
+            status = False
             logging.info("------ OP: %s ------" % pr_result.get("name"))
             logging.info("Accaury diff: %s" % pr_result.get("diff"))
             logging.info("backward: %s" % pr_result.get("backward"))
