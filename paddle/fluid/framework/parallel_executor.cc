@@ -400,7 +400,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Cannot use CUDAPlace in XPU/GPU version, "
-          "Please recompile or reinstall Paddle with XPU support."));
+          "Please recompile or reinstall Paddle with GPU support."));
 #endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
