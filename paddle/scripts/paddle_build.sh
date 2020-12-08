@@ -359,12 +359,12 @@ function build_base() {
     fi
 
     # reset ccache zero stats for collect PR's actual hit rate
-    [ "${CACHE_HIT_STATISTICS}" == "ON" ] && ccache -z
+    ccache -z
 
     make install -j ${parallel_number};build_error=$?
 
     # ci will collect ccache hit rate
-    [ "${CACHE_HIT_STATISTICS}" == "ON" ] && collect_ccache_hits
+    collect_ccache_hits
 
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -434,12 +434,12 @@ EOF
     fi
 
     # reset ccache zero stats for collect PR's actual hit rate
-    [ "${CACHE_HIT_STATISTICS}" == "ON" ] && ccache -z
+    ccache -z
 
     make install -j 8;build_error=$?
 
     # ci will collect ccache hit rate
-    [ "${CACHE_HIT_STATISTICS}" == "ON" ] && collect_ccache_hits
+    collect_ccache_hits
 
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -1565,13 +1565,13 @@ EOF
     cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto};build_error=$?
 
     # reset ccache zero stats for collect PR's actual hit rate
-    [ "${CACHE_HIT_STATISTICS}" == "ON" ] && ccache -z
+    ccache -z
 
     make -j ${parallel_number} fluid_lib_dist;build_error=$?
     make -j ${parallel_number} inference_lib_dist;build_error=$?
 
     # ci will collect ccache hit rate
-    [ "${CACHE_HIT_STATISTICS}" == "ON" ] && collect_ccache_hits
+    collect_ccache_hits
 
     if [ "$build_error" != 0 ];then
         exit 7;

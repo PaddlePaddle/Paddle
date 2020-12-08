@@ -269,7 +269,7 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 :: reset clcache zero stats for collect PR's actual hit rate
-if "%CACHE_HIT_STATISTICS%"=="ON" clcache.exe -z
+clcache.exe -z
 
 echo Build Paddle the %build_times% time:
 if "%WITH_CLCACHE%"=="OFF" (
@@ -280,7 +280,7 @@ if "%WITH_CLCACHE%"=="OFF" (
 set build_error=%ERRORLEVEL%
 
 :: ci will collect clcache hit rate
-if "%CACHE_HIT_STATISTICS%"=="ON" goto :collect_clcache_hits
+goto :collect_clcache_hits
 
 if %build_error% NEQ 0 (
     set /a build_times=%build_times%+1
