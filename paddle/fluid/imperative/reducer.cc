@@ -149,18 +149,18 @@ void Reducer::InitializeDenseGroups(
     const auto var_name = var->Name();
     PADDLE_ENFORCE_EQ(is_sparse_gradient_[variable_index], false,
                       platform::errors::PreconditionNotMet(
-                          "Tensor `%s`'s GRAD must be LoDTensor, but received "
+                          "Tensor %s's GRAD must be LoDTensor, but received "
                           "GRAD is SelectedRows",
                           var_name));
 
     auto lod_tensor = var->MutableVar()->GetMutable<framework::LoDTensor>();
     PADDLE_ENFORCE_EQ(lod_tensor->IsInitialized(), true,
                       platform::errors::PreconditionNotMet(
-                          "Tensor `%s` is not initialized.", var_name));
+                          "Tensor %s is not initialized.", var_name));
     auto size = lod_tensor->numel();
     PADDLE_ENFORCE_GT(
         size, 0, platform::errors::PreconditionNotMet(
-                     "The number of tensor `%s`'s elements is 0.", var_name));
+                     "The number of tensor %s's elements is 0.", var_name));
     all_length += size;
 
     p_group->length_.push_back(size);
@@ -210,7 +210,7 @@ void Reducer::InitializeGroups(
     PADDLE_ENFORCE_GT(
         variable_indices_.size(), 0,
         platform::errors::PreconditionNotMet(
-            "The number of group_index[`%d`]'s elements is 0.", group_index));
+            "The number of group[%d]'s elements is 0.", group_index));
     Group group;
 
     // It's just for check the sparse or dense
@@ -355,12 +355,14 @@ void Reducer::FinalizeBackward() {
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaStreamWaitEvent(compute_stream_, comm_enent_.get(), 0));
   if (!has_rebuilt_group_) {
+    VLOG(3) << "Start rebuilding the groups";
     auto rebuild_group_indices = RebuildGruops();
+    auto rebuild_group_number = rebuild_group_indices.size();
     VLOG(3) << "The number of groups changed from [" << group_indices_.size()
-            << "] to [" << rebuild_group_indices.size() << "]";
-    group_indices_ = rebuild_group_indices;
-    CreateGroupEvents(rebuild_group_indices.size());
-    InitializeGroups(rebuild_group_indices);
+            << "] to [" << rebuild_group_number << "]";
+    group_indices_ = std::move(rebuild_group_indices);
+    CreateGroupEvents(rebuild_group_number);
+    InitializeGroups(group_indices_);
   }
   VLOG(3) << "In the batch, Reducer is finished...";
 }
