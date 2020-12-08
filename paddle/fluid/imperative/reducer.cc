@@ -358,8 +358,6 @@ void Reducer::FinalizeBackward() {
     VLOG(3) << "Start rebuilding the groups";
     auto rebuild_group_indices = RebuildGruops();
     auto rebuild_group_number = rebuild_group_indices.size();
-    VLOG(3) << "The number of groups changed from [" << group_indices_.size()
-            << "] to [" << rebuild_group_number << "]";
     group_indices_ = std::move(rebuild_group_indices);
     CreateGroupEvents(rebuild_group_number);
     InitializeGroups(group_indices_);
