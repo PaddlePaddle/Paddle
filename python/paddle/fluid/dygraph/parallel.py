@@ -24,8 +24,8 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
-from paddle.fluid.dygraph import nn
 import warnings
+import paddle
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -421,7 +421,9 @@ class DataParallel(layers.Layer):
         # can't be obtained when bp hasn't happened yet. So if layer supports sparse parameter,
         # we should add the layer here like "nn.Embedding".
         def check_layer_sparse(sublayer):
-            if isinstance(sublayer, nn.Embedding):
+            if isinstance(sublayer, paddle.nn.layer.common.Embedding):
+                return sublayer._sparse
+            if isinstance(sublayer, paddle.fluid.dygraph.Embedding):
                 return sublayer._is_sparse
             return False
 
