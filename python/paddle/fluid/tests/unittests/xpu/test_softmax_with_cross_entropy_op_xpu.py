@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 from test_softmax_op import stable_softmax
-from op_test import OpTest
+from op_test_xpu import XPUOpTest
 import paddle.fluid.core as core
 import paddle
 
@@ -44,7 +44,7 @@ def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
     return result.reshape(label.shape)
 
 
-class TestSoftmaxWithCrossEntropyOp(OpTest):
+class TestSoftmaxWithCrossEntropyOp(XPUOpTest):
     """
     Test softmax with cross entropy operator with discreate one-hot labels.
     """
