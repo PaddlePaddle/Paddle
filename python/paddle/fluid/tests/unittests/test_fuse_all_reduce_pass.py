@@ -38,6 +38,12 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
+        if use_cuda and os.name == "nt":
+            print(
+                "Skip use cuda in Windows because Windows version only supports 1 card."
+            )
+            return
+
         feed_dict_data = None
         if init_feed_dict is not None:
             img, label = init_feed_dict()
