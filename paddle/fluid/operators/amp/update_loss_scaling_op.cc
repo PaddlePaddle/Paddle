@@ -141,12 +141,12 @@ class LazyZeros<platform::CPUDeviceContext, T> {
                   const bool* found_inf_data,
                   const std::vector<const framework::Tensor*>& xs,
                   const std::vector<framework::Tensor*>& outs) const {
-    if (*found_inf_data) {
-      VLOG(1) << "-- UpdateLossScaling: Infinite values are found in grads. --";
-      for (size_t i = 0; i < xs.size(); ++i) {
-        auto* out = outs[i];
-        T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
-        int num = out->numel();
+    for (size_t i = 0; i < xs.size(); ++i) {
+      auto* out = outs[i];
+      T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+      int num = out->numel();
+      if (*found_inf_data) {
+        VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
         std::memset(out_data, 0, num * sizeof(T));
       }
     }
