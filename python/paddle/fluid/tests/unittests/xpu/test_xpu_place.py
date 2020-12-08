@@ -32,10 +32,9 @@ class Test_XPU_Places(unittest.TestCase):
 
     def test_check_preset_envs(self):
         if core.is_compiled_with_xpu():
-            os.environ["FLAGS_selected_xpus"] = "0,1"
+            os.environ["FLAGS_selected_xpus"] = "0"
             place_list = static.xpu_places()
-            self.assert_places_equal([fluid.XPUPlace(0), fluid.XPUPlace(1)],
-                                     place_list)
+            self.assert_places_equal([fluid.XPUPlace(0)], place_list)
 
     def test_check_no_preset_envs(self):
         if core.is_compiled_with_xpu():

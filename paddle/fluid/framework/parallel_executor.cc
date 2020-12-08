@@ -387,8 +387,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       continue;
     }
     std::unique_ptr<GarbageCollector> gc;
-#ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
             BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
@@ -397,28 +397,29 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
             BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Cannot use CUDAPlace in XPU/GPU version, "
+          "Please recompile or reinstall Paddle with XPU support."));
+#endif
+    } else if (platform::is_xpu_place(place)) {
+#if defined(PADDLE_WITH_XPU)
+      gc.reset(new XPUGarbageCollector(boost::get<platform::XPUPlace>(place),
+                                       max_memory_size));
+      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Cannot use XPUPlace in CPU/GPU version, "
+          "Please recompile or reinstall Paddle with XPU support."));
+#endif
+    } else if (platform::is_cpu_place(place)) {
+      gc.reset(new CPUGarbageCollector(
+          BOOST_GET_CONST(platform::CPUPlace, place), max_memory_size));
+      VLOG(10) << "Created GarbageCollector at " << place;
     } else {
-#elif defined(PADDLE_WITH_XPU)
-      if (platform::is_xpu_place(place)) {
-        gc.reset(new XPUGarbageCollector(boost::get<platform::XPUPlace>(place),
-                                         max_memory_size));
-        VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
-      } else {
-#endif
-        if (platform::is_cpu_place(place)) {
-          gc.reset(new CPUGarbageCollector(
-              BOOST_GET_CONST(platform::CPUPlace, place), max_memory_size));
-          VLOG(10) << "Created GarbageCollector at " << place;
-        } else {
-          PADDLE_THROW(platform::errors::PreconditionNotMet(
-              "Unsupported place for garbage collection"));
-        }
-#ifdef PADDLE_WITH_XPU
-      }
-#endif
-#ifdef PADDLE_WITH_CUDA
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "Unsupported place for garbage collection"));
     }
-#endif
     gcs_.emplace(place, std::move(gc));
   }
 
@@ -519,9 +520,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
-  // PADDLE_ENFORCE(places.size() > 0 && !is_xpu_place(places[0]),
-  //                platform::errors::Unavailable(
-  //                    "XPU is not supported in ParallelExecutor"));
   InitP2P(places);
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
@@ -751,8 +749,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       }
     }
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Paddle should be compiled with CUDA for ParallelGraph Execution."));
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Paddle should be compiled with CUDA for ParallelGraph Execution."));
 #endif
   } else {
     bool has_drop_last_read_op = details::HasDropLastReadOp(*graph);
@@ -780,24 +778,10 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
             exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
             member_->places_, graph));
       } else {
-#if defined(PADDLE_WITH_XPU)
-        if (member_->use_xpu_) {
-          VLOG(3) << "use XPUThreadedSSAGraphExecutor";
-          member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-              exec_strategy, member_->local_scopes_,
-              member_->local_exec_scopes_, member_->places_, graph));
-        } else {
-          VLOG(3) << "use FastThreadedSSAGraphExecutor";
-          member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-              exec_strategy, member_->local_scopes_,
-              member_->local_exec_scopes_, member_->places_, graph));
-        }
-#else
-          VLOG(3) << "use FastThreadedSSAGraphExecutor";
-          member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-              exec_strategy, member_->local_scopes_,
-              member_->local_exec_scopes_, member_->places_, graph));
-#endif
+        VLOG(3) << "use FastThreadedSSAGraphExecutor";
+        member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+            exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+            member_->places_, graph));
       }
       final_graphs.emplace_back(graph);
     }
