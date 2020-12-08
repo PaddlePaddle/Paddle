@@ -33,6 +33,17 @@ struct alignas(sizeof(T) * Size) aligned_vector {
   T val[Size];
 };
 
+template <typename T>
+inline int VectorizedSize(char* pointer) {
+  uint64_t address = reinterpret_cast<uint64_t>(pointer);
+  constexpr int vec4 =
+      std::alignment_of<aligned_vector<T, 4>>::value;  // NOLINT
+  if (address % vec4 == 0) {
+    return 4;
+  }
+  return 1;
+}
+
 template <typename T, typename MaskType>
 __global__ void RandomGenerator(const size_t n, const int seed,
                                 const float dropout_prob, const T* src,
@@ -103,7 +114,6 @@ __global__ void RandomGeneratorWithSeed(const size_t n, const int* seed,
   }
 }
 
-/*
 template <typename T, typename MaskType>
 __global__ void RandomGeneratorWithGenerator(const size_t n, uint64_t seed,
                                              const float dropout_prob,
@@ -139,25 +149,22 @@ __global__ void RandomGeneratorWithGenerator(const size_t n, uint64_t seed,
     dst[idx] = dest;
   }
 }
-*/
 
-template <typename T, typename MaskType>
-__global__ void RandomGeneratorWithGenerator(const size_t n, uint64_t seed,
-                                             const float dropout_prob,
-                                             const T* src, MaskType* mask_data,
-                                             T* dst, bool is_upscale_in_train,
-                                             uint64_t increment) {
+template <typename T, typename MaskType, int VecSize>
+__global__ void VectorizedRandomGeneratorWithGenerator(
+    const size_t n, uint64_t seed, const float dropout_prob, const T* src,
+    MaskType* mask_data, T* dst, bool is_upscale_in_train, uint64_t increment) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
 
   MaskType mask;
   T dest;
-  using LoadT = aligned_vector<T, 4>;
-  using MaskLoadT = aligned_vector<MaskType, 4>;
+  using LoadT = aligned_vector<T, VecSize>;
+  using MaskLoadT = aligned_vector<MaskType, VecSize>;
   T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
-  for (int i = idx * 4; i < n; i += blockDim.x * gridDim.x * 4) {
-    T src_vec[4];
+  for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
+    T src_vec[VecSize];
     LoadT* value = reinterpret_cast<LoadT*>(&src_vec);
     float4 rand = curand_uniform4(&state);
     rand.x = rand.x < dropout_prob;
@@ -166,11 +173,11 @@ __global__ void RandomGeneratorWithGenerator(const size_t n, uint64_t seed,
     rand.w = rand.w < dropout_prob;
     *value = *reinterpret_cast<LoadT*>(const_cast<T*>(&src[i]));
 
-    T dest_vec[4];
-    T mask_vec[4];
+    T dest_vec[VecSize];
+    MaskType mask_vec[VecSize];
 
 #pragma unroll
-    for (int ii = 0; ii < 4; ii++) {
+    for (int ii = 0; ii < VecSize; ii++) {
       if (is_upscale_in_train) {
         dest_vec[ii] = src_vec[ii] * static_cast<T>((&rand.x)[ii]) * factor;
       } else {
@@ -230,6 +237,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       int blocks_per_sm =
           dev_ctx.GetMaxPhysicalThreadCount() / dev_ctx.GetSMCount() / threads;
       grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
+
       if (seed && platform::is_gpu_place(seed->place())) {
         auto seed_gpu_data = seed->data<int>();
         RandomGeneratorWithSeed<T, uint8_t><<<grid, threads, 0, stream>>>(
@@ -237,26 +245,36 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
             upscale_in_train);
         return;
       }
-      int seed_data;
-      std::random_device rnd;
-      if (seed) {
-        seed_data = *(seed->data<int>());
-      } else {
-        seed_data =
-            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
-      }
 
       int device_id = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace())
                           .GetDeviceId();
       auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
       if (gen_cuda->GetIsInitPy() && (!context.Attr<bool>("fix_seed"))) {
+        int vec_size =
+            VectorizedSize<T>(reinterpret_cast<char*>(const_cast<T*>(x_data)));
         auto seed_offset = gen_cuda->IncrementOffset(1);
-        RandomGeneratorWithGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
-            size, seed_offset.first, dropout_prob, x_data, mask_data, y_data,
-            upscale_in_train, seed_offset.second);
+        if (vec_size == 4) {
+          VectorizedRandomGeneratorWithGenerator<
+              T, uint8_t, 4><<<grid, threads, 0, stream>>>(
+              size, seed_offset.first, dropout_prob, x_data, mask_data, y_data,
+              upscale_in_train, seed_offset.second);
+        } else {
+          RandomGeneratorWithGenerator<T,
+                                       uint8_t><<<grid, threads, 0, stream>>>(
+              size, seed_offset.first, dropout_prob, x_data, mask_data, y_data,
+              upscale_in_train, seed_offset.second);
+        }
         return;
       }
 
+      int seed_data;
+      if (seed) {
+        seed_data = *(seed->data<int>());
+      } else {
+        std::random_device rnd;
+        seed_data =
+            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+      }
       RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train);
