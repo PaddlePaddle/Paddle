@@ -27,20 +27,19 @@ extern std::once_flag hiprtc_dso_flag;
 extern void* hiprtc_dso_handle;
 extern bool HasHIPRTC();
 
-#define DECLARE_DYNAMIC_LOAD_HIPRTC_WRAP(__name)                            \
-  struct DynLoad__##__name {                                               \
-    template <typename... Args>                                            \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
-      using hiprtc_func = decltype(&::__name);                              \
-      std::call_once(hiprtc_dso_flag, []() {                                \
+#define DECLARE_DYNAMIC_LOAD_HIPRTC_WRAP(__name)                             \
+  struct DynLoad__##__name {                                                 \
+    template <typename... Args>                                              \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {         \
+      using hiprtc_func = decltype(&::__name);                               \
+      std::call_once(hiprtc_dso_flag, []() {                                 \
         hiprtc_dso_handle = paddle::platform::dynload::GetHIPRTCDsoHandle(); \
-      });                                                                  \
-      static void* p_##__name = dlsym(hiprtc_dso_handle, #__name);          \
-      return reinterpret_cast<hiprtc_func>(p_##__name)(args...);            \
-    }                                                                      \
-  };                                                                       \
+      });                                                                    \
+      static void* p_##__name = dlsym(hiprtc_dso_handle, #__name);           \
+      return reinterpret_cast<hiprtc_func>(p_##__name)(args...);             \
+    }                                                                        \
+  };                                                                         \
   extern struct DynLoad__##__name __name
-
 
 /**
  * include all needed hiprtc functions
@@ -50,7 +49,7 @@ extern bool HasHIPRTC();
   __macro(hiprtcCompileProgram);     \
   __macro(hiprtcCreateProgram);      \
   __macro(hiprtcDestroyProgram);     \
-  __macro(hiprtcGetCode);             \
+  __macro(hiprtcGetCode);            \
   __macro(hiprtcGetCodeSize);        \
   __macro(hiprtcGetProgramLog);      \
   __macro(hiprtcGetProgramLogSize)
