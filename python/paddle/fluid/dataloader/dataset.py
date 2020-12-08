@@ -512,7 +512,9 @@ def _accumulate(iterable, fn=lambda x, y: x + y):
         [offset]: index offset.
 
     Example code:
+    
         .. code-block:: python
+        
             _accumulate([1,2,3,4,5]) --> 1 3 6 10 15
             _accumulate([1,2,3,4,5], operator.mul) --> 1 2 6 24 120
     """
