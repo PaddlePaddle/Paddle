@@ -406,7 +406,7 @@ rem TODO: fix these unittest that is bound to fail
 rem /*==================Disabled Windows unite==============================*/
 set diable_wingpu_test=test_analysis_predictor^|test_model^|test_add_reader_dependency^|test_bilateral_slice_op^|^
 test_cholesky_op^|test_dataloader_early_reset^|test_decoupled_py_reader^|test_decoupled_py_reader_data_check^|test_eager_deletion_delete_vars^|^
-test_eager_deletion_while_op^|test_feed_data_check_shape_type^|test_fetch_lod_tensor_array^|test_fleet_base_single^|test_fuse_all_reduce_pass^|test_fuse_elewise_add_act_pass^|^
+test_eager_deletion_while_op^|test_feed_data_check_shape_type^|test_fetch_lod_tensor_array^|test_fleet_base_single^|test_fuse_elewise_add_act_pass^|^
 test_fuse_optimizer_pass^|test_generator_dataloader^|test_ir_memory_optimize_ifelse_op^|test_lr_scheduler^|^
 test_multiprocess_dataloader_iterable_dataset_dynamic^|test_multiprocess_dataloader_iterable_dataset_static^|test_parallel_dygraph_sync_batch_norm^|test_parallel_executor_drop_scope^|^
 test_parallel_executor_dry_run^|test_partial_eager_deletion_transformer^|test_prune^|test_py_reader_combination^|test_py_reader_pin_memory^|^
