@@ -79,6 +79,8 @@ class TestMKLDNNGeluDim2Approx(TestActivation):
         self.attrs = {"use_mkldnn": True, "approximate": True}
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestMKLDNNGeluBf16Dim2(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
@@ -98,6 +100,8 @@ class TestMKLDNNGeluBf16Dim2(TestActivation):
         pass
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestMKLDNNGeluBf16Dim2Approx(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
@@ -225,6 +229,8 @@ class TestMKLDNNGeluDim4Approx(TestActivation):
         self.attrs = {"use_mkldnn": True, "approximate": True}
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestMKLDNNGeluBf16Dim4(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
@@ -244,6 +250,8 @@ class TestMKLDNNGeluBf16Dim4(TestActivation):
         pass
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestMKLDNNGeluBf16Dim4Approx(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
