@@ -247,6 +247,13 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
       endif()
     endif()
+
+    # pybind USE_OP_DEVICE_KERNEL for CUDNN
+    list(LENGTH cudnn_cu_srcs cudnn_cu_srcs_len)
+    if (WITH_GPU AND ${cudnn_cu_srcs_len} GREATER 0)
+        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
+    endif()
+
     # pybind USE_OP_DEVICE_KERNEL for MIOPEN
     list(LENGTH miopen_hip_cu_cc_srcs miopen_hip_cu_cc_srcs_len)
     if (WITH_ROCM_PLATFORM AND ${miopen_hip_cu_cc_srcs_len} GREATER 0)
