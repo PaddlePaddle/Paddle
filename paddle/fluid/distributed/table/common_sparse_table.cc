@@ -40,8 +40,8 @@ struct Meta {
         continue;
       }
       auto pairs = paddle::string::split_string<std::string>(line, "=");
-      PADDLE_ENFORCE_EQ(pairs.size(), 2, "info in %s except k=v, but got %s",
-                        metapath, line);
+      PADDLE_ENFORCE_EQ(pairs.size(), 2, paddle::platform::errors::InvalidArgument("info in %s except k=v, but got %s",
+                        metapath, line));
 
       if (pairs[0] == "param") {
         param = pairs[1];
@@ -90,8 +90,8 @@ struct Meta {
 
 void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
                   std::vector<std::vector<float>>* values) {
-  PADDLE_ENFORCE_EQ(columns.size(), meta.names.size() + 1,
-                    "record in txt do not match meta.");
+  PADDLE_ENFORCE_EQ(columns.size(), meta.names.size() + 1, paddle::platform::errors::InvalidArgument(
+                    "record in txt do not match meta."));
 
   values->reserve(columns.size() - 1);
 
@@ -102,8 +102,8 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
     std::vector<float> val;
     std::transform(val_.begin(), val_.end(), std::back_inserter(val),
                    [](std::string va) { return std::stof(va); });
-    PADDLE_ENFORCE_EQ(val.size(), meta.dims[x - 1],
-                      "record in txt do not match meta.");
+    PADDLE_ENFORCE_EQ(val.size(), meta.dims[x - 1], paddle::platform::errors::InvalidArgument(
+                      "record in txt do not match meta."));
     values->push_back(val);
   }
 }
