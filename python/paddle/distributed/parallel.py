@@ -44,11 +44,11 @@ def _get_global_parallel_env():
     return _global_parallel_env
 
 
-def _start_kv_server(port, http_server_d):
+def _start_kv_server(port, http_server_d, size):
     from paddle.distributed.fleet.utils.http_server import KVServer
-    http_server = KVServer(int(port))
+    http_server = KVServer(int(port), size=size)
     http_server.start()
-    wait_seconds = 5
+    wait_seconds = 3
     while http_server_d.get("running", False) or not http_server.should_stop():
         time.sleep(wait_seconds)
     http_server.stop()
@@ -149,8 +149,11 @@ def init_parallel_env():
     http_server_d = manager.dict()
     http_server_d["running"] = False
     if parallel_env.rank == 0:
+        # The scope for worker used by http server is '_worker'
+        size = {'_worker': parallel_env.world_size}
         http_server = Process(
-            target=_start_kv_server, args=(int(ep_rank_0[1]), http_server_d))
+            target=_start_kv_server,
+            args=(int(ep_rank_0[1]), http_server_d, size))
         http_server.daemon = True
         http_server_d["running"] = True
         http_server.start()
