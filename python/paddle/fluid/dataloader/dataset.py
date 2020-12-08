@@ -509,7 +509,7 @@ def _accumulate(iterable, fn=lambda x, y: x + y):
         fn (x, y): Defaults to lambdax.
 
     Yields:
-        [offset]: current accumulated index offset.
+        [offset]: yields total from beginning iterator to current iterator.
 
     Example code:
     
