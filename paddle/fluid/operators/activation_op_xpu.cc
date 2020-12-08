@@ -61,13 +61,38 @@ void xpu_activation_forward(const framework::ExecutionContext &ctx,
   const T *x_data = x->data<T>();
   T *y_data = y->mutable_data<T>(ctx.GetPlace());
   int r = 0;
-  if (xpu::Activation_t::ACT_POW == type.type) {
-    type.pow_factor = ctx.Attr<float>("factor");
-  }
   auto xpu_context = ctx.device_context<DeviceContext>().x_context();
-  r = xpu::activation_forward(xpu_context, type, x->numel(),
-                              reinterpret_cast<const float *>(x_data),
-                              reinterpret_cast<float *>(y_data));
+
+  switch (type.type) {
+    case xpu::Activation_t::HARD_SWISH: {
+      float threshold = ctx.Attr<float>("threshold");
+      float scale = ctx.Attr<float>("scale");
+      float offset = ctx.Attr<float>("offset");
+      PADDLE_ENFORCE_EQ(threshold, 6.0f,
+                        platform::errors::External(
+                            "Not support threshold [%f] in XPU", threshold));
+      PADDLE_ENFORCE_EQ(
+          scale, 6.0f,
+          platform::errors::External("Not support scale [%f] in XPU", scale));
+      PADDLE_ENFORCE_EQ(
+          offset, 3.0f,
+          platform::errors::External("Not support offset [%f] in XPU", offset));
+
+      r = xpu::hard_swish(xpu_context, reinterpret_cast<const float *>(x_data),
+                          reinterpret_cast<float *>(y_data), x->numel());
+      break;
+    }
+    case xpu::Activation_t::ACT_POW: {
+      type.pow_factor = ctx.Attr<float>("factor");
+    }
+    default: {
+      r = xpu::activation_forward(xpu_context, type, x->numel(),
+                                  reinterpret_cast<const float *>(x_data),
+                                  reinterpret_cast<float *>(y_data));
+      break;
+    }
+  }
+
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU API return wrong value[%d], please check whether "
@@ -90,12 +115,40 @@ void xpu_activation_backward(const framework::ExecutionContext &ctx,
   if (y != nullptr) y_data = y->data<T>();
   if (dOut != nullptr) y_grad = dOut->data<T>();
   T *x_grad = dX->mutable_data<T>(ctx.GetPlace());
+  int r = 0;
   auto xpu_context = ctx.device_context<DeviceContext>().x_context();
-  int r = xpu::activation_backward(xpu_context, type, dX->numel(),
+
+  switch (type.type) {
+    case xpu::Activation_t::HARD_SWISH: {
+      float threshold = ctx.Attr<float>("threshold");
+      float scale = ctx.Attr<float>("scale");
+      float offset = ctx.Attr<float>("offset");
+      PADDLE_ENFORCE_EQ(threshold, 6.0f,
+                        platform::errors::External(
+                            "Not support threshold [%f] in XPU", threshold));
+      PADDLE_ENFORCE_EQ(
+          scale, 6.0f,
+          platform::errors::External("Not support scale [%f] in XPU", scale));
+      PADDLE_ENFORCE_EQ(
+          offset, 3.0f,
+          platform::errors::External("Not support offset [%f] in XPU", offset));
+      r = xpu::hard_swish_grad(xpu_context,
+                               reinterpret_cast<const float *>(x_data),
+                               reinterpret_cast<const float *>(y_data),
+                               reinterpret_cast<const float *>(y_grad),
+                               reinterpret_cast<float *>(x_grad), dX->numel());
+      break;
+    }
+    default: {
+      r = xpu::activation_backward(xpu_context, type, dX->numel(),
                                    reinterpret_cast<const float *>(x_data),
                                    reinterpret_cast<const float *>(y_data),
                                    reinterpret_cast<const float *>(y_grad),
                                    reinterpret_cast<float *>(x_grad));
+      break;
+    }
+  }
+
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU API return wrong value[%d], please check whether "
@@ -132,6 +185,8 @@ using XPULogFunctor = XPUActivationFunc<T, xpu::Activation_t::LOG>;
 template <typename T>
 using XPUSquareFunctor = XPUActivationFunc<T, xpu::Activation_t::SQUARE>;
 template <typename T>
+using XPUHardSwishFunctor = XPUActivationFunc<T, xpu::Activation_t::HARD_SWISH>;
+template <typename T>
 using XPUSuareGradFunctor = XPUActivationGradFunc<T, xpu::Activation_t::SQUARE>;
 template <typename T>
 using XPUReluGradFunctor = XPUActivationGradFunc<T, xpu::Activation_t::RELU>;
@@ -146,6 +201,9 @@ template <typename T>
 using XPUSqrtFunctor = XPUActivationFunc<T, xpu::Activation_t::SQRT>;
 template <typename T>
 using XPUSqrtGradFunctor = XPUActivationGradFunc<T, xpu::Activation_t::SQRT>;
+template <typename T>
+using XPUHardSwishGradFunctor =
+    XPUActivationGradFunc<T, xpu::Activation_t::HARD_SWISH>;
 template <typename T>
 using XPUACTPowFunctor = XPUActivationFunc<T, xpu::Activation_t::ACT_POW>;
 template <typename T>
@@ -169,6 +227,8 @@ REGISTER_ACTIVATION_XPU_KERNEL(sigmoid, XPUSigmoidFunctor,
 REGISTER_ACTIVATION_XPU_KERNEL(gelu, XPUGeluFunctor, XPUGeluGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(sqrt, XPUSqrtFunctor, XPUSqrtGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(square, XPUSquareFunctor, XPUSuareGradFunctor)
+REGISTER_ACTIVATION_XPU_KERNEL(hard_swish, XPUHardSwishFunctor,
+                               XPUHardSwishGradFunctor)
 REGISTER_OP_XPU_KERNEL(log,
                        ops::XPUActivationKernel<ops::XPULogFunctor<float>>);
 REGISTER_OP_XPU_KERNEL(pow,
