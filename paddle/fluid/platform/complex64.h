@@ -400,6 +400,14 @@ HOSTDEVICE inline complex64(log)(const complex64& a) {
 #endif
 }
 
+HOSTDEVICE inline complex64(conj)(const complex64& a) {
+#if defined(__CUDA_ARCH__)
+  return complex64(thrust::conj(thrust::complex<float>(a.real, a.imag)));
+#else
+  return std::conj(std::complex<float>(a));
+#endif
+}
+
 inline std::ostream& operator<<(std::ostream& os, const complex64& a) {
   os << "real:" << a.real << " imag:" << a.imag;
   return os;

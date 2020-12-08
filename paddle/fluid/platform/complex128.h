@@ -398,6 +398,14 @@ HOSTDEVICE inline complex128(log)(const complex128& a) {
 #endif
 }
 
+HOSTDEVICE inline complex128(conj)(const complex128& a) {
+#if defined(__CUDA_ARCH__)
+  return complex128(thrust::conj(thrust::complex<double>(a.real, a.imag)));
+#else
+  return std::conj(std::complex<double>(a));
+#endif
+}
+
 inline std::ostream& operator<<(std::ostream& os, const complex128& a) {
   os << "real:" << a.real << " imag:" << a.imag;
   return os;
