@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <thrust/fill.h>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
@@ -34,7 +33,7 @@ __global__ void GpuUpdateLossScaling(
 }
 
 template <typename T>
-__global__ void FillIf(T* data, const int num, const T& value,
+__global__ void FillIf(T* data, const int64_t num, const T value,
                        const bool* has_inf) {
   if (*has_inf) {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -71,7 +70,7 @@ class LazyZeros<platform::CUDADeviceContext, T> {
     for (size_t i = 0; i < xs.size(); ++i) {
       auto* out = outs[i];
       T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
-      int num = out->numel();
+      int64_t num = out->numel();
       int block = 1024;
       int grid = (block - 1 + num) / block;
       FillIf<<<grid, block, 0, dev_ctx.stream()>>>(
