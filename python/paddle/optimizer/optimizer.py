@@ -590,6 +590,8 @@ class Optimizer(object):
             if current_block.backward_block_idx != -1:
                 target_block = framework.default_main_program().blocks[
                     current_block.backward_block_idx]
+            else:
+                target_block = current_block
 
         start = len(target_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
