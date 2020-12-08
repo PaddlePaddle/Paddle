@@ -46,7 +46,7 @@ class MKLDNNHandlerT {
         key_(platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, base_key)),
         fwd_pd_(nullptr),
         bwd_pd_(nullptr) {
-    platform::MKLDNNDeviceContext::tls().started_info();
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
   }
 
   std::shared_ptr<TForward> AcquireForwardPrimitive() {
@@ -316,7 +316,7 @@ class MKLDNNHandler {
         engine_(engine),
         key_common_(base_key),
         key_(platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, base_key)) {
-    platform::MKLDNNDeviceContext::tls().started_info();
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(

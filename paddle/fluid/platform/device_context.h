@@ -486,7 +486,7 @@ class MKLDNNDeviceContextThreadLocals {
     void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
     void set_cur_paddle_data_layout(framework::DataLayout dl);
     framework::DataLayout get_cur_paddle_data_layout(void);
-    void started_info(void);
+    void log_lib_version(void);
   };
   MKLDNNDeviceContextThreadLocals() = default;
   MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =
