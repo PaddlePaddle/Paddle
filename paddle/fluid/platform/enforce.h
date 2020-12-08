@@ -114,6 +114,10 @@ namespace platform {
 #define LIKELY(condition) (condition)
 #endif
 
+#ifdef _WIN32
+#define sleep(millisecond) Sleep(millisecond)
+#endif
+
 #if defined _WIN32 && defined PADDLE_ON_INFERENCE && defined PADDLE_NO_PYTHON
 #define HANDLE_THE_ERROR try {
 #define END_HANDLE_THE_ERROR            \
