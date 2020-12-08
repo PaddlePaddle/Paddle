@@ -499,7 +499,6 @@ def random_split(dataset, lengths, generator=None):
     ]
 
 
-# Taken from python 3.5 docs
 def _accumulate(iterable, fn=lambda x, y: x + y):
     """
     Return running totals
