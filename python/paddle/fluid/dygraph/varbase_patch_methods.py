@@ -17,6 +17,7 @@ import numpy as np
 
 import paddle
 from .. import framework
+from .. import unique_name
 from .. import core
 from ..framework import Variable, Parameter, ParamBase
 from .base import switch_to_static_graph
@@ -286,9 +287,10 @@ def monkey_patch_varbase():
         """
         if not self.is_leaf:
             raise RuntimeError(
-                "Only Leaf Tensors support the deepcopy protocol at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
+                "Only Leaf Tensor support the deepcopy at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
             )
         new_varbase = core.VarBase()
+        new_varbase.name = self.name + unique_name.generate("_deepcopy")
         memo[id(self)] = new_varbase
         new_varbase.copy_(self, True)
         return new_varbase

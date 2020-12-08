@@ -284,7 +284,6 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
 
 void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
   if (SharedVar()->IsEmpty()) {
-    SetName(src.Name() + "_copy");
     VLOG(3) << "deep copy Variable from " << src.Name() << " to " << Name();
     SetPersistable(src.Persistable());
     SetDataType(src.DataType());

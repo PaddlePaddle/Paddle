@@ -5296,7 +5296,7 @@ class ParamBase(core.VarBase):
 
         """
         state = copy.deepcopy(self.__dict__, memo)
-        state["name"] = self.name + "_copy"
+        state["name"] = self.name + unique_name.generate("_deepcopy")
         new_param = ParamBase(self.shape, self.dtype, **state)
         memo[id(self)] = new_param
         new_param.copy_(self, True)
