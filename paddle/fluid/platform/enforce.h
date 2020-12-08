@@ -25,7 +25,7 @@ limitations under the License. */
 #ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #endif
-#include <windows.h>  // GetModuleFileName, sleep
+#include <windows.h>  // GetModuleFileName, Sleep
 #endif
 
 #ifdef PADDLE_WITH_CUDA
@@ -112,10 +112,6 @@ namespace platform {
 #else
 // there is no equivalent intrinsics in msvc.
 #define LIKELY(condition) (condition)
-#endif
-
-#ifdef _WIN32
-#define sleep(millisecond) Sleep(millisecond)
 #endif
 
 #if defined _WIN32 && defined PADDLE_ON_INFERENCE && defined PADDLE_NO_PYTHON
@@ -932,6 +928,14 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
     }                                                            \
   } while (0)
 
+inline void retry_sleep(unsigned millisecond) {
+#ifdef _WIN32
+  Sleep(millisecond);
+#else
+  sleep(millisecond);
+#endif
+}
+
 #define PADDLE_RETRY_CUDA_SUCCESS(COND)                                 \
   do {                                                                  \
     auto __cond__ = (COND);                                             \
@@ -941,7 +945,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
         ::paddle::platform::details::CudaStatusType<                    \
             __CUDA_STATUS_TYPE__>::kSuccess;                            \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
-      sleep(FLAGS_gpu_allocator_retry_time);                            \
+      retry_sleep(FLAGS_gpu_allocator_retry_time);                      \
       __cond__ = (COND);                                                \
       ++retry_count;                                                    \
     }                                                                   \
