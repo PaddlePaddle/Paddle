@@ -79,7 +79,7 @@ class TestFeedData(unittest.TestCase):
                     'use_parallel_executor': use_parallel_executor,
                 })
 
-                if use_parallel_exe and use_cuda and os.name == "nt":
+                if use_parallel_executor and use_cuda and os.name == "nt":
                     print(
                         "Skip use_parallel_exe=True in Windows because Windows GPU doesn't support mult-GPU now."
                     )
