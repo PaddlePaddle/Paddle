@@ -56,7 +56,6 @@ class ParameterChecks(unittest.TestCase):
 
             memo = {}
             param_copy = copy.deepcopy(param, memo)
-            self.assertEqual(param_copy.name, "linear_0.w_0_copy")
             self.assertEqual(param_copy.shape, param.shape)
             self.assertEqual(param_copy.type, param.type)
             self.assertEqual(param_copy.dtype, param.dtype)
