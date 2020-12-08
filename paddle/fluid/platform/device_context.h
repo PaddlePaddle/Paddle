@@ -466,7 +466,7 @@ class MKLDNNDeviceContextThreadLocals {
 
   typedef MKLDNNDeviceContextThreadLocals self;
   struct Body {
-    bool said_once;
+    bool said_once = false;
     size_t cur_mkldnn_session_id;
     // Current data input shape string.
     // - For fixed-shape, it's a null string in default.
