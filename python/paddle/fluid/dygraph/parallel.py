@@ -419,10 +419,12 @@ class DataParallel(layers.Layer):
         # NOTE(shenliang03): Here we can only use the attributes to judge whether
         # parameter is sparse(or SelectedRows). The reason is that the sparse message
         # can't be obtained when bp hasn't happened yet. So if layer supports sparse parameter,
-        # we should add the layer here like "nn.Embedding".
+        # we should add the layer here like "paddle.nn.layer.common.Embedding".
         def check_layer_sparse(sublayer):
             if isinstance(sublayer, paddle.nn.layer.common.Embedding):
                 return sublayer._sparse
+            # NOTE(shenliang03):This is for compatibility. If paddle.fluid.dygraph.Embedding 
+            # is removed in the future, the judgment will also be removed here.
             if isinstance(sublayer, paddle.fluid.dygraph.Embedding):
                 return sublayer._is_sparse
             return False
