@@ -89,8 +89,13 @@ def compare_benchmark_result(develop_result, pr_result):
         for line in pr_result.get("parameters").strip().split("\n"):
             logging.info("\t%s" % line)
     else:
-        # TODO(Avin0323): Accuracy need to add.
-        pass
+        if develop_result.get("diff") != 0 or pr_result.get("diff") != 0:
+            logging.info("------ OP: %s ------" % pr_result.get("name"))
+            logging.info("Accaury diff: %s" % pr_result.get("diff"))
+            logging.info("backward: %s" % pr_result.get("backward"))
+            logging.info("parameters:")
+            for line in pr_result.get("parameters").strip().split("\n"):
+                logging.info("\t%s" % line)
 
     return status
 
