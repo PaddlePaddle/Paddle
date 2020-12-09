@@ -71,9 +71,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                       startup_program=None,
                       parameter_list=None,
                       no_grad_set=None):
-        # TODO: (JZ-LIANG) multiple nccl comm  will cause hang in resnet50 training,
-        # while bert training has not problem. we disable multiple nccl comm here, and 
-        # this should be update in future.
+        # TODO: (JZ-LIANG) support multiple comm in future
         # self._nrings = self.user_defined_strategy.nccl_comm_num
         self._nrings_sharding = 1
         self._nrings_dp = 1

@@ -43,16 +43,6 @@ class ProgramDeps(object):
             return None
 
     def _build_deps(self, ):
-        """
-        start_vars: allreduce_vars / sub_conditional_block's input 
-        end_vars: opt state to be prune / sub_conditional_block's output 
-
-        go through every op in program, build:
-            _var_to_use_op: {start_vars / output of op who input is in start_vars: op_idx}
-            _var_to_generate_op: {start_vars / output of op who input is in start_vars: op_idx}
-            _sub_block_deps: {}
-            _father_block_deps
-        """
 
         for var_name in self._start_vars:
             self._var_to_use_op[var_name] = []

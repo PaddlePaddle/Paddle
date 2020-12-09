@@ -26,8 +26,8 @@ class GradientClipHelper(object):
     def prune_gradient_clip(self, block, shard):
         """
         prune gradient_clip related ops for params that not belong to cur shard
-            prune: square, reduce_sum, elementwise_mul
-            keep: sum, sqrt, elementwise_max, elementwise_div
+        prune: square, reduce_sum, elementwise_mul
+        keep: sum, sqrt, elementwise_max, elementwise_div
         """
         deperated_vars = set()
         deperate_op_idx = set()

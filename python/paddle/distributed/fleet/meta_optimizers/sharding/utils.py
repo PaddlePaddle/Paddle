@@ -345,41 +345,6 @@ def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
     return
 
 
-# def calc_vars_to_ringids(nring, varnames):
-#     """
-#     map varname to ring and ring to varname
-#     nring: int
-#     varnames: list
-#     """
-
-#     var2ringid = {}
-#     ringid2vars = {}
-#     assert nring >= 1
-#     if nring == 1:
-#         ringid2vars[0] = varnames
-#         for varname in varnames:
-#             var2ringid[varname] = 0
-#     else:
-#         ring_id = -1
-#         for varname in varnames:
-#             ring_id = (ring_id + 1) % nring
-
-#             if ring_id in ringid2vars:
-#                 ringid2vars[ring_id].append(varname)
-#             else:
-#                 ringid2vars[ring_id] = [varname]
-
-#             assert varname not in var2ringid
-#             var2ringid[varname] = ring_id
-
-#     check_vars = []
-#     for i in ringid2vars.keys():
-#         check_vars += ringid2vars[i]
-
-#     assert sorted(check_vars) == sorted(varnames)
-
-#     return var2ringid, ringid2vars
-
 DtypeToSize = {
     core.VarDesc.VarType.FP16: 2,
     core.VarDesc.VarType.FP32: 4,
