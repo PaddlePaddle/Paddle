@@ -150,9 +150,8 @@ class TestQuantizeProgramPass(unittest.TestCase):
                 seed=1,
                 activation_quant_type='abs_max',
                 weight_quant_type='abs_max',
-                for_ci=False)
+                for_ci=True)
 
-    '''
     def test_quantize_program_cpu(self):
         self.quantize_program(
             use_cuda=False,
@@ -160,7 +159,6 @@ class TestQuantizeProgramPass(unittest.TestCase):
             activation_quant_type='abs_max',
             weight_quant_type='abs_max',
             for_ci=True)
-    '''
 
 
 if __name__ == '__main__':
