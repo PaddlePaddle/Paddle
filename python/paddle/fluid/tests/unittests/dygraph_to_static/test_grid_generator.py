@@ -129,14 +129,15 @@ class GridGenerator(nn.Layer):
 
 class TestGridGenerator(unittest.TestCase):
     def setUp(self):
-        self.x = paddle.uniform(shape=[1, 20, 2], dtype='float32')
+        self.x = paddle.uniform(shape=[1, 3, 32, 100], dtype='float32')
+        self.y = paddle.uniform(shape=[32, 100], dtype='float32')
 
     def _run(self, to_static):
         prog_trans = paddle.jit.ProgramTranslator()
         prog_trans.enable(to_static)
 
         net = GridGenerator(40, 20)
-        ret = net(self.x, [32, 100])
+        ret = net(self.x, self.y)
         return ret.numpy()
 
     def test_to_static(self):
