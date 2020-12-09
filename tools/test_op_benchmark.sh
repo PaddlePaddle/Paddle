@@ -31,6 +31,17 @@ function LOG {
   echo "[$0:${BASH_LINENO[0]}] $*" >&2
 }
 
+# Limit cu file directory
+function match_cu_file_directory {
+  local sub_dir cu_file_dir
+  cu_file_dir=$(dirname ${1})
+  for sub_dir in "" "/elementwise" "/reduce_ops"
+  do
+    [ "${cu_file_dir}" == "paddle/fluid/operators${sub_dir}" ] && return 0
+  done
+  return 1
+}
+
 # Load op files by header file
 function load_CHANGE_OP_FILES_by_header_file {
   local change_file
@@ -38,6 +49,8 @@ function load_CHANGE_OP_FILES_by_header_file {
   do
     if [[ "$change_file" =~ "_op.cu" ]]
     then
+      # match cu file directory limit
+      match_cu_file_directory $change_file || continue
       LOG "[INFO] Found \"${1}\" include by \"${change_file}\"."
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
     elif [[ "$change_file" =~ ".h" ]]
@@ -50,14 +63,16 @@ function load_CHANGE_OP_FILES_by_header_file {
 
 # Load op files that PR changes
 function load_CHANGE_OP_FILES {
-  local change_file
-  for change_file in $(git diff --name-only origin/develop)
+  local sub_dir change_file
+  for change_file in $(git diff --name-status origin/develop | grep "^M" | awk '{print $2}')
   do
     # match directory limit
     [[ "$change_file" =~ "paddle/fluid/operators/" ]] || continue
     # match file name limit
     if [[ "$change_file" =~ "_op.cu" ]]
     then
+      # match cu file directory limit
+      match_cu_file_directory $change_file || continue
       LOG "[INFO] Found \"${change_file}\" changed."
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
     elif [[ "$change_file" =~ ".h" ]]
@@ -97,9 +112,12 @@ function load_CHANGE_OP_MAP {
         CHANGE_OP_MAP[${op_name}]="$change_file"
       done
     else
-      change_file_name=${change_file_name##*/}
-      LOG "[INFO] Load op: \"${change_file_name%_op*}\"."
-      CHANGE_OP_MAP[${change_file_name%_op*}]="$change_file"
+      op_name=${change_file_name##*/}
+      op_name=${op_name%_cudnn_op*}
+      op_name=${op_name%_op*}
+      [ -n "${SKIP_OP_MAP[$op_name]}" ] && continue
+      LOG "[INFO] Load op: \"${op_name}\"."
+      CHANGE_OP_MAP[${op_name}]="$change_file"
     fi
   done
 }
@@ -160,6 +178,8 @@ function run_op_benchmark_test {
   do
     echo "$api_info" >> $api_info_file
   done
+  # install tensorflow for testing accuary
+  pip install tensorflow==2.3.0 tensorflow-probability
   for branch_name in "develop" "test_pr"
   do
     git checkout $branch_name
@@ -174,7 +194,7 @@ function run_op_benchmark_test {
                                 $logs_dir \
                                 $VISIBLE_DEVICES \
                                 "gpu" \
-                                "speed" \
+                                "both" \
                                 $api_info_file \
                                 "paddle"
     popd > /dev/null
