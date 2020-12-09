@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/conj_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -32,17 +33,13 @@ class ConjOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of ConjOp should not be null."));
-    PADDLE_ENFORCE_GE(ctx->Outputs("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Outputs(Out) of ConjOp should not be empty."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "conj");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "conj");
 
     auto in_dims = ctx->GetInputDim("X");
     auto outs_names = ctx->Outputs("Out");
 
-    ctx->SetOutputDim("Out", framework::make_ddim(in_dims));
+    ctx->SetOutputDim("Out", in_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -62,15 +59,15 @@ This operator is used to perform elementwise conjugate for input $X$.
 };
 
 template <typename T>
-class ConjOpGradMaker : public framework::SingleGradOpMaker<T> {
+class ConjGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("conj");
-    retv->SetInput("X", this->Input("X"));
+    retv->SetInput("X", this->OutputGrad("Out"));
     retv->SetAttrMap(this->Attrs());
-    retv->SetOutput(framework::GradVarName("Out"), this->InputGrad("Out"));
+    retv->SetOutput("Out", this->InputGrad("X"));
   }
 };
 
@@ -79,18 +76,11 @@ class ConjOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(conj, ops::ConjOp, ops::ConjOpMaker, ops::ConjOpInferVarType,
-                  ops::ConjOpGradMaker<paddle::framework::OpDesc>,
-                  ops::ConjOpGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(conj, ops::ConjOp, ops::ConjOpMaker,
+                  ops::ConjGradMaker<paddle::framework::OpDesc>,
+                  ops::ConjGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(conj_grad, ops::ConjGradOp);
-
-REGISTER_OP_CPU_KERNEL(conj, ops::MulKernel<paddle::platform::CPUDeviceContext,
-                                            paddle::platform::complex64>,
-                       ops::MulKernel<paddle::platform::CPUDeviceContext,
-                                      paddle::platform::complex128>);
-REGISTER_OP_CPU_KERNEL(conj_grad,
-                       ops::MulGradKernel<paddle::platform::CPUDeviceContext,
-                                          paddle::platform::complex64>,
-                       ops::MulGradKernel<paddle::platform::CPUDeviceContext,
-                                          paddle::platform::complex128>);
+REGISTER_OP_CPU_KERNEL(conj, ops::ConjKernel<paddle::platform::CPUDeviceContext,
+                                             paddle::platform::complex64>,
+                       ops::ConjKernel<paddle::platform::CPUDeviceContext,
+                                       paddle::platform::complex128>);

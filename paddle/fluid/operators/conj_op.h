@@ -17,10 +17,24 @@
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
+
+template <typename T>
+struct ConjFunctor {
+  ConjFunctor(const T* input, int64_t numel, T* output)
+      : input_(input), numel_(numel), output_(output) {}
+
+  HOSTDEVICE void operator()(size_t idx) const {
+    output_[idx] = T(input_[idx].real, -input_[idx].imag);
+  }
+  const T* input_;
+  int64_t numel_;
+  T* output_;
+};
 
 template <typename DeviceContext, typename T>
 class ConjKernel : public framework::OpKernel<T> {
@@ -28,20 +42,17 @@ class ConjKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
+    out->mutable_data<T>(context.GetPlace(), size_t(x->numel() * sizeof(T)));
 
-    auto out_dim = out->dims();
+    auto numel = x->numel();
+    auto* x_data = x->data<T>();
+    auto* out_data = out->mutable_data<T>(context.GetPlace());
 
-    for (int i = 0; i < x->numel(); ++i) {
-      out[i] = paddle::platform::conj(x[i]);
-    }
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+    ConjFunctor<T> functor(x_data, numel, out_data);
+    for_range(functor);
   }
-};
-
-template <typename DeviceContext, typename T>
-class ConjGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
 };
 
 }  // namespace operators

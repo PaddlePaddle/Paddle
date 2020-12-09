@@ -168,6 +168,7 @@ from .math import prod  #DEFINE_ALIAS
 from .math import all  #DEFINE_ALIAS
 from .math import any  #DEFINE_ALIAS
 from .math import broadcast_shape  #DEFINE_ALIAS
+from .math import conj  #DEFINE_ALIAS
 
 from .random import multinomial  #DEFINE_ALIAS
 from .random import standard_normal

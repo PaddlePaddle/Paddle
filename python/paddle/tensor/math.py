@@ -125,7 +125,8 @@ __all__ = [
         'isfinite',
         'isinf',
         'isnan',
-        'broadcast_shape'
+        'broadcast_shape',
+        'conj'
 ]
 # yapf: enable.
 
@@ -2258,3 +2259,52 @@ def broadcast_shape(x_shape, y_shape):
     """
 
     return core.broadcast_shape(x_shape, y_shape)
+
+def conj(input, out=None):
+    r"""
+    This function computes the conjugate of the Tensor elementwisely.
+
+    Args:
+        input (list): A list of Variables which hold input Tensors with the same
+            data type and shape. Optional data types are: complex64, complex128.
+        out (Variable, optional): Output Tensor.
+            The default value is None, then a new Variable will be created and returned.
+
+    Returns:
+        out (Variable): The conjugate of inputs. The shape and data type is the same with input. \
+            If :code:`out` is not None, the returned value is :code:`out` .
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          data=paddle.to_tensor([[1+1j, 2+2j, 3+3j], [4+4j, 5+5j, 6+6j]])
+          #Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+          #       [[(1+1j), (2+2j), (3+3j)],
+          #        [(4+4j), (5+5j), (6+6j)]])
+
+          conj_data=paddle.fluid.layers.conj(data)
+          #Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+          #       [[(1-1j), (2-2j), (3-3j)],
+          #        [(4-4j), (5-5j), (6-6j)]])
+
+    """
+    check_type(input, 'input', (Variable, tuple, list), 'conj')
+    if isinstance(input, list) or isinstance(input, tuple):
+        for input_section in input:
+            check_variable_and_dtype(input_section, "input", \
+                    ['complex64', 'complex128'], 'conj')
+    else:
+        check_variable_and_dtype(input, "input", \
+                ['complex64', 'complex128'], 'conj')
+
+    helper = LayerHelper('conj', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype())
+    else:
+        check_variable_and_dtype(out, "out", ['complex64', 'complex128'],
+                                 'conj')
+
+    helper.append_op(type='conj', inputs={'X': input}, outputs={'Out': [out]})
+    return out
