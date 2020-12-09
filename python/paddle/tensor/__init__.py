@@ -104,6 +104,7 @@ from .math import asin  #DEFINE_ALIAS
 from .math import atan  #DEFINE_ALIAS
 from .math import ceil  #DEFINE_ALIAS
 from .math import cos  #DEFINE_ALIAS
+from .math import tan  #DEFINE_ALIAS
 from .math import cosh  #DEFINE_ALIAS
 from .math import cumsum  #DEFINE_ALIAS
 # from .math import elementwise_add  #DEFINE_ALIAS
