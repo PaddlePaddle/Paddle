@@ -678,7 +678,7 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
             paddle.enable_static()
             x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
             x = fluid.data(name='x', shape=x.shape, dtype=x.dtype)
-            # Set this FLAG, the BatchNorm API will pass "reserve_space" argument into batch_norm op
+            # Set this FLAG, the BatchNorm API will pass "reserve_space" argument into batch_norm op.
             os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '1'
             batch_norm = fluid.dygraph.BatchNorm(7, data_layout="NHWC")
             hidden1 = batch_norm(x)
