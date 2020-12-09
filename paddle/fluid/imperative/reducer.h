@@ -180,10 +180,11 @@ class Reducer {
   std::vector<VariableLocator> variable_locators_;
 
   // Following variables are to help sync stream
-  std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
-  std::shared_ptr<platform::CudaEventObject> comm_enent_;
+  std::vector<std::shared_ptr<platform::CudaEventObject>> group_events_;
+  std::vector<std::shared_ptr<platform::CudaEventObject>> comm_events_;
   cudaStream_t compute_stream_;
-  cudaStream_t comm_stream_;
+  std::vector<cudaStream_t> comm_streams_;
+  int nrings_ = 1;
 
   // Following variables are to help rebuild group
   bool has_rebuilt_group_{false};

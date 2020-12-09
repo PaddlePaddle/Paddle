@@ -68,7 +68,7 @@ void Group::SplitTensors(const platform::CUDADeviceContext &context) {
 
 std::ostream &operator<<(std::ostream &out, const Group &group) {
   const auto &vars = group.variable_indices_;
-  out << "numul: " << group.all_length_ << " ;is_sparse: " << group.is_sparse_
+  out << "numel: " << group.all_length_ << " ;is_sparse: " << group.is_sparse_
       << " ;var number: " << vars.size() << "\n";
   auto begin = vars.begin();
   auto end = vars.end();
@@ -95,6 +95,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       parallel_ctx_(parallel_ctx),
       group_size_limits_(group_size_limits) {
   VLOG(3) << "Start construct the Reducer ...";
+  nrings_ = parallel_ctx->GetNRings();
   // initialize groups
   InitializeGroups(group_indices);
   for (size_t global_var_index = 0; global_var_index < vars_.size();
@@ -109,11 +110,13 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
   compute_stream_ = static_cast<platform::CUDADeviceContext *>(
                         platform::DeviceContextPool::Instance().Get(place_))
                         ->stream();
-  comm_stream_ = platform::NCCLCommContext::Instance().Get(0, place_)->stream();
-  // create events
+  for (int i = 0; i < nrings_; ++i) {
+    comm_streams_.emplace_back(
+        platform::NCCLCommContext::Instance().Get(i, place_)->stream());
+    comm_events_.emplace_back(platform::CudaEventResourcePool::Instance().New(
+        BOOST_GET_CONST(platform::CUDAPlace, place_).device));
+  }
   CreateGroupEvents(group_indices.size());
-  comm_enent_ = platform::CudaEventResourcePool::Instance().New(
-      BOOST_GET_CONST(platform::CUDAPlace, place_).device);
 
   std::call_once(once_flag_, []() {
     std::atexit([]() { Reducer::GetInstance()->ReleaseReducer(); });
@@ -121,20 +124,22 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
 }
 
 void Reducer::ReleaseReducer() {
-  for (auto &event : events_) {
+  for (auto &event : group_events_) {
     event.reset();
   }
-  comm_enent_.reset();
+  for (auto &event : comm_events_) {
+    event.reset();
+  }
 }
 
 void Reducer::CreateGroupEvents(int group_num) {
   // release old events
-  for (auto &event : events_) {
+  for (auto &event : group_events_) {
     event.reset();
   }
-  events_.clear();
-  events_.resize(group_num);
-  for (auto &event : events_) {
+  group_events_.clear();
+  group_events_.resize(group_num);
+  for (auto &event : group_events_) {
     event = platform::CudaEventResourcePool::Instance().New(
         BOOST_GET_CONST(platform::CUDAPlace, place_).device);
   }
@@ -232,7 +237,7 @@ void Reducer::InitializeGroups(
 
     // map variables to this group by VariableLocator
     size_t inside_group_index = 0;
-    for (const auto var_index : group_indices[group_index]) {
+    for (const auto var_index : variable_indices_) {
       variable_locators_[var_index] = VariableLocator{
           .group_index = group_index,
           .inside_group_index = inside_group_index++,
@@ -310,29 +315,34 @@ void Reducer::MarkGroupReady(size_t group_index) {
   }
 
   PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaEventRecord(events_[group_index].get(), compute_stream_));
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaStreamWaitEvent(comm_stream_, events_[group_index].get(), 0));
+      cudaEventRecord(group_events_[group_index].get(), compute_stream_));
+  for (int i = 0; i < nrings_; ++i)
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(
+        comm_streams_[i], group_events_[group_index].get(), 0));
 
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
     auto &group = groups_[next_group_];
+    int run_order = next_group_ % nrings_;
     if (group.is_sparse_) {
-      VLOG(3) << "sparse group [" << next_group_ << "] start allreduce...";
-      parallel_ctx_->AllReduceByStream(*group.sparse_contents_,
-                                       group.sparse_contents_, 0, false);
+      VLOG(3) << "sparse group [" << next_group_
+              << "] start allreduce in order[" << run_order << "]";
+      parallel_ctx_->AllReduceByStream(
+          *group.sparse_contents_, group.sparse_contents_, run_order, false);
     } else {
-      VLOG(3) << "dense group [" << next_group_ << "] start allreduce...";
+      VLOG(3) << "dense group [" << next_group_ << "] start allreduce in order["
+              << run_order << "]";
       // Select common commstream to concat tensors
       // group.dense_tensors ---> group.dense_contents_
-      group.ConcatTensors(*parallel_ctx_->GetDeviceContext(0));
+      group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
 
       // Start allreduce
-      parallel_ctx_->AllReduceByStream(group.dense_contents_,
-                                       &(group.dense_contents_), 0, false);
+      parallel_ctx_->AllReduceByStream(
+          group.dense_contents_, &(group.dense_contents_), run_order, false);
+
       // Select common commstream to split tensors
       // group.dense_contents_ ---> group.dense_tensors
-      group.SplitTensors(*parallel_ctx_->GetDeviceContext(0));
+      group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
     }
   }
 }
@@ -351,9 +361,19 @@ std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
 }
 
 void Reducer::FinalizeBackward() {
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(comm_enent_.get(), comm_stream_));
+  // Must prevent compute_stream_ starting until all comm streams have finished
+  for (int i = 0; i < nrings_ - 1; ++i) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaEventRecord(comm_events_[i].get(), comm_streams_[i]));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaStreamWaitEvent(comm_streams_[i + 1], comm_events_[i].get(), 0));
+  }
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(comm_events_[nrings_ - 1].get(),
+                                              comm_streams_[nrings_ - 1]));
   PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaStreamWaitEvent(compute_stream_, comm_enent_.get(), 0));
+      cudaStreamWaitEvent(compute_stream_, comm_events_[nrings_ - 1].get(), 0));
+
   if (!has_rebuilt_group_) {
     VLOG(3) << "Start rebuilding the groups";
     auto rebuild_group_indices = RebuildGruops();
@@ -362,6 +382,7 @@ void Reducer::FinalizeBackward() {
     CreateGroupEvents(rebuild_group_number);
     InitializeGroups(group_indices_);
   }
+
   VLOG(3) << "In the batch, Reducer is finished...";
 }
 
