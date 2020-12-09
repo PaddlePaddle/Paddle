@@ -10,7 +10,7 @@ if(WITH_MUSL)
     #   static_loss: [nan, nan]
     # SEC needs to follow up on this issue, and need to be 
     # resolved before CI requared
-    LIST(REMOVE_ITEM TEST_OPS test_yolov3)
+#    LIST(REMOVE_ITEM TEST_OPS test_yolov3)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
@@ -19,9 +19,9 @@ endforeach(TEST_OP)
 
 set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)
 set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
-if(NOT WITH_MUSL)
-    set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS "RUN_TYPE=EXCLUSIVE")
-endif()
+
+set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS "RUN_TYPE=EXCLUSIVE")
+
 set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 120)
 set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 120)

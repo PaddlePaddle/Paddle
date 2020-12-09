@@ -130,7 +130,7 @@ if(WITH_MUSL)
     #   2.3044646853182973e-07 not less than or equal to 1e-07
     # SEC needs to follow up on this issue, and need to be 
     # resolved before CI requared
-    LIST(REMOVE_ITEM TEST_OPS test_sigmoid_focal_loss_op)
+#    LIST(REMOVE_ITEM TEST_OPS test_sigmoid_focal_loss_op)
 endif()
 
 if(WIN32)
