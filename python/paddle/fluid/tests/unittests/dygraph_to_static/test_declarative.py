@@ -18,7 +18,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.static import InputSpec
-from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator, Layer, jit
+from paddle.fluid.dygraph import declarative, ProgramTranslator, Layer, jit
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram, StaticFunction
 
 from test_basic_api_transformation import dyfunc_to_variable
@@ -31,13 +31,15 @@ class SimpleNet(Layer):
         super(SimpleNet, self).__init__()
         self.linear = fluid.dygraph.Linear(10, 3)
 
-    @declarative(input_spec=[InputSpec(shape=[None, 10], dtype='float32')])
+    @paddle.jit.to_static(
+        input_spec=[InputSpec(
+            shape=[None, 10], dtype='float32')])
     def forward(self, x, a=1, b=2):
         y = self.inner_function(x)
         return y
 
-    # `declarative` is not essential, add it to test for robustness.
-    @declarative
+    # `paddle.jit.to_static` is not essential, add it to test for robustness.
+    @paddle.jit.to_static
     def inner_function(self, x):
         y = self.linear(x)
         return y
@@ -46,14 +48,15 @@ class SimpleNet(Layer):
         z = x + y
         return z
 
-    @declarative(input_spec=[[InputSpec([None, 10]), InputSpec([None, 10])]])
+    @paddle.jit.to_static(
+        input_spec=[[InputSpec([None, 10]), InputSpec([None, 10])]])
     def func_with_list(self, l, int_val=1):
         x, y = l
         z = x + y
         z = z + int_val
         return z
 
-    @declarative(input_spec=[{
+    @paddle.jit.to_static(input_spec=[{
         'x': InputSpec([None, 10]),
         'y': InputSpec([None, 10])
     }])
@@ -64,7 +67,7 @@ class SimpleNet(Layer):
 
         return z
 
-    @declarative(input_spec=[[
+    @paddle.jit.to_static(input_spec=[[
         InputSpec([None]), {
             'x': InputSpec([None, 10]),
             'y': InputSpec([None, 10])
@@ -104,8 +107,8 @@ class TestInputSpec(unittest.TestCase):
 
     def test_with_input_spec(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
-            x = to_variable(np.ones([4, 10]).astype('float32'))
-            y = to_variable(np.ones([4, 10]).astype('float32') * 2)
+            x = paddle.to_tensor(np.ones([4, 10]).astype('float32'))
+            y = paddle.to_tensor(np.ones([4, 10]).astype('float32') * 2)
             int_val = 4.
 
             net = SimpleNet()
@@ -122,9 +125,9 @@ class TestInputSpec(unittest.TestCase):
             self.assertTrue(np.allclose(out.numpy(), pred.numpy()))
 
             # 3. we can decorate any method
-            x_2 = to_variable(np.ones([4, 20]).astype('float32'))
-            # uses `declarative(func)` instead of `@declarative`
-            net.add_func = declarative(net.add_func)
+            x_2 = paddle.to_tensor(np.ones([4, 20]).astype('float32'))
+            # uses `paddle.jit.to_static(func)` instead of `@paddle.jit.to_static`
+            net.add_func = paddle.jit.to_static(net.add_func)
             out = net.add_func(x_2, np.ones([20]).astype('float32'))
             self.assertTrue(len(net.add_func.program_cache) == 1)
 
@@ -140,8 +143,8 @@ class TestInputSpec(unittest.TestCase):
 
     def test_with_error(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
-            x = to_variable(np.ones([4, 10]).astype('float32'))
-            y = to_variable(np.ones([4, 10]).astype('float32') * 2)
+            x = paddle.to_tensor(np.ones([4, 10]).astype('float32'))
+            y = paddle.to_tensor(np.ones([4, 10]).astype('float32') * 2)
             int_val = 4.
 
             net = SimpleNet()
@@ -152,7 +155,7 @@ class TestInputSpec(unittest.TestCase):
 
             # 2. requires len(input_spec) <= len(args)
             with self.assertRaises(ValueError):
-                net.add_func = declarative(
+                net.add_func = paddle.jit.to_static(
                     net.add_func,
                     input_spec=[
                         InputSpec([-1, 10]), InputSpec([-1, 10]),
@@ -160,15 +163,39 @@ class TestInputSpec(unittest.TestCase):
                     ])
                 net.add_func(x, y)
 
+            # 3. requires input_spec's dimension == arg's dimension
+            with self.assertRaisesRegexp(
+                    ValueError,
+                    "The dimension of InputSpec must be the same as the corresponding Tensor"
+            ):
+                input = paddle.to_tensor(np.ones([10]).astype('float64'))
+                net(input)
+
+            # 4. requires input_spec.shape == arg.shape
+            with self.assertRaisesRegexp(
+                    ValueError,
+                    "The shape of InputSpec must be the compatible with the corresponding Tensor in inputs"
+            ):
+                input = paddle.to_tensor(np.ones([4, 5]).astype('float32'))
+                net(input)
+
+            # 5. requires input_spec.dtype == arg.dtype
+            with self.assertRaisesRegexp(
+                    ValueError,
+                    "The dtype of InputSpec must be the same as the corresponding Tensor"
+            ):
+                input = paddle.to_tensor(np.ones([4, 10]).astype('float64'))
+                net(input)
+
     def test_concrete_program(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
-            x = to_variable(np.ones([4, 10]).astype('float32'))
-            y = to_variable(np.ones([4, 10]).astype('float32') * 2)
+            x = paddle.to_tensor(np.ones([4, 10]).astype('float32'))
+            y = paddle.to_tensor(np.ones([4, 10]).astype('float32') * 2)
             int_val = 4.
 
             net = SimpleNet()
             # We can get concrete_program by specificing InputSpec information. Faking input is no need.
-            net.add_func = declarative(
+            net.add_func = paddle.jit.to_static(
                 net.add_func,
                 input_spec=[
                     InputSpec([-1, 10]), InputSpec(
@@ -179,14 +206,14 @@ class TestInputSpec(unittest.TestCase):
             self.assertTrue(cp1.inputs[-1].name == 'y')
 
             # generate another program
-            net.add_func = declarative(
+            net.add_func = paddle.jit.to_static(
                 net.add_func,
                 input_spec=[InputSpec([10]), InputSpec(
                     [10], name='label')])
             cp2 = net.add_func.concrete_program
             self.assertTrue(cp2.inputs[-1].shape == (10, ))
             self.assertTrue(cp2.inputs[-1].name == 'label')
-            # Note(Aurelius84): New instance will be returned if we use `declarative(foo)` every time.
+            # Note(Aurelius84): New instance will be returned if we use `paddle.jit.to_static(foo)` every time.
             # So number of cache program is 1.
             self.assertTrue(len(net.add_func.program_cache) == 1)
             self.assertTrue(cp1 != cp2)
@@ -207,34 +234,34 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             y_data = np.ones([10]).astype('float32') * 2
             z_data = np.ones([10]).astype('float32') * 2.2
 
-            foo = declarative(foo_func)
+            foo = paddle.jit.to_static(foo_func)
 
             # [16, 10] + [10] (varbase)
-            out_1 = foo(to_variable(x_data), to_variable(y_data))
+            out_1 = foo(paddle.to_tensor(x_data), paddle.to_tensor(y_data))
             self.assertTrue(np.allclose(x_data + y_data, out_1.numpy()))
             self.assertTrue(len(foo.program_cache) == 1)
             self.assertTrue(len(foo.program_cache.concrete_programs()) == 1)
 
             # [16, 10] + [10] (numpy)
-            out_2 = foo(to_variable(x_data), y_data)
+            out_2 = foo(paddle.to_tensor(x_data), y_data)
             self.assertTrue(np.allclose(x_data + y_data, out_2.numpy()))
             self.assertTrue(len(foo.program_cache) == 1)
 
             # [16, 10] + [10] (numpy)
-            out_3 = foo(to_variable(x_data), z_data)
+            out_3 = foo(paddle.to_tensor(x_data), z_data)
             self.assertTrue(np.allclose(x_data + z_data, out_3.numpy()))
             # hit cache program
             self.assertTrue(len(foo.program_cache) == 1)
 
             # [16, 10] + [10] (numpy) with other different arguments (c=3)
-            out_4 = foo(to_variable(x_data), z_data, 3)
+            out_4 = foo(paddle.to_tensor(x_data), z_data, 3)
             self.assertTrue(np.allclose(x_data + z_data, out_4.numpy()))
             # create a new program
             self.assertTrue(len(foo.program_cache) == 2)
 
     def test_get_concrete_program(self):
 
-        foo = declarative(foo_func)
+        foo = paddle.jit.to_static(foo_func)
 
         # 1. specific InputSpec for `x`/`y`
         concrete_program_1 = foo.get_concrete_program(
@@ -338,24 +365,24 @@ class TestDecorateModelDirectly(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         program_trans.enable(True)
-        self.x = to_variable(np.ones([4, 10]).astype('float32'))
+        self.x = paddle.to_tensor(np.ones([4, 10]).astype('float32'))
 
     def test_fake_input(self):
         net = SimpleNet()
-        net = declarative(net)
+        net = paddle.jit.to_static(net)
         y = net(self.x)
         self.assertTrue(len(net.forward.program_cache) == 1)
 
     def test_input_spec(self):
         net = SimpleNet()
-        net = declarative(net, input_spec=[InputSpec([None, 8, 10])])
+        net = paddle.jit.to_static(net, input_spec=[InputSpec([None, 8, 10])])
         self.assertTrue(len(net.forward.inputs) == 1)
         self.assertTrue(len(net.forward.program_cache) == 1)
         input_shape = net.forward.inputs[0].shape
         self.assertListEqual(list(input_shape), [-1, 8, 10])
 
         # redecorate
-        net = declarative(net, input_spec=[InputSpec([None, 16, 10])])
+        net = paddle.jit.to_static(net, input_spec=[InputSpec([None, 16, 10])])
         input_shape = net.forward.inputs[0].shape
         self.assertListEqual(list(input_shape), [-1, 16, 10])
 

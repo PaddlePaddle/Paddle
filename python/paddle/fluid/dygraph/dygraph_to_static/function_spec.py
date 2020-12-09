@@ -19,6 +19,7 @@ import collections
 
 import paddle
 from paddle.fluid import core
+from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph import layers
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
@@ -126,7 +127,6 @@ class FunctionSpec(object):
             Same nest structure with args and kwargs by replacing value with InputSpec.
         """
 
-        args_with_spec = []
         kwargs_with_spec = []
         if self._input_spec is not None:
             # Note: Because the value type and length of `kwargs` is uncertain.
@@ -274,12 +274,12 @@ def get_buffers(layer_instance, include_sublayer=True):
 def convert_to_input_spec(inputs, input_spec):
     """
     Replaces tensor in structured `inputs` by InputSpec in `input_spec`.
-    
+
     Args:
         inputs(list|dict): nested structure list or dict.
-        input_spec(list|dict): same nested structure list or dict as inputs. 
+        input_spec(list|dict): same nested structure list or dict as inputs.
 
-    
+
     Return:
         Same structure with inputs by replacing the element with specified InputSpec.
     """
@@ -292,6 +292,40 @@ def convert_to_input_spec(inputs, input_spec):
             raise ValueError(
                 'Requires len(inputs) >= len(input_spec), but received len(inputs):{} < len(input_spec):{}'.
                 format(len(inputs), len(input_spec)))
+
+    def check_spec_and_input(spec, input):
+
+        # 1. Check rank
+        spec_shape = spec.shape
+        input_shape = input.shape
+
+        spec_rank = len(spec_shape)
+        input_rank = len(input_shape)
+        if spec_rank != input_rank:
+            raise ValueError(
+                "The dimension of InputSpec must be the same as the corresponding Tensor in inputs, "
+                "but received: InputSpec is {}, its shape = {}, its dimension = {}, the input Tensor's shape = {}, "
+                "its dimension = {}. {} != {}.".format(
+                    spec, spec_shape, spec_rank, input_shape, input_rank,
+                    spec_rank, input_rank))
+
+        # 2. Check shape
+        for spec_dim, input_dim in zip(spec_shape, input_shape):
+            if spec_dim != -1 and input_dim != -1 and spec_dim != input_dim:
+                raise ValueError(
+                    "The shape of InputSpec must be the compatible with the corresponding Tensor in inputs, "
+                    "but received: InputSpec is {}, its shape = {}, the input Tensor's shape = {}, {} != {}.".
+                    format(spec, spec_shape, input_shape, spec_dim, input_dim))
+
+        # 3. Check dtype
+        spec_dtype = convert_dtype(spec.dtype)
+        input_dtype = convert_dtype(input.dtype)
+
+        if spec_dtype != input_dtype:
+            raise ValueError(
+                "The dtype of InputSpec must be the same as the corresponding Tensor in inputs, "
+                "but received: InputSpec is {}, its dtype is {}, the Tensor's dtype is {}, {} != {}.".
+                format(spec, spec_dtype, input_dtype, spec_dtype, input_dtype))
 
     if isinstance(input_spec, (tuple, list)):
         input_with_spec = []
@@ -324,6 +358,7 @@ def convert_to_input_spec(inputs, input_spec):
                 input_with_spec[name] = input
         return input_with_spec
     elif isinstance(input_spec, paddle.static.InputSpec):
+        check_spec_and_input(input_spec, inputs)
         return input_spec
     else:
         raise TypeError(
