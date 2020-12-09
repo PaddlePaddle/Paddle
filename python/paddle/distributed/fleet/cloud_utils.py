@@ -22,7 +22,7 @@ def get_cloud_cluster(args_node_ips,
                       devices_per_proc,
                       args_port=6170):
     """
-    args_node_ips:string, device_mode:DeviceMode(IntEnum), device_per_proc:list, args_port: int
+    args_node_ips:string, device_mode:DeviceMode(Int), device_per_proc:list, args_port: int
     """
     #you can automatically get ip info while using paddlecloud multi nodes mode.
     node_ips = os.getenv("PADDLE_TRAINERS")

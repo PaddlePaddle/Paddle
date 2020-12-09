@@ -65,6 +65,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/curand.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
+#include <error.h>
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
@@ -869,6 +870,18 @@ inline bool is_error(ncclResult_t nccl_result) {
 
 inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
   std::string msg(" Nccl error, ");
+  if (errno == ENOSPC || errno == EAGAIN) {
+    std::string detail(strerror(errno));
+    detail += "\nPlease try one of the following solutions:";
+    detail += "\n1. export NCCL_SHM_DISABLE=1;";
+    detail += "\n2. export NCCL_P2P_LEVEL=SYS;";
+    detail +=
+        "\n3. Increase shared memory by setting the -shm-size "
+        "option when starting docker container, e.g., setting "
+        " -shm-size=2g.\n";
+    return msg + platform::dynload::ncclGetErrorString(nccl_result) +
+           ", detail: " + detail + " ";
+  }
   return msg + platform::dynload::ncclGetErrorString(nccl_result) + " ";
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL

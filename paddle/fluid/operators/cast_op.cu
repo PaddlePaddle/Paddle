@@ -25,4 +25,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CastOpKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::CastOpKernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::CastOpKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::float16>);
+                      paddle::platform::float16>,
+    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
+                      paddle::platform::complex64>,
+    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
+                      paddle::platform::complex128>);

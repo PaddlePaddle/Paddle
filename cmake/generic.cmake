@@ -267,7 +267,7 @@ function(merge_static_libs TARGET_NAME)
 endfunction(merge_static_libs)
 
 function(check_coverage_opt TARGET_NAME SRCS)
-  if(WITH_COVERAGE)
+  if(WITH_COVERAGE AND WITH_INCREMENTAL_COVERAGE)
     if ("$ENV{PADDLE_GIT_DIFF_H_FILE}" STREQUAL "")
       if (NOT ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" STREQUAL ""))
         string(REPLACE "," ";" CC_FILE_LIST $ENV{PADDLE_GIT_DIFF_CC_FILE})

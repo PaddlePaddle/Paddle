@@ -335,8 +335,16 @@ def _is_a_single_file(file_list):
 
 
 def _is_a_single_dir(file_list):
-    file_name = file_list[0].split(os.sep)[0]
-    for i in range(1, len(file_list)):
-        if file_name != file_list[i].split(os.sep)[0]:
+    new_file_list = []
+    for file_path in file_list:
+        if '/' in file_path:
+            file_path = file_path.replace('/', os.sep)
+        elif '\\' in file_path:
+            file_path = file_path.replace('\\', os.sep)
+        new_file_list.append(file_path)
+
+    file_name = new_file_list[0].split(os.sep)[0]
+    for i in range(1, len(new_file_list)):
+        if file_name != new_file_list[i].split(os.sep)[0]:
             return False
     return True

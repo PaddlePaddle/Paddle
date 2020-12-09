@@ -78,7 +78,7 @@ class TestVarBase(unittest.TestCase):
                 # set_default_dtype take effect on complex
                 x = paddle.to_tensor(1 + 2j, place=place, stop_gradient=False)
                 self.assertTrue(np.array_equal(x.numpy(), [1 + 2j]))
-                self.assertEqual(x.dtype, 'complex64')
+                self.assertEqual(x.dtype, core.VarDesc.VarType.COMPLEX64)
 
                 paddle.set_default_dtype('float64')
                 x = paddle.to_tensor(1.2, place=place, stop_gradient=False)
@@ -87,7 +87,7 @@ class TestVarBase(unittest.TestCase):
 
                 x = paddle.to_tensor(1 + 2j, place=place, stop_gradient=False)
                 self.assertTrue(np.array_equal(x.numpy(), [1 + 2j]))
-                self.assertEqual(x.dtype, 'complex128')
+                self.assertEqual(x.dtype, core.VarDesc.VarType.COMPLEX128)
 
                 x = paddle.to_tensor(
                     1, dtype='float32', place=place, stop_gradient=False)
@@ -133,10 +133,8 @@ class TestVarBase(unittest.TestCase):
                     [1 + 2j, 1 - 2j], dtype='complex64', place=place)
                 y = paddle.to_tensor(x)
                 self.assertTrue(np.array_equal(x.numpy(), [1 + 2j, 1 - 2j]))
-                self.assertEqual(y.dtype, 'complex64')
+                self.assertEqual(y.dtype, core.VarDesc.VarType.COMPLEX64)
                 self.assertEqual(y.shape, [2])
-                self.assertEqual(y.real.stop_gradient, True)
-                self.assertEqual(y.real.type, core.VarDesc.VarType.LOD_TENSOR)
 
                 with self.assertRaises(TypeError):
                     paddle.to_tensor('test')
@@ -243,11 +241,12 @@ class TestVarBase(unittest.TestCase):
             z.backward()
             self.assertTrue(np.array_equal(x.grad, [20.0]))
             self.assertTrue(np.array_equal(detach_x.grad, [60.0]))
+
             # Due to sharing of data with origin Tensor, There are some unsafe operations:
-            # with self.assertRaises(RuntimeError):
-            #     y = 2 * x
-            #     detach_x[:] = 5.0
-            #     y.backward()
+            with self.assertRaises(RuntimeError):
+                y = 2**x
+                detach_x[:] = 5.0
+                y.backward()
 
     def test_write_property(self):
         with fluid.dygraph.guard():

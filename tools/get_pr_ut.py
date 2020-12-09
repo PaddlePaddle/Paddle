@@ -37,6 +37,7 @@ class PRChecker(object):
         self.lineno_prog = re.compile('@@ \-\d+,\d+ \+(\d+),(\d+) @@')
         self.pr = None
         self.suffix = ''
+        self.full_case = False
 
     def init(self):
         """ Get pull request. """
@@ -48,6 +49,17 @@ class PRChecker(object):
         if suffix:
             self.suffix = suffix
         self.pr = self.repo.get_pull(int(pr_id))
+        last_commit = None
+        ix = 0
+        while True:
+            commits = self.pr.get_commits().get_page(ix)
+            for c in commits:
+                last_commit = c.commit
+            else:
+                break
+            ix = ix + 1
+        if last_commit.message.find('test=full_case') != -1:
+            self.full_case = True
 
     def get_pr_files(self):
         """ Get files in pull request. """
@@ -156,6 +168,8 @@ class PRChecker(object):
 
     def get_pr_ut(self):
         """ Get unit tests in pull request. """
+        if self.full_case:
+            return ''
         check_added_ut = False
         ut_list = []
         file_ut_map = None

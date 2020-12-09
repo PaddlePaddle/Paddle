@@ -808,9 +808,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         user_src_memory_p = std::static_pointer_cast<mkldnn::memory>(
             dev_ctx.GetBlob(user_src_key));
         user_src_memory_p->set_data_handle(to_void_cast<T>(input_data));
-        src_memory_reorder_p->execute(astream, *user_src_memory_p,
-                                      *src_memory_p);
-        astream.wait();
+        {
+          platform::RecordEvent record_reorder("int_reorder",
+                                               platform::EventRole::kUniqueOp);
+          src_memory_reorder_p->execute(astream, *user_src_memory_p,
+                                        *src_memory_p);
+          astream.wait();
+        }
       } else if (src_memory_p) {
         src_memory_p->set_data_handle(to_void_cast<T>(input_data));
       }
@@ -840,9 +844,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       if (residual_reorder_p) {
         auto user_residual_data_p = std::static_pointer_cast<mkldnn::memory>(
             dev_ctx.GetBlob(user_residual_key));
-        residual_reorder_p->execute(astream, *user_residual_data_p,
-                                    *dst_memory_p);
-        astream.wait();
+        {
+          platform::RecordEvent record_reorder("int_reorder",
+                                               platform::EventRole::kUniqueOp);
+          residual_reorder_p->execute(astream, *user_residual_data_p,
+                                      *dst_memory_p);
+          astream.wait();
+        }
       }
 
       auto bias_memory_p =
@@ -1094,9 +1102,13 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         auto reorder_p =
             handler.AcquireReorder(reorder_dst_memory_p, diff_weights_memory_p);
 
-        reorder_p->execute(astream, *diff_weights_memory_p,
-                           *reorder_dst_memory_p);
-        astream.wait();
+        {
+          platform::RecordEvent record_reorder("int_reorder",
+                                               platform::EventRole::kUniqueOp);
+          reorder_p->execute(astream, *diff_weights_memory_p,
+                             *reorder_dst_memory_p);
+          astream.wait();
+        }
 
         // So here we have a data in goihw , which can be interpreted as OIHW
         // (OIDHW for conv3d)

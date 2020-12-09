@@ -35,6 +35,8 @@ class VariableWrapper {
 
   explicit VariableWrapper(const std::string& name) : name_(name) {}
 
+  ~VariableWrapper() { VLOG(10) << "Destruct VariableWrapper: " << Name(); }
+
   const framework::Variable& Var() const { return var_; }
 
   framework::Variable* MutableVar() { return &var_; }
@@ -79,7 +81,7 @@ class VariableWrapper {
   }
 
   bool IsLeafGrad() const {
-    if (!HasGradVar() && !HasGradNode() && !OverridedStopGradient()) {
+    if (!HasGradNode() && !OverridedStopGradient()) {
       return true;
     }
     return false;
