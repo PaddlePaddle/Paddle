@@ -153,8 +153,8 @@ __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
   }
   __syncthreads();
 
-  mean_val = mean[blockIdx.x];
-  var_val = static_cast<U>(real_sqrt(var[blockIdx.x] + epsilon));
+  mean_val = mean_share;
+  U invvar = rsqrt<U>(var_share + static_cast<U>(epsilon));
 
   // Step 2: Calculate y
   if (scale != nullptr) {
