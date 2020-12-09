@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
+#include <algorithm>
 #include <sstream>
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
@@ -31,7 +32,7 @@ struct Meta {
   uint64_t count;
   std::unordered_map<std::string, int> dims_map;
 
-  Meta(const std::string& metapath) {
+  explicit Meta(const std::string& metapath) {
     std::ifstream file(metapath);
     std::string line;
     int num_lines = 0;
@@ -40,8 +41,10 @@ struct Meta {
         continue;
       }
       auto pairs = paddle::string::split_string<std::string>(line, "=");
-      PADDLE_ENFORCE_EQ(pairs.size(), 2, paddle::platform::errors::InvalidArgument("info in %s except k=v, but got %s",
-                        metapath, line));
+      PADDLE_ENFORCE_EQ(
+          pairs.size(), 2,
+          paddle::platform::errors::InvalidArgument(
+              "info in %s except k=v, but got %s", metapath, line));
 
       if (pairs[0] == "param") {
         param = pairs[1];
@@ -90,8 +93,9 @@ struct Meta {
 
 void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
                   std::vector<std::vector<float>>* values) {
-  PADDLE_ENFORCE_EQ(columns.size(), meta.names.size() + 1, paddle::platform::errors::InvalidArgument(
-                    "record in txt do not match meta."));
+  PADDLE_ENFORCE_EQ(columns.size(), meta.names.size() + 1,
+                    paddle::platform::errors::InvalidArgument(
+                        "record in txt do not match meta."));
 
   values->reserve(columns.size() - 1);
 
@@ -102,8 +106,9 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
     std::vector<float> val;
     std::transform(val_.begin(), val_.end(), std::back_inserter(val),
                    [](std::string va) { return std::stof(va); });
-    PADDLE_ENFORCE_EQ(val.size(), meta.dims[x - 1], paddle::platform::errors::InvalidArgument(
-                      "record in txt do not match meta."));
+    PADDLE_ENFORCE_EQ(val.size(), meta.dims[x - 1],
+                      paddle::platform::errors::InvalidArgument(
+                          "record in txt do not match meta."));
     values->push_back(val);
   }
 }
@@ -334,7 +339,7 @@ std::pair<int64_t, int64_t> CommonSparseTable::print_table_stat() {
   }
 
   return {feasign_size, mf_size};
-};
+}
 
 int32_t CommonSparseTable::pour() {
   rwlock_->RDLock();
@@ -402,7 +407,7 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values, const uint64_t* keys,
   }
   rwlock_->UNLock();
   return 0;
-};
+}
 
 int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
                                         const float* values, size_t num) {
@@ -458,7 +463,7 @@ int32_t CommonSparseTable::push_sparse(const uint64_t* keys,
   }
 
   return 0;
-};
+}
 
 int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
                                              const float* values, size_t num) {
@@ -504,13 +509,13 @@ int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
   return 0;
 }
 
-int32_t CommonSparseTable::flush() { return 0; };
+int32_t CommonSparseTable::flush() { return 0; }
 
 int32_t CommonSparseTable::shrink() {
   VLOG(0) << "shrink coming soon";
   return 0;
-};
-void CommonSparseTable::clear() { VLOG(0) << "clear coming soon"; };
+}
+void CommonSparseTable::clear() { VLOG(0) << "clear coming soon"; }
 
 }  // namespace distributed
 }  // namespace paddle
