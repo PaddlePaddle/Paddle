@@ -319,8 +319,8 @@ class CompiledProgram(object):
     def _compile_data_parallel(self,
                                places,
                                use_cuda=False,
-                               scope=None,
-                               use_xpu=False):
+                               use_xpu=False,
+                               scope=None):
         if self._share_vars_from:
             if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
@@ -350,12 +350,18 @@ class CompiledProgram(object):
         self._exec_strategy.use_xpu = use_xpu
 
         if self._exec_strategy.num_threads == 0:
-            if self._exec_strategy.use_cuda or self._exec_strategy.use_xpu:
+            if self._exec_strategy.use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
                 self._exec_strategy.num_threads = len(places) * 4
+            elif self._exec_strategy.use_xpu:
+                # Currently only single thread is supported in Kunlun XPU.
+                self._exec_strategy.num_threads = 1
             else:
                 self._exec_strategy.num_threads = len(places) * 2
+
+        assert self._exec_strategy.use_xpu and self._exec_strategy.num_threads ==1, \
+            "Currently only single thread is supported in Kunlun XPU."
 
         if self._build_strategy.num_trainers > 1:
             assert self._is_data_parallel, \
