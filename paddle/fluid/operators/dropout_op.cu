@@ -29,15 +29,14 @@ namespace operators {
 
 // aligned vector generates vectorized load/store on CUDA
 template <typename T, int Size>
-struct alignas(sizeof(T) * Size) aligned_vector {
+struct alignas(sizeof(T) * Size) AlignedVector {
   T val[Size];
 };
 
 template <typename T>
-inline int VectorizedSize(char* pointer) {
+inline int VectorizedSize(const T* pointer) {
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
-  constexpr int vec4 =
-      std::alignment_of<aligned_vector<T, 4>>::value;  // NOLINT
+  constexpr int vec4 = std::alignment_of<AlignedVector<T, 4>>::value;  // NOLINT
   if (address % vec4 == 0) {
     return 4;
   }
@@ -45,11 +44,10 @@ inline int VectorizedSize(char* pointer) {
 }
 
 template <typename T, typename MaskType>
-__global__ void RandomGeneratorWithGenerator(const size_t n, uint64_t seed,
-                                             const float dropout_prob,
-                                             const T* src, MaskType* mask_data,
-                                             T* dst, bool is_upscale_in_train,
-                                             uint64_t increment) {
+__global__ void RandomGenerator(const size_t n, uint64_t seed,
+                                const float dropout_prob, const T* src,
+                                MaskType* mask_data, T* dst,
+                                bool is_upscale_in_train, uint64_t increment) {
   curandStatePhilox4_32_10_t state;
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   curand_init(seed, idx, increment, &state);
@@ -75,23 +73,25 @@ __global__ void RandomGeneratorWithGenerator(const size_t n, uint64_t seed,
 }
 
 template <typename T, typename MaskType, int VecSize>
-__global__ void VectorizedRandomGeneratorWithGenerator(
-    const size_t n, uint64_t seed, const float dropout_prob, const T* src,
-    MaskType* mask_data, T* dst, bool is_upscale_in_train, uint64_t increment) {
+__global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
+                                          const float dropout_prob,
+                                          const T* src, MaskType* mask_data,
+                                          T* dst, bool is_upscale_in_train,
+                                          uint64_t increment) {
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
 
   MaskType mask;
   T dest;
-  using LoadT = aligned_vector<T, VecSize>;
-  using MaskLoadT = aligned_vector<MaskType, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using MaskLoadT = AlignedVector<MaskType, VecSize>;
   T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
   for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
     T src_vec[VecSize];
     LoadT* value = reinterpret_cast<LoadT*>(&src_vec);
+    *value = *reinterpret_cast<const LoadT*>(&src[i]);
     float4 rand = curand_uniform4(&state);
-    *value = *reinterpret_cast<LoadT*>(const_cast<T*>(&src[i]));
 
     T dest_vec[VecSize];
     MaskType mask_vec[VecSize];
@@ -115,8 +115,6 @@ __global__ void VectorizedRandomGeneratorWithGenerator(
         *reinterpret_cast<LoadT*>(&dest_vec[0]);
     *(reinterpret_cast<MaskLoadT*>(&mask_data[i])) =
         *reinterpret_cast<MaskLoadT*>(&mask_vec[0]);
-
-    __syncthreads();
   }
 }
 
@@ -163,10 +161,16 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
           dev_ctx.GetMaxPhysicalThreadCount() / dev_ctx.GetSMCount() / threads;
       grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
 
+      // increment is used to set the args(offset) of curand_init, which defines
+      // offset in subsequence.
+      // The detail:
+      // https://docs.nvidia.com/cuda/curand/device-api-overview.html
+      // Increment should be at least the number of curand() random numbers used
+      // in each thread to avoid the random number generated this time being the
+      // same as the previous calls.
       uint64_t seed_data;
       uint64_t increment;
-      int vec_size =
-          VectorizedSize<T>(reinterpret_cast<char*>(const_cast<T*>(x_data)));
+      int vec_size = VectorizedSize<T>(x_data);
       auto offset =
           ((x_numel - 1) / (threads * grid * vec_size) + 1) * vec_size;
       int device_id = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace())
@@ -194,12 +198,11 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       }
 
       if (vec_size == 4) {
-        VectorizedRandomGeneratorWithGenerator<T, uint8_t,
-                                               4><<<grid, threads, 0, stream>>>(
+        VectorizedRandomGenerator<T, uint8_t, 4><<<grid, threads, 0, stream>>>(
             size, seed_data, dropout_prob, x_data, mask_data, y_data,
             upscale_in_train, increment);
       } else {
-        RandomGeneratorWithGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
+        RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
             size, seed_data, dropout_prob, x_data, mask_data, y_data,
             upscale_in_train, increment);
       }
