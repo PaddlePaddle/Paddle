@@ -21,6 +21,8 @@ import requests
 from github import Github
 
 PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
+PADDLE_ROOT += '/'
+PADDLE_ROOT = PADDLE_ROOT.replace('//', '/')
 
 
 class PRChecker(object):
@@ -30,8 +32,8 @@ class PRChecker(object):
         self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)
         self.repo = self.github.get_repo('PaddlePaddle/Paddle')
         self.py_prog_oneline = re.compile('\d+\|\s*#.*')
-        self.py_prog_multiline_a = re.compile('\d+\|\s*""".*?"""', re.DOTALL)
-        self.py_prog_multiline_b = re.compile("\d+\|\s*'''.*?'''", re.DOTALL)
+        self.py_prog_multiline_a = re.compile('\d+\|\s*r?""".*?"""', re.DOTALL)
+        self.py_prog_multiline_b = re.compile("\d+\|\s*r?'''.*?'''", re.DOTALL)
         self.cc_prog_online = re.compile('\d+\|\s*//.*')
         self.cc_prog_multiline = re.compile('\d+\|\s*/\*.*?\*/', re.DOTALL)
         self.lineno_prog = re.compile('@@ \-\d+,\d+ \+(\d+),(\d+) @@')
@@ -89,10 +91,10 @@ class PRChecker(object):
         return result
 
     def __get_comment_by_prog(self, content, prog):
-        result = []
         result_list = prog.findall(content)
         if not result_list:
-            return None
+            return []
+        result = []
         for u in result_list:
             result.extend(u.split('\n'))
         return result
@@ -114,7 +116,7 @@ class PRChecker(object):
         if f.endswith('.py'):
             filetype = 'py'
         else:
-            return None
+            return []
         return self.__get_comment_by_filetype(inputs, filetype)
 
     def get_pr_diff_lines(self):
@@ -143,8 +145,8 @@ class PRChecker(object):
                             end += 1
                         if data[ix][0] == '+':
                             line_list = file_to_diff_lines.get(filename)
-                            line = '{}{}'.format(lineno, data[ix].replace('+',
-                                                                          '|'))
+                            line = '{}{}'.format(lineno,
+                                                 data[ix].replace('+', '|', 1))
                             if line_list:
                                 line_list.append(line)
                             else:
@@ -158,9 +160,9 @@ class PRChecker(object):
     def is_only_comment(self, f):
         file_to_diff_lines = self.get_pr_diff_lines()
         comment_lines = self.get_comment_of_file(f)
-        #for l in comment_lines:
-        #    print(l)
-        diff_lines = file_to_diff_lines.get(f.replace(PADDLE_ROOT, ''))
+        diff_lines = file_to_diff_lines.get(f.replace(PADDLE_ROOT, '', 1))
+        if not diff_lines:
+            return False
         for l in diff_lines:
             if l not in comment_lines:
                 return False
@@ -186,18 +188,18 @@ class PRChecker(object):
                         ut_list.append('h_cu_comment_placeholder')
                     else:
                         return ''
-                elif f.endswith('.cc'):
+                elif f.endswith('.cc') or f.endswith('.py'):
                     if f.find('test_') != -1 or f.find('_test') != -1:
                         check_added_ut = True
                     elif self.is_only_comment(f):
-                        ut_list.append('cc_comment_placeholder')
+                        ut_list.append('nomap_comment_placeholder')
                     else:
                         return ''
                 else:
                     return ''
             else:
                 if self.is_only_comment(f):
-                    ut_list.append('cc_comment_placeholder')
+                    ut_list.append('map_comment_placeholder')
                 else:
                     ut_list.extend(file_ut_map.get(f))
         ut_list = list(set(ut_list))
