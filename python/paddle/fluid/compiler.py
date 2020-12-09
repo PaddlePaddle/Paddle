@@ -360,8 +360,9 @@ class CompiledProgram(object):
             else:
                 self._exec_strategy.num_threads = len(places) * 2
 
-        assert self._exec_strategy.use_xpu and self._exec_strategy.num_threads ==1, \
-            "Currently only single thread is supported in Kunlun XPU."
+        if self._exec_strategy.use_xpu:
+            assert self._exec_strategy.num_threads == 1, \
+                "Currently only single thread is supported in Kunlun XPU."
 
         if self._build_strategy.num_trainers > 1:
             assert self._is_data_parallel, \
