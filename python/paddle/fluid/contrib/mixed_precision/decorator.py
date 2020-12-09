@@ -66,6 +66,8 @@ class OptimizerWithMixedPrecision(object):
         self._loss_scaling = None
         self._init_loss_scaling = init_loss_scaling
         self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
+        self._learning_rate = optimizer._learning_rate
+        self._learning_rate_map = optimizer._learning_rate_map
         if self._use_dynamic_loss_scaling:
             self._incr_every_n_steps = incr_every_n_steps
             self._decr_every_n_nan_or_inf = decr_every_n_nan_or_inf
