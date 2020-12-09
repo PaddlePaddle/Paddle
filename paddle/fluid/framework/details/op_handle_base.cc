@@ -86,7 +86,9 @@ void OpHandleBase::InitCUDA() {
 }
 
 void OpHandleBase::Run(bool use_cuda, bool use_xpu) {
-  PADDLE_ENFORCE(!(use_cuda && use_xpu), "both use_cuda & use_xpu is true");
+  PADDLE_ENFORCE_EQ(
+      use_cuda && use_xpu, false,
+      platform::errors::InvalidArgument("both use_cuda & use_xpu is true"));
 #ifdef PADDLE_WITH_CUDA
   if (events_.empty() && use_cuda && dev_ctxes_.size() > 0) {
     InitCUDA();

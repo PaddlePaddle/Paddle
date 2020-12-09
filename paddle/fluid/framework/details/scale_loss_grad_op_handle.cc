@@ -61,7 +61,7 @@ struct ScaleLossGradFunctor {
     } else if (platform::is_xpu_place(place_)) {
 #if defined(PADDLE_WITH_XPU)
       OutT cast_coeff = static_cast<OutT>(coeff_);
-      memory::Copy(boost::get<platform::XPUPlace>(place_), out_data,
+      memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place_), out_data,
                    platform::CPUPlace(), &cast_coeff, SizeOfType(out_dtype_));
       VLOG(10) << place_ << "RUN Scale loss grad op";
 #endif
