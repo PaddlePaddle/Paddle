@@ -269,6 +269,24 @@ list(REMOVE_ITEM TEST_OPS
 LIST(REMOVE_ITEM TEST_OPS test_auto_pruning)
 LIST(REMOVE_ITEM TEST_OPS test_filter_pruning)
 
+# fix
+if(WIN32)
+    SET(SINGLE_CARD_TEST_OPS
+        test_user_defined_quantization
+        test_quantization_scale_pass
+        test_quantization_pass
+        test_moving_average_abs_max_scale_op
+        test_imperative_qat_channelwise
+        test_imperative_qat
+        test_imperative_out_scale
+        test_graph)
+    LIST(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
+    foreach(src ${SINGLE_CARD_TEST_OPS})
+        py_test(${src} SRCS ${src}.py ENVS CUDA_VISIBLE_DEVICES=0)
+    endforeach()
+endif()
+
+
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()

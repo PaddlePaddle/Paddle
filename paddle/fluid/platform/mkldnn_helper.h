@@ -23,6 +23,7 @@ limitations under the License. */
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNMemoryFormat = mkldnn::memory::format_tag;
@@ -188,6 +189,8 @@ inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
                     const mkldnn::engine& engine) {
   auto reorder_prim = mkldnn::reorder(src, dst);
   mkldnn::stream astream(engine);
+  platform::RecordEvent record_reorder("int_reorder",
+                                       platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
 }

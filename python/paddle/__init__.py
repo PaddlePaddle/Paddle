@@ -32,7 +32,6 @@ monkey_patch_variable()
 monkey_patch_math_varbase()
 import paddle.framework
 from .framework import VarBase as Tensor
-from .framework import ComplexVariable as ComplexTensor
 import paddle.compat
 import paddle.distributed
 import paddle.sysconfig
@@ -43,7 +42,6 @@ import paddle.distributed.fleet
 import paddle.optimizer
 import paddle.metric
 import paddle.device
-import paddle.incubate.complex as complex
 import paddle.regularizer
 
 # TODO: define alias in tensor and framework directory
@@ -189,7 +187,6 @@ from .tensor.math import logsumexp  #DEFINE_ALIAS
 from .tensor.math import inverse  #DEFINE_ALIAS
 from .tensor.math import log1p  #DEFINE_ALIAS
 from .tensor.math import erf  #DEFINE_ALIAS
-# from .tensor.math import addcmul  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clip  #DEFINE_ALIAS
 from .tensor.math import trace  #DEFINE_ALIAS
