@@ -17,12 +17,57 @@ limitations under the License. */
 #include <random>
 #include <string>
 
+#include <algorithm>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
+
+#ifdef __NVCC__
+/*
+__global__ void DropoutGradCUDAKernel(const half* dout, const uint8_t* mask,
+                                      float factor, const int64_t size,
+                                      half* dx) {
+  half2 h2_factor = __float2half2_rn(factor);
+  const auto* dout_h2 = reinterpret_cast<const half2*>(dout);
+  const auto* mask_c2 = reinterpret_cast<const char2*>(mask);
+  auto* dx_h2 = reinterpret_cast<half2*>(dx);
+  CUDA_KERNEL_LOOP(index, size / 2) {
+    char2 mask_val = mask_c2[index];
+    half2 mask_h2;
+    mask_h2.x = mask_val.x;
+    mask_h2.y = mask_val.y;
+    dx_h2[index] = __hmul2(__hmul2(dout_h2[index], mask_h2), h2_factor);
+  }
+  if (index == size / 2 && size % 2 == 1) {
+    const int64_t last_idx = size - 1;
+    half mask = mask[last_idx];
+    dx[last_idx] = __hmul(__hmul(dout[last_idx], mask), h2_factor.x);
+  }
+}
+*/
+
+__global__ void DropoutGradCUDAKernel(const half2* dout, const uint8_t* mask,
+                                      const half factor, const int64_t size,
+                                      half2* dx) {
+  half2 factor_h2 = __half2half2(factor);
+  const auto* mask_uc2 = reinterpret_cast<const uchar2*>(mask);
+  CUDA_KERNEL_LOOP(index, size / 2) {
+    uchar2 mask_val = mask_uc2[index];
+    half2 mask_h2;
+    mask_h2.x = mask_val.x;
+    mask_h2.y = mask_val.y;
+    dx[index] = __hmul2(__hmul2(dout[index], mask_h2), factor_h2);
+  }
+  if (size % 2 != 0 && blockIdx.x == 0 && threadIdx.x == 0) {
+    const int64_t last_idx = (size / 2) + 1;
+    half mask_h = mask[size - 1];
+    dx[last_idx].x = __hmul(__hmul(dout[last_idx].x, mask_h), factor_h2.x);
+  }
+}
+#endif
 
 using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
@@ -134,8 +179,29 @@ class DropoutGradKernel : public framework::OpKernel<T> {
       if (dropout_prob == 1.0f) {
         dX.device(place) = static_cast<T>(0) * dY;
       } else {
-        dX.device(place) =
-            dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
+        if (platform::is_gpu_place(context.GetPlace()) &&
+            std::is_same<T, platform::float16>::value) {
+#ifdef __NVCC__
+          auto size = grad_x->numel();
+          auto round_size = (size + 1) / 2 * 2;
+          auto factor = static_cast<half>(1.0f / (1.0f - dropout_prob));
+          auto stream = context.cuda_device_context().stream();
+          int threads = 512;
+          int grid = (round_size + threads - 1) / threads;
+          const auto& dev_ctx = context.cuda_device_context();
+          int blocks_per_sm = dev_ctx.GetMaxPhysicalThreadCount() /
+                              dev_ctx.GetSMCount() / threads;
+          grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
+          const half2* dout_h2 =
+              reinterpret_cast<const half2*>(grad_y->data<T>());
+          half2* dx_h2 = reinterpret_cast<half2*>(grad_x->data<T>());
+          DropoutGradCUDAKernel<<<grid, threads, 0, stream>>>(
+              dout_h2, mask->data<uint8_t>(), factor, size, dx_h2);
+#endif
+        } else {
+          dX.device(place) =
+              dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
+        }
       }
     } else {
       dX.device(place) = dY * M.cast<T>();
