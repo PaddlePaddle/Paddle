@@ -204,7 +204,7 @@ TEST(CommonSparseTable, Adam) {
       beta2_pow[0] *= beta2;
     }
     for (int i = 0; i < emb_dim; i++) {
-      ASSERT_TRUE(abs(param[i] - pull_values[idx + i]) < 1e-6);
+      ASSERT_TRUE(abs(param[i] - pull_values[idx + i]) < 1e-5);
     }
   }
 }
