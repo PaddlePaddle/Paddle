@@ -88,10 +88,7 @@ void NCCLParallelContext::RecvNCCLID(
 
   VLOG(3) << "recevived the ncclUniqueId";
 
-  for (int i = 0; i < nrings; ++i) {
-    memcpy(&nccl_ids[i], buffer + i * NCCL_UNIQUE_ID_BYTES,
-           NCCL_UNIQUE_ID_BYTES);
-  }
+  memcpy(&nccl_ids[0], buffer, nrings * NCCL_UNIQUE_ID_BYTES);
 
   VLOG(3) << "closing the socket server: " << ep;
   close(server_fd);
