@@ -56,6 +56,9 @@ from .common import Dropout  #DEFINE_ALIAS
 from .common import Dropout2D  #DEFINE_ALIAS
 from .common import Dropout3D  #DEFINE_ALIAS
 from .common import AlphaDropout  #DEFINE_ALIAS
+from .common import Upsample  #DEFINE_ALIAS
+from .common import UpsamplingBilinear2D  #DEFINE_ALIAS
+from .common import UpsamplingNearest2D  #DEFINE_ALIAS
 from .pooling import AvgPool1D  #DEFINE_ALIAS
 from .pooling import AvgPool2D  #DEFINE_ALIAS
 from .pooling import AvgPool3D  #DEFINE_ALIAS

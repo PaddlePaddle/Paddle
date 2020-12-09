@@ -88,7 +88,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -186,7 +186,7 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -233,7 +233,7 @@ class Transpose2Op : public TransposeOp {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       using framework::proto::VarType;
@@ -298,7 +298,7 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -321,11 +321,19 @@ REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex64>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     transpose_grad,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex64>,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex128>);
 
 REGISTER_OPERATOR(transpose2, ops::Transpose2Op, ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
@@ -336,10 +344,18 @@ REGISTER_OP_CPU_KERNEL(
     transpose2, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex64>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     transpose2_grad,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex64>,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex128>);

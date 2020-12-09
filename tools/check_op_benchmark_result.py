@@ -38,7 +38,10 @@ def parse_log_file(log_file):
             except ValueError:
                 pass  # do nothing
 
-    assert result != None, "Parse log file fail!"
+    if result is None:
+        logging.warning("Parse %s fail!" % log_file)
+
+    return result
 
 
 def load_benchmark_result_from_logs_dir(logs_dir):
@@ -86,8 +89,14 @@ def compare_benchmark_result(develop_result, pr_result):
         for line in pr_result.get("parameters").strip().split("\n"):
             logging.info("\t%s" % line)
     else:
-        # TODO(Avin0323): Accuracy need to add.
-        pass
+        if not pr_result.get("consistent"):
+            status = False
+            logging.info("------ OP: %s ------" % pr_result.get("name"))
+            logging.info("Accaury diff: %s" % pr_result.get("diff"))
+            logging.info("backward: %s" % pr_result.get("backward"))
+            logging.info("parameters:")
+            for line in pr_result.get("parameters").strip().split("\n"):
+                logging.info("\t%s" % line)
 
     return status
 

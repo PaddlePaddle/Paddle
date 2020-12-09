@@ -28,6 +28,7 @@ import numpy as np
 import six
 import pickle
 import os
+import errno
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -1159,11 +1160,20 @@ class TestProgramStateOldSave(unittest.TestCase):
             self.check_in_static(main_program, base_map)
 
             # case 2: load with no need file
+            def symlink_force(target, link_name):
+                try:
+                    os.symlink(target, link_name)
+                except OSError as e:
+                    if e.errno == errno.EEXIST:
+                        os.remove(link_name)
+                        os.symlink(target, link_name)
+                    else:
+                        raise e
+
             orig_filepath = './test_program_1/fc_0.w_0'
             symlink_filepath = './test_program_1/link_fc_0.w_0'
-            if os.path.exists(symlink_filepath):
-                os.remove(symlink_filepath)
-            os.symlink(orig_filepath, symlink_filepath)
+            # create a needless link file for coverage
+            symlink_force(orig_filepath, symlink_filepath)
             program_state = fluid.load_program_state("test_program_1")
             fluid.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)

@@ -239,7 +239,7 @@ if(LINUX AND WITH_MKLDNN)
 	set(QUANT2_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
 	set(QUANT2_GRU_MODEL_DIR "${QUANT_INSTALL_DIR}/GRU_quant2")
 	download_quant_model(${QUANT2_GRU_MODEL_DIR} ${QUANT2_GRU_MODEL_ARCHIVE})
-	set(QUANT2_GRU_OPS_TO_QUANTIZE "fusion_gru")
+	set(QUANT2_GRU_OPS_TO_QUANTIZE "multi_gru")
 
 	### Save FP32 model or INT8 model from Quant model
         
@@ -268,6 +268,24 @@ list(REMOVE_ITEM TEST_OPS
 #TODO(wanghaoshuang): Fix this unitest failed on GCC8.
 LIST(REMOVE_ITEM TEST_OPS test_auto_pruning)
 LIST(REMOVE_ITEM TEST_OPS test_filter_pruning)
+
+# fix
+if(WIN32)
+    SET(SINGLE_CARD_TEST_OPS
+        test_user_defined_quantization
+        test_quantization_scale_pass
+        test_quantization_pass
+        test_moving_average_abs_max_scale_op
+        test_imperative_qat_channelwise
+        test_imperative_qat
+        test_imperative_out_scale
+        test_graph)
+    LIST(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
+    foreach(src ${SINGLE_CARD_TEST_OPS})
+        py_test(${src} SRCS ${src}.py ENVS CUDA_VISIBLE_DEVICES=0)
+    endforeach()
+endif()
+
 
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)

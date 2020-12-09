@@ -17,7 +17,6 @@ from .adam import Adam
 from ..fluid import framework
 from ..fluid.dygraph import base as imperative_base
 import paddle
-from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 __all__ = ['AdamW']
 
@@ -211,9 +210,6 @@ class AdamW(Adam):
     @framework.dygraph_only
     @imperative_base.no_grad
     def step(self):
-        if paddle.distributed.get_world_size() > 1:
-            apply_collective_grads(self._parameter_list)
-
         self._dtype = None
         params_grads = []
         for param in self._parameter_list:

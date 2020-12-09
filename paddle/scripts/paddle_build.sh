@@ -67,9 +67,6 @@ function cmake_base() {
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
-    # `gym` is only used in unittest, it's not suitable to add in requirements.txt.
-    # Add it dynamically.
-    echo "gym" >> ${PADDLE_ROOT}/python/requirements.txt
     # Support build for all python versions, currently
     # including cp27-cp27m and cp27-cp27mu.
     PYTHON_FLAGS=""
@@ -137,8 +134,6 @@ function cmake_base() {
                 exit 1
             fi
         fi
-        # delete `gym` to avoid modifying requirements.txt in *.whl
-        sed -i .bak "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
@@ -202,8 +197,6 @@ function cmake_base() {
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
         fi
-        # delete `gym` to avoid modifying requirements.txt in *.whl
-        sed -i "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     fi
 
     if [ "$SYSTEM" == "Darwin" ]; then
@@ -229,6 +222,7 @@ function cmake_base() {
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
         -DWITH_GPU=${WITH_GPU:-OFF}
+        -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
@@ -238,6 +232,7 @@ function cmake_base() {
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
+        -WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -251,6 +246,7 @@ function cmake_base() {
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
         -DLITE_GIT_TAG=develop
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -261,6 +257,7 @@ EOF
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
+        -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
@@ -271,6 +268,7 @@ EOF
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
+        -WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
@@ -282,7 +280,8 @@ EOF
 	    -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=develop \
         -DWITH_XPU=${WITH_XPU:-OFF} \
-        -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
+        -DWITH_LITE=${WITH_LITE:-OFF} \
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -291,6 +290,10 @@ EOF
 function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
+    cmake_base $1
+}
+
+function cmake_gen_in_current_dir() {
     cmake_base $1
 }
 
@@ -355,7 +358,14 @@ function build_base() {
         make clean
     fi
 
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+
     make install -j ${parallel_number};build_error=$?
+
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -422,10 +432,19 @@ EOF
     if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
         make clean
     fi
+
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+
     make install -j 8;build_error=$?
+
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
+
     set -e
     build_size
 }
@@ -767,6 +786,16 @@ function check_approvals_of_unittest() {
         fi
     fi
     set -x
+}
+
+function check_diff_file_for_coverage() {
+    diff_h_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_cc_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_py_file=$(git diff --name-status test develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
+
+    export PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}
+    export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}
+    export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
 }
 
 function check_change_of_unittest() {
@@ -1534,13 +1563,22 @@ EOF
     startTime_s=`date +%s`
     set +e
     cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto};build_error=$?
+
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+
     make -j ${parallel_number} fluid_lib_dist;build_error=$?
     make -j ${parallel_number} inference_lib_dist;build_error=$?
+
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+
     build_size "paddle_inference"
 }
 
@@ -1611,6 +1649,13 @@ function example() {
       exit 5
     fi
 }
+
+
+function collect_ccache_hits() {
+    rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
+    echo "ccache hit rate: ${rate}%"
+}
+
 
 function test_op_benchmark() {
     bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
@@ -1723,6 +1768,7 @@ function main() {
         ;;
       cicheck_coverage)
         check_approvals_of_unittest 1
+        check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
         parallel_test
@@ -1776,6 +1822,9 @@ function main() {
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
+        ;;
+      cmake_gen_in_current_dir)
+        cmake_gen_in_current_dir ${PYTHON_ABI:-""}
         ;;
       gen_fluid_lib)
         gen_fluid_lib ${parallel_number}

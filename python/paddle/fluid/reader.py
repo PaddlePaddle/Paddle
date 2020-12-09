@@ -366,9 +366,6 @@ class DataLoader(object):
             self.dataset_kind = _DatasetKind.MAP
 
         if batch_sampler is not None:
-            assert isinstance(batch_sampler, BatchSampler), \
-                "batch_sampler should be None or subclass instance " \
-                "of paddle.io.BatchSampler"
             assert batch_size == 1 and not shuffle and not drop_last, \
                 "batch_size/shuffle/drop_last should not be set when " \
                 "batch_sampler is given"

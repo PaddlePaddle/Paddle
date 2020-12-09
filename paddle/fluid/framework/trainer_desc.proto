@@ -60,6 +60,7 @@ message TrainerDesc {
   optional int32 xpu_end_idx = 31;
 
   optional bool use_ps_gpu = 32 [ default = false ];
+  optional string user_define_dump_filename = 33;
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;

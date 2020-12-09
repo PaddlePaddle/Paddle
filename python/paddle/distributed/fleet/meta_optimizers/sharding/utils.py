@@ -265,7 +265,7 @@ def get_var_size(param):
     input:
         - param: var
     return:
-        var size in Bytes
+        var size in MB
     """
     assert -1 not in param.shape
     return reduce(lambda x, y: x * y,
@@ -299,10 +299,12 @@ def comm_analyse(main_program):
     for op in block.ops:
         if op.type == "c_broadcast":
             var_name = op.desc.input_arg_names()[0]
-            broadcast_vars[var_name] = get_var_size(block.var(var_name))
+            # convert MB to KB
+            broadcast_vars[var_name] = get_var_size(block.var(
+                var_name)) * 1024.0
         elif op.type == "c_allreduce_sum":
             var_name = op.desc.input_arg_names()[0]
-            reduce_vars[var_name] = get_var_size(block.var(var_name))
+            reduce_vars[var_name] = get_var_size(block.var(var_name)) * 1024.0
 
     varsize_count = {}
     gap = 1
@@ -329,7 +331,7 @@ def comm_analyse(main_program):
                                                       count))
 
 
-def add_sync_comm_for_test(program, dist_strategy):
+def add_sync_comm(program, dist_strategy):
     """
     When clone a test prog by clone from the sharding main prog, 
     part of the sync_comm op maybe be pruned by mistake, this function
@@ -361,7 +363,7 @@ def add_sync_comm_for_test(program, dist_strategy):
     return
 
 
-def sharding_save_persistables(exe, dirname, main_program, filename=None):
+def save_persistables(exe, dirname, main_program, filename=None):
     """
     When use sharding, part of persistable vars are unique and are partitioned in different ranks,
     and part of persistable vars are duplicated and exist in all the ranks with different values.

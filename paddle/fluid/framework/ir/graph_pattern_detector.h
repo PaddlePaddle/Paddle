@@ -1490,6 +1490,21 @@ struct MultiGruSeq : public PatternBase {
   PATTERN_DECL_NODE(h2);
 };
 
+// multi_gru op
+// Quantization pass for multi_gru op.
+// Hidden of the multi_gru op is a result of the operator().
+struct MultiGru : public PatternBase {
+  MultiGru(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multi_gru") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(gru);
+  PATTERN_DECL_NODE(wx);
+  PATTERN_DECL_NODE(wh);
+  PATTERN_DECL_NODE(h);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.

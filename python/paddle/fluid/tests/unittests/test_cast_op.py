@@ -17,6 +17,8 @@ from __future__ import print_function
 import op_test
 import unittest
 import numpy as np
+
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
@@ -89,4 +91,5 @@ class TestCastOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

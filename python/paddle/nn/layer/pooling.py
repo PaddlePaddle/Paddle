@@ -920,10 +920,15 @@ class AdaptiveMaxPool2D(layers.Layer):
     ..  math::
 
        hstart &= floor(i * H_{in} / H_{out})
+
        hend &= ceil((i + 1) * H_{in} / H_{out})
+
        wstart &= floor(j * W_{in} / W_{out})
+
        wend &= ceil((j + 1) * W_{in} / W_{out})
+
        Output(i ,j) &= max(Input[hstart:hend, wstart:wend])
+
     Parameters:
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain two element, (H, W). H and W can be either a int, or None which means the size will be the same as that of the input.
         return_mask (bool): If true, the index of max pooling point will be returned along with outputs. It cannot be set in average pooling type. Default False.
@@ -987,11 +992,17 @@ class AdaptiveMaxPool3D(layers.Layer):
     ..  math::
 
       dstart &= floor(i * D_{in} / D_{out})
+
       dend &= ceil((i + 1) * D_{in} / D_{out})
+
       hstart &= floor(j * H_{in} / H_{out})
+
       hend &= ceil((j + 1) * H_{in} / H_{out})
+
       wstart &= floor(k * W_{in} / W_{out})
+
       wend &= ceil((k + 1) * W_{in} / W_{out})
+
       Output(i ,j, k) &= max(Input[dstart:dend, hstart:hend, wstart:wend])
 
     Parameters:

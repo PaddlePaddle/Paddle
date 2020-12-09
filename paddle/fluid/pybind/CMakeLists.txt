@@ -5,6 +5,7 @@ set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapp
 
 if (WITH_NCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
+  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
 endif()
 
 if(NOT WIN32)

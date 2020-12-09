@@ -49,6 +49,7 @@ from paddle.fluid.executor import scope_guard, Executor
 from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
+import paddle.distributed as dist
 
 from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
@@ -886,6 +887,7 @@ class Model(object):
 
         # init backend
         if fluid.in_dygraph_mode():
+            dist.init_parallel_env()
             self._adapter = DynamicGraphAdapter(self)
         else:
             self._adapter = StaticGraphAdapter(self)
@@ -1270,7 +1272,6 @@ class Model(object):
                     fluid.default_main_program().random_seed = main_prog_seed
                     fluid.default_startup_program(
                     ).random_seed = startup_prog_seed
-                    fluid.dygraph.parallel.prepare_context()
                 else:
                     prepare_distributed_context(self._place)
                 _parallel_context_initialized = True
@@ -1692,11 +1693,11 @@ class Model(object):
         test_steps = self._len_data_loader(test_loader)
         logs = {'steps': test_steps}
 
-        cbks.on_begin('test', logs)
+        cbks.on_begin('predict', logs)
 
         outputs = []
 
-        logs, outputs = self._run_one_epoch(test_loader, cbks, 'test')
+        logs, outputs = self._run_one_epoch(test_loader, cbks, 'predict')
 
         outputs = list(zip(*outputs))
 
@@ -1707,7 +1708,7 @@ class Model(object):
 
         self._test_dataloader = None
 
-        cbks.on_end('test', logs)
+        cbks.on_end('predict', logs)
         return outputs
 
     def _save_inference_model(self, path):
@@ -1793,7 +1794,7 @@ class Model(object):
 
             callbacks.on_batch_begin(mode, step, logs)
 
-            if mode != 'test':
+            if mode != 'predict':
                 outs = getattr(self, mode + '_batch')(data[:len(self._inputs)],
                                                       data[len(self._inputs):])
                 if self._metrics and self._loss:
@@ -1829,7 +1830,7 @@ class Model(object):
             callbacks.on_batch_end(mode, step, logs)
         self._reset_metrics()
 
-        if mode == 'test':
+        if mode == 'predict':
             return logs, outputs
         return logs
 

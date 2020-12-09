@@ -1906,18 +1906,30 @@ class TestPow_factor_tensor(TestActivation):
         self.assertRaises(TypeError, fluid.layers.pow, x=in4, factor=factor_1)
 
 
+def ref_stanh(x, scale_a=0.67, scale_b=1.7159):
+    out = scale_b * np.tanh(x * scale_a)
+    return out
+
+
 class TestSTanh(TestActivation):
+    def get_scale_a(self):
+        return 0.67
+
+    def get_scale_b(self):
+        return 1.7159
+
     def setUp(self):
         self.op_type = "stanh"
         self.init_dtype()
+        scale_a = self.get_scale_a()
+        scale_b = self.get_scale_b()
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
-        scale_a = 2.0 / 3.0
-        scale_b = 1.7159
-        out = scale_b * np.tanh(x * scale_a)
+        # The same reason with TestAbs
+        out = ref_stanh(x, scale_a, scale_b)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.attrs = {'scale_a': scale_a, 'scale_b': scale_b}
         self.outputs = {'Out': out}
 
@@ -1927,17 +1939,85 @@ class TestSTanh(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSTanhOpError(unittest.TestCase):
+class TestSTanhScaleA(TestSTanh):
+    def get_scale_a(self):
+        return 2.0
+
+
+class TestSTanhScaleB(TestSTanh):
+    def get_scale_b(self):
+        return 0.5
+
+
+class TestSTanhAPI(unittest.TestCase):
+    # test paddle.nn.stanh
+    def get_scale_a(self):
+        return 0.67
+
+    def get_scale_b(self):
+        return 1.7159
+
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.scale_a = self.get_scale_a()
+        self.scale_b = self.get_scale_b()
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.fluid.data('X', [10, 12])
+            out = paddle.stanh(x, self.scale_a, self.scale_b)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out = paddle.stanh(x, self.scale_a, self.scale_b)
+        out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
+        for r in [out]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', [10, 12])
+            out = fluid.layers.stanh(x, self.scale_a, self.scale_b)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
     def test_errors(self):
-        with program_guard(Program()):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.stanh, 1)
+            self.assertRaises(TypeError, paddle.stanh, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.stanh, x_int32)
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, paddle.stanh, x_int32)
             # support the input dtype is float16
-            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
-            fluid.layers.stanh(x_fp16)
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
+            paddle.stanh(x_fp16)
+
+
+class TestSTanhAPIScaleA(TestSTanhAPI):
+    def get_scale_a(self):
+        return 2.0
+
+
+class TestSTanhAPIScaleB(TestSTanhAPI):
+    def get_scale_b(self):
+        return 0.5
 
 
 def ref_softplus(x, beta=1, threshold=20):

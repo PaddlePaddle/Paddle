@@ -215,6 +215,10 @@ void VarBase::ClearGradient() {
 #endif
       }
     }
+    // TODO(zhouwei): It's better to free memory of grad by grad_t->claer.
+    // But will have some bug on mac CPU of yolov3 model, why?
+    // After fix this bug, function SetIsEmpty() isn't need
+    grad_var_->SharedVar()->SetIsEmpty(true);
   }
 }
 
@@ -276,6 +280,15 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     }
     return new_var;
   }
+}
+
+void VarBase::BumpInplaceVersion() {
+  PADDLE_ENFORCE_EQ(
+      Var().IsInitialized(), true,
+      platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized, please check if it has no data.",
+          Name()));
+  MutableVar()->BumpInplaceVersion();
 }
 
 void OpBase::SetType(const std::string& type) {

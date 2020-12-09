@@ -83,7 +83,10 @@ class TestTensorDataset(unittest.TestCase):
                 assert np.allclose(label.numpy(), label_np[i])
 
     def test_main(self):
-        for p in [fluid.CPUPlace(), fluid.CUDAPlace(0)]:
+        places = [fluid.CPUPlace()]
+        if fluid.core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
             self.run_main(num_workers=0, places=p)
 
 
@@ -132,7 +135,10 @@ class TestChainDataset(unittest.TestCase):
             idx += 1
 
     def test_main(self):
-        for p in [fluid.CPUPlace(), fluid.CUDAPlace(0)]:
+        places = [fluid.CPUPlace()]
+        if fluid.core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
             self.run_main(num_workers=0, places=p)
 
 
