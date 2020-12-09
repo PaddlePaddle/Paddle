@@ -1028,18 +1028,39 @@ class ForNodeVisitor(object):
         return step_node
 
     def _build_cond_stmt(self, step_node, compare_node):
-        return gast.Compare(
-            left=gast.BinOp(
+        if not isinstance(step_node, (gast.Constant, gast.UnaryOp)):
+            raise NotImplementedError(
+                "Dynamic-to-Static only supports the step value is a constant or negative constant in 'for-range' statements, "
+                "such as '2', '-3'. But received: '{}'. Please fix code to be compatible with Dynamic-to-Static."
+                .format(ast_to_source_code(step_node).strip()))
+        if isinstance(step_node, gast.UnaryOp):
+            # eg:
+            # range(max, min, -2)
+            # ->
+            # i > min
+            return gast.Compare(
                 left=gast.Name(
                     id=self.iter_var_name
                     if self.is_for_range_iter() else self.iter_idx_name,
                     ctx=gast.Load(),
                     annotation=None,
                     type_comment=None),
-                op=gast.Add(),
-                right=step_node),
-            ops=[gast.LtE()],
-            comparators=[compare_node])
+                ops=[gast.Gt()],
+                comparators=[compare_node])
+        else:
+            # eg:
+            # range(min, max, 2)
+            # ->
+            # i < max
+            return gast.Compare(
+                left=gast.Name(
+                    id=self.iter_var_name
+                    if self.is_for_range_iter() else self.iter_idx_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None),
+                ops=[gast.Lt()],
+                comparators=[compare_node])
 
     def _build_index_increase_node(self, step_node):
         return gast.AugAssign(
