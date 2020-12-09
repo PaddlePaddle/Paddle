@@ -142,6 +142,7 @@ function do_openssl_build {
     ./config -fPIC --prefix=/usr/local/ssl > /dev/null
     make > /dev/null
     make install > /dev/null
+    
 }
 
 
@@ -175,6 +176,9 @@ function do_curl_build {
     LIBS=-ldl ./configure --with-ssl --disable-shared > /dev/null
     make > /dev/null
     make install > /dev/null
+    ln -s /usr/local/ssl/lib/libcrypto.so /usr/lib/libcrypto.so
+    ln -s /usr/local/ssl/lib/libssl.so /usr/lib/libssl.so
+    ln -s /usr/local/ssl/bin/openssl /usr/local/bin/openssl
 }
 
 
