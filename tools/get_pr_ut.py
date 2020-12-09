@@ -188,7 +188,8 @@ class PRChecker(object):
                         ut_list.append('h_cu_comment_placeholder')
                     else:
                         return ''
-                elif f.endswith('.cc') or f.endswith('.py'):
+                elif f.endswith('.cc') or f.endswith('.py') or f.endswith(
+                        '.cu'):
                     if f.find('test_') != -1 or f.find('_test') != -1:
                         check_added_ut = True
                     elif self.is_only_comment(f):
