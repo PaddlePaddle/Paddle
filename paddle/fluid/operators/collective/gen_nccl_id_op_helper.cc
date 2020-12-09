@@ -20,6 +20,7 @@ limitations under the License. */
 #include <stdlib.h>
 #include <sys/socket.h>
 
+#include <algorithm>
 #include <ostream>
 #include <string>
 
@@ -108,8 +109,23 @@ static int SocketRecv(int fd, char* buffer, int size) {
   return offset;
 }
 
-// create server
-static int CreateListenSocket(const std::string& ep) {
+static void BindOrConnectFailed(int timeout, int* try_times, int* total_time,
+                                const char* op, const std::string& ep) {
+  PADDLE_ENFORCE_LT(
+      *total_time, timeout,
+      platform::errors::Unavailable("%s addr=%s timeout, failed reason: %s", op,
+                                    ep.c_str(), strerror(errno)));
+  ++(*try_times);
+  int retry_time = std::min(*try_times * 500, 3000);  // max 3 seconds
+  *total_time += retry_time;
+
+  LOG(WARNING) << op << " addr=" << ep << " failed " << *try_times
+               << " times with reason: " << strerror(errno) << " retry after "
+               << retry_time / 1000.0 << " seconds";
+  std::this_thread::sleep_for(std::chrono::milliseconds(retry_time));
+}
+
+int CreateListenSocket(const std::string& ep) {
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(
       addr.size(), 2UL,
@@ -122,7 +138,14 @@ static int CreateListenSocket(const std::string& ep) {
   int server_fd = -1;
   CHECK_SYS_CALL_VAL(socket(AF_INET, SOCK_STREAM, 0), "socket", server_fd);
 
-  int opt = 0;
+  // NOTE. Solutions to `Address already in use`.
+  // 1. Reuse addr&port. Otherwise, once the server closes the socket
+  // before client, the server will enter TIME-WAIT status. If we bind port
+  // again, the error `Address already in use` will appear.
+  // 2. Or we can close the client first to ensure that the server does
+  // not enter the TIME-WAIT state. But this is obviously not as convenient
+  // as the reuse method.
+  int opt = 1;
 #if defined(SO_REUSEPORT)
   // since Linux kernel 3.9
   CHECK_SYS_CALL(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
@@ -139,9 +162,10 @@ static int CreateListenSocket(const std::string& ep) {
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port);
 
-  // TODO(wangxi) Set from env, default 15min
-  int timeout = 900;
+  // TODO(wangxi) Set from env, default 900s=15min
+  int timeout = 900 * 1000;
   int try_times = 0;
+  int total_time = 0;
   while (true) {
     int ret_val = -1;
     RETRY_SYS_CALL_VAL(
@@ -149,15 +173,7 @@ static int CreateListenSocket(const std::string& ep) {
         ret_val);
 
     if (ret_val == -1) {
-      PADDLE_ENFORCE_LT(
-          try_times * 3, timeout,
-          platform::errors::Unavailable(
-              "bind addr={} timeout, failed reason: {}", ep, strerror(errno)));
-      LOG(WARNING) << "bind addr=" << ep << " failed " << try_times
-                   << " times with reason: " << strerror(errno)
-                   << ". Retry 3 seconds.";
-      std::this_thread::sleep_for(std::chrono::seconds(3));
-      ++try_times;
+      BindOrConnectFailed(timeout, &try_times, &total_time, "bind", ep);
       continue;
     }
     break;
@@ -168,7 +184,8 @@ static int CreateListenSocket(const std::string& ep) {
   return server_fd;
 }
 
-// server accept socket
+void CloseSocket(int fd) { CHECK_SYS_CALL(close(fd), "close"); }
+
 static int SocketAccept(int server_fd, const char* head) {
   struct sockaddr_in client_addr;
   socklen_t addr_length = sizeof(client_addr);
@@ -186,7 +203,7 @@ static int SocketAccept(int server_fd, const char* head) {
       break;  // accept client
     } else {
       VLOG(3) << "socket read failed with ret_val=" << ret_val;
-      close(conn);
+      CloseSocket(conn);
     }
   }
   return conn;
@@ -226,9 +243,10 @@ static int ConnectAddr(const std::string& ep, const char* head) {
                     platform::errors::Unavailable("Open address %s failed: %s",
                                                   ep, strerror(errno)));
 
-  // TODO(wangxi) Set from env, default 15min
-  int timeout = 900;
+  // TODO(wangxi) Set from env, default 900s=15min
+  int timeout = 900 * 1000;
   int try_times = 0;
+  int total_time = 0;
   while (true) {
     int ret_val = -1;
     RETRY_SYS_CALL_VAL(
@@ -236,15 +254,7 @@ static int ConnectAddr(const std::string& ep, const char* head) {
         "connect", ret_val);
 
     if (ret_val == -1) {
-      PADDLE_ENFORCE_LT(try_times * 3, timeout,
-                        platform::errors::Unavailable(
-                            "connect addr={} timeout, failed reason: {}", ep,
-                            strerror(errno)));
-      LOG(WARNING) << "connect addr=" << ep << " failed " << try_times
-                   << " times with reason: " << strerror(errno)
-                   << " retry 3 seconds";
-      std::this_thread::sleep_for(std::chrono::seconds(3));
-      ++try_times;
+      BindOrConnectFailed(timeout, &try_times, &total_time, "connect", ep);
       continue;
     }
 
@@ -260,8 +270,6 @@ static void RecvNCCLID(int conn, ncclUniqueId* nccl_id) {
                 "nccl id bytes must <= buffer size");
 
   CHECK_SYS_CALL(SocketRecv(conn, buffer, NCCL_UNIQUE_ID_BYTES), "recv ncc id");
-
-  VLOG(3) << "recevived the ncclUniqueId";
   memcpy(nccl_id, buffer, NCCL_UNIQUE_ID_BYTES);
 }
 
@@ -279,9 +287,11 @@ void SendBroadCastNCCLID(std::vector<std::string> servers, int nccl_comm_num,
   // connect with server
   std::vector<int> connects;
   for (auto server : servers) {
+    VLOG(3) << "connecting endpoint: " << server;
     int conn = ConnectAddr(server, COMM_HEAD);
     connects.push_back(conn);
   }
+  VLOG(3) << "connecting completed...";
 
   for (int i = 0; i < nccl_comm_num; ++i) {
     std::string var_name = func(i);
@@ -292,14 +302,19 @@ void SendBroadCastNCCLID(std::vector<std::string> servers, int nccl_comm_num,
     auto nccl_id = var->GetMutable<ncclUniqueId>();
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGetUniqueId(nccl_id));
 
+    int j = 0;
     for (auto conn : connects) {
+      VLOG(3) << "sending nccl_id_var: " << var_name << " to " << servers[j]
+              << " nccl_comm_no: " << i;
       SendNCCLID(conn, nccl_id);
+      ++j;
     }
+    VLOG(3) << "sending completed...";
   }
 
   // close client
   for (auto conn : connects) {
-    close(conn);
+    CloseSocket(conn);
   }
 }
 
@@ -307,7 +322,14 @@ void RecvBroadCastNCCLID(std::string endpoint, int nccl_comm_num,
                          std::function<std::string(size_t)> func,
                          const framework::Scope& scope) {
   int server = CreateListenSocket(endpoint);
-  int client = SocketAccept(server, COMM_HEAD);
+  RecvBroadCastNCCLID(server, endpoint, nccl_comm_num, func, scope);
+  CloseSocket(server);
+}
+
+void RecvBroadCastNCCLID(int server_fd, std::string endpoint, int nccl_comm_num,
+                         std::function<std::string(size_t)> func,
+                         const framework::Scope& scope) {
+  int client = SocketAccept(server_fd, COMM_HEAD);
 
   for (int i = 0; i < nccl_comm_num; ++i) {
     std::string var_name = func(i);
@@ -317,10 +339,12 @@ void RecvBroadCastNCCLID(std::string endpoint, int nccl_comm_num,
                                         var_name.c_str()));
     auto nccl_id = var->GetMutable<ncclUniqueId>();
 
+    VLOG(3) << "trainer: " << endpoint << " receiving nccl_id_var: " << var_name
+            << " from trainer 0, nccl_comm_no: " << i;
     RecvNCCLID(client, nccl_id);
   }
-  close(client);
-  close(server);
+  VLOG(3) << "receiving completed...";
+  CloseSocket(client);
 }
 
 }  // namespace operators

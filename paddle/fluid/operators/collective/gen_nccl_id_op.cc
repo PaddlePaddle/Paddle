@@ -98,8 +98,10 @@ class GenNCCLIdOp : public framework::OperatorBase {
             << ", exter_trainer_id:" << exter_trainer_id
             << ", trainers:" << ss.str();
 
+    int server_fd = -1;
+
+    /// 1. init flat
     std::function<std::string(size_t)> func = platform::GetFlatNCCLVarName;
-    // init flat
     if (trainer_id == 0) {
       // server endpoints
       std::vector<std::string> flat_endpoints;
@@ -107,26 +109,12 @@ class GenNCCLIdOp : public framework::OperatorBase {
                             trainers.end());
       SendBroadCastNCCLID(flat_endpoints, nccl_comm_num, func, scope);
     } else {
-      RecvBroadCastNCCLID(endpoint, nccl_comm_num, func, scope);
+      server_fd = CreateListenSocket(endpoint);
+      RecvBroadCastNCCLID(server_fd, endpoint, nccl_comm_num, func, scope);
     }
 
-    if (!use_hierarchical_allreduce) {
-      return;
-    }
-
-    PADDLE_ENFORCE_EQ(
-        trainers.size() % inter_nranks, 0,
-        platform::errors::PreconditionNotMet(
-            "The number of trainers %llu mod inter_nranks %d is not equal 0",
-            trainers.size(), inter_nranks));
-    PADDLE_ENFORCE_GT(
-        inter_nranks, 1,
-        platform::errors::PreconditionNotMet(
-            "inter_nranks %d <= 1 while in hierarchical allreduce mode",
-            inter_nranks));
-
+    /// 2. hierarchical inter ncclid
     func = platform::GetHierarchicalInterNCCLVarName;
-    // hierarchical inter ncclid
     if (inter_trainer_id == 0) {
       std::ostringstream ss;
       ss << endpoint;
@@ -141,12 +129,13 @@ class GenNCCLIdOp : public framework::OperatorBase {
       VLOG(1) << "Hierarchical inter ring endpoints:" << ss.str();
 
       SendBroadCastNCCLID(inter_endpoints, nccl_comm_num, func, scope);
-    } else {
-      RecvBroadCastNCCLID(endpoint, nccl_comm_num, func, scope);
+    } else if (inter_trainer_id > 0) {
+      VLOG(1) << "Hierarchical inter ring";
+      RecvBroadCastNCCLID(server_fd, endpoint, nccl_comm_num, func, scope);
     }
 
+    /// 3. hierarchical exter ncclid
     func = platform::GetHierarchicalExterNCCLVarName;
-    // hierarchical exter ncclid
     if (exter_trainer_id == 0) {
       std::ostringstream ss;
       std::vector<std::string> exter_endpoints;
@@ -160,7 +149,13 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
       SendBroadCastNCCLID(exter_endpoints, nccl_comm_num, func, scope);
     } else if (exter_trainer_id > 0) {
-      RecvBroadCastNCCLID(endpoint, nccl_comm_num, func, scope);
+      VLOG(1) << "Hierarchical exter ring";
+      RecvBroadCastNCCLID(server_fd, endpoint, nccl_comm_num, func, scope);
+    }
+
+    // close socket server
+    if (trainer_id != 0) {
+      CloseSocket(server_fd);
     }
   }
 };

@@ -27,13 +27,22 @@ class Scope;
 namespace paddle {
 namespace operators {
 
+int CreateListenSocket(const std::string& ep);
+
+void CloseSocket(int fd);
+
 void SendBroadCastNCCLID(std::vector<std::string> servers, int nccl_comm_num,
                          std::function<std::string(size_t)> func,
                          const framework::Scope& scope);
 
+// server listen on endpoint, then recv nccl id
 void RecvBroadCastNCCLID(std::string endpoint, int nccl_comm_num,
                          std::function<std::string(size_t)> func,
                          const framework::Scope& scope);
 
+// recv nccl id from socket
+void RecvBroadCastNCCLID(int server_fd, std::string endpoint, int nccl_comm_num,
+                         std::function<std::string(size_t)> func,
+                         const framework::Scope& scope);
 }  // namespace operators
 }  // namespace paddle
