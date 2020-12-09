@@ -464,7 +464,8 @@ def create_heter_program(program, config, heter_program, heter_ops,
             block_append_op(heter_program, program, heter_block, op)
 
         entrance_vars = block_var_detail[index]["entrance"]
-        add_vars_by_var_list(entrance_vars, program, heter_program, heter_block)
+        add_vars_by_var_list(entrance_vars, program,
+                             heter_program, heter_block)
         exit_vars = block_var_detail[index]["exit"]
         add_vars_by_var_list(exit_vars, program, heter_program, heter_block)
 
@@ -692,10 +693,10 @@ def get_communicate_var_info(program, block_index, entrance_var_list,
     for name in entrance_var_list:
         var = program.global_block().vars[name]
         shape = var.shape
-        if len(shape) < 2 or shape[0] != -1:
-            raise ValueError(
-                "Variable {} not support heter training. its shape is {}".
-                format(name, shape))
+        # if len(shape) < 2 or shape[0] != -1:
+        #     raise ValueError(
+        #         "Variable {} not support heter training. its shape is {}".
+        #         format(name, shape))
         recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
         input_var_reshape_dim.append(recv_var_dim)
         input_var_reshape_name.append("{}.input_reshape@Heter".format(name))
@@ -705,10 +706,10 @@ def get_communicate_var_info(program, block_index, entrance_var_list,
     for var_name in exit_var_list:
         var = program.global_block().vars[var_name]
         shape = var.shape
-        if len(shape) < 2 or shape[0] != -1:
-            raise ValueError(
-                "Variable {} not support heter training. its shape is {}".
-                format(var_name, shape))
+        # if len(shape) < 2 or shape[0] != -1:
+        #     raise ValueError(
+        #         "Variable {} not support heter training. its shape is {}".
+        #         format(var_name, shape))
         send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape)
         output_var_reshape_dim.append(send_reshape_dim)
         output_var_reshape_name.append("{}.output_reshape@Heter".format(
