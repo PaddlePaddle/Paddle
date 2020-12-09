@@ -42,7 +42,8 @@ assert x.place.is_gpu_place() is False, "There is no CUDA device, but Tensor's p
             ps_proc = subprocess.Popen(
                 ps_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                stderr=subprocess.PIPE,
+                env=os.environ)
             stdout, stderr = ps_proc.communicate()
 
             assert 'CPU device will be used by default' in str(
