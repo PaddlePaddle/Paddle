@@ -110,10 +110,19 @@ message TableParameter {
   optional uint64 table_id = 1;
   optional string table_class = 2;
   optional uint64 shard_num = 3 [ default = 1000 ];
+  optional TableAccessorParameter accessor = 4;
   optional TensorAccessorParameter tensor = 5;
   optional CommonAccessorParameter common = 6;
   optional TableType type = 7;
   optional bool compress_in_save = 8 [ default = false ];
+}
+
+message TableAccessorParameter {
+  optional string accessor_class = 1;
+  optional uint32 fea_dim = 4 [ default = 11 ];
+  optional uint32 embedx_dim = 5 [ default = 8 ];
+  optional uint32 embedx_threshold = 6 [ default = 10 ];
+  repeated TableAccessorSaveParameter table_accessor_save_param = 8;
 }
 
 message TensorAccessorParameter {
@@ -134,4 +143,10 @@ message CommonAccessorParameter {
   repeated string initializers = 6;
   optional int32 trainer_num = 7;
   optional bool sync = 8;
+}
+
+message TableAccessorSaveParameter {
+  optional uint32 param = 1;
+  optional string converter = 2;
+  optional string deconverter = 3;
 }
