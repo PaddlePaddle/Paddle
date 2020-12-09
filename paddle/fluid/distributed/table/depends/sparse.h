@@ -37,6 +37,7 @@ class SparseOptimizer {
                       ValueBlock* block) = 0;
 };
 
+// sum calc for sparse tensor
 class SSUM : public SparseOptimizer {
  public:
   SSUM(){};
@@ -70,6 +71,7 @@ class SSUM : public SparseOptimizer {
   int update_numel;
 };
 
+// sgd optimzer for sparse tensor
 class SSGD : public SparseOptimizer {
  public:
   SSGD(){};
@@ -109,9 +111,10 @@ class SSGD : public SparseOptimizer {
   int update_numel;
 };
 
+// adam optimzer for sparse tensor
 class SAdam : public SparseOptimizer {
  public:
-  SAdam(){};
+  SAdam() {}
   explicit SAdam(const CommonAccessorParameter& common) {
     auto& names = common.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {

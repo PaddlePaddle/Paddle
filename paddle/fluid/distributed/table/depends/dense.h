@@ -27,6 +27,8 @@
 namespace paddle {
 namespace distributed {
 
+// dense optimzier
+// TODO(tangwei12) integrate with sparse optimzer later.
 class DenseOptimizer {
  public:
   DenseOptimizer() {}
@@ -36,6 +38,7 @@ class DenseOptimizer {
                       int end) = 0;
 };
 
+// sum calc for dense tensor
 class DSUM : public DenseOptimizer {
  public:
   explicit DSUM(const CommonAccessorParameter& accessor,
@@ -58,6 +61,7 @@ class DSUM : public DenseOptimizer {
   float* param;
 };
 
+// sgd optimizer for dense tensor
 class DSGD : public DenseOptimizer {
  public:
   explicit DSGD(const CommonAccessorParameter& accessor,
@@ -89,6 +93,7 @@ class DSGD : public DenseOptimizer {
   float* param;
 };
 
+// adam optimizer for dense tensor
 class DAdam : public DenseOptimizer {
  public:
   explicit DAdam(const CommonAccessorParameter& accessor,
