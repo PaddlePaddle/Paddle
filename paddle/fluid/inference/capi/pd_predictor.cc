@@ -92,11 +92,10 @@ bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
   std::string val = config->config.model_dir();
   // fallback to prog_file_
   if (val.empty()) {
-      val = config->config.prog_file();
+    val = config->config.prog_file();
   }
   if (!predictors.count(val)) {
-    predictors[val] =
-        paddle::CreatePaddlePredictor(config->config);
+    predictors[val] = paddle::CreatePaddlePredictor(config->config);
   }
   auto& predictor = predictors[val];
   std::vector<paddle::PaddleTensor> in;
