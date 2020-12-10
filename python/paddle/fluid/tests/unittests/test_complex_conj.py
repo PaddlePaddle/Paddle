@@ -27,7 +27,7 @@ class TestComplexTraceLayer(unittest.TestCase):
         if fluid.core.is_compiled_with_cuda():
             self._places.append(fluid.CUDAPlace(0))
 
-    def test_basic_api(self):
+    def test_conj_api(self):
         for dtype in self._dtypes:
             input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
                 [2, 20, 2, 3]).astype(dtype)
@@ -37,6 +37,18 @@ class TestComplexTraceLayer(unittest.TestCase):
                     result = paddle.conj(var_x).numpy()
                     target = np.conj(input)
                     self.assertTrue(np.allclose(result, target))
+
+    def test_conj_api_out_not_none(self):
+        for dtype in self._dtypes:
+            input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
+                [2, 20, 2, 3]).astype(dtype)
+            for place in self._places:
+                with dg.guard(place):
+                    var_x = dg.to_variable(input)
+                    out = var_x
+                    paddle.conj(var_x, out)
+                    target = np.conj(input)
+                    self.assertTrue(np.allclose(out.numpy(), target))
 
 
 if __name__ == '__main__':
