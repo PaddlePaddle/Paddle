@@ -72,7 +72,9 @@ def nll_loss_2d(logs, targets, weight=None, reduction='mean',
 
 class TestNLLLoss(unittest.TestCase):
     def test_NLLLoss_1D_mean(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(10, 10)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 10, size=(10, )).astype(np.int64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -105,7 +107,9 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_1D_sum(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(10, 10)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 10, size=(10, )).astype(np.int64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -138,8 +142,11 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_1D_with_weight_mean(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(10, 10)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 10, size=(10, )).astype(np.int64)
+        np.random.seed(200)
         weight_np = np.random.random(size=(10, )).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -176,8 +183,11 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_1D_with_weight_sum(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(10, 10)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 10, size=(10, )).astype(np.int64)
+        np.random.seed(200)
         weight_np = np.random.random(size=(10, )).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -215,8 +225,11 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_1D_with_weight_mean_cpu(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(10, 10)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 10, size=(10, )).astype(np.int64)
+        np.random.seed(200)
         weight_np = np.random.random(size=(10, )).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -251,8 +264,11 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_1D_with_weight_no_reduce_cpu(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(10, 10)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 10, size=(10, )).astype(np.int64)
+        np.random.seed(200)
         weight_np = np.random.random(size=(10, )).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -288,7 +304,9 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_2D_mean(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -323,7 +341,9 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_2D_sum(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -358,8 +378,11 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_2D_with_weight_mean(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
+        np.random.seed(200)
         weight_np = np.random.random(size=(3, )).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -399,8 +422,11 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_2D_with_weight_mean_cpu(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
+        np.random.seed(200)
         weight_np = np.random.random(size=(3, )).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -438,8 +464,11 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_2D_with_weight_sum(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
+        np.random.seed(200)
         weight_np = np.random.random(size=(3, )).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -479,7 +508,9 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_in_dims_not_2or4_mean(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5, 5)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -519,8 +550,11 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_mean(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5, 5)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
+        np.random.seed(200)
         weight_np = np.random.random(size=(3, )).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -565,8 +599,11 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_sum(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5, 5)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
+        np.random.seed(200)
         weight_np = np.random.random(size=(3, )).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -614,8 +651,11 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_no_reduce(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5, 5)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
+        np.random.seed(200)
         weight_np = np.random.random(size=(3, )).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -664,8 +704,11 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result, expected))
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_no_reduce_cpu(self):
+        np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5, 5)).astype(np.float64)
+        np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
+        np.random.seed(200)
         weight_np = np.random.random(size=(3, )).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -717,13 +760,16 @@ class TestNLLLossOp1DWithReduce(OpTest):
         self.init_test_case()
         self.op_type = "nll_loss"
         self.with_weight = False
+        np.random.seed(200)
         input_np = np.random.uniform(0.1, 0.8,
                                      self.input_shape).astype("float64")
+        np.random.seed(200)
         label_np = np.random.randint(0, self.input_shape[1],
                                      self.label_shape).astype("int64")
         output_np, total_weight_np = nll_loss_1d(input_np, label_np)
         self.inputs = {'X': input_np, 'Label': label_np}
         if self.with_weight:
+            np.random.seed(200)
             weight_np = np.random.uniform(0.1, 0.8,
                                           self.input_shape[1]).astype("float64")
             output_np, total_weight_np = nll_loss_1d(
@@ -758,14 +804,17 @@ class TestNLLLossOp1DNoReduce(OpTest):
         self.init_test_case()
         self.op_type = "nll_loss"
         self.with_weight = False
+        np.random.seed(200)
         input_np = np.random.uniform(0.1, 0.8,
                                      self.input_shape).astype("float64")
+        np.random.seed(200)
         label_np = np.random.randint(0, self.input_shape[1],
                                      self.label_shape).astype("int64")
         output_np = nll_loss_1d(input_np, label_np, reduction='none')
         total_weight_np = np.array([0]).astype('float64')
         self.inputs = {'X': input_np, 'Label': label_np}
         if self.with_weight:
+            np.random.seed(200)
             weight_np = np.random.uniform(0.1, 0.8,
                                           self.input_shape[1]).astype("float64")
             output_np, total_weight_np = nll_loss_1d(
@@ -844,8 +893,10 @@ class TestNLLLossOp2DNoReduce(OpTest):
         self.init_test_case()
         self.op_type = "nll_loss"
         self.with_weight = False
+        np.random.seed(200)
         input_np = np.random.uniform(0.1, 0.8,
                                      self.input_shape).astype("float64")
+        np.random.seed(200)
         label_np = np.random.randint(0, self.input_shape[1],
                                      self.label_shape).astype("int64")
         output_np = nll_loss_2d(input_np, label_np, reduction='none')
@@ -911,7 +962,9 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
         def test_x_dim_imperative_lt_2():
             with fluid.dygraph.guard():
+                np.random.seed(200)
                 x_np = np.random.random(size=(5, )).astype(np.float64)
+                np.random.seed(200)
                 label_np = np.random.randint(0, 10, size=(5, )).astype(np.int64)
                 x = paddle.to_tensor(x_np)
                 label = paddle.to_tensor(label_np)
@@ -936,7 +989,9 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
         def test_NLLLoss_reduction_imperative_not_sum_mean_none():
             with fluid.dygraph.guard():
+                np.random.seed(200)
                 x_np = np.random.random(size=(5, 3)).astype(np.float64)
+                np.random.seed(200)
                 label_np = np.random.randint(0, 3, size=(5, )).astype(np.int64)
                 x = paddle.to_tensor(x_np)
                 label = paddle.to_tensor(label_np)
@@ -961,7 +1016,9 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
         def test_nll_loss_function_reduction_imperative_not_sum_mean_none():
             with fluid.dygraph.guard():
+                np.random.seed(200)
                 x_np = np.random.random(size=(5, 3)).astype(np.float64)
+                np.random.seed(200)
                 label_np = np.random.randint(0, 3, size=(5, )).astype(np.int64)
                 x = paddle.to_tensor(x_np)
                 label = paddle.to_tensor(label_np)
