@@ -223,8 +223,14 @@ class Fleet(object):
                     "The dygraph parallel environment has been initialized.")
             else:
                 # FLAGS_nccl_nrings is used for dynamic graph multi-stream communication
-                os.environ["FLAGS_nccl_nrings"] = str(
-                    self._user_defined_strategy.nccl_comm_num)
+                if "FLAGS_nccl_nrings" in os.environ:
+                    warnings.warn(
+                        "You have set the environment variable FLAGS_nccl_nrings "
+                        "outside the program, so the nccl_comm_num in "
+                        "DistributedStrategy will not take effect here.")
+                else:
+                    os.environ["FLAGS_nccl_nrings"] = str(
+                        self._user_defined_strategy.nccl_comm_num)
                 paddle.distributed.init_parallel_env()
 
     def is_first_worker(self):
