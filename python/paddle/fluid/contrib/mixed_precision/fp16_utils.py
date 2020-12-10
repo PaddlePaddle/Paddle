@@ -23,8 +23,6 @@ import collections
 import logging
 import numpy as np
 
-__all__ = ["cast_model_to_fp16", "cast_parameters_to_fp16"]
-
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
@@ -246,39 +244,60 @@ def _is_in_black_varnames(op, amp_lists):
     return False
 
 
-def _need_keep_fp32(op, unsupported_op_list, keep_fp32_pattern):
-    if op.has_attr("op_namescope") and \
-        any(pattern in op.attr("op_namescope") \
-            for pattern in keep_fp32_pattern):
-        return True
+def _need_keep_fp32(op, unsupported_op_list, fp16_guard_pattern,
+                    use_fp16_guard):
     if op.type in unsupported_op_list:
+        # the highest priority condition: If ops don't have fp16 computing kernels,
+        # they must be executed in fp32 calculation pattern.
         return True
 
+    # process ops about learning rate
+    in_out_arg_names = []
+    in_out_arg_names.extend(list(op.input_arg_names))
+    in_out_arg_names.extend(list(op.output_arg_names))
+    for name in in_out_arg_names:
+        if "learning_rate" in name:
+            return True
 
-def cast_model_to_fp16(main_program,
+    if use_fp16_guard:
+        if op.has_attr("op_namescope") and \
+            (fp16_guard_pattern in op.attr("op_namescope")):
+            # op in fp16 guard
+            return False
+        else:
+            # op not in fp16 guard
+            return True
+    else:
+        return False
+
+
+def cast_model_to_fp16(program,
                        unsupported_op_list=unsupported_fp16_list,
-                       keep_fp32_pattern=['keep_fp32']):
+                       fp16_guard_pattern="__use_fp16__",
+                       use_fp16_guard=False):
     """
     Traverse all ops in the whole model and set their inputs and outputs
     to the fp16 data type. This function will do some special process for
     the batch normalization, which keeps the computational process of
     batchnorms in FP32.
     Args:
-        main_program (Program): The main program for training.
+        program (Program): The used program.
     """
 
-    global_block = main_program.global_block()
+    global_block = program.global_block()
     keep_fp32_ops = set()
+    to_fp16_var_names = set()
     origin_ops = []
-    for block in main_program.blocks:
+    for block in program.blocks:
         origin_ops.extend(block.ops)
 
-    for block in main_program.blocks:
+    for block in program.blocks:
         ops = block.ops
         for op in ops:
             if op.type == 'create_py_reader' or op.type == 'read':
                 continue
-            if _need_keep_fp32(op, unsupported_op_list, keep_fp32_pattern):
+            if _need_keep_fp32(op, unsupported_op_list, fp16_guard_pattern,
+                               use_fp16_guard):
                 keep_fp32_ops.add(op)
                 continue  # processed below
             for in_name in op.input_names:
@@ -292,12 +311,12 @@ def cast_model_to_fp16(main_program,
                         in_var = block.var(in_var_name)
                     except ValueError as e:
                         _logger.debug(
-                            "-- {}, try to get it in the global block. --".
+                            "-- {}, try to get it in the global block --".
                             format(e))
                         in_var = global_block.var(in_var_name)
                         if in_var is not None:
                             _logger.debug(
-                                "-- var {} is got in the global block. --".
+                                "-- var {} is got in the global block --".
                                 format(in_var_name))
 
                     if in_var is None or in_var.type not in _valid_types:
@@ -305,6 +324,7 @@ def cast_model_to_fp16(main_program,
 
                     if in_var.dtype == core.VarDesc.VarType.FP32:
                         in_var.desc.set_dtype(core.VarDesc.VarType.FP16)
+                        to_fp16_var_names.add(in_var_name)
 
                     _logger.debug(
                         "-- op type: {}, in var name: {}, in var dtype: {} --".
@@ -321,12 +341,12 @@ def cast_model_to_fp16(main_program,
                         out_var = block.var(out_var_name)
                     except ValueError as e:
                         _logger.debug(
-                            "-- {}, try to get it in the global block. --".
+                            "-- {}, try to get it in the global block --".
                             format(e))
                         out_var = global_block.var(out_var_name)
                         if out_var is not None:
                             _logger.debug(
-                                "-- var {} is got in the global block. --".
+                                "-- var {} is got in the global block --".
                                 format(out_var_name))
 
                     if out_var is None or out_var.type not in _valid_types:
@@ -350,9 +370,9 @@ def cast_model_to_fp16(main_program,
 
     # process ops in keep_fp32_ops
     op_var_rename_map = [
-        collections.OrderedDict() for _ in range(len(main_program.blocks))
+        collections.OrderedDict() for _ in range(len(program.blocks))
     ]
-    for block in main_program.blocks:
+    for block in program.blocks:
         ops = block.ops
         idx = 0
         while idx < len(ops):
@@ -364,7 +384,9 @@ def cast_model_to_fp16(main_program,
                                                core.VarDesc.VarType.FP32)
                 num_cast_ops += pre_cast_num
                 for out_var_name in op.output_arg_names:
-                    out_var = block.var(out_var_name)
+                    out_var = block.vars.get(out_var_name)
+                    if out_var is None or out_var.type not in _valid_types:
+                        continue
                     out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
                     post_ops = find_true_post_op(ops, op, out_var_name)
                     for post_op in post_ops:
@@ -378,49 +400,29 @@ def cast_model_to_fp16(main_program,
                         num_cast_ops += post_cast_num
             idx += num_cast_ops + 1
 
-    _rename_op_input(main_program, op_var_rename_map, origin_ops, keep_fp32_ops)
-    return keep_fp32_ops
+    _rename_op_input(program, op_var_rename_map, origin_ops, keep_fp32_ops)
+    return to_fp16_var_names
 
 
-def cast_parameters_to_fp16(place, main_program, scope=None,
-                            keep_fp32_ops=None):
+def cast_parameters_to_fp16(place, program, scope=None, to_fp16_var_names=None):
     """
     Traverse all parameters in the whole model and set them to the fp16 data type.
     Whereas, this function will keep parameters of batchnorms in FP32.
     Args:
         place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the weight tensors.
-        main_program (Program): The main program for training.
+        program (Program): The used program.
         scope(fluid.Scope, optional): scope is used to get the weight tensor values.
         Default is None.
     """
-    all_ops = []
-    for block in main_program.blocks:
-        all_ops.extend(block.ops)
+    all_parameters = []
+    for block in program.blocks:
+        all_parameters.extend(block.all_parameters())
 
-    keep_fp32_params = set()
-    # keep parameters in FP32 for batch_norm
-    for op in all_ops:
-        if op.type not in {
-                'batch_norm', 'fused_bn_add_activation', 'layer_norm'
-        }:
-            continue
-        for in_name in op.input_names:
-            if in_name not in {'X', 'Z'}:
-                for in_var_name in op.input(in_name):
-                    keep_fp32_params.add(in_var_name)
-
-    # keep parameters in FP32 for ops in keep_fp32_ops
-    if keep_fp32_ops:
-        for op in all_ops:
-            if op in keep_fp32_ops:
-                for in_var_name in op.input_arg_names:
-                    keep_fp32_params.add(in_var_name)
-
-    global_block = main_program.global_block()
-    all_parameters = global_block.all_parameters()
-    var_scope = scope if scope is not None else global_scope()
+    fp16_var_names = to_fp16_var_names if to_fp16_var_names else set()
+    var_scope = scope if scope else global_scope()
     for param in all_parameters:
-        if param.name not in keep_fp32_params:
+        if param.name in fp16_var_names:
+            _logger.debug("---- cast {} to fp16 dtype ----".format(param.name))
             param_t = var_scope.find_var(param.name).get_tensor()
             data = np.array(param_t)
             param_t.set(np.float16(data), place)
