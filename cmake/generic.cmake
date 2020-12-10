@@ -431,10 +431,10 @@ function(cc_test_run TARGET_NAME)
 endfunction()
 
 function(cc_test TARGET_NAME)
-  # The environment variable `CI_SKIP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_TEST` is set to ON when no files
+    # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
+    # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
   # other than *.py are modified.
-  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_TEST}" STREQUAL "ON")
+  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -511,10 +511,10 @@ function(nv_binary TARGET_NAME)
 endfunction(nv_binary)
 
 function(nv_test TARGET_NAME)
-  # The environment variable `CI_SKIP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_TEST` is set to ON when no files
+    # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
+    # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
   # other than *.py are modified.
-  if (WITH_GPU AND WITH_TESTING AND NOT "$ENV{CI_SKIP_TEST}" STREQUAL "ON")
+  if (WITH_GPU AND WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})

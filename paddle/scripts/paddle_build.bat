@@ -73,8 +73,8 @@ if %ERRORLEVEL% EQU 0 (
     git branch last_pr
 )
 
-:: set CI_SKIP_TEST if only *.py changed
-git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_TEST=ON
+:: set CI_SKIP_CPP_TEST if only *.py changed
+git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 
 :: for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
 :: set day_now=%datetime:~6,2%
