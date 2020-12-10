@@ -172,8 +172,9 @@ int32_t BrpcPsClient::initialize() {
 
 int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
-                                                  "err:"
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+               << " failed, "
+                  "err:"
                << _cntls[request_idx]->ErrorText();
     return -1;
   }
@@ -190,8 +191,9 @@ int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
 int DownpourBrpcClosure::check_save_response(size_t request_idx, int cmd_id) {
   uint32_t feasign_size = 0;
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
-                                                  "err:"
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+               << " failed, "
+                  "err:"
                << _cntls[request_idx]->ErrorText();
     return -1;
   }
@@ -379,6 +381,14 @@ void BrpcPsClient::finalize_worker() {
 
 std::future<int32_t> BrpcPsClient::stop_server() {
   return send_cmd(-1, PS_STOP_SERVER, {});
+}
+
+std::future<int32_t> BrpcPsClient::start_profiler() {
+  return send_cmd(-1, PS_START_PROFILER, {});
+}
+
+std::future<int32_t> BrpcPsClient::stop_profiler() {
+  return send_cmd(-1, PS_STOP_PROFILER, {});
 }
 
 std::future<int32_t> BrpcPsClient::barrier(size_t table_id,
