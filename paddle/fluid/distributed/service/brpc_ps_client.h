@@ -118,6 +118,9 @@ class BrpcPsClient : public PSClient {
   // server优雅退出
   virtual std::future<int32_t> stop_server() override;
 
+  virtual std::future<int32_t> start_profiler() override;
+  virtual std::future<int32_t> stop_profiler() override;
+
   virtual void finalize_worker() override;
   // pull dense的参数部分，并分块填充到本地网络参数中
   // start和num用于拉取部分参数

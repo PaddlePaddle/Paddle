@@ -19,6 +19,7 @@
 #include "iomanip"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace distributed {
@@ -97,6 +98,8 @@ int32_t PsService::initialize() {
   _service_handler_map[PS_PULL_GEO_PARAM] = &PsService::pull_geo_param;
   _service_handler_map[PS_PUSH_SPARSE_PARAM] = &PsService::push_sparse_param;
   _service_handler_map[PS_BARRIER] = &PsService::barrier;
+  _service_handler_map[PS_START_PROFILER] = &PsService::start_profiler;
+  _service_handler_map[PS_STOP_PROFILER] = &PsService::stop_profiler;
 
   // shard初始化,server启动后才可从env获取到server_list的shard信息
   initialize_shard_info();
@@ -162,6 +165,7 @@ void PsService::service(google::protobuf::RpcController *cntl_base,
 int32_t PsService::pull_dense(Table *table, const PsRequestMessage &request,
                               PsResponseMessage &response,
                               brpc::Controller *cntl) {
+  platform::RecordEvent record_event("PsService->pull_dense");
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 1) {
     set_response_code(
@@ -190,6 +194,7 @@ int32_t PsService::push_dense_param(Table *table,
                                     const PsRequestMessage &request,
                                     PsResponseMessage &response,
                                     brpc::Controller *cntl) {
+  platform::RecordEvent record_event("PsService->push_dense_param");
   CHECK_TABLE_EXIST(table, request, response)
   thread_local std::string push_buffer;
   auto &req_io_buffer = cntl->request_attachment();
@@ -215,6 +220,7 @@ int32_t PsService::push_dense_param(Table *table,
 int32_t PsService::push_dense(Table *table, const PsRequestMessage &request,
                               PsResponseMessage &response,
                               brpc::Controller *cntl) {
+  platform::RecordEvent record_event("PsService->push_dense");
   CHECK_TABLE_EXIST(table, request, response)
   auto req_buffer_size = request.data().size();
   if (req_buffer_size < 1) {
@@ -259,6 +265,7 @@ int32_t PsService::push_sparse_param(Table *table,
                                      const PsRequestMessage &request,
                                      PsResponseMessage &response,
                                      brpc::Controller *cntl) {
+  platform::RecordEvent record_event("PsService->push_sparse_param");
   CHECK_TABLE_EXIST(table, request, response)
   auto &push_data = request.data();
   if (push_data.size() < 1) {
@@ -289,6 +296,7 @@ int32_t PsService::push_sparse_param(Table *table,
 int32_t PsService::pull_geo_param(Table *table, const PsRequestMessage &request,
                                   PsResponseMessage &response,
                                   brpc::Controller *cntl) {
+  platform::RecordEvent record_event("PsService->pull_geo_param");
   CHECK_TABLE_EXIST(table, request, response)
   thread_local std::string push_sparse_request_buffer;
 
@@ -310,6 +318,7 @@ int32_t PsService::pull_geo_param(Table *table, const PsRequestMessage &request,
 int32_t PsService::pull_sparse(Table *table, const PsRequestMessage &request,
                                PsResponseMessage &response,
                                brpc::Controller *cntl) {
+  platform::RecordEvent record_event("PsService->pull_sparse");
   CHECK_TABLE_EXIST(table, request, response)
   thread_local std::string push_sparse_request_buffer;
   auto &req_io_buffer = cntl->request_attachment();
@@ -346,6 +355,7 @@ int32_t PsService::pull_sparse(Table *table, const PsRequestMessage &request,
 int32_t PsService::push_sparse(Table *table, const PsRequestMessage &request,
                                PsResponseMessage &response,
                                brpc::Controller *cntl) {
+  platform::RecordEvent record_event("PsService->push_sparse");
   CHECK_TABLE_EXIST(table, request, response)
   auto &push_data = request.data();
   if (push_data.size() < 1) {
@@ -498,6 +508,21 @@ int32_t PsService::stop_server(Table *table, const PsRequestMessage &request,
     LOG(INFO) << "Server Stoped";
   });
   t_stop.detach();
+  return 0;
+}
+
+int32_t PsService::stop_profiler(Table *table, const PsRequestMessage &request,
+                                 PsResponseMessage &response,
+                                 brpc::Controller *cntl) {
+  platform::DisableProfiler(platform::EventSortingKey::kDefault,
+                            string::Sprintf("server_%s_profile", _rank));
+  return 0;
+}
+
+int32_t PsService::start_profiler(Table *table, const PsRequestMessage &request,
+                                  PsResponseMessage &response,
+                                  brpc::Controller *cntl) {
+  platform::EnableProfiler(platform::ProfilerState::kCPU);
   return 0;
 }
 

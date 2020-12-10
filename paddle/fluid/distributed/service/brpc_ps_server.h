@@ -102,6 +102,10 @@ class PsService : public PsBaseService {
                           PsResponseMessage &response, brpc::Controller *cntl);
   int32_t stop_server(Table *table, const PsRequestMessage &request,
                       PsResponseMessage &response, brpc::Controller *cntl);
+  int32_t start_profiler(Table *table, const PsRequestMessage &request,
+                         PsResponseMessage &response, brpc::Controller *cntl);
+  int32_t stop_profiler(Table *table, const PsRequestMessage &request,
+                        PsResponseMessage &response, brpc::Controller *cntl);
 
   int32_t print_table_stat(Table *table, const PsRequestMessage &request,
                            PsResponseMessage &response, brpc::Controller *cntl);

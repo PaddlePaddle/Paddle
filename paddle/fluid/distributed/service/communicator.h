@@ -308,6 +308,7 @@ class Communicator {
   bool running_ = false;
   bool waiting_ = true;
   bool flushing_ = false;
+  bool do_server_profiler_ = false;
   static std::shared_ptr<Communicator> communicator_;
   static std::once_flag init_flag_;
 

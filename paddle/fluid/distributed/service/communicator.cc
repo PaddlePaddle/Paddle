@@ -485,6 +485,19 @@ void AsyncCommunicator::MainThread() {
 
   while (running_) {
     SendByCommunicator();
+    if (trainer_id_ == 0) {
+      if (platform::IsProfileEnabled()) {
+        // send profiler start flag
+        do_server_profiler_ = true;
+        auto start_status = _worker_ptr->start_profiler();
+        start_status.wait();
+      } else if (do_server_profiler_ && !platform::IsProfileEnabled()) {
+        // send profiler end flag
+        auto stop_status = _worker_ptr->stop_profiler();
+        stop_status.wait();
+        do_server_profiler_ = false;
+      }
+    }
   }
   VLOG(1) << "communicator stopped, send thread exit";
 }
