@@ -726,22 +726,21 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
                                                const uint64_t *keys,
                                                size_t num) {
   size_t request_call_num = _server_channels.size();
-  std::vector<std::vector<uint64_t>> ids;
-  std::vector<std::vector<float *>> value_ptrs;
-  ids.resize(request_call_num);
-  value_ptrs.resize(request_call_num);
+
+  auto shard_sorted_kvs = std::make_shared<
+      std::vector<std::vector<std::pair<uint64_t, float *>>>>();
+  shard_sorted_kvs->resize(request_call_num);
 
   for (size_t i = 0; i < num; ++i) {
-    size_t pserver_idx = keys[i] % request_call_num;
-    ids[pserver_idx].push_back(keys[i]);
-    value_ptrs[pserver_idx].push_back(select_values[i]);
+    size_t shard_id = keys[i] % request_call_num;
+    shard_sorted_kvs->at(shard_id).push_back({keys[i], select_values[i]});
   }
 
   auto *accessor = table_accessor(table_id);
   size_t value_size = accessor->select_size();
 
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
-      request_call_num, [ids, value_ptrs, value_size](void *done) {
+      request_call_num, [shard_sorted_kvs, value_size](void *done) {
         int ret = 0;
         auto *closure = (DownpourBrpcClosure *)done;
         for (size_t i = 0; i < ids.size(); ++i) {
@@ -750,47 +749,62 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
             break;
           }
 
-          auto &keys = ids.at(i);
-          auto &values = value_ptrs.at(i);
-
+          auto &request_kvs = shard_sorted_kvs->at(i);
           auto &res_io_buffer = closure->cntl(i)->response_attachment();
           butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
           uint64_t last_key = UINT64_MAX;
           float *last_value_data = NULL;
 
-          for (size_t kv_idx = 0; kv_idx < keys.size(); ++kv_idx) {
-            auto id = keys[kv_idx];
-            auto value = values.at(kv_idx);
-
-            last_key = id;
-            last_value_data = value;
-            if (value_size != io_buffer_itr.copy_and_forward(
-                                  (void *)(last_value_data), value_size)) {
-              LOG(WARNING) << "res data is lack or not in format";
-              ret = -1;
-              break;
+          for (size_t kv_idx = 0; kv_idx < request_kvs.size(); ++kv_idx) {
+            auto *kv_pair = &(request_kvs[kv_idx]);
+            if (kv_pair->first == last_key) {
+              memcpy((void *)kv_pair->second, (void *)last_value_data,
+                     value_size);
+            } else {
+              last_key = kv_pair->first;
+              last_value_data = kv_pair->second;
+              if (value_size !=
+                  io_buffer_itr.copy_and_forward((void *)(last_value_data),
+                                                 value_size)) {
+                LOG(WARNING) << "res data is lack or not in format";
+                ret = -1;
+                break;
+              }
             }
           }
         }
         closure->set_promise_value(ret);
       });
+
   auto promise = std::make_shared<std::promise<int32_t>>();
   closure->add_promise(promise);
   std::future<int> fut = promise->get_future();
 
   for (size_t i = 0; i < request_call_num; ++i) {
+    auto &sorted_kvs = shard_sorted_kvs->at(i);
+    std::sort(sorted_kvs.begin(), sorted_kvs.end(),
+              [](const std::pair<uint64_t, float *> &k1,
+                 const std::pair<uint64_t, float *> &k2) {
+                return k1.first < k2.first;
+              });
+
     auto &keys = ids.at(i);
     auto &values = value_ptrs.at(i);
 
     uint64_t last_key = UINT64_MAX;
     uint32_t kv_request_count = 0;
-    size_t sorted_kv_size = keys.size();
+    size_t sorted_kv_size = sorted_kvs.size();
     auto &request_buffer = closure->cntl(i)->request_attachment();
     for (size_t kv_idx = 0; kv_idx < sorted_kv_size; ++kv_idx) {
       ++kv_request_count;
-      last_key = keys[kv_idx];
+      last_key = sorted_kvs[kv_idx].first;
       request_buffer.append((void *)&last_key, sizeof(uint64_t));
+      while (kv_idx < sorted_kv_size - 1 &&
+             last_key == sorted_kvs[kv_idx + 1].first) {
+        ++kv_idx;
+      }
     }
+
     if (kv_request_count == 0) {
       closure->Run();  //无请求,则直接回调,保证request计数
     } else {
