@@ -316,21 +316,22 @@ void Reducer::MarkGroupReady(size_t group_index) {
 
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaEventRecord(group_events_[group_index].get(), compute_stream_));
-  for (int i = 0; i < nrings_; ++i)
+  for (int i = 0; i < nrings_; ++i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(
         comm_streams_[i], group_events_[group_index].get(), 0));
+  }
 
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
     auto &group = groups_[next_group_];
     int run_order = next_group_ % nrings_;
     if (group.is_sparse_) {
-      VLOG(3) << "sparse group [" << next_group_
-              << "] start allreduce in order[" << run_order << "]";
+      VLOG(3) << "sparse group [" << next_group_ << "] start allreduce in ring["
+              << run_order << "]";
       parallel_ctx_->AllReduceByStream(
           *group.sparse_contents_, group.sparse_contents_, run_order, false);
     } else {
-      VLOG(3) << "dense group [" << next_group_ << "] start allreduce in order["
+      VLOG(3) << "dense group [" << next_group_ << "] start allreduce in ring["
               << run_order << "]";
       // Select common commstream to concat tensors
       // group.dense_tensors ---> group.dense_contents_

@@ -117,6 +117,8 @@ class ParallelEnv(object):
         self._nrings = int(os.getenv("FLAGS_nccl_nrings", "1"))
         assert self._nrings > 0, \
             "nccl_nrings must be an integer greater than 0."
+        assert self._nrings < 9, \
+            "nccl_nrings should be less than 9, which is enough in most scenarios."
 
     @property
     def rank(self):

@@ -95,8 +95,7 @@ void NCCLParallelContext::RecvNCCLID(
 }
 
 void NCCLParallelContext::SendNCCLID(
-    const std::string &ep,
-    std::vector<ncclUniqueId> &nccl_ids) {  // NOLINT
+    const std::string &ep, const std::vector<ncclUniqueId> &nccl_ids) {
   int nrings = nccl_ids.size();
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(
@@ -108,13 +107,6 @@ void NCCLParallelContext::SendNCCLID(
   int sock = 0;
   struct sockaddr_in serv_addr;
   char buffer[1024] = {0};
-
-  PADDLE_ENFORCE_LE(
-      nrings, 8, platform::errors::PreconditionNotMet(
-                     "The nrings of nccl should be less than or equal 8 which "
-                     "is enough for distributed training "
-                     "but actual nrings is %d",
-                     nrings));
 
   memcpy(buffer, &nccl_ids[0], nrings * NCCL_UNIQUE_ID_BYTES);
 

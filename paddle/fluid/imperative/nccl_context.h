@@ -104,7 +104,7 @@ class NCCLParallelContext : public ParallelContext {
                   std::vector<ncclUniqueId>& nccl_ids);  // NOLINT
 
   void SendNCCLID(const std::string& endpoint,
-                  std::vector<ncclUniqueId>& nccl_ids);  // NOLINT
+                  const std::vector<ncclUniqueId>& nccl_ids);
 };
 #endif
 
