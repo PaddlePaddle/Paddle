@@ -22,6 +22,8 @@ import paddle
 import unittest
 import os
 
+paddle.enable_static()
+
 
 class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
     @classmethod
