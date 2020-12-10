@@ -357,8 +357,7 @@ class TestConstantPadDoubleGradCheckCase1(TestConstantPadDoubleGradCheck):
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
-        pad = [1, 2, 1, 2, 1, 2, 1, 2]
-        eps = 0.005
+        pad = [1, 1, 1, 1, 1, 1, 1, 1]
         dtype = np.float64
 
         x = layers.data('x', x_shape, False, dtype)
@@ -366,8 +365,7 @@ class TestConstantPadDoubleGradCheckCase1(TestConstantPadDoubleGradCheck):
         out = paddle.nn.functional.pad(x, pad)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
 
-        gradient_checker.double_grad_check(
-            [x], out, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check([x], out, x_init=x_arr, place=place)
 
 
 class TestConcatDoubleGradCheck(unittest.TestCase):
@@ -375,7 +373,6 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
     def func(self, place):
         x_shape = [2, 3, 4, 5]
         pad = [1, 1, 1, 1]
-        eps = 0.005
         dtype = np.float64
 
         x1 = layers.data('x', x_shape, False, dtype)
@@ -387,7 +384,7 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
         x1_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
 
         gradient_checker.double_grad_check(
-            [x1, x2], out, x_init=[x1_arr, x2_arr], place=place, eps=eps)
+            [x1, x2], out, x_init=[x1_arr, x2_arr], place=place)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
