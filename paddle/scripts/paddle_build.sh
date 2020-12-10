@@ -59,6 +59,9 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
+
+    # set CI_SKIP_TEST if only *.py changed
+    git diff --name-only ${BRANCH} | grep -v "\.py$" || export CI_SKIP_TEST=ON
 }
 
 function cmake_base() {
@@ -286,10 +289,6 @@ EOF
 }
 
 function cmake_gen() {
-    # set CI_SKIP_TEST if only *.py changed
-    git diff --name-only ${BRANCH} | grep -v "\.py$" || export CI_SKIP_TEST=ON
-    # for test
-    export CI_SKIP_TEST=ON
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cmake_base $1
