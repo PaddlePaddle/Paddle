@@ -140,9 +140,9 @@ void GetDownpourDenseTableProto(
 /*-------------------------------------------------------------------------*/
 
 std::string ip_ = "127.0.0.1";
-uint32_t port_ = 4209;
+uint32_t port_ = 4214;
 
-std::vector<uint64_t> host_sign_list_;
+std::vector<std::string> host_sign_list_;
 
 std::shared_ptr<paddle::distributed::PSServer> pserver_ptr_;
 
@@ -152,11 +152,15 @@ void RunServer() {
   ::paddle::distributed::PSParameter server_proto = GetServerProto();
 
   auto _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(host_sign_list_.data(), 1);
+  LOG(INFO) << "RUN set_ps_servers";
+  _ps_env.set_ps_servers(&host_sign_list_, 1);
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(server_proto));
+  LOG(INFO) << "RUN configure";
   pserver_ptr_->configure(server_proto, _ps_env, 0);
+  LOG(INFO) << "RUN start";
   pserver_ptr_->start(ip_, port_);
+  LOG(INFO) << "End start";
 }
 
 void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
@@ -165,10 +169,12 @@ void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list_.size();
   _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(const_cast<uint64_t*>(host_sign_list_.data()),
-                         servers_);
+  LOG(INFO) << "Run set_ps_servers";
+  _ps_env.set_ps_servers(&host_sign_list_, servers_);
+  LOG(INFO) << "Run Create PSClient";
   worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
       paddle::distributed::PSClientFactory::create(worker_proto));
+  LOG(INFO) << "Run configure";
   worker_ptr_->configure(worker_proto, dense_regions, _ps_env, 0);
 }
 
@@ -176,13 +182,14 @@ void RunBrpcPushDense() {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
-  host_sign_list_.push_back(ph_host.serialize_to_uint64());
+  host_sign_list_.push_back(ph_host.serialize_to_string());
 
   // Srart Server
   std::thread server_thread(RunServer);
-  server_thread.join();
+  sleep(1);
 
   // Start Client
+  LOG(INFO) << "Run InitTensorsOnClient";
   framework::Scope client_scope;
   platform::CPUPlace place;
   InitTensorsOnClient(&client_scope, &place, 100);
@@ -196,6 +203,7 @@ void RunBrpcPushDense() {
   paddle::distributed::Region reg(w, tensor->numel());
   regions.emplace_back(std::move(reg));
 
+  LOG(INFO) << "Run RunClient";
   RunClient(dense_regions);
 
   /*-----------------------Test Server Init----------------------------------*/
@@ -258,6 +266,7 @@ void RunBrpcPushDense() {
   worker_ptr_->stop_server();
   LOG(INFO) << "Run finalize_worker";
   worker_ptr_->finalize_worker();
+  server_thread.join();
 }
 
 TEST(RunBrpcPushDense, Run) { RunBrpcPushDense(); }

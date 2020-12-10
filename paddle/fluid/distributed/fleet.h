@@ -38,8 +38,8 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-using framework::Scope;
 using framework::LoDTensor;
+using framework::Scope;
 using framework::SelectedRows;
 using framework::Variable;
 
@@ -152,11 +152,13 @@ class FleetWrapper {
   void LoadSparseOnServer(const std::string& path, const std::string& meta,
                           uint32_t table_id);
   // init server
+  // void InitServer(const std::string& dist_desc,
+  //                 const std::vector<uint64_t>& host_sign_list, int index);
   void InitServer(const std::string& dist_desc,
-                  const std::vector<uint64_t>& host_sign_list, int index);
+                  const std::vector<std::string>& host_sign_list, int index);
   // init trainer
   void InitWorker(const std::string& dist_desc,
-                  const std::vector<uint64_t>& host_sign_list, Scope* scope,
+                  const std::vector<std::string>& host_sign_list, Scope* scope,
                   const RpcCtxMap& send_ctx,
                   const std::unordered_map<uint64_t, std::vector<std::string>>&
                       dense_varnames,

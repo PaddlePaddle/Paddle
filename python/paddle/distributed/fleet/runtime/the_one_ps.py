@@ -447,11 +447,11 @@ class TheOnePSRuntime(RuntimeBase):
 
         endpoints = self.compiled_strategy.get_ps_endpoints()
 
-        unit64_hosts = []
+        string_hosts = []
         for idx, ep in enumerate(endpoints):
             host, port = ep.split(":")
             pshost = fluid.core.PSHost(host, int(port), idx)
-            unit64_hosts.append(pshost.to_uint64())
+            string_hosts.append(pshost.serialize_to_string())
 
         dense_map = self.compiled_strategy.get_the_one_recv_context(
             split_dense_table=self.role_maker._is_heter_parameter_server_mode)
@@ -489,7 +489,7 @@ class TheOnePSRuntime(RuntimeBase):
             trainer_config.mode, kwargs,
             trainer_config.get_communicator_flags())
         self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
-                                         unit64_hosts, fluid.global_scope())
+                                         string_hosts, fluid.global_scope())
 
         dist_strategy = self.context["valid_strategy"]
 
@@ -520,7 +520,8 @@ class TheOnePSRuntime(RuntimeBase):
             # for ps-heter mode, wait heter worker ready
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
             ):
-                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
+                wait_server_ready(
+                    self.role_maker._get_heter_worker_endpoints())
 
     def _get_executor(self):
         executor = fluid.Executor(fluid.CPUPlace())
@@ -548,7 +549,8 @@ class TheOnePSRuntime(RuntimeBase):
             accessor.accessor_class = "CommMergeAccessor"
             accessor.optimizer = None
             accessor.feature_dim = 0 if ctx.is_sparse() else ctx.sections()[0]
-            accessor.embedding_dim = ctx.sections()[0] if ctx.is_sparse() else 1
+            accessor.embedding_dim = ctx.sections()[
+                0] if ctx.is_sparse() else 1
             return accessor
 
         def _build_barrier_table(idx):
@@ -667,19 +669,20 @@ class TheOnePSRuntime(RuntimeBase):
         if debug:
             print("server: \n{}".format(proto_txt))
 
-        unit64_hosts = []
+        string_hosts = []
         for idx, ep in enumerate(endpoints):
             host, port = ep.split(":")
             pshost = fluid.core.PSHost(host, int(port), idx)
-            unit64_hosts.append(pshost.to_uint64())
+            string_hosts.append(pshost.serialize_to_string())
 
         self._server = fluid.core.DistFleetWrapper()
-        self._server.init_server(proto_txt, unit64_hosts, role_id)
+        self._server.init_server(proto_txt, string_hosts, role_id)
 
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 
         dist_varnames = get_sparse_tablenames(self.origin_main_program, True)
-        sparse_varnames = get_sparse_tablenames(self.origin_main_program, False)
+        sparse_varnames = get_sparse_tablenames(
+            self.origin_main_program, False)
 
         distributed_varnames = dist_varnames + sparse_varnames
 

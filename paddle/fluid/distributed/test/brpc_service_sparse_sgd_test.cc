@@ -142,7 +142,7 @@ void GetDownpourSparseTableProto(
 std::string ip_ = "127.0.0.1";
 uint32_t port_ = 4209;
 
-std::vector<uint64_t> host_sign_list_;
+std::vector<std::string> host_sign_list_;
 
 std::shared_ptr<paddle::distributed::PSServer> pserver_ptr_;
 
@@ -152,7 +152,7 @@ void RunServer() {
   ::paddle::distributed::PSParameter server_proto = GetServerProto();
 
   auto _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(host_sign_list_.data(), 1);
+  _ps_env.set_ps_servers(&host_sign_list_, 1);
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(server_proto));
   pserver_ptr_->configure(server_proto, _ps_env, 0);
@@ -165,8 +165,7 @@ void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list_.size();
   _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(const_cast<uint64_t*>(host_sign_list_.data()),
-                         servers_);
+  _ps_env.set_ps_servers(&host_sign_list_, servers_);
   worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
       paddle::distributed::PSClientFactory::create(worker_proto));
   worker_ptr_->configure(worker_proto, dense_regions, _ps_env, 0);
@@ -176,11 +175,11 @@ void RunBrpcPushSparse() {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
-  host_sign_list_.push_back(ph_host.serialize_to_uint64());
+  host_sign_list_.push_back(ph_host.serialize_to_string());
 
   // Srart Server
   std::thread server_thread(RunServer);
-  server_thread.join();
+  sleep(1);
 
   // Start Client
   framework::Scope client_scope;
@@ -280,6 +279,7 @@ void RunBrpcPushSparse() {
   worker_ptr_->stop_server();
   LOG(INFO) << "Run finalize_worker";
   worker_ptr_->finalize_worker();
+  server_thread.join();
 }
 
 TEST(RunBrpcPushSparse, Run) { RunBrpcPushSparse(); }

@@ -29,12 +29,13 @@ class PSCore {
   virtual ~PSCore(){};
 
   virtual int init_server(const std::string& dist_desc,
-                          uint64_t* host_sign_list, int node_num, int index);
+                          const std::vector<std::string>* host_sign_list,
+                          int node_num, int index);
   virtual int init_worker(
       const std::string& dist_desc,
       const std::map<uint64_t, std::vector<paddle::distributed::Region>>&
           regions,
-      uint64_t* host_sign_list, int node_num, int index);
+      const std::vector<std::string>* host_sign_list, int node_num, int index);
   virtual uint64_t run_server(const std::string& ip, uint32_t port);
   virtual int stop_server();
   virtual int finalize_worker();

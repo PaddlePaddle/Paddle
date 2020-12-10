@@ -117,8 +117,9 @@ template <typename T>
 inline void MergeVars(const std::string &var_name,
                       const std::vector<std::shared_ptr<Variable>> &vars,
                       Scope *scope, bool merge_add = true) {
-  PADDLE_ENFORCE_NE(vars.empty(), true, platform::errors::InvalidArgument(
-                                            "vector vars are empty."));
+  PADDLE_ENFORCE_NE(
+      vars.empty(), true,
+      platform::errors::InvalidArgument("vector vars are empty."));
   auto cpu_place = platform::CPUPlace();
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);
@@ -205,7 +206,7 @@ class Communicator {
   }
 
   virtual void InitBrpcClient(const std::string &dist_desc,
-                              const std::vector<uint64_t> &host_sign_list);
+                              const std::vector<std::string> &host_sign_list);
   // 1. recv dense param
   virtual void RpcRecvDense(const std::vector<std::string> &varnames,
                             int table_id, Scope *scope);
@@ -270,8 +271,9 @@ class Communicator {
   template <typename T>
   static Communicator *InitInstance(
       const RpcCtxMap &send_ctx, const RecvCtxMap &recv_ctx,
-      const std::string &dist_desc, const std::vector<uint64_t> &host_sign_list,
-      Scope *recv_scope, const std::map<std::string, std::string> &envs) {
+      const std::string &dist_desc,
+      const std::vector<std::string> &host_sign_list, Scope *recv_scope,
+      const std::map<std::string, std::string> &envs) {
     std::call_once(init_flag_, &Communicator::InitWithRpcCtx<T>, send_ctx,
                    recv_ctx, dist_desc, host_sign_list, recv_scope,
                    std::ref(envs));
@@ -283,7 +285,7 @@ class Communicator {
   static void InitWithRpcCtx(const RpcCtxMap &send_ctx,
                              const RecvCtxMap &recv_ctx,
                              const std::string &dist_desc,
-                             const std::vector<uint64_t> &host_sign_list,
+                             const std::vector<std::string> &host_sign_list,
                              Scope *recv_scope,
                              const std::map<std::string, std::string> &envs) {
     if (communicator_.get() == nullptr) {

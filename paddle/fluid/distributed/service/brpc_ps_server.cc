@@ -63,15 +63,17 @@ uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
     LOG(ERROR) << "BrpcPsServer start failed, ip_port=" << ip_port;
     return 0;
   }
-
+  VLOG(0) << "BrpcPsServer::start registe_ps_server";
   _environment->registe_ps_server(ip, port, _rank);
+  VLOG(0) << "BrpcPsServer::start wait";
   cv_.wait(lock, [&] { return stoped_; });
 
   PSHost host;
   host.ip = ip;
   host.port = port;
   host.rank = _rank;
-  return host.serialize_to_uint64();
+  VLOG(0) << "BrpcPsServer::start return host.rank";
+  return host.rank;
 }
 
 int32_t BrpcPsServer::port() { return _server.listen_address().port; }

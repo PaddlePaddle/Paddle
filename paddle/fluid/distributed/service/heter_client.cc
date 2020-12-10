@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/timer.h"
 
 DECLARE_int32(rpc_deadline);
@@ -55,6 +56,7 @@ void HeterClient::SendAndRecvAsync(
     const framework::Scope& scope, const std::string& message_name,
     const std::vector<std::string>& send_var_name,
     const std::vector<std::string>& recv_var_name) {
+  platform::RecordEvent record_event("HeterClient->SendAndRecvAsync");
   const std::string ep_val = ep;
   const platform::DeviceContext* p_ctx = &ctx;
   const framework::Scope* p_scope = &scope;

@@ -53,25 +53,65 @@ void FleetWrapper::LoadSparseOnServer(const std::string& path,
   pserver_ptr_->_server_ptr->table(table_id)->load(path, meta);
 }
 
+// void FleetWrapper::InitServer(const std::string& dist_desc,
+//                               const std::vector<uint64_t>& host_sign_list,
+//                               int index) {
+//   if (!is_initialized_) {
+//     VLOG(3) << "Going to init server";
+//     pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
+//         new paddle::distributed::PSCore());
+//     pserver_ptr_->init_server(dist_desc,
+//                               const_cast<uint64_t*>(host_sign_list.data()),
+//                               host_sign_list.size(), index);
+//     is_initialized_ = true;
+//   } else {
+//     VLOG(3) << "Server can be initialized only once";
+//   }
+// }
+
 void FleetWrapper::InitServer(const std::string& dist_desc,
-                              const std::vector<uint64_t>& host_sign_list,
+                              const std::vector<std::string>& host_sign_list,
                               int index) {
   if (!is_initialized_) {
     VLOG(3) << "Going to init server";
     pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
         new paddle::distributed::PSCore());
-    pserver_ptr_->init_server(dist_desc,
-                              const_cast<uint64_t*>(host_sign_list.data()),
-                              host_sign_list.size(), index);
+    pserver_ptr_->init_server(dist_desc, &host_sign_list, host_sign_list.size(),
+                              index);
     is_initialized_ = true;
   } else {
     VLOG(3) << "Server can be initialized only once";
   }
 }
 
+// void FleetWrapper::InitWorker(
+//     const std::string& dist_desc, const std::vector<uint64_t>&
+//     host_sign_list, Scope* scope, const RpcCtxMap& send_ctx, const
+//     std::unordered_map<uint64_t, std::vector<std::string>>&
+//         dense_varnames,
+//     const std::map<std::string, std::string>& envs, int node_num, int index)
+//     {
+//   if (!is_initialized_) {
+//     VLOG(3) << "Going to init worker";
+
+//     Communicator::InitInstance<AsyncCommunicator>(
+//         send_ctx, dense_varnames, dist_desc, host_sign_list, scope, envs);
+
+//     pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
+//         new paddle::distributed::PSCore());
+//     pserver_ptr_->init_worker(dist_desc, _regions,
+//                               const_cast<uint64_t*>(host_sign_list.data()),
+//                               node_num, index);
+//     is_initialized_ = true;
+//   } else {
+//     VLOG(3) << "Worker can be initialized only once";
+//   }
+// }
+
 void FleetWrapper::InitWorker(
-    const std::string& dist_desc, const std::vector<uint64_t>& host_sign_list,
-    Scope* scope, const RpcCtxMap& send_ctx,
+    const std::string& dist_desc,
+    const std::vector<std::string>& host_sign_list, Scope* scope,
+    const RpcCtxMap& send_ctx,
     const std::unordered_map<uint64_t, std::vector<std::string>>&
         dense_varnames,
     const std::map<std::string, std::string>& envs, int node_num, int index) {
@@ -83,9 +123,8 @@ void FleetWrapper::InitWorker(
 
     pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
         new paddle::distributed::PSCore());
-    pserver_ptr_->init_worker(dist_desc, _regions,
-                              const_cast<uint64_t*>(host_sign_list.data()),
-                              node_num, index);
+    pserver_ptr_->init_worker(dist_desc, _regions, &host_sign_list, node_num,
+                              index);
     is_initialized_ = true;
   } else {
     VLOG(3) << "Worker can be initialized only once";

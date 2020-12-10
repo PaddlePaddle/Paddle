@@ -66,7 +66,8 @@ void PSCore::init_gflag(const std::string& gflags) {
   ::google::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
 }
 
-int PSCore::init_server(const std::string& dist_desc, uint64_t* host_sign_list,
+int PSCore::init_server(const std::string& dist_desc,
+                        const std::vector<std::string>* host_sign_list,
                         int node_num, int index) {
   google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
   init_gflag(_ps_param.init_gflags());
@@ -83,7 +84,7 @@ int PSCore::init_server(const std::string& dist_desc, uint64_t* host_sign_list,
 int PSCore::init_worker(
     const std::string& dist_desc,
     const std::map<uint64_t, std::vector<paddle::distributed::Region>>& regions,
-    uint64_t* host_sign_list, int node_num, int index) {
+    const std::vector<std::string>* host_sign_list, int node_num, int index) {
   google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
   init_gflag(_ps_param.init_gflags());
   _ps_env = paddle::distributed::PaddlePSEnvironment();

@@ -35,8 +35,8 @@ limitations under the License. */
 
 namespace py = pybind11;
 using paddle::distributed::CommContext;
-using paddle::distributed::FleetWrapper;
 using paddle::distributed::Communicator;
+using paddle::distributed::FleetWrapper;
 
 namespace paddle {
 namespace pybind {
@@ -47,8 +47,8 @@ void BindDistFleetWrapper(py::module* m) {
       .def("load_sparse", &FleetWrapper::LoadSparseOnServer)
       .def("init_server", &FleetWrapper::InitServer)
       .def("run_server",
-           (uint64_t (FleetWrapper::*)(void)) & FleetWrapper::RunServer)
-      .def("run_server", (uint64_t (FleetWrapper::*)(          // NOLINT
+           (uint64_t(FleetWrapper::*)(void)) & FleetWrapper::RunServer)
+      .def("run_server", (uint64_t(FleetWrapper::*)(           // NOLINT
                              const std::string&, uint32_t)) &  // NOLINT
                              FleetWrapper::RunServer)
       .def("init_worker", &FleetWrapper::InitWorker)
@@ -65,6 +65,8 @@ void BindDistFleetWrapper(py::module* m) {
 void BindPSHost(py::module* m) {
   py::class_<distributed::PSHost>(*m, "PSHost")
       .def(py::init<const std::string&, uint32_t, uint32_t>())
+      .def("serialize_to_string", &distributed::PSHost::serialize_to_string)
+      .def("parse_from_string", &distributed::PSHost::parse_from_string)
       .def("to_uint64", &distributed::PSHost::serialize_to_uint64)
       .def("from_uint64", &distributed::PSHost::parse_from_uint64)
       .def("to_string", &distributed::PSHost::to_string);
@@ -96,19 +98,19 @@ void BindCommunicatorContext(py::module* m) {
       .def("__str__", [](const CommContext& self) { return self.print(); });
 }
 
-using paddle::distributed::RpcCtxMap;
-using paddle::distributed::RecvCtxMap;
-using paddle::framework::Scope;
 using paddle::distributed::AsyncCommunicator;
-using paddle::distributed::SyncCommunicator;
 using paddle::distributed::GeoCommunicator;
+using paddle::distributed::RecvCtxMap;
+using paddle::distributed::RpcCtxMap;
+using paddle::distributed::SyncCommunicator;
+using paddle::framework::Scope;
 
 void BindDistCommunicator(py::module* m) {
   // Communicator is already used by nccl, change to DistCommunicator
   py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
                                                           "DistCommunicator")
       .def(py::init([](const std::string& mode, const std::string& dist_desc,
-                       const std::vector<uint64_t>& host_sign_list,
+                       const std::vector<std::string>& host_sign_list,
                        const RpcCtxMap& send_ctx, const RecvCtxMap& recv_ctx,
                        Scope* param_scope,
                        std::map<std::string, std::string>& envs) {
