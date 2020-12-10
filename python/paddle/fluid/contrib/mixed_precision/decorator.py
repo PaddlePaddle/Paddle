@@ -19,6 +19,7 @@ from ... import unique_name
 from ... import program_guard
 from . import fp16_utils
 from .fp16_utils import rewrite_program
+from .fp16_utils import cast_model_to_fp16
 from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
 from .amp_nn import check_finite_and_unscale
@@ -55,7 +56,8 @@ class OptimizerWithMixedPrecision(object):
 
     def __init__(self, optimizer, amp_lists, init_loss_scaling,
                  use_dynamic_loss_scaling, incr_every_n_steps,
-                 decr_every_n_nan_or_inf, incr_ratio, decr_ratio):
+                 decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
+                 use_pure_fp16):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
         self._param_grads = None
@@ -68,6 +70,7 @@ class OptimizerWithMixedPrecision(object):
         self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
         self._learning_rate = optimizer._learning_rate
         self._learning_rate_map = optimizer._learning_rate_map
+        self._use_pure_fp16 = use_pure_fp16
         if self._use_dynamic_loss_scaling:
             self._incr_every_n_steps = incr_every_n_steps
             self._decr_every_n_nan_or_inf = decr_every_n_nan_or_inf
@@ -154,8 +157,14 @@ class OptimizerWithMixedPrecision(object):
         with program_guard(train_program, startup_program):
             self._init_amp_var()
 
-            rewrite_program(train_program, self._amp_lists)
-            self._scaled_loss = loss * self._loss_scaling
+            if self._use_pure_fp16:
+                cast_model_to_fp16(train_program)
+            else:
+                rewrite_program(train_program, self._amp_lists)
+            self._scaled_loss = loss.astype('float32') * self._loss_scaling
+            with open("/work/Develop/sync_work/NLP/benchmark/bert/__model__",
+                      "wb") as f:
+                f.write(train_program.desc.serialize_to_string())
             params_grads = self._optimizer.backward(
                 self._scaled_loss, startup_program, parameter_list, no_grad_set,
                 callbacks)
@@ -176,7 +185,7 @@ class OptimizerWithMixedPrecision(object):
             A list of optimize operators.
         """
 
-        grads = [g for _, g in params_grads]
+        grads = [g.astype('float32') for _, g in params_grads]
         if not self._is_distributed:
             with self._train_program._optimized_guard(grads):
                 grads, found_inf = check_finite_and_unscale(
@@ -257,7 +266,8 @@ def decorate(optimizer,
              decr_every_n_nan_or_inf=2,
              incr_ratio=2.0,
              decr_ratio=0.8,
-             use_dynamic_loss_scaling=True):
+             use_dynamic_loss_scaling=True,
+             use_pure_fp16=False):
     """ 
     Decorate the given optimizer to adapt to the mixed-precision training.
 
@@ -296,6 +306,7 @@ def decorate(optimizer,
         amp_lists = AutoMixedPrecisionLists()
     mp_optimizer = OptimizerWithMixedPrecision(
         optimizer, amp_lists, init_loss_scaling, use_dynamic_loss_scaling,
-        incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio)
+        incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
+        use_pure_fp16)
 
     return mp_optimizer
