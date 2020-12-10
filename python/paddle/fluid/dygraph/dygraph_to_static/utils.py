@@ -1033,7 +1033,8 @@ class ForNodeVisitor(object):
                 "Dynamic-to-Static only supports the step value is a constant or negative constant in 'for-range' statements, "
                 "such as '2', '-3'. But received: '{}'. Please fix code to be compatible with Dynamic-to-Static."
                 .format(ast_to_source_code(step_node).strip()))
-        if isinstance(step_node, gast.UnaryOp):
+
+        if isinstance(step_node, gast.UnaryOp) or step_node.value < 0:
             # eg:
             # range(max, min, -2)
             # ->
