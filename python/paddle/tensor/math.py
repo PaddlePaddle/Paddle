@@ -33,6 +33,7 @@ from ..fluid.layers import acos    #DEFINE_ALIAS
 from ..fluid.layers import asin    #DEFINE_ALIAS
 from ..fluid.layers import ceil    #DEFINE_ALIAS
 from ..fluid.layers import cos    #DEFINE_ALIAS
+from ..fluid.layers import tan    #DEFINE_ALIAS
 from ..fluid.layers import sinh    #DEFINE_ALIAS
 from ..fluid.layers import cosh    #DEFINE_ALIAS
 # from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
@@ -117,7 +118,6 @@ __all__ = [
         'inverse',
         'log1p',
         'erf',
-        'addcmul',
         'addmm',
         'clip',
         'trace',
@@ -284,7 +284,7 @@ def add(x, y, name=None):
 
 def subtract(x, y, name=None):
     """
-    Substract two tensors element-wise. The equation is: 
+    Substract two tensors element-wise. The equation is:
 
     .. math::
         out = x - y
@@ -303,7 +303,7 @@ def subtract(x, y, name=None):
     Examples:
 
         .. code-block:: python
-        
+
             import numpy as np
             import paddle
 
@@ -518,7 +518,7 @@ def multiply(x, y, name=None):
 
 def maximum(x, y, name=None):
     """
-    Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is: 
+    Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
 
     .. math::
         out = max(x, y)
@@ -577,7 +577,7 @@ def maximum(x, y, name=None):
 
 def minimum(x, y, name=None):
     """
-    Compare two tensors and returns a new tensor containing the element-wise minima. The equation is: 
+    Compare two tensors and returns a new tensor containing the element-wise minima. The equation is:
 
     .. math::
         out = min(x, y)
@@ -1175,7 +1175,7 @@ def max(x, axis=None, keepdim=False, name=None):
             print(result1)
             #[0.9]
             result2 = paddle.max(x, axis=0)
-            print(result2) 
+            print(result2)
             #[0.2 0.3 0.6 0.9]
             result3 = paddle.max(x, axis=-1)
             print(result3)
@@ -1269,7 +1269,7 @@ def min(x, axis=None, keepdim=False, name=None):
             print(result2)
             #[0.1 0.2 0.5 0.7]
             result3 = paddle.min(x, axis=-1)
-            print(result3) 
+            print(result3)
             #[0.2 0.1]
             result4 = paddle.min(x, axis=1, keepdim=True)
             print(result4)
@@ -1281,7 +1281,7 @@ def min(x, axis=None, keepdim=False, name=None):
             y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
                                   [[5.0, 6.0], [7.0, 8.0]]])
             result5 = paddle.min(y, axis=[1, 2])
-            print(result5) 
+            print(result5)
             #[1. 5.]
             result6 = paddle.min(y, axis=[0, 1])
             print(result6)
@@ -1452,50 +1452,6 @@ def log10(x, name=None):
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="log10", inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
-def addcmul(input, tensor1, tensor2, value=1.0, name=None):
-    """
-
-    Calculate the element-wise multiplication of tensor1 and tensor2,
-    then multiply the result by value, and add it to input. The shape of input,
-    tensor1, tensor2 should be broadcastable.
-    The equation is:
-    ..  math::
-
-        out = input + value * tensor1 * tensor2
-    Args:
-        input(Tensor): The input to be added. A Tensor with type float32, float64, int32, int64.
-        tensor1(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
-        tensor2(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
-        value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input, value must be float, otherwise an integer.
-        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
-                        Generally, no setting is required. Default: None.
-    Returns:
-        out(Tensor): The output result. A Tensor with the same data type as input's.
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          input = paddle.ones([2,2])
-          tensor1 = paddle.ones([2,2])
-          tensor2 = paddle.ones([2,2])
-          out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=0.5)
-          print(out)
-          # [[1.5 1.5]
-          # [1.5 1.5]]
-    """
-
-    check_variable_and_dtype(input, 'input', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
-    check_variable_and_dtype(tensor1, 'tensor1', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
-    check_variable_and_dtype(tensor2, 'tensor2', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
-    if convert_dtype(input.dtype) in ['float32', 'float64']:
-        check_type(value, 'value', float, 'addcmul')
-    if convert_dtype(input.dtype) in ['int32', 'int64']:
-        check_type(value, 'value', int, 'addcmul')
-
-    out = layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value)
     return out
 
 

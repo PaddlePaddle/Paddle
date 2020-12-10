@@ -27,9 +27,10 @@ class ElementwiseMulXPUKernel : public framework::OpKernel<T> {
 };
 // DEFINE_XPU_GRAD_KERNEL(Mul, mul, true);
 template <typename DeviceContext, typename T>
-class ElementwiseMulGradXPUKernel : public framework::OpKernel<T> {
+class ElementwiseMulGradXPUKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
     XPUElementwiseGrad<T>(ctx, xpu::mul_grad<T>, true);
   }
 };

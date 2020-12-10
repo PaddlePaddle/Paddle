@@ -18,6 +18,7 @@ import numpy as np
 import paddle
 from .. import framework
 from .. import core
+from .. import unique_name
 from ..framework import Variable, Parameter, ParamBase
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
@@ -263,6 +264,37 @@ def monkey_patch_varbase():
         from paddle.tensor.to_string import to_string
         return to_string(self)
 
+    def __deepcopy__(self, memo):
+        """
+        Deep copy Tensor, it will always performs Tensor copy.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import copy
+                x = paddle.to_tensor(2.)
+                y = copy.deepcopy(x)
+                
+                print(x)
+                # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True,
+                #        [2.])
+
+                print(y)
+                # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True,
+                #        [2.])
+
+        """
+        if not self.is_leaf:
+            raise RuntimeError(
+                "Only Leaf Tensor support the deepcopy at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
+            )
+        new_varbase = core.VarBase()
+        new_varbase.name = self.name + unique_name.generate("_deepcopy")
+        memo[id(self)] = new_varbase
+        new_varbase.copy_(self, True)
+        return new_varbase
+
     @property
     def block(self):
         return framework.default_main_program().global_block()
@@ -283,7 +315,8 @@ def monkey_patch_varbase():
         ("block", block), ("backward", backward), ("clear_grad", clear_grad),
         ("inplace_version", inplace_version), ("grad", grad),
         ("gradient", gradient), ("__str__", __str__), ("__repr__", __str__),
-        ("__module__", "paddle"), ("__name__", "Tensor")):
+        ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
+        ("__name__", "Tensor")):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase

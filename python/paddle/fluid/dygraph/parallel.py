@@ -24,8 +24,8 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
-from paddle.fluid.dygraph import nn
 import warnings
+import paddle
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -419,9 +419,13 @@ class DataParallel(layers.Layer):
         # NOTE(shenliang03): Here we can only use the attributes to judge whether
         # parameter is sparse(or SelectedRows). The reason is that the sparse message
         # can't be obtained when bp hasn't happened yet. So if layer supports sparse parameter,
-        # we should add the layer here like "nn.Embedding".
+        # we should add the layer here like "paddle.nn.layer.common.Embedding".
         def check_layer_sparse(sublayer):
-            if isinstance(sublayer, nn.Embedding):
+            if isinstance(sublayer, paddle.nn.layer.common.Embedding):
+                return sublayer._sparse
+            # NOTE(shenliang03):This is for compatibility. If paddle.fluid.dygraph.Embedding 
+            # is removed in the future, the judgment will also be removed here.
+            if isinstance(sublayer, paddle.fluid.dygraph.Embedding):
                 return sublayer._is_sparse
             return False
 
@@ -437,10 +441,11 @@ class DataParallel(layers.Layer):
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
-        self._reducer = core.Reducer(trainable_parameters,
-                                     list(reversed(self.group_indices)),
-                                     is_sparse_gradient,
-                                     parallel_helper.__parallel_ctx__clz__)
+        self._reducer = core.Reducer(
+            trainable_parameters,
+            list(reversed(self.group_indices)), is_sparse_gradient,
+            parallel_helper.__parallel_ctx__clz__,
+            [self.last_comm_buffer_size, self.comm_buffer_size])
 
     def forward(self, *inputs, **kwargs):
         if self._strategy.nranks > 1:
