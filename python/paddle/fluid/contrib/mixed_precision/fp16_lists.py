@@ -38,6 +38,7 @@ class AutoMixedPrecisionLists(object):
         self.white_list = copy.copy(white_list)
         self.black_list = copy.copy(black_list)
         self.gray_list = copy.copy(gray_list)
+        self.unsupported_list = copy.copy(unsupported_fp16_list)
         self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
@@ -64,6 +65,7 @@ class AutoMixedPrecisionLists(object):
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
+                self.unsupported_list.add(op_name)
 
 
 # The three sets listed below are changed dynamiclly. They don't contain all  

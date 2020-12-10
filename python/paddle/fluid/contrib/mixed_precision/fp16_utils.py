@@ -51,12 +51,12 @@ def _rename_arg(op, old_name, new_name):
     op_desc._rename_output(old_name, new_name)
 
 
-def _rename_op_input(program, op_var_rename_map, origin_ops):
+def _rename_op_input(program, op_var_rename_map, origin_ops, keep_fp32_ops):
     for block in program.blocks:
         ops = block.ops
         block_id = block.idx
         for op in ops:
-            if op not in origin_ops:
+            if op not in origin_ops or op in keep_fp32_ops:
                 continue
             for name in op.input_arg_names:
                 if name in op_var_rename_map[block_id]:
@@ -246,7 +246,18 @@ def _is_in_black_varnames(op, amp_lists):
     return False
 
 
-def cast_model_to_fp16(main_program):
+def _need_keep_fp32(op, unsupported_op_list, keep_fp32_pattern):
+    if op.has_attr("op_namescope") and \
+        any(pattern in op.attr("op_namescope") \
+            for pattern in keep_fp32_pattern):
+        return True
+    if op.type in unsupported_op_list:
+        return True
+
+
+def cast_model_to_fp16(main_program,
+                       unsupported_op_list=unsupported_fp16_list,
+                       keep_fp32_pattern=['keep_fp32']):
     """
     Traverse all ops in the whole model and set their inputs and outputs
     to the fp16 data type. This function will do some special process for
@@ -257,15 +268,18 @@ def cast_model_to_fp16(main_program):
     """
 
     global_block = main_program.global_block()
-    unsupported_ops = set()
+    keep_fp32_ops = set()
+    origin_ops = []
+    for block in main_program.blocks:
+        origin_ops.extend(block.ops)
 
     for block in main_program.blocks:
         ops = block.ops
         for op in ops:
             if op.type == 'create_py_reader' or op.type == 'read':
                 continue
-            if op.type in unsupported_fp16_list:
-                unsupported_ops.add(op)
+            if _need_keep_fp32(op, unsupported_op_list, keep_fp32_pattern):
+                keep_fp32_ops.add(op)
                 continue  # processed below
             for in_name in op.input_names:
                 if op.type in {
@@ -334,44 +348,42 @@ def cast_model_to_fp16(main_program):
                     'dtype') == core.VarDesc.VarType.FP32:
                 op._set_attr('dtype', core.VarDesc.VarType.FP16)
 
-    # process ops in unsupported_fp16_list
+    # process ops in keep_fp32_ops
     op_var_rename_map = [
         collections.OrderedDict() for _ in range(len(main_program.blocks))
     ]
-    origin_ops = []
-    for block in main_program.blocks:
-        origin_ops.extend(block.ops)
     for block in main_program.blocks:
         ops = block.ops
         idx = 0
         while idx < len(ops):
             op = ops[idx]
             num_cast_ops = 0
-            if op in unsupported_ops:
-                num_cast_ops += _insert_cast_op(block, op, idx,
-                                                core.VarDesc.VarType.FP16,
-                                                core.VarDesc.VarType.FP32)
+            if op in keep_fp32_ops:
+                pre_cast_num = _insert_cast_op(block, op, idx,
+                                               core.VarDesc.VarType.FP16,
+                                               core.VarDesc.VarType.FP32)
+                num_cast_ops += pre_cast_num
                 for out_var_name in op.output_arg_names:
-                    out_var = None
-                    try:
-                        out_var = block.var(out_var_name)
-                    except ValueError as e:
-                        out_var = global_block.var(out_var_name)
-                    if out_var is None:
-                        continue
-
+                    out_var = block.var(out_var_name)
                     out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
-                    post_cast_num = _insert_cast_post_op(
-                        block, op, idx + num_cast_ops + 1,
-                        core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP16,
-                        out_var_name, op_var_rename_map)
-                    num_cast_ops += post_cast_num
+                    post_ops = find_true_post_op(ops, op, out_var_name)
+                    for post_op in post_ops:
+                        if post_op in keep_fp32_ops:
+                            continue
+                        post_cast_num = _insert_cast_post_op(
+                            block, op, idx + pre_cast_num + 1,
+                            core.VarDesc.VarType.FP32,
+                            core.VarDesc.VarType.FP16, out_var_name,
+                            op_var_rename_map)
+                        num_cast_ops += post_cast_num
             idx += num_cast_ops + 1
 
-    _rename_op_input(main_program, op_var_rename_map, origin_ops)
+    _rename_op_input(main_program, op_var_rename_map, origin_ops, keep_fp32_ops)
+    return keep_fp32_ops
 
 
-def cast_parameters_to_fp16(place, main_program, scope=None):
+def cast_parameters_to_fp16(place, main_program, scope=None,
+                            keep_fp32_ops=None):
     """
     Traverse all parameters in the whole model and set them to the fp16 data type.
     Whereas, this function will keep parameters of batchnorms in FP32.
@@ -397,11 +409,11 @@ def cast_parameters_to_fp16(place, main_program, scope=None):
                 for in_var_name in op.input(in_name):
                     keep_fp32_params.add(in_var_name)
 
-    # keep parameters in FP32 for ops in unsupported_fp16_list
-    for op in all_ops:
-        if op.type in unsupported_fp16_list:
-            for in_name in op.input_names:
-                for in_var_name in op.input(in_name):
+    # keep parameters in FP32 for ops in keep_fp32_ops
+    if keep_fp32_ops:
+        for op in all_ops:
+            if op in keep_fp32_ops:
+                for in_var_name in op.input_arg_names:
                     keep_fp32_params.add(in_var_name)
 
     global_block = main_program.global_block()

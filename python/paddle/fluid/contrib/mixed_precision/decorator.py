@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ... import core
 from ... import default_main_program
 from ... import default_startup_program
 from ... import layers
@@ -20,6 +21,7 @@ from ... import program_guard
 from . import fp16_utils
 from .fp16_utils import rewrite_program
 from .fp16_utils import cast_model_to_fp16
+from .fp16_utils import cast_parameters_to_fp16
 from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
 from .amp_nn import check_finite_and_unscale
@@ -56,8 +58,8 @@ class OptimizerWithMixedPrecision(object):
 
     def __init__(self, optimizer, amp_lists, init_loss_scaling,
                  use_dynamic_loss_scaling, incr_every_n_steps,
-                 decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
-                 use_pure_fp16):
+                 decr_every_n_nan_or_inf, incr_ratio, decr_ratio, use_pure_fp16,
+                 keep_fp32_pattern):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
         self._param_grads = None
@@ -71,6 +73,8 @@ class OptimizerWithMixedPrecision(object):
         self._learning_rate = optimizer._learning_rate
         self._learning_rate_map = optimizer._learning_rate_map
         self._use_pure_fp16 = use_pure_fp16
+        self._keep_fp32_pattern = keep_fp32_pattern
+        self._keep_fp32_ops = None
         if self._use_dynamic_loss_scaling:
             self._incr_every_n_steps = incr_every_n_steps
             self._decr_every_n_nan_or_inf = decr_every_n_nan_or_inf
@@ -154,24 +158,33 @@ class OptimizerWithMixedPrecision(object):
         train_program = loss.block.program
         self._train_program = train_program
 
-        with program_guard(train_program, startup_program):
+        with program_guard(self._train_program, startup_program):
             self._init_amp_var()
 
             if self._use_pure_fp16:
-                cast_model_to_fp16(train_program)
+                self._keep_fp32_ops = cast_model_to_fp16(
+                    self._train_program, self._amp_lists.unsupported_list,
+                    self._keep_fp32_pattern)
             else:
-                rewrite_program(train_program, self._amp_lists)
-            self._scaled_loss = loss.astype('float32') * self._loss_scaling
-            with open("/work/Develop/sync_work/NLP/benchmark/bert/__model__",
-                      "wb") as f:
-                f.write(train_program.desc.serialize_to_string())
+                rewrite_program(self._train_program, self._amp_lists)
+            if loss.dtype == core.VarDesc.VarType.FP16:
+                loss = loss.astype('float32')
+            self._scaled_loss = loss * self._loss_scaling
+
             params_grads = self._optimizer.backward(
                 self._scaled_loss, startup_program, parameter_list, no_grad_set,
                 callbacks)
             # Change the op_role_var attr for some ops, so that gradients
             # transferred across GPUs can be FP16.
-            update_role_var_grad(train_program, params_grads)
+            update_role_var_grad(self._train_program, params_grads)
         return params_grads
+
+    def init_fp16_parameters(self, place, scope=None):
+        assert self._train_program is not None, \
+            "Please call the minimize method first."
+        if self._use_pure_fp16:
+            cast_parameters_to_fp16(place, self._train_program, scope,
+                                    self._keep_fp32_ops)
 
     def apply_gradients(self, params_grads):
         """
@@ -267,7 +280,8 @@ def decorate(optimizer,
              incr_ratio=2.0,
              decr_ratio=0.8,
              use_dynamic_loss_scaling=True,
-             use_pure_fp16=False):
+             use_pure_fp16=False,
+             keep_fp32_pattern=['keep_fp32']):
     """ 
     Decorate the given optimizer to adapt to the mixed-precision training.
 
@@ -304,9 +318,13 @@ def decorate(optimizer,
     """
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()
+
+    if not isinstance(keep_fp32_pattern, (list, tuple)):
+        keep_fp32_pattern = [keep_fp32_pattern]
+
     mp_optimizer = OptimizerWithMixedPrecision(
         optimizer, amp_lists, init_loss_scaling, use_dynamic_loss_scaling,
         incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
-        use_pure_fp16)
+        use_pure_fp16, keep_fp32_pattern)
 
     return mp_optimizer
