@@ -20,7 +20,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "xpu/refactor/fusion.h"
 
 namespace paddle {
 namespace operators {
@@ -134,12 +133,10 @@ class MatMulXPUKernel : public framework::OpKernel<T> {
           dev_ctx.x_context(), x->data<T>(), y->data<T>(), data_c, m, n, k,
           mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
           ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU API return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                        platform::errors::External(
+                            "XPU fc_fusion kernel return wrong value[%d %s]", r,
+                            XPUAPIErrorMsg[r]));
     } else {
       // batch matmul
       int x_stride = mat_dim_a.stride_;
@@ -153,12 +150,10 @@ class MatMulXPUKernel : public framework::OpKernel<T> {
             dev_ctx.x_context(), x_data, y_data, out_data, m, n, k,
             mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
             ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
-        PADDLE_ENFORCE_EQ(
-            r, XPU_SUCCESS,
-            platform::errors::External(
-                "XPU API return wrong value[%d], please check whether "
-                "Baidu Kunlun Card is properly installed.",
-                r));
+        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                          platform::errors::External(
+                              "XPU fc_fusion kernel return wrong value[%d %s]",
+                              r, XPUAPIErrorMsg[r]));
       }
     }
   }
@@ -187,9 +182,8 @@ static framework::Tensor XPUFoldHeadAndLastDims(
                          in_shape_host.data(), axis_host.data(), /*ndims=*/3);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        r));
+                        "XPU transpose kernel return wrong value[%d %s]", r,
+                        XPUAPIErrorMsg[r]));
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
 
   return output;
@@ -253,12 +247,10 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
           dev_ctx.x_context(), a.data<T>(), b.data<T>(), data_c, m, n, k,
           mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
           ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU API return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                        platform::errors::External(
+                            "XPU fc_fusion kernel return wrong value[%d %s]", r,
+                            XPUAPIErrorMsg[r]));
     } else {
       // batch matmul
       int x_stride = mat_dim_a.stride_;
@@ -272,12 +264,10 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
             dev_ctx.x_context(), x_data, y_data, out_data, m, n, k,
             mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
             ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
-        PADDLE_ENFORCE_EQ(
-            r, XPU_SUCCESS,
-            platform::errors::External(
-                "XPU API return wrong value[%d], please check whether "
-                "Baidu Kunlun Card is properly installed.",
-                r));
+        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                          platform::errors::External(
+                              "XPU fc_fusion kernel return wrong value[%d %s]",
+                              r, XPUAPIErrorMsg[r]));
       }
     }
   }
