@@ -71,7 +71,7 @@ class UpdateLossScalingFunctor {
 };
 
 template <typename DeviceContext, typename T>
-class LazyZeroInputs {
+class LazyZeros {
  public:
   void operator()(const DeviceContext& dev_ctx, const bool* found_inf_data,
                   const std::vector<const framework::Tensor*>& xs,
