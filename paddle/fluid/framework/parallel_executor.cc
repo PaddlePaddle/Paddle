@@ -399,7 +399,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
-          "Cannot use CUDAPlace in XPU/GPU version, "
+          "Paddle can't use CUDA device since it's not compiled with CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
     } else if (platform::is_xpu_place(place)) {
@@ -409,7 +409,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
-          "Cannot use XPUPlace in CPU/GPU version, "
+          "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
     } else if (platform::is_cpu_place(place)) {

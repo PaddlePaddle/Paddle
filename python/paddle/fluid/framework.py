@@ -450,7 +450,7 @@ def xpu_places(device_ids=None):
     :code:`FLAGS_selected_xpus=0,1,2`, the returned list would
     be [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
     If :code:`FLAGS_selected_xpus` is not set, all visible
-    gpu places would be returned.
+    xpu places would be returned.
     If :code:`device_ids` is not None, it should be the device
     ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
     the returned list would be 
