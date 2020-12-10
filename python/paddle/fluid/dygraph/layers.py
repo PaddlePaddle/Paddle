@@ -21,6 +21,7 @@ import re
 import copy
 import weakref
 import warnings
+from copy import deepcopy
 
 from . import parallel_helper
 from .. import unique_name
@@ -1010,15 +1011,26 @@ class Layer(core.Layer):
             self._parameters[name] = parameter
         return parameter
 
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
     def __getattr__(self, name):
-        if name in self._parameters:
-            return self._parameters[name]
-        elif name in self._sub_layers:
-            return self._sub_layers[name]
-        elif name in self._buffers:
-            return self._buffers[name]
-        else:
-            return object.__getattribute__(self, name)
+        if '_parameters' in self.__dict__:
+            _parameters = self.__dict__['_parameters']
+            if name in self._parameters:
+                return self._parameters[name]
+        if '_sub_layers' in self.__dict__:
+            _sub_layers = self.__dict__['_sub_layers']
+            if name in self._sub_layers:
+                return self._sub_layers[name]
+        if '_buffers' in self.__dict__:
+            _buffers = self.__dict__['_buffers']
+            if name in _buffers:
+                return _buffers[name]
+        return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
         def _remove_if_exist(*dicts):
