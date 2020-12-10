@@ -19,18 +19,22 @@ import unittest
 import logging
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import CONVERSION_OPTIONS
+from test_program_translator import get_source_code
 
 program_translator = ProgramTranslator()
 
 SEED = 2020
 np.random.seed(SEED)
 
+# Situation 1 : test recursive call
+
 
 # Use a decorator to test exception
-@declarative
+@paddle.jit.to_static
 def dyfunc_with_if(x_v):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
@@ -39,7 +43,7 @@ def dyfunc_with_if(x_v):
     return x_v
 
 
-@declarative
+@paddle.jit.to_static
 def nested_func(x_v):
     x_v = fluid.dygraph.to_variable(x_v)
 
@@ -50,7 +54,7 @@ def nested_func(x_v):
     return res
 
 
-@declarative
+@paddle.jit.to_static
 def dyfunc_with_third_library_logging(x_v):
     logging.info('test dyfunc_with_third_library_logging')
     if fluid.layers.mean(x_v).numpy()[0] > 5:
@@ -106,14 +110,14 @@ class MyConvLayer(fluid.dygraph.Layer):
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.5)))
 
-    @declarative
+    @paddle.jit.to_static
     def forward(self, inputs):
         y = dyfunc_with_if(inputs)
         y = lambda_fun(y)
         y = self.dymethod(y)
         return y
 
-    @declarative
+    @paddle.jit.to_static
     def dymethod(self, x_v):
         x_v = fluid.layers.assign(x_v)
         return x_v
@@ -133,7 +137,7 @@ class MyLayer(fluid.dygraph.Layer):
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.5)))
 
-    @declarative
+    @paddle.jit.to_static
     def forward(self, inputs):
         h = self.conv(inputs)
         out = self.fc(h)
@@ -143,15 +147,15 @@ class MyLayer(fluid.dygraph.Layer):
 class TestRecursiveCall2(unittest.TestCase):
     def setUp(self):
         self.input = np.random.random((1, 3, 3, 5)).astype('float32')
-        self.Layer = MyLayer
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
+        self.set_func()
+
+    def set_func(self):
+        self.dygraph_func = MyLayer()
 
     def _run(self):
         with fluid.dygraph.guard():
-            self.dygraph_func = self.Layer()
-            fluid.default_startup_program.random_seed = SEED
-            fluid.default_main_program.random_seed = SEED
             data = fluid.dygraph.to_variable(self.input)
             res = self.dygraph_func(data)
 
@@ -175,14 +179,106 @@ class TestRecursiveCall2(unittest.TestCase):
 
 
 class TestThirdPartyLibrary(TestRecursiveCall2):
-    def _run(self):
-        with fluid.dygraph.guard():
-            self.dygraph_func = dyfunc_with_third_library_logging
-            fluid.default_startup_program.random_seed = SEED
-            fluid.default_main_program.random_seed = SEED
-            data = fluid.dygraph.to_variable(self.input)
-            res = self.dygraph_func(data)
-            return res.numpy()
+    def set_func(self):
+        self.dygraph_func = dyfunc_with_third_library_logging
+
+
+# Situation 2 : test not_to_static
+
+
+def func_sum(x):
+    res = paddle.sum(x)
+    return res
+
+
+@paddle.jit.not_to_static
+def func_not_to_static(x):
+    res = func_sum(x)
+    return res
+
+
+@paddle.jit.to_static
+def func_convert_then_not_to_static(x):
+    y = func_not_to_static(x)
+    return y
+
+
+class TestClass(paddle.nn.Layer):
+    @paddle.jit.not_to_static
+    def called_member(self, x):
+        return paddle.sum(x)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        y = self.called_member(x)
+        return y
+
+
+class TestNotToConvert(TestRecursiveCall2):
+    def set_func(self):
+        self.dygraph_func = func_not_to_static
+
+    def test_conversion_options(self):
+        options = getattr(self.dygraph_func, CONVERSION_OPTIONS, None)
+        self.assertIsNotNone(options)
+        self.assertTrue(options.not_convert)
+
+
+class TestNotToConvert2(TestRecursiveCall2):
+    def set_func(self):
+        self.dygraph_func = func_convert_then_not_to_static
+
+
+class TestNotToConvert3(TestRecursiveCall2):
+    def set_func(self):
+        self.dygraph_func = TestClass()
+
+
+class TestDynamicToStaticCode(unittest.TestCase):
+    def setUp(self):
+        self.set_func()
+        self.set_answer_func()
+
+    def set_func(self):
+        self.func = func_not_to_static
+
+    def set_answer_func(self):
+        class StaticCode():
+            @paddle.jit.not_to_static
+            def func_not_to_static(x):
+                res = func_sum(x)
+                return res
+
+        self.answer_func = StaticCode.func_not_to_static
+
+    def _get_answer_code(self):
+        return get_source_code(self.answer_func)
+
+    def _get_transformed_code(self):
+        transformed_func = paddle.jit.dy2static.convert_call(self.func)
+        return get_source_code(transformed_func)
+
+    def test_code(self):
+        transformed_code = self._get_transformed_code()
+        answer_code = self._get_answer_code()
+        self.assertEqual(
+            answer_code,
+            transformed_code,
+            msg="\ntransformed_code : \n{}\nanswer_code : \n{}".format(
+                transformed_code, answer_code))
+
+
+class TestDynamicToStaticCode2(TestDynamicToStaticCode):
+    def set_func(self):
+        self.func = func_convert_then_not_to_static
+
+    def set_answer_func(self):
+        class StaticCode():
+            def func_convert_then_not_to_static(x):
+                y = paddle.jit.dy2static.convert_call(func_not_to_static)(x)
+                return y
+
+        self.answer_func = StaticCode.func_convert_then_not_to_static
 
 
 if __name__ == '__main__':

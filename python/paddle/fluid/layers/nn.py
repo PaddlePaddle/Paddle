@@ -842,52 +842,52 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
 def crf_decoding(input, param_attr, label=None, length=None):
     """
     :api_attr: Static Graph
+
     ${comment}
 
     Args:
-        input(${emission_type}): ${emission_comment}
+        input(Tensor): ${emission_comment}
 
         param_attr (ParamAttr|None): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_fluid_param_attr_ParamAttr` .
 
         label(${label_type}, optional): ${label_comment}
 
         length(${length_type}, optional): ${length_comment}
 
     Returns:
-        Variable: ${viterbi_path_comment}
+        Tensor: ${viterbi_path_comment}
 
     Examples:
         .. code-block:: python
 
-           import paddle.fluid as fluid
            import paddle
            paddle.enable_static()
 
            # LoDTensor-based example
            num_labels = 10
-           feature = fluid.data(name='word_emb', shape=[-1, 784], dtype='float32', lod_level=1)
-           label = fluid.data(name='label', shape=[-1, 1], dtype='int64', lod_level=1)
-           emission = fluid.layers.fc(input=feature, size=num_labels)
+           feature = paddle.static.data(name='word_emb', shape=[-1, 784], dtype='float32', lod_level=1)
+           label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64', lod_level=1)
+           emission = paddle.static.nn.fc(feature, size=num_labels)
 
-           crf_cost = fluid.layers.linear_chain_crf(input=emission, label=label,
-                     param_attr=fluid.ParamAttr(name="crfw"))
-           crf_decode = fluid.layers.crf_decoding(input=emission,
-                     param_attr=fluid.ParamAttr(name="crfw"))
+           crf_cost = paddle.fluid.layers.linear_chain_crf(input=emission, label=label,
+                     param_attr=paddle.ParamAttr(name="crfw"))
+           crf_decode = paddle.static.nn.crf_decoding(input=emission,
+                     param_attr=paddle.ParamAttr(name="crfw"))
 
            # Common tensor example
            num_labels, max_len = 10, 20
-           feature = fluid.data(name='word_emb_pad', shape=[-1, max_len, 784], dtype='float32')
-           label = fluid.data(name='label_pad', shape=[-1, max_len, 1], dtype='int64')
-           length = fluid.data(name='length', shape=[-1, 1], dtype='int64')
-           emission = fluid.layers.fc(input=feature, size=num_labels,
+           feature = paddle.static.data(name='word_emb_pad', shape=[-1, max_len, 784], dtype='float32')
+           label = paddle.static.data(name='label_pad', shape=[-1, max_len, 1], dtype='int64')
+           length = paddle.static.data(name='length', shape=[-1, 1], dtype='int64')
+           emission = paddle.static.nn.fc(feature, size=num_labels,
                                       num_flatten_dims=2)
 
-           crf_cost = fluid.layers.linear_chain_crf(input=emission, label=label, length=length,
-                     param_attr=fluid.ParamAttr(name="crfw_pad"))
-           crf_decode = fluid.layers.crf_decoding(input=emission, length=length,
-                     param_attr=fluid.ParamAttr(name="crfw_pad"))
+           crf_cost = paddle.fluid.layers.linear_chain_crf(input=emission, label=label, length=length,
+                     param_attr=paddle.ParamAttr(name="crfw_pad"))
+           crf_decode = paddle.static.nn.crf_decoding(input=emission, length=length,
+                     param_attr=paddle.ParamAttr(name="crfw_pad"))
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'crf_decoding')
@@ -1403,7 +1403,7 @@ def conv2d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-        input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type
+        input (Tensor): The input is 4-D Tensor with shape [N, C, H, W], the data type
             of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -1456,9 +1456,9 @@ def conv2d(input,
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv2d, whose data type is the
-        same with input. If act is None, the tensor variable storing the convolution
-        result, and if act is not None, the tensor variable storing convolution
+        A Tensor representing the conv2d, whose data type is the
+        same with input. If act is None, the tensor storing the convolution
+        result, and if act is not None, the tensor storing convolution
         and non-linearity activation result.
 
     Raises:
@@ -1477,12 +1477,12 @@ def conv2d(input,
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
           import paddle
           paddle.enable_static()
           
-          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
+          data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
+          conv2d = paddle.static.nn.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
+          print(conv2d.shape) # [-1, 2, 30, 30]
     """
 
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
@@ -1676,7 +1676,7 @@ def conv3d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        input (Variable): The input is 5-D Tensor with shape [N, C, D, H, W], the data
+        input (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
             type of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -1750,11 +1750,19 @@ def conv3d(input,
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
           import paddle
+          import numpy as np
+	  
           paddle.enable_static()
-          data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
-          conv3d = fluid.layers.conv3d(input=data, num_filters=2, filter_size=3, act="relu")
+          data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
+          param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
+          res = paddle.static.nn.conv3d(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
+          place = paddle.CPUPlace()
+          exe = paddle.static.Executor(place)
+          exe.run(paddle.static.default_startup_program())
+          x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
+          output = exe.run(feed={"data": x}, fetch_list=[res])
+          print(output)
     """
 
     l_type = 'conv3d'
@@ -3427,7 +3435,7 @@ def layer_norm(input,
     - :math:`b`: the trainable bias parameter.
 
     Args:
-        input(Variable): A multi-dimension ``Tensor`` , and the data type is float32 or float64.
+        input(Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64.
         scale(bool, optional): Whether to learn the adaptive gain :math:`g` after
             normalization. Default: True.
         shift(bool, optional): Whether to learn the adaptive bias :math:`b` after
@@ -3452,24 +3460,17 @@ def layer_norm(input,
         name(str): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: ``Tensor``  indicating the normalized result, the data type is the same as  ``input`` , and the return dimension is the same as  ``input`` .
+        Tensor: ``Tensor``  indicating the normalized result, the data type is the same as  ``input`` , and the return dimension is the same as  ``input`` .
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
             import paddle
             paddle.enable_static()
-            x = fluid.data(name='x', shape=[-1, 32, 32], dtype='float32')
-            hidden1 = fluid.layers.layer_norm(input=x, begin_norm_axis=1)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            np_x = np.random.random(size=(8, 3, 32, 32)).astype('float32')
-            output = exe.run(feed={"x": np_x}, fetch_list = [hidden1])
-            print(output)
+            x = paddle.static.data(name='x', shape=[8, 32, 32], dtype='float32')
+            output = paddle.static.nn.layer_norm(input=x, begin_norm_axis=1)
+            print(output.shape)  # [8, 32, 32]
     """
     assert in_dygraph_mode(
     ) is not True, "please use LayerNorm instead of layer_norm in dygraph mode!"
@@ -3805,7 +3806,7 @@ def conv2d_transpose(input,
           conv2d_transpose can compute the kernel size automatically.
 
     Args:
-        input(Variable): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
+        input(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
                          its data type is float32 or float64.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
@@ -3823,15 +3824,14 @@ def conv2d_transpose(input,
         stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
             If stride is a tuple, it must contain two integers, (stride_height, stride_width).
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
-        padding(int|list|str|tuple, optional): The padding size. The padding argument effectively adds
-             `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a
-             string, either 'VALID' or 'SAME' supported, which is the padding algorithm.
-             If `padding` is a tuple or list, it could be in three forms:
-             `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and
-            when `data_format` is `'NCHW'`,
-            `padding` can be in the form `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `'NHWC'`, `padding` can be in the form
+        padding(str|int|list|tuple, optional): The padding size. It means the number of zero-paddings 
+            on both sides for each dimension. If `padding` is a string, either 'VALID' or 
+            'SAME' which is the padding algorithm. If `padding` is a tuple or list,
+            it could be in three forms: `[pad_height, pad_width]` or 
+            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            and when `data_format` is `"NCHW"`, `padding` can be in the form 
+            `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NHWC"`, `padding` can be in the form 
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points.
@@ -3869,11 +3869,11 @@ def conv2d_transpose(input,
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv2d_transpose, whose
+        A Tensor representing the conv2d_transpose, whose
         data type is the same with input and shape is (num_batches, channels, out_h,
-        out_w) or (num_batches, out_h, out_w, channels). If act is None, the tensor variable
+        out_w) or (num_batches, out_h, out_w, channels). If act is None, the tensor 
         storing the transposed convolution result, and if act is not None, the
-        tensor variable storing transposed convolution and non-linearity activation
+        tensor storing transposed convolution and non-linearity activation
         result.
 
     Raises:
@@ -3892,11 +3892,12 @@ def conv2d_transpose(input,
     Examples:
        .. code-block:: python
 
-          import paddle.fluid as fluid
           import paddle
           paddle.enable_static()
-          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-          conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
+
+          data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
+          conv2d_transpose = paddle.static.nn.conv2d_transpose(input=data, num_filters=2, filter_size=3)
+          print(conv2d_transpose.shape) # [-1, 2, 34, 34]
     """
     assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
     if data_format not in ['NCHW', 'NHWC']:
@@ -4101,7 +4102,7 @@ def conv3d_transpose(input,
           conv3d_transpose can compute the kernel size automatically.
 
     Args:
-        input(Variable): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
+        input(Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
             of input is float32 or float64.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
@@ -4184,11 +4185,19 @@ def conv3d_transpose(input,
     Examples:
        .. code-block:: python
 
-          import paddle.fluid as fluid
           import paddle
+          import numpy as np
+	    
           paddle.enable_static()
-          data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
-          conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
+          data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
+          param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
+          res = paddle.static.nn.conv3d_transpose(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
+          place = paddle.CPUPlace()
+          exe = paddle.static.Executor(place)
+          exe.run(paddle.static.default_startup_program())
+          x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
+          output = exe.run(feed={"data": x}, fetch_list=[res])
+          print(output)
     """
     assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
     if data_format not in ['NCDHW', 'NDHWC']:
@@ -9736,7 +9745,7 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
     alpha_shape = [1]
-    # NOTE(): The input of this API should be ``N,C,...`` format, 
+    # NOTE(): The input of this API should be ``N,C,...`` format,
     # which means x.shape[0] is batch_size and x.shape[0] is channel.
     if mode == 'channel':
         assert len(
@@ -13332,7 +13341,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
             import paddle.nn.functional as F
 
             input = paddle.randn([6, 4, 2, 2])
-            out = paddle.fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
+            out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     helper = LayerHelper("temporal_shift", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')

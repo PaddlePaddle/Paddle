@@ -281,8 +281,13 @@ class FCPrimitiveFactory {
 
     auto reorder = mkldnn::reorder(src_mem, *dst_mem);
     mkldnn::stream astream(engine_);
-    reorder.execute(astream, src_mem, *dst_mem);
-    astream.wait();
+
+    {
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+      reorder.execute(astream, src_mem, *dst_mem);
+      astream.wait();
+    }
 
     return dst_mem;
   }
@@ -305,9 +310,13 @@ class FCPrimitiveFactory {
     auto reorder = mkldnn::reorder(*src_mem, *dst_mem, attributes);
 
     mkldnn::stream astream(engine_);
-    reorder.execute(astream,
-                    {{MKLDNN_ARG_FROM, *src_mem}, {MKLDNN_ARG_TO, *dst_mem}});
-    astream.wait();
+    {
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+      reorder.execute(astream,
+                      {{MKLDNN_ARG_FROM, *src_mem}, {MKLDNN_ARG_TO, *dst_mem}});
+      astream.wait();
+    }
 
     return dst_mem;
   }

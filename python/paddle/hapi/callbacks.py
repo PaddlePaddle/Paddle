@@ -362,7 +362,7 @@ class ProgBarLogger(Callback):
         }
         if self._is_print():
             print(
-                "The loss value printed in the log is the current batch, and the metric is the average value of previous step."
+                "The loss value printed in the log is the current step, and the metric is the average value of previous step."
             )
 
     def on_epoch_begin(self, epoch=None, logs=None):
@@ -395,7 +395,7 @@ class ProgBarLogger(Callback):
                 ('avg_batch_cost', "%.5f sec" % (timer['batch_time'] / cnt)))
             values.append(
                 ('ips', "%.5f samples/sec" %
-                 (samples / (timer['batch_time'] + timer['batch_time']))))
+                 (samples / (timer['data_time'] + timer['batch_time']))))
 
         progbar.update(steps, values)
 
