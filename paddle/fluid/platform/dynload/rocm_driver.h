@@ -26,7 +26,7 @@ namespace dynload {
 
 extern std::once_flag rocm_dso_flag;
 extern void* rocm_dso_handle;
-extern bool HasROCMDriver();
+extern bool HasCUDADriver();
 
 #define DECLARE_DYNAMIC_LOAD_ROCM_WRAP(__name)                           \
   struct DynLoad__##__name {                                             \
@@ -34,7 +34,7 @@ extern bool HasROCMDriver();
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {     \
       using rocm_func = decltype(&::__name);                             \
       std::call_once(rocm_dso_flag, []() {                               \
-        rocm_dso_handle = paddle::platform::dynload::GetROCMDsoHandle(); \
+        rocm_dso_handle = paddle::platform::dynload::GetCUDADsoHandle(); \
       });                                                                \
       static void* p_##__name = dlsym(rocm_dso_handle, #__name);         \
       return reinterpret_cast<rocm_func>(p_##__name)(args...);           \

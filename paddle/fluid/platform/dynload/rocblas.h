@@ -36,19 +36,19 @@ extern void *rocblas_dso_handle;
  *
  * note: default dynamic linked libs
  */
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)                               \
-  struct DynLoad__##__name {                                                   \
-    template <typename... Args>                                                \
-    inline auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {    \
-      using rocblas_func =                                                     \
-          decltype(::__name(std::declval<Args>()...)) (*)(Args...);            \
-      std::call_once(rocblas_dso_flag, []() {                                  \
-        rocblas_dso_handle = paddle::platform::dynload::GetRocblasDsoHandle(); \
-      });                                                                      \
-      static void *p_##__name = dlsym(rocblas_dso_handle, #__name);            \
-      return reinterpret_cast<rocblas_func>(p_##__name)(args...);              \
-    }                                                                          \
-  };                                                                           \
+#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)                              \
+  struct DynLoad__##__name {                                                  \
+    template <typename... Args>                                               \
+    inline auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {   \
+      using rocblas_func =                                                    \
+          decltype(::__name(std::declval<Args>()...)) (*)(Args...);           \
+      std::call_once(rocblas_dso_flag, []() {                                 \
+        rocblas_dso_handle = paddle::platform::dynload::GetCublasDsoHandle(); \
+      });                                                                     \
+      static void *p_##__name = dlsym(rocblas_dso_handle, #__name);           \
+      return reinterpret_cast<rocblas_func>(p_##__name)(args...);             \
+    }                                                                         \
+  };                                                                          \
   extern DynLoad__##__name __name
 
 #define ROCBLAS_BLAS_ROUTINE_EACH(__macro)            \

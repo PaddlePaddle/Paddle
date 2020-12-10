@@ -50,13 +50,13 @@ MIOPEN_DNN_ROUTINE_EACH_R7(DEFINE_WRAP);
 MIOPEN_DNN_ROUTINE_EACH_AFTER_R7(DEFINE_WRAP);
 #endif
 
-bool HasMIOpen() {
+bool HasCUDNN() {
   std::call_once(miopen_dso_flag,
                  []() { miopen_dso_handle = GetCUDNNDsoHandle(); });
   return miopen_dso_handle != nullptr;
 }
 
-void EnforceMIOPENLoaded(const char* fn_name) {
+void EnforceCUDNNLoaded(const char* fn_name) {
   PADDLE_ENFORCE_NOT_NULL(
       miopen_dso_handle,
       platform::errors::PreconditionNotMet(

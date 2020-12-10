@@ -164,7 +164,7 @@ function(op_library TARGET)
                 ${op_common_deps})
         endif()
     elseif (WITH_ROCM_PLATFORM)
-        hip_library_ops(${TARGET} SRCS ${cc_srcs} ${hip_cu_cc_srcs} ${hip_cu_srcs} ${miopen_hip_cu_cc_srcs} ${miopen_hip_cu_srcs} ${mkldnn_cc_srcs} DEPS {op_library_DEPS}
+        hip_library_ops(${TARGET} SRCS ${cc_srcs} ${hip_cu_cc_srcs} ${hip_cu_srcs} ${miopen_hip_cu_cc_srcs} ${miopen_hip_cu_srcs} ${mkldnn_cc_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
     else()
         # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.

@@ -25,9 +25,9 @@ void* hiprtc_dso_handle = nullptr;
 
 HIPRTC_ROUTINE_EACH(DEFINE_WRAP);
 
-bool HasHIPRTC() {
+bool HasNVRTC() {
   std::call_once(hiprtc_dso_flag,
-                 []() { hiprtc_dso_handle = GetHIPRTCDsoHandle(); });
+                 []() { hiprtc_dso_handle = GetNVRTCDsoHandle(); });
   return hiprtc_dso_handle != nullptr;
 }
 

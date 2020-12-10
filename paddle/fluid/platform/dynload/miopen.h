@@ -26,7 +26,7 @@ namespace dynload {
 
 extern std::once_flag miopen_dso_flag;
 extern void* miopen_dso_handle;
-extern bool HasMIOpen();
+extern bool HasCUDNN();
 
 inline const char* miopenGetErrorString(miopenStatus_t status) {
   switch (status) {
@@ -51,19 +51,19 @@ inline const char* miopenGetErrorString(miopenStatus_t status) {
 }
 
 extern void EnforceCUDNNLoaded(const char* fn_name);
-#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                              \
-  struct DynLoad__##__name {                                                 \
-    template <typename... Args>                                              \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {         \
-      using miopen_func = decltype(&::__name);                               \
-      std::call_once(miopen_dso_flag, []() {                                 \
-        miopen_dso_handle = paddle::platform::dynload::GetMIOPENDsoHandle(); \
-      });                                                                    \
-      EnforceCUDNNLoaded(#__name);                                           \
-      static void* p_##__name = dlsym(miopen_dso_handle, #__name);           \
-      return reinterpret_cast<miopen_func>(p_##__name)(args...);             \
-    }                                                                        \
-  };                                                                         \
+#define DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP(__name)                            \
+  struct DynLoad__##__name {                                                \
+    template <typename... Args>                                             \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {        \
+      using miopen_func = decltype(&::__name);                              \
+      std::call_once(miopen_dso_flag, []() {                                \
+        miopen_dso_handle = paddle::platform::dynload::GetCUDNNDsoHandle(); \
+      });                                                                   \
+      EnforceCUDNNLoaded(#__name);                                          \
+      static void* p_##__name = dlsym(miopen_dso_handle, #__name);          \
+      return reinterpret_cast<miopen_func>(p_##__name)(args...);            \
+    }                                                                       \
+  };                                                                        \
   extern struct DynLoad__##__name __name
 
 /**
@@ -123,23 +123,23 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenDestroyDropoutDescriptor);                \
   __macro(miopenDestroyRNNDescriptor);
 
-MIOPEN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+MIOPEN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 
 #define MIOPEN_DNN_ROUTINE_EACH_R2(__macro) \
   __macro(miopenConvolutionBackwardData);
-MIOPEN_DNN_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+MIOPEN_DNN_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 
 // APIs available after R3:
 #define MIOPEN_DNN_ROUTINE_EACH_AFTER_R3(__macro) \
   __macro(miopenConvolutionBackwardWeightsGetWorkSpaceSize);
-MIOPEN_DNN_ROUTINE_EACH_AFTER_R3(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+MIOPEN_DNN_ROUTINE_EACH_AFTER_R3(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 
 // APIs available after R4:
 #define MIOPEN_DNN_ROUTINE_EACH_AFTER_R4(__macro)    \
   __macro(miopenBatchNormalizationForwardTraining);  \
   __macro(miopenBatchNormalizationForwardInference); \
   __macro(miopenBatchNormalizationBackward);
-MIOPEN_DNN_ROUTINE_EACH_AFTER_R4(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+MIOPEN_DNN_ROUTINE_EACH_AFTER_R4(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 
 // APIs in R5
 #define MIOPEN_DNN_ROUTINE_EACH_R5(__macro)  \
@@ -147,12 +147,12 @@ MIOPEN_DNN_ROUTINE_EACH_AFTER_R4(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(miopenSetActivationDescriptor);    \
   __macro(miopenGetActivationDescriptor);    \
   __macro(miopenDestroyActivationDescriptor);
-MIOPEN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+MIOPEN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 
 // APIs in R6
 #define MIOPEN_DNN_ROUTINE_EACH_R6(__macro) \
 /*__macro(miopenSetRNNDescriptor_v6);*/
-MIOPEN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+MIOPEN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 
 #define MIOPEN_DNN_ROUTINE_EACH_R7(__macro) \
   __macro(miopenSetConvolutionGroupCount);  \
@@ -162,7 +162,7 @@ MIOPEN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(miopenSetCTCLossDescriptor);      \
   __macro(miopenGetCTCLossWorkspaceSize);   \
   __macro(miopenCTCLoss);
-MIOPEN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+MIOPEN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 
 #define MIOPEN_DNN_ROUTINE_EACH_AFTER_R7(__macro)                    \
 /*__macro(cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize); \
@@ -170,7 +170,7 @@ __macro(cudnnBatchNormalizationForwardTrainingEx);                   \
 __macro(cudnnGetBatchNormalizationBackwardExWorkspaceSize);          \
 __macro(cudnnBatchNormalizationBackwardEx);                          \
 __macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);*/
-MIOPEN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+MIOPEN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
