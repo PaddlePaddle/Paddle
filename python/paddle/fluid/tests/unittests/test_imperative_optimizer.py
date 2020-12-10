@@ -32,8 +32,6 @@ from test_imperative_base import new_program_scope
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
 
-paddle.enable_static()
-
 
 class MLP(fluid.Layer):
     def __init__(self, param_attr=None, bias_attr=None):

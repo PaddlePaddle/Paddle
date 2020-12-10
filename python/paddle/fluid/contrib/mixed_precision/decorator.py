@@ -207,7 +207,7 @@ class OptimizerWithMixedPrecision(object):
                     self._incr_ratio,
                     self._decr_ratio,
                     name="update_loss_scaling")
-            optimize_ops = self._optimizer.apply_gradients(params_grads)
+        optimize_ops = self._optimizer.apply_gradients(params_grads)
         return optimize_ops
 
     def apply_optimize(self, loss, startup_program, params_grads):

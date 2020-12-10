@@ -23,8 +23,7 @@ import itertools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.optimizer import Lamb
-from paddle.fluid.optimizer import MomentumOptimizer, LarsMomentumOptimizer, AdagradOptimizer, AdamaxOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, AdadeltaOptimizer, RMSPropOptimizer, FtrlOptimizer
+from paddle.fluid.optimizer import MomentumOptimizer, LarsMomentumOptimizer, AdagradOptimizer, AdamaxOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, AdadeltaOptimizer, RMSPropOptimizer, FtrlOptimizer, LambOptimizer
 from paddle.fluid.optimizer import ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph.base import to_variable
@@ -703,14 +702,14 @@ def exclude_fn(param):
 
 class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = Lamb(
+        optimizer = LambOptimizer(
             learning_rate=0.002,
             exclude_from_weight_decay_fn=exclude_fn,
-            parameters=parameter_list)
+            parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
-        optimizer = Lamb(
+        optimizer = LambOptimizer(
             learning_rate=0.002, exclude_from_weight_decay_fn=exclude_fn)
         return optimizer
 
