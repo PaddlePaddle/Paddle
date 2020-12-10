@@ -109,15 +109,14 @@ void NCCLParallelContext::SendNCCLID(
   struct sockaddr_in serv_addr;
   char buffer[1024] = {0};
 
-  PADDLE_ENFORCE_LE(nrings, 8,
-                    platform::errors::PreconditionNotMet(
-                        "The nrings of nccl should be less than or equal 8,"
-                        "but actual nrings is %d",
-                        nrings));
-  for (int i = 0; i < nrings; ++i) {
-    memcpy(buffer + i * NCCL_UNIQUE_ID_BYTES, &nccl_ids[i],
-           NCCL_UNIQUE_ID_BYTES);
-  }
+  PADDLE_ENFORCE_LE(
+      nrings, 8, platform::errors::PreconditionNotMet(
+                     "The nrings of nccl should be less than or equal 8 which "
+                     "is enough for distributed training "
+                     "but actual nrings is %d",
+                     nrings));
+
+  memcpy(buffer, &nccl_ids[0], nrings * NCCL_UNIQUE_ID_BYTES);
 
   if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     PADDLE_THROW(platform::errors::Unavailable("Create socket failed."));
