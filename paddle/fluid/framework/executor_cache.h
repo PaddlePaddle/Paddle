@@ -47,7 +47,7 @@ class ExecutorInfoCache {
        * hashing because program may contains at least one block.
        */
       hash_combine(&seed, prog_desc);
-      for (int i = 0; i < prog_desc->Size(); ++i) {
+      for (size_t i = 0; i < prog_desc->Size(); ++i) {
         hash_combine(&seed, &prog_desc->Block(i));
         hash_combine(&seed, prog_desc->Block(i).OpSize());
       }
