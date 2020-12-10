@@ -24,7 +24,7 @@ from paddle.distributed.fleet.meta_optimizers.sharding.weight_decay_helper impor
 from paddle.distributed.fleet.meta_optimizers.sharding.gradient_clip_helper import GradientClipHelper
 from paddle.distributed.fleet.meta_optimizers.sharding.prune import ProgramDeps
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
-
+import logging
 from functools import reduce
 
 __all__ = ["ShardingOptimizer"]
@@ -485,8 +485,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                 self.global_word_size,
                 self.sharding_group_size,
                 self.dp_group_size)
-
-            print("Using Sharing&DP mode.")
+            
+            logging.info("Using Sharing&DP mode.")
         else:
             self.sharding_ring_id = 0
             self.sharding_rank = self.global_rank
@@ -497,18 +497,18 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.dp_group_size = None
             self.dp_group_endpoints = None
 
-            print("Using Sharing alone mode.")
+            logging.info("Using Sharing alone mode.")
 
-        print("global word size: {}".format(self.global_word_size))
-        print("global rank: {}".format(self.global_rank))
-        print("sharding group_size: {}".format(self.sharding_group_size))
-        print("sharding rank: {}".format(self.sharding_rank))
-        print("dp group size: {}".format(self.dp_group_size))
-        print("dp rank: {}".format(self.dp_rank))
-        print("current endpoint: {}".format(self.current_endpoint))
-        print("sharding group endpoints: {}".format(
+        logging.info("global word size: {}".format(self.global_word_size))
+        logging.info("global rank: {}".format(self.global_rank))
+        logging.info("sharding group_size: {}".format(self.sharding_group_size))
+        logging.info("sharding rank: {}".format(self.sharding_rank))
+        logging.info("dp group size: {}".format(self.dp_group_size))
+        logging.info("dp rank: {}".format(self.dp_rank))
+        logging.info("current endpoint: {}".format(self.current_endpoint))
+        logging.info("sharding group endpoints: {}".format(
             self.sharding_group_endpoints))
-        print("dp group endpoints: {}".format(self.dp_group_endpoints))
-        print("global word endpoints: {}".format(self.endpoints))
+        logging.info("dp group endpoints: {}".format(self.dp_group_endpoints))
+        logging.info("global word endpoints: {}".format(self.endpoints))
 
         return
