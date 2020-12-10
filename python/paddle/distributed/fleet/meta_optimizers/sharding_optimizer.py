@@ -485,8 +485,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                 self.global_word_size,
                 self.sharding_group_size,
                 self.dp_group_size)
-            
-            logging.info("Using Sharing&DP mode.")
+
+            logging.info("Using Sharing&DP mode !")
         else:
             self.sharding_ring_id = 0
             self.sharding_rank = self.global_rank
@@ -497,7 +497,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.dp_group_size = None
             self.dp_group_endpoints = None
 
-            logging.info("Using Sharing alone mode.")
+            logging.info("Using Sharing alone mode !")
 
         logging.info("global word size: {}".format(self.global_word_size))
         logging.info("global rank: {}".format(self.global_rank))
