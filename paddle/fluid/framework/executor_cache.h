@@ -37,11 +37,21 @@ class ExecutorInfoCache {
   using KeyType = std::pair<const framework::ProgramDesc*, /*is_grad*/ bool>;
 
   struct HashPair {
-    template <class T1, class T2>
-    size_t operator()(const std::pair<T1, T2>& p) const noexcept {
+    size_t operator()(const KeyType& key) const noexcept {
       size_t seed = 10;
-      hash_combine(&seed, p.first);
-      hash_combine(&seed, p.second);
+      auto& prog_desc = key.first;
+      /*
+       * Note(Aurelius84): DO NOT use only ProgramDesc* to calculate hash value
+       * because a new program will hold same pointer address after an older
+       * program is destructed with a small probability. Add op size while
+       * hashing because program may contains at least one block.
+       */
+      hash_combine(&seed, prog_desc);
+      for (int i = 0; i < prog_desc->Size(); ++i) {
+        hash_combine(&seed, &prog_desc->Block(i));
+        hash_combine(&seed, prog_desc->Block(i).OpSize());
+      }
+      hash_combine(&seed, key.second);
       return seed;
     }
     template <typename T>
