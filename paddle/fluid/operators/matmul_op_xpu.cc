@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
 
@@ -120,30 +121,40 @@ class MatMulXPUKernel : public framework::OpKernel<T> {
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
     float *data_c = out->data<T>();
-    if (mat_dim_a.batch_size_ == 0 || mat_dim_a.batch_size_ == 1) {
-      int r =
-          xpu::fc_int16(dev_ctx.x_context(), mat_dim_a.trans_, mat_dim_b.trans_,
-                        mat_dim_a.height_, mat_dim_b.width_, mat_dim_a.width_,
-                        alpha, x->data<T>(), y->data<T>(), 0.0f, data_c);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU API return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+    int m = mat_dim_a.height_;
+    int n = mat_dim_b.width_;
+    int k = mat_dim_a.width_;
+    int ldx = mat_dim_a.trans_ ? m : k;
+    int ldy = mat_dim_b.trans_ ? k : n;
+    int ldout = n;
+    int batch_size = mat_dim_a.batch_size_;
+    if (batch_size == 0 || batch_size == 1) {
+      int r = xpu::fc_fusion<float, float, float, int16_t>(
+          dev_ctx.x_context(), x->data<T>(), y->data<T>(), data_c, m, n, k,
+          mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
+          ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
+      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                        platform::errors::External(
+                            "XPU fc_fusion kernel return wrong value[%d %s]", r,
+                            XPUAPIErrorMsg[r]));
     } else {
       // batch matmul
-      int r = xpu::batched_gemm_int16(dev_ctx.x_context(), mat_dim_a.trans_,
-                                      mat_dim_b.trans_, mat_dim_a.batch_size_,
-                                      mat_dim_a.height_, mat_dim_b.width_,
-                                      mat_dim_a.width_, alpha, x->data<T>(),
-                                      y->data<T>(), data_c, nullptr, nullptr);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU API return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+      int x_stride = mat_dim_a.stride_;
+      int y_stride = mat_dim_b.stride_;
+      int out_stride = m * n;
+      for (int i = 0; i < batch_size; ++i) {
+        const float *x_data = x->data<T>() + x_stride * i;
+        const float *y_data = y->data<T>() + y_stride * i;
+        float *out_data = data_c + out_stride * i;
+        int r = xpu::fc_fusion<float, float, float, int16_t>(
+            dev_ctx.x_context(), x_data, y_data, out_data, m, n, k,
+            mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
+            ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
+        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                          platform::errors::External(
+                              "XPU fc_fusion kernel return wrong value[%d %s]",
+                              r, XPUAPIErrorMsg[r]));
+      }
     }
   }
 };
@@ -171,9 +182,8 @@ static framework::Tensor XPUFoldHeadAndLastDims(
                          in_shape_host.data(), axis_host.data(), /*ndims=*/3);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        r));
+                        "XPU transpose kernel return wrong value[%d %s]", r,
+                        XPUAPIErrorMsg[r]));
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
 
   return output;
@@ -224,30 +234,41 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
     float *data_c = out->data<T>();
-    if (mat_dim_a.batch_size_ == 0 || mat_dim_a.batch_size_ == 1) {
-      int r =
-          xpu::fc_int16(dev_ctx.x_context(), mat_dim_a.trans_, mat_dim_b.trans_,
-                        mat_dim_a.height_, mat_dim_b.width_, mat_dim_a.width_,
-                        alpha, a.data<T>(), b.data<T>(), 0.0f, data_c);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU API return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+
+    int m = mat_dim_a.height_;
+    int n = mat_dim_b.width_;
+    int k = mat_dim_a.width_;
+    int ldx = mat_dim_a.trans_ ? m : k;
+    int ldy = mat_dim_b.trans_ ? k : n;
+    int ldout = n;
+    int batch_size = mat_dim_a.batch_size_;
+    if (batch_size == 0 || batch_size == 1) {
+      int r = xpu::fc_fusion<float, float, float, int16_t>(
+          dev_ctx.x_context(), a.data<T>(), b.data<T>(), data_c, m, n, k,
+          mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
+          ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
+      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                        platform::errors::External(
+                            "XPU fc_fusion kernel return wrong value[%d %s]", r,
+                            XPUAPIErrorMsg[r]));
     } else {
       // batch matmul
-      int r = xpu::batched_gemm_int16(dev_ctx.x_context(), mat_dim_a.trans_,
-                                      mat_dim_b.trans_, mat_dim_a.batch_size_,
-                                      mat_dim_a.height_, mat_dim_b.width_,
-                                      mat_dim_a.width_, alpha, a.data<T>(),
-                                      b.data<T>(), data_c, nullptr, nullptr);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU API return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+      int x_stride = mat_dim_a.stride_;
+      int y_stride = mat_dim_b.stride_;
+      int out_stride = m * n;
+      for (int i = 0; i < batch_size; ++i) {
+        const float *x_data = a.data<T>() + x_stride * i;
+        const float *y_data = b.data<T>() + y_stride * i;
+        float *out_data = data_c + out_stride * i;
+        int r = xpu::fc_fusion<float, float, float, int16_t>(
+            dev_ctx.x_context(), x_data, y_data, out_data, m, n, k,
+            mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
+            ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
+        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                          platform::errors::External(
+                              "XPU fc_fusion kernel return wrong value[%d %s]",
+                              r, XPUAPIErrorMsg[r]));
+      }
     }
   }
 
