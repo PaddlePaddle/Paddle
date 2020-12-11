@@ -447,7 +447,6 @@ test_imperative_static_runner_while^|^
 test_optimizer_in_control_flow^|^
 test_fuse_bn_act_pass^|^
 test_fuse_bn_add_act_pass^|^
-test_activation_mkldnn_op^|^
 test_tsm^|^
 test_gru_rnn_op^|^
 test_rnn_op^|^
