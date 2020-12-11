@@ -165,7 +165,8 @@ class CUDAContext {
   template <typename Callback>
   inline void CublasCall(Callback&& callback) {
 #if CUDA_VERSION >= 11000
-    if (AllowTF32Cublas()) {
+    int device = GetCurrentDeviceId();
+    if (GetCUDAComputeCapability(device) >= 80 && AllowTF32Cublas()) {
       cublas_handle_.reset(
           new CublasHandleHolder(RawStream(), CUBLAS_TF32_TENSOR_OP_MATH));
     }
@@ -181,7 +182,7 @@ class CUDAContext {
   template <typename Callback>
   inline void TensorCoreCublasCallIfAvailable(Callback&& callback) {
     if (TensorCoreAvailable()) {
-#if CUDA_VERSION >= 9000 && CUDA_VERSION < 11000
+#if CUDA_VERSION >= 9000
       cublas_handle_.reset(
           new CublasHandleHolder(RawStream(), CUBLAS_TENSOR_OP_MATH));
 #endif  // CUDA_VERSION >= 9000 && CUDA_VERSION < 11000
