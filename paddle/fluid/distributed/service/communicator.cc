@@ -453,7 +453,10 @@ void AsyncCommunicator::SendByCommunicator() {
       }
 
       if (ctx.is_sparse) {
-        PADDLE_ENFORCE_EQ(varnames.size(), 1, "");
+        PADDLE_ENFORCE_EQ(
+            varnames.size(), 1,
+            platform::errors::InvalidArgument(
+                "sparse variables can only be merged by one variables"));
         RpcSendSparse(varnames[0], table_id, *send_scope_);
       } else {
         RpcSendDense(ctx, *send_scope_);
@@ -694,7 +697,10 @@ void HalfAsyncCommunicator::SendByCommunicator() {
       }
 
       if (ctx.is_sparse) {
-        PADDLE_ENFORCE_EQ(varnames.size(), 1, "");
+        PADDLE_ENFORCE_EQ(
+            varnames.size(), 1,
+            platform::errors::InvalidArgument(
+                "sparse variables can only be merged by one variables"));
         RpcSendSparse(varnames[0], table_id, *send_scope_);
       } else {
         RpcSendDense(ctx, *send_scope_);
@@ -746,7 +752,8 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
   auto *var = scope.FindVar(table_name);
 
   PADDLE_ENFORCE_EQ(var->IsType<framework::SelectedRows>(), true,
-                    "Only need to send Sparse Grad in Geo mode.");
+                    platform::errors::InvalidArgument(
+                    "Only need to send Sparse Grad in Geo mode."));
   auto &rows = var->Get<framework::SelectedRows>().rows();
 
   // insert ids which has not been record
@@ -785,7 +792,10 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     auto &ctx = iter.second;
     if (!ctx.is_sparse) continue;
     auto &varnames = ctx.origin_varnames;
-    PADDLE_ENFORCE_EQ(varnames.size(), 1, "");
+    PADDLE_ENFORCE_EQ(
+        varnames.size(), 1,
+        platform::errors::InvalidArgument(
+            "sparse variables can only be merged by one variables"));
     for (auto &splited_var : ctx.splited_varnames) {
       parallel_task_nums_ += 1;
       sparse_id_queues_.insert(
@@ -1122,7 +1132,10 @@ void GeoCommunicator::MainThread() {
       auto &table_id = ctx.table_id;
 
       if (ctx.is_sparse) {
-        PADDLE_ENFORCE_EQ(varnames.size(), 1, "");
+        PADDLE_ENFORCE_EQ(
+            varnames.size(), 1,
+            platform::errors::InvalidArgument(
+                "sparse variables can only be merged by one variables"));
         int pserver_num = static_cast<int>(ctx.epmap.size());
         for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
           // varname: emb@GRAD, param_name: emb, splited_varname: emb.delta0
