@@ -887,6 +887,10 @@ def dropout(x,
             print(y_01)
 
     """
+    # fast return for p == 0
+    if p == 0:
+        return x
+
     if not isinstance(p, (float, int)):
         raise TypeError("p argument should be a number")
     if p < 0 or p > 1:

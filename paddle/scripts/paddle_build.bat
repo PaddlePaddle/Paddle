@@ -41,6 +41,7 @@ if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
 if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_TPCACHE set WITH_TPCACHE=ON
+if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
 rem -------set cache build work directory-----------
@@ -62,7 +63,7 @@ setlocal enabledelayedexpansion
 git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
-    git diff HEAD last_pr --stat --name-only | findstr ".cmake CMakeLists.txt paddle_build.bat"
+    git diff HEAD last_pr --stat --name-only | findstr "cmake/[a-zA-Z]*\.cmake CMakeLists.txt paddle_build.bat"
     if !ERRORLEVEL! EQU 0 (
         rmdir build /s/q
     )
@@ -72,6 +73,9 @@ if %ERRORLEVEL% EQU 0 (
     rmdir build /s/q
     git branch last_pr
 )
+
+:: set CI_SKIP_CPP_TEST if only *.py changed
+git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 
 :: for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
 :: set day_now=%datetime:~6,2%
@@ -92,7 +96,10 @@ if %ERRORLEVEL% EQU 0 (
 
 :mkbuild
 if not exist build (
+    echo Windows build cache FALSE
     mkdir build
+) else (
+    echo Windows build cache TRUE
 )
 cd /d build
 dir .
@@ -224,13 +231,13 @@ echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT%
+-DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD%
 
 cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT%
+-DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD%
 goto:eof
 
 :cmake_error
@@ -264,14 +271,21 @@ echo Build third_party successfully!
 
 set build_times=1
 :build_paddle
+:: reset clcache zero stats for collect PR's actual hit rate
+clcache.exe -z
+
 echo Build Paddle the %build_times% time:
 if "%WITH_CLCACHE%"=="OFF" (
     msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
 ) else (
     msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
 )
+set build_error=%ERRORLEVEL%
 
-if %ERRORLEVEL% NEQ 0 (
+:: ci will collect clcache hit rate
+goto :collect_clcache_hits
+
+if %build_error% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 1 (
         exit /b 7
@@ -282,6 +296,8 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo Build Paddle successfully!
+echo 0 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 
 goto:eof
 
@@ -398,19 +414,62 @@ set CUDA_DEVICE_COUNT=1
 
 rem TODO: fix these unittest that is bound to fail
 rem /*==================Disabled Windows unite==============================*/
-set diable_wingpu_test=broadcast_op_test^|fused_broadcast_op_test^|test_analysis_predictor^|test_model^|test_add_reader_dependency^|test_bilateral_slice_op^|^
-test_cholesky_op^|test_dataloader_early_reset^|test_decoupled_py_reader^|test_decoupled_py_reader_data_check^|test_eager_deletion_delete_vars^|^
-test_eager_deletion_while_op^|test_feed_data_check_shape_type^|test_fetch_lod_tensor_array^|test_fleet_base_single^|test_fuse_all_reduce_pass^|test_fuse_elewise_add_act_pass^|^
-test_fuse_optimizer_pass^|test_generator_dataloader^|test_gpu_package_without_gpu_device^|test_ir_memory_optimize_ifelse_op^|test_ir_memory_optimize_nlp^|test_lr_scheduler^|^
-test_multiprocess_dataloader_iterable_dataset_dynamic^|test_multiprocess_dataloader_iterable_dataset_static^|test_nvprof^|test_parallel_dygraph_sync_batch_norm^|test_parallel_executor_drop_scope^|^
-test_parallel_executor_dry_run^|test_partial_eager_deletion_transformer^|test_prune^|test_py_reader_combination^|test_py_reader_pin_memory^|^
-test_py_reader_push_pop^|test_py_reader_using_executor^|test_reader_reset^|test_update_loss_scaling_op^|test_imperative_static_runner_while^|^
-test_parallel_executor_transformer^|test_parallel_executor_transformer_auto_growth^|test_flags_use_mkldnn^|test_optimizer_in_control_flow^|test_fuse_bn_act_pass^|^
-test_fuse_bn_add_act_pass^|test_activation_mkldnn_op^|test_tsm^|test_gru_rnn_op^|test_rnn_op^|test_simple_rnn_op^|test_pass_builder^|test_lstm_cudnn_op^|test_inplace_addto_strategy^|^
-test_ir_inplace_pass^|test_ir_memory_optimize_pass^|test_memory_reuse_exclude_feed_var^|test_mix_precision_all_reduce_fuse^|test_parallel_executor_pg^|test_print_op^|test_py_func_op^|^
-test_weight_decay^|test_mobile_net^|test_graph^|test_imperative_out_scale^|test_imperative_qat^|test_imperative_qat_channelwise^|test_moving_average_abs_max_scale_op^|^
-test_quantization_pass^|test_quantization_scale_pass^|test_user_defined_quantization^|test_conv2d_int8_mkldnn_op^|^
-test_crypto^|test_callbacks^|test_program_prune_backward^|test_imperative_ocr_attention_model
+set diable_wingpu_test=test_analysis_predictor^|^
+test_model^|^
+test_add_reader_dependency^|^
+test_bilateral_slice_op^|^
+test_cholesky_op^|^
+test_dataloader_early_reset^|^
+test_decoupled_py_reader^|^
+test_decoupled_py_reader_data_check^|^
+test_eager_deletion_delete_vars^|^
+test_eager_deletion_while_op^|^
+test_feed_data_check_shape_type^|^
+test_fetch_lod_tensor_array^|^
+test_fleet_base_single^|^
+test_fuse_all_reduce_pass^|^
+test_fuse_elewise_add_act_pass^|^
+test_fuse_optimizer_pass^|^
+test_generator_dataloader^|^
+test_ir_memory_optimize_ifelse_op^|^
+test_lr_scheduler^|^
+test_multiprocess_dataloader_iterable_dataset_dynamic^|^
+test_multiprocess_dataloader_iterable_dataset_static^|^
+test_parallel_dygraph_sync_batch_norm^|^
+test_parallel_executor_drop_scope^|^
+test_parallel_executor_dry_run^|^
+test_partial_eager_deletion_transformer^|^
+test_prune^|^
+test_py_reader_combination^|^
+test_py_reader_pin_memory^|^
+test_py_reader_push_pop^|^
+test_py_reader_using_executor^|^
+test_reader_reset^|^
+test_update_loss_scaling_op^|^
+test_imperative_static_runner_while^|^
+test_optimizer_in_control_flow^|^
+test_fuse_bn_act_pass^|^
+test_fuse_bn_add_act_pass^|^
+test_tsm^|^
+test_gru_rnn_op^|^
+test_rnn_op^|^
+test_simple_rnn_op^|^
+test_pass_builder^|^
+test_lstm_cudnn_op^|^
+test_inplace_addto_strategy^|^
+test_ir_inplace_pass^|^
+test_ir_memory_optimize_pass^|^
+test_memory_reuse_exclude_feed_var^|^
+test_mix_precision_all_reduce_fuse^|^
+test_parallel_executor_pg^|^
+test_print_op^|^
+test_py_func_op^|^
+test_weight_decay^|^
+test_conv2d_int8_mkldnn_op^|^
+test_crypto^|^
+test_callbacks^|^
+test_program_prune_backward^|^
+test_imperative_ocr_attention_model
 rem /*===============================================================*/
 
 rem these unittest that cost long time, diabled temporarily, Maybe moved to the night
@@ -424,7 +483,7 @@ test_imperative_save_load^|test_imperative_selected_rows_to_lod_tensor^|test_imp
 test_masked_select_op^|test_multiclass_nms_op^|test_naive_best_fit_gpu_memory_limit^|test_nearest_interp_v2_op^|test_nn_grad^|test_norm_nn_grad^|^
 test_normal^|test_pool3d_op^|test_pool2d_op^|test_prroi_pool_op^|test_regularizer^|test_regularizer_api^|test_sgd_op^|test_softmax_with_cross_entropy_op^|test_static_save_load^|^
 test_trilinear_interp_op^|test_trilinear_interp_v2_op^|test_bilinear_interp_op^|test_nearest_interp_op^|test_sequence_conv^|test_transformer^|^
-test_beam_search_decoder^|test_argsort_op^|test_eager_deletion_gru_net^|test_lstmp_op^|test_label_semantic_roles^|test_user_defined_quantization^|^
+test_beam_search_decoder^|test_argsort_op^|test_eager_deletion_gru_net^|test_lstmp_op^|test_label_semantic_roles^|^
 test_machine_translation^|test_row_conv_op^|test_deformable_conv_op^|test_inplace_softmax_with_cross_entropy^|test_conv2d_transpose_op^|test_conv3d_transpose_op^|^
 test_cyclic_cifar_dataset^|test_deformable_psroi_pooling^|test_elementwise_mul_op^|test_imperative_auto_mixed_precision^|test_imperative_optimizer_v2^|test_imperative_ptb_rnn_sorted_gradient^|^
 test_imperative_save_load_v2^|test_nan_inf^|test_norm_op^|test_reduce_op^|test_sigmoid_cross_entropy_with_logits_op^|test_stack_op^|test_strided_slice_op^|test_transpose_op
@@ -607,6 +666,17 @@ echo "Windows %~3 Time: %cost_secs%s"
 goto:eof
 
 
+:collect_clcache_hits
+for /f "tokens=2,4" %%i in ('clcache.exe -s ^| findstr "entries hits"') do set %%i=%%j
+if %hits% EQU 0 (
+    echo "clcache hit rate: 0%%"
+) else (
+    set /a rate=%hits%*10000/%entries%
+    echo "clcache hit rate: %rate:~0,-2%.%rate:~-2%%%"
+)
+goto:eof
+
+
 rem ---------------------------------------------------------------------------------------------
 :success
 echo    ========================================
@@ -624,8 +694,6 @@ taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
-echo 0 > %cache_dir%\error_code.txt
-type %cache_dir%\error_code.txt
 echo Windows CI run successfully!
 exit /b 0
 

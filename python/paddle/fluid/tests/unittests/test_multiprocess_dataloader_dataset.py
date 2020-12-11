@@ -20,8 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.io import Dataset, IterableDataset, TensorDataset, \
-        ComposeDataset, ChainDataset, DataLoader
-from paddle.fluid.dygraph.base import to_variable
+        ComposeDataset, ChainDataset, DataLoader, random_split, Subset
 
 IMAGE_SIZE = 32
 
@@ -54,14 +53,14 @@ class RandomIterableDataset(IterableDataset):
 
 class TestTensorDataset(unittest.TestCase):
     def run_main(self, num_workers, places):
-        fluid.default_startup_program().random_seed = 1
-        fluid.default_main_program().random_seed = 1
-        place = fluid.CPUPlace()
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
+        place = paddle.CPUPlace()
         with fluid.dygraph.guard(place):
             input_np = np.random.random([16, 3, 4]).astype('float32')
-            input = to_variable(input_np)
+            input = paddle.to_tensor(input_np)
             label_np = np.random.random([16, 1]).astype('int32')
-            label = to_variable(label_np)
+            label = paddle.to_tensor(label_np)
 
             dataset = TensorDataset([input, label])
             assert len(dataset) == 16
@@ -83,17 +82,17 @@ class TestTensorDataset(unittest.TestCase):
                 assert np.allclose(label.numpy(), label_np[i])
 
     def test_main(self):
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
         for p in places:
             self.run_main(num_workers=0, places=p)
 
 
 class TestComposeDataset(unittest.TestCase):
     def test_main(self):
-        fluid.default_startup_program().random_seed = 1
-        fluid.default_main_program().random_seed = 1
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
 
         dataset1 = RandomDataset(10)
         dataset2 = RandomDataset(10)
@@ -110,10 +109,104 @@ class TestComposeDataset(unittest.TestCase):
             assert np.allclose(label2, label2_t)
 
 
+class TestRandomSplitApi(unittest.TestCase):
+    def test_main(self):
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
+
+        dataset1, dataset2 = paddle.io.random_split(range(5), [1, 4])
+
+        self.assertTrue(len(dataset1) == 1)
+        self.assertTrue(len(dataset2) == 4)
+
+        elements_list = list(range(5))
+
+        for _, val in enumerate(dataset1):
+            elements_list.remove(val)
+
+        for _, val in enumerate(dataset2):
+            elements_list.remove(val)
+
+        self.assertTrue(len(elements_list) == 0)
+
+
+class TestRandomSplitError(unittest.TestCase):
+    def test_errors(self):
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
+
+        self.assertRaises(ValueError, paddle.io.random_split, range(5), [3, 8])
+        self.assertRaises(ValueError, paddle.io.random_split, range(5), [8])
+        self.assertRaises(ValueError, paddle.io.random_split, range(5), [])
+
+
+class TestSubsetDataset(unittest.TestCase):
+    def run_main(self, num_workers, places):
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
+
+        input_np = np.random.random([5, 3, 4]).astype('float32')
+        input = paddle.to_tensor(input_np)
+        label_np = np.random.random([5, 1]).astype('int32')
+        label = paddle.to_tensor(label_np)
+
+        dataset = TensorDataset([input, label])
+        even_subset = paddle.io.Subset(dataset, [0, 2, 4])
+        odd_subset = paddle.io.Subset(dataset, [1, 3])
+
+        assert len(dataset) == 5
+
+        def prepare_dataloader(dataset):
+            return DataLoader(
+                dataset,
+                places=places,
+                num_workers=num_workers,
+                batch_size=1,
+                drop_last=True)
+
+        dataloader = prepare_dataloader(dataset)
+        dataloader_even = prepare_dataloader(even_subset)
+        dataloader_odd = prepare_dataloader(odd_subset)
+
+        def assert_basic(input, label):
+            assert len(input) == 1
+            assert len(label) == 1
+            assert input.shape == [1, 3, 4]
+            assert label.shape == [1, 1]
+            assert isinstance(input, paddle.Tensor)
+            assert isinstance(label, paddle.Tensor)
+
+        elements_list = list()
+        for _, (input, label) in enumerate(dataloader()):
+            assert_basic(input, label)
+            elements_list.append(label)
+
+        for _, (input, label) in enumerate(dataloader_even()):
+            assert_basic(input, label)
+            elements_list.remove(label)
+
+        odd_list = list()
+        for _, (input, label) in enumerate(dataloader_odd()):
+            assert_basic(input, label)
+            odd_list.append(label)
+
+        self.assertEqual(odd_list, elements_list)
+
+    def test_main(self):
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
+
+        places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for p in places:
+            self.run_main(num_workers=0, places=p)
+
+
 class TestChainDataset(unittest.TestCase):
     def run_main(self, num_workers, places):
-        fluid.default_startup_program().random_seed = 1
-        fluid.default_main_program().random_seed = 1
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
 
         dataset1 = RandomIterableDataset(10)
         dataset2 = RandomIterableDataset(10)
@@ -135,9 +228,9 @@ class TestChainDataset(unittest.TestCase):
             idx += 1
 
     def test_main(self):
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
         for p in places:
             self.run_main(num_workers=0, places=p)
 

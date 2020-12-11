@@ -21,6 +21,8 @@ import requests
 from github import Github
 
 PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
+PADDLE_ROOT += '/'
+PADDLE_ROOT = PADDLE_ROOT.replace('//', '/')
 
 
 class PRChecker(object):
@@ -30,13 +32,14 @@ class PRChecker(object):
         self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)
         self.repo = self.github.get_repo('PaddlePaddle/Paddle')
         self.py_prog_oneline = re.compile('\d+\|\s*#.*')
-        self.py_prog_multiline_a = re.compile('\d+\|\s*""".*?"""', re.DOTALL)
-        self.py_prog_multiline_b = re.compile("\d+\|\s*'''.*?'''", re.DOTALL)
+        self.py_prog_multiline_a = re.compile('\d+\|\s*r?""".*?"""', re.DOTALL)
+        self.py_prog_multiline_b = re.compile("\d+\|\s*r?'''.*?'''", re.DOTALL)
         self.cc_prog_online = re.compile('\d+\|\s*//.*')
         self.cc_prog_multiline = re.compile('\d+\|\s*/\*.*?\*/', re.DOTALL)
         self.lineno_prog = re.compile('@@ \-\d+,\d+ \+(\d+),(\d+) @@')
         self.pr = None
         self.suffix = ''
+        self.full_case = False
 
     def init(self):
         """ Get pull request. """
@@ -48,6 +51,17 @@ class PRChecker(object):
         if suffix:
             self.suffix = suffix
         self.pr = self.repo.get_pull(int(pr_id))
+        last_commit = None
+        ix = 0
+        while True:
+            commits = self.pr.get_commits().get_page(ix)
+            for c in commits:
+                last_commit = c.commit
+            else:
+                break
+            ix = ix + 1
+        if last_commit.message.find('test=full_case') != -1:
+            self.full_case = True
 
     def get_pr_files(self):
         """ Get files in pull request. """
@@ -77,10 +91,10 @@ class PRChecker(object):
         return result
 
     def __get_comment_by_prog(self, content, prog):
-        result = []
         result_list = prog.findall(content)
         if not result_list:
-            return None
+            return []
+        result = []
         for u in result_list:
             result.extend(u.split('\n'))
         return result
@@ -102,7 +116,7 @@ class PRChecker(object):
         if f.endswith('.py'):
             filetype = 'py'
         else:
-            return None
+            return []
         return self.__get_comment_by_filetype(inputs, filetype)
 
     def get_pr_diff_lines(self):
@@ -131,8 +145,8 @@ class PRChecker(object):
                             end += 1
                         if data[ix][0] == '+':
                             line_list = file_to_diff_lines.get(filename)
-                            line = '{}{}'.format(lineno, data[ix].replace('+',
-                                                                          '|'))
+                            line = '{}{}'.format(lineno,
+                                                 data[ix].replace('+', '|', 1))
                             if line_list:
                                 line_list.append(line)
                             else:
@@ -146,9 +160,9 @@ class PRChecker(object):
     def is_only_comment(self, f):
         file_to_diff_lines = self.get_pr_diff_lines()
         comment_lines = self.get_comment_of_file(f)
-        #for l in comment_lines:
-        #    print(l)
-        diff_lines = file_to_diff_lines.get(f.replace(PADDLE_ROOT, ''))
+        diff_lines = file_to_diff_lines.get(f.replace(PADDLE_ROOT, '', 1))
+        if not diff_lines:
+            return False
         for l in diff_lines:
             if l not in comment_lines:
                 return False
@@ -156,10 +170,12 @@ class PRChecker(object):
 
     def get_pr_ut(self):
         """ Get unit tests in pull request. """
+        if self.full_case:
+            return ''
         check_added_ut = False
         ut_list = []
         file_ut_map = None
-        cmd = 'wget -q --no-check-certificate https://sys-p0.bj.bcebos.com/prec/file_ut.json' + self.suffix
+        cmd = 'wget -q --no-proxy --no-check-certificate https://sys-p0.bj.bcebos.com/prec/file_ut.json' + self.suffix
         os.system(cmd)
         with open('file_ut.json' + self.suffix) as jsonfile:
             file_ut_map = json.load(jsonfile)
@@ -172,22 +188,23 @@ class PRChecker(object):
                         ut_list.append('h_cu_comment_placeholder')
                     else:
                         return ''
-                elif f.endswith('.cc'):
+                elif f.endswith('.cc') or f.endswith('.py') or f.endswith(
+                        '.cu'):
                     if f.find('test_') != -1 or f.find('_test') != -1:
                         check_added_ut = True
                     elif self.is_only_comment(f):
-                        ut_list.append('cc_comment_placeholder')
+                        ut_list.append('nomap_comment_placeholder')
                     else:
                         return ''
                 else:
                     return ''
             else:
                 if self.is_only_comment(f):
-                    ut_list.append('cc_comment_placeholder')
+                    ut_list.append('map_comment_placeholder')
                 else:
                     ut_list.extend(file_ut_map.get(f))
         ut_list = list(set(ut_list))
-        cmd = 'wget -q --no-check-certificate https://sys-p0.bj.bcebos.com/prec/prec_delta' + self.suffix
+        cmd = 'wget -q --no-proxy --no-check-certificate https://sys-p0.bj.bcebos.com/prec/prec_delta' + self.suffix
         os.system(cmd)
         with open('prec_delta' + self.suffix) as delta:
             for ut in delta:

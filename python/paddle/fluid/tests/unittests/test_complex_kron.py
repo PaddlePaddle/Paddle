@@ -33,33 +33,13 @@ class ComplexKronTestCase(unittest.TestCase):
 
     def runTest(self):
         for place in self._places:
-            self.test_complex_api(place)
-            self.test_basic_api(place)
+            self.test_kron_api(place)
 
-    def test_complex_api(self, place):
+    def test_kron_api(self, place):
         with dg.guard(place):
             x_var = dg.to_variable(self.x)
             y_var = dg.to_variable(self.y)
-            out_var = paddle.complex.kron(x_var, y_var)
-            self.assertTrue(np.allclose(out_var.numpy(), self.ref_result))
-
-    def test_basic_api(self, place):
-        with dg.guard(place):
-            x_var = paddle.Tensor(
-                value=self.x,
-                place=place,
-                persistable=False,
-                zero_copy=None,
-                stop_gradient=True)
-
-            y_var = paddle.Tensor(
-                value=self.y,
-                place=place,
-                persistable=False,
-                zero_copy=None,
-                stop_gradient=True)
-
-            out_var = tensor.math.kron(x_var, y_var)
+            out_var = paddle.kron(x_var, y_var)
             self.assertTrue(np.allclose(out_var.numpy(), self.ref_result))
 
 
