@@ -86,7 +86,8 @@ class DownpourServer(Server):
                     'embed_sparse_initial_range', 'embed_sparse_initial_g2sum', 'embed_sparse_beta1_decay_rate', \
                     'embed_sparse_beta2_decay_rate', 'embedx_sparse_optimizer', 'embedx_sparse_learning_rate', \
                     'embedx_sparse_weight_bounds', 'embedx_sparse_initial_range', 'embedx_sparse_initial_g2sum', \
-                    'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate']
+                    'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate', 'sparse_hit_interval_learning_rate', \
+                    'sparse_hit_interval_initial_value']
 
         for key in strategy:
             if key not in support_sparse_key_list:

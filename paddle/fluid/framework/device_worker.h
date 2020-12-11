@@ -223,7 +223,7 @@ class DownpourWorker : public HogwildWorker {
   void CollectLabelInfo(size_t table_id);
   void AdjustInsWeight();
   // For hit interval ins weight in recall
-  void FillInsWeight();
+  void FillInsWeight(size_t table_id);
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();

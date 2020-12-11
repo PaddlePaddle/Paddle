@@ -140,10 +140,11 @@ class TrainerDesc(object):
                 config_dict.get("ins_weight_slot", "")
 
     def _set_recall_ins_weight(self, config_dict):
-        # self.proto_desc.recall_ins_weight_config.item_sampling_slot = []
-        for slot in config_dict.get("item_sampling_slot", []):
-            self.proto_desc.recall_ins_weight_config.item_sampling_slot.extend(slot)
-        print("self.proto_desc.recall_ins_weight_config.item_sampling_slot:", self.proto_desc.recall_ins_weight_config.item_sampling_slot)
+        for slot in config_dict.get("item_sampling_slot", "").split(","):
+            self.proto_desc.recall_ins_weight_config.item_sampling_slot.extend(
+                [slot])
+        print("self.proto_desc.recall_ins_weight_config.item_sampling_slot:",
+              self.proto_desc.recall_ins_weight_config.item_sampling_slot)
         self.proto_desc.recall_ins_weight_config.item_sampling_ins_weight = \
                 config_dict.get("item_sampling_ins_weight", "")
         self.proto_desc.recall_ins_weight_config.sampling_bias_scalar = \

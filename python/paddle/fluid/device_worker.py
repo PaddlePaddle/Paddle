@@ -256,17 +256,22 @@ class DownpourSGD(DeviceWorker):
                     self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                         i].accessor.fea_dim
                 sparse_table.fea_dim = sparse_table.emb_dim
-            elif "recall_ins_weight" in opt_info and "item_sampling_slot" in opt_info["recall_ins_weight"]:
+            elif "recall_ins_weight" in opt_info and "item_sampling_slot" in opt_info[
+                    "recall_ins_weight"]:
                 sparse_table.emb_dim = \
                     self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                         i].accessor.fea_dim - 3
                 sparse_table.fea_dim = sparse_table.emb_dim + 3
+                sparse_table.initial_value = \
+                    self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
+                        i].accessor.hit_interval_sgd_param.initial_value
             else:
                 sparse_table.emb_dim = \
                     self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                         i].accessor.fea_dim - 2
                 sparse_table.fea_dim = sparse_table.emb_dim + 2
-            print("sparse_table.fea_dim:", sparse_table.fea_dim, "sparse_table.emb_dim:", sparse_table.emb_dim)
+            print("sparse_table.fea_dim:", sparse_table.fea_dim,
+                  "sparse_table.emb_dim:", sparse_table.emb_dim)
             # TODO(guru4elephant): hard code here, need to improve
             sparse_table.label_var_name = "click"
         if opt_info["stat_var_names"]:

@@ -532,7 +532,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     std::vector<::std::future<int32_t>>* push_sparse_status,
     const int batch_size, const bool use_cvm, const bool dump_slot,
     std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
-    const std::vector<int>& need_hit_interval, const std::vector<float>& hit_interval_new) {
+    const std::vector<int>& need_hit_interval,
+    const std::vector<float>& hit_interval_new) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
   int slot_offset = 0;
@@ -595,7 +596,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       exit(-1);
     }
     float* g = g_tensor->data<float>();
-
+    VLOG(0) << "pushsparse get g_tensor data";
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
       int dim = emb_dim;
       Eigen::Map<
@@ -612,19 +613,26 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       CHECK(fea_idx < (*push_values).size());
 
       if (use_cvm || no_cvm) {
-        memcpy((*push_values)[fea_idx].data() + offset + slot_offset + hit_interval_offset,
+        memcpy((*push_values)[fea_idx].data() + offset + slot_offset +
+                   hit_interval_offset,
                g, sizeof(float) * emb_dim);
       } else {
         CHECK(fea_idx < fea_labels.size());
-        memcpy((*push_values)[fea_idx].data() + offset + slot_offset + hit_interval_offset,
+        VLOG(0) << "memcpy push_values";
+        memcpy((*push_values)[fea_idx].data() + offset + slot_offset +
+                   hit_interval_offset,
                g, sizeof(float) * emb_dim);
         (*push_values)[fea_idx][show_index] = 1.0f;
         (*push_values)[fea_idx][click_index] =
             static_cast<float>(fea_labels[fea_idx]);
         if (need_push_hit_interval > 0) {
-          (*push_values)[fea_idx][need_hit_interval_index] = static_cast<float>(need_hit_interval[fea_idx]);
-          (*push_values)[fea_idx][hit_interval_new_index] = hit_interval_new[fea_idx];
-          VLOG(0) << "need_hit_interval[fea_idx]: " << need_hit_interval[fea_idx] << "  hit_interval_new[fea_idx]: " << hit_interval_new[fea_idx];
+          (*push_values)[fea_idx][need_hit_interval_index] =
+              static_cast<float>(need_hit_interval[fea_idx]);
+          (*push_values)[fea_idx][hit_interval_new_index] =
+              hit_interval_new[fea_idx];
+          VLOG(0) << "pushsparse memcpy "
+                     "(*push_values)[fea_idx][need_hit_interval_index]:"
+                  << (*push_values)[fea_idx][need_hit_interval_index];
         }
       }
       if (dump_slot) {
@@ -667,10 +675,12 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   for (auto i = 0u; i < sparse_push_keys->size(); ++i) {
     push_g_vec.push_back((*push_values)[i].data());
   }
+  VLOG(0) << "push sparse get push_g_vec:" << sparse_push_keys->size();
   auto status = pslib_ptr_->_worker_ptr->push_sparse(
       table_id, sparse_push_keys->data(), (const float**)push_g_vec.data(),
       sparse_push_keys->size());
   push_sparse_status->push_back(std::move(status));
+  VLOG(0) << " finish server push_sparse";
 #endif
 }
 
