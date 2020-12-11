@@ -787,9 +787,6 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
                 return k1.first < k2.first;
               });
 
-    auto &keys = ids.at(i);
-    auto &values = value_ptrs.at(i);
-
     uint64_t last_key = UINT64_MAX;
     uint32_t kv_request_count = 0;
     size_t sorted_kv_size = sorted_kvs.size();
