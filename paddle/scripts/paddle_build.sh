@@ -1692,9 +1692,6 @@ function summary_check_problems() {
 }
 
 function main() {
-    echo ">>> get cpu information in coverage"
-    lscpu
-
     local CMD=$1 
     local parallel_number=$2
     init
