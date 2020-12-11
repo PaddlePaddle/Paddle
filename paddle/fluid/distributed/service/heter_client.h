@@ -77,6 +77,7 @@ class HeterClient {
   static std::shared_ptr<HeterClient> GetInstance(
       const std::vector<std::string>& endpoint, const int& trainer_id) {
     if (NULL == s_instance_) {
+      is_initialized_ = true;
       s_instance_.reset(new paddle::distributed::HeterClient());
       s_instance_->SetXpuList(endpoint);
       s_instance_->SetTrainerID(trainer_id);
@@ -97,6 +98,7 @@ class HeterClient {
   std::future<int32_t> StartProfiler();
 
   std::future<int32_t> StopProfiler();
+  std::future<int32_t> StopHeterWorker();
 
   std::vector<std::string>& GetXpuList() { return xpu_list_; }
 

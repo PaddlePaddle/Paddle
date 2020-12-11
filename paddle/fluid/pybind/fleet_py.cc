@@ -140,12 +140,12 @@ void BindDistCommunicator(py::module* m) {
 }
 
 void BindHeterClient(py::module* m) {
-  py::class_<HeterClient>(*m, "HeterClient")
+  py::class_<HeterClient, std::shared_ptr<HeterClient>>(*m, "HeterClient")
       .def(py::init(
           [](const std::vector<std::string>& endpoint, const int& trainer_id) {
             return HeterClient::GetInstance(endpoint, trainer_id);
           }))
-      .def("stop", &HeterClient::Stop)
+      .def("stop", &HeterClient::Stop);
 }
 
 }  // end namespace pybind

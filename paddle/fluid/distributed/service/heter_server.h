@@ -51,11 +51,12 @@ typedef int32_t (HeterService::*serviceHandlerFunc)(
 
 class HeterService : public ::paddle::PsService {
  public:
-  HeterService() {}
-  virtual ~HeterService() {
+  HeterService() {
+    _service_handler_map[PS_STOP_SERVER] = &HeterService::stop_heter_worker;
     _service_handler_map[PS_START_PROFILER] = &HeterService::start_profiler;
     _service_handler_map[PS_STOP_PROFILER] = &HeterService::stop_profiler;
   }
+  virtual ~HeterService() {}
 
   void SendAndRecvVariable(::google::protobuf::RpcController* controller,
                            const MultiVarMsg* request, MultiVarMsg* response,
@@ -83,8 +84,10 @@ class HeterService : public ::paddle::PsService {
     response->set_err_code(0);
     response->set_err_msg("");
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+    VLOG(0) << "service cmd_id " << request->cmd_id();
     auto itr = _service_handler_map.find(request->cmd_id());
     if (itr == _service_handler_map.end()) {
+      VLOG(0) << "not find cmd_id " << request->cmd_id();
       std::string err_msg(
           "undefined cmd_id, should match PsCmdID in ps.proto, cmd_id:");
       err_msg.append(std::to_string(request->cmd_id()));
@@ -104,6 +107,8 @@ class HeterService : public ::paddle::PsService {
   }
 
   void SetEndpoint(const std::string& end_point) { endpoint_ = end_point; }
+  void SetFanin(const int& fan_in) { fan_in_ = fan_in; }
+  bool IsExit() { return is_exit_; }
 
  private:
   int32_t stop_profiler(const PsRequestMessage& request,
@@ -112,10 +117,17 @@ class HeterService : public ::paddle::PsService {
   int32_t start_profiler(const PsRequestMessage& request,
                          PsResponseMessage& response, brpc::Controller* cntl);
 
+  int32_t stop_heter_worker(const PsRequestMessage& request,
+                            PsResponseMessage& response,
+                            brpc::Controller* cntl);
+
  private:
   std::string endpoint_;
   std::unordered_map<std::string, HeterServiceHandler> handler_map_;
   std::unordered_map<int32_t, serviceHandlerFunc> _service_handler_map;
+  std::unordered_set<int> stop_cpu_worker_set_;
+  int fan_in_;
+  bool is_exit_ = false;
 };
 
 class HeterServer {
@@ -130,14 +142,16 @@ class HeterServer {
     server_.Join();
   }
 
+  bool IsExit() { return service_.IsExit(); }
+
   HeterServer() {}
 
   void RegisterServiceHandler(std::string message_name,
                               HeterServiceHandler func);
 
   void StartHeterService();
-
   void SetEndPoint(std::string& endpoint);
+  void SetFanin(int& fan_in);
 
   // HeterWrapper singleton
   static std::shared_ptr<HeterServer> GetInstance() {

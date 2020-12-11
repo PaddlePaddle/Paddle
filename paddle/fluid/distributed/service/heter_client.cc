@@ -42,6 +42,8 @@ void HeterClient::Stop() {
     VLOG(0) << "HeterClient is not inited, do nothing";
   } else {
     if (main_thread_) {
+      auto status = StopHeterWorker();
+      status.wait();
       main_thread_->join();
       main_thread_.reset(nullptr);
     }
@@ -51,7 +53,7 @@ void HeterClient::Stop() {
 
 void HeterClient::RpcProfilerControl() {
   if (trainer_id_ == 0) {
-    if (platform::IsProfileEnabled()) {
+    if (!do_server_profiler_ && platform::IsProfileEnabled()) {
       // send profiler start flag
       do_server_profiler_ = true;
       auto start_status = StartProfiler();
@@ -157,6 +159,10 @@ std::future<int32_t> HeterClient::StartProfiler() {
 }
 
 std::future<int32_t> HeterClient::StopProfiler() {
+  return SendCmd(-1, PS_STOP_PROFILER, {});
+}
+
+std::future<int32_t> HeterClient::StopHeterWorker() {
   return SendCmd(-1, PS_STOP_SERVER, {});
 }
 

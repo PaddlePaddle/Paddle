@@ -502,6 +502,7 @@ def create_heter_program(program, config, heter_program, heter_ops,
         "optimize_blocks": optimizer_block,
         # runtime attribute
         "endpoint": config.get_heter_worker_endpoint(),
+        "fanin": config.get_trainers(),
         "pserver_id": config.get_role_id(),
         "distributed_mode": config.get_distributed_mode(),
         "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32))

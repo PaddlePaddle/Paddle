@@ -53,6 +53,8 @@ void HeterServer::SetEndPoint(std::string& endpoint) {
   service_.SetEndpoint(endpoint);
 }
 
+void HeterServer::SetFanin(int& fan_in) { service_.SetFanin(fan_in); }
+
 void HeterServer::WaitServerReady() {
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
@@ -61,6 +63,7 @@ void HeterServer::WaitServerReady() {
 int32_t HeterService::stop_profiler(const PsRequestMessage& request,
                                     PsResponseMessage& response,
                                     brpc::Controller* cntl) {
+  VLOG(0) << "HeterService::stop_profiler";
   platform::DisableProfiler(
       platform::EventSortingKey::kDefault,
       string::Sprintf("heter_worker_%s_profile", endpoint_));
@@ -70,7 +73,20 @@ int32_t HeterService::stop_profiler(const PsRequestMessage& request,
 int32_t HeterService::start_profiler(const PsRequestMessage& request,
                                      PsResponseMessage& response,
                                      brpc::Controller* cntl) {
+  VLOG(0) << "HeterService::start_profiler";
   platform::EnableProfiler(platform::ProfilerState::kAll);
+  return 0;
+}
+
+int32_t HeterService::stop_heter_worker(const PsRequestMessage& request,
+                                        PsResponseMessage& response,
+                                        brpc::Controller* cntl) {
+  VLOG(0) << "HeterService::stop_heter_worker";
+  auto client_id = request.client_id();
+  stop_cpu_worker_set_.insert(client_id);
+  if (stop_cpu_worker_set_.size() == fan_in_) {
+    is_exit_ = true;
+  }
   return 0;
 }
 

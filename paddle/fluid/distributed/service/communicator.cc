@@ -363,7 +363,7 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
 
 void Communicator::RpcProfilerControl() {
   if (trainer_id_ == 0) {
-    if (platform::IsProfileEnabled()) {
+    if (!do_server_profiler_ && platform::IsProfileEnabled()) {
       // send profiler start flag
       do_server_profiler_ = true;
       auto start_status = _worker_ptr->start_profiler();
@@ -757,7 +757,7 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
 
   PADDLE_ENFORCE_EQ(var->IsType<framework::SelectedRows>(), true,
                     platform::errors::InvalidArgument(
-                    "Only need to send Sparse Grad in Geo mode."));
+                        "Only need to send Sparse Grad in Geo mode."));
   auto &rows = var->Get<framework::SelectedRows>().rows();
 
   // insert ids which has not been record

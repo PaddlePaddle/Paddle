@@ -492,10 +492,6 @@ class TheOnePSRuntime(RuntimeBase):
         self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
                                          string_hosts, fluid.global_scope())
 
-        if self.role_maker._is_heter_worker():
-            self._heter_client = HeterClient(
-                self.role_maker._get_heter_worker_endpoints(), self.role_maker._role_id())
-
         dist_strategy = self.context["valid_strategy"]
 
         is_test = bool(int(os.getenv("TEST_MODE", "0")))
@@ -527,6 +523,9 @@ class TheOnePSRuntime(RuntimeBase):
             ):
                 wait_server_ready(
                     self.role_maker._get_heter_worker_endpoints())
+
+                self._heter_client = HeterClient(
+                    self.role_maker._get_heter_worker_endpoints(), self.role_maker._role_id())
 
     def _push_sparse_param(self, var_name, table_id=-1, scope=fluid.global_scope()):
         self._communicator.push_sparse_param(var_name, table_id, scope)
@@ -748,7 +747,8 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _stop_worker(self):
         self._communicator.stop()
-        self._heter_client.stop()
+        if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker():
+            self._heter_client.stop()
         executor = self._get_executor()
         executor.close()
 
