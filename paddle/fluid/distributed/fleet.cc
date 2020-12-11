@@ -367,7 +367,7 @@ void FleetWrapper::PushDenseVarsAsync(
     std::vector<std::future<int32_t>>* push_sparse_status, float scale_datanorm,
     int batch_size) {
   auto* communicator = Communicator::GetInstance();
-  PADDLE_ENFORCE_EQ(communicator->Check(table_id), true, "");
+  PADDLE_ENFORCE_EQ(communicator->Check(table_id), true, platform::errors::InvalidArgument("can not find table: %s, please check your config", table_id));
   communicator->Send(var_names, scope);
 }
 
@@ -379,7 +379,7 @@ void FleetWrapper::PushSparseVarsAsync(
   varnames.push_back(grad_varname);
 
   auto* communicator = Communicator::GetInstance();
-  PADDLE_ENFORCE_EQ(communicator->Check(table_id), true, "");
+  PADDLE_ENFORCE_EQ(communicator->Check(table_id), true, platform::errors::InvalidArgument("can not find table: %s, please check your config", table_id));
   communicator->Send(varnames, scope);
 }
 
