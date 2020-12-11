@@ -133,8 +133,11 @@ class Layer(core.Layer):
                 out = mylayer(x)
 
         """
-        # global setting
-        framework._dygraph_tracer().train_mode()
+        # global setting in dygraph
+        # NOTE(chenweihang): nn.Layer also can be used in static mode,
+        # but _dygraph_tracer() can not be called in static mode
+        if in_dygraph_mode():
+            framework._dygraph_tracer().train_mode()
         # Layer-level setting
         self.training = True
         for layer in self.sublayers():
@@ -171,8 +174,11 @@ class Layer(core.Layer):
                 print(out)
 
         """
-        # global setting
-        framework._dygraph_tracer().eval_mode()
+        # global setting in dygraph
+        # NOTE(chenweihang): nn.Layer also can be used in static mode,
+        # but _dygraph_tracer() can not be called in static mode
+        if in_dygraph_mode():
+            framework._dygraph_tracer().eval_mode()
         # Layer-level setting
         self.training = False
         for layer in self.sublayers():
