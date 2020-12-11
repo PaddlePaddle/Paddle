@@ -1,11 +1,11 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -84,6 +84,8 @@ class Communicator(object):
         self.mode = mode_str
         self.envs = envs
         self.communicator_ = None
+        self.send_ctx_ = None
+        self.recv_ctx_ = None
 
     def init_with_ctx(self,
                       send_ctx,
@@ -94,6 +96,8 @@ class Communicator(object):
         self.communicator_ = core.DistCommunicator(self.mode, proto_txt,
                                                    unit64_hosts, send_ctx,
                                                    recv_ctx, scope, self.envs)
+        self.send_ctx_ = send_ctx
+        self.recv_ctx_ = recv_ctx
 
     def start(self):
         """
@@ -157,6 +161,16 @@ class Communicator(object):
     def init_params(self, context):
         self.communicator_.init_params(context)
 
+    def push_sparse_param(self, var_name, table_id=-1, scope=global_scope()):
+        if not self.is_running():
+            raise ValueError(
+                "Communicator should init first. Using fleet.init_worker() before push_sparse_param()")
+        assert isinstance(var_name, str)
+        assert isinstance(table_id, int)
+        if table_id == -1:
+            table_id = self.send_ctx_[var_name].table_id()
+        self.communicator_.push_sparse_param(var_name, table_id, scope)
+
 
 class LargeScaleKV(object):
     def __init__(self):
@@ -170,3 +184,11 @@ class LargeScaleKV(object):
 
     def size(self, varname):
         return self.scale_kv.size(varname)
+
+
+class HeterClient(object):
+    def __init__(self, endpoint, trainer_id):
+        self.heter_client_ = core.HeterClient(endpoint, trainer_id)
+
+    def stop():
+        self.heter_client_.stop()

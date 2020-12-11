@@ -39,3 +39,6 @@ class RuntimeBase(object):
 
     def _save_persistables(self, *args, **kwargs):
         pass
+
+    def _push_sparse_param(self, *args, **kwargs):
+        pass

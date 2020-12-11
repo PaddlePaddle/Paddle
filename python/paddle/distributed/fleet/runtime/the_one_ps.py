@@ -383,6 +383,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._communicator = None
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()
+        self._heter_client = None
 
     def _set_basic_info(self, context):
         self.context = context
@@ -484,12 +485,16 @@ class TheOnePSRuntime(RuntimeBase):
             sync_kwargs = sync_strategy_envs()
             kwargs.update(sync_kwargs)
 
-        from paddle.fluid.communicator import Communicator
+        from paddle.fluid.communicator import Communicator, HeterClient
         self._communicator = Communicator(
             trainer_config.mode, kwargs,
             trainer_config.get_communicator_flags())
         self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
                                          string_hosts, fluid.global_scope())
+
+        if self.role_maker._is_heter_worker():
+            self._heter_client = HeterClient(
+                self.role_maker._get_heter_worker_endpoints(), self.role_maker._role_id())
 
         dist_strategy = self.context["valid_strategy"]
 
@@ -522,6 +527,9 @@ class TheOnePSRuntime(RuntimeBase):
             ):
                 wait_server_ready(
                     self.role_maker._get_heter_worker_endpoints())
+
+    def _push_sparse_param(self, var_name, table_id=-1, scope=fluid.global_scope()):
+        self._communicator.push_sparse_param(var_name, table_id, scope)
 
     def _get_executor(self):
         executor = fluid.Executor(fluid.CPUPlace())
@@ -740,6 +748,7 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _stop_worker(self):
         self._communicator.stop()
+        self._heter_client.stop()
         executor = self._get_executor()
         executor.close()
 

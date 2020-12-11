@@ -763,9 +763,8 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
             } else {
               last_key = kv_pair->first;
               last_value_data = kv_pair->second;
-              if (value_size !=
-                  io_buffer_itr.copy_and_forward((void *)(last_value_data),
-                                                 value_size)) {
+              if (value_size != io_buffer_itr.copy_and_forward(
+                                    (void *)(last_value_data), value_size)) {
                 LOG(WARNING) << "res data is lack or not in format";
                 ret = -1;
                 break;

@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace distributed {
@@ -43,10 +44,19 @@ typedef std::function<void(void*)> HeterRpcCallbackFunc;
 typedef std::function<int(const MultiVarMsg*, MultiVarMsg*, brpc::Controller*)>
     HeterServiceHandler;
 
+class HeterService;
+typedef int32_t (HeterService::*serviceHandlerFunc)(
+    const PsRequestMessage& request, PsResponseMessage& response,
+    brpc::Controller* cntl);
+
 class HeterService : public ::paddle::PsService {
  public:
   HeterService() {}
-  virtual ~HeterService() {}
+  virtual ~HeterService() {
+    _service_handler_map[PS_START_PROFILER] = &HeterService::start_profiler;
+    _service_handler_map[PS_STOP_PROFILER] = &HeterService::stop_profiler;
+  }
+
   void SendAndRecvVariable(::google::protobuf::RpcController* controller,
                            const MultiVarMsg* request, MultiVarMsg* response,
                            ::google::protobuf::Closure* done) {
@@ -63,13 +73,49 @@ class HeterService : public ::paddle::PsService {
     itr->second(request, response, cntl);
   }
 
+  virtual void service(::google::protobuf::RpcController* controller,
+                       const ::paddle::PsRequestMessage* request,
+                       ::paddle::PsResponseMessage* response,
+                       ::google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::string log_label("ReceiveCmd-");
+
+    response->set_err_code(0);
+    response->set_err_msg("");
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+    auto itr = _service_handler_map.find(request->cmd_id());
+    if (itr == _service_handler_map.end()) {
+      std::string err_msg(
+          "undefined cmd_id, should match PsCmdID in ps.proto, cmd_id:");
+      err_msg.append(std::to_string(request->cmd_id()));
+      return;
+    }
+    serviceHandlerFunc handler_func = itr->second;
+    int service_ret = (this->*handler_func)(*request, *response, cntl);
+    if (service_ret != 0) {
+      response->set_err_code(service_ret);
+      response->set_err_msg("server internal error");
+    }
+  };
+
   void RegisterServiceHandler(std::string message_name,
                               HeterServiceHandler func) {
     handler_map_[message_name] = func;
   }
 
+  void SetEndpoint(const std::string& end_point) { endpoint_ = end_point; }
+
  private:
+  int32_t stop_profiler(const PsRequestMessage& request,
+                        PsResponseMessage& response, brpc::Controller* cntl);
+
+  int32_t start_profiler(const PsRequestMessage& request,
+                         PsResponseMessage& response, brpc::Controller* cntl);
+
+ private:
+  std::string endpoint_;
   std::unordered_map<std::string, HeterServiceHandler> handler_map_;
+  std::unordered_map<int32_t, serviceHandlerFunc> _service_handler_map;
 };
 
 class HeterServer {
@@ -157,6 +203,7 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   virtual ~RequestSendAndRecvHandler() {}
   int Handle(const MultiVarMsg* request, MultiVarMsg* response,
              brpc::Controller* cntl) override {
+    platform::RecordEvent record_event("RequestSendAndRecvHandler->Handle");
     auto& local_scope = scope_->NewScope();
     auto message_name = request->message_name();
     auto& request_io_buffer = cntl->request_attachment();

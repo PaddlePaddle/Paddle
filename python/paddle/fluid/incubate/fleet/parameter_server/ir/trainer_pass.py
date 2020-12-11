@@ -562,7 +562,7 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list,
     delete_same_ops(program.global_block(), ops_list)
 
     mode = config.get_distributed_mode()
-    heter_worker_endpoint = config.get_heter_worker_endpoint()
+    heter_worker_endpoint = config.get_heter_worker_endpoints()
     entrance_var = block_var_detail[heter_block_index]["entrance"]
     exit_var = block_var_detail[heter_block_index]["exit"]
 
@@ -578,7 +578,7 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list,
             "send_var_name": entrance_var,
             "recv_var_name": exit_var,
             "message_name": comm_info["block_input_var_name"],
-            "endpoint": heter_worker_endpoint,
+            "endpoints": heter_worker_endpoint,
             "trainer_id": config.get_role_id(),
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
         })

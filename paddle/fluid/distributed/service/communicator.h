@@ -225,6 +225,8 @@ class Communicator {
   virtual void RpcRecvSparse(const std::string &varname, int table_id,
                              Scope *scope);
 
+  virtual void RpcProfilerControl();
+
   virtual ~Communicator() {}
 
   virtual void InitParams(const RecvCtxMap &recv_varname_to_ctx);
