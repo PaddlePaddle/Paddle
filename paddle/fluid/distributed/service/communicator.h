@@ -57,14 +57,15 @@ template <typename T>
 class BlockingQueue {
  public:
   explicit BlockingQueue(size_t capacity) : capacity_(capacity) {
-    PADDLE_ENFORCE_GT(capacity_, 0, "The capacity must be greater than 0.");
+    PADDLE_ENFORCE_GT(capacity_, 0,
+                      platform::errors::InvalidArgument(
+                          "The capacity must be greater than 0."));
   }
 
   bool Push(const T &elem) {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       cv_.wait(lock, [&] { return queue_.size() < capacity_; });
-      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
       queue_.push_back(elem);
     }
     cv_.notify_one();
@@ -75,7 +76,6 @@ class BlockingQueue {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       cv_.wait(lock, [&] { return queue_.size() < capacity_; });
-      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
       queue_.emplace_back(std::move(elem));
     }
     cv_.notify_one();
@@ -313,6 +313,7 @@ class Communicator {
 
   std::unordered_map<std::string, std::string> envs;
 
+  // 计算每个shard 对 dense的存储量
   inline uint32_t dense_dim_per_shard(uint32_t dense_dim_total,
                                       uint32_t shard_num) {
     return dense_dim_total / shard_num + 1;
