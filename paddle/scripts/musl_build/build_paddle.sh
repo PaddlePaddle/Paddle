@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 CUR_DIR=$(dirname "${BASH_SOURCE[0]}")
 CUR_DIR=$(realpath "$CUR_DIR")
 
