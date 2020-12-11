@@ -24,7 +24,6 @@ __all__ = [
 ]
 
 from . import nn
-from . import amp
 from .io import save_inference_model  #DEFINE_ALIAS
 from .io import load_inference_model  #DEFINE_ALIAS
 from ..fluid import Scope  #DEFINE_ALIAS
