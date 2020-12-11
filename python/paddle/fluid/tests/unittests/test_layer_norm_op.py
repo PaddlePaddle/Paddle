@@ -211,7 +211,7 @@ class TestLayerNormOp(unittest.TestCase):
                                   for name in ['x', 'scale', 'bias', 'y@GRAD']
                               },
                               fetch_list=fetch_list)
-                self.__assert_close(y, out[0], "y", 1e-3)
+                self.__assert_close(y, out[0], "y")
                 self.__assert_close(mean, out[1], "mean")
                 self.__assert_close(variance, out[2], "variance", 1e-3)
                 self.__assert_close(x_grad, out[3], "x_grad")

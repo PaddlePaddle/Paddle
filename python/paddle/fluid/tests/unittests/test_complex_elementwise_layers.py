@@ -19,14 +19,6 @@ from numpy.random import random as rand
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
-from paddle import complex as cpx
-
-layers = {
-    "add": cpx.elementwise_add,
-    "sub": cpx.elementwise_sub,
-    "mul": cpx.elementwise_mul,
-    "div": cpx.elementwise_div,
-}
 
 paddle_apis = {
     "add": paddle.add,
@@ -43,26 +35,10 @@ class TestComplexElementwiseLayers(unittest.TestCase):
         if fluid.core.is_compiled_with_cuda():
             self._places.append(paddle.CUDAPlace(0))
 
-    def calc(self, x, y, op, place):
-        with dg.guard(place):
-            var_x = dg.to_variable(x)
-            var_y = dg.to_variable(y)
-            return layers[op](var_x, var_y).numpy()
-
     def paddle_calc(self, x, y, op, place):
         with dg.guard(place):
-            x_t = paddle.Tensor(
-                value=x,
-                place=place,
-                persistable=False,
-                zero_copy=False,
-                stop_gradient=True)
-            y_t = paddle.Tensor(
-                value=y,
-                place=place,
-                persistable=False,
-                zero_copy=False,
-                stop_gradient=True)
+            x_t = dg.to_variable(x)
+            y_t = dg.to_variable(y)
             return paddle_apis[op](x_t, y_t).numpy()
 
     def assert_check(self, pd_result, np_result, place):
@@ -71,13 +47,6 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
             format(place, pd_result[~np.isclose(pd_result, np_result)],
                    np_result[~np.isclose(pd_result, np_result)]))
-
-    def compare_by_complex_api(self, x, y):
-        for place in self._places:
-            self.assert_check(self.calc(x, y, "add", place), x + y, place)
-            self.assert_check(self.calc(x, y, "sub", place), x - y, place)
-            self.assert_check(self.calc(x, y, "mul", place), x * y, place)
-            self.assert_check(self.calc(x, y, "div", place), x / y, place)
 
     def compare_by_basic_api(self, x, y):
         for place in self._places:
@@ -90,7 +59,7 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             self.assert_check(
                 self.paddle_calc(x, y, "div", place), x / y, place)
 
-    def compare_op_by_complex_api(self, x, y):
+    def compare_op_by_basic_api(self, x, y):
         for place in self._places:
             with dg.guard(place):
                 var_x = dg.to_variable(x)
@@ -100,26 +69,6 @@ class TestComplexElementwiseLayers(unittest.TestCase):
                 self.assert_check((var_x * var_y).numpy(), x * y, place)
                 self.assert_check((var_x / var_y).numpy(), x / y, place)
 
-    def compare_op_by_basic_api(self, x, y):
-        for place in self._places:
-            with dg.guard(place):
-                x_t = paddle.Tensor(
-                    value=x,
-                    place=place,
-                    persistable=False,
-                    zero_copy=False,
-                    stop_gradient=True)
-                y_t = paddle.Tensor(
-                    value=y,
-                    place=place,
-                    persistable=False,
-                    zero_copy=False,
-                    stop_gradient=True)
-                self.assert_check((x_t + y_t).numpy(), x + y, place)
-                self.assert_check((x_t - y_t).numpy(), x - y, place)
-                self.assert_check((x_t * y_t).numpy(), x * y, place)
-                self.assert_check((x_t / y_t).numpy(), x / y, place)
-
     def test_complex_xy(self):
         for dtype in self._dtypes:
             x = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
@@ -127,10 +76,7 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             y = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
                 [2, 3, 4, 5]).astype(dtype)
 
-            self.compare_by_complex_api(x, y)
-            self.compare_op_by_complex_api(x, y)
-
-            self.compare_op_by_complex_api(x, y)
+            self.compare_by_basic_api(x, y)
             self.compare_op_by_basic_api(x, y)
 
     def test_complex_x_real_y(self):
@@ -138,9 +84,6 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             x = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
                 [2, 3, 4, 5]).astype(dtype)
             y = rand([4, 5]).astype(dtype)
-
-            self.compare_by_complex_api(x, y)
-            self.compare_op_by_complex_api(x, y)
 
             # promote types cases
             self.compare_by_basic_api(x, y)
@@ -150,9 +93,6 @@ class TestComplexElementwiseLayers(unittest.TestCase):
         for dtype in self._dtypes:
             x = rand([2, 3, 4, 5]).astype(dtype)
             y = rand([5]).astype(dtype) + 1j * rand([5]).astype(dtype)
-
-            self.compare_by_complex_api(x, y)
-            self.compare_op_by_complex_api(x, y)
 
             # promote types cases
             self.compare_by_basic_api(x, y)

@@ -527,6 +527,13 @@ void BindImperative(py::module *m_ptr) {
       m, "VarBase", R"DOC()DOC")
       .def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
       .def("__init__",
+           [](imperative::VarBase &self) {
+             std::string name =
+                 imperative::GetCurrentTracer()->GenerateUniqueName(
+                     "generated_tensor");
+             new (&self) imperative::VarBase(name);
+           })
+      .def("__init__",
            [](imperative::VarBase &self, framework::proto::VarType::Type dtype,
               const std::vector<int> &dims, const py::handle &name,
               framework::proto::VarType::Type type, bool persistable) {
@@ -1023,6 +1030,7 @@ void BindImperative(py::module *m_ptr) {
               y = x.cuda(1)
               print(y.place)        # CUDAPlace(1)
        )DOC")
+      .def("copy_", &imperative::VarBase::CopyFrom)
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CPUPlace &place,
               bool blocking) { return self.NewVarBase(place, blocking); },
@@ -1289,9 +1297,11 @@ void BindImperative(py::module *m_ptr) {
           [](const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
              const std::vector<std::vector<size_t>> &group_indices,
              const std::vector<bool> &is_sparse_gradient,
-             std::shared_ptr<imperative::ParallelContext> parallel_ctx) {
+             std::shared_ptr<imperative::ParallelContext> parallel_ctx,
+             const std::vector<size_t> &group_size_limits) {
             return imperative::Reducer::SetInstance(
-                vars, group_indices, is_sparse_gradient, parallel_ctx);
+                vars, group_indices, is_sparse_gradient, parallel_ctx,
+                group_size_limits);
           }))
       .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
            py::call_guard<py::gil_scoped_release>());
@@ -1299,6 +1309,7 @@ void BindImperative(py::module *m_ptr) {
   m.def("assign_group_by_size", &imperative::AssignGroupBySize, py::arg("vars"),
         py::arg("is_sparse_gradient"),
         py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
+        py::arg("tensor_indices") = std::vector<int64_t>{},
         py::call_guard<py::gil_scoped_release>());
 #endif
 }

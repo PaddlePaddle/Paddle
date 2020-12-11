@@ -179,6 +179,9 @@ class Fleet(object):
                 fleet.init(strategy=strategy)
 
         """
+        if strategy is None:
+            strategy = DistributedStrategy()
+        self._user_defined_strategy = copy.deepcopy(strategy)
 
         if role_maker is None:
             if isinstance(is_collective, bool):
@@ -219,10 +222,6 @@ class Fleet(object):
                     "The dygraph parallel environment has been initialized.")
             else:
                 paddle.distributed.init_parallel_env()
-
-        if strategy is None:
-            strategy = DistributedStrategy()
-        self._user_defined_strategy = copy.deepcopy(strategy)
 
     def is_first_worker(self):
         """

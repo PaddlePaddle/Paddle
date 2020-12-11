@@ -90,18 +90,6 @@ class TestCastOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_dtype_type)
 
 
-class TestCastOpErrorInDygraph(unittest.TestCase):
-    def test_non_support_out_dtype(self):
-        paddle.disable_static()
-
-        with self.assertRaises(NotImplementedError):
-            tensor = paddle.randn([10, 10], 'float32')
-            core.ops.cast(tensor, 'in_dtype', core.VarDesc.VarType.FP32,
-                          'out_dtype', core.VarDesc.VarType.INT16)
-
-        paddle.enable_static()
-
-
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

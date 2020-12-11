@@ -51,6 +51,7 @@ function init() {
     NONE='\033[0m'
 
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+    export PADDLE_ROOT
     if [ -z "${SCRIPT_NAME}" ]; then
         SCRIPT_NAME=$0
     fi
@@ -232,7 +233,7 @@ function cmake_base() {
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
-        -WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
+        -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -242,10 +243,11 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
-	    -DWITH_GLOO=${gloo_flag}
+        -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
         -DLITE_GIT_TAG=develop
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -267,7 +269,7 @@ EOF
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
-        -WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} \
+        -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
@@ -276,10 +278,11 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
-	    -DWITH_GLOO=${gloo_flag} \
+        -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=develop \
         -DWITH_XPU=${WITH_XPU:-OFF} \
-        -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
+        -DWITH_LITE=${WITH_LITE:-OFF} \
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -356,7 +359,14 @@ function build_base() {
         make clean
     fi
 
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+
     make install -j ${parallel_number};build_error=$?
+
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -423,10 +433,19 @@ EOF
     if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
         make clean
     fi
+
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+
     make install -j 8;build_error=$?
+
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
+
     set -e
     build_size
 }
@@ -1545,13 +1564,22 @@ EOF
     startTime_s=`date +%s`
     set +e
     cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto};build_error=$?
+
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+
     make -j ${parallel_number} fluid_lib_dist;build_error=$?
     make -j ${parallel_number} inference_lib_dist;build_error=$?
+
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+
     build_size "paddle_inference"
 }
 
@@ -1622,6 +1650,13 @@ function example() {
       exit 5
     fi
 }
+
+
+function collect_ccache_hits() {
+    rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
+    echo "ccache hit rate: ${rate}%"
+}
+
 
 function test_op_benchmark() {
     bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
