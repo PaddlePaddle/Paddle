@@ -179,7 +179,13 @@ class CUDAContext {
   /*! \brief  Call cublas function with Tensor Core safely. If
       Tensor Core is not available, use DEFAULT_MATH instead. */
   template <typename Callback>
-  inline void TensorCoreCublasCallIfAvailable(Callback&& callback) const {
+  inline void TensorCoreCublasCallIfAvailable(Callback&& callback) {
+    if (TensorCoreAvailable()) {
+#if CUDA_VERSION >= 9000 && CUDA_VERSION < 11000
+      cublas_handle_.reset(
+          new CublasHandleHolder(RawStream(), CUBLAS_TENSOR_OP_MATH));
+#endif  // CUDA_VERSION >= 9000 && CUDA_VERSION < 11000
+    }
     cublas_handle_->Call(std::forward<Callback>(callback));
   }
 
@@ -189,12 +195,6 @@ class CUDAContext {
   void InitCuBlasContext() {
     cublas_handle_.reset(
         new CublasHandleHolder(RawStream(), CUBLAS_DEFAULT_MATH));
-    if (TensorCoreAvailable()) {
-#if CUDA_VERSION >= 9000 && CUDA_VERSION < 11000
-      cublas_handle_.reset(
-          new CublasHandleHolder(RawStream(), CUBLAS_TENSOR_OP_MATH));
-#endif  // CUDA_VERSION >= 9000 && CUDA_VERSION < 11000
-    }
   }
 
   void InitCuDNNContext() {
