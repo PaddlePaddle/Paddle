@@ -109,7 +109,7 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
     int r = xpu_malloc(reinterpret_cast<void**>(&roi_id_data),
                        (rois_batch_size + 1) * sizeof(int));
     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::External("no enough xpu memory"));
+                      platform::errors::External("no enough memory in xpu"));
     memory::Copy(xplace, roi_id_data, cplace, cpu_lod,
                  (rois_batch_size + 1) * sizeof(int));
     delete[] cpu_lod;
@@ -184,7 +184,7 @@ class XPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     int r = xpu_malloc(reinterpret_cast<void**>(&roi_id_data),
                        (rois_batch_size + 1) * sizeof(int));
     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::External("no enough xpu memory"));
+                      platform::errors::External("no enough memory in xpu"));
     memory::Copy(xplace, roi_id_data, cplace, cpu_lod,
                  (rois_batch_size + 1) * sizeof(int));
     in_grad->mutable_data<T>(ctx.GetPlace());

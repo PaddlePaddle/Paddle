@@ -142,7 +142,7 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
       T* tmp = nullptr;
       r = xpu_malloc(reinterpret_cast<void**>(&tmp), dy->numel() * sizeof(T));
       PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                        platform::errors::External("no enough xpu memory"));
+                        platform::errors::External("no enough memory in xpu"));
 
       r = xpu::mul<T>(dev_ctx.x_context(), dy_d, x->data<T>(), tmp,
                       dy->numel());
