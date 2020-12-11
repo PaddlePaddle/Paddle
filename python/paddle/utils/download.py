@@ -141,6 +141,8 @@ def _map_path(url, root_dir):
 
 
 def _get_unique_endpoints(trainer_endpoints):
+    # Sorting is to avoid different environmental variables for each card
+    trainer_endpoints.sort()
     ips = set()
     unique_endpoints = set()
     for endpoint in trainer_endpoints:
@@ -177,8 +179,7 @@ def get_path_from_url(url, root_dir, md5sum=None, check_exist=True):
     # Mainly used to solve the problem of downloading data from different 
     # machines in the case of multiple machines. Different ips will download 
     # data, and the same ip will only download data once.
-    unique_endpoints = _get_unique_endpoints(ParallelEnv().trainer_endpoints)
-
+    unique_endpoints = _get_unique_endpoints(ParallelEnv().trainer_endpoints[:])
     if osp.exists(fullpath) and check_exist and _md5check(fullpath, md5sum):
         logger.info("Found {}".format(fullpath))
     else:
