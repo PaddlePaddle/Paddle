@@ -41,6 +41,20 @@ __global__ void fill_idx(T* idx, size_t len) {
 }
 
 template <typename T>
+__global__ void fill_fake(T* idx, size_t len) {
+
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    idx[i].lr = 0.001;
+    idx[i].mf_size = 0;
+    idx[i].show = 1;
+    idx[i].clk = 0;
+    
+
+  }
+}
+
+template <typename T>
 void show_tensor(T* input, size_t len, cudaStream_t stream, std::string name) {
   T tmp[len];
   cudaMemcpyAsync(&tmp, input, sizeof(T) * len, cudaMemcpyDeviceToHost, stream);
@@ -55,17 +69,26 @@ template <typename T>
 __global__ void calc_shard_offset(T* idx, T* left, T* right, size_t len) {
 
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len - 1) {
+  if (i == (len - 1)) {
+    if (!(idx[i] < 8 && idx[i] >= 0)) {
+      printf("wxx B\n");
+    }
+    right[idx[i]] = i;
+  }
+  else if (i < len - 1) {
     if (idx[i] != idx[i + 1]) {
+      if (!(idx[i] < 8 && idx[i] >= 0)) printf("wxx C id[%u] = %d, len = %u\n", i, idx[i], len);
+      if (!(idx[i + 1] < 8 && idx[i + 1] >= 0)) printf("wxx D id[%u] = %d, len = %u\n", i + 1, idx[i + 1], len);
+      
       right[idx[i]] = i;
       left[idx[i + 1]] = i + 1;
     }
-  }
-  if (i == 0) {
-    left[idx[i]] = i;
-  }
-  if (i == (len - 1)) {
-    right[idx[i]] = i;
+    if (i == 0) {
+      if (!(idx[i] < 8 && idx[i] >= 0)) {
+        printf("wxx E\n");
+      }
+      left[idx[i]] = i;
+    }
   }
 }
 
@@ -75,6 +98,7 @@ __global__ void calc_shard_index(KeyType* d_keys, size_t len, T* shard_index, in
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     shard_index[i] = d_keys[i] % total_gpu;
+    if (!(shard_index[i] < 8 && shard_index[i] >= 0)) printf("wxx F shard_index[%u] = %d, len = %u, total_gpu = %d\n", i, shard_index[i], len, total_gpu);
   }
 }
 
@@ -83,6 +107,7 @@ __global__ void fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys, T* idx, s
  
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
+    if (idx[i] < 0 || idx[i] >= len) printf("wxx id[%u]: %d, len: %u\n", i, idx[i], len);
     d_shard_keys[i] = d_keys[idx[i]];
   }
 }
@@ -187,12 +212,12 @@ void GpuPs<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys, ValTy
 }
 
 template<typename KeyType, typename ValType, typename GradType>
-void GpuPs<KeyType, ValType, GradType>::merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len, size_t& uniq_len) {
+void GpuPs<KeyType, ValType, GradType>::merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len, int& uniq_len) {
   
   int dev_id = resource_->dev_id(gpu_num);
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
-  auto stream = resource_->stream(gpu_num);
+  auto stream = resource_->local_stream(gpu_num, 0);
   
   size_t temp_storage_bytes;
   
@@ -231,9 +256,11 @@ void GpuPs<KeyType, ValType, GradType>::merge_grad(int gpu_num, KeyType* d_keys,
           stream,
           false));
   temp_storage_bytes = 0;
-  int* d_num_runs_out = NULL;
+//  int* d_num_runs_out = NULL;
   
-  cudaMallocManaged(&d_num_runs_out, sizeof(int));
+//  cudaMallocManaged(&d_num_runs_out, sizeof(int));
+  auto d_num_runs_out_mem = memory::AllocShared(place, sizeof(int));
+  int* d_num_runs_out = reinterpret_cast<int*>(d_num_runs_out_mem->ptr());
   
   PADDLE_ENFORCE_CUDA_SUCCESS(cub::DeviceReduce::ReduceByKey(
           NULL,
@@ -265,9 +292,11 @@ void GpuPs<KeyType, ValType, GradType>::merge_grad(int gpu_num, KeyType* d_keys,
           len,
           stream,
           false));
+  
+  cudaMemcpyAsync(&uniq_len, d_num_runs_out, sizeof(int), cudaMemcpyDeviceToHost, stream);
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-  cudaFree(d_num_runs_out);
-  uniq_len = (*d_num_runs_out);
+//  cudaFree(d_num_runs_out);
+//  uniq_len = (*d_num_runs_out);
 }
 
 template<typename KeyType, typename ValType, typename GradType>
@@ -276,7 +305,7 @@ void GpuPs<KeyType, ValType, GradType>::split_input_to_shard(KeyType* d_keys, in
   int dev_id = resource_->dev_id(gpu_num);
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
-  auto stream = resource_->stream(gpu_num);
+  auto stream = resource_->local_stream(gpu_num, 0);
   
   auto d_idx_tmp = memory::AllocShared(place, len * sizeof(int));
   int* d_idx_tmp_ptr = reinterpret_cast<int*>(d_idx_tmp->ptr());
@@ -293,6 +322,7 @@ void GpuPs<KeyType, ValType, GradType>::split_input_to_shard(KeyType* d_keys, in
     
   size_t temp_storage_bytes;
   const int num_bits = 1 + log2i(total_gpu);
+  VLOG(1) << "num bit: " << num_bits << " total_gpu: " << total_gpu << " len: " << len;
   PADDLE_ENFORCE_CUDA_SUCCESS(cub::DeviceRadixSort::SortPairs(NULL, temp_storage_bytes,
                                              d_shard_index_tmp_ptr, d_shard_index_ptr,
                                              d_idx_tmp_ptr, d_idx_ptr,
@@ -311,6 +341,10 @@ void GpuPs<KeyType, ValType, GradType>::split_input_to_shard(KeyType* d_keys, in
                                              stream));
   calc_shard_offset<<<grid_size, block_size_, 0, stream>>>(d_shard_index_ptr, left, right, len);
   
+  
+  //cudaStreamSynchronize(stream); 
+  
+  //  CUDA_RT_CALL(cudaGetLastError());
 }
 
 template<typename KeyType, typename ValType, typename GradType>
@@ -323,19 +357,42 @@ void GpuPs<KeyType, ValType, GradType>::pull_sparse(int num, KeyType* d_keys, Va
   int dev_id = resource_->dev_id(num);
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
-  auto stream = resource_->stream(num);
   
   int grid_size = (len - 1) / block_size_ + 1;
+//  fill_fake<<<grid_size, block_size_, 0, resource_->local_stream(num, 0)>>>(d_vals, len);
 
-  int* left = NULL;
-  int* right = NULL;
-  cudaMallocManaged(&left, total_gpu * sizeof(int));
-  cudaMallocManaged(&right, total_gpu * sizeof(int));
-  cudaMemPrefetchAsync(left, total_gpu * sizeof(int), dev_id, stream);
-  cudaMemPrefetchAsync(right, total_gpu * sizeof(int), dev_id, stream);
-  cudaMemset(left, -1, total_gpu * sizeof(int));
-  cudaMemset(right, -1, total_gpu * sizeof(int));
-  // 
+  platform::Timer timeline;
+  timeline.Start();
+  
+  int h_left[total_gpu];
+  int h_right[total_gpu];
+  
+  auto d_left = memory::AllocShared(place, total_gpu * sizeof(int));
+  auto d_right = memory::AllocShared(place, total_gpu * sizeof(int));
+  int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
+  int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
+  
+  timeline.Pause();
+  VLOG(1) << "GpuPs pull sparse uva cost " << timeline.ElapsedMS() << " ms, gpu num: " << num;
+  
+  timeline.Start();
+
+  cudaMemset(d_left_ptr, -1, total_gpu * sizeof(int));
+  cudaMemset(d_right_ptr, -1, total_gpu * sizeof(int));
+  
+    CUDA_RT_CALL(cudaGetLastError());
+  timeline.Pause();
+  VLOG(1) << "GpuPs pull sparse memset cost " << timeline.ElapsedMS() << " ms, gpu num: " << num;
+  timeline.Start();
+
+
+  KeyType* d_remote_shard_keys_ptr[total_gpu];
+  ValType* d_remote_shard_vals_ptr[total_gpu];
+  std::vector<std::shared_ptr<memory::Allocation>> d_remote_shard_keys;
+  std::vector<std::shared_ptr<memory::Allocation>> d_remote_shard_vals;
+  d_remote_shard_keys.resize(total_gpu);
+  d_remote_shard_vals.resize(total_gpu);
+
   auto d_idx = memory::AllocShared(place, len * sizeof(int));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
   
@@ -344,28 +401,102 @@ void GpuPs<KeyType, ValType, GradType>::pull_sparse(int num, KeyType* d_keys, Va
   auto d_shard_vals = memory::AllocShared(place, len * sizeof(ValType));
   ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
   
+    CUDA_RT_CALL(cudaGetLastError());
+  timeline.Pause();
+  VLOG(1) << "GpuPs pull sparse malloc cost " << timeline.ElapsedMS() << " ms, gpu num: " << num << " len: " << len;
   
-  split_input_to_shard(d_keys, d_idx_ptr, len, left, right, num);
+  timeline.Start();
+  split_input_to_shard(d_keys, d_idx_ptr, len, d_left_ptr, d_right_ptr, num);
   
-  fill_shard_key<<<grid_size, block_size_, 0, stream>>>(d_shard_keys_ptr, d_keys, d_idx_ptr, len);
+  VLOG(1) << "GpuPs pull sparse begin to fill shard key, gpu num: " << num << " len: " << len;
+  fill_shard_key<<<grid_size, block_size_, 0, resource_->local_stream(num, 0)>>>(d_shard_keys_ptr, d_keys, d_idx_ptr, len);
 
-  cudaStreamSynchronize(stream); 
+  cudaStreamSynchronize(resource_->local_stream(num, 0)); 
+  timeline.Pause();
+  VLOG(1) << "GpuPs pull sparse split + fill cost " << timeline.ElapsedMS() << " ms, gpu num: " << num << " len: " << len;
+  
+    CUDA_RT_CALL(cudaGetLastError());
+  timeline.Start();
+  //cudaMemcpyAsync(h_left, d_left_ptr, total_gpu * sizeof(int), cudaMemcpyDeviceToHost, resource_->local_stream(num, 0));
+  //cudaMemcpyAsync(h_right, d_right_ptr, total_gpu * sizeof(int), cudaMemcpyDeviceToHost, resource_->local_stream(num, 0));
+  cudaMemcpy(h_left, d_left_ptr,
+             total_gpu * sizeof(int),
+             cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_right, d_right_ptr,
+             total_gpu * sizeof(int),
+             cudaMemcpyDeviceToHost);
+  
 
+    CUDA_RT_CALL(cudaGetLastError());
   for (int i = 0; i < total_gpu; ++i) {
-    if (left[i] == -1) {
+    int shard_len = h_right[i] - h_left[i] + 1;
+    if (shard_len == 0) {
       continue;
     }
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
-    tables_[i]->get(d_shard_keys_ptr + left[i], d_shard_vals_ptr + left[i], right[i] - left[i] + 1, resource_->stream(i));
+    platform::CUDAPlace remote_place = platform::CUDAPlace(resource_->dev_id(i));
+    d_remote_shard_keys[i] = memory::AllocShared(remote_place, shard_len * sizeof(KeyType));
+    d_remote_shard_keys_ptr[i] = reinterpret_cast<KeyType*>(d_remote_shard_keys[i]->ptr());;
+    d_remote_shard_vals[i] = memory::AllocShared(remote_place, shard_len * sizeof(ValType));
+    d_remote_shard_vals_ptr[i] = reinterpret_cast<ValType*>(d_remote_shard_vals[i]->ptr());
+  }
+  timeline.Pause();
+  VLOG(1) << "GpuPs pull sparse remote malloc cost " << timeline.ElapsedMS() << " ms, gpu num: " << num;
+  
+  timeline.Start();
+  for (int i = 0; i < total_gpu; ++i) {
+    int shard_len = h_right[i] - h_left[i] + 1;
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
+    cudaMemcpyPeerAsync(d_remote_shard_keys_ptr[i], resource_->dev_id(i), d_shard_keys_ptr + h_left[i], resource_->dev_id(num), shard_len * sizeof(KeyType), resource_->local_stream(num, i));
+  }
+
+  for (int i = 0; i < total_gpu; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
+    cudaStreamSynchronize(resource_->local_stream(num, i));
+    platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    tables_[i]->get(d_remote_shard_keys_ptr[i], d_remote_shard_vals_ptr[i], h_right[i] - h_left[i] + 1, resource_->remote_stream(i));
   }
   for (int i = 0; i < total_gpu; ++i) {
-    cudaStreamSynchronize(resource_->stream(i));
+    cudaStreamSynchronize(resource_->remote_stream(i));
   }
+
+/*
+  for (int i = 0; i < total_gpu; ++i) {
+    if (h_left[i] == -1) {
+      continue;
+    }
+    platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    tables_[i]->get(d_shard_keys_ptr + h_left[i], d_shard_vals_ptr + h_left[i], h_right[i] - h_left[i] + 1, resource_->remote_stream(i));
+  }
+  for (int i = 0; i < total_gpu; ++i) {
+    cudaStreamSynchronize(resource_->remote_stream(i));
+  }
+*/  
   
-  fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals_ptr, d_vals, d_idx_ptr, len);
-  cudaStreamSynchronize(stream);
-  cudaFree(left);
-  cudaFree(right);
+  for (int i = 0; i < total_gpu; ++i) {
+    int shard_len = h_right[i] - h_left[i] + 1;
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
+    platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    cudaMemcpyPeerAsync(d_shard_vals_ptr + h_left[i], resource_->dev_id(num), d_remote_shard_vals_ptr[i], resource_->dev_id(i), shard_len * sizeof(ValType), resource_->comm_stream(num, i));
+  }
+
+  for (int i = 0; i < total_gpu; ++i) {
+    cudaStreamSynchronize(resource_->comm_stream(num, i));
+  }
+  timeline.Pause();
+  VLOG(1) << "GpuPs pull sparse table get cost " << timeline.ElapsedMS() << " ms, gpu num: " << num;
+
+  timeline.Start();
+  fill_dvals<<<grid_size, block_size_, 0, resource_->local_stream(num, 0)>>>(d_shard_vals_ptr, d_vals, d_idx_ptr, len);
+  cudaStreamSynchronize(resource_->local_stream(num, 0));
+  timeline.Pause();
+  VLOG(1) << "GpuPs pull sparse table fill vals cost " << timeline.ElapsedMS() << " ms, gpu num: " << num;
 }
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -375,21 +506,30 @@ void GpuPs<KeyType, ValType, GradType>::push_sparse(int gpu_num, KeyType* d_keys
     return ;
   }
   
+  platform::Timer timeline;
+  timeline.Start();
   int total_gpu = resource_->total_gpu();
   int dev_id = resource_->dev_id(gpu_num);
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
-  auto stream = resource_->stream(gpu_num);
+  auto stream = resource_->local_stream(gpu_num, 0);
   
-  int* left = NULL;
-  int* right = NULL;
-  cudaMallocManaged(&left, total_gpu * sizeof(int));
-  cudaMallocManaged(&right, total_gpu * sizeof(int));
-  cudaMemPrefetchAsync(left, total_gpu * sizeof(int), dev_id, stream);
-  cudaMemPrefetchAsync(right, total_gpu * sizeof(int), dev_id, stream);
+  //int* left = NULL;
+  //int* right = NULL;
+  int h_left[total_gpu];
+  int h_right[total_gpu];
+  
+  auto d_left = memory::AllocShared(place, total_gpu * sizeof(int));
+  auto d_right = memory::AllocShared(place, total_gpu * sizeof(int));
+  int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
+  int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
+  //cudaMallocManaged(&left, total_gpu * sizeof(int));
+  //cudaMallocManaged(&right, total_gpu * sizeof(int));
+  //cudaMemPrefetchAsync(left, total_gpu * sizeof(int), dev_id, stream);
+  //cudaMemPrefetchAsync(right, total_gpu * sizeof(int), dev_id, stream);
 
-  cudaMemset(left, -1, total_gpu * sizeof(int));
-  cudaMemset(right, -1, total_gpu * sizeof(int));
+  cudaMemset(d_left_ptr, -1, total_gpu * sizeof(int));
+  cudaMemset(d_right_ptr, -1, total_gpu * sizeof(int));
   // 
   auto d_idx = memory::AllocShared(place, len * sizeof(int));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
@@ -399,27 +539,54 @@ void GpuPs<KeyType, ValType, GradType>::push_sparse(int gpu_num, KeyType* d_keys
   auto d_shard_grads = memory::AllocShared(place, len * sizeof(GradType));
   GradType* d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads->ptr());
 
+  timeline.Pause();
+  VLOG(1) << "GpuPs push sparse malloc cost " << timeline.ElapsedMS() << " ms, gpu num: " << gpu_num;
+  
+  timeline.Start();
   int grid_size = (len - 1) / block_size_ + 1;
-  size_t uniq_len = len;
+  int uniq_len = len;
   merge_grad(gpu_num, d_keys, d_grads, len, uniq_len);
-  split_input_to_shard(d_keys, d_idx_ptr, uniq_len, left, right, gpu_num);
+  timeline.Pause();
+  VLOG(1) << "GpuPs push sparse merge grad cost " << timeline.ElapsedMS() << " ms, gpu num: " << gpu_num;
+    CUDA_RT_CALL(cudaGetLastError());
+  
+  timeline.Start();
+  split_input_to_shard(d_keys, d_idx_ptr, uniq_len, d_left_ptr, d_right_ptr, gpu_num);
   
   fill_shard_grads<<<grid_size, block_size_, 0, stream>>>(d_shard_keys_ptr, d_keys, d_shard_grads_ptr, d_grads, d_idx_ptr, uniq_len);
 
   cudaStreamSynchronize(stream);
+    CUDA_RT_CALL(cudaGetLastError());
+  
+  //cudaMemcpyAsync(h_left, d_left_ptr, total_gpu * sizeof(int), cudaMemcpyDeviceToHost, stream);
+  //cudaMemcpyAsync(h_right, d_right_ptr, total_gpu * sizeof(int), cudaMemcpyDeviceToHost, stream);
+  cudaMemcpy(h_left, d_left_ptr,
+             total_gpu * sizeof(int),
+             cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_right, d_right_ptr,
+             total_gpu * sizeof(int),
+             cudaMemcpyDeviceToHost);
+    CUDA_RT_CALL(cudaGetLastError());
+
+  timeline.Pause();
+  VLOG(1) << "GpuPs push sparse split + fill cost " << timeline.ElapsedMS() << " ms, gpu num: " << gpu_num;
+  timeline.Start();
   for (int i = 0; i < total_gpu; ++i) {
-    if (left[i] == -1) {
+    if (h_left[i] == -1) {
       continue;
     }
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
-    tables_[i]->update(d_shard_keys_ptr + left[i], d_shard_grads_ptr + left[i], right[i] - left[i] + 1, sgd, resource_->stream(i));
+    tables_[i]->update(d_shard_keys_ptr + h_left[i], d_shard_grads_ptr + h_left[i], h_right[i] - h_left[i] + 1, sgd, resource_->remote_stream(i));
   }
   for (int i = 0; i < total_gpu; ++i) {
-    cudaStreamSynchronize(resource_->stream(i));
+    cudaStreamSynchronize(resource_->remote_stream(i));
   }
+    CUDA_RT_CALL(cudaGetLastError());
+  timeline.Pause();
+  VLOG(1) << "GpuPs push sparse table push cost " << timeline.ElapsedMS() << " ms, gpu_num: " << gpu_num;
   
-  cudaFree(left);
-  cudaFree(right);
+//  cudaFree(left);
+//  cudaFree(right);
 }
 
 }  // end namespace framework

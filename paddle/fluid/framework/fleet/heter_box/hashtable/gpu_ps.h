@@ -17,10 +17,12 @@ limitations under the License. */
 #include "thrust/pair.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/memory/memory.h"
 #include "cub/cub.cuh"
 #include "hashtable.h"
 #include "gpu_resource.h"
+#include "assert.h"
 #include "paddle/fluid/framework/fleet/heter_box/optimizer/optimizer.cuh"
 
 #ifdef PADDLE_WITH_PSLIB
@@ -54,7 +56,7 @@ class GpuPs {
   GpuPs& operator=(const GpuPs&) = delete;
 
   void split_input_to_shard(KeyType* d_keys, int* d_idx_ptr, size_t len, int* left, int* right, int gpu_num);
-  void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len, size_t& uniq_len);
+  void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len, int& uniq_len);
   void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
   void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len, size_t chunk_size, int stream_num);
   void dump();

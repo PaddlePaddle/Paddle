@@ -33,21 +33,37 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-GPUResource::GPUResource(int dev_id, int index) {
+GPUResource::GPUResource(std::vector<int>& dev_ids, int index) {
   index_ = index;
-  dev_id_ = dev_id;
+  dev_ids_ = dev_ids;
+  dev_id_ = dev_ids_[index];
   
-  platform::CUDADeviceGuard guard(dev_id_);
+  cudaSetDevice(dev_id_); 
+  local_streams_.resize(dev_ids_.size());
+  for (size_t j = 0; j < dev_ids_.size(); ++j) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithFlags(&local_streams_[j], cudaStreamNonBlocking));
+  }
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithFlags(&remote_stream_, cudaStreamNonBlocking));
+  comm_streams_.resize(dev_ids_.size());
+  for (size_t j = 0; j < dev_ids_.size(); ++j) {
+    cudaSetDevice(dev_ids_[j]); 
   
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithFlags(&copy_stream_, cudaStreamNonBlocking));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithFlags(&comm_streams_[j], cudaStreamNonBlocking));
+    
+  }
 }
 
 GPUResource::~GPUResource() {
   platform::CUDADeviceGuard guard(dev_id_);
   
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(copy_stream_));
+  //PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(local_stream_));
+  for (size_t i = 0; i < local_streams_.size(); ++i) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(local_streams_[i]));
+  }
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(remote_stream_));
+  for (size_t i = 0; i < comm_streams_.size(); ++i) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(comm_streams_[i]));
+  }
 }
 
 void HeterBoxResource::enable_p2p() {
@@ -74,18 +90,22 @@ void HeterBoxResource::enable_p2p() {
 HeterBoxResource::HeterBoxResource(const std::vector<int>& dev_ids) {
   dev_ids_ = dev_ids;
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
-    std::shared_ptr<GPUResource> resource = std::make_shared<GPUResource>(dev_ids_[i], i);
+    std::shared_ptr<GPUResource> resource = std::make_shared<GPUResource>(dev_ids_, i);
     resources_.push_back(resource);
     devid_2_index_[dev_ids_[i]] = i;
   }
 }
 
-cudaStream_t HeterBoxResource::copy_stream(int num) {
-  return resources_[num]->copy_stream();
+cudaStream_t HeterBoxResource::comm_stream(int src, int dest) {
+  return resources_[src]->comm_stream(dest);
 }
 
-cudaStream_t HeterBoxResource::stream(int num) {
-  return resources_[num]->stream();
+cudaStream_t HeterBoxResource::remote_stream(int src) {
+  return resources_[src]->remote_stream();
+}
+
+cudaStream_t HeterBoxResource::local_stream(int src, int dst) {
+  return resources_[src]->local_stream(dst);
 }
 
 int HeterBoxResource::dev_id(int num) {
