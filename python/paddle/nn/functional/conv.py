@@ -1115,7 +1115,7 @@ def conv3d(x,
     Args:
         x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data 
             type of input is float16 or float32 or float64.
-        weight (Variable): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
+        weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M, ].
@@ -1151,21 +1151,9 @@ def conv3d(x,
 
     Returns:
         A Tensor representing the conv3d, whose data type is 
-        the same with input. If act is None, the tensor variable storing the 
-        convolution result, and if act is not None, the tensor variable storing 
+        the same with input. If act is None, the tensor storing the 
+        convolution result, and if act is not None, the tensor storing 
         convolution and non-linearity activation result.
-
-    Raises:
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If the channel dimension of the input is less than or equal to zero.
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
-            or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 5-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels * groups.
-        ShapeError: If the number of output channels is not be divided by groups.
 
     Examples:
         .. code-block:: python

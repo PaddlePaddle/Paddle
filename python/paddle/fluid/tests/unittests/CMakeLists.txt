@@ -83,10 +83,6 @@ endif()
 
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
-endif()
-
-if(WIN32)
-    LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
     LIST(REMOVE_ITEM TEST_OPS test_downpoursgd)
@@ -96,6 +92,8 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_3)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_unitaccessor)
     LIST(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
+    LIST(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_nlp)
+    LIST(REMOVE_ITEM TEST_OPS test_nvprof)
 
     # TODO: Fix these unittests failed on Windows
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
@@ -133,6 +131,11 @@ if(WITH_MUSL)
     # SEC needs to follow up on this issue, and need to be 
     # resolved before CI requared
     LIST(REMOVE_ITEM TEST_OPS test_sigmoid_focal_loss_op)
+endif()
+
+if(WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_rnn_decode_api)
+    LIST(REMOVE_ITEM TEST_OPS test_complex_matmul)
 endif()
 
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
@@ -379,7 +382,6 @@ list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
-list(REMOVE_ITEM TEST_OPS test_sampling_id_op)
 
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
@@ -554,7 +556,11 @@ endif()
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
 py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_profiler)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
-py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
+if(WIN32)
+    py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth CUDA_VISIBLE_DEVICES=0)
+else()
+    py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
+endif()
 
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 py_test_modules(test_fuse_bn_act_pass MODULES test_fuse_bn_act_pass ENVS FLAGS_cudnn_deterministic=1 FLAGS_cudnn_batchnorm_spatial_persistent=1 FLAGS_conv_workspace_size_limit=1000)
@@ -633,6 +639,7 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32 AND NOT APPLE)
+    set_tests_properties(test_imperative_signal_handler PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     # set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -691,7 +698,9 @@ set_tests_properties(test_parallel_executor_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_regularizer_api PROPERTIES TIMEOUT 150)
 set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 120)
+if(NOT WIN32)
+    set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 120)
+endif()
 set_tests_properties(test_add_reader_dependency PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilateral_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_buffer_shared_memory_reuse_pass PROPERTIES TIMEOUT 120)

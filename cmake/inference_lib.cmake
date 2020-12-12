@@ -321,6 +321,9 @@ function(version version_file)
         file(APPEND ${version_file}
                 "WITH_TENSORRT: ${TENSORRT_FOUND}\n" "TensorRT version: v${TENSORRT_MAJOR_VERSION}\n")
     endif()
+    if(WITH_LITE)
+        file(APPEND ${version_file} "WITH_LITE: ${WITH_LITE}\n" "LITE_GIT_TAG: ${LITE_GIT_TAG}\n")
+    endif()
     
 endfunction()
 version(${PADDLE_INSTALL_DIR}/version.txt)

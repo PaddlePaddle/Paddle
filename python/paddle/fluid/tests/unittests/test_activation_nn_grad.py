@@ -161,6 +161,10 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
         x.persistable = True
         y = layers.abs(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        # Because we set delta = 0.005 in calculating numeric gradient,
+        # if x is too small, the numeric gradient is inaccurate.
+        # we should avoid this
+        x_arr[np.abs(x_arr) < 0.005] = 0.02
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)

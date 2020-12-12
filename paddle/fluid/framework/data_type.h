@@ -141,5 +141,14 @@ inline std::ostream& operator<<(std::ostream& out,
   out << DataTypeToString(type);
   return out;
 }
+
+extern inline bool IsComplexType(const proto::VarType::Type type) {
+  return (type == proto::VarType::COMPLEX64 ||
+          type == proto::VarType::COMPLEX128);
+}
+
+extern proto::VarType::Type PromoteTypesIfComplexExists(
+    const proto::VarType::Type type_a, const proto::VarType::Type type_b);
+
 }  // namespace framework
 }  // namespace paddle

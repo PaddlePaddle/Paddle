@@ -70,10 +70,13 @@ struct PADDLE_ALIGN(16) complex128 {
   }
 #endif
 
-  HOSTDEVICE complex128(const float& val) { real = static_cast<double>(val); }
-  HOSTDEVICE complex128(const double& val) { real = val; }
-  HOSTDEVICE complex128(const int& val) { real = static_cast<double>(val); }
-  HOSTDEVICE complex128(const int64_t& val) { real = static_cast<double>(val); }
+  HOSTDEVICE complex128(const float& val)
+      : real(static_cast<double>(val)), imag(0) {}
+  HOSTDEVICE complex128(const double& val) : real(val), imag(0) {}
+  HOSTDEVICE complex128(const int& val)
+      : real(static_cast<double>(val)), imag(0) {}
+  HOSTDEVICE complex128(const int64_t& val)
+      : real(static_cast<double>(val)), imag(0) {}
 
   HOSTDEVICE inline explicit operator std::complex<double>() {
     return static_cast<std::complex<double>>(std::complex<double>(real, imag));
@@ -94,51 +97,61 @@ struct PADDLE_ALIGN(16) complex128 {
 
   HOSTDEVICE inline complex128& operator=(int8_t val) {
     real = static_cast<double>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex128& operator=(uint8_t val) {
     real = static_cast<double>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex128& operator=(int16_t val) {
     real = static_cast<double>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex128& operator=(uint16_t val) {
     real = static_cast<double>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex128& operator=(int32_t val) {
     real = static_cast<double>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex128& operator=(uint32_t val) {
     real = static_cast<double>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex128& operator=(int64_t val) {
     real = static_cast<double>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex128& operator=(uint64_t val) {
     real = static_cast<double>(val);
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex128& operator=(float val) {
     real = val;
+    imag = 0;
     return *this;
   }
 
   HOSTDEVICE inline complex128& operator=(double val) {
     real = static_cast<double>(val);
+    imag = 0;
     return *this;
   }
 

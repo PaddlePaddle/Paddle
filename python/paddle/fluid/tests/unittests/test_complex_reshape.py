@@ -13,38 +13,45 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-from paddle import complex as cpx
+import paddle
 import paddle.fluid.dygraph as dg
 import numpy as np
 import unittest
 
 
 class TestComplexReshape(unittest.TestCase):
-    def test_case1(self):
-        x_np = np.random.randn(2, 3, 4) + 1j * np.random.randn(2, 3, 4)
-        shape = (2, -1)
+    def setUp(self):
+        self._dtypes = ["float32", "float64"]
+        self._places = [paddle.CPUPlace()]
+        if fluid.core.is_compiled_with_cuda():
+            self._places.append(paddle.CUDAPlace(0))
 
-        place = fluid.CPUPlace()
-        with dg.guard(place):
-            x_var = dg.to_variable(x_np)
-            y_var = cpx.reshape(x_var, shape)
-            y_np = y_var.numpy()
+    def test_shape_norm_dims(self):
+        for dtype in self._dtypes:
+            x_np = np.random.randn(
+                2, 3, 4).astype(dtype) + 1j * np.random.randn(2, 3,
+                                                              4).astype(dtype)
+            shape = (2, -1)
+            for place in self._places:
+                with dg.guard(place):
+                    x_var = dg.to_variable(x_np)
+                    y_var = paddle.reshape(x_var, shape)
+                    y_np = y_var.numpy()
+                    self.assertTrue(np.allclose(np.reshape(x_np, shape), y_np))
 
-        np.testing.assert_allclose(np.reshape(x_np, shape), y_np)
-
-    def test_case2(self):
-        x_np = np.random.randn(2, 3, 4) + 1j * np.random.randn(2, 3, 4)
-        shape = (0, -1)
-        shape_ = (2, 12)
-
-        place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        with dg.guard(place):
-            x_var = dg.to_variable(x_np)
-            y_var = cpx.reshape(x_var, shape, inplace=True)
-            y_np = y_var.numpy()
-
-        np.testing.assert_allclose(np.reshape(x_np, shape_), y_np)
+    def test_shape_omit_dims(self):
+        for dtype in self._dtypes:
+            x_np = np.random.randn(
+                2, 3, 4).astype(dtype) + 1j * np.random.randn(2, 3,
+                                                              4).astype(dtype)
+            shape = (0, -1)
+            shape_ = (2, 12)
+            for place in self._places:
+                with dg.guard(place):
+                    x_var = dg.to_variable(x_np)
+                    y_var = paddle.reshape(x_var, shape)
+                    y_np = y_var.numpy()
+                    self.assertTrue(np.allclose(np.reshape(x_np, shape_), y_np))
 
 
 if __name__ == "__main__":
