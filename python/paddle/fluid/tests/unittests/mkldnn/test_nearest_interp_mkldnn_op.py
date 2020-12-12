@@ -183,5 +183,26 @@ class TestNearestNeighborInterpCase5(TestNearestInterpMKLDNNOp):
         self.use_mkldnn = True
 
 
+class TestNearestNeighborInterpCase6(TestNearestInterpMKLDNNOp):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 0.
+        self.out_size = np.array([65, 129]).astype("int32")
+        self.use_mkldnn = True
+
+
+class TestNearestNeighborInterpSame(TestNearestInterpMKLDNNOp):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [2, 3, 32, 64]
+        self.out_h = 32
+        self.out_w = 64
+        self.scale = 0.
+        self.use_mkldnn = True
+
+
 if __name__ == "__main__":
     unittest.main()

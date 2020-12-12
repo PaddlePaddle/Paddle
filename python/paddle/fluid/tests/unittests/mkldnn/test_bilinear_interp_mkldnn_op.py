@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,18 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 
+# def linear_map(y, y_max, x_max):
+#     return (y + 0.5)*x_max/y_max - 0.5
+
+# def left(y, y_max, x_max):
+#     return max(int(math.floor(linear_map(y, y_max, x_max))), 0)
+
+# def right(y, y_max, x_max):
+#     return min(int(math.ceil(linear_map(y, y_max, x_max)), x_max - 1)
+
+# def linear_weight(y, y_max, x_max):
+#     return linear_map(y, y_max, x_max) - left(y, y_max, x_max)
+
 
 def bilinear_interp_mkldnn_np(input,
                               out_h,
@@ -39,37 +51,67 @@ def bilinear_interp_mkldnn_np(input,
         out_w = actual_shape[1]
     batch_size, channel, in_h, in_w = input.shape
 
-    fh = out_h * 1.0 / in_h
-    fw = out_w * 1.0 / in_w
-
     out = np.zeros((batch_size, channel, out_h, out_w))
-    print("out_h, out_w", out_h, out_w)
-    print("fh, fw", fh, fw)
-    for oh in range(out_h):
-        h0 = int(math.floor((oh + 0.5) / fh - 0.5))
-        h0 = min(max(h0, 0), in_h - 1)
-        h1 = int(math.ceil((oh + 0.5) / fh - 0.5))
-        h1 = min(max(h1, 0), in_h - 1)
-        Wh = (oh + 0.5) / fh - 0.5 - h0
-        for ow in range(out_w):
-            w0 = int(math.floor((ow + 0.5) / fw - 0.5))
-            w0 = min(max(w0, 0), in_w - 1)
-            w1 = int(math.ceil((ow + 0.5) / fw - 0.5))
-            w1 = min(max(w1, 0), in_w - 1)
-            # w1 = min(w1, in_w)
-            Ww = (ow + 0.5) / fw - 0.5 - w0
-            print(oh, ow)
-            print(h0, h1, w0, w1)
 
-            out[:, :, oh,
-                ow] = input[:, :, h0, w0] * Wh * Ww + input[:, :, h1, w0] * (
-                    1 - Wh) * Ww + input[:, :, h0, w1] * Wh * (
-                        1 - Ww) + input[:, :, h1, w1] * (1 - Wh) * (1 - Ww)
+    for oh in range(out_h):
+        h0 = int(math.floor((oh + 0.5) * in_h / out_h - 0.5))
+        h1 = int(math.ceil((oh + 0.5) * in_h / out_h - 0.5))
+        h0 = max(h0, 0)
+        # h1 = max(h1, 0)
+        Wh = (oh + 0.5) * in_h / out_h - 0.5 - h0
+        for ow in range(out_w):
+            w0 = int(math.floor((ow + 0.5) * in_w / out_w - 0.5))
+            w1 = int(math.ceil((ow + 0.5) * in_w / out_w - 0.5))
+            w0 = max(w0, 0)
+            # w1 = max(w1, 0)
+            Ww = (ow + 0.5) * in_w / out_w - 0.5 - w0
+            # h0 = min(h0, in_h - 1)
+            h1 = min(h1, in_h - 1)
+            # w0 = min(w0, in_w - 1)
+            w1 = min(w1, in_w - 1)
+            input_h0_w0 = input[:, :, h0, w0]
+            input_h1_w0 = input[:, :, h1, w0]
+            input_h0_w1 = input[:, :, h0, w1]
+            input_h1_w1 = input[:, :, h1, w1]
+            out[:, :, oh, ow] = input_h0_w0 * (1 - Wh) * (
+                1 - Ww) + input_h1_w0 * Wh * (1 - Ww) + input_h0_w1 * (
+                    1 - Wh) * Ww + input_h1_w1 * Wh * Ww
 
     if data_layout == "NHWC":
         out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
 
     return out.astype(input.dtype)
+
+    # auto ker_linear = [&](int64_t mb, int64_t ic, int64_t od, int64_t oh,
+    #                           int64_t ow) {
+    #     const int64_t id[2] = {left(od, OD, ID), right(od, OD, ID)};
+    #                            d0,               d1
+    #     const int64_t ih[2] = {left(oh, OH, IH), right(oh, OH, IH)};
+    #                            h0,               h1
+    #     const int64_t iw[2] = {left(ow, OW, IW), right(ow, OW, IW)};
+    #                            w0,               w1
+    #     const float wd[2] = {1.f - weight(od, OD, ID), weight(od, OD, ID)};
+    #                          wd[0] = 1 - Wd   wd[1] = Wd 
+    #     const float wh[2] = {1.f - weight(oh, OH, IH), weight(oh, OH, IH)};
+    #                          wh[0] = 1 - Wh   wh[1] = Wh
+    #     const float ww[2] = {1.f - weight(ow, OW, IW), weight(ow, OW, IW)};
+
+    #     float cd[2][2] = {{0}};
+    #     for_(int i = 0; i < 2; i++)
+    #     for (int j = 0; j < 2; j++)
+    #         cd[i][j] = src.get_elem(src_off_f(prb, mb, ic, id[0], ih[i], iw[j]))
+    #                         * wd[0]
+    #                 + src.get_elem(src_off_f(prb, mb, ic, id[1], ih[i], iw[j]))
+    #                         * wd[1];
+
+    #     float ch[2] = {0};
+    #     for (int i = 0; i < 2; i++)
+    #         ch[i] = cd[0][i] * wh[0] + cd[1][i] * wh[1];
+
+    #     float cw = ch[0] * ww[0] + ch[1] * ww[1];
+
+    #     const auto dst_off = dst_off_f(prb, mb, ic, od, oh, ow);
+    #     dst.set_elem(dst_off, cw);
 
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
@@ -139,73 +181,80 @@ class TestBilinearInterpCase1(TestBilinearInterpMKLDNNOp):
         self.use_mkldnn = True
 
 
-# class TestBilinearInterpCase2(TestBilinearInterpMKLDNNOp):
-#     def init_test_case(self):
-#         self.interp_method = 'bilinear'
-#         self.input_shape = [1, 9, 6, 1]
-#         self.out_h = 12
-#         self.out_w = 12
-#         self.scale = 0.
-#         self.use_mkldnn = True
-#         self.data_layout = 'NHWC'
+class TestBilinearInterpCase2(TestBilinearInterpMKLDNNOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [1, 1, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.scale = 0.
+        self.use_mkldnn = True
+        self.data_layout = 'NCHW'
 
-# class TestBilinearInterpCase3(TestBilinearInterpMKLDNNOp):
-#     def init_test_case(self):
-#         self.interp_method = 'bilinear'
-#         self.input_shape = [1, 1, 32, 64]
-#         self.out_h = 64
-#         self.out_w = 32
-#         self.scale = 0.
-#         self.use_mkldnn = True
 
-# class TestBilinearInterpCase4(TestBilinearInterpMKLDNNOp):
-#     def init_test_case(self):
-#         self.interp_method = 'bilinear'
-#         self.input_shape = [4, 1, 7, 8]
-#         self.out_h = 1
-#         self.out_w = 1
-#         self.scale = 0.
-#         self.out_size = np.array([2, 2]).astype("int32")
-#         self.use_mkldnn = True
+class TestBilinearInterpCase3(TestBilinearInterpMKLDNNOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 0.
+        self.use_mkldnn = True
 
-# class TestBilinearInterpCase5(TestBilinearInterpMKLDNNOp):
-#     def init_test_case(self):
-#         self.interp_method = 'bilinear'
-#         self.input_shape = [3, 3, 9, 6]
-#         self.out_h = 12
-#         self.out_w = 12
-#         self.scale = 0.
-#         self.out_size = np.array([11, 11]).astype("int32")
-#         self.use_mkldnn = True
 
-# class TestBilinearInterpCase6(TestBilinearInterpMKLDNNOp):
-#     def init_test_case(self):
-#         self.interp_method = 'bilinear'
-#         self.input_shape = [1, 1, 32, 64]
-#         self.out_h = 64
-#         self.out_w = 32
-#         self.scale = 0.
-#         self.out_size = np.array([65, 33]).astype("int32")
-#         self.use_mkldnn = True
+class TestBilinearInterpCase4(TestBilinearInterpMKLDNNOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [4, 1, 7, 8]
+        self.out_h = 1
+        self.out_w = 1
+        self.scale = 0.
+        self.out_size = np.array([2, 2]).astype("int32")
+        self.use_mkldnn = True
 
-# class TestBilinearInterpSame(TestBilinearInterpMKLDNNOp):
-#     def init_test_case(self):
-#         self.interp_method = 'bilinear'
-#         self.input_shape = [2, 3, 32, 64]
-#         self.out_h = 32
-#         self.out_w = 64
-#         self.scale = 0.
-# self.use_mkldnn = True
 
-# class TestBilinearInterpActualShape(TestBilinearInterpMKLDNNOp):
-#     def init_test_case(self):
-#         self.interp_method = 'bilinear'
-#         self.input_shape = [3, 2, 32, 16]
-#         self.out_h = 64
-#         self.out_w = 32
-#         self.scale = 0.
-#         self.out_size = np.array([66, 40]).astype("int32")
-# self.use_mkldnn = True
+class TestBilinearInterpCase5(TestBilinearInterpMKLDNNOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [3, 3, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.scale = 0.
+        self.out_size = np.array([11, 11]).astype("int32")
+        self.use_mkldnn = True
+
+
+class TestBilinearInterpCase6(TestBilinearInterpMKLDNNOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [2, 3, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 0.
+        self.out_size = np.array([65, 33]).astype("int32")
+        self.use_mkldnn = True
+
+
+class TestBilinearInterpSame(TestBilinearInterpMKLDNNOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [2, 3, 32, 64]
+        self.out_h = 32
+        self.out_w = 64
+        self.scale = 0.
+        self.use_mkldnn = True
+
+
+class TestBilinearInterpActualShape(TestBilinearInterpMKLDNNOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [3, 2, 32, 16]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 0.
+        self.out_size = np.array([66, 40]).astype("int32")
+        self.use_mkldnn = True
+
 
 # class TestBilinearInterpDataLayout(TestBilinearInterpMKLDNNOp):
 #     def init_test_case(self):
@@ -215,8 +264,8 @@ class TestBilinearInterpCase1(TestBilinearInterpMKLDNNOp):
 #         self.out_w = 2
 #         self.scale = 0.
 #         self.out_size = np.array([3, 3]).astype("int32")
-# self.data_layout = "NHWC"
-# self.use_mkldnn = True
+#         self.data_layout = "NHWC"
+#         self.use_mkldnn = True
 
 if __name__ == "__main__":
     unittest.main()
