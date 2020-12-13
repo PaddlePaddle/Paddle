@@ -82,37 +82,6 @@ def bilinear_interp_mkldnn_np(input,
 
     return out.astype(input.dtype)
 
-    # auto ker_linear = [&](int64_t mb, int64_t ic, int64_t od, int64_t oh,
-    #                           int64_t ow) {
-    #     const int64_t id[2] = {left(od, OD, ID), right(od, OD, ID)};
-    #                            d0,               d1
-    #     const int64_t ih[2] = {left(oh, OH, IH), right(oh, OH, IH)};
-    #                            h0,               h1
-    #     const int64_t iw[2] = {left(ow, OW, IW), right(ow, OW, IW)};
-    #                            w0,               w1
-    #     const float wd[2] = {1.f - weight(od, OD, ID), weight(od, OD, ID)};
-    #                          wd[0] = 1 - Wd   wd[1] = Wd 
-    #     const float wh[2] = {1.f - weight(oh, OH, IH), weight(oh, OH, IH)};
-    #                          wh[0] = 1 - Wh   wh[1] = Wh
-    #     const float ww[2] = {1.f - weight(ow, OW, IW), weight(ow, OW, IW)};
-
-    #     float cd[2][2] = {{0}};
-    #     for_(int i = 0; i < 2; i++)
-    #     for (int j = 0; j < 2; j++)
-    #         cd[i][j] = src.get_elem(src_off_f(prb, mb, ic, id[0], ih[i], iw[j]))
-    #                         * wd[0]
-    #                 + src.get_elem(src_off_f(prb, mb, ic, id[1], ih[i], iw[j]))
-    #                         * wd[1];
-
-    #     float ch[2] = {0};
-    #     for (int i = 0; i < 2; i++)
-    #         ch[i] = cd[0][i] * wh[0] + cd[1][i] * wh[1];
-
-    #     float cw = ch[0] * ww[0] + ch[1] * ww[1];
-
-    #     const auto dst_off = dst_off_f(prb, mb, ic, od, oh, ow);
-    #     dst.set_elem(dst_off, cw);
-
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
 class TestBilinearInterpMKLDNNOp(OpTest):
@@ -162,12 +131,21 @@ class TestBilinearInterpMKLDNNOp(OpTest):
         self.check_output(check_dygraph=False)
 
     def init_test_case(self):
+        # self.interp_method = 'bilinear'
+        # self.input_shape = [2, 1, 2, 2]
+        # self.out_h = 2
+        # self.out_w = 2
+        # self.scale = 0.
+        # self.out_size = np.array([3, 3]).astype("int32")
+        # self.use_mkldnn = True
+
         self.interp_method = 'bilinear'
-        self.input_shape = [2, 1, 2, 2]
+        self.input_shape = [2, 5, 5, 3]
         self.out_h = 2
         self.out_w = 2
         self.scale = 0.
         self.out_size = np.array([3, 3]).astype("int32")
+        self.data_layout = "NHWC"
         self.use_mkldnn = True
 
 
