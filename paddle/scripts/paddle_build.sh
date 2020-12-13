@@ -51,6 +51,7 @@ function init() {
     NONE='\033[0m'
 
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+    export PADDLE_ROOT
     if [ -z "${SCRIPT_NAME}" ]; then
         SCRIPT_NAME=$0
     fi
@@ -59,6 +60,13 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
+
+    # set CI_SKIP_CPP_TEST if only *.py changed
+    # In order to avoid using in some CI(such as daily performance), the current
+    # branch must not be `${BRANCH}` which is usually develop.
+    if [ "$(git branch | grep "^\*" | awk '{print $2}')" != "${BRANCH}" ]; then
+        git diff --name-only ${BRANCH} | grep -v "\.py$" || export CI_SKIP_CPP_TEST=ON
+    fi
 }
 
 function cmake_base() {
@@ -280,6 +288,7 @@ EOF
         -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=develop \
         -DWITH_XPU=${WITH_XPU:-OFF} \
+        -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
