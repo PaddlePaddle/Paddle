@@ -87,7 +87,7 @@ void OpHandleBase::InitCUDA() {
 
 void OpHandleBase::Run(ExecutionStrategy::UseDevice use_device) {
 #ifdef PADDLE_WITH_CUDA
-  if (events_.empty() && use_device == UseDevice::kCUDA &&
+  if (events_.empty() && use_device == ExecutionStrategy::UseDevice::kCUDA &&
       dev_ctxes_.size() > 0) {
     InitCUDA();
   }
