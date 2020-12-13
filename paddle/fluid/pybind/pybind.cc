@@ -2073,6 +2073,11 @@ All parameter, weight, gradient are variables in Paddle.
                                               exec_strategy=exec_strategy)
         )DOC");
 
+  py::enum_<ExecutionStrategy::UseDevice>(exec_strategy, "UseDevice")
+      .value("CPU", ExecutionStrategy::UseDevice::kCPU)
+      .value("CUDA", ExecutionStrategy::UseDevice::kCUDA)
+      .value("XPU", ExecutionStrategy::UseDevice::kXPU);
+
   exec_strategy.def(py::init())
       .def_property(
           "num_threads",
@@ -2102,11 +2107,6 @@ All parameter, weight, gradient are variables in Paddle.
                     exec_strategy = static.ExecutionStrategy()
                     exec_strategy.num_threads = 4
             )DOC")
-      .def_property("use_xpu",
-                    [](const ExecutionStrategy &self) { return self.use_xpu_; },
-                    [](ExecutionStrategy &self, bool use_xpu) {
-                      self.use_xpu_ = use_xpu;
-                    })
       .def_property(
           "use_cuda",
           [](const ExecutionStrategy &self) { return self.use_cuda_; },
@@ -2116,6 +2116,13 @@ All parameter, weight, gradient are variables in Paddle.
       // make user confuse, because ParallelExecutor has a parameter named
       // 'use_cuda' too, in current implementation, ParallelExecutor's
       // 'use_cuda' will rewrite ExecutionStrategy's 'use_cuda'.
+      .def_property(
+          "use_device",
+          [](const ExecutionStrategy &self) { return self.use_device_; },
+          [](ExecutionStrategy &self, ExecutionStrategy::UseDevice use_device) {
+            self.use_device_ = use_device;
+          })  // FIXME(liuyuhui): Doesn't add doc for 'use_device', because
+              // use_device isn‘t exposed to users.
       .def_property(
           "allow_op_delay",
           [](const ExecutionStrategy &self) { return self.allow_op_delay_; },

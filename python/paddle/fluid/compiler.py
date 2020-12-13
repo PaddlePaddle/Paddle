@@ -316,11 +316,7 @@ class CompiledProgram(object):
             "Subclass of CompiledProgram should implement _with_distributed method."
         )
 
-    def _compile_data_parallel(self,
-                               places,
-                               use_cuda=False,
-                               use_xpu=False,
-                               scope=None):
+    def _compile_data_parallel(self, places, use_device, scope=None):
         if self._share_vars_from:
             if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
@@ -346,21 +342,22 @@ class CompiledProgram(object):
 
         if self._exec_strategy is None:
             self._exec_strategy = ExecutionStrategy()
-        self._exec_strategy.use_cuda = use_cuda
-        self._exec_strategy.use_xpu = use_xpu
+        # self._exec_strategy.use_cuda = use_cuda
+        # self._exec_strategy.use_xpu = use_xpu
+        self._exec_strategy.use_device = use_device
 
         if self._exec_strategy.num_threads == 0:
-            if self._exec_strategy.use_cuda:
+            if self._exec_strategy.use_device == ExecutionStrategy.UseDevice.CUDA:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
                 self._exec_strategy.num_threads = len(places) * 4
-            elif self._exec_strategy.use_xpu:
+            elif self._exec_strategy.use_device == ExecutionStrategy.UseDevice.XPU:
                 # Currently only single thread is supported in Kunlun XPU.
                 self._exec_strategy.num_threads = 1
             else:
                 self._exec_strategy.num_threads = len(places) * 2
 
-        if self._exec_strategy.use_xpu:
+        if self._exec_strategy.use_device == ExecutionStrategy.UseDevice.XPU:
             assert self._exec_strategy.num_threads == 1, \
                 "Currently only single thread is supported in Kunlun XPU."
 
@@ -459,12 +456,14 @@ class CompiledProgram(object):
                 raise NotImplementedError(
                     "If optimizer is used in control flow, "
                     "training on multi-places is not supported now.")
-
+            if isinstance(self._place, core.CUDAPlace):
+                use_device = ExecutionStrategy.UseDevice.CUDA
+            elif isinstance(self._place, core.XPUPlace):
+                use_device = ExecutionStrategy.UseDevice.XPU
+            else:
+                use_device = ExecutionStrategy.UseDevice.CPU
             self._executor = self._compile_data_parallel(
-                use_cuda=isinstance(self._place, core.CUDAPlace),
-                use_xpu=isinstance(self._place, core.XPUPlace),
-                scope=self._scope,
-                places=self._places)
+                use_device=use_device, scope=self._scope, places=self._places)
         return self
 
     def _get_places(self, place, place_list):

@@ -21,11 +21,16 @@ namespace details {
 
 struct ExecutionStrategy {
   enum ExecutorType { kDefault = 0, kExperimental = 1 };
+  enum UseDevice {
+    kCPU,
+    kCUDA,
+    kXPU,
+  };
 
   // num_threads indicates the size of thread pool.
   size_t num_threads_{0};
   bool use_cuda_{true};
-  bool use_xpu_{false};
+  UseDevice use_device_{kCUDA};
   // Note that allow_op_delay is invalid now.
   bool allow_op_delay_{false};
   // num_iteration_per_drop_scope indicates how many

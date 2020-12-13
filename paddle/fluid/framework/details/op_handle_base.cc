@@ -85,16 +85,14 @@ void OpHandleBase::InitCUDA() {
 #endif
 }
 
-void OpHandleBase::Run(bool use_cuda, bool use_xpu) {
-  PADDLE_ENFORCE_EQ(
-      use_cuda && use_xpu, false,
-      platform::errors::InvalidArgument("both use_cuda & use_xpu is true"));
+void OpHandleBase::Run(ExecutionStrategy::UseDevice use_device) {
 #ifdef PADDLE_WITH_CUDA
-  if (events_.empty() && use_cuda && dev_ctxes_.size() > 0) {
+  if (events_.empty() && use_device == UseDevice::kCUDA &&
+      dev_ctxes_.size() > 0) {
     InitCUDA();
   }
 #else
-  PADDLE_ENFORCE_EQ(use_cuda, false,
+  PADDLE_ENFORCE_EQ(use_device == ExecutionStrategy::UseDevice::kCUDA, false,
                     platform::errors::InvalidArgument(
                         "Argument use_cuda should be false when Paddle is not "
                         "compiled with CUDA."));

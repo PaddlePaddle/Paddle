@@ -33,6 +33,8 @@ struct VarHandle;
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
+using UseDevice = paddle::framework::details::ExecutionStrategy::UseDevice;
+
 // test data amount
 const f::DDim kDims = {20, 20};
 
@@ -273,7 +275,8 @@ struct TestBroadcastOpHandle {
     f::LoD lod{{0, 10, 20}};
     auto send_vector = InitLoDTensor("input", input_scope_idx, lod);
 
-    op_handle_->Run(false, false);
+    UseDevice use_device = UseDevice::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
     for (size_t j = 0; j < place_list_.size(); ++j) {
@@ -287,7 +290,8 @@ struct TestBroadcastOpHandle {
     int height = static_cast<int>(kDims[0] * 2);
     auto send_vector = InitSelectedRows("input", input_scope_idx, rows, height);
 
-    op_handle_->Run(false, false);
+    UseDevice use_device = UseDevice::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
     for (size_t j = 0; j < place_list_.size(); ++j) {
