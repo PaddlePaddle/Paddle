@@ -896,6 +896,24 @@ class SqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   }
 };
 
+// rsqrt Grad: dx = -0.5 * dy * y * y * y
+// rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = -1.5 * y * y * dy * ddx
+template <typename T>
+class RsqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("rsqrt_grad_grad");
+    op->SetInput("Out", this->Input("Out"));
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput("DOut", this->InputGrad("Out"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
 // square Grad: dx=2x*dy
 // square GradGrad: ddy=2x*ddx, dx=2dy*ddx
 template <typename T>
@@ -1165,6 +1183,35 @@ REGISTER_OP_CPU_KERNEL(
                               ops::SqrtGradGradFunctor<double>>,
     ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
                               ops::SqrtGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
+/* ===========================   rsqrt register  =============================
+ */
+REGISTER_OPERATOR(
+    rsqrt, ops::ActivationOp, ops::RsqrtOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<ops::RsqrtGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::RsqrtGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(rsqrt_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInferer,
+                  ops::RsqrtDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::RsqrtDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    rsqrt_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::RsqrtGradGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInferer);
+
+REGISTER_ACTIVATION_CPU_KERNEL(rsqrt, Rsqrt, RsqrtFunctor, RsqrtGradFunctor);
+REGISTER_OP_CPU_KERNEL(
+    rsqrt_grad_grad,
+    ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
+                               ops::RsqrtGradGradFunctor<float>>,
+    ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
+                               ops::RsqrtGradGradFunctor<double>>,
+    ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
+                               ops::RsqrtGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ==========================   square register  ============================ */

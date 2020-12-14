@@ -1644,6 +1644,35 @@ struct SqrtGradGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct RsqrtGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev, const framework::Tensor* Out,
+                  const framework::Tensor* ddX, framework::Tensor* ddOut,
+                  framework::Tensor* dOut) const {
+    auto* d = dev.eigen_device();
+    auto ddx = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "RsqrtGradGrad"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Output", "Out", "RsqrtGradGrad"));
+
+    // rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = -1.5 * y * y * dy *
+    // ddx
+    if (dOut) {
+      auto dout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "RsqrtGradGrad"));
+      // Currently, does it store gradients of backward in 'dout'?
+      dout.device(*d) = dout * static_cast<T>(-1.5) * out * out * ddx;
+    }
+    if (ddOut) {
+      auto ddout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "RsqrtGradGrad"));
+      ddout.device(*d) = ddx * static_cast<T>(-0.5) * out * out * out;
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+};
+
+template <typename T>
 struct SquareGradGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device>
   void operator()(const Device& dev, const framework::Tensor* X,
@@ -1828,6 +1857,57 @@ class SqrtDoubleGradKernel
   }
 };
 
+// rsqrt Grad: dx = -0.5 * dy * y * y * y
+// rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = -1.5 * y * y * dy * ddx
+template <typename DeviceContext, typename Functor>
+class RsqrtDoubleGradKernel
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+ public:
+  using T = typename Functor::ELEMENT_TYPE;
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const framework::Tensor *Out, *ddX;
+    Out = ddX = nullptr;
+    framework::Tensor *ddOut, *dOut;
+    ddOut = dOut = nullptr;
+
+    // extract ddx(input), ddout(output)
+    auto ddx_var = ctx.InputVar("DDX");
+    auto ddo_var = ctx.OutputVar("DDOut");
+    PADDLE_ENFORCE_NOT_NULL(
+        ddx_var, platform::errors::NotFound(
+                     "Cannot get input Variable DDX, variable name = %s",
+                     ctx.InputName("DDX")));
+    ddX = ctx.Input<framework::Tensor>("DDX");
+    if (ddo_var) {
+      ddOut = ctx.Output<framework::Tensor>("DDOut");
+    }
+    PADDLE_ENFORCE_NOT_NULL(
+        ddX, platform::errors::NotFound(
+                 "Cannot get input Variable DDX, variable name = %s",
+                 ctx.InputName("DDX")));
+
+    // extract out(input), dout(output)
+    auto out_var = ctx.InputVar("Out");
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var, platform::errors::NotFound(
+                     "Cannot get input Variable Out, variable name = %s",
+                     ctx.InputName("Out")));
+    auto dout_var = ctx.OutputVar("DOut");
+    Out = ctx.Input<framework::Tensor>("Out");
+    if (dout_var) {
+      dOut = ctx.Output<framework::Tensor>("DOut");
+    }
+
+    if (dOut) dOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
+    if (ddOut) ddOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
+
+    auto& place = ctx.template device_context<DeviceContext>();
+
+    Functor functor;
+    functor(place, Out, ddX, ddOut, dOut);
+  }
+};
+
 template <typename DeviceContext, typename Functor>
 class PowKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
@@ -1971,7 +2051,6 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   __macro(tanh, Tanh, TanhFunctor, TanhGradFunctor);                          \
   __macro(atan, Atan, AtanFunctor, AtanGradFunctor);                          \
   __macro(softshrink, SoftShrink, SoftShrinkFunctor, SoftShrinkGradFunctor);  \
-  __macro(rsqrt, Rsqrt, RsqrtFunctor, RsqrtGradFunctor);                      \
   __macro(ceil, Ceil, CeilFunctor, ZeroGradFunctor);                          \
   __macro(floor, Floor, FloorFunctor, ZeroGradFunctor);                       \
   __macro(cos, Cos, CosFunctor, CosGradFunctor);                              \
