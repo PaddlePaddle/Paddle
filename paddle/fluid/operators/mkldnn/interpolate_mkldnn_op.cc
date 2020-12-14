@@ -28,102 +28,109 @@ using dnnl::resampling_forward;
 using platform::GetMKLDNNFormat;
 using platform::to_void_cast;
 
-template <typename T>
-static void Interpolate2D(const framework::ExecutionContext& ctx,
-                          const Tensor* input, Tensor* output) {
-  const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
-  ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
+// template <typename T>
+// static void Interpolate2D(const framework::ExecutionContext& ctx,
+//                           const Tensor* input, Tensor* output) {
+//   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+//   const DataLayout data_layout =
+//   framework::StringToDataLayout(data_layout_str);
+//   int n, c, in_d, in_h, in_w;
+//   ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  auto interp_method = ctx.Attr<std::string>("interp_method");
+//   auto interp_method = ctx.Attr<std::string>("interp_method");
 
-  int out_h = ctx.Attr<int>("out_h");
-  int out_w = ctx.Attr<int>("out_w");
+//   int out_h = ctx.Attr<int>("out_h");
+//   int out_w = ctx.Attr<int>("out_w");
 
-  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
-  if (list_new_size_tensor.size() > 0) {
-    // have size tensor
-    auto new_size = get_new_shape(list_new_size_tensor);
-    out_h = new_size[0];
-    out_w = new_size[1];
-  } else {
-    float scale;
-    auto scale_tensor = ctx.Input<Tensor>("Scale");
-    if (scale_tensor != nullptr) {
-      auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
-      scale = scale_data[0];
-    } else {
-      scale = ctx.Attr<float>("scale");
-    }
-    if (scale > 0) {
-      out_h = static_cast<int>(in_h * scale);
-      out_w = static_cast<int>(in_w * scale);
-    }
-    auto out_size = ctx.Input<Tensor>("OutSize");
-    if (out_size != nullptr) {
-      auto out_size_data = get_new_data_from_tensor<int>(out_size);
-      out_h = out_size_data[0];
-      out_w = out_size_data[1];
-    }
-  }
-  PADDLE_ENFORCE_GT(out_h, 0, platform::errors::InvalidArgument(
-                                  "out_h in Attr(out_shape) of Op(interpolate) "
-                                  "should be greater than 0."));
-  PADDLE_ENFORCE_GT(out_w, 0, platform::errors::InvalidArgument(
-                                  "out_w in Attr(out_shape) of Op(interpolate) "
-                                  "should be greater than 0."));
-  framework::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
-    dim_out = {n, c, out_h, out_w};
-  } else {
-    dim_out = {n, out_h, out_w, c};
-  }
-  output->mutable_data<T>(dim_out, ctx.GetPlace());
-}
+//   auto list_new_size_tensor =
+//   ctx.MultiInput<framework::Tensor>("SizeTensor");
+//   if (list_new_size_tensor.size() > 0) {
+//     // have size tensor
+//     auto new_size = get_new_shape(list_new_size_tensor);
+//     out_h = new_size[0];
+//     out_w = new_size[1];
+//   } else {
+//     float scale;
+//     auto scale_tensor = ctx.Input<Tensor>("Scale");
+//     if (scale_tensor != nullptr) {
+//       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+//       scale = scale_data[0];
+//     } else {
+//       scale = ctx.Attr<float>("scale");
+//     }
+//     if (scale > 0) {
+//       out_h = static_cast<int>(in_h * scale);
+//       out_w = static_cast<int>(in_w * scale);
+//     }
+//     auto out_size = ctx.Input<Tensor>("OutSize");
+//     if (out_size != nullptr) {
+//       auto out_size_data = get_new_data_from_tensor<int>(out_size);
+//       out_h = out_size_data[0];
+//       out_w = out_size_data[1];
+//     }
+//   }
+//   PADDLE_ENFORCE_GT(out_h, 0, platform::errors::InvalidArgument(
+//                                   "out_h in Attr(out_shape) of
+//                                   Op(interpolate) "
+//                                   "should be greater than 0."));
+//   PADDLE_ENFORCE_GT(out_w, 0, platform::errors::InvalidArgument(
+//                                   "out_w in Attr(out_shape) of
+//                                   Op(interpolate) "
+//                                   "should be greater than 0."));
+//   framework::DDim dim_out;
+//   if (data_layout == DataLayout::kNCHW) {
+//     dim_out = {n, c, out_h, out_w};
+//   } else {
+//     dim_out = {n, out_h, out_w, c};
+//   }
+//   output->mutable_data<T>(dim_out, ctx.GetPlace());
+// }
 
-template <typename T>
-static void Interpolate1D(const framework::ExecutionContext& ctx,
-                          const Tensor* input, Tensor* output) {
-  const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
-  ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
-  int out_w = ctx.Attr<int>("out_w");
-  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
-  if (list_new_size_tensor.size() > 0) {
-    // have size tensor
-    auto new_size = get_new_shape(list_new_size_tensor);
-    out_w = new_size[0];
-  } else {
-    float scale;
-    auto scale_tensor = ctx.Input<Tensor>("Scale");
-    if (scale_tensor != nullptr) {
-      auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
-      scale = scale_data[0];
-    } else {
-      scale = ctx.Attr<float>("scale");
-    }
-    if (scale > 0) {
-      out_w = static_cast<int>(in_w * scale);
-    }
-    auto out_size = ctx.Input<Tensor>("OutSize");
-    if (out_size != nullptr) {
-      auto out_size_data = get_new_data_from_tensor<int>(out_size);
-      out_w = out_size_data[0];
-    }
-  }
-  PADDLE_ENFORCE_GT(out_w, 0, platform::errors::InvalidArgument(
-                                  "out_w in Attr(out_shape) of Op(interpolate) "
-                                  "should be greater than 0."));
-  framework::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
-    dim_out = {n, c, out_w};
-  } else {
-    dim_out = {n, out_w, c};
-  }
-  output->mutable_data<T>(dim_out, ctx.GetPlace());
-}
+// template <typename T>
+// static void Interpolate1D(const framework::ExecutionContext& ctx,
+//                           const Tensor* input, Tensor* output) {
+//   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+//   const DataLayout data_layout =
+//   framework::StringToDataLayout(data_layout_str);
+//   int n, c, in_d, in_h, in_w;
+//   ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
+//   int out_w = ctx.Attr<int>("out_w");
+//   auto list_new_size_tensor =
+//   ctx.MultiInput<framework::Tensor>("SizeTensor");
+//   if (list_new_size_tensor.size() > 0) {
+//     // have size tensor
+//     auto new_size = get_new_shape(list_new_size_tensor);
+//     out_w = new_size[0];
+//   } else {
+//     float scale;
+//     auto scale_tensor = ctx.Input<Tensor>("Scale");
+//     if (scale_tensor != nullptr) {
+//       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+//       scale = scale_data[0];
+//     } else {
+//       scale = ctx.Attr<float>("scale");
+//     }
+//     if (scale > 0) {
+//       out_w = static_cast<int>(in_w * scale);
+//     }
+//     auto out_size = ctx.Input<Tensor>("OutSize");
+//     if (out_size != nullptr) {
+//       auto out_size_data = get_new_data_from_tensor<int>(out_size);
+//       out_w = out_size_data[0];
+//     }
+//   }
+//   PADDLE_ENFORCE_GT(out_w, 0, platform::errors::InvalidArgument(
+//                                   "out_w in Attr(out_shape) of
+//                                   Op(interpolate) "
+//                                   "should be greater than 0."));
+//   framework::DDim dim_out;
+//   if (data_layout == DataLayout::kNCHW) {
+//     dim_out = {n, c, out_w};
+//   } else {
+//     dim_out = {n, out_w, c};
+//   }
+//   output->mutable_data<T>(dim_out, ctx.GetPlace());
+// }
 
 template <typename T = float>
 class InterpolateMKLDNNHandler
@@ -194,6 +201,80 @@ class InterpolateMKLDNNHandler
 
 template <typename T = float>
 class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
+  std::vector<int> ComputeOutputShape(
+      const framework::ExecutionContext& ctx) const {
+    const auto* x = ctx.Input<Tensor>("X");
+    auto in_dims = x->dims();
+    // const DataLayout data_layout = framework::StringToDataLayout(
+    //   ctx.Attr<std::string>("data_layout"));
+
+    const bool is_channel_last =
+        false;  // used in mkldnn kernel, we must use NCHW
+
+    framework::DDim in_dhw_dims;
+    if (is_channel_last) {  // NDHWC, NHWC, NWC
+      in_dhw_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+    } else {  // NCDHW, NCHW, NCW
+      in_dhw_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    }
+    std::vector<int> out_dims;
+    if (in_dhw_dims.size() == 1) {
+      out_dims.push_back(ctx.Attr<int>("out_w"));
+    } else if (in_dhw_dims.size() == 2) {
+      out_dims.push_back(ctx.Attr<int>("out_h"));
+      out_dims.push_back(ctx.Attr<int>("out_w"));
+    } else if (in_dhw_dims.size() == 3) {
+      out_dims.push_back(ctx.Attr<int>("out_d"));
+      out_dims.push_back(ctx.Attr<int>("out_h"));
+      out_dims.push_back(ctx.Attr<int>("out_w"));
+    }
+    PADDLE_ENFORCE_GT(
+        std::all_of(out_dims.begin(), out_dims.end(),
+                    [](int i) { return i > 0; }),
+        0, platform::errors::InvalidArgument(
+               "out_d, out_h, out_w in Attr(out_shape) of Op(interpolate) "
+               "should be greater than 0."));
+
+    auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+    if (list_new_size_tensor.size() > 0) {
+      auto new_size = get_new_shape(list_new_size_tensor);
+      if (new_size.size() == out_dims.size()) {
+        out_dims = new_size;
+      }
+    } else {
+      float scale;
+      auto scale_tensor = ctx.Input<Tensor>("Scale");
+      if (scale_tensor != nullptr) {
+        auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+        scale = scale_data[0];
+      } else {
+        scale = ctx.Attr<float>("scale");
+      }
+      if (scale > 0) {
+        std::transform(out_dims.begin(), out_dims.end(), out_dims.begin(),
+                       [&](int i) -> int { return i * scale; });
+      }
+      auto out_size = ctx.Input<Tensor>("OutSize");
+      if (out_size != nullptr) {
+        auto out_size_data = get_new_data_from_tensor<int>(out_size);
+        if (out_size_data.size() == out_dims.size()) {
+          out_dims = out_size_data;
+        }
+      }
+    }
+    out_dims.insert(out_dims.begin(), in_dims[0]);
+    if (is_channel_last) {
+      out_dims.push_back(in_dims[in_dims.size() - 1]);
+    } else {
+      out_dims.insert(out_dims.begin() + 1, in_dims[in_dims.size() - 1]);
+    }
+    // for (auto i =0; i < out_dims.size();i++){
+    //   std::cout<<i<<",";
+    // }
+    // std::cout<<std::endl;
+    return out_dims;
+  }
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto& dev_ctx =
@@ -210,12 +291,15 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
                                ? dnnl::algorithm::resampling_nearest
                                : dnnl::algorithm::resampling_linear;
 
-    auto dim_x = x->dims();
-    if (dim_x.size() == 3) {
-      Interpolate1D<T>(ctx, x, z);
-    } else if (dim_x.size() == 4) {
-      Interpolate2D<T>(ctx, x, z);
-    }
+    // auto dim_x = x->dims();
+    // if (dim_x.size() == 3) {
+    //   Interpolate1D<T>(ctx, x, z);
+    // } else if (dim_x.size() == 4) {
+    //   Interpolate2D<T>(ctx, x, z);
+    // }
+    auto out_dims_vec = ComputeOutputShape(ctx);
+    auto dim_out = framework::make_ddim(out_dims_vec);
+    z->mutable_data<T>(dim_out, ctx.GetPlace());
 
     InterpolateMKLDNNHandler<> handler(algo, dev_ctx, mkldnn_engine,
                                        ctx.GetPlace(), x, z,
