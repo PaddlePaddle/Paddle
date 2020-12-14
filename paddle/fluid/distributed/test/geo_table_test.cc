@@ -109,7 +109,7 @@ TEST(SparseGeoTable, SSUM) {
       auto id = geo_pull_ids[i][j];
       for (int k = 0; k < emb_dim; k++) {
         ASSERT_TRUE(abs(geo_pull_values[i][j * emb_dim + k] -
-                        pull_values[id * emb_dim + k]) < 1e-6);
+                        pull_values[id * emb_dim + k]) < 1e-5);
       }
     }
   }
