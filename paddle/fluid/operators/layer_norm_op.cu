@@ -109,7 +109,7 @@ struct PairForLayerNormAddFunctor {
 
 template <typename T>
 __inline__ __device__ T rsqrt(const T val) {
-  return ::rsqrt(val);
+  return static_cast<T>(1) / sqrt(val);
 }
 
 template <>
@@ -118,11 +118,16 @@ __inline__ __device__ float rsqrt(const float val) {
 }
 
 template <>
-__inline__ __device__ half rsqrt(const half val) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-  return hrsqrt(val);
-#endif
+__inline__ __device__ double rsqrt(const double val) {
+  return rsqrt(val);
 }
+
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+template <>
+__inline__ __device__ half rsqrt(const half val) {
+  return hrsqrt(val);
+}
+#endif
 
 template <typename T, typename U, int BlockDim>
 __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
