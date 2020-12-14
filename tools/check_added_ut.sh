@@ -41,3 +41,4 @@ rm /$PADDLE_ROOT/br-ut /$PADDLE_ROOT/pr-ut $PADDLE_ROOT/paddle/scripts/paddle_bu
 git checkout $CURBRANCH
 git branch -D prec_added_ut
 cd $CURDIR
+export CI_SKIP_CPP_TEST=
