@@ -317,6 +317,21 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
             *dout, ctx.GetPlace(),
             ctx.template device_context<platform::DeviceContext>(), dy);
       }
+      // special optimization using cub
+      if (width == 1) {
+        size_t temp_storage_bytes = 0;
+
+        auto err = cub::DeviceReduce::Sum(nullptr, temp_storage_bytes, out_data,
+                                          size_prob, stream);
+        PADDLE_ENFORCE_CUDA_SUCCESS(err);
+        framework::Tensor tmp;
+        auto *temp_storage = tmp.mutable_data<uint8_t>(
+            framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
+            context.GetPlace());
+        err = cub::DeviceReduce::Sum(temp_storage, temp_storage_bytes, out_data,
+                                     size_prob, stream);
+        PADDLE_ENFORCE_CUDA_SUCCESS(err);
+      }
 
       constexpr int block_x = 32;
       constexpr int block_y = 32;
