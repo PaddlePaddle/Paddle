@@ -532,6 +532,10 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   void SetKeySuffix(const std::string& suffix) { key_suffix_ = suffix; }
   const std::string& GetKeySuffix(void) const { return key_suffix_; }
 
+  // Disable adding  thread ID to the key
+  void DisableThreadInfoInKey(void) { key_attach_thread_id_ = false; };
+  bool IsThreadIdUsedInKey(void) const { return key_attach_thread_id_; };
+
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
 
@@ -554,6 +558,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
   std::string key_suffix_;  // Key identifying current Executor
+  bool key_attach_thread_id_ = true;
 };
 #endif
 

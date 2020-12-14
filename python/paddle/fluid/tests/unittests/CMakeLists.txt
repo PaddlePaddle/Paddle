@@ -18,6 +18,7 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
+list(APPEND DIST_TEST_OPS test_gen_nccl_id_op)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
@@ -120,17 +121,6 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
     LIST(REMOVE_ITEM TEST_OPS test_desc_clone_dist)
     LIST(REMOVE_ITEM TEST_OPS test_program_code_dist)
-endif()
-
-if(WITH_MUSL)
-    # TODO: In the musl docker environment provided by SEC, 
-    # the calculation accuracy of testcase in this unittest 
-    # cannot meet the requirement, error like:
-    # AssertionError: 
-    #   2.3044646853182973e-07 not less than or equal to 1e-07
-    # SEC needs to follow up on this issue, and need to be 
-    # resolved before CI requared
-    LIST(REMOVE_ITEM TEST_OPS test_sigmoid_focal_loss_op)
 endif()
 
 if(WIN32)
@@ -348,7 +338,7 @@ function(parallel_bash_test_modules TARGET_NAME)
     endif()
 endfunction()
 
-
+list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
@@ -375,6 +365,7 @@ list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
+list(REMOVE_ITEM TEST_OPS test_fuse_all_reduce_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
@@ -558,8 +549,12 @@ py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_p
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
 if(WIN32)
     py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth CUDA_VISIBLE_DEVICES=0)
+    py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass ENVS CUDA_VISIBLE_DEVICES=0)
+    py_test_modules(test_feed_data_check_shape_type MODULES test_feed_data_check_shape_type ENVS CUDA_VISIBLE_DEVICES=0)
 else()
     py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
+    py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass)
+    py_test_modules(test_feed_data_check_shape_type MODULES test_feed_data_check_shape_type)
 endif()
 
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
