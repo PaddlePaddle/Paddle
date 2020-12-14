@@ -27,22 +27,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// aligned vector generates vectorized load/store on CUDA
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) AlignedVector {
-  T val[Size];
-};
-
-template <typename T>
-inline int VectorizedSize(const T* pointer) {
-  uint64_t address = reinterpret_cast<uint64_t>(pointer);
-  constexpr int vec4 = std::alignment_of<AlignedVector<T, 4>>::value;  // NOLINT
-  if (address % vec4 == 0) {
-    return 4;
-  }
-  return 1;
-}
-
 template <typename T, typename MaskType>
 __global__ void RandomGenerator(const size_t n, uint64_t seed,
                                 const float dropout_prob, const T* src,

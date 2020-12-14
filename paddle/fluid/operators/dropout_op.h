@@ -25,46 +25,45 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#ifdef __NVCC__
-/*
-__global__ void DropoutGradCUDAKernel(const half* dout, const uint8_t* mask,
-                                      float factor, const int64_t size,
-                                      half* dx) {
-  half2 h2_factor = __float2half2_rn(factor);
-  const auto* dout_h2 = reinterpret_cast<const half2*>(dout);
-  const auto* mask_c2 = reinterpret_cast<const char2*>(mask);
-  auto* dx_h2 = reinterpret_cast<half2*>(dx);
-  CUDA_KERNEL_LOOP(index, size / 2) {
-    char2 mask_val = mask_c2[index];
-    half2 mask_h2;
-    mask_h2.x = mask_val.x;
-    mask_h2.y = mask_val.y;
-    dx_h2[index] = __hmul2(__hmul2(dout_h2[index], mask_h2), h2_factor);
-  }
-  if (index == size / 2 && size % 2 == 1) {
-    const int64_t last_idx = size - 1;
-    half mask = mask[last_idx];
-    dx[last_idx] = __hmul(__hmul(dout[last_idx], mask), h2_factor.x);
-  }
-}
-*/
+// aligned vector generates vectorized load/store on CUDA
+template <typename T, int Size>
+struct alignas(sizeof(T) * Size) AlignedVector {
+  T val[Size];
+};
 
-__global__ void DropoutGradCUDAKernel(const half2* dout, const uint8_t* mask,
-                                      const half factor, const int64_t size,
-                                      half2* dx) {
-  half2 factor_h2 = __half2half2(factor);
-  const auto* mask_uc2 = reinterpret_cast<const uchar2*>(mask);
-  CUDA_KERNEL_LOOP(index, size / 2) {
-    uchar2 mask_val = mask_uc2[index];
-    half2 mask_h2;
-    mask_h2.x = mask_val.x;
-    mask_h2.y = mask_val.y;
-    dx[index] = __hmul2(__hmul2(dout[index], mask_h2), factor_h2);
+template <typename T>
+inline int VectorizedSize(const T* pointer) {
+  uint64_t address = reinterpret_cast<uint64_t>(pointer);
+  constexpr int vec4 = std::alignment_of<AlignedVector<T, 4>>::value;  // NOLINT
+  if (address % vec4 == 0) {
+    return 4;
   }
-  if (size % 2 != 0 && blockIdx.x == 0 && threadIdx.x == 0) {
-    const int64_t last_idx = (size / 2) + 1;
-    half mask_h = mask[size - 1];
-    dx[last_idx].x = __hmul(__hmul(dout[last_idx].x, mask_h), factor_h2.x);
+  return 1;
+}
+
+#ifdef __NVCC__
+template <typename T, typename MaskType, int VecSize>
+__global__ void DropoutGradCUDAKernel(const T* dout, const MaskType* mask,
+                                      const T factor, const int64_t size,
+                                      T* dx) {
+  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+  using LoadT = AlignedVector<T, VecSize>;
+  using MaskLoadT = AlignedVector<MaskType, VecSize>;
+  for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x * VecSize) {
+    T dout_vec[VecSize];
+    LoadT* value = reinterpret_cast<LoadT*>(&dout_vec);
+    *value = *reinterpret_cast<const LoadT*>(&dout[i]);
+
+    T dx_vec[VecSize];
+    MaskType mask_vec[VecSize];
+
+#pragma unroll
+    for (int ii = 0; ii < VecSize; ii++) {
+      dx_vec[ii] = dout_vec[ii] * static_cast<T>(mask_vec[ii]) * factor;
+    }
+
+    *(reinterpret_cast<LoadT*>(&dx[i])) = *reinterpret_cast<LoadT*>(&dx_vec[0]);
   }
 }
 #endif
@@ -179,12 +178,13 @@ class DropoutGradKernel : public framework::OpKernel<T> {
       if (dropout_prob == 1.0f) {
         dX.device(place) = static_cast<T>(0) * dY;
       } else {
-        if (platform::is_gpu_place(context.GetPlace()) &&
-            std::is_same<T, platform::float16>::value) {
+        if (platform::is_gpu_place(context.GetPlace())) {
+// if (platform::is_gpu_place(context.GetPlace()) &&
+//    std::is_same<T, platform::float16>::value) {
 #ifdef __NVCC__
           auto size = grad_x->numel();
           auto round_size = (size + 1) / 2 * 2;
-          auto factor = static_cast<half>(1.0f / (1.0f - dropout_prob));
+          auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
           auto stream = context.cuda_device_context().stream();
           int threads = 512;
           int grid = (round_size + threads - 1) / threads;
@@ -192,11 +192,16 @@ class DropoutGradKernel : public framework::OpKernel<T> {
           int blocks_per_sm = dev_ctx.GetMaxPhysicalThreadCount() /
                               dev_ctx.GetSMCount() / threads;
           grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
+          /*
           const half2* dout_h2 =
               reinterpret_cast<const half2*>(grad_y->data<T>());
           half2* dx_h2 = reinterpret_cast<half2*>(grad_x->data<T>());
           DropoutGradCUDAKernel<<<grid, threads, 0, stream>>>(
               dout_h2, mask->data<uint8_t>(), factor, size, dx_h2);
+          */
+          DropoutGradCUDAKernelAll<T, uint8_t, 2><<<grid, threads, 0, stream>>>(
+              grad_y->data<T>(), mask->data<uint8_t>(), factor, size,
+              grad_x->data<T>());
 #endif
         } else {
           dX.device(place) =
