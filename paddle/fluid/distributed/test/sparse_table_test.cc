@@ -103,7 +103,7 @@ TEST(CommonSparseTable, SGD) {
   table->pull_sparse(pull_values.data(), init_keys.data(), init_keys.size());
   for (size_t i = 0; i < init_values.size(); ++i) {
     auto update_val = init_values[i] - 1.0 * total_gradients[i];
-    ASSERT_TRUE(abs(update_val - pull_values[i]) < 1e-6);
+    ASSERT_TRUE(abs(update_val - pull_values[i]) < 1e-5);
   }
 }
 

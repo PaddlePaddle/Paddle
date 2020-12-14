@@ -483,6 +483,7 @@ class MKLDNNDeviceContextThreadLocals {
 
   typedef MKLDNNDeviceContextThreadLocals self;
   struct Body {
+    bool said_once = false;
     size_t cur_mkldnn_session_id;
     // Current data input shape string.
     // - For fixed-shape, it's a null string in default.
@@ -502,6 +503,7 @@ class MKLDNNDeviceContextThreadLocals {
     void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
     void set_cur_paddle_data_layout(framework::DataLayout dl);
     framework::DataLayout get_cur_paddle_data_layout(void);
+    void log_lib_version(void);
   };
   MKLDNNDeviceContextThreadLocals() = default;
   MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =
@@ -549,6 +551,10 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   void SetKeySuffix(const std::string& suffix) { key_suffix_ = suffix; }
   const std::string& GetKeySuffix(void) const { return key_suffix_; }
 
+  // Disable adding  thread ID to the key
+  void DisableThreadInfoInKey(void) { key_attach_thread_id_ = false; };
+  bool IsThreadIdUsedInKey(void) const { return key_attach_thread_id_; };
+
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
 
@@ -571,6 +577,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
   std::string key_suffix_;  // Key identifying current Executor
+  bool key_attach_thread_id_ = true;
 };
 #endif
 

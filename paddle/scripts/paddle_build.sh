@@ -288,6 +288,7 @@ EOF
         -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=develop \
         -DWITH_XPU=${WITH_XPU:-OFF} \
+        -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
