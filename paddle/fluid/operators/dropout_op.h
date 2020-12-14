@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -50,6 +51,7 @@ __global__ void DropoutGradCUDAKernel(const T* dout, const MaskType* mask,
 
   using LoadT = AlignedVector<T, VecSize>;
   using MaskLoadT = AlignedVector<MaskType, VecSize>;
+
   for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x * VecSize) {
     T dout_vec[VecSize];
     LoadT* value = reinterpret_cast<LoadT*>(&dout_vec);
@@ -163,6 +165,7 @@ class DropoutGradKernel : public framework::OpKernel<T> {
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* mask = context.Input<Tensor>("Mask");
     grad_x->mutable_data<T>(context.GetPlace());
+    auto size = grad_x->numel();
 
     auto M = EigenVector<uint8_t>::Flatten(*mask);
     auto dX = EigenVector<T>::Flatten(*grad_x);
@@ -170,7 +173,6 @@ class DropoutGradKernel : public framework::OpKernel<T> {
 
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-
     auto& dropout_implementation =
         context.Attr<std::string>("dropout_implementation");
     if (dropout_implementation == "upscale_in_train") {
@@ -178,28 +180,17 @@ class DropoutGradKernel : public framework::OpKernel<T> {
       if (dropout_prob == 1.0f) {
         dX.device(place) = static_cast<T>(0) * dY;
       } else {
-        if (platform::is_gpu_place(context.GetPlace())) {
-// if (platform::is_gpu_place(context.GetPlace()) &&
-//    std::is_same<T, platform::float16>::value) {
+        int vec_size = VectorizedSize<T>(grad_y->data<T>());
+        if (platform::is_gpu_place(context.GetPlace()) && vec_size == 4 &&
+            size % 4 == 0) {
 #ifdef __NVCC__
-          auto size = grad_x->numel();
-          auto round_size = (size + 1) / 2 * 2;
           auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
           auto stream = context.cuda_device_context().stream();
-          int threads = 512;
-          int grid = (round_size + threads - 1) / threads;
-          const auto& dev_ctx = context.cuda_device_context();
-          int blocks_per_sm = dev_ctx.GetMaxPhysicalThreadCount() /
-                              dev_ctx.GetSMCount() / threads;
-          grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
-          /*
-          const half2* dout_h2 =
-              reinterpret_cast<const half2*>(grad_y->data<T>());
-          half2* dx_h2 = reinterpret_cast<half2*>(grad_x->data<T>());
-          DropoutGradCUDAKernel<<<grid, threads, 0, stream>>>(
-              dout_h2, mask->data<uint8_t>(), factor, size, dx_h2);
-          */
-          DropoutGradCUDAKernelAll<T, uint8_t, 2><<<grid, threads, 0, stream>>>(
+          platform::GpuLaunchConfig config = platform::GetGpuLaunchConfig1D(
+              context.cuda_device_context(), size);
+          DropoutGradCUDAKernel<
+              T, uint8_t,
+              4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
               grad_y->data<T>(), mask->data<uint8_t>(), factor, size,
               grad_x->data<T>());
 #endif
