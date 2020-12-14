@@ -390,7 +390,7 @@ Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
 }
 
 bool CUDADeviceContext::tensor_core_available() const {
-  return TensorCoreAvailable();
+  return context()->CublasTensorCoreHandle() != nullptr;
 }
 
 dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {
