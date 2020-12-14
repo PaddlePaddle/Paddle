@@ -22,11 +22,11 @@ from unittest import TestCase
 
 class TestDeformConv2D(TestCase):
     batch_size = 4
-    spatial_shape = (16, 16)
+    spatial_shape = (5, 5)
     dtype = "float32"
 
     def setUp(self):
-        self.in_channels = 3
+        self.in_channels = 2
         self.out_channels = 5
         self.kernel_size = [3, 3]
         self.padding = [0, 0]
@@ -36,6 +36,8 @@ class TestDeformConv2D(TestCase):
         self.no_bias = True
 
     def prepare(self):
+        np.random.seed(1)
+        paddle.seed(1)
         if isinstance(self.kernel_size, int):
             filter_shape = (self.kernel_size, ) * 2
         else:
@@ -182,11 +184,11 @@ class TestDeformConv2D(TestCase):
 
 class TestDeformConv2DFunctional(TestCase):
     batch_size = 4
-    spatial_shape = (16, 16)
+    spatial_shape = (5, 5)
     dtype = "float32"
 
     def setUp(self):
-        self.in_channels = 3
+        self.in_channels = 2
         self.out_channels = 5
         self.kernel_size = [3, 3]
         self.padding = [0, 0]
@@ -196,6 +198,8 @@ class TestDeformConv2DFunctional(TestCase):
         self.no_bias = True
 
     def prepare(self):
+        np.random.seed(1)
+        paddle.seed(1)
         if isinstance(self.kernel_size, int):
             filter_shape = (self.kernel_size, ) * 2
         else:
