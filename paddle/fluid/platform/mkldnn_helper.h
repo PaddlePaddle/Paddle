@@ -428,11 +428,6 @@ inline void AppendKey(std::string* key, const std::vector<T>& dims) {
   }
 }
 
-inline unsigned int HashPointer(uintptr_t ptr) {
-  // Get four less meaningful digits in decimal numerals
-  return ptr % 1000;
-}
-
 // If MKLDNN build and CPU place then register suffix in DeviceContext
 inline void AttachPointerHashToMKLDNNKey(void* ptr,
                                          const platform::Place& place) {
@@ -440,18 +435,32 @@ inline void AttachPointerHashToMKLDNNKey(void* ptr,
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place);
-    dev_ctx->SetKeySuffix("E" + std::to_string(platform::HashPointer(
-                                    reinterpret_cast<uintptr_t>(ptr))));
+    dev_ctx->SetKeySuffix("E" +
+                          std::to_string(reinterpret_cast<uintptr_t>(ptr)));
+    // When NaiveExecutor/Executor is used no info on thread id is needed in a
+    // key
+    dev_ctx->DisableThreadInfoInKey();
   }
 }
 
 template <typename... ArgTypes>
-inline std::string CreateKey(ArgTypes&&... args) {
+inline std::string CreateKey(const platform::MKLDNNDeviceContext& dev_ctx,
+                             ArgTypes&&... args) {
   std::string key;
   key.reserve(64);
   using expand_type = int[];
   expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
+  key += dev_ctx.GetKeySuffix();
   return key;
+}
+
+inline std::string ExtendKeyWithThreadInfoIfNeeded(
+    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
+  return ((dev_ctx.IsThreadIdUsedInKey() == true) &&
+          (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() ==
+           platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default))
+             ? key + "-t:" + ThreadIDasStr()
+             : key;
 }
 
 inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
