@@ -44,7 +44,6 @@ template <typename DeviceContext, typename T>
 void ReduceSumForMatmulGrad(const Tensor* input, Tensor* output,
                             const std::vector<int>& reduce_dims,
                             const paddle::framework::ExecutionContext& ctx) {
-  if (reduce_dims.empty()) return;
 #ifdef __NVCC__
   auto stream = ctx.cuda_device_context().stream();
   TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
@@ -669,13 +668,21 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
       }
       // reduce sum to get grad by ReduceSum
       if (dx) {
-        ReduceSumForMatmulGrad<DeviceContext, T>(&dx_help, dx, dx_reduce_dims,
-                                                 ctx);
+        if (dx_reduce_dims.empty()) {
+          *dx = std::move(dx_help);
+        } else {
+          ReduceSumForMatmulGrad<DeviceContext, T>(&dx_help, dx, dx_reduce_dims,
+                                                   ctx);
+        }
         dx->Resize(x.dims());
       }
       if (dy) {
-        ReduceSumForMatmulGrad<DeviceContext, T>(&dy_help, dy, dy_reduce_dims,
-                                                 ctx);
+        if (dy_reduce_dims.empty()) {
+          *dy = std::move(dy_help);
+        } else {
+          ReduceSumForMatmulGrad<DeviceContext, T>(&dy_help, dy, dy_reduce_dims,
+                                                   ctx);
+        }
         dy->Resize(y.dims());
       }
     }
