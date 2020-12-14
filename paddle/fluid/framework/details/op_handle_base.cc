@@ -92,7 +92,7 @@ void OpHandleBase::Run(ExecutionStrategy::UseDevice use_device) {
     InitCUDA();
   }
 #else
-  PADDLE_ENFORCE_EQ(use_device == ExecutionStrategy::UseDevice::kCUDA, false,
+  PADDLE_ENFORCE_NE(use_device, ExecutionStrategy::UseDevice::kCUDA,
                     platform::errors::InvalidArgument(
                         "Argument use_cuda should be false when Paddle is not "
                         "compiled with CUDA."));
