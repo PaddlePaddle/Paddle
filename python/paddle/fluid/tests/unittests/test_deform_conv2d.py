@@ -22,7 +22,7 @@ from unittest import TestCase
 
 class TestDeformConv2D(TestCase):
     batch_size = 4
-    spatial_shape = (16, 16)
+    spatial_shape = (8, 8)
     dtype = "float32"
 
     def setUp(self):
@@ -182,7 +182,7 @@ class TestDeformConv2D(TestCase):
 
 class TestDeformConv2DFunctional(TestCase):
     batch_size = 4
-    spatial_shape = (16, 16)
+    spatial_shape = (8, 8)
     dtype = "float32"
 
     def setUp(self):
