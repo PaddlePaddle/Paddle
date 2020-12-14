@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
 
+
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 

@@ -179,8 +179,12 @@ function run_op_benchmark_test {
   do
     echo "$api_info" >> $api_info_file
   done
-  # install tensorflow for testing accuary
+  # install tensorflow and pytorch
+  LOG "[INFO] Installing tensorflow==2.3.0 ..."
   pip install tensorflow==2.3.0 tensorflow-probability
+  LOG "[INFO] Installing pytorch==1.7.1 ..."
+  pip install torch==1.7.1+cu101 torchvision==0.8.2+cu101 torchaudio==0.7.2 \
+              -f https://download.pytorch.org/whl/torch_stable.html
   for branch_name in "develop" "test_pr"
   do
     git checkout $branch_name
