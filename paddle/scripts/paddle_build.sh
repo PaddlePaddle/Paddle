@@ -1023,6 +1023,10 @@ set +x
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$^");print}' $PADDLE_ROOT/added_ut)$
+            echo "========================================"
+            echo ${added_uts}
+            echo "========================================"
+
             ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
             if [ "$added_ut_error" != 0 ];then
                 echo "========================================"
