@@ -569,7 +569,7 @@ class BufferedShuffleDataset(IterableDataset):
             # be set before the :class:`~paddle.io.DataLoader` in the main process.
             
             ds = BufferedShuffleDataset(dataset)
-            random.seed(...)
+            random.seed(123)
             print(list(paddle.io.DataLoader(ds, num_workers=0)))
             
             # Example 2:
@@ -578,7 +578,7 @@ class BufferedShuffleDataset(IterableDataset):
 
             ds = BufferedShuffleDataset(dataset)
             def init_fn(worker_id):
-                random.seed(...)
+                random.seed(123)
             print(list(paddle.io.data.DataLoader(ds, ..., num_workers=n, worker_init_fn=init_fn)))
     """
     dataset = None
