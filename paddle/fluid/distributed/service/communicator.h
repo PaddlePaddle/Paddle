@@ -181,7 +181,7 @@ inline void MergeVars(const std::string &var_name,
     VLOG(3) << "merge " << var_name << " SelectedRows height: " << slr0.height()
             << " dims: " << slr0.value().dims() << "; merge add: " << merge_add;
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument("unsupported var type: %s!",
+    PADDLE_THROW(platform::errors::InvalidArgument("unsupported var type: %s! ",
                                                    var0->Type()));
   }
 }
