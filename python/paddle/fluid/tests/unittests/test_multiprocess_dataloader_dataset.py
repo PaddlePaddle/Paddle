@@ -312,9 +312,19 @@ class TestBufferShuffleDataset(unittest.TestCase):
                     num_workers, shuffle_ds_init_fn)
                 list_range = [data for data in dataloader_range_with_buffer]
 
-                self.assertCountEqual(list_range, list_count)
-                self.assertCountEqual(list_count, list_orgin)
-                self.assertCountEqual(list_orgin, list_range)
+                list_count, list_range = sorted(list_count), sorted(list_range)
+                for origin_item, count_item, range_item in zip(
+                        list_orgin, list_count, list_range):
+                    # self.assertEqual(origin_item, count_item)
+                    # self.assertEqual(count_item, range_item)
+                    # self.assertEqual(range_item, origin_item)
+
+                    assert origin_item == count_item
+                    assert count_item == range_item
+                    assert range_item == origin_item
+                # self.assertCountEqual(list_range, list_count)
+                # self.assertCountEqual(list_count, list_orgin)
+                # self.assertCountEqual(list_orgin, list_range)
 
     def test_main(self):
         places = [paddle.CPUPlace()]
