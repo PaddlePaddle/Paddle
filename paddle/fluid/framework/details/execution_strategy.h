@@ -29,11 +29,6 @@ struct ExecutionStrategy {
 
   // num_threads indicates the size of thread pool.
   size_t num_threads_{0};
-  // TODO(liuyuhui): There is no need to retain use_cuda_,
-  // because of the addition of use_device_.
-  // But there are too many places in the codes now use 'use_cuda_',
-  // it will be temporarily used and remove it later.
-  bool use_cuda_{true};
   UseDevice use_device_{kCUDA};
   // Note that allow_op_delay is invalid now.
   bool allow_op_delay_{false};

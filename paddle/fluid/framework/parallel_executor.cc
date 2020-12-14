@@ -63,6 +63,8 @@ static bool gProfileStarted = false;
 std::once_flag p2p_init_flag;
 #endif
 
+using UseDevice = paddle::framework::details::ExecutionStrategy::UseDevice;
+
 class ParallelExecutorPrivate {
  public:
   ParallelExecutorPrivate(const std::vector<platform::Place> &places,
@@ -92,6 +94,8 @@ class ParallelExecutorPrivate {
       }
     }
   }
+
+  bool IsUseCUDA(UseDevice use_device);
 
   void SetHasFeed(size_t dev_idx, bool has_feed = true);
 
@@ -288,10 +292,10 @@ class ParallelExecutorPrivate {
   bool own_local_scope_;
   // TODO(liuyuhui): There is no need to retain use_cuda_,
   // because of the addition of use_device_.
-  // But there are too many places in the codes now use 'use_cuda_',
+  // But there are too many passes in the codes now use 'use_cuda_',
   // it will be temporarily used and remove it later.
   bool use_cuda_;
-  bool use_device_;
+  UseDevice use_device_;
   bool use_all_reduce_;
   size_t nranks_;
 
@@ -300,6 +304,10 @@ class ParallelExecutorPrivate {
 
   details::ParallelSSAGraphExecutor *inference_executor_{nullptr};
 };
+
+bool ParallelExecutorPrivate::IsUseCUDA(UseDevice use_device) {
+  return use_device == UseDevice::kCUDA;
+}
 
 void ParallelExecutorPrivate::SetHasFeed(size_t dev_idx, bool has_feed) {
   if (inference_executor_) {
@@ -345,6 +353,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     auto addto_pass = ir::PassRegistry::Instance().Get("inplace_addto_op_pass");
     addto_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     addto_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
+    // TODO(liuyuhui): There is no need to retain use_cuda_, it will then be
+    // replaced.
     addto_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
     VLOG(10) << "Start to apply inplace_addto_op_pass";
     graph = addto_pass->Apply(graph);
@@ -356,6 +366,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
         ir::PassRegistry::Instance().Get("buffer_shared_inplace_pass");
     inplace_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     inplace_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
+    // TODO(liuyuhui): There is no need to retain use_cuda_, it will then be
+    // replaced.
     inplace_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
@@ -371,6 +383,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
                                             &mem_opt_var_infos_);
     cross_op_memory_reuse_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
                                             &last_live_ops_of_vars);
+    // TODO(liuyuhui): There is no need to retain use_cuda_, it will then be
+    // replaced.
     cross_op_memory_reuse_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
     VLOG(10) << "Start to apply buffer_shared_cross_op_memory_reuse_pass";
     graph = cross_op_memory_reuse_pass->Apply(graph);
@@ -527,8 +541,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   InitP2P(places);
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
-  member_->use_cuda_ = exec_strategy.use_cuda_;
   member_->use_device_ = exec_strategy.use_device_;
+  member_->use_cuda_ = member_->IsUseCUDA(exec_strategy.use_device_);
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
                              BuildStrategy::ReduceStrategy::kAllReduce;

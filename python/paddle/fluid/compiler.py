@@ -343,8 +343,6 @@ class CompiledProgram(object):
         if self._exec_strategy is None:
             self._exec_strategy = ExecutionStrategy()
         self._exec_strategy.use_device = use_device
-        self._exec_strategy.use_cuda = (
-            self._exec_strategy.use_device == ExecutionStrategy.UseDevice.CUDA)
 
         if self._exec_strategy.num_threads == 0:
             if self._exec_strategy.use_device == ExecutionStrategy.UseDevice.CUDA:
@@ -386,7 +384,7 @@ class CompiledProgram(object):
             self._build_strategy.enable_sequential_execution = True
 
         if self._program is not None and self._program._enable_dgc:
-            assert use_cuda, "DGC only used under CUDA environment."
+            assert self._exec_strategy.use_device == ExecutionStrategy.UseDevice.CUDA, "DGC only used under CUDA environment."
             assert self._build_strategy.num_trainers * len(
                 places) > 1, "DGC is not avaliable for single card training."
             assert self._build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "DGC \
