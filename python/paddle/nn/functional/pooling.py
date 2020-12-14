@@ -1017,7 +1017,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             # out.shape is [2, 3, 3, 3]
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  'adaptive_avg_pool2d')
     check_type(data_format, 'data_format', str, 'adaptive_avg_pool2d')
 
