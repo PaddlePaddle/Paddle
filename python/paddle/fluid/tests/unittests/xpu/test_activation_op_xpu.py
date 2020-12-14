@@ -73,8 +73,7 @@ class TestXPUSigmoid(TestXPUActivation):
     def test_check_grad(self):
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)
-            self.check_grad_with_place(
-                place, ['X'], 'Out', max_relative_error=0.01)
+            self.check_grad_with_place(place, ['X'], 'Out')
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
@@ -90,6 +89,11 @@ class TestXPUTanh(TestXPUActivation):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
+
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
@@ -104,6 +108,11 @@ class TestXPUSqrt(TestXPUActivation):
         self.attrs = {'use_xpu': True}
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
@@ -142,6 +151,11 @@ class TestXPURelu(TestXPUActivation):
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
+
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
@@ -156,6 +170,11 @@ class TestXPUGelu(TestXPUActivation):
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {"approximate": approximate, 'use_xpu': True}
+
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
 
 
 def gelu(x, approximate):
@@ -223,6 +242,11 @@ class TestXPUSquare(TestXPUActivation):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
+
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
@@ -240,4 +264,5 @@ class TestXPUPow(TestXPUActivation):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
