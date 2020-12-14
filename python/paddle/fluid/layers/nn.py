@@ -1007,6 +1007,9 @@ def dropout(x,
             x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
             dropped = fluid.layers.dropout(x, dropout_prob=0.5)
     """
+    # fast return for p == 0
+    if dropout_prob == 0:
+        return x
 
     def get_attrs(prog, dropout_prob, is_test, seed):
         if (seed is None or seed == 0) and prog.random_seed != 0:
