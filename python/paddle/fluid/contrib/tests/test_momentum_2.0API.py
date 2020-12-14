@@ -122,7 +122,7 @@ def train(use_pure_fp16=True, use_nesterov=False):
         # Test program
         test_program = train_program.clone(for_test=True)
 
-        optimizer = Paddle.optimizer.Momentum(
+        optimizer = paddle.optimizer.Momentum(
             learning_rate=0.001,
             momentum=0.9,
             use_nesterov=use_nesterov,
