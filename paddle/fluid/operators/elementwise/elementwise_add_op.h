@@ -200,6 +200,22 @@ __global__ void FP16MatrixColReduce(
     if ((threadIdx.y == 0) && ((w) < width)) out[w] = sdata[0][threadIdx.x];
   }
 }
+
+template <typename T>
+__global__ void MatrixReduceLongWidth(const T *__restrict__ in, T *out,
+                                      size_t width, size_t height) {
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+
+  for (; idx < width; idx += blockDim.x * gridDim.x) {
+    T sum = static_cast<T>(0);
+    for (int row = 0; row < height; row++) {
+      sum += in[idx + row * width];
+    }
+
+    out[idx] = sum;
+  }
+}
+
 #endif
 #endif
 bool static RunSpecialDims(const framework::DDim &dx_dims,
@@ -311,7 +327,8 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
       int max_blocks = std::max(max_physical_threads / (block_x * block_y), 1);
       int theory_block = (width + blocks.x - 1) / blocks.x;
       dim3 grids(std::min(theory_block, max_blocks));
-      if (std::is_same<T, paddle::platform::float16>::value) {
+      if (std::is_same<T, paddle::platform::float16>::value &&
+          (width / height) < 32) {
         const paddle::platform::float16 *ptr1 =
             reinterpret_cast<const paddle::platform::float16 *>(dout_data);
         paddle::platform::float16 *ptr2 =
@@ -325,8 +342,16 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
         }
         return;
       }
-      MatrixColReduce<T, block_x, block_y><<<grids, blocks, 0, stream>>>(
-          dout_data, out_data, width, height);
+
+      if (width / height < 32) {
+        MatrixColReduce<T, block_x, block_y><<<grids, blocks, 0, stream>>>(
+            dout_data, out_data, width, height);
+      } else {
+        size_t thread_nums = 128;
+        size_t block_nums = (width + thread_nums - 1) / thread_nums;
+        MatrixReduceLongWidth<T><<<block_nums, thread_nums, 0, stream>>>(
+            dout_data, out_data, width, height);
+      }
       return;
     }
 
