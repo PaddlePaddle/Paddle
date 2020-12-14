@@ -256,7 +256,7 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
             continue
         total_ops += m.total_ops
         total_params += m.total_params
-    if hasattr(m, 'total_ops') and hasattr(m, total_params):
+    if hasattr(m, 'total_ops') and hasattr(m, 'total_params'):
         total_ops = int(total_ops)
         total_params = int(total_params)
 
