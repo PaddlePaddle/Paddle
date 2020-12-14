@@ -45,6 +45,7 @@ class MKLDNNHandlerT {
         key_common_(base_key),
         fwd_pd_(nullptr),
         bwd_pd_(nullptr) {
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() !=
         platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
       key_ = key_common_;
@@ -311,6 +312,7 @@ class MKLDNNHandler {
   MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
                 const std::string& base_key)
       : dev_ctx_(dev_ctx), engine_(engine), key_common_(base_key) {
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() !=
         platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
       key_ = key_common_;
