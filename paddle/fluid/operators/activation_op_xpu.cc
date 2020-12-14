@@ -170,26 +170,26 @@ struct XPUPowFunctor : public BaseActivationFunctor<T> {
     T *y_data = y->mutable_data<T>(ctx.GetPlace());
     T *factor_data = nullptr;
 
-    auto &dev_ctx =
-        ctx.template device_context<paddle::platform::XPUDeviceContext>();
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
     PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void **>(&factor_data),
                                  x->numel() * sizeof(T)),
                       XPU_SUCCESS, platform::errors::ResourceExhausted(
                                        "XPU has no enough memory"));
-    int r = xpu::constant<T>(dev_ctx.x_context(), factor_data, x->numel(),
-                             pow_factor);
+    int r = xpu::constant<T>(xpu_context, factor_data, x->numel(), pow_factor);
     PADDLE_ENFORCE_EQ(
         r == xpu::Error_t::SUCCESS, true,
         platform::errors::External("XPU constant op return"
                                    " wrong value[%d %s] in pow op.",
                                    r, XPUAPIErrorMsg[r]));
-    r = xpu::pow(dev_ctx.x_context(), x_data, factor_data, y_data, x->numel());
+    r = xpu::pow(xpu_context, x_data, factor_data, y_data, x->numel());
     PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
                       platform::errors::External("XPU pow op return"
                                                  " wrong value[%d %s].",
                                                  r, XPUAPIErrorMsg[r]));
-
-    dev_ctx.Wait();
+    if (xpu_context->xpu_stream != nullptr) {
+      xpu_wait(xpu_context->xpu_stream);
+    }
     xpu_free(factor_data);
   }
 };
