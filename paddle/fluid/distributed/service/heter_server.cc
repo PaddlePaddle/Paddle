@@ -48,11 +48,43 @@ void HeterServer::StartHeterService() {
   server_.Join();
 }
 
-void HeterServer::SetEndPoint(std::string &endpoint) { endpoint_ = endpoint; }
+void HeterServer::SetEndPoint(std::string& endpoint) {
+  endpoint_ = endpoint;
+  service_.SetEndpoint(endpoint);
+}
+
+void HeterServer::SetFanin(int& fan_in) { service_.SetFanin(fan_in); }
 
 void HeterServer::WaitServerReady() {
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
+}
+
+int32_t HeterService::stop_profiler(const PsRequestMessage& request,
+                                    PsResponseMessage& response,
+                                    brpc::Controller* cntl) {
+  platform::DisableProfiler(
+      platform::EventSortingKey::kDefault,
+      string::Sprintf("heter_worker_%s_profile", endpoint_));
+  return 0;
+}
+
+int32_t HeterService::start_profiler(const PsRequestMessage& request,
+                                     PsResponseMessage& response,
+                                     brpc::Controller* cntl) {
+  platform::EnableProfiler(platform::ProfilerState::kAll);
+  return 0;
+}
+
+int32_t HeterService::stop_heter_worker(const PsRequestMessage& request,
+                                        PsResponseMessage& response,
+                                        brpc::Controller* cntl) {
+  auto client_id = request.client_id();
+  stop_cpu_worker_set_.insert(client_id);
+  if (stop_cpu_worker_set_.size() == fan_in_) {
+    is_exit_ = true;
+  }
+  return 0;
 }
 
 }  // end namespace distributed

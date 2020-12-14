@@ -17,7 +17,7 @@ set_source_files_properties(service.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COM
 set_source_files_properties(brpc_ps_server.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(brpc_ps_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
-set_source_files_properties(heter_serde.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+set_source_files_properties(brpc_utils.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(heter_server.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(heter_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
@@ -35,6 +35,6 @@ cc_library(server SRCS server.cc DEPS downpour_server boost ${RPC_DEPS})
 cc_library(communicator SRCS communicator.cc DEPS scope client boost table math_function selected_rows_functor ${RPC_DEPS})
 cc_library(ps_service SRCS service.cc DEPS communicator client server boost ${RPC_DEPS})
 
-cc_library(heter_serde SRCS heter_serde.cc DEPS ${COMMON_DEPS} ${RPC_DEPS})
-cc_library(heter_server SRCS heter_server.cc DEPS heter_serde ${COMMON_DEPS} ${RPC_DEPS})
-cc_library(heter_client SRCS heter_client.cc DEPS heter_serde ${COMMON_DEPS} ${RPC_DEPS})
+cc_library(brpc_utils SRCS brpc_utils.cc DEPS ${COMMON_DEPS} ${RPC_DEPS})
+cc_library(heter_server SRCS heter_server.cc DEPS brpc_utils ${COMMON_DEPS} ${RPC_DEPS})
+cc_library(heter_client SRCS heter_client.cc DEPS brpc_utils ${COMMON_DEPS} ${RPC_DEPS})

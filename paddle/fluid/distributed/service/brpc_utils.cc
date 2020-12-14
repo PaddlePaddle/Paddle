@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/service/heter_serde.h"
+#include "paddle/fluid/distributed/service/brpc_utils.h"
 #include <limits>
 #include <memory>
 #include "paddle/fluid/platform/enforce.h"

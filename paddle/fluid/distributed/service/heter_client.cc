@@ -27,14 +27,53 @@ DECLARE_int32(rpc_deadline);
 namespace paddle {
 namespace distributed {
 
+DEFINE_int32(pserver_timeout_ms, 10800000, "pserver request server timeout_ms");
+
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = NULL;
 bool HeterClient::is_initialized_ = false;
+
+void HeterClient::MainThread() {
+  while (running_) {
+    RpcProfilerControl();
+  }
+}
+
+void HeterClient::Stop() {
+  running_ = false;
+  if (!is_initialized_) {
+    VLOG(0) << "HeterClient is not inited, do nothing";
+  } else {
+    if (main_thread_) {
+      auto status = StopHeterWorker();
+      status.wait();
+      main_thread_->join();
+      main_thread_.reset(nullptr);
+    }
+    VLOG(1) << "HeterClient Stop Done";
+  }
+}
+
+void HeterClient::RpcProfilerControl() {
+  if (trainer_id_ == 0) {
+    if (!do_server_profiler_ && platform::IsProfileEnabled()) {
+      // send profiler start flag
+      do_server_profiler_ = true;
+      auto start_status = StartProfiler();
+      start_status.wait();
+    } else if (do_server_profiler_ && !platform::IsProfileEnabled()) {
+      // send profiler end flag
+      auto stop_status = StopProfiler();
+      stop_status.wait();
+      do_server_profiler_ = false;
+    }
+  }
+}
 
 void HeterClient::CreateClient2XpuConnection() {
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
   options.connection_type = "single";
-  options.timeout_ms = 2000000;
+  options.timeout_ms = pserver_timeout_ms;
 
   xpu_channels_.resize(xpu_list_.size());
   for (size_t i = 0; i < xpu_list_.size(); ++i) {
@@ -45,19 +84,12 @@ void HeterClient::CreateClient2XpuConnection() {
   }
 }
 
-void HeterClient::SetXpuList(const std::vector<std::string>& xpu_list) {
-  for (auto& x : xpu_list) {
-    xpu_list_.push_back(x);
-  }
-}
-
 void HeterClient::SendAndRecvAsync(
-    const std::string& ep, const platform::DeviceContext& ctx,
+    const std::vector<std::string>& ep, const platform::DeviceContext& ctx,
     const framework::Scope& scope, const std::string& message_name,
     const std::vector<std::string>& send_var_name,
     const std::vector<std::string>& recv_var_name) {
   platform::RecordEvent record_event("HeterClient->SendAndRecvAsync");
-  const std::string ep_val = ep;
   const platform::DeviceContext* p_ctx = &ctx;
   const framework::Scope* p_scope = &scope;
   const std::string message_name_val = message_name;
@@ -67,10 +99,10 @@ void HeterClient::SendAndRecvAsync(
   VLOG(3) << "GRPCClient::SendAndRecv Begin, message_name: "
           << message_name_val;
   // Todo: get correct channel
-  int num = 0;
+  int num = trainer_id_ % xpu_channels_.size();
 
   brpc::Controller cntl;
-  cntl.set_timeout_ms(10800000);
+  cntl.set_timeout_ms(pserver_timeout_ms);
   distributed::MultiVarMsg request, response;
   auto& request_io_buffer = cntl.request_attachment();
   ::paddle::PsService_Stub stub(xpu_channels_[num].get());
@@ -87,6 +119,49 @@ void HeterClient::SendAndRecvAsync(
   auto& response_io_buffer = cntl.response_attachment();
   distributed::DeserializeFromMultiVarMsgAndIOBuf(response, &response_io_buffer,
                                                   ctx, p_scope);
+}
+
+std::future<int32_t> HeterClient::SendCmd(
+    uint32_t table_id, int cmd_id, const std::vector<std::string>& params) {
+  size_t request_call_num = xpu_channels_.size();
+  paddle::distributed::DownpourBrpcClosure* closure =
+      new paddle::distributed::DownpourBrpcClosure(
+          request_call_num, [request_call_num, cmd_id](void* done) {
+            int ret = 0;
+            auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
+            for (size_t i = 0; i < request_call_num; ++i) {
+              if (closure->check_response(i, cmd_id) != 0) {
+                ret = -1;
+                break;
+              }
+            }
+            closure->set_promise_value(ret);
+          });
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+  for (size_t i = 0; i < request_call_num; ++i) {
+    closure->request(i)->set_cmd_id(cmd_id);
+    closure->request(i)->set_table_id(table_id);
+    closure->request(i)->set_client_id(trainer_id_);
+    for (const auto& param : params) {
+      closure->request(i)->add_params(param);
+    }
+    ::paddle::PsService_Stub rpc_stub(xpu_channels_[i].get());
+    closure->cntl(i)->set_timeout_ms(
+        pserver_timeout_ms);  // cmd msg don't limit timeout for save/load
+    rpc_stub.service(closure->cntl(i), closure->request(i),
+                     closure->response(i), closure);
+  }
+  return fut;
+}
+
+std::future<int32_t> HeterClient::StartProfiler() {
+  return SendCmd(-1, PS_START_PROFILER, {});
+}
+
+std::future<int32_t> HeterClient::StopProfiler() {
+  return SendCmd(-1, PS_STOP_PROFILER, {});
 }
 
 }  // end namespace distributed

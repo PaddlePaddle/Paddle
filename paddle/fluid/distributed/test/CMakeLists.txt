@@ -27,5 +27,5 @@ cc_test(brpc_service_dense_sgd_test SRCS brpc_service_dense_sgd_test.cc DEPS sco
 set_source_files_properties(brpc_service_sparse_sgd_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 cc_test(brpc_service_sparse_sgd_test SRCS brpc_service_sparse_sgd_test.cc DEPS scope server client communicator ps_service boost table ps_framework_proto ${COMMON_DEPS})
 
-set_source_files_properties(heter_serde_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test(heter_serde_test SRCS heter_serde_test.cc DEPS heter_serde scope math_function ${COMMON_DEPS} ${RPC_DEPS})
+set_source_files_properties(brpc_utils_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+cc_test(brpc_utils_test SRCS brpc_utils_test.cc DEPS brpc_utils scope math_function ${COMMON_DEPS} ${RPC_DEPS})
