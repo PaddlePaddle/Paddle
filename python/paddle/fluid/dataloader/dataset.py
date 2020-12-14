@@ -579,7 +579,7 @@ class BufferedShuffleDataset(IterableDataset):
             ds = BufferedShuffleDataset(dataset)
             def init_fn(worker_id):
                 random.seed(123)
-            print(list(paddle.io.data.DataLoader(ds, ..., num_workers=n, worker_init_fn=init_fn)))
+            print(list(paddle.io.data.DataLoader(ds, num_workers=n, worker_init_fn=init_fn)))
     """
     dataset = None
     buffer_size = None
