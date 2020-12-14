@@ -152,6 +152,52 @@ __global__ void MatrixColReduce(const T *__restrict__ in, T *__restrict__ out,
     if ((threadIdx.y == 0) && ((w) < width)) out[w] = sdata[0][threadIdx.x];
   }
 }
+
+__global__ void MatrixColFp16Reduce(
+    const paddle::platform::float16 *__restrict__ in,
+    paddle::platform::float16 *__restrict__ out, size_t width, size_t height) {
+  constexpr int block_x = 32;
+  constexpr int block_y = 64;
+  constexpr int repeats = block_y / block_x;
+  __shared__ paddle::platform::float16 sdata[block_y][block_x + 1];
+  size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  size_t width_stride = gridDim.x * blockDim.x;
+  size_t full_width = (width & (~((uint64_t)(block_x - 1)))) +
+                      ((width & (block_x - 1)) ? block_x : 0);
+
+#pragma unroll
+  for (size_t w = idx; w < full_width; w += width_stride) {
+    for (int r = 0; r < repeats; r++) {
+      sdata[threadIdx.y + r * block_x][threadIdx.x] = 0;
+    }
+    for (int r = 0; r < repeats; r++) {
+      size_t offset = w + (r * block_x + threadIdx.y) * width;
+#pragma unroll
+      for (size_t h = r * block_y + threadIdx.y; h < height;
+           h += block_y) {  // block-stride loop across matrix height
+        sdata[r * block_x + threadIdx.y][threadIdx.x] +=
+            (w < width) ? in[offset + r * block_x * width]
+                        : (static_cast<paddle::platform::float16>(0));
+        offset += width * block_y;
+      }
+    }
+    __syncthreads();
+
+    paddle::platform::float16 result =
+        static_cast<paddle::platform::float16>(0);
+    for (int r = 0; r < repeats; r++) {
+      paddle::platform::float16 val =
+          sdata[threadIdx.x + r * block_x][threadIdx.y];
+      for (int i = warpSize >> 1; i > 0; i >>= 1)
+        val += platform::CudaShuffleXorSync(0xFFFFFFFF, val, i);
+      __syncthreads();
+      result += val;
+    }
+    if (threadIdx.x == 0) sdata[0][threadIdx.y] = result;
+    __syncthreads();
+    if ((threadIdx.y == 0) && ((w) < width)) out[w] = sdata[0][threadIdx.x];
+  }
+}
 #endif
 
 bool static RunSpecialDims(const framework::DDim &dx_dims,
@@ -262,6 +308,18 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
       int max_blocks = std::max(max_physical_threads / (block_x * block_y), 1);
       int theory_block = (width + blocks.x - 1) / blocks.x;
       dim3 grids(std::min(theory_block, max_blocks));
+      bool is_float16 = std::type_index(typeid(T)) ==
+                        std::type_index(typeid(paddle::platform::float16));
+      if (std::is_same<T, paddle::platform::float16>::value) {
+        const paddle::platform::float16 *ptr1 =
+            reinterpret_cast<const paddle::platform::float16 *>(dout_data);
+        paddle::platform::float16 *ptr2 =
+            reinterpret_cast<paddle::platform::float16 *>(out_data);
+
+        MatrixColFp16Reduce<<<grids, blocks, 0, stream>>>(ptr1, ptr2, width,
+                                                          height);
+        return;
+      }
       MatrixColReduce<T, block_x, block_y><<<grids, blocks, 0, stream>>>(
           dout_data, out_data, width, height);
       return;

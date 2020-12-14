@@ -351,6 +351,16 @@ class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
         self.axis = -1
 
 
+class TestElementwiseFP16AddOp_commonuse_add1(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(20, 30, 100).astype(self.dtype)
+        self.y = np.random.rand(1, 1, 100).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
 class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.rand(10, 3, 1, 4).astype(self.dtype)
@@ -429,4 +439,5 @@ class TestAddOp(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
