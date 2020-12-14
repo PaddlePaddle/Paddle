@@ -25,8 +25,7 @@ namespace operators {
 using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
-static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx,
-                                         const bool is_channel_last) {
+static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
@@ -35,6 +34,8 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx,
                         "Interpolation method can only be \"linear\" when"
                         "Input(X) dimension is 3, but got method = %s .",
                         interp_method));
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
@@ -48,7 +49,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx,
             inputs_name.size()));
     int out_w = ctx->Attrs().Get<int>("out_w");
     framework::DDim dim_out;
-    if (!is_channel_last) {
+    if (data_layout == DataLayout::kNCHW) {
       dim_out = {dim_x[0], dim_x[1], out_w};
     } else {
       dim_out = {dim_x[0], out_w, dim_x[2]};
@@ -71,8 +72,9 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx,
     float scale = ctx->Attrs().Get<float>("scale");
     if (scale > 0) {
       // round down
-      out_w = (!is_channel_last ? static_cast<int>(dim_x[2] * scale)
-                                : static_cast<int>(dim_x[1] * scale));
+      out_w = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[2] * scale)
+                   : static_cast<int>(dim_x[1] * scale));
       // protect when input shape is -1
       out_w = out_w > 0 ? out_w : -1;
     } else {
@@ -94,7 +96,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx,
   }
 
   framework::DDim dim_out;
-  if (!is_channel_last) {
+  if (data_layout == DataLayout::kNCHW) {
     dim_out = {dim_x[0], dim_x[1], out_w};
   } else {
     dim_out = {dim_x[0], out_w, dim_x[2]};
@@ -102,8 +104,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx,
   ctx->SetOutputDim("Out", dim_out);
 }
 
-static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx,
-                                         const bool is_channel_last) {
+static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
@@ -114,6 +115,8 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx,
                               "or \"nearest\" or \"bicubic\" when "
                               "Input(X) dimension is 4, but got method is %s.",
                               interp_method));
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
@@ -128,7 +131,7 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx,
     int out_h = ctx->Attrs().Get<int>("out_h");
     int out_w = ctx->Attrs().Get<int>("out_w");
     framework::DDim dim_out;
-    if (!is_channel_last) {
+    if (data_layout == DataLayout::kNCHW) {
       dim_out = {dim_x[0], dim_x[1], out_h, out_w};
     } else {
       dim_out = {dim_x[0], out_h, out_w, dim_x[3]};
@@ -152,10 +155,12 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx,
     float scale = ctx->Attrs().Get<float>("scale");
     if (scale > 0) {
       // round down
-      out_h = (!is_channel_last ? static_cast<int>(dim_x[2] * scale)
-                                : static_cast<int>(dim_x[1] * scale));
-      out_w = (!is_channel_last ? static_cast<int>(dim_x[3] * scale)
-                                : static_cast<int>(dim_x[2] * scale));
+      out_h = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[2] * scale)
+                   : static_cast<int>(dim_x[1] * scale));
+      out_w = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[3] * scale)
+                   : static_cast<int>(dim_x[2] * scale));
       // protect when input shape is -1
       out_h = out_h > 0 ? out_h : -1;
       out_w = out_w > 0 ? out_w : -1;
@@ -182,7 +187,7 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx,
   }
 
   framework::DDim dim_out;
-  if (!is_channel_last) {
+  if (data_layout == DataLayout::kNCHW) {
     dim_out = {dim_x[0], dim_x[1], out_h, out_w};
   } else {
     dim_out = {dim_x[0], out_h, out_w, dim_x[3]};
@@ -190,8 +195,7 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx,
   ctx->SetOutputDim("Out", dim_out);
 }
 
-static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx,
-                                         const bool is_channel_last) {
+static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
@@ -201,6 +205,8 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx,
           "Interpolation method can only be \"trilinear\" when Input(X) "
           "dimension is 5, but got method = %s .",
           interp_method));
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
@@ -216,7 +222,7 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx,
     int out_h = ctx->Attrs().Get<int>("out_h");
     int out_w = ctx->Attrs().Get<int>("out_w");
     framework::DDim dim_out;
-    if (!is_channel_last) {
+    if (data_layout == DataLayout::kNCHW) {
       dim_out = {dim_x[0], dim_x[1], out_d, out_h, out_w};
     } else {
       dim_out = {dim_x[0], out_d, out_h, out_w, dim_x[4]};
@@ -241,12 +247,15 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx,
     float scale = ctx->Attrs().Get<float>("scale");
     if (scale > 0) {
       // round down
-      out_d = (!is_channel_last ? static_cast<int>(dim_x[2] * scale)
-                                : static_cast<int>(dim_x[1] * scale));
-      out_h = (!is_channel_last ? static_cast<int>(dim_x[3] * scale)
-                                : static_cast<int>(dim_x[2] * scale));
-      out_w = (!is_channel_last ? static_cast<int>(dim_x[4] * scale)
-                                : static_cast<int>(dim_x[3] * scale));
+      out_d = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[2] * scale)
+                   : static_cast<int>(dim_x[1] * scale));
+      out_h = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[3] * scale)
+                   : static_cast<int>(dim_x[2] * scale));
+      out_w = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[4] * scale)
+                   : static_cast<int>(dim_x[3] * scale));
       // protect when input shape is -1
       out_d = out_d > 0 ? out_d : -1;
       out_h = out_h > 0 ? out_h : -1;
@@ -274,7 +283,7 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx,
   }
 
   framework::DDim dim_out;
-  if (!is_channel_last) {
+  if (data_layout == DataLayout::kNCHW) {
     dim_out = {dim_x[0], dim_x[1], out_d, out_h, out_w};
   } else {
     dim_out = {dim_x[0], out_d, out_h, out_w, dim_x[4]};
@@ -297,19 +306,16 @@ class InterpolateOp : public framework::OperatorWithKernel {
         platform::errors::Unimplemented(
             "Input(X) dimension must be 3, 4 or 5, but got dimension = %d .",
             dim_x.size()));
-    const DataLayout data_layout = framework::StringToDataLayout(
-        ctx->Attrs().Get<std::string>("data_layout"));
-    const bool is_channel_last =
-        (this->IsMKLDNNType() == false) && (data_layout == DataLayout::kNCHW);
+
     if (dim_x.size() == 3) {
       // shape check for 1D interpolate for input tensor shape NCHW
-      Interpolate1DInferShapeCheck(ctx, is_channel_last);
+      Interpolate1DInferShapeCheck(ctx);
     } else if (dim_x.size() == 4) {
       // shape check for 2D interpolate for input tensor shape NCHW
-      Interpolate2DInferShapeCheck(ctx, is_channel_last);
+      Interpolate2DInferShapeCheck(ctx);
     } else {  // dim_x.size() == 5
       // shape check for 3D interpolate for input tensor shape NCDHW
-      Interpolate3DInferShapeCheck(ctx, is_channel_last);
+      Interpolate3DInferShapeCheck(ctx);
     }
   }
 
@@ -318,9 +324,13 @@ class InterpolateOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
 #ifdef PADDLE_WITH_MKLDNN
     auto interp_method = ctx.Attr<std::string>("interp_method");
+    const auto* x = ctx.Input<Tensor>("X");
+    auto dim_x = x->dims();
+
     if (interp_method == "bicubic") {
       VLOG(3) << "oneDNN interpolate does not support bicubic algorithm";
-    } else if (this->CanMKLDNNBeUsed(ctx) /*&& FLAGS_use_mkldnn_interpolate*/) {
+    } else if (this->CanMKLDNNBeUsed(ctx) /*&& FLAGS_use_mkldnn_interpolate*/ &&
+               (dim_x.size() == 3 || dim_x.size() == 4)) {
       framework::LibraryType library = framework::LibraryType::kMKLDNN;
       framework::DataLayout layout = framework::DataLayout::kMKLDNN;
       return framework::OpKernelType(
@@ -335,22 +345,6 @@ class InterpolateOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
-      auto attrs = Attrs();
-      auto ar = paddle::framework::AttrReader(attrs);
-      const std::string data_format = ar.Get<std::string>("data_layout");
-      auto dl = framework::StringToDataLayout(data_format);
-      // Some models may have intentionally set "AnyLayout" for pool
-      // op. Treat this as NCHW (default data_format value)
-      if (dl != framework::DataLayout::kAnyLayout) {
-        return framework::OpKernelType(expected_kernel_type.data_type_,
-                                       tensor.place(), dl);
-      }
-    }
-#endif
-
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;
     }
