@@ -1111,8 +1111,17 @@ class TranslatedLayer(layers.Layer):
                         "Adding persistent variable which  to layer is not supported now"
                     )
 
-        self._is_test = True
+        # create TranslatedLayer's execution method
         self._input_args_names = None
+        for method_name, program_holder in programs.items():
+            if self._input_args_names is None:
+                self._input_args_names = [
+                    ins.name() for ins in program_holder.input_descs
+                ]
+            setattr(TranslatedLayer, method_name,
+                    TranslatedLayer._execution_method_creator(method_name,
+                                                              program_holder))
+        self._is_test = True
 
     @staticmethod
     @framework.dygraph_only
@@ -1137,13 +1146,7 @@ class TranslatedLayer(layers.Layer):
         # 3. construct TranslatedLayer object
         translated_layer = TranslatedLayer(programs, persistable_vars)
 
-        # 4. create TranslatedLayer's execution method
-        for method_name, program_holder in programs.items():
-            setattr(TranslatedLayer, method_name,
-                    TranslatedLayer._execution_method_creator(method_name,
-                                                              program_holder))
-
-        # 5. set TranslatedLayer's default mode to eval
+        # 4. set TranslatedLayer's default mode to eval
         translated_layer.eval()
 
         return translated_layer

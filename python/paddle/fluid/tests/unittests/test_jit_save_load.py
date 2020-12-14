@@ -918,6 +918,51 @@ class LayerLoadFinetune(paddle.nn.Layer):
         return y
 
 
+class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        paddle.disable_static()
+
+    def test_save_load_finetune_load(self):
+        model_path = "test_jit_save_load_save_without_running/model"
+        IMAGE_SIZE = 224
+        inps0 = paddle.randn([1, IMAGE_SIZE])
+        inps1 = paddle.randn([2, IMAGE_SIZE])
+        # Use new namespace
+        with unique_name.guard():
+            layer_save = LayerSaved(IMAGE_SIZE, IMAGE_SIZE)
+        #save
+        paddle.jit.save(
+            layer_save,
+            model_path,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, IMAGE_SIZE], dtype='float32')
+            ])
+
+        result_00 = layer_save(inps0)
+        result_01 = layer_save(inps1)
+        #load and save without running
+        print("WithoutRunning")
+        with unique_name.guard():
+            layer_load = paddle.jit.load(model_path)
+            print(type(layer_load))
+            paddle.jit.save(
+                layer_load,
+                model_path,
+                input_spec=[
+                    paddle.static.InputSpec(
+                        shape=[None, IMAGE_SIZE], dtype='float32')
+                ])
+        #reload
+        layer_reload = paddle.jit.load(model_path)
+        result_10 = layer_reload(inps0)
+        result_11 = layer_reload(inps1)
+
+        self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
+        self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
+
+
 class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
