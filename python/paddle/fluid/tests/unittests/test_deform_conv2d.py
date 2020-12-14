@@ -36,6 +36,8 @@ class TestDeformConv2D(TestCase):
         self.no_bias = True
 
     def prepare(self):
+        np.random.seed(1)
+        paddle.seed(1)
         if isinstance(self.kernel_size, int):
             filter_shape = (self.kernel_size, ) * 2
         else:
@@ -196,6 +198,8 @@ class TestDeformConv2DFunctional(TestCase):
         self.no_bias = True
 
     def prepare(self):
+        np.random.seed(1)
+        paddle.seed(1)
         if isinstance(self.kernel_size, int):
             filter_shape = (self.kernel_size, ) * 2
         else:
