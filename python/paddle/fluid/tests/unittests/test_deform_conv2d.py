@@ -22,11 +22,11 @@ from unittest import TestCase
 
 class TestDeformConv2D(TestCase):
     batch_size = 4
-    spatial_shape = (8, 8)
+    spatial_shape = (5, 5)
     dtype = "float32"
 
     def setUp(self):
-        self.in_channels = 3
+        self.in_channels = 2
         self.out_channels = 5
         self.kernel_size = [3, 3]
         self.padding = [0, 0]
@@ -182,11 +182,11 @@ class TestDeformConv2D(TestCase):
 
 class TestDeformConv2DFunctional(TestCase):
     batch_size = 4
-    spatial_shape = (8, 8)
+    spatial_shape = (5, 5)
     dtype = "float32"
 
     def setUp(self):
-        self.in_channels = 3
+        self.in_channels = 2
         self.out_channels = 5
         self.kernel_size = [3, 3]
         self.padding = [0, 0]
