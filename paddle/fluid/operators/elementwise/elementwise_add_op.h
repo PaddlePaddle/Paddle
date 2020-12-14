@@ -132,6 +132,7 @@ __global__ void MatrixColReduce(const T *__restrict__ in, T *__restrict__ out,
 #pragma unroll
   for (size_t w = idx; w < full_width; w += width_stride) {
     sdata[threadIdx.y][threadIdx.x] = 0;
+    __syncthreads();
     size_t offset = w + threadIdx.y * width;
 #pragma unroll
     for (size_t h = threadIdx.y; h < height;
@@ -153,7 +154,7 @@ __global__ void MatrixColReduce(const T *__restrict__ in, T *__restrict__ out,
   }
 }
 
-__global__ void MatrixColFp16Reduce(
+__global__ void FP16MatrixColReduce(
     const paddle::platform::float16 *__restrict__ in,
     paddle::platform::float16 *__restrict__ out, size_t width, size_t height) {
   constexpr int block_x = 32;
@@ -170,6 +171,7 @@ __global__ void MatrixColFp16Reduce(
     for (int r = 0; r < repeats; r++) {
       sdata[threadIdx.y + r * block_x][threadIdx.x] = 0;
     }
+    __syncthreads();
     for (int r = 0; r < repeats; r++) {
       size_t offset = w + (r * block_x + threadIdx.y) * width;
 #pragma unroll
@@ -308,15 +310,13 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
       int max_blocks = std::max(max_physical_threads / (block_x * block_y), 1);
       int theory_block = (width + blocks.x - 1) / blocks.x;
       dim3 grids(std::min(theory_block, max_blocks));
-      bool is_float16 = std::type_index(typeid(T)) ==
-                        std::type_index(typeid(paddle::platform::float16));
       if (std::is_same<T, paddle::platform::float16>::value) {
         const paddle::platform::float16 *ptr1 =
             reinterpret_cast<const paddle::platform::float16 *>(dout_data);
         paddle::platform::float16 *ptr2 =
             reinterpret_cast<paddle::platform::float16 *>(out_data);
 
-        MatrixColFp16Reduce<<<grids, blocks, 0, stream>>>(ptr1, ptr2, width,
+        FP16MatrixColReduce<<<grids, blocks, 0, stream>>>(ptr1, ptr2, width,
                                                           height);
         return;
       }
