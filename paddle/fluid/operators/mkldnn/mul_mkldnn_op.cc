@@ -110,8 +110,12 @@ class MulPrimitiveFactory {
     auto reorder = mkldnn::reorder(reorder_pd);
 
     mkldnn::stream astream(engine_);
-    reorder.execute(astream, src_mem, dst_mem);
-    astream.wait();
+    {
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+      reorder.execute(astream, src_mem, dst_mem);
+      astream.wait();
+    }
 
     return dst_mem;
   }
@@ -267,8 +271,13 @@ class MulPrimitiveFactory {
     auto reorder = mkldnn::reorder(src_mem, dst_mem);
 
     mkldnn::stream astream(engine_);
-    reorder.execute(astream, src_mem, dst_mem);
-    astream.wait();
+
+    {
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+      reorder.execute(astream, src_mem, dst_mem);
+      astream.wait();
+    }
 
     return dst_mem;
   }
@@ -296,9 +305,11 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const MKLDNNDeviceContext &dev_ctx, const ExecutionContext &ctx,
     const Tensor *input_x, const Tensor *input_y,
     const mkldnn::engine &mkldnn_engine) {
-  const std::string key = platform::CreateKey(
-      input_x->type(), framework::vectorize(input_x->dims()), input_y->type(),
-      framework::vectorize(input_y->dims()), ctx.OutputName("Out"));
+  std::string key = platform::CreateKey(
+      dev_ctx, input_x->type(), framework::vectorize(input_x->dims()),
+      input_y->type(), framework::vectorize(input_y->dims()),
+      ctx.OutputName("Out"));
+  key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
   auto prim_creator = std::static_pointer_cast<MulPrimitiveFactory<XT, YT, OT>>(
       dev_ctx.GetBlob(key));

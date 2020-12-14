@@ -1,3 +1,5 @@
+# CMake file `unity_build` is used to handle Unity Build compilation.
+include(unity_build)
 set(PART_CUDA_KERNEL_FILES)
 function(op_library TARGET)
     # op_library is a function to create op library. The interface is same as
@@ -15,7 +17,8 @@ function(op_library TARGET)
     set(mkldnn_cc_srcs)
     set(MKLDNN_FILE)
     set(op_common_deps operator op_registry math_function layer common_infer_shape_functions)
-    set(options "")
+    # Option `UNITY` is used to specify that operator `TARGET` will compiles with Unity Build.
+    set(options UNITY)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     set(pybind_flag 0)
@@ -105,21 +108,64 @@ function(op_library TARGET)
         endif()
     endforeach()
     endif(WIN32)
-    set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} CACHE INTERNAL "op libs")
+
+    # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
+    if(WITH_UNITY_BUILD AND op_library_UNITY)
+        # Generate the unity target name by the directory where source files located.
+        string(REPLACE "${PADDLE_SOURCE_DIR}/paddle/fluid/" "" UNITY_TARGET ${CMAKE_CURRENT_SOURCE_DIR})
+        string(REPLACE "/" "_" UNITY_TARGET ${UNITY_TARGET})
+        set(UNITY_TARGET "paddle_${UNITY_TARGET}_unity")
+        if(NOT ${UNITY_TARGET} IN_LIST OP_LIBRARY)
+            set(OP_LIBRARY ${UNITY_TARGET} ${OP_LIBRARY} CACHE INTERNAL "op libs")
+        endif()
+    else()
+        set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} CACHE INTERNAL "op libs")
+    endif()
 
     list(LENGTH op_library_DEPS op_library_DEPS_len)
     if (${op_library_DEPS_len} GREATER 0)
         set(DEPS_OPS ${TARGET} ${DEPS_OPS} PARENT_SCOPE)
     endif()
     if (WITH_GPU)
-        nv_library(${TARGET} SRCS ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${cudnn_cu_srcs} ${mkldnn_cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
+        # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
+        if(WITH_UNITY_BUILD AND op_library_UNITY)
+            # Combine the cc and cu source files.
+            compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${mkldnn_cc_srcs})
+            compose_unity_target_sources(${UNITY_TARGET} cu ${cudnn_cu_srcs} ${cu_srcs})
+            if(TARGET ${UNITY_TARGET})
+                # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
+                target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources} ${unity_target_cu_sources})
+            else()
+                # If `UNITY_TARGET` does not exist, create `UNITY_TARGET` with source files.
+                nv_library(${UNITY_TARGET} SRCS ${unity_target_cc_sources} ${unity_target_cu_sources} DEPS ${op_library_DEPS} ${op_common_deps})
+            endif()
+            # Add alias library to handle dependencies.
+            add_library(${TARGET} ALIAS ${UNITY_TARGET})
+        else()
+            nv_library(${TARGET} SRCS ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${cudnn_cu_srcs} ${mkldnn_cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
+        endif()
     elseif (WITH_AMD_GPU)
         hip_library(${TARGET} SRCS ${cc_srcs} ${hip_cu_srcs} ${miopen_hip_cc_srcs} ${mkldnn_cc_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
     else()
-        cc_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} DEPS ${op_library_DEPS}
-            ${op_common_deps})
+        # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
+        if(WITH_UNITY_BUILD AND op_library_UNITY)
+            # Combine the cc source files.
+            compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs})
+            if(TARGET ${UNITY_TARGET})
+                # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
+                target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources})
+            else()
+                # If `UNITY_TARGET` does not exist, create `UNITY_TARGET` with source files.
+                cc_library(${UNITY_TARGET} SRCS ${unity_target_cc_sources} DEPS ${op_library_DEPS} ${op_common_deps})
+            endif()
+            # Add alias library to handle dependencies.
+            add_library(${TARGET} ALIAS ${UNITY_TARGET})
+        else()
+            cc_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} DEPS ${op_library_DEPS}
+                ${op_common_deps})
+        endif()
     endif()
 
     # Define operators that don't need pybind here.
@@ -256,10 +302,18 @@ function(register_operators)
         list(FIND register_operators_EXCLUDES ${src} _index)
         if (${_index} EQUAL -1)
             if (${register_operators_DEPS_len} GREATER 0)
-                op_library(${src} DEPS ${register_operators_DEPS})
+                op_library(${src} UNITY DEPS ${register_operators_DEPS})
             else()
-                op_library(${src})
+                op_library(${src} UNITY)
             endif()
         endif()
     endforeach()
+
+    # Complete the processing of `UNITY_TARGET`.
+    if(WITH_UNITY_BUILD)
+        finish_unity_target(cc)
+        if(WITH_GPU)
+            finish_unity_target(cu)
+        endif()
+    endif()
 endfunction()

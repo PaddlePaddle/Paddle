@@ -18,7 +18,6 @@ from paddle.fluid.framework import Variable, set_flags, core
 from paddle.fluid.wrapped_decorator import wrap_decorator
 import google.protobuf.text_format
 import google.protobuf
-from paddle.fluid.framework import dygraph_only
 
 __all__ = ["DistributedStrategy"]
 

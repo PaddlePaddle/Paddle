@@ -36,18 +36,6 @@ class TestComplexGetitemLayer(unittest.TestCase):
 
             np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
 
-        for place in self._places:
-            with dg.guard(place):
-                x_var = fluid.core.VarBase(
-                    value=x_np,
-                    place=fluid.framework._current_expected_place(),
-                    persistable=False,
-                    zero_copy=None,
-                    name='')
-                x_var_slice = x_var[0]
-
-            np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
-
     def test_case2(self):
         x_np = np.random.randn(2, 3, 4) + 1j * np.random.randn(2, 3, 4)
         x_np_slice = x_np[0][1]
@@ -55,18 +43,6 @@ class TestComplexGetitemLayer(unittest.TestCase):
         for place in self._places:
             with dg.guard(place):
                 x_var = dg.to_variable(x_np)
-                x_var_slice = x_var[0][1]
-
-            np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
-
-        for place in self._places:
-            with dg.guard(place):
-                x_var = fluid.core.VarBase(
-                    value=x_np,
-                    place=fluid.framework._current_expected_place(),
-                    persistable=False,
-                    zero_copy=None,
-                    name='')
                 x_var_slice = x_var[0][1]
 
             np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
@@ -82,18 +58,6 @@ class TestComplexGetitemLayer(unittest.TestCase):
 
             np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
 
-        for place in self._places:
-            with dg.guard(place):
-                x_var = fluid.core.VarBase(
-                    value=x_np,
-                    place=fluid.framework._current_expected_place(),
-                    persistable=False,
-                    zero_copy=None,
-                    name='')
-                x_var_slice = x_var[0][1][2]
-
-            np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
-
     def test_case4(self):
         x_np = np.random.randn(2, 3, 4) + 1j * np.random.randn(2, 3, 4)
         x_np_slice = x_np[0][1][0:3]
@@ -101,18 +65,6 @@ class TestComplexGetitemLayer(unittest.TestCase):
         for place in self._places:
             with dg.guard(place):
                 x_var = dg.to_variable(x_np)
-                x_var_slice = x_var[0][1][0:3]
-
-            np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
-
-        for place in self._places:
-            with dg.guard(place):
-                x_var = fluid.core.VarBase(
-                    value=x_np,
-                    place=fluid.framework._current_expected_place(),
-                    persistable=False,
-                    zero_copy=None,
-                    name='')
                 x_var_slice = x_var[0][1][0:3]
 
             np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
@@ -128,16 +80,6 @@ class TestComplexGetitemLayer(unittest.TestCase):
 
             np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
 
-        for place in self._places:
-            with dg.guard(place):
-                x_var = fluid.core.VarBase(
-                    value=x_np,
-                    place=fluid.framework._current_expected_place(),
-                    persistable=False,
-                    zero_copy=None,
-                    name='')
-                x_var_slice = x_var[0][1][0:4:2]
-
             np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
 
     def test_case6(self):
@@ -147,17 +89,6 @@ class TestComplexGetitemLayer(unittest.TestCase):
         for place in self._places:
             with dg.guard(place):
                 x_var = dg.to_variable(x_np)
-                x_var_slice = x_var[0][1:3][0:4:2]
-
-            np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
-        for place in self._places:
-            with dg.guard(place):
-                x_var = fluid.core.VarBase(
-                    value=x_np,
-                    place=fluid.framework._current_expected_place(),
-                    persistable=False,
-                    zero_copy=None,
-                    name='')
                 x_var_slice = x_var[0][1:3][0:4:2]
 
             np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
