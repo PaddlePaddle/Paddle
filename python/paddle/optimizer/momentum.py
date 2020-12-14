@@ -103,11 +103,11 @@ class Momentum(Optimizer):
         if momentum is None:
             raise ValueError("momentum is not set")
         predicate = lambda regular: isinstance(regular, L2DecayRegularizer)
-        py_regular = None if predicate(regularization) else regularization
+        py_regular = None if predicate(weight_decay) else weight_decay
         super(Momentum, self).__init__(
             learning_rate=learning_rate,
             parameters=parameters,
-            weight_decay=weight_decay,
+            weight_decay=py_regular,
             grad_clip=grad_clip,
             name=name)
         self.type = "momentum"
@@ -121,6 +121,7 @@ class Momentum(Optimizer):
         self._multi_precision = multi_precision
         self._rescale_grad = rescale_grad
         self._master_weights = {}
+
         if framework.in_dygraph_mode():
             self.helper = LayerHelper(self.__class__.__name__)
             for p in parameters:
