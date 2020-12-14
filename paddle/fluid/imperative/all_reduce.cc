@@ -69,21 +69,21 @@ static void AllReduce(const framework::SelectedRows &src,
 
   // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
   // but we can use other ways to implement is in the future
-  const auto &src_rows = src.rows();
+  auto &src_rows = src.rows();
+  // src_rows.SetStream(stream);
   framework::Vector<int64_t> rows_num_vector(strategy.nranks_);
+  rows_num_vector.SetStream(stream);
   rows_num_vector[strategy.local_rank_] = static_cast<int64_t>(src_rows.size());
-  // CUDAMutableData use CalStream
   auto *gpu_rows_num_ptr = rows_num_vector.CUDAMutableData(place);
-  if (stream != dev_ctx->stream()) dev_ctx->Wait();
+  // if (stream != dev_ctx->stream()) dev_ctx->Wait();
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
       gpu_rows_num_ptr + strategy.local_rank_, gpu_rows_num_ptr, 1, ncclInt64,
       comm, stream));
 
-  if (stream != dev_ctx->stream()) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-  }
-
   const auto *cpu_rows_num_ptr = rows_num_vector.data();
+  // if (stream != dev_ctx->stream()) {
+  //   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+  // }
   auto rows_num =
       std::accumulate(cpu_rows_num_ptr, cpu_rows_num_ptr + strategy.nranks_,
                       static_cast<int64_t>(0));
@@ -95,6 +95,7 @@ static void AllReduce(const framework::SelectedRows &src,
 
   auto *dst_rows = dst->mutable_rows();
   dst_rows->resize(rows_num);
+  dst_rows->SetStream(stream);
   auto *dst_rows_ptr = dst_rows->CUDAMutableData(place);
   const auto *src_rows_ptr = src_rows.CUDAData(place);
 
@@ -108,7 +109,15 @@ static void AllReduce(const framework::SelectedRows &src,
 
   auto sizeof_dtype = framework::SizeOfType(dtype);
   int64_t row_offset = 0;
-  if (stream != dev_ctx->stream()) dev_ctx->Wait();
+  // must sync cal and comm
+  cudaEvent_t event;
+  if (stream != dev_ctx->stream()) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, dev_ctx->stream()));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream, event, 0));
+  }
+
   for (int i = 0; i < strategy.nranks_; ++i) {
     if (cpu_rows_num_ptr[i] > 0) {
       // 2. Broadcast the rows of SelectedRows
@@ -123,6 +132,11 @@ static void AllReduce(const framework::SelectedRows &src,
           nccl_dtype, i, comm, stream));
       row_offset += cpu_rows_num_ptr[i];
     }
+  }
+
+  dst_rows->SetStream(nullptr);
+  if (stream != dev_ctx->stream()) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event));
   }
 
   VLOG(3) << "Original SelectedRows rows: "

@@ -181,6 +181,9 @@ class Vector {
     // reserve data
     void reserve(size_t size) const { cpu_.reserve(size); }
 
+    // set stream
+    void SetStream(cudaStream_t stream) const { stream_ = stream; }
+
     // implicit cast operator. Vector can be cast to std::vector implicitly.
     operator std::vector<T>() const {
       ImmutableCPU();
@@ -212,14 +215,17 @@ class Vector {
 
     void CopyToCPU() const {
       // COPY GPU Data To CPU
-      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-          platform::DeviceContextPool::Instance().Get(gpu_->place()));
-      auto stream = dev_ctx->stream();
+      auto stream = stream_;
+      if (stream == nullptr) {
+        auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+            platform::DeviceContextPool::Instance().Get(gpu_->place()));
+        stream = dev_ctx->stream();
+      }
       void *src = gpu_->ptr();
       void *dst = cpu_.data();
       paddle::memory::Copy(platform::CPUPlace(), dst, CUDAPlace().get(), src,
                            gpu_memory_size_, stream);
-      dev_ctx->Wait();
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
     }
 
     void MutableCPU() {
@@ -263,9 +269,12 @@ class Vector {
       gpu_memory_size_ = cpu_.size() * sizeof(T);
       gpu_ = memory::Alloc(place, gpu_memory_size_);
       void *dst = gpu_->ptr();
-      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-          platform::DeviceContextPool::Instance().Get(place));
-      auto stream = dev_ctx->stream();
+      auto stream = stream_;
+      if (stream == nullptr) {
+        auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+            platform::DeviceContextPool::Instance().Get(gpu_->place()));
+        stream = dev_ctx->stream();
+      }
       paddle::memory::Copy(CUDAPlace().get(), dst, platform::CPUPlace(), src,
                            gpu_memory_size_, stream);
     }
@@ -294,6 +303,8 @@ class Vector {
     mutable int flag_;
 
     mutable std::mutex mtx_;
+
+    mutable cudaStream_t stream_ = nullptr;
   };
 
  public:
@@ -414,6 +425,8 @@ class Vector {
     m_.Detach();
     return CUDAMutableData(place);
   }
+
+  void SetStream(cudaStream_t stream) { m_.MutableData()->SetStream(stream); }
 
   // clear
   void clear() { m_.MutableData()->clear(); }
