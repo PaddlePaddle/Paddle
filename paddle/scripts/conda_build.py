@@ -44,42 +44,35 @@ build:
         self.requirement_build = r"""
 requirements:
   build:
-    - numpy>=1.12
+    - numpy>=1.13
     - cython
     - setuptools
 """
 
         self.requirement_run = r"""
   run:
-    - numpy>1.12
+    - requests>=2.20.0
+    - numpy>=1.13, <=1.16.4 ; python_version<"3.5"
+    - numpy>=1.13 ; python_version>="3.5"
+    - protobuf>=3.1.0
+    - gast==0.3.3
+    - Pillow
     - six
     - decorator
-    - nltk
-    - scipy
-    - requests
-    - pillow
-    - graphviz
-    - protobuf
-    - py-cpuinfo==5.0.0
     - astor
-    - gast>=0.3.3
-    - matplotlib
 """
 
         self.requirement_run_windows = r"""
   run:
-    - numpy>=1.12
+    - requests>=2.20.0
+    - numpy>=1.13, <=1.16.4 ; python_version<"3.5"
+    - numpy>=1.13, <=1.19.3 ; python_version>="3.5"
+    - protobuf>=3.1.0
+    - gast==0.3.3
+    - Pillow
     - six
     - decorator
-    - nltk
-    - scipy
-    - requests
-    - pillow
-    - graphviz
-    - protobuf
     - astor
-    - gast>=0.3.3
-    - py-cpuinfo==5.0.0
 """
         self.test = r"""
 test:
@@ -96,16 +89,9 @@ about:
 """
 
         self.build_const = r"""
-pip install /package/objgraph-3.4.1.tar.gz
-pip install /package/rarfile-3.0.tar.gz --no-deps
 """
 
         self.blt_const = r""" 
-pip install C:\package\objgraph-3.4.1.tar.gz
-pip install C:\package\rarfile-3.0.tar.gz --no-deps
-git clone https://github.com/PaddlePaddle/recordio.git
-cd recordio\python
-python setup.py install
 """
 
         self.python27 = r"    - python>=2.7, <3.0"
@@ -135,10 +121,15 @@ python setup.py install
     - cudatoolkit>=10.2, <10.3
     - cudnn>=7.6, <7.7
     """
+        self.cuda110 = r"""
+    - cudatoolkit>=11.0, <11.1
+    - cudnn>=7.6, <7.7
+    """
         self.cuda_info = [(self.cuda90, "cuda9.0", ".post90"),
                           (self.cuda100, "cuda10.0", ".post100"),
                           (self.cuda101, "cuda10.1", ".post101"),
-                          (self.cuda102, "cuda10.2", "")]
+                          (self.cuda102, "cuda10.2", ""),
+                          (self.cuda110, "cuda11.0", ".post110")]
         self.py_str = ["py27", "py35", "py36", "py37", "py38"]
         self.pip_end = ".whl --no-deps"
         self.pip_prefix_linux = "pip install /package/paddlepaddle"
@@ -151,9 +142,9 @@ python setup.py install
             "-cp38-cp38-macosx_10_14_x86_64"
         ]
         self.linux_pip = [
-            "-cp27-cp27mu-manylinux1_x86_64", "-cp35-cp35m-manylinux1_x86_64",
-            "-cp36-cp36m-manylinux1_x86_64", "-cp37-cp37m-manylinux1_x86_64",
-            "-cp38-cp38-manylinux1_x86_64"
+            "-cp27-cp27mu-manylinux_x86_64", "-cp35-cp35m-manylinux_x86_64",
+            "-cp36-cp36m-manylinux_x86_64", "-cp37-cp37m-manylinux_x86_64",
+            "-cp38-cp38-manylinux_x86_64"
         ]
         self.windows_pip = [
             "-cp27-cp27m-win_amd64", "-cp35-cp35m-win_amd64",
