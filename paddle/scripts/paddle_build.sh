@@ -64,8 +64,11 @@ function init() {
     # set CI_SKIP_CPP_TEST if only *.py changed
     # In order to avoid using in some CI(such as daily performance), the current
     # branch must not be `${BRANCH}` which is usually develop.
-    if [ "$(git branch | grep "^\*" | awk '{print $2}')" != "${BRANCH}" ]; then
-        git diff --name-only ${BRANCH} | grep -v "\.py$" || export CI_SKIP_CPP_TEST=ON
+    if [ ${CI_SKIP_CPP_TEST:-ON} == "OFF"  ];then
+    else
+        if [ "$(git branch | grep "^\*" | awk '{print $2}')" != "${BRANCH}" ]; then
+            git diff --name-only ${BRANCH} | grep -v "\.py$" || export CI_SKIP_CPP_TEST=ON
+        fi
     fi
 }
 
