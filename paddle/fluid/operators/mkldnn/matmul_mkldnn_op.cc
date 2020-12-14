@@ -378,6 +378,7 @@ class DNNLMatMulKernel : public framework::OpKernel<T> {
                         platform::errors::Unimplemented(
                             "DNNL matmul doesn't support multiple heads."));
     }
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     ExecuteMatMul<T, T>(ctx);
   }
 };
