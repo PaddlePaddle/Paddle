@@ -1415,9 +1415,9 @@ class OpTest(unittest.TestCase):
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
 
-        analytic_grads = self._get_gradient(
-            inputs_to_check, place, output_names, user_defined_grad_outputs,
-            no_grad_set)
+        analytic_grads = self._get_gradient(inputs_to_check, place,
+                                            output_names, no_grad_set,
+                                            user_defined_grad_outputs)
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
                               "Gradient Check On %s" % str(place))
