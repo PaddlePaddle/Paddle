@@ -144,7 +144,7 @@ class TestBilinearInterpMKLDNNOp(OpTest):
         self.out_h = 2
         self.out_w = 2
         self.scale = 0.
-        self.out_size = np.array([3, 3]).astype("int32")
+        # self.out_size = np.array([3, 3]).astype("int32")
         self.data_layout = "NHWC"
         self.use_mkldnn = True
 
