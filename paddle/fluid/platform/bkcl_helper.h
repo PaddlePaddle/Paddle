@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ struct BKCLContext {
   BKCLContext_t comm() const { return comm_; }
 
   int device_id() const {
-    return boost::get<platform::XPUPlace>(ctx_->GetPlace()).device;
+    return BOOST_GET_CONST(platform::XPUPlace, ctx_->GetPlace()).device;
   }
 };
 
@@ -71,11 +71,13 @@ struct InitBKCLPara {
 
 static void *init_bkcl_context_func(void *args) {
   struct InitBKCLPara *para = (struct InitBKCLPara *)args;
-  PADDLE_ENFORCE(xpu_set_device(para->dev_id) == XPU_SUCCESS,
-                 "xpu_set_device failed[%d]", para->dev_id);
-  PADDLE_ENFORCE(bkcl_init_rank(para->ctx, para->rank, para->nranks,
-                                para->bkcl_id) == BKCL_SUCCESS,
-                 "bkcl_init_rank failed");
+  PADDLE_ENFORCE_EQ(xpu_set_device(para->dev_id), XPU_SUCCESS,
+                    platform::errors::PreconditionNotMet(
+                        "xpu_set_device failed[%d]", para->dev_id));
+  PADDLE_ENFORCE_EQ(
+      bkcl_init_rank(para->ctx, para->rank, para->nranks, para->bkcl_id),
+      BKCL_SUCCESS,
+      platform::errors::PreconditionNotMet("bkcl_init_rank failed"));
   return nullptr;
 }
 
@@ -97,16 +99,19 @@ struct BKCLContextMap {
   }
 
   int init() {
-    PADDLE_ENFORCE(!places_.empty());
+    PADDLE_ENFORCE_EQ(!places.empty(), true,
+                      platform::errors::InvalidArgument(
+                          "The BKCL place should not be empty."));
     order_.reserve(places_.size());
     for (auto &p : places_) {
-      int dev_id = boost::get<XPUPlace>(p).device;
+      int dev_id = BOOST_GET_CONST(platform::XPUPlace, p).device;
       order_.emplace_back(dev_id);
       contexts_.emplace(dev_id, BKCLContext(dev_id));
     }
     PADDLE_ENFORCE_EQ(
         order_.size(), contexts_.size(),
-        "BKCL Context Map does not support contain two or more same device");
+        platform::errors::Unavailable("BKCL Context Map does not support "
+                                      "contain two or more same device"));
 
     std::unique_ptr<BKCLContext_t[]> comms(new BKCLContext_t[order_.size()]);
     std::unique_ptr<InitBKCLPara[]> paras(new InitBKCLPara[order_.size()]);
@@ -116,11 +121,13 @@ struct BKCLContextMap {
     // if num_trainers == 1, should create a new bkcl id for local comms.
     if (num_trainers_ == 1 && bkcl_id_ == nullptr) {
       ret = bkcl_get_unique_id(&id);
-      PADDLE_ENFORCE_EQ(BKCL_SUCCESS, ret, "bkcl get unique id failed [%d]",
-                        ret);
+      PADDLE_ENFORCE_EQ(BKCL_SUCCESS, ret,
+                        platform::errors::PreconditionNotMet(
+                            "bkcl get unique id failed [%d]", ret));
       bkcl_id_ = &id;
     }
-    PADDLE_ENFORCE_NOT_NULL(bkcl_id_);
+    PADDLE_ENFORCE_NOT_NULL(bkcl_id_, platform::errors::InvalidArgument(
+                                          "The BKCL id should not be null."));
     {
       int nranks = num_trainers_ * order_.size();
       for (size_t i = 0; i < order_.size(); ++i) {
@@ -137,9 +144,10 @@ struct BKCLContextMap {
         paras[i].dev_id = order_[i];
         paras[i].bkcl_id = bkcl_id_;
         paras[i].ctx = &comms[i];
-        PADDLE_ENFORCE(pthread_create(&pids[i], nullptr, init_bkcl_context_func,
-                                      reinterpret_cast<void *>(&paras[i])) == 0,
-                       "pthread_create failed");
+        PADDLE_ENFORCE_EQ(
+            pthread_create(&pids[i], nullptr, init_bkcl_context_func,
+                           reinterpret_cast<void *>(&paras[i])),
+            0, platform::errors::External("pthread_create failed"));
       }
       for (size_t i = 0; i < order_.size(); i++) {
         pthread_join(pids[i], nullptr);
@@ -158,11 +166,11 @@ struct BKCLContextMap {
   XPUDeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
   XPUDeviceContext *DevCtx(platform::Place p) const {
-    return DevCtx(boost::get<XPUPlace>(p).device);
+    return DevCtx(BOOST_GET_CONST(platform::XPUPlace, p).device);
   }
 
   const BKCLContext &at(platform::Place p) const {
-    return this->at(boost::get<XPUPlace>(p).device);
+    return this->at(BOOST_GET_CONST(platform::XPUPlace, p).device);
   }
 
   const BKCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
@@ -204,8 +212,9 @@ class BKCLCommunicator {
 
   BKCLContextMap *GetRunEnvBKCLCtx(size_t run_order,
                                    bool use_hierarchical_allreduce) const {
-    PADDLE_ENFORCE(!use_hierarchical_allreduce,
-                   "Hierarchical all reduce is not support for XPU");
+    PADDLE_ENFORCE_EQ(use_hierarchical_allreduce, false,
+                      platform::errors::Unimplemented(
+                          "Hierarchical all reduce is not support for XPU"));
     return GetFlatCtx(run_order);
   }
 
@@ -240,8 +249,9 @@ class BKCLCommunicator {
       return;
     }
 
-    PADDLE_ENFORCE(bkcl_ids.size() == 1,
-                   "Multi-all-reduce-ring is not support for XPU");
+    PADDLE_ENFORCE_EQ(bkcl_ids.size(), 1,
+                      platform::errors::Unimplemented(
+                          "Multi-all-reduce-ring is not support for XPU"));
     for (size_t i = 0; i < bkcl_ids.size(); i++) {
       auto ptr = new platform::BKCLContextMap(places, bkcl_ids[i], trainers_num,
                                               trainer_id);
