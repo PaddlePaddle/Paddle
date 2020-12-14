@@ -119,7 +119,9 @@ __inline__ __device__ float rsqrt(const float val) {
 
 template <>
 __inline__ __device__ half rsqrt(const half val) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   return hrsqrt(val);
+#endif
 }
 
 template <typename T, typename U, int BlockDim>
