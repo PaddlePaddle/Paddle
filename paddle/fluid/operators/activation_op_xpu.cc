@@ -83,56 +83,17 @@ void xpu_activation_backward(const framework::ExecutionContext &ctx,
   const T *x_data = nullptr;
   const T *y_data = nullptr;
   const T *y_grad = nullptr;
-  T *x_data_tmp = nullptr;
-  T *y_data_tmp = nullptr;
-  T *y_grad_tmp = nullptr;
-  if (x != nullptr) {
-    x_data = x->data<T>();
-  } else {
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void **>(&x_data_tmp),
-                                 dX->numel() * sizeof(T)),
-                      XPU_SUCCESS, platform::errors::ResourceExhausted(
-                                       "XPU has no enough memory"));
-    x_data = x_data_tmp;
-  }
-  if (y != nullptr) {
-    y_data = y->data<T>();
-  } else {
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void **>(&y_data_tmp),
-                                 dX->numel() * sizeof(T)),
-                      XPU_SUCCESS, platform::errors::ResourceExhausted(
-                                       "XPU has no enough memory"));
-    y_data = y_data_tmp;
-  }
-  if (dOut != nullptr) {
-    y_grad = dOut->data<T>();
-  } else {
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void **>(&y_grad_tmp),
-                                 dX->numel() * sizeof(T)),
-                      XPU_SUCCESS, platform::errors::ResourceExhausted(
-                                       "XPU has no enough memory"));
-    y_grad = y_grad_tmp;
-  }
+  if (x != nullptr) x_data = x->data<T>();
+  if (y != nullptr) y_data = y->data<T>();
+  if (dOut != nullptr) y_grad = dOut->data<T>();
   T *x_grad = dX->mutable_data<T>(ctx.GetPlace());
   auto xpu_context = ctx.device_context<DeviceContext>().x_context();
-  auto &dev_ctx = ctx.template device_context<DeviceContext>();
 
   int r = func(xpu_context, x_data, y_data, y_grad, x_grad, dX->numel());
   PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
                     platform::errors::External(
                         "XPU activation grad op return wrong value[%d %s].", r,
                         XPUAPIErrorMsg[r]));
-
-  dev_ctx.Wait();
-  if (x_data_tmp != nullptr) {
-    xpu_free(x_data_tmp);
-  }
-  if (y_data_tmp != nullptr) {
-    xpu_free(y_data_tmp);
-  }
-  if (y_grad_tmp != nullptr) {
-    xpu_free(y_grad_tmp);
-  }
 }
 
 template <typename T>
