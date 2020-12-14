@@ -272,8 +272,7 @@ void GlooWrapper::Init() {
   attr.iface = iface_;
   std::shared_ptr<gloo::rendezvous::HdfsStore> file_store = nullptr;
   std::shared_ptr<gloo::rendezvous::HTTPStore> http_store = nullptr;
-  auto context =
-      std::make_shared<gloo::rendezvous::ParallelConnectContext>(rank_, size_);
+  auto context = std::make_shared<gloo::rendezvous::Context>(rank_, size_);
   context->setTimeout(run_timeout_);
   auto dev = gloo::transport::tcp::CreateDevice(attr);
   switch (store_type_) {
@@ -295,6 +294,7 @@ void GlooWrapper::Init() {
       http_store->SetTimeoutSeconds(init_timeout_.count());
       context->connectFullMesh(*http_store, dev);
       http_store->Finalize();
+      VLOG(3) << "after calling http_store->Finalize.";
       break;
     }
     default:
@@ -304,6 +304,7 @@ void GlooWrapper::Init() {
   context_ = std::move(context);
 #endif
   is_initialized_ = true;
+  VLOG(3) << "gloo initialized done.";
 }
 
 template std::vector<int64_t> GlooWrapper::AllReduce<int64_t>(
