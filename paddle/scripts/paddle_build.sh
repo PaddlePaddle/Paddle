@@ -1051,7 +1051,7 @@ set +x
         fi
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ -a "$PADDLE_ROOT/added_ut" ];then
-            added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$^");print}' $PADDLE_ROOT/added_ut)$
+            added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
             echo "========================================"
             echo ${added_uts}
             echo "========================================"
