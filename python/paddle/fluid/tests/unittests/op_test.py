@@ -1443,7 +1443,7 @@ class OpTest(unittest.TestCase):
                           inputs_to_check,
                           place,
                           output_names,
-                          user_defined_grad_outputs,
+                          user_defined_grad_outputs=None,
                           no_grad_set=None):
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
@@ -1568,8 +1568,8 @@ class OpTest(unittest.TestCase):
                       input_to_check,
                       place,
                       output_names,
-                      user_defined_grad_outputs,
                       no_grad_set,
+                      user_defined_grad_outputs=None,
                       parallel=False):
         prog = Program()
         scope = core.Scope()
