@@ -342,8 +342,8 @@ class CompiledProgram(object):
 
         if self._exec_strategy is None:
             self._exec_strategy = ExecutionStrategy()
-        # self._exec_strategy.use_cuda = use_cuda
-        # self._exec_strategy.use_xpu = use_xpu
+        self._exec_strategy.use_cuda = (
+            self._exec_strategy.use_device == ExecutionStrategy.UseDevice.CUDA)
         self._exec_strategy.use_device = use_device
 
         if self._exec_strategy.num_threads == 0:

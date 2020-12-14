@@ -2121,7 +2121,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](const ExecutionStrategy &self) { return self.use_device_; },
           [](ExecutionStrategy &self, ExecutionStrategy::UseDevice use_device) {
             self.use_device_ = use_device;
-          })  // FIXME(liuyuhui): Doesn't add doc for 'use_device', because
+          })  // NOTE(liuyuhui): Doesn't add doc for 'use_device', because
               // use_device isn‘t exposed to users.
       .def_property(
           "allow_op_delay",

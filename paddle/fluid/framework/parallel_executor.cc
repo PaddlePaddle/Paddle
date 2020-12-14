@@ -286,6 +286,10 @@ class ParallelExecutorPrivate {
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
+  // TODO(liuyuhui): There is no need to retain use_cuda_,
+  // because of the addition of use_device_.
+  // But there are too many places in the codes now use 'use_cuda_',
+  // it will be temporarily used and remove it later.
   bool use_cuda_;
   bool use_device_;
   bool use_all_reduce_;
