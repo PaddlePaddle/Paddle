@@ -108,13 +108,9 @@ if(NOT WITH_DISTRIBUTE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_ps)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_utils)
-    LIST(REMOVE_ITEM TEST_OPS test_lookup_sparse_table_split_op)
 
     # TODO: Fix these unittests failed on Windows
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
-    list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
-    list(REMOVE_ITEM TEST_OPS test_split_ids_op)
-    LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
 endif()
 
 if(NOT WITH_DISTRIBUTE)
