@@ -73,7 +73,7 @@ void HeterClient::CreateClient2XpuConnection() {
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
   options.connection_type = "single";
-  options.timeout_ms = pserver_timeout_ms;
+  options.timeout_ms = FLAGS_pserver_timeout_ms;
 
   xpu_channels_.resize(xpu_list_.size());
   for (size_t i = 0; i < xpu_list_.size(); ++i) {
@@ -102,7 +102,7 @@ void HeterClient::SendAndRecvAsync(
   int num = trainer_id_ % xpu_channels_.size();
 
   brpc::Controller cntl;
-  cntl.set_timeout_ms(pserver_timeout_ms);
+  cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
   distributed::MultiVarMsg request, response;
   auto& request_io_buffer = cntl.request_attachment();
   ::paddle::PsService_Stub stub(xpu_channels_[num].get());
@@ -149,7 +149,7 @@ std::future<int32_t> HeterClient::SendCmd(
     }
     ::paddle::PsService_Stub rpc_stub(xpu_channels_[i].get());
     closure->cntl(i)->set_timeout_ms(
-        pserver_timeout_ms);  // cmd msg don't limit timeout for save/load
+        FLAGS_pserver_timeout_ms);  // cmd msg don't limit timeout for save/load
     rpc_stub.service(closure->cntl(i), closure->request(i),
                      closure->response(i), closure);
   }

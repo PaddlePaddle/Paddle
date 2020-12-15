@@ -15,7 +15,7 @@ register_operators(EXCLUDES c_gen_nccl_id_op gen_nccl_id_op DEPS ${COLLECTIVE_DE
 
 if(WITH_NCCL)
     set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper)
-    cc_library(gen_nccl_id_op_helper SRCS gen_nccl_id_op_helper.cc)
+    cc_library(gen_nccl_id_op_helper SRCS gen_nccl_id_op_helper.cc DEPS ${COLLECTIVE_DEPS})
     op_library(c_gen_nccl_id_op DEPS ${COLLECTIVE_DEPS} nccl_common gen_nccl_id_op_helper)
     op_library(gen_nccl_id_op DEPS ${COLLECTIVE_DEPS} nccl_common gen_nccl_id_op_helper)
 endif()
