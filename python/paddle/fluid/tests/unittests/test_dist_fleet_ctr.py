@@ -116,7 +116,7 @@ class TestDistMnistAsync2x2(TestFleetBase):
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
 
 
-@unittest.skip(reason="Skip unstable ut, reader need to be rewrite")
+# @unittest.skip(reason="Skip unstable ut, reader need to be rewrite")
 class TestDistMnistAsyncDataset2x2(TestFleetBase):
     def _setup_config(self):
         self._mode = "async"
