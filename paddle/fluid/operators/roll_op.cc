@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/roll_op.h"
+
 #include <memory>
 #include <vector>
 
@@ -114,7 +115,6 @@ class RollGradMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("roll_grad");
-    op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());

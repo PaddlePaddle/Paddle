@@ -76,7 +76,35 @@ class RollCUDAKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class RollGradCUDAKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {}
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* in = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* out = context.Output<LoDTensor>(framework::GradVarName("X"));
+    std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
+    std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("axis");
+
+    auto* in_data = in->data<T>();
+    auto* out_data = out->mutable_data<T>(context.GetPlace());
+    int64_t numel = in->numel();
+    auto stream =
+        context.template device_context<platform::CUDADeviceContext>().stream();
+
+    size_t nums = shifts.size();
+    auto input_dim = in->dims();
+    auto stride_dim = framework::stride(input_dim);
+
+    int64_t size, dim, start, stride;
+    for (size_t i = 0; i < nums; i++) {
+      dim = dims[i] >= 0 ? dims[i] : dims[i] + input_dim.size();
+      size = input_dim[dim];
+      start = (size + shifts[i]) % size;
+      stride = stride_dim[dim];
+
+      roll_cuda_kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
+                             PADDLE_CUDA_NUM_THREADS,
+                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+          in_data, out_data, numel, start, size, stride);
+    }
+  }
 };
 
 }  // namespace operators
