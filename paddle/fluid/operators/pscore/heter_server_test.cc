@@ -170,7 +170,7 @@ TEST(SENDANDRECV, CPU) {
 
   LOG(INFO) << "before HeterClient::GetInstance";
   distributed::HeterClient* rpc_client =
-      distributed::HeterClient::GetInstance(endpoint).get();
+      distributed::HeterClient::GetInstance({endpoint}, 0).get();
 
   PADDLE_ENFORCE_NE(rpc_client, nullptr,
                     platform::errors::InvalidArgument(
@@ -190,7 +190,7 @@ TEST(SENDANDRECV, CPU) {
   std::vector<std::string> recv_var = {out_var_name};
 
   LOG(INFO) << "before SendAndRecvAsync";
-  rpc_client->SendAndRecvAsync(endpoint, ctx, scope, in_var_name, send_var,
+  rpc_client->SendAndRecvAsync({endpoint}, ctx, scope, in_var_name, send_var,
                                recv_var);
   auto var = scope.Var(out_var_name);
   auto value = var->GetMutable<framework::LoDTensor>();

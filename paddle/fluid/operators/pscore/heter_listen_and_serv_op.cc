@@ -134,11 +134,11 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   }
 
   while (true) {
-    // if (rpc_service_->IsExit()) {
-    //   VLOG(4) << "get exit!rpc_processor break!";
-    //   break;
-    // }
-
+    if (rpc_service_->IsExit()) {
+      rpc_service_->Stop();
+      VLOG(0) << "get exit. rpc_processor stop!";
+      break;
+    }
     sleep(1);
   }  // while(true)
 }
@@ -157,6 +157,7 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   framework::Scope &recv_scope = scope.NewScope();
 
   auto pserver_id = Attr<int>("pserver_id");
+  auto fan_in = Attr<int>("fanin");
   auto inputs = Inputs("X");
 
   PADDLE_ENFORCE_EQ(rpc_service_, nullptr,
@@ -168,6 +169,7 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
 
   rpc_service_ = distributed::HeterServer::GetInstance();
   rpc_service_->SetEndPoint(endpoint);
+  rpc_service_->SetFanin(fan_in);
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>("optimize_blocks");
@@ -224,7 +226,7 @@ class HeterListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<framework::BlockDesc *>>(
         "optimize_blocks", "Optimize blocks to run on server side.")
         .SetDefault({});
-    AddAttr<int>("Fanin", "How many clients send to this server.")
+    AddAttr<int>("fanin", "How many clients send to this server.")
         .SetDefault(1);
     AddAttr<int>("rpc_exec_thread_num", "pserver send thread num.")
         .SetDefault(1);

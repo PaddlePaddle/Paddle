@@ -34,13 +34,14 @@ class SendAndRecvKernel : public framework::OpKernel<T> {
     auto message_name = ctx.Attr<std::string>("message_name");
     auto send_var_name = ctx.Attr<std::vector<std::string>>("send_var_name");
     auto recv_var_name = ctx.Attr<std::vector<std::string>>("recv_var_name");
-    auto epmap = ctx.Attr<std::string>("endpoint");
+    auto epmap = ctx.Attr<std::vector<std::string>>("endpoints");
+    auto trainer_id = ctx.Attr<int>("trainer_id");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& context = *pool.Get(place);
 
     distributed::HeterClient* rpc_client =
-        distributed::HeterClient::GetInstance(epmap).get();
+        distributed::HeterClient::GetInstance(epmap, trainer_id).get();
     VLOG(3) << "SendAndRecvOp message_name: " << message_name;
     rpc_client->SendAndRecvAsync(epmap, context, scope, message_name,
                                  send_var_name, recv_var_name);
@@ -69,7 +70,7 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<std::string>>("send_var_name", "Send Tensor's name");
     AddAttr<std::vector<std::string>>("recv_var_name", "Recv Tensor's name");
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
-    AddAttr<std::string>("endpoint", "Server endpoint")
+    AddAttr<std::vector<std::string>>("endpoints", "Server endpoint")
         .SetDefault({"127.0.0.1:6164"});
     AddComment(R"DOC(
     SendAndRecv operator
