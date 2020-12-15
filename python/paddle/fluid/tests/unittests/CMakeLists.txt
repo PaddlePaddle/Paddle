@@ -286,7 +286,7 @@ function(bash_test_modules TARGET_NAME)
     endif()
 
     if(bash_test_modules_LABELS)
-        set_tests_properties(${TARGET_NAME} LABELS ${bash_test_modules_LABELS})
+        set_tests_properties(${TARGET_NAME} PROPERTIES LABELS ${bash_test_modules_LABELS})
     endif()
 endfunction()
 
@@ -328,7 +328,7 @@ function(parallel_bash_test_modules TARGET_NAME)
     endif()
 
     if(parallel_bash_test_modules_LABELS)
-        set_tests_properties(${TARGET_NAME} LABELS ${parallel_bash_test_modules_LABELS})
+        set_tests_properties(${TARGET_NAME} PROPERTIES LABELS ${parallel_bash_test_modules_LABELS})
     endif()
 endfunction()
 
