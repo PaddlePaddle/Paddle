@@ -40,11 +40,10 @@ limitations under the License. */
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
-#include <windows.h>
-#include <iostream>
 #include <stdio.h>
-#include "DbgHelp.h"
 #include <time.h>
+#include <windows.h>
+#include "DbgHelp.h"
 #endif
 
 DECLARE_int32(paddle_num_threads);
@@ -101,8 +100,6 @@ bool InitGflags(std::vector<std::string> args) {
   });
   return successed;
 }
-
-
 
 void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
@@ -301,49 +298,51 @@ void SignalHandle(const char *data, int size) {
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
-typedef BOOL(WINAPI * MINIDUMP_WRITE_DUMP)(
-	IN HANDLE            hProcess,
-	IN DWORD            ProcessId,
-	IN HANDLE            hFile,
-	IN MINIDUMP_TYPE    DumpType,
-	IN CONST PMINIDUMP_EXCEPTION_INFORMATION    ExceptionParam, OPTIONAL
-	IN PMINIDUMP_USER_STREAM_INFORMATION        UserStreamParam, OPTIONAL
-	IN PMINIDUMP_CALLBACK_INFORMATION            CallbackParam OPTIONAL
-	);
-void CreateDumpFile(LPCSTR lpstrDumpFilePathName, EXCEPTION_POINTERS *pException)
-{
-	HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
-	dumpInfo.ExceptionPointers = pException;
-	dumpInfo.ThreadId = GetCurrentThreadId();
-	dumpInfo.ClientPointers = TRUE;
-	MINIDUMP_WRITE_DUMP    MiniDumpWriteDump_;
-	HMODULE hDbgHelp = LoadLibrary("DBGHELP.DLL");
-	MiniDumpWriteDump_ = (MINIDUMP_WRITE_DUMP)GetProcAddress(hDbgHelp, "MiniDumpWriteDump");
-	MiniDumpWriteDump_(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, MiniDumpWithPrivateReadWriteMemory, &dumpInfo, NULL, NULL);
-	CloseHandle(hDumpFile);
+typedef BOOL(WINAPI *MINIDUMP_WRITE_DUMP)(
+    IN HANDLE hProcess, IN DWORD ProcessId, IN HANDLE hFile,
+    IN MINIDUMP_TYPE DumpType,
+    IN CONST PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam,
+    OPTIONAL IN PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam,
+    OPTIONAL IN PMINIDUMP_CALLBACK_INFORMATION CallbackParam OPTIONAL);
+void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
+                    EXCEPTION_POINTERS *pException) {
+  HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName, GENERIC_WRITE, 0, NULL,
+                                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
+  dumpInfo.ExceptionPointers = pException;
+  dumpInfo.ThreadId = GetCurrentThreadId();
+  dumpInfo.ClientPointers = TRUE;
+  MINIDUMP_WRITE_DUMP MiniDumpWriteDump_;
+  HMODULE hDbgHelp = LoadLibrary("DBGHELP.DLL");
+  MiniDumpWriteDump_ =
+      (MINIDUMP_WRITE_DUMP)GetProcAddress(hDbgHelp, "MiniDumpWriteDump");
+  MiniDumpWriteDump_(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile,
+                     MiniDumpWithPrivateReadWriteMemory, &dumpInfo, NULL, NULL);
+  CloseHandle(hDumpFile);
 }
 
-LONG ApplicationCrashHandler(EXCEPTION_POINTERS *pException)
-{
-	time_t time_seconds = time(0);
-	struct tm now_time;
-	localtime_s(&now_time, &time_seconds);
+LONG ApplicationCrashHandler(EXCEPTION_POINTERS *pException) {
+  time_t time_seconds = time(0);
+  struct tm now_time;
+  localtime_s(&now_time, &time_seconds);
 
-	char buf[1024];
-	sprintf_s(buf, "C:\\Paddle%04d%02d%02d-%02d%02d%02d.dmp", 1900 + now_time.tm_year, 1 + now_time.tm_mon, now_time.tm_mday, now_time.tm_hour, now_time.tm_min, now_time.tm_sec);
+  char buf[1024];
+  sprintf_s(buf, "C:\\Paddle%04d%02d%02d-%02d%02d%02d.dmp",
+            1900 + now_time.tm_year, 1 + now_time.tm_mon, now_time.tm_mday,
+            now_time.tm_hour, now_time.tm_min, now_time.tm_sec);
 
-	CreateDumpFile(buf, pException);
-	return EXCEPTION_EXECUTE_HANDLER;
+  CreateDumpFile(buf, pException);
+  return EXCEPTION_EXECUTE_HANDLER;
 }
 #endif
 
 void InitGLOG(const std::string &prog_name) {
   std::call_once(glog_init_flag, [&]() {
-    // glog will not hold the ARGV[0] inside.
-    // Use strdup to alloc a new string.
+// glog will not hold the ARGV[0] inside.
+// Use strdup to alloc a new string.
 #ifdef WITH_WIN_DUMP_DBG
-    SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);
+    SetUnhandledExceptionFilter(
+        (LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);
 #endif
     google::InitGoogleLogging(strdup(prog_name.c_str()));
 #ifndef _WIN32
