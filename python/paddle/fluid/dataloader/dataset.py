@@ -591,7 +591,7 @@ class BufferedShuffleDataset(IterableDataset):
             # For single-process mode (:attr:`num_workers == 0`), the random seed is required to
             # be set before the :class:`~paddle.io.DataLoader` in the main process.
             
-            ds = BufferedShuffleDataset(dataset)
+            ds = BufferedShuffleDataset(dataset = dataset, buffer_size = 2)
             random.seed(123)
             print(list(paddle.io.DataLoader(ds, num_workers=0, batch_size=1, drop_last=True, worker_init_fn=shuffle_ds_init_fn)))
     """
