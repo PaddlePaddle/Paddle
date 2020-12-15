@@ -19,6 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/distributed/service/communicator.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
