@@ -539,7 +539,15 @@ if(WITH_DISTRIBUTE)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
-py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_profiler)
+# Coverage pipeline use cuda 10.1 now, profiler will random hang in cuda 10.1,
+# see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
+# We guess there are some bugs in cuda 10.1 or 10.2, 
+# since this unittest is stable in cuda 11 (py3 pipeline) now.
+if(NOT WITH_COVERAGE)
+  py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_profiler)
+  set_tests_properties(test_parallel_executor_profiler PROPERTIES LABELS "RUN_TYPE=DIST")
+  set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
+endif()
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
 if(WIN32)
     py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth CUDA_VISIBLE_DEVICES=0)
@@ -623,7 +631,6 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         test_parallel_executor_seresnext_base_gpu
         test_parallel_executor_seresnext_with_reduce_gpu
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
-        test_parallel_executor_profiler
         test_parallel_executor_fetch_isolated_var
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
@@ -711,7 +718,6 @@ set_tests_properties(test_concat_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sequence_pool PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
