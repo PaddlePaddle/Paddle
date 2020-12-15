@@ -20,6 +20,9 @@ from ... import global_scope
 from ...log_helper import get_logger
 import logging
 import numpy as np
+
+__all__ = ["cast_model_to_fp16", "cast_parameters_to_fp16"]
+
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
