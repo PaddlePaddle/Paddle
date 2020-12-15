@@ -22,23 +22,61 @@ import paddle.fluid as fluid
 import paddle.static as static
 from op_test import OpTest
 
+numpy_apis = {
+    "real": np.real,
+    "imag": np.imag,
+}
+
+paddle_apis = {
+    "real": paddle.real,
+    "imag": paddle.imag,
+}
+
 
 class TestRealOp(OpTest):
     def setUp(self):
         # switch to static
         paddle.enable_static()
-        # op test config
+        # op test attrs
         self.op_type = "real"
         self.dtype = np.float64
+        self.init_input_output()
+        # backward attrs
+        # self.init_grad_input_output()
+
+    def init_input_output(self):
         self.inputs = {
             'X': np.random.random(
                 (20, 5)).astype(self.dtype) + 1j * np.random.random(
                     (20, 5)).astype(self.dtype)
         }
-        self.outputs = {'Out': np.real(self.inputs['X'])}
+        self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+    # def init_grad_input_output(self):
+    #     self.grad_out = np.ones((20, 5), self.dtype)
+    #     self.grad_x = numpy_apis[self.op_type](self.grad_out)
 
     def test_check_output(self):
         self.check_output()
+
+    # def test_check_grad(self):
+    #     self.check_grad(
+    #         ['X'],
+    #         'Out',
+    #         user_defined_grads=[self.grad_x],
+    #         user_defined_grad_outputs=[self.grad_out])
+
+
+class TestImagOp(TestRealOp):
+    def setUp(self):
+        # switch to static
+        paddle.enable_static()
+        # op test attrs
+        self.op_type = "imag"
+        self.dtype = np.float64
+        self.init_input_output()
+        # backward attrs
+        # self.init_grad_input_output()
 
 
 class TestRealAPI(unittest.TestCase):
@@ -46,47 +84,49 @@ class TestRealAPI(unittest.TestCase):
         # switch to static
         paddle.enable_static()
         # prepare test attrs
-        self._dtypes = ["complex64", "complex128"]
-        self._places = [paddle.CPUPlace()]
+        self.api = "real"
+        self.dtypes = ["complex64", "complex128"]
+        self.places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
-            self._places.append(paddle.CUDAPlace(0))
+            self.places.append(paddle.CUDAPlace(0))
         self._shape = [2, 3]
 
     def test_in_static_mode(self):
         def init_input_output(dtype):
             input = np.random.random(self._shape).astype(
                 dtype) + 1j * np.random.random(self._shape).astype(dtype)
-            return {'x': input}, np.real(input)
+            return {'x': input}, numpy_apis[self.api](input)
 
-        for dtype in self._dtypes:
+        for dtype in self.dtypes:
             input_dict, np_res = init_input_output(dtype)
-            for place in self._places:
+            for place in self.places:
                 with static.program_guard(static.Program()):
                     x = static.data(name="x", shape=self._shape, dtype=dtype)
-                    out = paddle.real(x)
+                    out = paddle_apis[self.api](x)
 
                     exe = static.Executor(place)
                     out_value = exe.run(feed=input_dict, fetch_list=[out.name])
                     self.assertTrue(np.array_equal(np_res, out_value[0]))
 
     def test_in_dynamic_mode(self):
-        for dtype in self._dtypes:
+        for dtype in self.dtypes:
             input = np.random.random(self._shape).astype(
                 dtype) + 1j * np.random.random(self._shape).astype(dtype)
-            np_res = np.real(input)
-            for place in self._places:
+            np_res = numpy_apis[self.api](input)
+            for place in self.places:
                 # it is more convenient to use `guard` than `enable/disable_**` here
                 with fluid.dygraph.guard(place):
                     input_t = paddle.to_tensor(input)
-                    res = paddle.real(input_t).numpy()
+                    res = paddle_apis[self.api](input_t).numpy()
                     self.assertTrue(np.array_equal(np_res, res))
-                    res_t = input_t.real().numpy()
+                    res_t = input_t.real().numpy(
+                    ) if self.api is "real" else input_t.imag().numpy()
                     self.assertTrue(np.array_equal(np_res, res_t))
 
     def test_name_argument(self):
         with static.program_guard(static.Program()):
-            x = static.data(name="x", shape=self._shape, dtype=self._dtypes[0])
-            out = paddle.real(x, name="real_res")
+            x = static.data(name="x", shape=self._shape, dtype=self.dtypes[0])
+            out = paddle_apis[self.api](x, name="real_res")
             self.assertTrue("real_res" in out.name)
 
     def test_dtype_error(self):
@@ -94,14 +134,27 @@ class TestRealAPI(unittest.TestCase):
         with self.assertRaises(TypeError):
             with static.program_guard(static.Program()):
                 x = static.data(name="x", shape=self._shape, dtype="float32")
-                out = paddle.real(x, name="real_res")
+                out = paddle_apis[self.api](x, name="real_res")
 
         # in dynamic mode
         with self.assertRaises(RuntimeError):
             with fluid.dygraph.guard():
                 input = np.random.random(self._shape).astype("float32")
                 input_t = paddle.to_tensor(input)
-                res = paddle.real(input_t)
+                res = paddle_apis[self.api](input_t)
+
+
+class TestImagAPI(TestRealAPI):
+    def setUp(self):
+        # switch to static
+        paddle.enable_static()
+        # prepare test attrs
+        self.api = "imag"
+        self.dtypes = ["complex64", "complex128"]
+        self.places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self._shape = [2, 3]
 
 
 if __name__ == "__main__":

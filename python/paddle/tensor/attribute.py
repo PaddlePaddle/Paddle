@@ -94,7 +94,31 @@ def imag(input, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle
 
+            input = paddle.to_tensor(
+                [[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]])
+            # Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+            #        [[(1+6j), (2+5j), (3+4j)],
+            #         [(4+3j), (5+2j), (6+1j)]])
+
+            imag_res = paddle.imag(input)
+            # Tensor(shape=[2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[6., 5., 4.],
+            #         [3., 2., 1.]])
+
+            imag_t = input.imag()
+            # Tensor(shape=[2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[6., 5., 4.],
+            #         [3., 2., 1.]])
     """
     if in_dygraph_mode():
         return core.ops.imag(input)
+
+    check_variable_and_dtype(input, 'input', ['complex64', 'complex128'],
+                             'imag')
+    helper = LayerHelper('imag', **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=_complex_to_real_dtype(helper.input_dtype()))
+    helper.append_op(type='imag', inputs={'X': input}, outputs={'Out': out})
+    return out
