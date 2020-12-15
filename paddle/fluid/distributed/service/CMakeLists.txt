@@ -36,6 +36,6 @@ cc_library(server SRCS server.cc DEPS downpour_server boost ${RPC_DEPS})
 cc_library(communicator SRCS communicator.cc DEPS scope client boost table math_function selected_rows_functor ${RPC_DEPS})
 cc_library(ps_service SRCS service.cc DEPS communicator client server boost ${RPC_DEPS})
 
-cc_library(heter_serde SRCS heter_serde.cc DEPS ${COMMON_DEPS} ${RPC_DEPS})
+cc_library(heter_serde SRCS heter_serde.cc DEPS tensor device_context ${COMMON_DEPS} ${RPC_DEPS})
 cc_library(heter_server SRCS heter_server.cc DEPS heter_serde ${COMMON_DEPS} ${RPC_DEPS})
 cc_library(heter_client SRCS heter_client.cc DEPS heter_serde ${COMMON_DEPS} ${RPC_DEPS})
