@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from ...fluid.contrib import mixed_precision
+from ...fluid.contrib.mixed_precision import *
 
-from . import decorator
-from .decorator import *
-from . import fp16_lists
-from .fp16_lists import *
-from . import fp16_utils
-from .fp16_utils import *
-
-__all__ = decorator.__all__
-__all__ += fp16_lists.__all__
-__all__ += fp16_utils.__all__
+__all__ = mixed_precision.__all__
