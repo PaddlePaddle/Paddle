@@ -263,6 +263,36 @@ class TestXPUPow(TestXPUActivation):
         self.outputs = {'Out': out}
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXPULeakyRelu(TestXPUActivation):
+    def setUp(self):
+        self.op_type = "leaky_relu"
+        self.init_dtype()
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        alpha = np.random.uniform(
+            0,
+            1, )
+        out = leaky_relu(x, alpha)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'use_xpu': True, 'alpha': alpha}
+
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
+
+
+def leaky_relu(x, alpha):
+    if (alpha < 1):
+        y_ref = np.maximum(x, alpha * x)
+    else:
+        y_ref = np.minimum(x, alpha * x)
+    return y_ref.astype(x.dtype)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

@@ -279,6 +279,56 @@ struct XPUHardSwishGradFunctor : public BaseActivationFunctor<T> {
         ctx, xpu::hard_swish_grad<T>);
   }
 };
+
+template <typename T>
+struct XPULeakyReluFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *y = ctx.Output<Tensor>("Out");
+    float alpha = ctx.Attr<float>("alpha");
+    const T *x_data = x->data<T>();
+    T *y_data = y->mutable_data<T>(ctx.GetPlace());
+
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+    int r = xpu::leaky_relu(xpu_context, x_data, y_data, x->numel(), alpha);
+    PADDLE_ENFORCE_EQ(
+        r == xpu::Error_t::SUCCESS, true,
+        platform::errors::External("XPU leaky_relu return wrong value[%d %s].",
+                                   r, XPUAPIErrorMsg[r]));
+  }
+};
+
+template <typename T>
+struct XPULeakyReluGradFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    float alpha = ctx.Attr<float>("alpha");
+    const T *x_data = nullptr;
+    const T *y_grad = nullptr;
+    if (x != nullptr) x_data = x->data<T>();
+    if (dOut != nullptr) y_grad = dOut->data<T>();
+    T *x_grad = dX->mutable_data<T>(ctx.GetPlace());
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+
+    // The signs of x and y are the same,
+    // y == nullptr here,
+    // so we give 2 x to the api
+    int r = xpu::leaky_relu_grad(
+        xpu_context, reinterpret_cast<const float *>(x_data),
+        reinterpret_cast<const float *>(x_data),
+        reinterpret_cast<const float *>(y_grad),
+        reinterpret_cast<float *>(x_grad), dX->numel(), alpha);
+    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+                      platform::errors::External(
+                          "XPU leaky_relu_grad return wrong value[%d %s].", r,
+                          XPUAPIErrorMsg[r]));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -300,6 +350,8 @@ REGISTER_ACTIVATION_XPU_KERNEL(sqrt, XPUSqrtFunctor, XPUSqrtGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(square, XPUSquareFunctor, XPUSquareGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(hard_swish, XPUHardSwishFunctor,
                                XPUHardSwishGradFunctor)
+REGISTER_ACTIVATION_XPU_KERNEL(leaky_relu, XPULeakyReluFunctor,
+                               XPULeakyReluGradFunctor)
 REGISTER_OP_XPU_KERNEL(log,
                        ops::XPUActivationKernel<ops::XPULogFunctor<float>>);
 REGISTER_OP_XPU_KERNEL(pow,
