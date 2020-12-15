@@ -67,16 +67,25 @@ static constexpr char cuda_lib_path[] = "/usr/local/cuda/lib64";
 static PathNode s_py_site_pkg_path;
 
 #if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+static constexpr char* win_cudnn_lib = "cudnn64_" CUDNN_MAJOR_VERSION ".dll";
 static constexpr char* win_cublas_lib =
     "cublas64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cublas64_" CUDA_VERSION_MAJOR ".dll";
+#if CUDA_VERSION >= 11000
+static constexpr char* win_curand_lib =
+    "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;curand64_" CUDA_VERSION_MAJOR ".dll;curand64_10.dll";
+static constexpr char* win_cusolver_lib =
+    "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll;cusolver64_10.dll";
+#else
 static constexpr char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;curand64_" CUDA_VERSION_MAJOR ".dll";
-static constexpr char* win_cudnn_lib = "cudnn64_" CUDNN_MAJOR_VERSION ".dll";
 static constexpr char* win_cusolver_lib =
     "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll";
+#endif  // CUDA_VERSION
 #endif
 
 static inline std::string join(const std::string& part1,

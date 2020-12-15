@@ -14,7 +14,7 @@
 
 __all__ = [
     'Optimizer', 'Adagrad', 'Adam', 'AdamW', 'Adamax', 'RMSProp', 'Adadelta',
-    'SGD', 'Momentum', 'lr'
+    'SGD', 'Momentum', 'Lamb', 'lr'
 ]
 
 from .optimizer import Optimizer
@@ -26,4 +26,5 @@ from .rmsprop import RMSProp
 from .adadelta import Adadelta
 from .sgd import SGD
 from .momentum import Momentum
+from .lamb import Lamb
 from . import lr

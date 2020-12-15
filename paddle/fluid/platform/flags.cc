@@ -499,7 +499,7 @@ DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
  * message summary will be shown.
  */
 DEFINE_int32(
-    call_stack_level, 2,
+    call_stack_level, 1,
     "Determine the call stack to print when error or exeception happens."
     // TODO(zhiqiu): implement logic of FLAGS_call_stack_level==0
     // "If FLAGS_call_stack_level == 0, only the error message summary will be "

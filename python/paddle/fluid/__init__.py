@@ -254,7 +254,7 @@ def __bootstrap__():
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
-    core.init_devices(not in_test)
+    core.init_devices()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.

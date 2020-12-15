@@ -20,18 +20,20 @@ RUN apt-get update && \
   apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && \
   apt-get update && \
   apt-get install -y curl wget vim git unzip unrar tar xz-utils bzip2 gzip \ 
-    coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev
+    coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev \
+    bison graphviz libjpeg-dev zlib1g-dev automake locales clang-format swig net-tools libtool module-init-tools
 
 # Downgrade gcc&&g++
 WORKDIR /usr/bin 
-      COPY tools/dockerfile/build_scripts /build_scripts 
-      RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
-      RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ 
-      RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc 
-      RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ 
-      RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc 
-      RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ 
-      ENV PATH=/usr/local/gcc-8.2/bin:$PATH 
+COPY tools/dockerfile/build_scripts /build_scripts 
+RUN bash /build_scripts/install_trt.sh
+RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
+RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ 
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc 
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ 
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc 
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ 
+ENV PATH=/usr/local/gcc-8.2/bin:$PATH 
 
 RUN apt-get update && \
   apt-get install -y python2.7 python2.7-dev \

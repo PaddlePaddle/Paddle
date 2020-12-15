@@ -163,7 +163,7 @@ class MNIST(Dataset):
         image = np.reshape(image, [28, 28])
 
         if self.backend == 'pil':
-            image = Image.fromarray(image, mode='L')
+            image = Image.fromarray(image.astype('uint8'), mode='L')
 
         if self.transform is not None:
             image = self.transform(image)

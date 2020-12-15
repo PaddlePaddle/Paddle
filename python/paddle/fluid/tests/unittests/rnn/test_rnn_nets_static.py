@@ -151,7 +151,8 @@ class TestSimpleRNN(unittest.TestCase):
                 if self.time_major:
                     mask = paddle.transpose(mask, [1, 0])
                 y, h = rnn2(x_data, sequence_length=seq_len)
-                y = paddle.multiply(y, mask, axis=0)
+                mask = paddle.unsqueeze(mask, -1)
+                y = paddle.multiply(y, mask)
 
         feed_dict = {x_data.name: x, seq_len.name: sequence_length}
 
@@ -297,7 +298,8 @@ class TestGRU(unittest.TestCase):
                 if self.time_major:
                     mask = paddle.transpose(mask, [1, 0])
                 y, h = rnn2(x_data, sequence_length=seq_len)
-                y = paddle.multiply(y, mask, axis=0)
+                mask = paddle.unsqueeze(mask, -1)
+                y = paddle.multiply(y, mask)
 
         feed_dict = {x_data.name: x, seq_len.name: sequence_length}
 
@@ -445,7 +447,8 @@ class TestLSTM(unittest.TestCase):
                 if self.time_major:
                     mask = paddle.transpose(mask, [1, 0])
                 y, (h, c) = rnn2(x_data, sequence_length=seq_len)
-                y = paddle.multiply(y, mask, axis=0)
+                mask = paddle.unsqueeze(mask, -1)
+                y = paddle.multiply(y, mask)
 
         feed_dict = {x_data.name: x, seq_len.name: sequence_length}
 

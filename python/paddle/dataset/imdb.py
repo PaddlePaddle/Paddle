@@ -116,8 +116,8 @@ def train(word_idx):
     :rtype: callable
     """
     return reader_creator(
-        re.compile("aclImdb/train/pos/.*\.txt$"),
-        re.compile("aclImdb/train/neg/.*\.txt$"), word_idx)
+        re.compile(r"aclImdb/train/pos/.*\.txt$"),
+        re.compile(r"aclImdb/train/neg/.*\.txt$"), word_idx)
 
 
 @deprecated(
@@ -137,8 +137,8 @@ def test(word_idx):
     :rtype: callable
     """
     return reader_creator(
-        re.compile("aclImdb/test/pos/.*\.txt$"),
-        re.compile("aclImdb/test/neg/.*\.txt$"), word_idx)
+        re.compile(r"aclImdb/test/pos/.*\.txt$"),
+        re.compile(r"aclImdb/test/neg/.*\.txt$"), word_idx)
 
 
 @deprecated(
@@ -153,7 +153,7 @@ def word_dict():
     :rtype: dict
     """
     return build_dict(
-        re.compile("aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$"), 150)
+        re.compile(r"aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$"), 150)
 
 
 @deprecated(

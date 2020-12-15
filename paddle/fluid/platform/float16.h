@@ -44,6 +44,8 @@ limitations under the License. */
 #define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
 
+#define CUDA_ARCH_FP16_SUPPORTED(CUDA_ARCH) (CUDA_ARCH >= 600)
+
 namespace paddle {
 namespace platform {
 

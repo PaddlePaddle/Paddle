@@ -25,6 +25,7 @@ from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
+from paddle.fluid import unique_name
 
 BATCH_SIZE = 32
 BATCH_NUM = 10
@@ -167,6 +168,25 @@ class LinearNetWithNestOut(fluid.dygraph.Layer):
         out = y + z
         loss = fluid.layers.mean(out)
         return y, [(z, loss), out]
+
+
+class LinearNetWithDictInput(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithDictInput, self).__init__()
+        self._linear = Linear(in_size, out_size)
+
+    @paddle.jit.to_static(input_spec=[{
+        'img': InputSpec(
+            shape=[None, 8], dtype='float32', name='img')
+    }, {
+        'label': InputSpec(
+            shape=[None, 1], dtype='int64', name='label')
+    }])
+    def forward(self, img, label):
+        out = self._linear(img['img'])
+        # not return loss to avoid prune output
+        loss = paddle.nn.functional.cross_entropy(out, label['label'])
+        return out
 
 
 class EmptyLayer(paddle.nn.Layer):
@@ -357,6 +377,37 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
         self.assertTrue(len(dy_outs) == 4)
         for dy_out, load_out in zip(dy_outs, load_outs):
             self.assertTrue(np.allclose(dy_out.numpy(), load_out.numpy()))
+
+
+class TestSaveLoadWithDictInput(unittest.TestCase):
+    def test_dict_input(self):
+        # NOTE: This net cannot be executed, it is just 
+        # a special case for exporting models in model validation
+        # We DO NOT recommend this writing way of Layer
+        net = LinearNetWithDictInput(8, 8)
+        # net.forward.concrete_program.inputs: 
+        # (<__main__.LinearNetWithDictInput object at 0x7f2655298a98>, 
+        #  {'img': var img : fluid.VarType.LOD_TENSOR.shape(-1, 8).astype(VarType.FP32)}, 
+        #  {'label': var label : fluid.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)})
+        self.assertEqual(len(net.forward.concrete_program.inputs), 3)
+
+        path = "test_jit_save_load_with_dict_input/model"
+        # prune inputs
+        paddle.jit.save(
+            layer=net,
+            path=path,
+            input_spec=[{
+                'img': InputSpec(
+                    shape=[None, 8], dtype='float32', name='img')
+            }])
+
+        img = paddle.randn(shape=[4, 8], dtype='float32')
+        loaded_net = paddle.jit.load(path)
+        loaded_out = loaded_net(img)
+
+        # loaded_net._input_spec():
+        # [InputSpec(shape=(-1, 8), dtype=VarType.FP32, name=img)]
+        self.assertEqual(len(loaded_net._input_spec()), 1)
 
 
 class TestSaveLoadWithInputSpec(unittest.TestCase):
@@ -811,6 +862,128 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.jit.save(
                 layer, model_path, input_spec=[InputSpec(shape=[None, 784])])
+
+
+class LayerSaved(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super(LayerSaved, self).__init__()
+        self.hidden = 100
+        self._linear_0 = Linear(in_size, self.hidden)
+        self._linear_1_0 = Linear(self.hidden, self.hidden)
+        self._linear_1_1 = Linear(self.hidden, self.hidden)
+        self._linear_2 = Linear(self.hidden, out_size)
+        self._scale = paddle.to_tensor(9.9)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        y = self._linear_0(x)
+        # Multiple blocks
+        if x.shape[0] == 1:
+            y = self._linear_1_0(y)
+        else:
+            y += self._linear_1_1(y + self._scale)
+        return self._linear_2(y)
+
+
+class LayerLoadFinetune(paddle.nn.Layer):
+    def __init__(self, in_size, out_size, load_path):
+        super(LayerLoadFinetune, self).__init__()
+        # Test duplicate name
+        self._linear_0 = Linear(in_size, in_size)
+        self._linear_1_0 = Linear(out_size, in_size)
+        self._linear_1_1 = Linear(out_size, in_size)
+        self._linear_2 = Linear(out_size, out_size)
+        self._scale = paddle.to_tensor(9.9)
+
+        # Load multiple times
+        self._load_l1 = paddle.jit.load(load_path)
+        self._load_l2 = paddle.jit.load(load_path)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        y = self._linear_0(x)
+        y = self._load_l1(y)
+        # Multiple blocks
+        if x.shape[0] == 1:
+            y = self._linear_1_0(y)
+            y = self._load_l1(y)
+        else:
+            y += self._linear_1_1(x + self._scale)
+            y = self._load_l2(y)
+        y = self._linear_1_0(y)
+        y = self._load_l1(y)
+        y = self._linear_1_0(y)
+        # Use the same layer multiple times.
+        y = self._load_l1(y)
+        return y
+
+
+class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        paddle.disable_static()
+
+    def test_save_load_finetune_load(self):
+        model_path = "test_jit_save_load_finetune_load/model"
+        IMAGE_SIZE = 224
+        inps0 = paddle.randn([1, IMAGE_SIZE])
+        inps1 = paddle.randn([2, IMAGE_SIZE])
+        # Use new namespace
+        with unique_name.guard():
+            layer_save = LayerSaved(IMAGE_SIZE, IMAGE_SIZE)
+        layer_save(inps0)
+        #save
+        paddle.jit.save(layer_save, model_path)
+        #load
+        with unique_name.guard():
+            layer_load = LayerLoadFinetune(IMAGE_SIZE, IMAGE_SIZE, model_path)
+        #train
+        train(layer_load, input_size=IMAGE_SIZE)
+        result_00 = layer_load(inps0)
+        result_01 = layer_load(inps1)
+        #save
+        paddle.jit.save(layer_load, model_path)
+        #load
+        layer_finetune = paddle.jit.load(model_path)
+        result_10 = layer_finetune(inps0)
+        result_11 = layer_finetune(inps1)
+
+        self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
+        self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
+
+
+class TestJitSaveLoadDataParallel(unittest.TestCase):
+    def verify_inference_correctness(self, layer, path):
+        layer.eval()
+        loaded_layer = paddle.jit.load(path)
+        loaded_layer.eval()
+        # inference & compare
+        x = paddle.to_tensor(np.random.random((1, 784)).astype('float32'))
+        pred = layer(x).numpy()
+        loaded_pred = loaded_layer(x).numpy()
+        self.assertTrue(
+            np.array_equal(pred, loaded_pred),
+            msg="Result diff when load and inference:\nlayer result:\n{}\n" \
+                "loaded layer result:\n{}".format(pred, loaded_pred))
+
+    def test_jit_save_data_parallel_with_inputspec(self):
+        layer = LinearNetNotDeclarative(784, 1)
+        layer = paddle.DataParallel(layer)
+
+        path = "jit_save_data_parallel_with_inputspec/model"
+        paddle.jit.save(
+            layer=layer, path=path, input_spec=[InputSpec(shape=[None, 784])])
+
+        self.verify_inference_correctness(layer, path)
+
+    def test_jit_save_data_parallel_with_to_static(self):
+        layer = LinearNetWithInputSpec(784, 1)
+        layer = paddle.DataParallel(layer)
+
+        path = "jit_save_data_parallel_with_to_static/model"
+        paddle.jit.save(layer, path)
+
+        self.verify_inference_correctness(layer, path)
 
 
 if __name__ == '__main__':

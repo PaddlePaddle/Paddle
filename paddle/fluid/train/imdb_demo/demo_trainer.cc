@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
       platform::errors::InvalidArgument(
           "At least one file to train, but received number of file is %d.",
           file_vec.size()));
-  paddle::framework::InitDevices(false);
+  paddle::framework::InitDevices();
   const auto cpu_place = paddle::platform::CPUPlace();
   paddle::framework::Executor executor(cpu_place);
   paddle::framework::Scope scope;

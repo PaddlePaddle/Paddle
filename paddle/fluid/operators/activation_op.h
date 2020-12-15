@@ -585,6 +585,39 @@ struct SinFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct Tangent {
+  HOSTDEVICE T operator()(const T& val) const { return tan(val); }
+};
+
+template <>
+struct Tangent<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(tan(static_cast<float>(val)));
+  }
+};
+
+// Tangent'(x) = -Tangent(x)
+template <typename T>
+struct TanGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout / x.unaryExpr(Cosine<T>()).square();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+// Tangent(x) = tan(x)
+template <typename T>
+struct TanFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Tangent<T>());
+  }
+};
+
+template <typename T>
 struct Sinh {
   HOSTDEVICE T operator()(const T& val) const { return sinh(val); }
 };
@@ -836,6 +869,27 @@ struct Log2GradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) = dout * static_cast<T>(1) / (x * static_cast<T>(log(2)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+// log10(x) = logarithm to the base 10 of the elements of x
+template <typename T>
+struct Log10Functor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.log() / static_cast<T>(log(10));
+  }
+};
+
+// the gradient of log10(x) is 1/(x*ln(10))
+template <typename T>
+struct Log10GradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * static_cast<T>(1) / (x * static_cast<T>(log(10)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -1921,6 +1975,7 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   __macro(ceil, Ceil, CeilFunctor, ZeroGradFunctor);                          \
   __macro(floor, Floor, FloorFunctor, ZeroGradFunctor);                       \
   __macro(cos, Cos, CosFunctor, CosGradFunctor);                              \
+  __macro(tan, Tan, TanFunctor, TanGradFunctor);                              \
   __macro(acos, Acos, AcosFunctor, AcosGradFunctor);                          \
   __macro(sin, Sin, SinFunctor, SinGradFunctor);                              \
   __macro(asin, Asin, AsinFunctor, AsinGradFunctor);                          \
@@ -1930,6 +1985,7 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   __macro(reciprocal, Reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);  \
   __macro(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);                      \
   __macro(log2, Log2, Log2Functor, Log2GradFunctor);                          \
+  __macro(log10, Log10, Log10Functor, Log10GradFunctor);                      \
   __macro(brelu, BRelu, BReluFunctor, BReluGradFunctor);                      \
   __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor);         \
   __macro(stanh, STanh, STanhFunctor, STanhGradFunctor);                      \

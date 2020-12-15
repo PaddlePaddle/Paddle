@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/cast_op.h"
 #include <memory>
+
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/platform/float16.h"
+#include "xpu/refactor/math.h"
 
 namespace paddle {
 namespace operators {
@@ -37,14 +39,16 @@ class CastXPUKernel : public framework::OpKernel<InT> {
     int r = -1;
     if (out_type == framework::proto::VarType::FP32) {
       auto* out_data = out->mutable_data<float>(context.GetPlace());
-      r = xpu::cast<InT, float>(dev_ctx.x_context(), in_data, out_data, numel);
+      r = xpu::cast_v2<InT, float>(dev_ctx.x_context(), in_data, out_data,
+                                   numel);
     } else if (out_type == framework::proto::VarType::INT32) {
       auto* out_data = out->mutable_data<int>(context.GetPlace());
-      r = xpu::cast<InT, int>(dev_ctx.x_context(), in_data, out_data, numel);
+      r = xpu::cast_v2<InT, int32_t>(dev_ctx.x_context(), in_data, out_data,
+                                     numel);
     } else if (out_type == framework::proto::VarType::INT64) {
       auto* out_data = out->mutable_data<int64_t>(context.GetPlace());
-      r = xpu::cast<InT, int64_t>(dev_ctx.x_context(), in_data, out_data,
-                                  numel);
+      r = xpu::cast_v2<InT, int64_t>(dev_ctx.x_context(), in_data, out_data,
+                                     numel);
     } else {
       PADDLE_THROW(platform::errors::Unavailable("Not supported cast %d -> %d",
                                                  in_type, out_type));
@@ -63,7 +67,7 @@ class CastXPUKernel : public framework::OpKernel<InT> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    cast, ops::CastXPUKernel<paddle::platform::XPUDeviceContext, int>,
+    cast, ops::CastXPUKernel<paddle::platform::XPUDeviceContext, int32_t>,
     ops::CastXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::CastXPUKernel<paddle::platform::XPUDeviceContext, int64_t>);
 #endif

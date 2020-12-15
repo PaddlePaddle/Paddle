@@ -44,7 +44,7 @@ DEBUG = False
 
 
 def memory_usage(program, batch_size):
-    """
+    r"""
     Get the estimate memory usage of program with input batch size.
 
     Args:

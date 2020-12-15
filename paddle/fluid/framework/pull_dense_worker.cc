@@ -225,5 +225,22 @@ void PullDenseWorker::SetThreadIdByScope(const Scope* scope, int tid) {
   scope_to_thread_id_[scope] = tid;
 }
 
+void PullDenseWorker::MergeDenseParam() {
+  for (int x = 0; x < dwp_param_.program_config(0).pull_dense_table_id_size();
+       ++x) {
+    uint64_t tid = static_cast<uint64_t>(
+        dwp_param_.program_config(0).pull_dense_table_id(x));
+    for (size_t j = 0; j < dense_value_names_[tid].size(); j++) {
+      auto& name = dense_value_names_[tid][j];
+
+      Variable* root_var = root_scope_->FindVar(name);
+      LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+      Variable* var = thread_scopes_[0]->FindVar(name);
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      TensorCopy((*tensor), root_tensor->place(), root_tensor);
+    }
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

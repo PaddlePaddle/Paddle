@@ -160,9 +160,9 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::enqueue(
 }
 
 template class EmbEltwiseLayernormPluginDynamicImpl<float>;
-#ifdef SUPPORTS_CUDA_FP16
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
 template class EmbEltwiseLayernormPluginDynamicImpl<half>;
-#endif  // SUPPORTS_CUDA_FP16
+#endif
 
 int EmbEltwiseLayernormPluginDynamic::initialize() {
   impl_->initialize();
