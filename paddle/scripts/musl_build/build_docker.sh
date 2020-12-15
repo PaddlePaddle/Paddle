@@ -24,6 +24,7 @@ source "$CUR_DIR/config.sh"
 WITH_REQUIREMENT="${WITH_REQUIREMENT-0}"
 WITH_UT_REQUIREMENT="${WITH_UT_REQUIREMENT-0}"
 WITH_REBUILD="${WITH_REBUILD-0}"
+PYTHON_VERSION="${PYTHON_VERSION-3.7}"
 
 # exit when any command fails
 set -e
@@ -43,6 +44,8 @@ function prune_image(){
 
 function build_image(){
     declare -a BUILD_ARGS
+    BUILD_ARGS+=("--build-arg" "PYTHON_VERSION=$PYTHON_VERSION")
+    echo ">>> python version: $PYTHON_VERSION"
     
     if [ "$HTTP_PROXY" ]; then
         BUILD_ARGS+=("--build-arg" "http_proxy=$HTTP_PROXY")
