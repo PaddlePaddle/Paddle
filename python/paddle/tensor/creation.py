@@ -1026,7 +1026,7 @@ def empty_like(x, dtype=None, name=None):
     return out
 
 
-def assign(x, output=None):
+def assign(x, output=None, index=None):
     """
  
  
@@ -1057,6 +1057,9 @@ def assign(x, output=None):
     """
     helper = LayerHelper('assign', **locals())
     check_type(x, 'x', (Variable, numpy.ndarray), 'assign')
+
+    assert output is None and index is not None, 'output cannot be None in {}, when index is not None'.format(
+        helper.layer_type)
     if isinstance(x, Variable):
         check_dtype(
             x.dtype, 'x',
