@@ -93,6 +93,21 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.adaptive_localsgd_configs["init_k_steps"], 1)
         self.assertEqual(strategy.adaptive_localsgd_configs["begin_step"], 120)
 
+    def test_ascend(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.ascend = True
+        self.assertEqual(strategy.ascend, True)
+        strategy.ascend = False
+        self.assertEqual(strategy.ascend, False)
+        strategy.ascend = "True"
+        self.assertEqual(strategy.ascend, False)
+
+    def test_ascend(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {"placeholder": 1}
+        strategy.ascend_configs = configs
+        self.assertEqual(strategy.ascend_configs["placeholder"], 1)
+
     def test_dgc(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.dgc = True

@@ -1426,3 +1426,24 @@ class DistributedStrategy(object):
 
         result_res += build_strategy_str + execution_strategy_str
         return result_res
+
+    @property
+    def ascend(self):
+        return self.strategy.ascend
+
+    @ascend.setter
+    def ascend(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.ascend = flag
+        else:
+            print("WARNING: ascend should have value of bool type")
+
+    @property
+    def ascend_configs(self):
+        return get_msg_dict(self.strategy.ascend_configs)
+
+    @ascend_configs.setter
+    def ascend_configs(self, configs):
+        check_configs_key(self.strategy.ascend_configs, configs,
+                          "ascend_configs")
+        assign_configs_value(self.strategy.ascend_configs, configs)

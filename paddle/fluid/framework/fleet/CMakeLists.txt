@@ -22,3 +22,5 @@ endif(WITH_GLOO)
 cc_library(heter_wrapper SRCS heter_wrapper.cc DEPS framework_proto device_context heter_service_proto)
 
 cc_test(test_fleet SRCS test_fleet.cc DEPS fleet_wrapper gloo_wrapper fs shell)
+
+cc_library(ascend_wrapper SRCS ascend_wrapper.cc DEPS framework_proto lod_tensor ascend ascend_graph)
