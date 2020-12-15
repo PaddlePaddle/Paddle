@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -103,17 +103,6 @@ class TestLinearInterpMKLDNNOp(OpTest):
         self.use_mkldnn = True
 
 
-# class TestLinearInterpMKLDNNOpDataLayout(TestLinearInterpMKLDNNOp):
-#     def init_test_case(self):
-#         self.interp_method = 'linear'
-#         self.input_shape = [1, 3, 100]
-#         self.out_w = 50
-#         self.scale = 0.
-#         self.out_size = np.array([50, ]).astype("int32")
-#         self.data_layout = 'NHWC'
-#         self.use_mkldnn = True
-
-
 class TestLinearInterpMKLDNNOpScale(TestLinearInterpMKLDNNOp):
     def init_test_case(self):
         self.interp_method = 'linear'
@@ -123,50 +112,6 @@ class TestLinearInterpMKLDNNOpScale(TestLinearInterpMKLDNNOp):
         self.out_size = np.array([50, ]).astype("int32")
         self.use_mkldnn = True
 
-
-# class TestLinearInterpMKLDNNOpSizeTensor(TestLinearInterpMKLDNNOp):
-#     def setUp(self):
-#         self.out_size = None
-#         self.actual_shape = None
-#         self.data_layout = 'NCHW'
-#         self.init_test_case()
-#         self.op_type = "linear_interp"
-#         input_np = np.random.random(self.input_shape).astype("float64")
-#         self.shape_by_1Dtensor = False
-#         self.scale_by_1Dtensor = False
-
-#         if self.data_layout == "NCHW":
-#             in_w = self.input_shape[2]
-#         else:
-#             in_w = self.input_shape[1]
-
-#         if self.scale > 0:
-#             out_w = int(in_w * self.scale)
-#         else:
-#             out_w = self.out_w
-
-#         output_np = linear_interp_mkldnn_np(input_np, out_w, self.out_size,
-#                                      self.actual_shape, self.data_layout)
-
-#         self.inputs = {'X': input_np}
-#         if self.out_size is not None and self.shape_by_1Dtensor:
-#             self.inputs['OutSize'] = self.out_size
-#         elif self.actual_shape is not None and self.shape_by_1Dtensor:
-#             self.inputs['OutSize'] = self.actual_shape
-#         else:
-#             size_tensor = []
-#             for index, ele in enumerate(self.out_size):
-#                 size_tensor.append(("x" + str(index), np.ones(
-#                     (1)).astype('int32') * ele))
-#             self.inputs['SizeTensor'] = size_tensor
-
-#         self.attrs = {
-#             'out_w': self.out_w,
-#             'scale': self.scale,
-#             'interp_method': self.interp_method,
-#             'data_layout': self.data_layout
-#         }
-#         self.outputs = {'Out': output_np}
 
 if __name__ == "__main__":
     unittest.main()

@@ -306,7 +306,6 @@ class InterpolateOp : public framework::OperatorWithKernel {
         platform::errors::Unimplemented(
             "Input(X) dimension must be 3, 4 or 5, but got dimension = %d .",
             dim_x.size()));
-
     if (dim_x.size() == 3) {
       // shape check for 1D interpolate for input tensor shape NCHW
       Interpolate1DInferShapeCheck(ctx);
@@ -324,13 +323,9 @@ class InterpolateOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
 #ifdef PADDLE_WITH_MKLDNN
     auto interp_method = ctx.Attr<std::string>("interp_method");
-    const auto* x = ctx.Input<Tensor>("X");
-    auto dim_x = x->dims();
 
-    if (interp_method == "bicubic") {
-      VLOG(3) << "oneDNN interpolate does not support bicubic algorithm";
-    } else if (this->CanMKLDNNBeUsed(ctx) /*&& FLAGS_use_mkldnn_interpolate*/ &&
-               (dim_x.size() == 3 || dim_x.size() == 4)) {
+    if (this->CanMKLDNNBeUsed(ctx) &&
+        interp_method != "bicubic" /*&& FLAGS_use_mkldnn_interpolate*/) {
       framework::LibraryType library = framework::LibraryType::kMKLDNN;
       framework::DataLayout layout = framework::DataLayout::kMKLDNN;
       return framework::OpKernelType(
@@ -345,6 +340,21 @@ class InterpolateOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+#ifdef PADDLE_WITH_MKLDNN
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_layout");
+      auto dl = framework::StringToDataLayout(data_format);
+      // Some models may have intentionally set "AnyLayout" for pool
+      // op. Treat this as NCHW (default data_format value)
+      if (dl != framework::DataLayout::kAnyLayout) {
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(), dl);
+      }
+    }
+#endif
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;
     }

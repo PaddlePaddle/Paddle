@@ -21,18 +21,6 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 
-# def linear_map(y, y_max, x_max):
-#     return (y + 0.5)*x_max/y_max - 0.5
-
-# def left(y, y_max, x_max):
-#     return max(int(math.floor(linear_map(y, y_max, x_max))), 0)
-
-# def right(y, y_max, x_max):
-#     return min(int(math.ceil(linear_map(y, y_max, x_max)), x_max - 1)
-
-# def linear_weight(y, y_max, x_max):
-#     return linear_map(y, y_max, x_max) - left(y, y_max, x_max)
-
 
 def bilinear_interp_mkldnn_np(input,
                               out_h,
@@ -57,18 +45,14 @@ def bilinear_interp_mkldnn_np(input,
         h0 = int(math.floor((oh + 0.5) * in_h / out_h - 0.5))
         h1 = int(math.ceil((oh + 0.5) * in_h / out_h - 0.5))
         h0 = max(h0, 0)
-        # h1 = max(h1, 0)
+        h1 = min(h1, in_h - 1)
         Wh = (oh + 0.5) * in_h / out_h - 0.5 - h0
         for ow in range(out_w):
             w0 = int(math.floor((ow + 0.5) * in_w / out_w - 0.5))
             w1 = int(math.ceil((ow + 0.5) * in_w / out_w - 0.5))
             w0 = max(w0, 0)
-            # w1 = max(w1, 0)
-            Ww = (ow + 0.5) * in_w / out_w - 0.5 - w0
-            # h0 = min(h0, in_h - 1)
-            h1 = min(h1, in_h - 1)
-            # w0 = min(w0, in_w - 1)
             w1 = min(w1, in_w - 1)
+            Ww = (ow + 0.5) * in_w / out_w - 0.5 - w0
             input_h0_w0 = input[:, :, h0, w0]
             input_h1_w0 = input[:, :, h1, w0]
             input_h0_w1 = input[:, :, h0, w1]
@@ -127,25 +111,15 @@ class TestBilinearInterpMKLDNNOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        print("Testing mkldnn bilinear kernel")
         self.check_output(check_dygraph=False)
 
     def init_test_case(self):
-        # self.interp_method = 'bilinear'
-        # self.input_shape = [2, 1, 2, 2]
-        # self.out_h = 2
-        # self.out_w = 2
-        # self.scale = 0.
-        # self.out_size = np.array([3, 3]).astype("int32")
-        # self.use_mkldnn = True
-
         self.interp_method = 'bilinear'
-        self.input_shape = [2, 5, 5, 3]
+        self.input_shape = [2, 1, 2, 2]
         self.out_h = 2
         self.out_w = 2
         self.scale = 0.
-        # self.out_size = np.array([3, 3]).astype("int32")
-        self.data_layout = "NHWC"
+        self.out_size = np.array([3, 3]).astype("int32")
         self.use_mkldnn = True
 
 
@@ -234,16 +208,16 @@ class TestBilinearInterpActualShape(TestBilinearInterpMKLDNNOp):
         self.use_mkldnn = True
 
 
-# class TestBilinearInterpDataLayout(TestBilinearInterpMKLDNNOp):
-#     def init_test_case(self):
-#         self.interp_method = 'bilinear'
-#         self.input_shape = [2, 5, 5, 3]
-#         self.out_h = 2
-#         self.out_w = 2
-#         self.scale = 0.
-#         self.out_size = np.array([3, 3]).astype("int32")
-#         self.data_layout = "NHWC"
-#         self.use_mkldnn = True
+class TestBilinearInterpDataLayout(TestBilinearInterpMKLDNNOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [2, 5, 5, 3]
+        self.out_h = 2
+        self.out_w = 2
+        self.data_layout = "NHWC"
+        self.scale = 0.
+        self.use_mkldnn = True
+
 
 if __name__ == "__main__":
     unittest.main()
