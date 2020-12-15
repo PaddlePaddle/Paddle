@@ -32,11 +32,13 @@ limitations under the License. */
 #include "paddle/fluid/distributed/fleet.h"
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/distributed/service/env.h"
+#include "paddle/fluid/distributed/service/heter_client.h"
 
 namespace py = pybind11;
 using paddle::distributed::CommContext;
 using paddle::distributed::Communicator;
 using paddle::distributed::FleetWrapper;
+using paddle::distributed::HeterClient;
 
 namespace paddle {
 namespace pybind {
@@ -137,5 +139,14 @@ void BindDistCommunicator(py::module* m) {
   //  .def("recv", &Communicator::RecvNoBarrier);
 }
 
+void BindHeterClient(py::module* m) {
+  py::class_<HeterClient, std::shared_ptr<HeterClient>>(*m, "HeterClient")
+      .def(py::init(
+          [](const std::vector<std::string>& endpoint, const int& trainer_id) {
+            return HeterClient::GetInstance(endpoint, trainer_id);
+          }))
+      .def("stop", &HeterClient::Stop);
+}
+
 }  // end namespace pybind
-}  // end namespace paddle
+}  // namespace paddle

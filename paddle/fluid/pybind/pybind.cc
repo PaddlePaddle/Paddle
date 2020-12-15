@@ -2821,10 +2821,13 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
 #endif
+
 #ifdef PADDLE_WITH_DISTRIBUTE
-  BindCommunicator(&m);
+  BindDistFleetWrapper(&m);
+  BindPSHost(&m);
   BindCommunicatorContext(&m);
-  BindLargeScaleKV(&m);
+  BindDistCommunicator(&m);
+  BindHeterClient(&m);
 #endif
 }
 }  // namespace pybind
