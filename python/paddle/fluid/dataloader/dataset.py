@@ -573,7 +573,7 @@ class BufferedShuffleDataset(IterableDataset):
                     self.num_samples = num_samples
             
                 def __getitem__(self, idx):
-                    image = np.random.random([784]).astype('float32')
+                    image = np.random.random([5]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
                 
@@ -584,22 +584,16 @@ class BufferedShuffleDataset(IterableDataset):
             for i in range(len(dataset)):
                 print(dataset[i])
 
+            def shuffle_ds_init_fn(worker_id):
+                random.seed(123)
+
             # Example 1:
             # For single-process mode (:attr:`num_workers == 0`), the random seed is required to
             # be set before the :class:`~paddle.io.DataLoader` in the main process.
             
             ds = BufferedShuffleDataset(dataset)
             random.seed(123)
-            print(list(paddle.io.DataLoader(ds, num_workers=0)))
-            
-            # Example 2:
-            # For multi-process mode (:attr:`num_workers > 0`), the random seed is set by a callable
-            # function in each worker.
-
-            ds = BufferedShuffleDataset(dataset)
-            def init_fn(worker_id):
-                random.seed(123)
-            print(list(paddle.io.data.DataLoader(ds, num_workers=n, worker_init_fn=init_fn)))
+            print(list(paddle.io.DataLoader(ds, num_workers=0, batch_size=1, drop_last=True, worker_init_fn=shuffle_ds_init_fn)))
     """
     dataset = None
     buffer_size = None
