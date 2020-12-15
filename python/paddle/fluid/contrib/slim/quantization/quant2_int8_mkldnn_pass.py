@@ -146,9 +146,10 @@ class Quant2Int8MkldnnPass(object):
                 input_name = op.input("X")[0]
                 scale_name = op.input("InScale")[0]
                 output_name = op.output("Out")[0]
-                # Gather new weights scale after folding batchnorm in convolution
+                # Gather new weight scales after folding batchnorm in convolution
                 scale = np.array(1.0 / self._load_param(
                     self._scope, scale_name)[0]).astype(np.float64)
+                scale[scale == np.Inf] = 0.0
                 lod_tensor = self._convert_scale2tensor(scale)
                 use_unsigned_int = False
                 _add_scale_for_vars([input_name, output_name], use_unsigned_int,
@@ -166,10 +167,11 @@ class Quant2Int8MkldnnPass(object):
                     self._weight_scales[input_name] = _max_range
                 else:
                     scale_name = op.input("Scales")[0]
-                    scale = np.array(
+                    scales = np.array(
                         self._s8_max * self._s8_max / self._load_param(
                             self._scope, scale_name)).astype(np.float64)
-                    self._weight_scales[input_name] = scale
+                    scales[scales == np.Inf] = 0.0
+                    self._weight_scales[input_name] = scales
 
         return graph
 
@@ -179,6 +181,7 @@ class Quant2Int8MkldnnPass(object):
                 attr_scale = op.op().attr("out_threshold")
                 if attr_scale == 0.0: continue
                 scale = np.array(1.0 / attr_scale).astype(np.float64)
+                scale[scale == np.Inf] = 0.0
                 scale_lod_tensor = self._convert_scale2tensor(scale)
                 use_unsigned_int = False
                 for output_name in op.op().outputs():

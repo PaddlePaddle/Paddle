@@ -54,7 +54,8 @@ class SumMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::sum> {
 
       : platform::MKLDNNHandlerT<T, dnnl::sum>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(framework::vectorize(z->dims()), uniq_name)),
+            platform::CreateKey(dev_ctx, framework::vectorize(z->dims()),
+                                uniq_name)),
         num_inputs_(0) {
     for (size_t i = 0; i < in_vars.size(); i++) {
       srcs_suffix_.push_back(std::string("-") + std::to_string(i));
@@ -184,8 +185,9 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // For in-place execution which sum does not have we need to fake it
     // so from oneDNN dst memory we reorder data into input
     if (in_place) {
-      const std::string reorder_key = platform::CreateKey(
-          framework::vectorize(output->dims()), ctx.OutputName("Out") + "-I");
+      const std::string reorder_key =
+          platform::CreateKey(dev_ctx, framework::vectorize(output->dims()),
+                              ctx.OutputName("Out") + "-I");
 
       auto& in_out = in_vars[0]->Get<framework::LoDTensor>();
       auto output_tz = framework::vectorize<int64_t>(output->dims());

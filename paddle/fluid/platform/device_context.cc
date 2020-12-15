@@ -54,6 +54,12 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
 namespace paddle {
 namespace platform {
 
+#ifdef PADDLE_WITH_CUDA
+bool allow_tf32_cublas = true;
+void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
+bool AllowTF32Cublas() { return allow_tf32_cublas; }
+#endif  // PADDLE_WITH_CUDA
+
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
@@ -464,6 +470,15 @@ void MKLDNNDeviceContextThreadLocals::Body::set_cur_paddle_data_layout(
 framework::DataLayout
 MKLDNNDeviceContextThreadLocals::Body::get_cur_paddle_data_layout(void) {
   return cur_paddle_data_layout;
+}
+
+void MKLDNNDeviceContextThreadLocals::Body::log_lib_version(void) {
+  if (!said_once) {
+    said_once = true;
+    auto dv = dnnl::version();
+    LOG(INFO) << "oneDNN v" << dv->major << "." << dv->minor << "."
+              << dv->patch;
+  }
 }
 
 void MKLDNNDeviceContext::ResetBlobMap() {

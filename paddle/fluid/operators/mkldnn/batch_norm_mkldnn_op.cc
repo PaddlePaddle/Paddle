@@ -48,7 +48,8 @@ class BatchNormMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::batch_normalization_forward,
                                  mkldnn::batch_normalization_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(framework::vectorize(x->dims()), unique_name)) {
+            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
+                                unique_name)) {
     if (!this->isCached()) {
       const float epsilon = ctx.Attr<float>("epsilon");
       const bool fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
@@ -89,7 +90,7 @@ class BatchNormMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::batch_normalization_forward,
                                  mkldnn::batch_normalization_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, uniq_name)) {
+            platform::CreateKey(dev_ctx, dims, uniq_name)) {
     auto diff_dst_md =
         mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
     auto src_md =
