@@ -286,6 +286,30 @@ class TestMatMuklOp17(TestMatMulV2Op):
         self.trans_y = False
 
 
+class TestMatMuklOpBroadcast1(TestMatMulV2Op):
+    """
+    case 14_3
+    """
+
+    def config(self):
+        self.x_shape = (3, 1, 10, 10)
+        self.y_shape = (1, 2, 10, 10)
+        self.trans_x = True
+        self.trans_y = True
+
+
+class TestMatMuklOpBroadcast2(TestMatMulV2Op):
+    """
+    case 14_4
+    """
+
+    def config(self):
+        self.x_shape = (3, 1, 10, 10)
+        self.y_shape = (1, 2, 10, 10)
+        self.trans_x = False
+        self.trans_y = True
+
+
 #--------------------test matmul fp16--------------------
 
 
