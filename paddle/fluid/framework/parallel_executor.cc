@@ -290,11 +290,6 @@ class ParallelExecutorPrivate {
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
-  // TODO(liuyuhui): There is no need to retain use_cuda_,
-  // because of the addition of use_device_.
-  // But there are too many passes in the codes now use 'use_cuda_',
-  // it will be temporarily used and remove it later.
-  bool use_cuda_;
   UseDevice use_device_;
   bool use_all_reduce_;
   size_t nranks_;
@@ -353,9 +348,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     auto addto_pass = ir::PassRegistry::Instance().Get("inplace_addto_op_pass");
     addto_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     addto_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-    // TODO(liuyuhui): There is no need to retain use_cuda_, it will then be
-    // replaced.
-    addto_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    addto_pass->Set(ir::kUseCuda, new bool(use_device_ == UseDevice::kCUDA));
     VLOG(10) << "Start to apply inplace_addto_op_pass";
     graph = addto_pass->Apply(graph);
     VLOG(10) << "inplace_addto_op_pass Applied";
@@ -366,9 +359,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
         ir::PassRegistry::Instance().Get("buffer_shared_inplace_pass");
     inplace_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     inplace_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-    // TODO(liuyuhui): There is no need to retain use_cuda_, it will then be
-    // replaced.
-    inplace_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    inplace_pass->Set(ir::kUseCuda, new bool(use_device_ == UseDevice::kCUDA));
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
@@ -383,9 +374,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
                                             &mem_opt_var_infos_);
     cross_op_memory_reuse_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
                                             &last_live_ops_of_vars);
-    // TODO(liuyuhui): There is no need to retain use_cuda_, it will then be
-    // replaced.
-    cross_op_memory_reuse_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    cross_op_memory_reuse_pass->Set(ir::kUseCuda,
+                                    new bool(use_device_ == UseDevice::kCUDA));
     VLOG(10) << "Start to apply buffer_shared_cross_op_memory_reuse_pass";
     graph = cross_op_memory_reuse_pass->Apply(graph);
     VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
