@@ -21,8 +21,9 @@ import paddle.fluid.core as core
 import sys
 sys.path.append("..")
 from op_test import OpTest
-import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+import paddle.fluid.dygraph as dg
+from numpy.random import random as rand
 
 paddle.enable_static()
 
@@ -47,6 +48,25 @@ class TestConjOp(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestComplexConjOp(unittest.TestCase):
+    def setUp(self):
+        self._dtypes = ["float32", "float64"]
+        self._places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            self._places.append(paddle.CUDAPlace(0))
+
+    def test_conj_api(self):
+        for dtype in self._dtypes:
+            input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
+                [2, 20, 2, 3]).astype(dtype)
+            for place in self._places:
+                with dg.guard(place):
+                    var_x = dg.to_variable(input)
+                    result = paddle.conj(var_x).numpy()
+                    target = np.conj(input)
+                    self.assertTrue(np.allclose(result, target))
 
 
 if __name__ == "__main__":

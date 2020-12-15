@@ -25,9 +25,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::OpKernelType;
-using framework::Tensor;
-
 class ConjOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -37,7 +34,6 @@ class ConjOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "conj");
 
     auto in_dims = ctx->GetInputDim("X");
-    auto outs_names = ctx->Outputs("Out");
 
     ctx->SetOutputDim("Out", in_dims);
     ctx->ShareLoD("X", /*->*/ "Out");

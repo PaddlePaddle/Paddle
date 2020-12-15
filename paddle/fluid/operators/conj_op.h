@@ -42,11 +42,11 @@ class ConjKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace(), size_t(x->numel() * sizeof(T)));
 
     auto numel = x->numel();
     auto* x_data = x->data<T>();
-    auto* out_data = out->mutable_data<T>(context.GetPlace());
+    auto* out_data = out->mutable_data<T>(context.GetPlace(),
+                                          size_t(x->numel() * sizeof(T)));
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
