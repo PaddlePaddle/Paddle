@@ -83,6 +83,8 @@ constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
 
+#endif  // PADDLE_WITH_CUDA
+
 class DeviceContext {
  public:
   virtual ~DeviceContext() PADDLE_MAY_THROW {}
@@ -198,7 +200,11 @@ class CUDAContext {
   /*! \brief  Call cublas function safely. */
   template <typename Callback>
   inline void CublasCall(Callback&& callback) const {
-    cublas_handle_->Call(std::forward<Callback>(callback));
+    if (cublas_tf32_tensor_core_handle_) {
+      cublas_tf32_tensor_core_handle_->Call(std::forward<Callback>(callback));
+    } else {
+      cublas_handle_->Call(std::forward<Callback>(callback));
+    }
   }
 
   /*! \brief  Check whether tensor core is supported */
@@ -225,7 +231,11 @@ class CUDAContext {
 #if CUDA_VERSION >= 9000
       cublas_tensor_core_handle_.reset(
           new CublasHandleHolder(RawStream(), CUBLAS_TENSOR_OP_MATH));
-#endif
+#if CUDA_VERSION >= 11000
+      cublas_tf32_tensor_core_handle_.reset(
+          new CublasHandleHolder(RawStream(), CUBLAS_TF32_TENSOR_OP_MATH));
+#endif  // CUDA_VERSION >= 11000
+#endif  // CUDA_VERSION >= 9000
     }
   }
 
@@ -268,6 +278,7 @@ class CUDAContext {
   void DestoryCuBlasContext() {
     cublas_handle_.reset();
     cublas_tensor_core_handle_.reset();
+    cublas_tf32_tensor_core_handle_.reset();
   }
 
   void DestoryCuSolverContext() {
@@ -284,6 +295,7 @@ class CUDAContext {
   cudnnHandle_t cudnn_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
+  std::unique_ptr<CublasHandleHolder> cublas_tf32_tensor_core_handle_;
   cusolverDnHandle_t cusolver_dn_handle_;
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
