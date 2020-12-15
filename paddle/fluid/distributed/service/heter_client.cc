@@ -24,10 +24,10 @@
 #include "paddle/fluid/platform/timer.h"
 
 DECLARE_int32(rpc_deadline);
+DECLARE_int32(pserver_timeout_ms);
+
 namespace paddle {
 namespace distributed {
-
-DEFINE_int32(pserver_timeout_ms, 10800000, "pserver request server timeout_ms");
 
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = NULL;
 bool HeterClient::is_initialized_ = false;
