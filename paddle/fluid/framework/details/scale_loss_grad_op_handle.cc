@@ -64,6 +64,10 @@ struct ScaleLossGradFunctor {
       memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place_), out_data,
                    platform::CPUPlace(), &cast_coeff, SizeOfType(out_dtype_));
       VLOG(10) << place_ << "RUN Scale loss grad op";
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use XPU device since it's not compiled with XPU,"
+          "Please recompile or reinstall Paddle with XPU support."));
 #endif
     } else {
 #ifdef PADDLE_WITH_CUDA
@@ -73,7 +77,10 @@ struct ScaleLossGradFunctor {
                    platform::CPUPlace(), &cast_coeff, SizeOfType(out_dtype_),
                    stream);
       VLOG(10) << place_ << "RUN Scale loss grad op";
-
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use CUDA device since it's not compiled with CUDA,"
+          "Please recompile or reinstall Paddle with GPU support."));
 #endif
     }
   }

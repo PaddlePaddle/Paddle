@@ -2108,7 +2108,7 @@ All parameter, weight, gradient are variables in Paddle.
                     exec_strategy.num_threads = 4
             )DOC")
       .def_property(
-          "use_device",
+          "_use_device",
           [](const ExecutionStrategy &self) { return self.use_device_; },
           [](ExecutionStrategy &self, ExecutionStrategy::UseDevice use_device) {
             self.use_device_ = use_device;

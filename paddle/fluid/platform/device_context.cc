@@ -29,30 +29,39 @@ namespace memory {
 
 AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
   auto place = dev_ctx.GetPlace();
+  if (size == 0) {
+    return Alloc(place, size);
+  }
+
+  if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
-  if (size == 0 || !platform::is_gpu_place(place)) {
-    return Alloc(place, size);
-  }
-  auto* default_dev_ctx = static_cast<platform::CUDADeviceContext*>(
-      platform::DeviceContextPool::Instance().Get(place));
-  auto& desired_dev_ctx =
-      static_cast<const platform::CUDADeviceContext&>(dev_ctx);
-  if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
-    return Alloc(place, size);
-  } else {
-    return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
-        desired_dev_ctx, size);
-  }
-#elif PADDLE_WITH_XPU
-  if (platform::is_xpu_place(place)) {
-    LOG(WARNING) << "Should consider xpu stream later";
-    return Alloc(place, size);
-  } else {
-    return Alloc(place, size);
-  }
+    auto* default_dev_ctx = static_cast<platform::CUDADeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    auto& desired_dev_ctx =
+        static_cast<const platform::CUDADeviceContext&>(dev_ctx);
+    if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
+      return Alloc(place, size);
+    } else {
+      return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
+          desired_dev_ctx, size);
+    }
 #else
-  return Alloc(place, size);
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't use CUDA device since it's not compiled with CUDA,"
+        "Please recompile or reinstall Paddle with GPU support."));
 #endif
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+    // TODO(liuyuhui): Consider xpu stream later
+    return Alloc(place, size);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't use XPU device since it's not compiled with XPU,"
+        "Please recompile or reinstall Paddle with XPU support."));
+#endif
+  } else {
+    return Alloc(place, size);
+  }
 }
 
 }  // namespace memory
