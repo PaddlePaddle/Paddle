@@ -523,6 +523,15 @@ void FleetWrapper::PushDenseVarsAsync(
 #endif
 }
 
+/* hit interval push value
+int need_hit_interval;
+float hit_interval_new;
+float slot;
+float show;
+float click;
+float embed_g;
+std::vector<float> embedx_g;
+*/
 void FleetWrapper::PushSparseVarsWithLabelAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<uint64_t>& fea_keys, const std::vector<float>& fea_labels,
@@ -538,12 +547,12 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   int offset = 2;
   int slot_offset = 0;
   int grad_dim = emb_dim;
-  int show_index = 0;
-  int click_index = 1;
   int need_hit_interval_index = 0;
   int hit_interval_new_index = 1;
   int need_push_hit_interval = 1;
   int hit_interval_offset = 2;
+  int show_index = 0 + hit_interval_offset;
+  int click_index = 1 + hit_interval_offset;
   if (use_cvm) {
     offset = 0;
     grad_dim = emb_dim - 2;
@@ -554,11 +563,9 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   }
   if (dump_slot) {
     slot_offset = 1;
-    show_index = 1;
-    click_index = 2;
+    show_index = 1 + hit_interval_offset;
+    click_index = 2 + hit_interval_offset;
   }
-  show_index = 2;
-  click_index = 3;
 
   CHECK_GE(grad_dim, 0);
 
@@ -596,7 +603,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       exit(-1);
     }
     float* g = g_tensor->data<float>();
-    VLOG(0) << "pushsparse get g_tensor data";
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
       int dim = emb_dim;
       Eigen::Map<
@@ -618,7 +624,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
                g, sizeof(float) * emb_dim);
       } else {
         CHECK(fea_idx < fea_labels.size());
-        VLOG(0) << "memcpy push_values";
         memcpy((*push_values)[fea_idx].data() + offset + slot_offset +
                    hit_interval_offset,
                g, sizeof(float) * emb_dim);
@@ -630,13 +635,11 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
               static_cast<float>(need_hit_interval[fea_idx]);
           (*push_values)[fea_idx][hit_interval_new_index] =
               hit_interval_new[fea_idx];
-          VLOG(0) << "pushsparse memcpy "
-                     "(*push_values)[fea_idx][need_hit_interval_index]:"
-                  << (*push_values)[fea_idx][need_hit_interval_index];
         }
       }
       if (dump_slot) {
-        (*push_values)[fea_idx][hit_interval_offset] = static_cast<float>(slot);
+        (*push_values)[fea_idx][0 + hit_interval_offset] =
+            static_cast<float>(slot);
       }
       g += emb_dim;
       fea_idx++;
@@ -675,12 +678,10 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   for (auto i = 0u; i < sparse_push_keys->size(); ++i) {
     push_g_vec.push_back((*push_values)[i].data());
   }
-  VLOG(0) << "push sparse get push_g_vec:" << sparse_push_keys->size();
   auto status = pslib_ptr_->_worker_ptr->push_sparse(
       table_id, sparse_push_keys->data(), (const float**)push_g_vec.data(),
       sparse_push_keys->size());
   push_sparse_status->push_back(std::move(status));
-  VLOG(0) << " finish server push_sparse";
 #endif
 }
 
