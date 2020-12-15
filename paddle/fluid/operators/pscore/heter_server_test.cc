@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/operator.h"
 
+#include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_serde.h"
 #include "paddle/fluid/distributed/service/heter_server.h"
 
 namespace framework = paddle::framework;
