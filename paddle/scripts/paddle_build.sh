@@ -1056,7 +1056,7 @@ set +x
             echo ${added_uts}
             echo "========================================"
 
-            ctest -R "(${added_uts})" --timeout 15 --repeat-until-fail 3 --output-on-failure;added_ut_error=$?
+            ctest -R "(${added_uts})" --timeout 15 --test-timeout 20 --repeat-until-fail 3 --output-on-failure;added_ut_error=$?
             if [ "$added_ut_error" != 0 ];then
                 echo "========================================"
                 echo "Added UT should not exceed 15 seconds"
