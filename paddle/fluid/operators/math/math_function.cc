@@ -54,6 +54,8 @@ template struct SetConstant<platform::XPUDeviceContext, double>;
 template struct SetConstant<platform::XPUDeviceContext, int>;
 template struct SetConstant<platform::XPUDeviceContext, int64_t>;
 template struct SetConstant<platform::XPUDeviceContext, bool>;
+template struct SetConstant<platform::XPUDeviceContext, platform::complex64>;
+template struct SetConstant<platform::XPUDeviceContext, platform::complex128>;
 #endif
 
 #define DEFINE_CPU_TRANS(RANK)                                                \
