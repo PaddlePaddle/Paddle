@@ -53,6 +53,10 @@ void HeterClient::Stop() {
   }
 }
 
+std::future<int32_t> HeterClient::StopHeterWorker() {
+  return SendCmd(-1, PS_STOP_SERVER, {});
+}
+
 void HeterClient::RpcProfilerControl() {
   if (trainer_id_ == 0) {
     if (!do_server_profiler_ && platform::IsProfileEnabled()) {
