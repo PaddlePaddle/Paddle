@@ -2221,13 +2221,13 @@ def conj(input, name=None):
     This function computes the conjugate of the Tensor elementwisely.
 
     Args:
-        input (list): A list of Variables which hold input Tensors with the same
-            data type and shape. Optional data types are: complex64, complex128.
+        input (Tensor): The input thensor which hold the complex numbers. 
+            Optional data types are: complex64, complex128.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        out (Variable): The conjugate of inputs. The shape and data type is the same with input. \
+        out (Tensor): The conjugate of input. The shape and data type is the same with input. \
             If :code:`out` is not None, the returned value is :code:`out` .
 
     Examples:
@@ -2248,14 +2248,8 @@ def conj(input, name=None):
     if in_dygraph_mode():
         return core.ops.conj(input)
 
-    check_type(input, 'input', (Variable, tuple, list), 'conj')
-    if isinstance(input, list) or isinstance(input, tuple):
-        for input_section in input:
-            check_variable_and_dtype(input_section, "input", \
-                    ['complex64', 'complex128'], 'conj')
-    else:
-        check_variable_and_dtype(input, "input", \
-                ['complex64', 'complex128'], 'conj')
+    check_type(input, 'input', (Variable), 'conj')
+    check_variable_and_dtype(input, "input", ['complex64', 'complex128'], 'conj')
 
     helper = LayerHelper('conj', **locals())
     out = helper.create_variable_for_type_inference(

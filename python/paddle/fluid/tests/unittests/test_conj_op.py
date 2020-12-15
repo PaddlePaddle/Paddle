@@ -32,7 +32,13 @@ class TestConjOp(OpTest):
     def setUp(self):
         self.op_type = "conj"
         self.init_dtype_type()
+        self.init_input_output()
+        self.init_grad_input_output()
 
+    def init_dtype_type(self):
+        self.dtype = np.complex64
+
+    def init_input_output(self):
         x = (np.random.random((12, 14)) + 1j * np.random.random(
             (12, 14))).astype(self.dtype)
         out = np.conj(x)
@@ -40,14 +46,20 @@ class TestConjOp(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def init_dtype_type(self):
-        self.dtype = np.complex64
+    def init_grad_input_output(self):
+        self.grad_out = (np.ones((12, 14)) + 1j * np.ones(
+            (12, 14))).astype(self.dtype)
+        self.grad_in = np.conj(self.grad_out)
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[self.grad_in],
+            user_defined_grad_outputs=[self.grad_out])
 
 
 class TestComplexConjOp(unittest.TestCase):
@@ -63,10 +75,21 @@ class TestComplexConjOp(unittest.TestCase):
                 [2, 20, 2, 3]).astype(dtype)
             for place in self._places:
                 with dg.guard(place):
-                    var_x = dg.to_variable(input)
+                    var_x = paddle.to_tensor(input)
                     result = paddle.conj(var_x).numpy()
                     target = np.conj(input)
-                    self.assertTrue(np.allclose(result, target))
+                    self.assertTrue(np.array_equal(result, target))
+
+    def test_conj_operator(self):
+        for dtype in self._dtypes:
+            input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
+                [2, 20, 2, 3]).astype(dtype)
+            for place in self._places:
+                with dg.guard(place):
+                    var_x = paddle.to_tensor(input)
+                    result = var_x.conj().numpy()
+                    target = np.conj(input)
+                    self.assertTrue(np.array_equal(result, target))
 
 
 if __name__ == "__main__":
