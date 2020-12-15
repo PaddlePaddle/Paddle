@@ -1329,14 +1329,15 @@ class OpTest(unittest.TestCase):
                    in_place=False,
                    max_relative_error=0.005,
                    user_defined_grads=None,
+                   user_defined_grad_outputs=None,
                    check_dygraph=True):
         self._check_grad_helper()
         places = self._get_places()
         for place in places:
-            self.check_grad_with_place(place, inputs_to_check, output_names,
-                                       no_grad_set, numeric_grad_delta,
-                                       in_place, max_relative_error,
-                                       user_defined_grads, check_dygraph)
+            self.check_grad_with_place(
+                place, inputs_to_check, output_names, no_grad_set,
+                numeric_grad_delta, in_place, max_relative_error,
+                user_defined_grads, user_defined_grad_outputs, check_dygraph)
 
     def check_grad_with_place(self,
                               place,
@@ -1347,6 +1348,7 @@ class OpTest(unittest.TestCase):
                               in_place=False,
                               max_relative_error=0.005,
                               user_defined_grads=None,
+                              user_defined_grad_outputs=None,
                               check_dygraph=True):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
@@ -1412,15 +1414,18 @@ class OpTest(unittest.TestCase):
                 delta=numeric_grad_delta,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
+
         analytic_grads = self._get_gradient(inputs_to_check, place,
-                                            output_names, no_grad_set)
+                                            output_names, no_grad_set,
+                                            user_defined_grad_outputs)
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
                               "Gradient Check On %s" % str(place))
 
         if check_dygraph:
-            dygraph_grad = self._get_dygraph_grad(inputs_to_check, place,
-                                                  output_names, no_grad_set)
+            dygraph_grad = self._get_dygraph_grad(
+                inputs_to_check, place, output_names, user_defined_grad_outputs,
+                no_grad_set)
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
                                   max_relative_error,
                                   "Gradient Check On %s" % str(place))
@@ -1438,6 +1443,7 @@ class OpTest(unittest.TestCase):
                           inputs_to_check,
                           place,
                           output_names,
+                          user_defined_grad_outputs=None,
                           no_grad_set=None):
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
@@ -1469,62 +1475,74 @@ class OpTest(unittest.TestCase):
                 outputs_valid[output_name] = self._find_var_in_dygraph(
                     outputs, output_name)
 
-            if len(outputs_valid) == 1:
-                loss = block.create_var(
-                    dtype=self.dtype,
-                    type=core.VarDesc.VarType.LOD_TENSOR,
-                    persistable=False,
-                    stop_gradient=False,
-                    shape=[1])
-                for outputs_valid_key in outputs_valid:
-                    block.append_op(
-                        type="mean",
-                        inputs={"X": outputs_valid[outputs_valid_key]},
-                        outputs={"Out": [loss]},
-                        attrs=None)
-            else:
-                avg_sum = []
-                for cur_loss in outputs_valid:
-                    cur_avg_loss = block.create_var(
+            if user_defined_grad_outputs is None:
+                if len(outputs_valid) == 1:
+                    loss = block.create_var(
                         dtype=self.dtype,
                         type=core.VarDesc.VarType.LOD_TENSOR,
                         persistable=False,
-                        stop_gradient=False)
+                        stop_gradient=False,
+                        shape=[1])
+                    for outputs_valid_key in outputs_valid:
+                        block.append_op(
+                            type="mean",
+                            inputs={"X": outputs_valid[outputs_valid_key]},
+                            outputs={"Out": [loss]},
+                            attrs=None)
+                else:
+                    avg_sum = []
+                    for cur_loss in outputs_valid:
+                        cur_avg_loss = block.create_var(
+                            dtype=self.dtype,
+                            type=core.VarDesc.VarType.LOD_TENSOR,
+                            persistable=False,
+                            stop_gradient=False)
+                        block.append_op(
+                            type="mean",
+                            inputs={"X": outputs_valid[cur_loss]},
+                            outputs={"Out": [cur_avg_loss]},
+                            attrs=None)
+                        avg_sum.append(cur_avg_loss)
+                    loss_sum = block.create_var(
+                        dtype=self.dtype,
+                        type=core.VarDesc.VarType.LOD_TENSOR,
+                        persistable=False,
+                        stop_gradient=False,
+                        shape=[1])
                     block.append_op(
-                        type="mean",
-                        inputs={"X": outputs_valid[cur_loss]},
-                        outputs={"Out": [cur_avg_loss]},
+                        type='sum',
+                        inputs={"X": avg_sum},
+                        outputs={"Out": loss_sum},
                         attrs=None)
-                    avg_sum.append(cur_avg_loss)
-                loss_sum = block.create_var(
-                    dtype=self.dtype,
-                    type=core.VarDesc.VarType.LOD_TENSOR,
-                    persistable=False,
-                    stop_gradient=False,
-                    shape=[1])
-                block.append_op(
-                    type='sum',
-                    inputs={"X": avg_sum},
-                    outputs={"Out": loss_sum},
-                    attrs=None)
-                loss = block.create_var(
-                    dtype=self.dtype,
-                    type=core.VarDesc.VarType.LOD_TENSOR,
-                    persistable=False,
-                    stop_gradient=False,
-                    shape=[1])
-                block.append_op(
-                    type='scale',
-                    inputs={"X": loss_sum},
-                    outputs={"Out": loss},
-                    attrs={'scale': 1.0 / float(len(avg_sum))})
-            loss.backward()
-
-            fetch_list_grad = []
-            for inputs_to_check_name in inputs_to_check:
-                a = inputs_grad_dict[inputs_to_check_name].gradient()
-                fetch_list_grad.append(a)
-            return fetch_list_grad
+                    loss = block.create_var(
+                        dtype=self.dtype,
+                        type=core.VarDesc.VarType.LOD_TENSOR,
+                        persistable=False,
+                        stop_gradient=False,
+                        shape=[1])
+                    block.append_op(
+                        type='scale',
+                        inputs={"X": loss_sum},
+                        outputs={"Out": loss},
+                        attrs={'scale': 1.0 / float(len(avg_sum))})
+                loss.backward()
+                fetch_list_grad = []
+                for inputs_to_check_name in inputs_to_check:
+                    a = inputs_grad_dict[inputs_to_check_name].gradient()
+                    fetch_list_grad.append(a)
+                return fetch_list_grad
+            else:
+                # user_defined_grad_outputs here are numpy arrays
+                if not isinstance(user_defined_grad_outputs, list):
+                    user_defined_grad_outputs = [user_defined_grad_outputs]
+                grad_outputs = []
+                for grad_out_value in user_defined_grad_outputs:
+                    grad_outputs.append(paddle.to_tensor(grad_out_value))
+                grad_inputs = paddle.grad(
+                    outputs=fluid.layers.utils.flatten(outputs),
+                    inputs=fluid.layers.utils.flatten(inputs),
+                    grad_outputs=grad_outputs)
+                return [grad.numpy() for grad in grad_inputs]
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):
@@ -1551,18 +1569,48 @@ class OpTest(unittest.TestCase):
                       place,
                       output_names,
                       no_grad_set,
+                      user_defined_grad_outputs=None,
                       parallel=False):
         prog = Program()
+        scope = core.Scope()
         block = prog.global_block()
         self._append_ops(block)
-        loss = append_loss_ops(block, output_names)
-        param_grad_list = append_backward(
-            loss=loss, parameter_list=input_to_check, no_grad_set=no_grad_set)
 
         inputs = self._get_inputs(block)
+        outputs = self._get_outputs(block)
         feed_dict = self.feed_var(inputs, place)
 
-        fetch_list = [g for p, g in param_grad_list]
+        if user_defined_grad_outputs is None:
+            loss = append_loss_ops(block, output_names)
+            param_grad_list = append_backward(
+                loss=loss,
+                parameter_list=input_to_check,
+                no_grad_set=no_grad_set)
+            fetch_list = [g for p, g in param_grad_list]
+        else:
+            assert parallel is False, "unsupported parallel mode when giving custom grad outputs."
+            # user_defined_grad_outputs here are numpy arrays
+            if not isinstance(user_defined_grad_outputs, list):
+                user_defined_grad_outputs = [user_defined_grad_outputs]
+            grad_outputs = []
+            for grad_out_value in user_defined_grad_outputs:
+                # `presistable` is used to avoid executor create new var in local scope
+                var = block.create_var(
+                    shape=grad_out_value.shape,
+                    dtype=grad_out_value.dtype,
+                    persistable=True)
+                true_var = scope.var(var.name)
+                tensor = true_var.get_tensor()
+                tensor.set(grad_out_value, place)
+                grad_outputs.append(var)
+            targets = [
+                outputs[name] for name in outputs if name in output_names
+            ]
+            inputs = [inputs[name] for name in inputs if name in input_to_check]
+            grad_inputs = paddle.static.gradients(targets, inputs, grad_outputs,
+                                                  no_grad_set)
+            fetch_list = grad_inputs
+
         if parallel:
             use_cuda = False
             if isinstance(place, fluid.CUDAPlace):
@@ -1573,4 +1621,8 @@ class OpTest(unittest.TestCase):
         executor = fluid.Executor(place)
         return list(
             map(np.array,
-                executor.run(prog, feed_dict, fetch_list, return_numpy=False)))
+                executor.run(prog,
+                             feed_dict,
+                             fetch_list,
+                             scope=scope,
+                             return_numpy=False)))
