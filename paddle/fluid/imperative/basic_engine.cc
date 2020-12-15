@@ -107,7 +107,8 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
   }
 }
 
-void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
+void BasicEngine::PrepareGradAccumulators(
+    const OpBase& op, const std::shared_ptr<GradOpNode> grad_pending_node) {
   for (const auto& pair : op.GetOutsMap()) {
     if (!pair.second.IsGrad()) {
       continue;
@@ -115,8 +116,32 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
 
     for (const auto& var : pair.second) {
       if (!var) continue;
+      /*
+      bool flag_vars_grad_op = false;
 
-      auto& accumulator = accumulators_[var.get()];
+      for (auto& grad_pending_op : *grad_pending_node) {
+        grad_pending_op.EnforceHasInOut();
+        for (const auto& pending_in_pair : op.GetInsMap()) {
+          if (!pending_in_pair.second.IsGrad()) {
+            continue;
+          }
+          for (const auto& pending_in_var : pair.second) {
+            if (var == pending_in_var) {
+              flag_vars_grad_op = true;
+            }
+          }
+        }
+      }
+
+      if (!flag_vars_grad_op) continue;
+      */
+
+      // grad_pending_node should be var.grad_node_, but it's changed in inplace
+      // op
+      // auto& accumulator = accumulators_[std::make_pair<var.get(),
+      // grad_pending_node>];
+
+      auto& accumulator = accumulators_[var.get()][grad_pending_node];
       if (!accumulator) {
         if (FLAGS_sort_sum_gradient) {
           accumulator.reset(new SortedGradientAccumulator(var.get()));
@@ -164,7 +189,6 @@ void BasicEngine::PrepareDeps() {
 
     for (auto& cur_op : *cur_node) {
       cur_op.EnforceHasInOut();
-      PrepareGradAccumulators(cur_op);
     }
 
     const auto& grad_pending_nodes = cur_node->GradPendingNodes();
@@ -172,6 +196,9 @@ void BasicEngine::PrepareDeps() {
       PADDLE_ENFORCE_NOT_NULL(
           grad_pending_node,
           platform::errors::NotFound("Grad pending node should not be null"));
+      for (auto& cur_op : *cur_node) {
+        PrepareGradAccumulators(cur_op, grad_pending_node);
+      }
       ++node_deps_[grad_pending_node.get()];
       if (visited.count(grad_pending_node.get()) == 0) {
         visited.insert(grad_pending_node.get());
@@ -221,11 +248,19 @@ void BasicEngine::Execute() {
             continue;
           }
 
-          auto iter = accumulators_.find(var.get());
+          auto iter_var = accumulators_.find(var.get());
           PADDLE_ENFORCE_EQ(
-              iter != accumulators_.end(), true,
+              iter_var != accumulators_.end(), true,
               platform::errors::NotFound("Cannot find gradient of variable %s",
                                          var->Name()));
+
+          std::unordered_map<std::shared_ptr<GradOpNode>,
+                             std::unique_ptr<GradientAccumulator>>::iterator
+              iter;
+          for (auto& grad_pending_node : shared_cur_node->GradPendingNodes()) {
+            iter = iter_var->second.find(grad_pending_node);
+            if (iter != iter_var->second.end()) break;
+          }
 
           // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor
           if (var->IsLeafGrad()) {
