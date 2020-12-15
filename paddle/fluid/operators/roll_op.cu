@@ -15,12 +15,15 @@
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/roll_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 __global__ void roll_cuda_kernel(const T* input, T* output, int64_t N,
@@ -33,7 +36,7 @@ __global__ void roll_cuda_kernel(const T* input, T* output, int64_t N,
   int64_t input_idx = dim_idx >= (size - start)
                           ? (output_idx - ((size - start) * stride))
                           : (output_idx + (start * stride));
-  out_tensor[output_idx] = in_tensor[source_idx];
+  output[output_idx] = input[input_idx];
 }
 
 template <typename DeviceContext, typename T>
@@ -52,12 +55,12 @@ class RollCUDAKernel : public framework::OpKernel<T> {
         context.template device_context<platform::CUDADeviceContext>().stream();
 
     size_t nums = shifts.size();
-    auto input_dim = input.dims();
+    auto input_dim = in->dims();
     auto stride_dim = framework::stride(input_dim);
 
     int64_t size, dim, start, stride;
     for (size_t i = 0; i < nums; i++) {
-      dim = dims[i] >= 0 ? dims[i] ? dims[i] + input_dim.size();
+      dim = dims[i] >= 0 ? dims[i] : dims[i] + input_dim.size();
       size = input_dim[dim];
       start = (size - shifts[i]) % size;
       stride = stride_dim[dim];
@@ -65,7 +68,7 @@ class RollCUDAKernel : public framework::OpKernel<T> {
       roll_cuda_kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
                              PADDLE_CUDA_NUM_THREADS,
                          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-          in_data, out_data, numel, dim, start, size, stride);
+          in_data, out_data, numel, start, size, stride);
     }
   }
 };
