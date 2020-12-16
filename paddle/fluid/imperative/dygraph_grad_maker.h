@@ -220,9 +220,11 @@ class TracedGradOp {
       for (auto& var : vars) {
         if (var && !var->OverridedStopGradient()) {
           var->SetGraphIsFreed(false);
-          // var->SetGradNode(node_);
-          // set grad_node later
-          input_grad_vars_.emplace_back(var);
+          auto dirty_grad_node = var->GradNode();
+          if (dirty_grad_node) {
+            map_dirty_grad_node_[var] = dirty_grad_node;
+          }
+          var->SetGradNode(node_);
         }
       }
     }
@@ -248,7 +250,11 @@ class TracedGradOp {
       } else {
         for (auto& var : vars) {
           if (var && !var->OverridedStopGradient() && var->GradNode()) {
-            node_->InsertGradPendingNode(var->GradNode());
+            if (map_dirty_grad_node_.find(var) != map_dirty_grad_node_.end()) {
+              node_->InsertGradPendingNode(map_dirty_grad_node_[var]);
+            } else {
+              node_->InsertGradPendingNode(var->GradNode());
+            }
           }
         }
       }
@@ -259,10 +265,6 @@ class TracedGradOp {
       op_->SetOutput(name, std::move(var_wrappers),
                      kRole == TracedVarRole::kBackward);
     }
-  }
-
-  std::vector<std::shared_ptr<VarBase>> GetInputGradVars() {
-    return input_grad_vars_;
   }
 
   std::string Type() const { return op_->Type(); }
@@ -335,7 +337,8 @@ class TracedGradOp {
  private:
   const std::shared_ptr<GradOpNode>& node_;
   OpBase* op_;
-  std::vector<std::shared_ptr<VarBase>> input_grad_vars_;
+  std::unordered_map<std::shared_ptr<VarBase>, std::shared_ptr<GradOpNode>>
+      map_dirty_grad_node_;
 };
 
 }  // namespace imperative
