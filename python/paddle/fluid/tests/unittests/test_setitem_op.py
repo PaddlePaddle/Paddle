@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -63,7 +63,6 @@ class TestSetitem2(TestSetitemApi):
         self.value = np.array([1])
 
 
-# TODO: value is tensor
 class TestSetitem3(TestSetitemApi):
     def set_value(self):
         self.value = np.array([1])
@@ -95,9 +94,19 @@ class TestSetitem7(TestSetitemApi):
         self.dtype = "int64"
 
 
+# TODO(liym27): support bool
 # class TestSetitem8(TestSetitemApi):
 #     def set_dtype(self):
 #         self.dtype = "bool"
+
+
+class TestSetitem9(TestSetitemApi):
+    def _call_setitem(self, x):
+        value = paddle.full(shape=[1], fill_value=3, dtype=self.dtype)
+        x[0, 1] = value
+
+    def _get_answer(self):
+        self.data[0, 1] = 3
 
 
 class TestError(TestSetitemBase):
@@ -105,13 +114,10 @@ class TestError(TestSetitemBase):
         with paddle.static.program_guard(self.program):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
 
-            with self.assertRaises(NotImplementedError):
-                value = paddle.ones(shape=[1], dtype=self.dtype)
-                x[0] = value
-
             with self.assertRaises(TypeError):
                 value = [1]
                 x[0] = value
+
             with self.assertRaises(TypeError):
                 y = paddle.ones(shape=self.shape, dtype="float64")
                 y[0] = 1

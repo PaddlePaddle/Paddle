@@ -65,6 +65,9 @@ class SetitemValueOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input", "(Tensor) Output tensor of setitem_value operator.");
+    AddInput("ValueTensor", "(Tensor) Output tensor of setitem_value operator.")
+        .AsDispensable();
+
     AddOutput("Out", "(Tensor) Output tensor of setitem_value operator.");
 
     AddAttr<int>("dtype", "data type of values")
@@ -92,7 +95,8 @@ class SetitemValueOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<std::vector<int>>("shape",
                               "(vector<int>) "
-                              "Shape of values.");
+                              "Shape of values.")
+        .SetDefault({});
     AddComment(R"DOC(
 SetitemValue operator
 

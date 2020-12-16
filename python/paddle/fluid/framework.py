@@ -1818,6 +1818,7 @@ class Variable(object):
         return _getitem_impl_(self, item)
 
     def __setitem__(self, item, value):
+        inputs = {'Input': self}
 
         # 1. Parse item
         if not isinstance(item, tuple):
@@ -1846,8 +1847,11 @@ class Variable(object):
             starts.append(start)
             ends.append(end)
 
+        attrs = {'axes': axes, 'starts': starts, 'ends': ends}
+
         # 2. Parse value
         dtype = self.dtype
+        attrs['dtype'] = dtype
 
         #  2.1 value is an integer of float
         if isinstance(value, (int, float)):
@@ -1874,8 +1878,11 @@ class Variable(object):
                     "When assign a numpy.ndarray to a paddle.Tensor, "
                     "the data type of the paddle.Tensor must be bool, float32, int32 or int64, but "
                     "received %s." % convert_dtype(dtype))
+            attrs[value_name] = values
+            attrs["shape"] = shape
+
         elif isinstance(value, Variable):
-            raise NotImplementedError
+            inputs["ValueTensor"] = value
         else:
             raise TypeError(
                 "Only support to assign an integer, float, numpy.ndarray or "
@@ -1884,16 +1891,10 @@ class Variable(object):
 
         self.block.append_op(
             type="setitem_value",
-            inputs={'Input': self},
+            inputs=inputs,
             outputs={'Out': self},
-            attrs={
-                'dtype': dtype,
-                'axes': axes,
-                'starts': starts,
-                'ends': ends,
-                value_name: values,
-                'shape': shape
-            })
+            attrs=attrs)
+
         return self
 
 

@@ -34,7 +34,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-void PrintTensor(Tensor* tensor) {
+void PrintTensor(Tensor* tensor, const std::string& msg) {
+  VLOG(4) << " ----------  " << msg << "  ---------";
   auto size = tensor->numel();
   auto data = tensor->data<T>();
 
@@ -131,6 +132,7 @@ class SetitemValueKernel : public framework::OpKernel<T> {
     auto starts = ctx.Attr<std::vector<int>>("starts");
     auto ends = ctx.Attr<std::vector<int>>("ends");
     auto shape = ctx.Attr<std::vector<int>>("shape");
+    auto* value_tensor = ctx.Input<framework::LoDTensor>("ValueTensor");
 
     auto in_dims = in->dims();
     auto value_dims = framework::make_ddim(shape);
@@ -142,19 +144,16 @@ class SetitemValueKernel : public framework::OpKernel<T> {
 
     out->ShareDataWith(*in);
 
-    Tensor slice_t(dtype), pad_t(dtype), value_t(dtype);
+    Tensor slice_t(dtype), pad_t(dtype);
     slice_t.mutable_data<T>(slice_dims, place);
     pad_t.mutable_data<T>(in_dims, place);
-    value_t.mutable_data<T>(value_dims, place);
 
     auto pad_e = framework::EigenTensor<T, D>::From(pad_t, in_dims);
     auto out_e = framework::EigenTensor<T, D>::From(*out);
     auto slice_e = framework::EigenTensor<T, D>::From(slice_t, slice_dims);
 
-    // Step 1
-    // Set the value of out at `_index` to zero
-
-    // Step 1.1 Get a slice tensor from out
+    // Step 1: Set the value of out at `_index` to zero
+    // - Step 1.1 Get a slice tensor from out
     Eigen::array<int64_t, D> offsets, extents;
     Eigen::array<std::pair<int64_t, int64_t>, D> paddings;
 
@@ -175,33 +174,39 @@ class SetitemValueKernel : public framework::OpKernel<T> {
 
     slice_e.device(eigen_place) = out_e.slice(offsets, extents);
 
-    // Step 1.2 Get paded tensor by padding 0 to slice tensor
+    // - Step 1.2 Get paded tensor by padding 0 to slice tensor
     pad_e.device(eigen_place) = slice_e.pad(paddings, T(0));
 
-    // Step 1.3 Set 0 at `_index` of out tensor
+    // - Step 1.3 Set 0 at `_index` of out tensor
     out_e.device(eigen_place) = out_e - pad_e;
 
-    // Step 2
-    // Set a tensor with the same shape as out tensor. And the its data at
+    // Step 2: Set a tensor with the same shape as out tensor. And the its data
+    // at
     // '_index' is the same  as value_tensor, and data out of '_index' to zero
 
-    // Step 2.1 Set the data of slice tensor to 0
+    // - Step 2.1 Set the data of slice tensor to 0
     slice_e.device(eigen_place) = slice_e.constant(T(0));
 
-    // Step 2.2 Set slice tensor with value
-    const char* value_name = nullptr;
-    value_name = GetValueName(dtype, value_name);
-    CopyVecotorToTensor<T>(value_name, &value_t, ctx);
+    // - Step 2.2 Set slice tensor with value
+    if (value_tensor != nullptr) {
+      // ElementwiseComputeEx can do broadcasting
+      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
+          ctx, &slice_t, value_tensor, -1, AddFunctor<T>(), &slice_t);
+    } else {
+      Tensor value_t(dtype);
+      value_t.mutable_data<T>(value_dims, place);
+      const char* value_name = nullptr;
+      value_name = GetValueName(dtype, value_name);
+      CopyVecotorToTensor<T>(value_name, &value_t, ctx);
+      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
+          ctx, &slice_t, &value_t, -1, AddFunctor<T>(), &slice_t);
+      PrintTensor<T>(&slice_t, " slice tensor : add value :");
+    }
 
-    // ElementwiseComputeEx can do broadcasting
-    ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-        ctx, &slice_t, &value_t, -1, AddFunctor<T>(), &slice_t);
-
-    // Step 2.3 Pad slice tensor with 0
-
+    // - Step 2.3 Pad slice tensor with 0
     pad_e.device(eigen_place) = slice_e.pad(paddings, T(0));
-    // Step 3
-    // Set out tensor with value_tensor
+
+    // Step 3: Set out tensor with value_tensor
     out_e.device(eigen_place) = out_e + pad_e;
   }
 };
