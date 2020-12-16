@@ -422,16 +422,18 @@ function(cc_test_run TARGET_NAME)
     # No unit test should exceed 2 minutes.
     if (WIN32)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
-    elseif (APPLE)
+    endif()
+    if (APPLE)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 20)
-    else()
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)
     endif()
   endif()
 endfunction()
 
 function(cc_test TARGET_NAME)
-  if(WITH_TESTING)
+    # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
+    # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
+  # other than *.py are modified.
+  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -508,7 +510,10 @@ function(nv_binary TARGET_NAME)
 endfunction(nv_binary)
 
 function(nv_test TARGET_NAME)
-  if (WITH_GPU AND WITH_TESTING)
+    # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
+    # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
+  # other than *.py are modified.
+  if (WITH_GPU AND WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -808,11 +813,9 @@ function(py_test TARGET_NAME)
     
     if (WIN32)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
-    elseif (APPLE)
+    endif()
+    if (APPLE)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 20)
-    else()
-        # No unit test should exceed 2 minutes in Linux.
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)
     endif()
 
   endif()

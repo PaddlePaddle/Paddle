@@ -175,7 +175,7 @@ class PRChecker(object):
         check_added_ut = False
         ut_list = []
         file_ut_map = None
-        cmd = 'wget -q --no-check-certificate https://sys-p0.bj.bcebos.com/prec/file_ut.json' + self.suffix
+        cmd = 'wget -q --no-proxy --no-check-certificate https://sys-p0.bj.bcebos.com/prec/file_ut.json' + self.suffix
         os.system(cmd)
         with open('file_ut.json' + self.suffix) as jsonfile:
             file_ut_map = json.load(jsonfile)
@@ -204,7 +204,7 @@ class PRChecker(object):
                 else:
                     ut_list.extend(file_ut_map.get(f))
         ut_list = list(set(ut_list))
-        cmd = 'wget -q --no-check-certificate https://sys-p0.bj.bcebos.com/prec/prec_delta' + self.suffix
+        cmd = 'wget -q --no-proxy --no-check-certificate https://sys-p0.bj.bcebos.com/prec/prec_delta' + self.suffix
         os.system(cmd)
         with open('prec_delta' + self.suffix) as delta:
             for ut in delta:

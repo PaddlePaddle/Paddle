@@ -154,9 +154,9 @@ for API_FILE in ${API_FILES[*]}; do
 done
 
 FILTER=`git diff --name-only upstream/develop | grep -v "tools/"`
-HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH $FILTER |grep -o -m 1 "const_cast" || true`
+HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -o -m 1 "const_cast" || true`
 if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1) approval for the usage (either add or delete) of const_cast.\n"
+    echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1) approval for the usage of const_cast.\n"
     check_approval 1 46782768 12538138 6836917
 fi
 

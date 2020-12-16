@@ -51,6 +51,7 @@ function init() {
     NONE='\033[0m'
 
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+    export PADDLE_ROOT
     if [ -z "${SCRIPT_NAME}" ]; then
         SCRIPT_NAME=$0
     fi
@@ -59,6 +60,17 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
+
+    # set CI_SKIP_CPP_TEST if only *.py changed
+    # In order to avoid using in some CI(such as daily performance), the current
+    # branch must not be `${BRANCH}` which is usually develop.
+    if [ ${CI_SKIP_CPP_TEST:-ON} == "OFF"  ];then
+        echo "CI_SKIP_CPP_TEST=OFF"
+    else
+        if [ "$(git branch | grep "^\*" | awk '{print $2}')" != "${BRANCH}" ]; then
+            git diff --name-only ${BRANCH} | grep -v "\.py$" || export CI_SKIP_CPP_TEST=ON
+        fi
+    fi
 }
 
 function cmake_base() {
@@ -280,6 +292,7 @@ EOF
         -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=develop \
         -DWITH_XPU=${WITH_XPU:-OFF} \
+        -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
@@ -1001,15 +1014,15 @@ function card_test() {
         tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V --timeout 120 | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else  
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         fi
     done
@@ -1035,6 +1048,17 @@ set +x
         precison_cases=""
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             precision_cases=`python $PADDLE_ROOT/tools/get_pr_ut.py`
+        fi
+        bash $PADDLE_ROOT/tools/check_added_ut.sh
+        if [ -a "$PADDLE_ROOT/added_ut" ];then
+            added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+            ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            if [ "$added_ut_error" != 0 ];then
+                echo "========================================"
+                echo "Added UT should not exceed 15 seconds"
+                echo "========================================"
+                exit 8;
+            fi
         fi
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
