@@ -29,23 +29,39 @@ namespace memory {
 
 AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
   auto place = dev_ctx.GetPlace();
+  if (size == 0) {
+    return Alloc(place, size);
+  }
+
+  if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
-  if (size == 0 || !platform::is_gpu_place(place)) {
-    return Alloc(place, size);
-  }
-  auto* default_dev_ctx = static_cast<platform::CUDADeviceContext*>(
-      platform::DeviceContextPool::Instance().Get(place));
-  auto& desired_dev_ctx =
-      static_cast<const platform::CUDADeviceContext&>(dev_ctx);
-  if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
-    return Alloc(place, size);
-  } else {
-    return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
-        desired_dev_ctx, size);
-  }
+    auto* default_dev_ctx = static_cast<platform::CUDADeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    auto& desired_dev_ctx =
+        static_cast<const platform::CUDADeviceContext&>(dev_ctx);
+    if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
+      return Alloc(place, size);
+    } else {
+      return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
+          desired_dev_ctx, size);
+    }
 #else
-  return Alloc(place, size);
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't use CUDA device since it's not compiled with CUDA,"
+        "Please recompile or reinstall Paddle with GPU support."));
 #endif
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+    // TODO(liuyuhui): Consider xpu stream later
+    return Alloc(place, size);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't use XPU device since it's not compiled with XPU,"
+        "Please recompile or reinstall Paddle with XPU support."));
+#endif
+  } else {
+    return Alloc(place, size);
+  }
 }
 
 }  // namespace memory
@@ -53,6 +69,12 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
 
 namespace paddle {
 namespace platform {
+
+#ifdef PADDLE_WITH_CUDA
+bool allow_tf32_cublas = true;
+void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
+bool AllowTF32Cublas() { return allow_tf32_cublas; }
+#endif  // PADDLE_WITH_CUDA
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
@@ -464,6 +486,15 @@ void MKLDNNDeviceContextThreadLocals::Body::set_cur_paddle_data_layout(
 framework::DataLayout
 MKLDNNDeviceContextThreadLocals::Body::get_cur_paddle_data_layout(void) {
   return cur_paddle_data_layout;
+}
+
+void MKLDNNDeviceContextThreadLocals::Body::log_lib_version(void) {
+  if (!said_once) {
+    said_once = true;
+    auto dv = dnnl::version();
+    LOG(INFO) << "oneDNN v" << dv->major << "." << dv->minor << "."
+              << dv->patch;
+  }
 }
 
 void MKLDNNDeviceContext::ResetBlobMap() {

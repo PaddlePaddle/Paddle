@@ -145,11 +145,11 @@ if(WITH_PYTHON)
     endif(WITH_MKLDNN)
   endif(WIN32)
 
-  if(WITH_AMD_GPU)
-    hip_library(paddle_pybind SHARED
+  if(WITH_ROCM_PLATFORM)
+    cc_library(paddle_pybind SHARED
       SRCS ${PYBIND_SRCS}
-      DEPS ARCHIVE_START ${PYBIND_DEPS}
-      ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ARCHIVE_END)
+      DEPS ${PYBIND_DEPS}
+      ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
   else()
     cc_library(paddle_pybind SHARED
       SRCS ${PYBIND_SRCS}
@@ -158,7 +158,7 @@ if(WITH_PYTHON)
     if(NOT APPLE AND NOT WIN32)
       target_link_libraries(paddle_pybind rt)
     endif(NOT APPLE AND NOT WIN32)
-  endif(WITH_AMD_GPU)
+  endif(WITH_ROCM_PLATFORM)
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})

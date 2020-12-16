@@ -120,10 +120,9 @@ rem call paddle_winci\Scripts\activate.bat
 rem ------pre install python requirement----------
 where python
 where pip
-pip install --upgrade pip --user
 pip install wheel --user
-pip install -U -r %work_dir%\python\requirements.txt --user
-pip install -U -r %work_dir%\python\unittest_py\requirements.txt --user
+pip install -r %work_dir%\python\requirements.txt --user
+pip install -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
     echo pip install requirements.txt failed!
     exit /b 7
@@ -424,10 +423,8 @@ test_decoupled_py_reader^|^
 test_decoupled_py_reader_data_check^|^
 test_eager_deletion_delete_vars^|^
 test_eager_deletion_while_op^|^
-test_feed_data_check_shape_type^|^
 test_fetch_lod_tensor_array^|^
 test_fleet_base_single^|^
-test_fuse_all_reduce_pass^|^
 test_fuse_elewise_add_act_pass^|^
 test_fuse_optimizer_pass^|^
 test_generator_dataloader^|^
@@ -450,7 +447,6 @@ test_imperative_static_runner_while^|^
 test_optimizer_in_control_flow^|^
 test_fuse_bn_act_pass^|^
 test_fuse_bn_add_act_pass^|^
-test_tsm^|^
 test_gru_rnn_op^|^
 test_rnn_op^|^
 test_simple_rnn_op^|^

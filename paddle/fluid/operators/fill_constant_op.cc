@@ -143,7 +143,9 @@ REGISTER_OP_CPU_KERNEL(fill_constant, ops::FillConstantKernel<float>,
                        ops::FillConstantKernel<int64_t>,
                        ops::FillConstantKernel<int>,
                        ops::FillConstantKernel<bool>,
-                       ops::FillConstantKernel<paddle::platform::float16>);
+                       ops::FillConstantKernel<paddle::platform::float16>,
+                       ops::FillConstantKernel<paddle::platform::complex64>,
+                       ops::FillConstantKernel<paddle::platform::complex128>);
 
 REGISTER_OP_VERSION(fill_constant)
     .AddCheckpoint(

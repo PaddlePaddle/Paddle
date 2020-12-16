@@ -52,6 +52,11 @@ message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "AR tools: ${CMAKE_AR}")
 
+# MUSL build turn off warnings
+if(WITH_MUSL)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy")
+endif()
+
 if(WIN32)
     option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
 
@@ -125,7 +130,7 @@ option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(ON_INFER         "Turn on inference optimization and inference-lib generation" OFF)
 ################################ Internal Configurations #######################################
-option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
+option(WITH_ROCM_PLATFORM     "Compile PaddlePaddle with ROCM platform"             OFF)
 option(WITH_NV_JETSON     "Compile PaddlePaddle with NV JETSON"             OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
@@ -256,10 +261,19 @@ include(configure)          # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
 
-if(WITH_AMD_GPU)
+if(NOT DEFINED ENV{ROCM_PATH})
+    set(ROCM_PATH "/opt/rocm" CACHE PATH "Path to which ROCm has been installed")
+    set(HIP_PATH ${ROCM_PATH}/hip CACHE PATH "Path to which HIP has been installed")
+else()
+    set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Path to which ROCm has been installed")
+    set(HIP_PATH ${ROCM_PATH}/hip CACHE PATH "Path to which HIP has been installed")
+endif()
+set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+
+if(WITH_ROCM_PLATFORM)
     find_package(HIP)
     include(hip)
-endif(WITH_AMD_GPU)
+endif(WITH_ROCM_PLATFORM)
 
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")

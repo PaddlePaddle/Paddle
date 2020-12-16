@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
 
-#include "paddle/fluid/distributed/service/heter_serde.h"
+#include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
