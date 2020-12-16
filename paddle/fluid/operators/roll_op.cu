@@ -62,6 +62,7 @@ class RollCUDAKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < nums; i++) {
       dim = dims[i] >= 0 ? dims[i] : dims[i] + input_dim.size();
       size = input_dim[dim];
+      shifts[i] = shifts[i] % size;
       start = (size - shifts[i]) % size;
       stride = stride_dim[dim];
 
@@ -96,6 +97,7 @@ class RollGradCUDAKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < nums; i++) {
       dim = dims[i] >= 0 ? dims[i] : dims[i] + input_dim.size();
       size = input_dim[dim];
+      shifts[i] = shifts[i] % size;
       start = (size + shifts[i]) % size;
       stride = stride_dim[dim];
 
