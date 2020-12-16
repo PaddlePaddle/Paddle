@@ -23,7 +23,6 @@ SEED = 2020
 np.random.seed(SEED)
 prog_trans = paddle.jit.ProgramTranslator()
 
-
 @paddle.jit.to_static
 def test_slice_without_control_flow(x):
     # Python slice will not be transformed.
@@ -84,13 +83,24 @@ def test_slice_in_for_loop(x, iter_num=3):
     return out
 
 
+@paddle.jit.to_static
+def test_setitem(x):
+    x = paddle.to_tensor(x)
+    x[0] = paddle.full(shape=[1], fill_value=2, dtype="float32")
+    x[1:2, 0:1] = 10
+    return x
+
+
 class TestSliceWithoutControlFlow(unittest.TestCase):
     def setUp(self):
-        self.input = np.random.random((3)).astype('int32')
+        self.init_input()
         self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
         self.init_dygraph_func()
         paddle.disable_static()
+
+    def init_input(self):
+        self.input = np.random.random((3)).astype('int32')
 
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_without_control_flow
@@ -125,9 +135,17 @@ class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
         self.dygraph_func = test_slice_in_while_loop
 
 
-class TestSliceInForLoop(TestSliceInWhileLoop):
+class TestSliceInForLoop(TestSliceWithoutControlFlow):
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_for_loop
+
+
+class TestSetitem(TestSliceWithoutControlFlow):
+    def init_input(self):
+        self.input = np.full([3,4,5], 5).astype('float32')
+
+    def init_dygraph_func(self):
+        self.dygraph_func = test_setitem
 
 
 if __name__ == '__main__':
