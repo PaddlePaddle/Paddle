@@ -607,14 +607,6 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
     const std::string data_format = ctx.Attr<std::string>("data_format");
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
-    // // cudnn v5 does not support dilations
-    // std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
-    // int groups = ctx.Attr<int>("groups");
-    // const T* filter_data = filter->data<T>();
-    // const std::string data_layout_str = ctx.Attr<std::string>("data_format");
-    // const paddle::operators::DataLayout data_layout =
-    //     (data_layout_str != "NHWC" ? DataLayout::kNCHW : DataLayout::kNHWC);
-
     // transform Tensors to channel first-----------
     Tensor transformed_X_channel(X->type());
     Tensor transformed_dO_channel(dO->type());
