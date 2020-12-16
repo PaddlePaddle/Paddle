@@ -589,13 +589,16 @@ class BufferedShuffleDataset(IterableDataset):
             def shuffle_ds_init_fn(worker_id):
                 random.seed(123)
 
-            # Example 1:
+            # Example:
             # For single-process mode (:attr:`num_workers == 0`), the random seed is required to
             # be set before the :class:`~paddle.io.DataLoader` in the main process.
             
             ds = BufferedShuffleDataset(dataset = dataset, buffer_size = 2)
             random.seed(123)
-            print(list(paddle.io.DataLoader(ds, num_workers=0, batch_size=1, drop_last=True, worker_init_fn=shuffle_ds_init_fn)))
+            list2print = []
+            for item in iter(paddle.io.DataLoader(ds, num_workers=0, batch_size=1, drop_last=True, worker_init_fn=shuffle_ds_init_fn)):
+                list2print.append(item)
+            print(list2print)
     """
     dataset = None
     buffer_size = None
