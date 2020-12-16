@@ -17,8 +17,12 @@
 #include "paddle/fluid/platform/complex64.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(conj,
-                        ops::ConjKernel<paddle::platform::CUDADeviceContext,
-                                        paddle::platform::complex64>,
-                        ops::ConjKernel<paddle::platform::CUDADeviceContext,
-                                        paddle::platform::complex128>);
+REGISTER_OP_CUDA_KERNEL(
+    conj, ops::ConjKernel<paddle::platform::CUDADeviceContext,
+                          paddle::platform::complex64>,
+    ops::ConjKernel<paddle::platform::CUDADeviceContext,
+                    paddle::platform::complex128>,
+    ops::ConjKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ConjKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ConjKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ConjKernel<paddle::platform::CUDADeviceContext, int64_t>);

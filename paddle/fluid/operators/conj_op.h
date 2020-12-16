@@ -24,13 +24,37 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-struct ConjFunctor {
+using EnableComplex =
+    typename std::enable_if<std::is_same<T, platform::complex64>::value ||
+                            std::is_same<T, platform::complex128>::value>::type;
+
+template <typename T>
+using DisableComplex = typename std::enable_if<
+    !std::is_same<T, platform::complex64>::value &&
+    !std::is_same<T, platform::complex128>::value>::type;
+
+template <typename T, typename Enable = void>
+struct ConjFunctor;
+
+template <typename T>
+struct ConjFunctor<T, EnableComplex<T>> {
   ConjFunctor(const T* input, int64_t numel, T* output)
       : input_(input), numel_(numel), output_(output) {}
 
   HOSTDEVICE void operator()(size_t idx) const {
     output_[idx] = T(input_[idx].real, -input_[idx].imag);
   }
+  const T* input_;
+  int64_t numel_;
+  T* output_;
+};
+
+template <typename T>
+struct ConjFunctor<T, DisableComplex<T>> {
+  ConjFunctor(const T* input, int64_t numel, T* output)
+      : input_(input), numel_(numel), output_(output) {}
+
+  HOSTDEVICE void operator()(size_t idx) const { output_[idx] = input_[idx]; }
   const T* input_;
   int64_t numel_;
   T* output_;
@@ -54,6 +78,8 @@ class ConjKernel : public framework::OpKernel<T> {
     for_range(functor);
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(ConjOpInplaceInferer, {"X", "Out"});
 
 }  // namespace operators
 }  // namespace paddle

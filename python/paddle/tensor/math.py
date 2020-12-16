@@ -2222,12 +2222,13 @@ def conj(x, name=None):
 
     Args:
         x (Tensor): The input thensor which hold the complex numbers. 
-            Optional data types are: complex64, complex128.
+            Optional data types are: complex64, complex128, float32, float64, int32 or int64.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         out (Tensor): The conjugate of input. The shape and data type is the same with input.
+            If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
 
     Examples:
         .. code-block:: python
@@ -2247,7 +2248,7 @@ def conj(x, name=None):
     if in_dygraph_mode():
         return core.ops.conj(x)
 
-    check_variable_and_dtype(x, "x", ['complex64', 'complex128'], 'conj')
+    check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'conj')
 
     helper = LayerHelper('conj', **locals())
     out = helper.create_variable_for_type_inference(
