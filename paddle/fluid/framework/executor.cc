@@ -479,22 +479,35 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     }
   }
 
-  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  auto callback = [scope, local_scope, keep_kids](){
+    if (local_scope != scope) {
+      VLOG(4) << "Delete scope: " << local_scope;
+      scope->DeleteScope(local_scope);
+    } else {
+      if (!keep_kids) {
+        VLOG(4) << "Drop kids: " << scope;
+        // By default, we should delete all kid scopes after run executor because
+        // some operators may create local scope when running, such as while_op.
+        // But when while_op also create a local executor to run it's sub block,
+        // the sub scopes it created should not be dropped immediately, because
+        // while_grad_op will use some variables created during while_op run, so
+        // we need to keep the kids and wait for the outer executor to drop them.
 
-  if (local_scope != scope) {
-    scope->DeleteScope(local_scope);
-  } else {
-    if (!keep_kids) {
-      // By default, we should delete all kid scopes after run executor because
-      // some operators may create local scope when running, such as while_op.
-      // But when while_op also create a local executor to run it's sub block,
-      // the sub scopes it created should not be dropped immediately, because
-      // while_grad_op will use some variables created during while_op run, so
-      // we need to keep the kids and wait for the outer executor to drop them.
-
-      scope->DropKids();
+        scope->DropKids();
+      }
+      VLOG(4) << "Keep kids: " << scope;
     }
+  };
+
+  if (gc) {
+    VLOG(4) << "Async deleting scope";
+    gc->DirectClearCallback(callback);
+  }else {
+    VLOG(4) << "Sync deleting scope";
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    callback();
   }
+
 }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
