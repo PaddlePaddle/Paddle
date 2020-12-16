@@ -563,15 +563,19 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #endif
 
-  std::unordered_map<UseDevice, std::string> UseDeviceMap = {
-      {UseDevice::kCPU, "CPU"},
-      {UseDevice::kCUDA, "CUDA"},
-      {UseDevice::kXPU, "XPU"}};
+  std::string device_name;
+  if (member_->use_device_ == UseDevice::kCPU) {
+    device_name = "CPU";
+  } else if (member_->use_device_ == UseDevice::kCUDA) {
+    device_name = "CUDA";
+  } else {
+    device_name = "XPU";
+  }
 
   VLOG(1) << string::Sprintf(
       "The Program will be executed on %s using ParallelExecutor, %lu "
       "cards are used, so %lu programs are executed in parallel.",
-      UseDeviceMap[member_->use_device_], places.size(), places.size());
+      device_name, places.size(), places.size());
 
   // Step 1. Bcast the bcast_vars to devs.
   // Create local scopes
