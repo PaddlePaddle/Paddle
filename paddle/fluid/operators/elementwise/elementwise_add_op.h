@@ -367,7 +367,7 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
       int max_blocks = std::max(max_physical_threads / (block_x * block_y), 1);
       int theory_block = (width + blocks.x - 1) / blocks.x;
       dim3 grids(std::min(theory_block, max_blocks));
-      if (std::is_same<T, paddle::platform::float16>::value && width < 5120) {
+      if (std::is_same<T, paddle::platform::float16>::value && width <= 5120) {
         const paddle::platform::float16 *ptr1 =
             reinterpret_cast<const paddle::platform::float16 *>(dout_data);
         paddle::platform::float16 *ptr2 =
