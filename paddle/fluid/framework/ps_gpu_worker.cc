@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
-#include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -145,17 +144,16 @@ void PSGPUWorker::SetNeedDump(bool need_dump_field) {
 void PSGPUWorker::DumpParam() {}
 
 void PSGPUWorker::TrainFiles() {
+  VLOG(3) << "train file A";
   platform::SetNumThreads(1);
 
-  platform::Timer timeline;
-  timeline.Start();
-
-  int total_ins_num = 0;
+  VLOG(3) << "train file B";
   // how to accumulate fetched values here
   device_reader_->Start();
+  VLOG(3) << "train file C";
   int cur_batch;
   while ((cur_batch = device_reader_->Next()) > 0) {
-    total_ins_num += cur_batch;
+    VLOG(3) << "train file D";
     for (auto &op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -172,8 +170,6 @@ void PSGPUWorker::TrainFiles() {
     PrintFetchVars();
     thread_scope_->DropKids();
   }
-  timeline.Pause();
-  VLOG(0) << "GpuPs worker " << thread_id_ << " train cost " << timeline.ElapsedSec() << " seconds, ins_num: " << total_ins_num;
   return;
 }
 

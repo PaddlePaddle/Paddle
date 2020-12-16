@@ -28,24 +28,21 @@ namespace framework {
 
 class GPUResource {
  public:
-  GPUResource(std::vector<int>& device_id, int index);
+  GPUResource(int device_id, int index);
   virtual ~GPUResource();
   GPUResource(const GPUResource&) = delete;
   GPUResource& operator=(const GPUResource&) = delete;
 
   int dev_id() const { return dev_id_; }
   int index() const { return index_; }
-  cudaStream_t local_stream(int num) { return local_streams_[num]; }
-  cudaStream_t remote_stream() { return remote_stream_; }
-  cudaStream_t comm_stream(int num) { return comm_streams_[num]; }
+  cudaStream_t stream() { return stream_; }
+  cudaStream_t copy_stream() { return copy_stream_; }
   
   int dev_id_;
-  std::vector<int> dev_ids_;
   int index_;
-//  cudaStream_t local_stream_;
-  std::vector<cudaStream_t> local_streams_;
-  std::vector<cudaStream_t> comm_streams_;
-  cudaStream_t remote_stream_;
+  cudaStream_t stream_;
+  cudaStream_t copy_stream_;
+
 };
 
 class HeterBoxResource {
@@ -57,9 +54,8 @@ class HeterBoxResource {
   void enable_p2p();
   int total_gpu();
   int get_index_by_devid(int devid);
-  cudaStream_t local_stream(int src, int dst);
-  cudaStream_t remote_stream(int src);
-  cudaStream_t comm_stream(int src, int dst);
+  cudaStream_t stream(int num);
+  cudaStream_t copy_stream(int num);
   int dev_id(int num);
 
   std::vector<std::shared_ptr<GPUResource>> resources_;
