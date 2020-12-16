@@ -54,10 +54,8 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
 namespace paddle {
 namespace platform {
 
-bool allow_tf32_cudnn{true};
-
 DeviceContextPool* DeviceContextPool::pool = nullptr;
-
+bool allow_tf32_cudnn{true};
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
