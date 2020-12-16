@@ -65,7 +65,7 @@ void xpu_activation_forward(
   auto xpu_context = ctx.device_context<DeviceContext>().x_context();
   int r = func(xpu_context, x_data, y_data, x->numel());
   PADDLE_ENFORCE_EQ(
-      r == xpu::Error_t::SUCCESS, true,
+      r, xpu::Error_t::SUCCESS,
       platform::errors::External("XPU activation op return wrong value[%d %s].",
                                  r, XPUAPIErrorMsg[r]));
 }
@@ -90,7 +90,7 @@ void xpu_activation_backward(const framework::ExecutionContext &ctx,
   auto xpu_context = ctx.device_context<DeviceContext>().x_context();
 
   int r = func(xpu_context, x_data, y_data, y_grad, x_grad, dX->numel());
-  PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+  PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
                     platform::errors::External(
                         "XPU activation grad op return wrong value[%d %s].", r,
                         XPUAPIErrorMsg[r]));
@@ -178,12 +178,12 @@ struct XPUPowFunctor : public BaseActivationFunctor<T> {
                                        "XPU has no enough memory"));
     int r = xpu::constant<T>(xpu_context, factor_data, x->numel(), pow_factor);
     PADDLE_ENFORCE_EQ(
-        r == xpu::Error_t::SUCCESS, true,
+        r, xpu::Error_t::SUCCESS,
         platform::errors::External("XPU constant op return"
                                    " wrong value[%d %s] in pow op.",
                                    r, XPUAPIErrorMsg[r]));
     r = xpu::pow(xpu_context, x_data, factor_data, y_data, x->numel());
-    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
                       platform::errors::External("XPU pow op return"
                                                  " wrong value[%d %s].",
                                                  r, XPUAPIErrorMsg[r]));
@@ -293,7 +293,7 @@ struct XPULeakyReluFunctor : public BaseActivationFunctor<T> {
         ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
     int r = xpu::leaky_relu(xpu_context, x_data, y_data, x->numel(), alpha);
     PADDLE_ENFORCE_EQ(
-        r == xpu::Error_t::SUCCESS, true,
+        r, xpu::Error_t::SUCCESS,
         platform::errors::External("XPU leaky_relu return wrong value[%d %s].",
                                    r, XPUAPIErrorMsg[r]));
   }
@@ -322,7 +322,7 @@ struct XPULeakyReluGradFunctor : public BaseActivationFunctor<T> {
         reinterpret_cast<const float *>(x_data),
         reinterpret_cast<const float *>(y_grad),
         reinterpret_cast<float *>(x_grad), dX->numel(), alpha);
-    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
                       platform::errors::External(
                           "XPU leaky_relu_grad return wrong value[%d %s].", r,
                           XPUAPIErrorMsg[r]));
