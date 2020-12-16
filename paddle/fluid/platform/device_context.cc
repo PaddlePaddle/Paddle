@@ -54,6 +54,12 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
 namespace paddle {
 namespace platform {
 
+#ifdef PADDLE_WITH_CUDA
+bool allow_tf32_cublas = true;
+void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
+bool AllowTF32Cublas() { return allow_tf32_cublas; }
+#endif  // PADDLE_WITH_CUDA
+
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
