@@ -27,8 +27,9 @@ elif [ "$VERSION" == "10.2" ] || [ "$VERSION" == "10.1" ] || [ "$VERSION" == "11
     rpm -ivh libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm
     rpm -ivh libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm && rm -f /usr/local/lib/libnccl* && rm -f /usr/include/nccl.h 
     exit 0
+  else
+    DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda10.2_1-1_amd64.deb"
   fi
-  DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda10.2_1-1_amd64.deb"
 elif [ "$VERSION" == "9.0" ]; then
   DEB="nccl-repo-ubuntu1604-2.3.7-ga-cuda9.0_1-1_amd64.deb"
 else
