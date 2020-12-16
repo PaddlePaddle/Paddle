@@ -2216,12 +2216,12 @@ def broadcast_shape(x_shape, y_shape):
 
     return core.broadcast_shape(x_shape, y_shape)
 
-def conj(input, name=None):
+def conj(x, name=None):
     r"""
     This function computes the conjugate of the Tensor elementwisely.
 
     Args:
-        input (Tensor): The input thensor which hold the complex numbers. 
+        x (Tensor): The input thensor which hold the complex numbers. 
             Optional data types are: complex64, complex128.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
@@ -2245,14 +2245,14 @@ def conj(input, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.conj(input)
+        return core.ops.conj(x)
 
-    check_type(input, 'input', (Variable), 'conj')
-    check_variable_and_dtype(input, "input", ['complex64', 'complex128'], 'conj')
+    check_type(x, 'x', (Variable), 'conj')
+    check_variable_and_dtype(x, "x", ['complex64', 'complex128'], 'conj')
 
     helper = LayerHelper('conj', **locals())
     out = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
 
-    helper.append_op(type='conj', inputs={'X': input}, outputs={'Out': [out]})
+    helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
     return out
