@@ -34,6 +34,12 @@ class Initializer {
 
   virtual float GetValue() = 0;
 
+  virtual void GetValue(std::vector<float> *values, int numel) {
+    for (int x = 0; x < numel; ++x) {
+      values->push_back(GetValue());
+    }
+  }
+
   virtual ~Initializer() {}
 
  protected:
