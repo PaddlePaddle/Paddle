@@ -109,6 +109,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_conv3d_transpose_layer',
     'test_conv3d_transpose_part2_op',
     'test_conv_nn_grad',
+    'test_conv_transpose_nn_grad',
     'test_conv_shift_op',
     'test_cos_sim_op',
     'test_create_global_var',

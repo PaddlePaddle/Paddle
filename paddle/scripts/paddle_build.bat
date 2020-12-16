@@ -417,7 +417,7 @@ rem these unittest that cost long time, diabled temporarily, Maybe moved to the 
 set long_time_test=best_fit_allocator_test^|timer_test^|test_image_classification^|decorator_test^|^
 test_dataset_cifar^|test_dataset_imdb^|test_dataset_movielens^|test_datasets^|test_pretrained_model^|test_concat_op^|test_elementwise_add_op^|test_elementwise_sub_op^|test_gather_op^|test_gather_nd_op^|^
 test_sequence_concat^|test_sequence_conv^|test_sequence_pool^|test_sequence_slice_op^|test_space_to_depth_op^|test_activation_nn_grad^|test_activation_op^|test_auto_growth_gpu_memory_limit^|^
-test_bicubic_interp_op^|test_bicubic_interp_v2_op^|test_bilinear_interp_v2_op^|test_conv2d_op^|test_conv3d_op^|test_conv3d_transpose_part2_op^|test_conv_nn_grad^|test_crop_tensor_op^|^
+test_bicubic_interp_op^|test_bicubic_interp_v2_op^|test_bilinear_interp_v2_op^|test_conv2d_op^|test_conv3d_op^|test_conv3d_transpose_part2_op^|test_conv_nn_grad^|test_conv_transpose_nn_grad^|test_crop_tensor_op^|^
 test_cross_entropy2_op^|test_cross_op^|test_deformable_conv_v1_op^|test_dropout_op^|test_dygraph_multi_forward^|test_elementwise_div_op^|test_elementwise_nn_grad^|test_empty_op^|^
 test_fused_elemwise_activation_op^|test_group_norm_op^|test_gru_op^|test_gru_unit_op^|test_imperative_lod_tensor_to_selected_rows^|test_imperative_optimizer^|test_imperative_ptb_rnn^|^
 test_imperative_save_load^|test_imperative_selected_rows_to_lod_tensor^|test_imperative_star_gan_with_gradient_penalty^|test_imperative_transformer_sorted_gradient^|test_layer_norm_op^|^
