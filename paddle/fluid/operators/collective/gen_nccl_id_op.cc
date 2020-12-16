@@ -16,15 +16,14 @@ limitations under the License. */
 #include <string>
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
