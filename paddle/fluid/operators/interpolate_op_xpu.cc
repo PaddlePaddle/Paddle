@@ -229,9 +229,7 @@ class InterpolateGradXPUKernel : public framework::OpKernel<T> {
     int trans_mode = (align_corners) ? (0) : ((align_mode == 0) ? (1) : (2));
 
     if (nearest) {
-      PADDLE_ENFORCE_EQ((data_layout == DataLayout::kNCHW), true,
-                        platform::errors::InvalidArgument(
-                            "XPU nearest is only support NCHW"));
+      trans_mode = (align_corners) ? (0) : (2);
     }
 
     r = xpu::interpolate2d_grad<T>(dev_ctx.x_context(), output_grad->data<T>(),
@@ -252,7 +250,10 @@ class InterpolateGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(bilinear_interp, ops::InterpolateXPUKernel<float>);
+REGISTER_OP_XPU_KERNEL(nearest_interp, ops::InterpolateXPUKernel<float>);
 
 REGISTER_OP_XPU_KERNEL(bilinear_interp_grad,
+                       ops::InterpolateGradXPUKernel<float>);
+REGISTER_OP_XPU_KERNEL(nearest_interp_grad,
                        ops::InterpolateGradXPUKernel<float>);
 #endif
