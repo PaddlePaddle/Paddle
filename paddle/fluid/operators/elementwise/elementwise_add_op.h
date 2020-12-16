@@ -183,6 +183,9 @@ __global__ void FP16MatrixColReduce(
   size_t w = threadIdx.x + blockDim.x * blockIdx.x;
   int width_stride = blockDim.x * gridDim.x;
   paddle::platform::float16 tmp[SIZE];
+  for (int i = 0; i < SIZE; i++) {
+    tmp[i] = static_cast<paddle::platform::float16>(0);
+  }
   paddle::platform::float16 result = static_cast<paddle::platform::float16>(0);
   size_t full_height =
       (height & (~((uint64_t)(SIZE - 1)))) + ((height & (SIZE - 1)) ? SIZE : 0);
