@@ -28,7 +28,7 @@ paddle.enable_static()
 
 class TestDistGeoCtr_2x2(TestFleetBase):
     def _setup_config(self):
-        self._mode = "geo"
+        self._mode = "async"
         self._reader = "pyreader"
         self._geo_sgd_need_push_nums = 5
 
