@@ -32,6 +32,7 @@ namespace framework {
 namespace details {
 
 struct VarHandle;
+using UseDevice = paddle::framework::details::ExecutionStrategy::UseDevice;
 
 struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
   std::vector<std::string> out_varnames_;
@@ -108,7 +109,8 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
           InitLoDTensor(varname, input_scope_idxes[i], lod, val_scalar));
     }
 
-    op_handle_->Run(false);
+    UseDevice use_device = UseDevice::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
@@ -131,7 +133,8 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
                                              rows, height, val_scalar));
     }
 
-    op_handle_->Run(false);
+    UseDevice use_device = UseDevice::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
