@@ -96,15 +96,7 @@ REGISTER_OPERATOR(mean_grad, ops::MeanGradOp,
                   ops::MeanGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     mean, ops::MeanKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MeanKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MeanKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::complex64>,
-    ops::MeanKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::complex128>);
+    ops::MeanKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     mean_grad, ops::MeanGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MeanGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MeanGradKernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex64>,
-    ops::MeanGradKernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex128>);
+    ops::MeanGradKernel<paddle::platform::CPUDeviceContext, double>);

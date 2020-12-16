@@ -123,10 +123,6 @@ def get_numeric_gradient(place,
         tensor_to_check_dtype = np.float16
         # set delta as np.float16, will automatic convert to float32, float64
         delta = np.array(delta).astype(np.float16)
-    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX64:
-        tensor_to_check_dtype = np.complex64
-    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX128:
-        tensor_to_check_dtype = np.complex128
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
@@ -151,14 +147,6 @@ def get_numeric_gradient(place,
             return tensor._get_float_element(i)
         elif tensor_to_check_dtype == np.float64:
             return tensor._get_double_element(i)
-        elif tensor_to_check_dtype == np.complex64:
-            numpy_tensor = np.array(tensor).astype(np.complex64)
-            numpy_tensor = numpy_tensor.flatten()
-            return numpy_tensor[i]
-        elif tensor_to_check_dtype == np.complex128:
-            numpy_tensor = np.array(tensor).astype(np.complex128)
-            numpy_tensor = numpy_tensor.flatten()
-            return numpy_tensor[i]
         else:
             raise TypeError("Unsupported test data type %s." %
                             tensor_to_check_dtype)
@@ -175,20 +163,6 @@ def get_numeric_gradient(place,
             tensor._set_float_element(i, e)
         elif tensor_to_check_dtype == np.float64:
             tensor._set_double_element(i, e)
-        elif tensor_to_check_dtype == np.complex64:
-            numpy_tensor = np.array(tensor).astype(np.complex64)
-            shape = numpy_tensor.shape
-            numpy_tensor = numpy_tensor.flatten()
-            numpy_tensor[i] = e
-            numpy_tensor = numpy_tensor.reshape(shape)
-            tensor.set(numpy_tensor, place)
-        elif tensor_to_check_dtype == np.complex128:
-            numpy_tensor = np.array(tensor).astype(np.complex128)
-            shape = numpy_tensor.shape
-            numpy_tensor = numpy_tensor.flatten()
-            numpy_tensor[i] = e
-            numpy_tensor = numpy_tensor.reshape(shape)
-            tensor.set(numpy_tensor, place)
         else:
             raise TypeError("Unsupported test data type %s." %
                             tensor_to_check_dtype)

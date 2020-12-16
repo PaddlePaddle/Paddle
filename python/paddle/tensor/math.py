@@ -2247,7 +2247,6 @@ def conj(x, name=None):
     if in_dygraph_mode():
         return core.ops.conj(x)
 
-    check_type(x, 'x', (Variable), 'conj')
     check_variable_and_dtype(x, "x", ['complex64', 'complex128'], 'conj')
 
     helper = LayerHelper('conj', **locals())
