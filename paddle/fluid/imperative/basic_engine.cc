@@ -130,8 +130,8 @@ void BasicEngine::PrepareGradAccumulators(
 
         accumulator->IncreaseRefCnt();
 
-        VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
-                << var.get() << ")  with reference count "
+        VLOG(3) << "Prepare to acccumulate Leaf variable grad " << var->Name()
+                << "(" << var.get() << ")  with reference count "
                 << accumulator->RefCnt();
 
         if (var->HasLeafHooks()) {
@@ -183,9 +183,9 @@ void BasicEngine::PrepareGradAccumulators(
 
           accumulator->IncreaseRefCnt();
 
-          VLOG(3) << "Prepare to acccumulate variable grad " << var->Name()
-                  << "(" << var.get() << ")  with reference count "
-                  << accumulator->RefCnt();
+          VLOG(3) << "Prepare to acccumulate no-leaf variable grad "
+                  << var->Name() << "(" << var.get()
+                  << ")  with reference count " << accumulator->RefCnt();
 
           if (var->HasLeafHooks()) {
             VLOG(3) << "Grad variable wrapper (" << var->Name()
@@ -413,6 +413,7 @@ void BasicEngine::Clear() {
   init_node_.reset();
   node_deps_.clear();
   accumulators_.clear();
+  leaf_basic_accumulators_.clear();
   need_accu_var_list_.clear();
   leaf_accumulators_.clear();
 }
