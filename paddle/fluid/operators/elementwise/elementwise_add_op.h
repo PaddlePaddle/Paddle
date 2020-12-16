@@ -176,52 +176,26 @@ __global__ void MatrixColReduce(const T *__restrict__ in, T *__restrict__ out,
   }
 }
 
-template <int BLOCK_W, int BLOCK_H>
+template <int SIZE>
 __global__ void FP16MatrixColReduce(
     const paddle::platform::float16 *__restrict__ in,
     paddle::platform::float16 *__restrict__ out, size_t width, size_t height) {
-  constexpr int repeats = BLOCK_H / BLOCK_W;
-  __shared__ paddle::platform::float16 sdata[BLOCK_H][BLOCK_W + 1];
-  size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
-  size_t width_stride = gridDim.x * blockDim.x;
-  size_t full_width = (width & (~((uint64_t)(BLOCK_W - 1)))) +
-                      ((width & (BLOCK_W - 1)) ? BLOCK_W : 0);
-  size_t full_height = (height & (~((uint64_t)(BLOCK_H - 1)))) +
-                       ((height & (BLOCK_H - 1)) ? BLOCK_H : 0);
-#pragma unroll
-  for (size_t w = idx; w < full_width; w += width_stride) {
-    for (int r = 0; r < repeats; r++) {
-      sdata[threadIdx.y + r * BLOCK_W][threadIdx.x] = 0;
-    }
-    __syncthreads();
-#pragma unroll
-    for (int r = 0; r < repeats; r++) {
-      size_t offset = w + (r * BLOCK_W + threadIdx.y) * width;
-#pragma unroll
-      for (size_t h = threadIdx.y + r * BLOCK_W; h < full_height;
-           h += BLOCK_H) {  // block-stride loop across matrix height
-        sdata[r * BLOCK_W + threadIdx.y][threadIdx.x] +=
-            (w < width && h < height)
-                ? in[offset]
-                : (static_cast<paddle::platform::float16>(0));
-        offset += width * BLOCK_H;
+  size_t w = threadIdx.x + blockDim.x * blockIdx.x;
+  int width_stride = blockDim.x * gridDim.x;
+  paddle::platform::float16 tmp[SIZE];
+  paddle::platform::float16 result = static_cast<paddle::platform::float16>(0);
+  size_t full_height =
+      (height & (~((uint64_t)(SIZE - 1)))) + ((height & (SIZE - 1)) ? SIZE : 0);
+  for (; w < width; w += width_stride) {
+    for (int h = 0; h < full_height / SIZE; h += SIZE) {
+      for (int l = 0; l < SIZE; l++) {
+        if (w < width && h < height) tmp[l] += in[(h * SIZE + l) * width + w];
       }
     }
-    __syncthreads();
-
-    paddle::platform::float16 result =
-        static_cast<paddle::platform::float16>(0);
-    for (int r = 0; r < repeats; r++) {
-      paddle::platform::float16 val =
-          sdata[threadIdx.x + r * BLOCK_W][threadIdx.y];
-      for (int i = warpSize >> 1; i > 0; i >>= 1)
-        val += platform::CudaShuffleXorSync(0xFFFFFFFF, val, i);
-      __syncthreads();
-      result += val;
+    for (int r = 0; r < SIZE; r++) {
+      result += tmp[r];
     }
-    if (threadIdx.x == 0) sdata[0][threadIdx.y] = result;
-    __syncthreads();
-    if ((threadIdx.y == 0) && ((w) < width)) out[w] = sdata[0][threadIdx.x];
+    out[w] = result;
   }
 }
 
@@ -247,7 +221,7 @@ __global__ void VecMatrixReduceLongWidth(const T *__restrict__ in, T *out,
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
   int w = idx * VEC_SIZE;
   int width_stride = blockDim.x * gridDim.x * VEC_SIZE;
-  for (; w < width; w += width) {
+  for (; w < width; w += width_stride) {
     T zero = static_cast<T>(0);
     T sum[VEC_SIZE] = {zero};
     T tmp_vec[VEC_SIZE] = {zero};
@@ -390,19 +364,15 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
       int max_blocks = std::max(max_physical_threads / (block_x * block_y), 1);
       int theory_block = (width + blocks.x - 1) / blocks.x;
       dim3 grids(std::min(theory_block, max_blocks));
-      if (std::is_same<T, paddle::platform::float16>::value &&
-          (width / height) < 32) {
+      if (std::is_same<T, paddle::platform::float16>::value && width < 5120) {
         const paddle::platform::float16 *ptr1 =
             reinterpret_cast<const paddle::platform::float16 *>(dout_data);
         paddle::platform::float16 *ptr2 =
             reinterpret_cast<paddle::platform::float16 *>(out_data);
-        if (height <= 32) {
-          FP16MatrixColReduce<32, 32><<<grids, blocks, 0, stream>>>(
-              ptr1, ptr2, width, height);
-        } else {
-          FP16MatrixColReduce<32, 64><<<grids, blocks, 0, stream>>>(
-              ptr1, ptr2, width, height);
-        }
+        const int threads = 1024;
+        FP16MatrixColReduce<
+            32><<<(width + threads - 1) / threads, threads, 0, stream>>>(
+            ptr1, ptr2, width, height);
         return;
       }
 
