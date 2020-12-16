@@ -41,7 +41,7 @@ def real(x, name=None):
     Args:
         x (Tensor): the input tensor, its data type could be complex64 or complex128.
         name (str, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+            user to set this property. For more information, please refer to :ref:`api_guide_Name` .
       
     Returns:
         Tensor: a tensor containing real values of the input tensor.
@@ -85,7 +85,7 @@ def imag(x, name=None):
     Args:
         x (Tensor): the input tensor, its data type could be complex64 or complex128.
         name (str, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+            user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
         Tensor: a tensor containing imaginary values of the input tensor.

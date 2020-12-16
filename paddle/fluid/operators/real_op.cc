@@ -49,13 +49,9 @@ class RealGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
-                   "Real"
-                   "Grad");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "RealGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad",
-                   "Real"
-                   "Grad");
+                   "Out@Grad", "RealGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
