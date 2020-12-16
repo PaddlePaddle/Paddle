@@ -13,13 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <vector>
 #include <cstddef>
-#include <memory>
 #include <map>
-#include "paddle/fluid/platform/enforce.h"
+#include <memory>
+#include <vector>
 #include "paddle/fluid/platform/cuda_device_guard.h"
-
+#include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_PSLIB
 
@@ -37,12 +36,11 @@ class GPUResource {
   int index() const { return index_; }
   cudaStream_t stream() { return stream_; }
   cudaStream_t copy_stream() { return copy_stream_; }
-  
+
   int dev_id_;
   int index_;
   cudaStream_t stream_;
   cudaStream_t copy_stream_;
-
 };
 
 class HeterBoxResource {

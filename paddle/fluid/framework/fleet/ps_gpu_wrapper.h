@@ -25,39 +25,34 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-
+#include "paddle/fluid/framework/fleet/gpu_task.h"
 #include "paddle/fluid/framework/fleet/heter_box/hashtable/gpu_resource.h"
 #include "paddle/fluid/framework/fleet/heter_box/heter_box_base.h"
-#include "paddle/fluid/framework/fleet/gpu_task.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 
 class PSGPUWrapper {
  public:
-  virtual ~PSGPUWrapper() {
-    delete GpuPs_;
-  }
+  virtual ~PSGPUWrapper() { delete GpuPs_; }
 
   PSGPUWrapper() {
     GpuPs_ = NULL;
     sleep_seconds_before_fail_exit_ = 300;
   }
-  
-  void PullSparse(const paddle::platform::Place& place,
-                  const int table_id,
+
+  void PullSparse(const paddle::platform::Place& place, const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
                   const int hidden_size);
-  void PushSparseGrad(const paddle::platform::Place& place,
-                      const int table_id,
+  void PushSparseGrad(const paddle::platform::Place& place, const int table_id,
                       const std::vector<const uint64_t*>& keys,
                       const std::vector<const float*>& grad_values,
                       const std::vector<int64_t>& slot_lengths,
@@ -66,19 +61,20 @@ class PSGPUWrapper {
                 uint64_t* total_keys, const int64_t* gpu_len, int slot_num,
                 int total_len);
   void CopyForPull(const paddle::platform::Place& place, uint64_t** gpu_keys,
-                   const std::vector<float*>& values, const FeatureValue* total_values_gpu,
-                   const int64_t* gpu_len, const int slot_num,
-                   const int hidden_size,
+                   const std::vector<float*>& values,
+                   const FeatureValue* total_values_gpu, const int64_t* gpu_len,
+                   const int slot_num, const int hidden_size,
                    const int64_t total_length);
 
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
                    FeaturePushValue* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
-                   const int hidden_size,
-                   const int64_t total_length, const int batch_size);
-  
-  void BuildGPUPS(const uint64_t table_id, int feature_dim, std::shared_ptr<GpuTask> gpu_task);
+                   const int hidden_size, const int64_t total_length,
+                   const int batch_size);
+
+  void BuildGPUPS(const uint64_t table_id, int feature_dim,
+                  std::shared_ptr<GpuTask> gpu_task);
   void InitializeGPU(const std::vector<int>& dev_ids) {
     if (s_instance_ != NULL) {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
@@ -94,7 +90,8 @@ class PSGPUWrapper {
     }
     return s_instance_;
   }
-  std::vector<std::unordered_map<uint64_t, std::vector<float>>>& GetLocalTable(int table_id) {
+  std::vector<std::unordered_map<uint64_t, std::vector<float>>>& GetLocalTable(
+      int table_id) {
     return local_tables_[table_id];
   }
   void SetSlotVector(const std::vector<int>& slot_vector) {
@@ -103,7 +100,9 @@ class PSGPUWrapper {
 
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
-  std::unordered_map<uint64_t, std::vector<std::unordered_map<uint64_t,std::vector<float>>>> local_tables_;
+  std::unordered_map<
+      uint64_t, std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
+      local_tables_;
   HeterBoxBase* GpuPs_;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
   std::shared_ptr<HeterBoxResource> resource_;
@@ -112,7 +111,6 @@ class PSGPUWrapper {
 
  protected:
   static bool is_initialized_;
-
 };
 
 }  // end namespace framework

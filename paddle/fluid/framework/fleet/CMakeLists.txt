@@ -4,6 +4,7 @@ if(WITH_PSLIB)
     add_subdirectory(heter_box)
 else()
     cc_library(fleet_wrapper SRCS fleet_wrapper.cc DEPS framework_proto variable_helper scope)
+    cc_library(ps_gpu_wrapper SRCS ps_gpu_wrapper.cc)
 endif(WITH_PSLIB)
 
 if(WITH_NCCL)

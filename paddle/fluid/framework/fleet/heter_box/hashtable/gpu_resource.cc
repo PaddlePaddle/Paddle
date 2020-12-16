@@ -36,16 +36,18 @@ namespace framework {
 GPUResource::GPUResource(int dev_id, int index) {
   index_ = index;
   dev_id_ = dev_id;
-  
+
   platform::CUDADeviceGuard guard(dev_id_);
-  
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithFlags(&copy_stream_, cudaStreamNonBlocking));
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking));
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaStreamCreateWithFlags(&copy_stream_, cudaStreamNonBlocking));
 }
 
 GPUResource::~GPUResource() {
   platform::CUDADeviceGuard guard(dev_id_);
-  
+
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(copy_stream_));
 }
@@ -56,16 +58,17 @@ void HeterBoxResource::enable_p2p() {
     for (size_t j = 0; j < dev_ids_.size(); ++j) {
       if (i != j) {
         int p2p_flag;
-        PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceCanAccessPeer(&p2p_flag, dev_ids_[i], dev_ids_[j]));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            cudaDeviceCanAccessPeer(&p2p_flag, dev_ids_[i], dev_ids_[j]));
         if (p2p_flag == 1) {
           cudaError_t ret = cudaDeviceEnablePeerAccess(dev_ids_[j], 0);
           if (ret != cudaSuccess && ret != cudaErrorPeerAccessAlreadyEnabled) {
-            VLOG(0) << " Cuda error(" << ret << "), " << cudaGetErrorString(ret) << ".";
+            VLOG(0) << " Cuda error(" << ret << "), " << cudaGetErrorString(ret)
+                    << ".";
           } else {
             cudaGetLastError();
           }
         }
-
       }
     }
   }
@@ -74,7 +77,8 @@ void HeterBoxResource::enable_p2p() {
 HeterBoxResource::HeterBoxResource(const std::vector<int>& dev_ids) {
   dev_ids_ = dev_ids;
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
-    std::shared_ptr<GPUResource> resource = std::make_shared<GPUResource>(dev_ids_[i], i);
+    std::shared_ptr<GPUResource> resource =
+        std::make_shared<GPUResource>(dev_ids_[i], i);
     resources_.push_back(resource);
     devid_2_index_[dev_ids_[i]] = i;
   }
@@ -88,17 +92,13 @@ cudaStream_t HeterBoxResource::stream(int num) {
   return resources_[num]->stream();
 }
 
-int HeterBoxResource::dev_id(int num) {
-  return dev_ids_[num];
-}
+int HeterBoxResource::dev_id(int num) { return dev_ids_[num]; }
 
 int HeterBoxResource::get_index_by_devid(int devid) {
   return devid_2_index_[devid];
 }
 
-int HeterBoxResource::total_gpu() {
-  return dev_ids_.size();
-}
+int HeterBoxResource::total_gpu() { return dev_ids_.size(); }
 
 }  // end namespace framework
 }  // end namespace paddle

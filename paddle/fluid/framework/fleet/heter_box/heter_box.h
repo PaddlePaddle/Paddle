@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
-#include "paddle/fluid/framework/fleet/heter_box/optimizer/optimizer.cuh"
 #include "paddle/fluid/framework/fleet/heter_box/hashtable/gpu_ps.h"
 #include "paddle/fluid/framework/fleet/heter_box/heter_box_base.h"
+#include "paddle/fluid/framework/fleet/heter_box/optimizer/optimizer.cuh"
 
 #ifdef PADDLE_WITH_PSLIB
 
@@ -31,12 +31,16 @@ class HeterBox : public HeterBoxBase {
   HeterBox(const HeterBox&) = delete;
   HeterBox& operator=(const HeterBox&) = delete;
 
-  virtual void pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals, size_t len) override;
-  virtual void build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals, size_t len, size_t chunk_size, int stream_num) override;
+  virtual void pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals,
+                           size_t len) override;
+  virtual void build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
+                        size_t len, size_t chunk_size, int stream_num) override;
   virtual void dump() override;
   virtual int get_index_by_devid(int devid) override;
   virtual void show_one_table(int gpu_num) override;
-  virtual void push_sparse(int num, FeatureKey* d_keys, FeaturePushValue* d_grads, size_t len) override;
+  virtual void push_sparse(int num, FeatureKey* d_keys,
+                           FeaturePushValue* d_grads, size_t len) override;
+
  private:
   std::shared_ptr<GpuPs<FeatureKey, FeatureValue, FeaturePushValue>> gpu_ps_;
   Optimizer<FeatureValue, FeaturePushValue> opt_;

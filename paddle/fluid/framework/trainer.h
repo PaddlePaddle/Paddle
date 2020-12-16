@@ -303,10 +303,9 @@ class PSGPUTrainer : public TrainerBase {
                    const paddle::platform::Place& thread_place,
                    cudaStream_t stream);
   */
-  
+
   template <typename T>
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
-  
 
  protected:
   Dataset* dataset_;

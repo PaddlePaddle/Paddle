@@ -80,9 +80,12 @@ struct FeatureItem {
     this->sign() = sign;
     this->slot() = slot;
   }
-  FeatureFeasign& sign() { return *(reinterpret_cast<FeatureFeasign*>(sign_buffer())); }
+  FeatureFeasign& sign() {
+    return *(reinterpret_cast<FeatureFeasign*>(sign_buffer()));
+  }
   const FeatureFeasign& sign() const {
-    const FeatureFeasign* ret = reinterpret_cast<FeatureFeasign*>(sign_buffer());
+    const FeatureFeasign* ret =
+        reinterpret_cast<FeatureFeasign*>(sign_buffer());
     return *ret;
   }
   uint16_t& slot() { return slot_; }
