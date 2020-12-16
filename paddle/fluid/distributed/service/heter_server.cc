@@ -31,6 +31,7 @@ void HeterServer::RegisterServiceHandler(std::string message_name,
 }
 
 void HeterServer::StartHeterService() {
+  std::unique_lock<std::mutex> running_lock(mutex_);
   server_.AddService(&service_, brpc::SERVER_DOESNT_OWN_SERVICE);
   brpc::ServerOptions options;
   if (server_.Start(endpoint_.c_str(), &options) != 0) {
@@ -45,7 +46,10 @@ void HeterServer::StartHeterService() {
   }
   condition_ready_.notify_all();
 
-  server_.Join();
+  cv_.wait(running_lock, [&] {
+    VLOG(0) << "Heter Server Stop.";
+    return stoped_;
+  });
 }
 
 void HeterServer::SetEndPoint(std::string& endpoint) {
