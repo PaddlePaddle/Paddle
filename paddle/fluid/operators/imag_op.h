@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -22,29 +21,42 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-using platform::complex64;
-using platform::complex128;
-
 template <typename DeviceContext, typename T>
 class ImagKernel : public framework::OpKernel<T> {
-  using ImagT =
-      math::select_t<math::cond<std::is_same<T, complex64>::value, float>,
-                     math::cond<std::is_same<T, complex128>::value, double>, T>;
-
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    const Tensor* x = ctx.Input<Tensor>("X");
-    Tensor* out = ctx.Output<Tensor>("Out");
+    const framework::Tensor* x = ctx.Input<framework::Tensor>("X");
+    framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
 
     auto numel = x->numel();
     auto* x_data = x->data<T>();
-    auto* out_data = out->mutable_data<ImagT>(
-        ctx.GetPlace(), static_cast<size_t>(numel * sizeof(ImagT)));
+    auto* out_data = out->mutable_data<math::Real<T>>(
+        ctx.GetPlace(), static_cast<size_t>(numel * sizeof(math::Real<T>)));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
     math::ImagFunctor<T> functor(x_data, out_data, numel);
+    for_range(functor);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ImagGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const {
+    const framework::Tensor* d_out =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    framework::Tensor* d_x =
+        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+
+    auto numel = d_out->numel();
+    auto* dout_data = d_out->data<math::Real<T>>();
+    auto* dx_data = d_x->mutable_data<T>(
+        ctx.GetPlace(), static_cast<size_t>(numel * sizeof(T)));
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+    math::ImagToComplexFunctor<T> functor(dout_data, dx_data, numel);
     for_range(functor);
   }
 };

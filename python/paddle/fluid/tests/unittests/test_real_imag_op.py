@@ -32,53 +32,57 @@ paddle_apis = {
     "imag": paddle.imag,
 }
 
-# class TestRealOp(OpTest):
-#     def setUp(self):
-#         # switch to static
-#         paddle.enable_static()
-#         # op test attrs
-#         self.op_type = "real"
-#         self.dtype = np.float64
-#         self.init_input_output()
-#         # backward attrs
-#         self.init_grad_input_output()
 
-#     def init_input_output(self):
-#         self.inputs = {
-#             'X': np.random.random(
-#                 (20, 5)).astype(self.dtype) + 1j * np.random.random(
-#                     (20, 5)).astype(self.dtype)
-#         }
-#         self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+class TestRealOp(OpTest):
+    def setUp(self):
+        # switch to static
+        paddle.enable_static()
+        # op test attrs
+        self.op_type = "real"
+        self.dtype = np.float64
+        self.init_input_output()
+        # backward attrs
+        self.init_grad_input_output()
 
-#     def init_grad_input_output(self):
-#         self.grad_out = np.ones((20, 5), self.dtype)
-#         self.grad_x = np.real(self.grad_out) + 1j * np.zeros(self.grad_out.shape)
+    def init_input_output(self):
+        self.inputs = {
+            'X': np.random.random(
+                (20, 5)).astype(self.dtype) + 1j * np.random.random(
+                    (20, 5)).astype(self.dtype)
+        }
+        self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
 
-#     def test_check_output(self):
-#         self.check_output()
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((20, 5), self.dtype)
+        self.grad_x = np.real(self.grad_out) + 1j * np.zeros(
+            self.grad_out.shape)
 
-#     def test_check_grad(self):
-#         self.check_grad(
-#             ['X'],
-#             'Out',
-#             user_defined_grads=[self.grad_x],
-#             user_defined_grad_outputs=[self.grad_out])
+    def test_check_output(self):
+        self.check_output()
 
-# class TestImagOp(TestRealOp):
-#     def setUp(self):
-#         # switch to static
-#         paddle.enable_static()
-#         # op test attrs
-#         self.op_type = "imag"
-#         self.dtype = np.float64
-#         self.init_input_output()
-#         # backward attrs
-#         self.init_grad_input_output()
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out])
 
-#     def init_grad_input_output(self):
-#         self.grad_out = np.ones((20, 5), self.dtype)
-#         self.grad_x = np.zeros(self.grad_out.shape) + 1j * np.real(self.grad_out)
+
+class TestImagOp(TestRealOp):
+    def setUp(self):
+        # switch to static
+        paddle.enable_static()
+        # op test attrs
+        self.op_type = "imag"
+        self.dtype = np.float64
+        self.init_input_output()
+        # backward attrs
+        self.init_grad_input_output()
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((20, 5), self.dtype)
+        self.grad_x = np.zeros(self.grad_out.shape) + 1j * np.real(
+            self.grad_out)
 
 
 class TestRealAPI(unittest.TestCase):
@@ -89,8 +93,8 @@ class TestRealAPI(unittest.TestCase):
         self.api = "real"
         self.dtypes = ["complex64", "complex128"]
         self.places = [paddle.CPUPlace()]
-        # if paddle.is_compiled_with_cuda():
-        #     self.places.append(paddle.CUDAPlace(0))
+        if paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
         self._shape = [2, 20, 2, 3]
 
     def test_in_static_mode(self):

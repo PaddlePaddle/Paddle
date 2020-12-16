@@ -17,16 +17,90 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-DECLARE_OP(Real);
-DECLARE_OP_MAKER(Real);
-DECLARE_GRAD_OP(Real);
-DECLARE_GRAD_OP_MAKER(Real, real);
+class RealOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Real");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Real");
+
+    auto x_dims = ctx->GetInputDim("X");
+    ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareLoD("X", "Out");
+  }
+};
+
+class RealOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), The input tensor of real op.");
+    AddOutput("Out", "(Tensor), The output tensor of real op.");
+    AddComment(R"DOC( 
+Real Operator. 
+
+This operator is used to get a new tensor containing real values 
+from a tensor with complex data type.
+
+)DOC");
+  }
+};
+
+class RealGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "Real"
+                   "Grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@Grad",
+                   "Real"
+                   "Grad");
+
+    auto x_dims = ctx->GetInputDim("X");
+    auto x_grad_name = framework::GradVarName("X");
+
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.GetPlace());
+  }
+};
+
+template <typename T>
+class RealGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("real_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(Real, real);
-REGISTER_GRAD_OP(RealGrad, real_grad);
+namespace ops = paddle::operators;
 
-REGISTER_OP_CPU_COMPLEX_KERNEL(Real, real);
-REGISTER_OP_CPU_COMPLEX_KERNEL(RealGrad, real_grad);
+REGISTER_OPERATOR(real, ops::RealOp, ops::RealOpMaker,
+                  ops::RealGradOpMaker<::paddle::framework::OpDesc>,
+                  ops::RealGradOpMaker<::paddle::imperative::OpBase>);
+REGISTER_OPERATOR(real_grad, ops::RealGradOp);
+
+REGISTER_OP_CPU_KERNEL(real, ops::RealKernel<paddle::platform::CPUDeviceContext,
+                                             paddle::platform::complex64>,
+                       ops::RealKernel<paddle::platform::CPUDeviceContext,
+                                       paddle::platform::complex128>);
+REGISTER_OP_CPU_KERNEL(real_grad,
+                       ops::RealGradKernel<paddle::platform::CPUDeviceContext,
+                                           paddle::platform::complex64>,
+                       ops::RealGradKernel<paddle::platform::CPUDeviceContext,
+                                           paddle::platform::complex128>);

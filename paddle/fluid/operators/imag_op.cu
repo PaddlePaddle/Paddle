@@ -21,3 +21,8 @@ REGISTER_OP_CUDA_KERNEL(imag,
                                         paddle::platform::complex64>,
                         ops::ImagKernel<paddle::platform::CUDADeviceContext,
                                         paddle::platform::complex128>);
+REGISTER_OP_CUDA_KERNEL(imag_grad,
+                        ops::ImagGradKernel<paddle::platform::CUDADeviceContext,
+                                            paddle::platform::complex64>,
+                        ops::ImagGradKernel<paddle::platform::CUDADeviceContext,
+                                            paddle::platform::complex128>);

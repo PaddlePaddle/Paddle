@@ -14,5 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/real_op.h"
 
-REGISTER_OP_CUDA_COMPLEX_KERNEL(Real, real);
-REGISTER_OP_CUDA_COMPLEX_KERNEL(RealGrad, real_grad);
+namespace ops = paddle::operators;
+
+REGISTER_OP_CUDA_KERNEL(real,
+                        ops::RealKernel<paddle::platform::CUDADeviceContext,
+                                        paddle::platform::complex64>,
+                        ops::RealKernel<paddle::platform::CUDADeviceContext,
+                                        paddle::platform::complex128>);
+REGISTER_OP_CUDA_KERNEL(real_grad,
+                        ops::RealGradKernel<paddle::platform::CUDADeviceContext,
+                                            paddle::platform::complex64>,
+                        ops::RealGradKernel<paddle::platform::CUDADeviceContext,
+                                            paddle::platform::complex128>);

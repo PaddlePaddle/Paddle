@@ -46,15 +46,43 @@ from a tensor with complex data type.
   }
 };
 
+class ImagGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "Imag"
+                   "Grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@Grad",
+                   "Imag"
+                   "Grad");
+
+    auto x_dims = ctx->GetInputDim("X");
+    auto x_grad_name = framework::GradVarName("X");
+
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.GetPlace());
+  }
+};
+
 template <typename T>
 class ImagGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
   void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("imag");
-    grad_op->SetInput("X", this->OutputGrad("Out"));
-    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetType("imag_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
 
@@ -66,7 +94,14 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(imag, ops::ImagOp, ops::ImagOpMaker,
                   ops::ImagGradOpMaker<paddle::framework::OpDesc>,
                   ops::ImagGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(imag_grad, ops::ImagGradOp);
+
 REGISTER_OP_CPU_KERNEL(imag, ops::ImagKernel<paddle::platform::CPUDeviceContext,
                                              paddle::platform::complex64>,
                        ops::ImagKernel<paddle::platform::CPUDeviceContext,
                                        paddle::platform::complex128>);
+REGISTER_OP_CPU_KERNEL(imag_grad,
+                       ops::ImagGradKernel<paddle::platform::CPUDeviceContext,
+                                           paddle::platform::complex64>,
+                       ops::ImagGradKernel<paddle::platform::CPUDeviceContext,
+                                           paddle::platform::complex128>);

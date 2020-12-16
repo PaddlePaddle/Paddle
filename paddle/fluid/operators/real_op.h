@@ -14,13 +14,52 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/real_imag_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/complex_functors.h"
+#include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
 
-DECLARE_OP_KERNEL(Real);
-DECLARE_GRAD_OP_KERNEL(Real);
+template <typename DeviceContext, typename T>
+class RealKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const {
+    const framework::Tensor* x = ctx.Input<framework::Tensor>("X");
+    framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
+
+    auto numel = x->numel();
+    auto* x_data = x->data<T>();
+    auto* out_data = out->mutable_data<math::Real<T>>(
+        ctx.GetPlace(), static_cast<size_t>(numel * sizeof(math::Real<T>)));
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+    math::RealFunctor<T> functor(x_data, out_data, numel);
+    for_range(functor);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class RealGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const {
+    const framework::Tensor* d_out =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    framework::Tensor* d_x =
+        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+
+    auto numel = d_out->numel();
+    auto* dout_data = d_out->data<math::Real<T>>();
+    auto* dx_data = d_x->mutable_data<T>(
+        ctx.GetPlace(), static_cast<size_t>(numel * sizeof(T)));
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+    math::RealToComplexFunctor<T> functor(dout_data, dx_data, numel);
+    for_range(functor);
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle

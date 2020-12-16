@@ -34,12 +34,12 @@ def _complex_to_real_dtype(dtype):
         return dtype
 
 
-def real(input, name=None):
+def real(x, name=None):
     """
     Returns a new tensor containing real values of the input tensor.
 
     Args:
-        input (Tensor): the input tensor, its data type could be complex64 or complex128.
+        x (Tensor): the input tensor, its data type could be complex64 or complex128.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
       
@@ -51,40 +51,39 @@ def real(input, name=None):
 
             import paddle
 
-            input = paddle.to_tensor(
+            x = paddle.to_tensor(
                 [[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]])
             # Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
             #        [[(1+6j), (2+5j), (3+4j)],
             #         [(4+3j), (5+2j), (6+1j)]])
 
-            real_res = paddle.real(input)
+            real_res = paddle.real(x)
             # Tensor(shape=[2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [[1., 2., 3.],
             #         [4., 5., 6.]])
 
-            real_t = input.real()
+            real_t = x.real()
             # Tensor(shape=[2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [[1., 2., 3.],
             #         [4., 5., 6.]])
     """
     if in_dygraph_mode():
-        return core.ops.real(input)
+        return core.ops.real(x)
 
-    check_variable_and_dtype(input, 'input', ['complex64', 'complex128'],
-                             'real')
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'real')
     helper = LayerHelper('real', **locals())
     out = helper.create_variable_for_type_inference(
         dtype=_complex_to_real_dtype(helper.input_dtype()))
-    helper.append_op(type='real', inputs={'X': input}, outputs={'Out': out})
+    helper.append_op(type='real', inputs={'X': x}, outputs={'Out': out})
     return out
 
 
-def imag(input, name=None):
+def imag(x, name=None):
     """
     Returns a new tensor containing imaginary values of input tensor.
 
     Args:
-        input (Tensor): the input tensor, its data type could be complex64 or complex128.
+        x (Tensor): the input tensor, its data type could be complex64 or complex128.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -96,29 +95,28 @@ def imag(input, name=None):
 
             import paddle
 
-            input = paddle.to_tensor(
+            x = paddle.to_tensor(
                 [[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]])
             # Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
             #        [[(1+6j), (2+5j), (3+4j)],
             #         [(4+3j), (5+2j), (6+1j)]])
 
-            imag_res = paddle.imag(input)
+            imag_res = paddle.imag(x)
             # Tensor(shape=[2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [[6., 5., 4.],
             #         [3., 2., 1.]])
 
-            imag_t = input.imag()
+            imag_t = x.imag()
             # Tensor(shape=[2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [[6., 5., 4.],
             #         [3., 2., 1.]])
     """
     if in_dygraph_mode():
-        return core.ops.imag(input)
+        return core.ops.imag(x)
 
-    check_variable_and_dtype(input, 'input', ['complex64', 'complex128'],
-                             'imag')
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'imag')
     helper = LayerHelper('imag', **locals())
     out = helper.create_variable_for_type_inference(
         dtype=_complex_to_real_dtype(helper.input_dtype()))
-    helper.append_op(type='imag', inputs={'X': input}, outputs={'Out': out})
+    helper.append_op(type='imag', inputs={'X': x}, outputs={'Out': out})
     return out
