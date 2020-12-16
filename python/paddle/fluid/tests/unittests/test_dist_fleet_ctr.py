@@ -52,6 +52,7 @@ class TestDistMnistSync2x2(TestFleetBase):
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
 
 
+@unittest.skip(reason="Skip unstable ut, open it when geo fixed")
 class TestDistMnistAuto2x2(TestFleetBase):
     def _setup_config(self):
         self._mode = "auto"
