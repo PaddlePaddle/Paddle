@@ -561,6 +561,8 @@ class BufferedShuffleDataset(IterableDataset):
     
         .. code-block:: python
 
+            import random
+
             import numpy as np
 
             import paddle
