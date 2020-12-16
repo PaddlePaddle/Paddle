@@ -189,7 +189,8 @@ __global__ void FP16MatrixColReduce(
   for (; w < width; w += width_stride) {
     for (int h = 0; h < full_height / SIZE; h += SIZE) {
       for (int l = 0; l < SIZE; l++) {
-        if (w < width && h < height) tmp[l] += in[(h * SIZE + l) * width + w];
+        if (w < width && (h * SIZE + l) < height)
+          tmp[l] += in[(h * SIZE + l) * width + w];
       }
     }
     for (int r = 0; r < SIZE; r++) {
