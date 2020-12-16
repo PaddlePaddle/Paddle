@@ -14,40 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/fluid/operators/real_imag_op.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-using platform::complex64;
-using platform::complex128;
-
-template <typename DeviceContext, typename T>
-class RealKernel : public framework::OpKernel<T> {
-  using RealT =
-      math::select_t<math::cond<std::is_same<T, complex64>::value, float>,
-                     math::cond<std::is_same<T, complex128>::value, double>, T>;
-
- public:
-  void Compute(const framework::ExecutionContext& ctx) const {
-    const Tensor* x = ctx.Input<Tensor>("X");
-    Tensor* out = ctx.Output<Tensor>("Out");
-
-    auto numel = x->numel();
-    auto* x_data = x->data<T>();
-    auto* out_data = out->mutable_data<RealT>(
-        ctx.GetPlace(), static_cast<size_t>(numel * sizeof(RealT)));
-
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::RealFunctor<T> functor(x_data, out_data, numel);
-    for_range(functor);
-  }
-};
+DECLARE_OP_KERNEL(Real);
+DECLARE_GRAD_OP_KERNEL(Real);
 
 }  // namespace operators
 }  // namespace paddle

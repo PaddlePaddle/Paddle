@@ -17,56 +17,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class RealOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Real");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Real");
-
-    auto x_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim("Out", x_dims);
-    ctx->ShareLoD("X", "Out");
-  }
-};
-
-class RealOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "(Tensor), The input tensor of real op.");
-    AddOutput("Out", "(Tensor), The output tensor of real op.");
-    AddComment(R"DOC(
-Real Operator.
-
-This operator is used to get a new tensor containing real values
-from a tensor with complex data type.
-
-)DOC");
-  }
-};
-
-template <typename T>
-class RealGradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
-  void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("real");
-    grad_op->SetInput("X", this->OutputGrad("Out"));
-    grad_op->SetOutput("Out", this->InputGrad("X"));
-  }
-};
+DECLARE_OP(Real);
+DECLARE_OP_MAKER(Real);
+DECLARE_GRAD_OP(Real);
+DECLARE_GRAD_OP_MAKER(Real, real);
 
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
+REGISTER_OP(Real, real);
+REGISTER_GRAD_OP(RealGrad, real_grad);
 
-REGISTER_OPERATOR(real, ops::RealOp, ops::RealOpMaker,
-                  ops::RealGradOpMaker<paddle::framework::OpDesc>,
-                  ops::RealGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(real, ops::RealKernel<paddle::platform::CPUDeviceContext,
-                                             paddle::platform::complex64>,
-                       ops::RealKernel<paddle::platform::CPUDeviceContext,
-                                       paddle::platform::complex128>);
+REGISTER_OP_CPU_COMPLEX_KERNEL(Real, real);
+REGISTER_OP_CPU_COMPLEX_KERNEL(RealGrad, real_grad);

@@ -52,12 +52,21 @@ template <typename Head, typename... Tail>
 using select_t = typename select<Head, Tail...>::type;
 
 template <typename T>
-struct RealFunctor {
-  using RealT =
-      select_t<cond<std::is_same<T, platform::complex64>::value, float>,
-               cond<std::is_same<T, platform::complex128>::value, double>, T>;
+using Real =
+    select_t<cond<std::is_same<T, platform::complex64>::value, float>,
+             cond<std::is_same<T, platform::complex128>::value, double>, T>;
 
-  RealFunctor(const T* input, RealT* output, int64_t numel)
+template <typename T, typename RealT>
+using EnableComplex =
+    typename std::enable_if<!std::is_same<T, RealT>::value>::type;
+
+template <typename T, typename RealT>
+using DisableComplex =
+    typename std::enable_if<std::is_same<T, RealT>::value>::type;
+
+template <typename T>
+struct RealFunctor {
+  RealFunctor(const T* input, Real<T>* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -65,9 +74,26 @@ struct RealFunctor {
   }
 
   const T* input_;
-  RealT* output_;
+  Real<T>* output_;
   int64_t numel_;
 };
+
+// template <typename T>
+// typename RealT
+// typename std::enable_if<std::is_same<T, RealT>::value>::type
+// struct RealFunctor {
+//   RealFunctor(const T* input, RealT* output, int64_t numel)
+//       : input_(input), output_(output), numel_(numel) {}
+
+//   // If T and RealT is same dtype, they are all real value, assign directly
+//   HOSTDEVICE void operator()(int64_t idx) const {
+//     output_[idx] = input_[idx];
+//   }
+
+//   const T* input_;
+//   RealT* output_;
+//   int64_t numel_;
+// };
 
 template <typename T>
 struct ImagFunctor {
@@ -84,6 +110,44 @@ struct ImagFunctor {
 
   const T* input_;
   ImagT* output_;
+  int64_t numel_;
+};
+
+template <typename T>
+struct RealToComplexFunctor {
+  using RealT =
+      select_t<cond<std::is_same<T, platform::complex64>::value, float>,
+               cond<std::is_same<T, platform::complex128>::value, double>, T>;
+
+  RealToComplexFunctor(const RealT* input, T* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx].real = input_[idx];
+    output_[idx].imag = 0;
+  }
+
+  const RealT* input_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <typename T>
+struct ImagToComplexFunctor {
+  using ImagT =
+      select_t<cond<std::is_same<T, platform::complex64>::value, float>,
+               cond<std::is_same<T, platform::complex128>::value, double>, T>;
+
+  ImagToComplexFunctor(const ImagT* input, T* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx].real = 0;
+    output_[idx].imag = input_[idx];
+  }
+
+  const ImagT* input_;
+  T* output_;
   int64_t numel_;
 };
 
