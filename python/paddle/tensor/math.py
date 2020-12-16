@@ -2227,8 +2227,7 @@ def conj(input, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        out (Tensor): The conjugate of input. The shape and data type is the same with input. \
-            If :code:`out` is not None, the returned value is :code:`out` .
+        out (Tensor): The conjugate of input. The shape and data type is the same with input.
 
     Examples:
         .. code-block:: python
