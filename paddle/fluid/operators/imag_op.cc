@@ -50,23 +50,22 @@ class ImagGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ImagGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    "Out@Grad", "ImagGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   "X@Grad", "ImagGrad");
 
-    auto x_dims = ctx->GetInputDim("X");
-    auto x_grad_name = framework::GradVarName("X");
-
-    if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
-    }
+    auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    auto dtype = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    auto complex_dtype = framework::ToComplexType(dtype);
+    return framework::OpKernelType(complex_dtype, ctx.GetPlace());
   }
 };
 
@@ -76,11 +75,15 @@ class ImagGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("imag_grad");
-    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(ImagOpInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ImagGradOpInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
