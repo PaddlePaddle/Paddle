@@ -163,14 +163,13 @@ class InstanceNorm1D(_InstanceNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           instance_norm = paddle.nn.InstanceNorm1D(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy())
+          print(instance_norm_out)
 
     """
 
@@ -235,14 +234,13 @@ class InstanceNorm2D(_InstanceNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           instance_norm = paddle.nn.InstanceNorm2D(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy())
+          print(instance_norm_out)
     """
 
     def _check_input_dim(self, input):
@@ -306,14 +304,13 @@ class InstanceNorm3D(_InstanceNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           instance_norm = paddle.nn.InstanceNorm3D(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy())
+          print(instance_norm_out.numpy)
     """
 
     def _check_input_dim(self, input):
@@ -352,6 +349,7 @@ class GroupNorm(layers.Layer):
 
     Examples:
         .. code-block:: python
+
           import paddle
           import numpy as np
 
@@ -492,14 +490,13 @@ class LayerNorm(layers.Layer):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           layer_norm = paddle.nn.LayerNorm(x_data.shape[1:])
           layer_norm_out = layer_norm(x)
 
-          print(layer_norm_out.numpy())
+          print(layer_norm_out)
     """
 
     def __init__(self,
@@ -714,14 +711,13 @@ class BatchNorm1D(_BatchNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           batch_norm = paddle.nn.BatchNorm1D(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy())
+          print(batch_norm_out)
     """
 
     def _check_data_format(self, input):
@@ -804,14 +800,13 @@ class BatchNorm2D(_BatchNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           batch_norm = paddle.nn.BatchNorm2D(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy())
+          print(batch_norm_out)
     """
 
     def _check_data_format(self, input):
@@ -893,14 +888,13 @@ class BatchNorm3D(_BatchNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           batch_norm = paddle.nn.BatchNorm3D(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy())
+          print(batch_norm_out)
     """
 
     def _check_data_format(self, input):

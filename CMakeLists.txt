@@ -28,6 +28,7 @@ include(generic)            # simplify cmake module
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDA QUIET)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
+option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN"        OFF)
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
@@ -49,6 +50,11 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "AR tools: ${CMAKE_AR}")
+
+# MUSL build turn off warnings
+if(WITH_MUSL)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy")
+endif()
 
 if(WIN32)
     option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
@@ -127,6 +133,7 @@ option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_NV_JETSON     "Compile PaddlePaddle with NV JETSON"             OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
+option(WITH_INCREMENTAL_COVERAGE    "Generate coverage reports only for incremental code"       OFF)
 OPTION(WITH_LIBXSMM     "Compile with libxsmm"                          OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(WITH_PSLIB       "Compile with pslib support"                    OFF)
@@ -144,6 +151,7 @@ option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
 option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
+option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -238,6 +246,12 @@ if(WITH_PROFILER)
     add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
+if(WITH_DISTRIBUTE)
+    if(LINUX)
+        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
+    endif()
+endif()
+
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION
@@ -250,12 +264,6 @@ if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)
 endif(WITH_AMD_GPU)
-
-if(WITH_DISTRIBUTE)
-    if(LINUX)
-        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
-    endif()
-endif()
 
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")

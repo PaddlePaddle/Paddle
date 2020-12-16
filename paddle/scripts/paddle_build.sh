@@ -51,6 +51,7 @@ function init() {
     NONE='\033[0m'
 
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+    export PADDLE_ROOT
     if [ -z "${SCRIPT_NAME}" ]; then
         SCRIPT_NAME=$0
     fi
@@ -59,6 +60,17 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
+
+    # set CI_SKIP_CPP_TEST if only *.py changed
+    # In order to avoid using in some CI(such as daily performance), the current
+    # branch must not be `${BRANCH}` which is usually develop.
+    if [ ${CI_SKIP_CPP_TEST:-ON} == "OFF"  ];then
+        echo "CI_SKIP_CPP_TEST=OFF"
+    else
+        if [ "$(git branch | grep "^\*" | awk '{print $2}')" != "${BRANCH}" ]; then
+            git diff --name-only ${BRANCH} | grep -v "\.py$" || export CI_SKIP_CPP_TEST=ON
+        fi
+    fi
 }
 
 function cmake_base() {
@@ -222,6 +234,7 @@ function cmake_base() {
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
         -DWITH_GPU=${WITH_GPU:-OFF}
+        -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
@@ -231,6 +244,7 @@ function cmake_base() {
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
+        -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -240,10 +254,11 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
-	    -DWITH_GLOO=${gloo_flag}
+        -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
         -DLITE_GIT_TAG=develop
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -254,6 +269,7 @@ EOF
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
+        -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
@@ -264,6 +280,7 @@ EOF
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
+        -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
@@ -272,10 +289,12 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
-	    -DWITH_GLOO=${gloo_flag} \
+        -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=develop \
         -DWITH_XPU=${WITH_XPU:-OFF} \
-        -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
+        -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
+        -DWITH_LITE=${WITH_LITE:-OFF} \
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -352,7 +371,14 @@ function build_base() {
         make clean
     fi
 
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+
     make install -j ${parallel_number};build_error=$?
+
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -419,10 +445,19 @@ EOF
     if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
         make clean
     fi
+
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+
     make install -j 8;build_error=$?
+
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
+
     set -e
     build_size
 }
@@ -766,6 +801,16 @@ function check_approvals_of_unittest() {
     set -x
 }
 
+function check_diff_file_for_coverage() {
+    diff_h_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_cc_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_py_file=$(git diff --name-status test develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
+
+    export PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}
+    export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}
+    export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
+}
+
 function check_change_of_unittest() {
     generate_unittest_spec "PR"
     fetch_upstream_develop_if_not_exist
@@ -969,15 +1014,15 @@ function card_test() {
         tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V --timeout 120 | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else  
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         fi
     done
@@ -1003,6 +1048,17 @@ set +x
         precison_cases=""
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             precision_cases=`python $PADDLE_ROOT/tools/get_pr_ut.py`
+        fi
+        bash $PADDLE_ROOT/tools/check_added_ut.sh
+        if [ -a "$PADDLE_ROOT/added_ut" ];then
+            added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+            ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            if [ "$added_ut_error" != 0 ];then
+                echo "========================================"
+                echo "Added UT should not exceed 15 seconds"
+                echo "========================================"
+                exit 8;
+            fi
         fi
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
@@ -1531,13 +1587,22 @@ EOF
     startTime_s=`date +%s`
     set +e
     cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto};build_error=$?
+
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+
     make -j ${parallel_number} fluid_lib_dist;build_error=$?
     make -j ${parallel_number} inference_lib_dist;build_error=$?
+
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+
     build_size "paddle_inference"
 }
 
@@ -1608,6 +1673,13 @@ function example() {
       exit 5
     fi
 }
+
+
+function collect_ccache_hits() {
+    rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
+    echo "ccache hit rate: ${rate}%"
+}
+
 
 function test_op_benchmark() {
     bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
@@ -1720,6 +1792,7 @@ function main() {
         ;;
       cicheck_coverage)
         check_approvals_of_unittest 1
+        check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
         parallel_test

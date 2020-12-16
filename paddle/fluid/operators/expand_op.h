@@ -56,6 +56,12 @@ inline std::vector<int> get_expand_times(
       TensorCopySync(*expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
     }
+#ifdef PADDLE_WITH_XPU
+    if (platform::is_xpu_place(expand_tensor->place())) {
+      TensorCopySync(*expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+      expand_data = cpu_expand_tensor.data<int>();
+    }
+#endif
     auto vec_epxand_times =
         std::vector<int>(expand_data, expand_data + expand_tensor->numel());
     return vec_epxand_times;
@@ -72,7 +78,15 @@ inline std::vector<int> get_expand_times(
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_times.push_back(*temp.data<int32_t>());
-      } else {
+      }
+#ifdef PADDLE_WITH_XPU
+      else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
+        framework::Tensor temp;
+        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vec_epxand_times.push_back(*temp.data<int32_t>());
+      }
+#endif
+      else {  // NOLINT
         vec_epxand_times.push_back(*tensor->data<int32_t>());
       }
     }

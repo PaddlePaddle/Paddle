@@ -515,6 +515,9 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
 
+  m.def("_promote_types_if_complex_exists",
+        &paddle::framework::PromoteTypesIfComplexExists);
+
   BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
@@ -1373,7 +1376,6 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle
 
           place = paddle.CUDAPlace(0)
-          paddle.disable_static(place)
 
         )DOC")
       .def("__init__",
@@ -1985,6 +1987,11 @@ All parameter, weight, gradient are variables in Paddle.
 #endif  // PADDLE_WITH_CUDA
 
   m.def("size_of_dtype", framework::SizeOfType);
+
+#ifdef PADDLE_WITH_CUDA
+  m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
+  m.def("get_cublas_switch", platform::AllowTF32Cublas);
+#endif  // PADDLE_WITH_CUDA
 
   using VarQuantScale =
       std::unordered_map<std::string, std::pair<bool, LoDTensor>>;

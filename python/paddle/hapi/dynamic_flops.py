@@ -16,7 +16,7 @@ import paddle
 import warnings
 import paddle.nn as nn
 import numpy as np
-from .static_flops import static_flops, _verify_dependent_package
+from .static_flops import static_flops
 
 __all__ = ['flops']
 
@@ -229,7 +229,7 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         else:
             if m_type not in types_collection:
                 print(
-                    "Cannot find suitable count function for {}. Treat it as zero Macs.".
+                    "Cannot find suitable count function for {}. Treat it as zero FLOPs.".
                     format(m_type))
 
         if flops_fn is not None:
@@ -256,15 +256,21 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
             continue
         total_ops += m.total_ops
         total_params += m.total_params
-
-    total_ops = int(total_ops)
-    total_params = int(total_params)
+    if hasattr(m, 'total_ops') and hasattr(m, 'total_params'):
+        total_ops = int(total_ops)
+        total_params = int(total_params)
 
     if training:
         model.train()
     for handler in handler_collection:
         handler.remove()
-    _verify_dependent_package()
+
+    try:
+        from prettytable import PrettyTable
+    except ImportError:
+        raise ImportError(
+            "paddle.flops() requires package `prettytable`, place install it firstly using `pip install prettytable`. "
+        )
     table = PrettyTable(
         ["Layer Name", "Input Shape", "Output Shape", "Params", "Flops"])
 

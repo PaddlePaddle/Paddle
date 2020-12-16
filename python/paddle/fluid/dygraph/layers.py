@@ -21,6 +21,7 @@ import re
 import copy
 import weakref
 import warnings
+from copy import deepcopy
 
 from . import parallel_helper
 from .. import unique_name
@@ -132,8 +133,11 @@ class Layer(core.Layer):
                 out = mylayer(x)
 
         """
-        # global setting
-        framework._dygraph_tracer().train_mode()
+        # global setting in dygraph
+        # NOTE(chenweihang): nn.Layer also can be used in static mode,
+        # but _dygraph_tracer() can not be called in static mode
+        if in_dygraph_mode():
+            framework._dygraph_tracer().train_mode()
         # Layer-level setting
         self.training = True
         for layer in self.sublayers():
@@ -170,8 +174,11 @@ class Layer(core.Layer):
                 print(out)
 
         """
-        # global setting
-        framework._dygraph_tracer().eval_mode()
+        # global setting in dygraph
+        # NOTE(chenweihang): nn.Layer also can be used in static mode,
+        # but _dygraph_tracer() can not be called in static mode
+        if in_dygraph_mode():
+            framework._dygraph_tracer().eval_mode()
         # Layer-level setting
         self.training = False
         for layer in self.sublayers():
@@ -865,30 +872,30 @@ class Layer(core.Layer):
         pass
 
     def __call__(self, *inputs, **kwargs):
-        for forward_pre_hook in self._forward_pre_hooks.values():
-            hook_result = forward_pre_hook(self, inputs)
-            if hook_result is not None:
-                if not isinstance(hook_result, tuple):
-                    hook_result = (hook_result, )
-                inputs = hook_result
-
-        if not self._built:
-            with program_desc_tracing_guard(False):
-                self._build_once(*inputs, **kwargs)
-                if parallel_helper._is_data_parallel_mode():
-                    parallel_helper._broadcast_parameters(
-                        self._parameters.values())
-            self._built = True
-
         with param_guard(self._parameters), param_guard(self._buffers):
+            for forward_pre_hook in self._forward_pre_hooks.values():
+                hook_result = forward_pre_hook(self, inputs)
+                if hook_result is not None:
+                    if not isinstance(hook_result, tuple):
+                        hook_result = (hook_result, )
+                    inputs = hook_result
+
+            if not self._built:
+                with program_desc_tracing_guard(False):
+                    self._build_once(*inputs, **kwargs)
+                    if parallel_helper._is_data_parallel_mode():
+                        parallel_helper._broadcast_parameters(
+                            self._parameters.values())
+                self._built = True
+
             outputs = self.forward(*inputs, **kwargs)
 
-        for forward_post_hook in self._forward_post_hooks.values():
-            hook_result = forward_post_hook(self, inputs, outputs)
-            if hook_result is not None:
-                outputs = hook_result
+            for forward_post_hook in self._forward_post_hooks.values():
+                hook_result = forward_post_hook(self, inputs, outputs)
+                if hook_result is not None:
+                    outputs = hook_result
 
-        return outputs
+            return outputs
 
     def forward(self, *inputs, **kwargs):
         """
@@ -1010,15 +1017,26 @@ class Layer(core.Layer):
             self._parameters[name] = parameter
         return parameter
 
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
     def __getattr__(self, name):
-        if name in self._parameters:
-            return self._parameters[name]
-        elif name in self._sub_layers:
-            return self._sub_layers[name]
-        elif name in self._buffers:
-            return self._buffers[name]
-        else:
-            return object.__getattribute__(self, name)
+        if '_parameters' in self.__dict__:
+            _parameters = self.__dict__['_parameters']
+            if name in self._parameters:
+                return self._parameters[name]
+        if '_sub_layers' in self.__dict__:
+            _sub_layers = self.__dict__['_sub_layers']
+            if name in self._sub_layers:
+                return self._sub_layers[name]
+        if '_buffers' in self.__dict__:
+            _buffers = self.__dict__['_buffers']
+            if name in _buffers:
+                return _buffers[name]
+        return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
         def _remove_if_exist(*dicts):
@@ -1083,7 +1101,15 @@ class Layer(core.Layer):
                     # value via `assign`.
                     if type(value) == framework.Variable:
                         from paddle import assign
-                        assign(value, _buffers[name])
+                        # Note(zhhsplendid): the condition below happens in PaddleGan model,
+                        # but should all non-Variable _buffers[name] be re-assign? We
+                        # should consider it in the future. I current wrote this as
+                        # conservative code.
+                        if _buffers[name] is None or type(_buffers[
+                                name]) == core.VarBase:
+                            _buffers[name] = assign(value)
+                        else:
+                            assign(value, _buffers[name])
                     elif value is not None:
                         raise TypeError(
                             "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"

@@ -211,7 +211,7 @@ class NetWithDictPop(paddle.nn.Layer):
     def forward(self, x, **kwargs):
         x = paddle.to_tensor(x)
         y = kwargs.pop('y', None)
-        if y is True:
+        if y:
             y = paddle.to_tensor(x)
             x += y
 

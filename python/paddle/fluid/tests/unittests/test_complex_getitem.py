@@ -80,6 +80,8 @@ class TestComplexGetitemLayer(unittest.TestCase):
 
             np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
 
+            np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
+
     def test_case6(self):
         x_np = np.random.randn(2, 3, 4) + 1j * np.random.randn(2, 3, 4)
         x_np_slice = x_np[0][1:3][0:4:2]

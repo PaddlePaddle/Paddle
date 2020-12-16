@@ -85,7 +85,7 @@ class RPCServer {
   // class, and auto generate a condition id for this call
   // to be used for the barrier.
   void RegisterRPC(const std::string& rpc_name, RequestHandler* handler,
-                   int thread_num = 5);
+                   int thread_num = 1);
 
   int GetThreadNum(const std::string& rpc_name) {
     return rpc_thread_num_[rpc_name];

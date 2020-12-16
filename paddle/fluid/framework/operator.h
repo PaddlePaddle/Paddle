@@ -504,6 +504,10 @@ class OperatorWithKernel : public OperatorBase {
   proto::VarType::Type IndicateVarDataType(const ExecutionContext& ctx,
                                            const std::string& name) const;
 
+  proto::VarType::Type IndicateOrPromoteVarDataTypes(
+      const ExecutionContext& ctx, const std::string& name1,
+      const std::string& name2) const;
+
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
 
   // change this to public so that in dygraph mode we can call it to check if we
@@ -518,11 +522,6 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  private:
-  void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,
-                          proto::VarType::Type* type) const;
-  // indicate kernel DataType by input data. By default all input data must be
-  // same.
-  proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
                RuntimeContext* runtime_ctx) const;
@@ -545,6 +544,17 @@ class OperatorWithKernel : public OperatorBase {
 
   void ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
                     const platform::Place& place) const;
+
+  /* Inner assist methods */
+  // indicate kernel DataType by input data.
+  // By default all input data must be same.
+  proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
+  // used for IndicateDataType
+  void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,
+                          proto::VarType::Type* type) const;
+  // used for IndicateOrPromoteVarDataTypes
+  Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
+                                   const std::string& name) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
