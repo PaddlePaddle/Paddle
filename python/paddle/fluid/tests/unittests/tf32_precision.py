@@ -79,8 +79,7 @@ def tf32_on_and_off(tf32_precision=1e-5):
     def wrapper(func):
         @functools.wraps(func)
         def wrapped(self):
-            num_cuda = core.get_cuda_device_count()
-            if num_cuda != 0 and tf32_is_not_fp32():
+            if tf32_is_not_fp32():
                 with_tf32_disabled(self, lambda: func(self))
                 with_tf32_enabled(self, lambda: func(self))
             else:
