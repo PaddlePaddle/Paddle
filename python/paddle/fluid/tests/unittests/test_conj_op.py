@@ -23,6 +23,7 @@ sys.path.append("..")
 from op_test import OpTest
 from paddle.fluid import Program, program_guard
 import paddle.fluid.dygraph as dg
+import paddle.static as static
 from numpy.random import random as rand
 
 paddle.enable_static()
@@ -90,6 +91,25 @@ class TestComplexConjOp(unittest.TestCase):
                     result = var_x.conj().numpy()
                     target = np.conj(input)
                     self.assertTrue(np.array_equal(result, target))
+
+    def test_conj_static_mode(self):
+        def init_input_output(dtype):
+            input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
+                [2, 20, 2, 3]).astype(dtype)
+            return {'x': input}, np.conj(input)
+
+        for dtype in self._dtypes:
+            input_dict, np_res = init_input_output(dtype)
+            for place in self._places:
+                with static.program_guard(static.Program()):
+                    x_dtype = np.complex64 if dtype == "float32" else np.complex128
+                    x = static.data(
+                        name="x", shape=[2, 20, 2, 3], dtype=x_dtype)
+                    out = paddle.conj(x)
+
+                    exe = static.Executor(place)
+                    out_value = exe.run(feed=input_dict, fetch_list=[out.name])
+                    self.assertTrue(np.array_equal(np_res, out_value[0]))
 
 
 if __name__ == "__main__":
