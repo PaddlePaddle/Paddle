@@ -20,6 +20,7 @@ limitations under the License. */
 #include <random>
 #include <string>
 #include <unordered_map>
+#include <unordered_set> 
 #include <vector>
 #include "brpc/channel.h"
 #include "brpc/controller.h"
@@ -82,7 +83,7 @@ class HeterService : public ::paddle::PsService {
       response->set_err_code(service_ret);
       response->set_err_msg("server internal error");
     }
-  };
+  }
 
   void SendAndRecvVariable(::google::protobuf::RpcController* controller,
                            const MultiVarMsg* request, MultiVarMsg* response,
@@ -134,6 +135,9 @@ class HeterServer {
   virtual ~HeterServer() {}
 
   void Stop() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    stoped_ = true;
+    cv_.notify_all();
     server_.Stop(1000);
     server_.Join();
   }
@@ -162,6 +166,10 @@ class HeterServer {
 
  private:
   static std::shared_ptr<HeterServer> s_instance_;
+  mutable std::mutex mutex_;
+  std::condition_variable cv_;
+  std::condition_variable condition_ready_;
+  bool stoped_ = false;
   std::string endpoint_;
 
  protected:
@@ -169,7 +177,7 @@ class HeterServer {
   HeterService service_;
   DISABLE_COPY_AND_ASSIGN(HeterServer);
   std::mutex mutex_ready_;
-  std::condition_variable condition_ready_;
+
   int ready_;
 };
 

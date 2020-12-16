@@ -53,6 +53,19 @@ void HeterClient::Stop() {
   }
 }
 
+void HeterClient::FinalizeWorker() {
+  running_ = false;
+  if (!is_initialized_) {
+    VLOG(0) << "HeterClient is not inited, do nothing";
+  } else {
+    if (main_thread_) {
+      main_thread_->join();
+      main_thread_.reset(nullptr);
+    }
+    VLOG(1) << "HeterClient Stop Done";
+  }
+}
+
 std::future<int32_t> HeterClient::StopHeterWorker() {
   return SendCmd(-1, PS_STOP_SERVER, {});
 }

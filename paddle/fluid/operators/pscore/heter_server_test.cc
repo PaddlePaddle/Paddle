@@ -202,10 +202,10 @@ TEST(SENDANDRECV, CPU) {
     EXPECT_EQ(ptr[i], 0.5);
   }
   LOG(INFO) << "end CHECK";
+  rpc_client->FinalizeWorker();
   // b_rpc_service->Stop();
   b_rpc_service->Stop();
+  LOG(INFO) << "end server Stop";
   server_thread.join();
-  // server_thread.join();
-  // b_rpc_service.reset(nullptr);
-  // b_req_handler.reset(nullptr);
+  LOG(INFO) << "end server thread join";
 }

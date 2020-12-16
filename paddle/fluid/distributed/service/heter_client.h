@@ -88,6 +88,8 @@ class HeterClient {
 
   void Stop();
 
+  void FinalizeWorker();
+
   void MainThread();
 
   void RpcProfilerControl();
