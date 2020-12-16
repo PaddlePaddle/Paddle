@@ -318,6 +318,20 @@ if [ "${HASUTFIXED}" != "" ]; then
   check_approval 1 52739577 46314656 12538138
 fi
 
+# NOTE(Avin0323): Files withe the name "unity_build_rule.cmake" are rules used
+# by Unity Build to combine source files. Changes to these rules may cause
+# errors in the compilation. Specific personnel are required to audit the
+# modification of these files.
+UNITYBUILD_RULE_CHANGED=$(git diff --name-only upstream/$BRANCH |
+                          grep "unity_build_rule.cmake" || true)
+if [ -n "${UNITYBUILD_RULE_CHANGED}" -a -n "${GIT_PR_ID}" ]; then
+    echo_line="You must have one RD (Avin0323(Recommend) or luotao1) approval
+               for modifying unity_build_rule.cmake which the rules of Unity
+               Build."
+    echo_line=$(echo ${echo_line})
+    check_approval 1 16167147 6836917
+fi
+
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e "${echo_list[@]}"
