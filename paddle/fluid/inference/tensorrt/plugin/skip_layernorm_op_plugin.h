@@ -31,11 +31,9 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit SkipLayerNormPluginDynamic(const float* bias, const float* scale,
                                       int bias_size, int scale_size,
-                                      const float eps, bool ban_fp16)
-      : bias_size_(bias_size),
-        scale_size_(scale_size),
-        eps_(eps),
-        ban_fp16_(ban_fp16) {
+                                      const float eps, bool with_fp16)
+      : bias_size_(bias_size), scale_size_(scale_size), eps_(eps) {
+    with_fp16_ = with_fp16;
     bias_.resize(bias_size);
     scale_.resize(scale_size);
     std::copy(bias, bias + bias_size, bias_.data());
@@ -47,12 +45,12 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &bias_size_);
     DeserializeValue(&serial_data, &serial_length, &scale_size_);
     DeserializeValue(&serial_data, &serial_length, &eps_);
-    DeserializeValue(&serial_data, &serial_length, &ban_fp16_);
+    DeserializeValue(&serial_data, &serial_length, &with_fp16_);
   }
 
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     auto ptr = new SkipLayerNormPluginDynamic(
-        bias_.data(), scale_.data(), bias_size_, scale_size_, eps_, ban_fp16_);
+        bias_.data(), scale_.data(), bias_size_, scale_size_, eps_, with_fp16_);
     ptr->bias_gpu_ = bias_gpu_;
     ptr->scale_gpu_ = bias_gpu_;
     return ptr;
@@ -65,7 +63,7 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const override {
     size_t ser_size = SerializedSize(bias_) + SerializedSize(scale_) +
                       SerializedSize(bias_size_) + SerializedSize(scale_size_) +
-                      SerializedSize(eps_) + SerializedSize(eps_);
+                      SerializedSize(eps_) + SerializedSize(with_fp16_);
     return ser_size;
   }
   void serialize(void* buffer) const override {
@@ -74,7 +72,7 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, bias_size_);
     SerializeValue(&buffer, scale_size_);
     SerializeValue(&buffer, eps_);
-    SerializeValue(&buffer, ban_fp16_);
+    SerializeValue(&buffer, with_fp16_);
   }
 
   nvinfer1::DimsExprs getOutputDimensions(
@@ -118,7 +116,6 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
   int scale_size_;
 
   float eps_;
-  bool ban_fp16_;
 };
 
 class SkipLayerNormPluginV2Creator : public nvinfer1::IPluginCreator {

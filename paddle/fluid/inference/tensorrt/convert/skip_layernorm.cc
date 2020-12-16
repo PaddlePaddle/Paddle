@@ -85,10 +85,11 @@ class SkipLayerNormOpConverter : public OpConverter {
         layer = plugin_layer;
       } else {
         float eps = boost::get<float>(op_desc.GetAttr("epsilon"));
-        bool ban_fp16 = engine_->disable_trt_plugin_fp16();
+        bool with_fp16 =
+            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
         plugin::SkipLayerNormPluginDynamic* plugin =
             new plugin::SkipLayerNormPluginDynamic(bias, scale, bias_size,
-                                                   scale_size, eps, ban_fp16);
+                                                   scale_size, eps, with_fp16);
         layer = engine_->AddPluginV2(inputs.data(), 2, plugin);
       }
     } else {

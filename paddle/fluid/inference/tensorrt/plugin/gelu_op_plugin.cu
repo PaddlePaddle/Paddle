@@ -17,6 +17,7 @@
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/gelu_op_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace inference {
@@ -38,14 +39,14 @@ REGISTER_TRT_PLUGIN("gelu_plugin", CreateGeluPluginDeserialize);
 
 bool GeluPlugin::supportsFormat(nvinfer1::DataType type,
                                 nvinfer1::PluginFormat format) const {
-#ifdef SUPPORTS_CUDA_FP16
-  return ((type == nvinfer1::DataType::kFLOAT ||
-           type == nvinfer1::DataType::kHALF) &&
-          (format == nvinfer1::PluginFormat::kNCHW));
-#else
-  return ((type == nvinfer1::DataType::kFLOAT) &&
-          (format == nvinfer1::PluginFormat::kNCHW));
-#endif
+  if (with_fp16_) {
+    return ((type == nvinfer1::DataType::kFLOAT ||
+             type == nvinfer1::DataType::kHALF) &&
+            (format == nvinfer1::PluginFormat::kNCHW));
+  } else {
+    return ((type == nvinfer1::DataType::kFLOAT) &&
+            (format == nvinfer1::PluginFormat::kNCHW));
+  }
 }
 
 nvinfer1::Dims GeluPlugin::getOutputDimensions(int index,
@@ -87,6 +88,7 @@ __device__ half do_tanh<half>(half a) {
 template <typename T, unsigned TPB>
 __global__ void no_exact_gelu_kernel(const T a, const T b, const T c, int n,
                                      const T* input, T* output) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int idx = blockIdx.x * TPB + threadIdx.x;
   if (idx < n) {
     const T in = input[idx];
@@ -94,6 +96,7 @@ __global__ void no_exact_gelu_kernel(const T a, const T b, const T c, int n,
     const T cdf = a + a * do_tanh<T>(tmp);
     output[idx] = in * cdf;
   }
+#endif
 }
 
 int GeluPlugin::enqueue(int batch_size, const void* const* inputs,
@@ -108,21 +111,18 @@ int GeluPlugin::enqueue(int batch_size, const void* const* inputs,
 
   auto type = getDataType();
   if (type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp32";
     const float* input = static_cast<const float*>(inputs[0]);
     float* output = static_cast<float*>(outputs[0]);
     gelu_kernel<float, block_size><<<grid_size, block_size, 0, stream>>>(
         kA, num, input, output);
   } else if (type == nvinfer1::DataType::kHALF) {
-#ifdef SUPPORTS_CUDA_FP16
+    VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp16";
     const half* input = static_cast<const half*>(inputs[0]);
     half* output = static_cast<half*>(outputs[0]);
     no_exact_gelu_kernel<half,
                          block_size><<<grid_size, block_size, 0, stream>>>(
         kAT, kBT, kCT, num, input, output);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "The cuda archs you specific should greater than 600."));
-#endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The Gelu TRT Plugin's input type should be float or half."));
@@ -155,14 +155,14 @@ bool GeluPluginDynamic::supportsFormatCombination(
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (pos == 0) {
-#ifdef SUPPORTS_CUDA_FP16
-    return (in.type == nvinfer1::DataType::kFLOAT ||
-            in.type == nvinfer1::DataType::kHALF) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
-#else
-    return (in.type == nvinfer1::DataType::kFLOAT) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
+    if (with_fp16_) {
+      return (in.type == nvinfer1::DataType::kFLOAT ||
+              in.type == nvinfer1::DataType::kHALF) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    } else {
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    }
   }
   const nvinfer1::PluginTensorDesc& prev = in_out[pos - 1];
   // output
@@ -189,21 +189,18 @@ int GeluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp32";
     const float* input = static_cast<const float*>(inputs[0]);
     float* output = static_cast<float*>(outputs[0]);
     gelu_kernel<float, block_size><<<grid_size, block_size, 0, stream>>>(
         kA, num, input, output);
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef SUPPORTS_CUDA_FP16
+    VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp16";
     const half* input = static_cast<const half*>(inputs[0]);
     half* output = static_cast<half*>(outputs[0]);
     no_exact_gelu_kernel<half,
                          block_size><<<grid_size, block_size, 0, stream>>>(
         kAT, kBT, kCT, num, input, output);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "The cuda archs you specific should greater than 600."));
-#endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The Gelu TRT Plugin's input type should be float or half."));

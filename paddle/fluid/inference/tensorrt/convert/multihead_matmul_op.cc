@@ -191,10 +191,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
         std::vector<nvinfer1::ITensor*> plugin_inputs;
         plugin_inputs.push_back(fc_out);
         plugin_inputs.push_back(input_bias_qk);
-        bool ban_fp16 = engine_->disable_trt_plugin_fp16();
+        bool with_fp16 =
+            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
         plugin::DynamicPluginTensorRT* plugin =
             new plugin::QkvToContextPluginDynamic(hidden, head_number,
-                                                  head_size, scale, ban_fp16);
+                                                  head_size, scale, with_fp16);
         layer = engine_->AddPluginV2(plugin_inputs.data(), 2, plugin);
       }
     } else {

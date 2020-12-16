@@ -36,7 +36,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG release/v2.7)
+    set(LITE_GIT_TAG 68e64e0eb74cdd13383ae78caf889973499ebd14)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
