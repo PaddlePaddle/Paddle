@@ -714,7 +714,7 @@ class EarlyStopping(Callback):
             from paddle.vision.models import LeNet
             from paddle.vision.datasets import MNIST
             from paddle.metric import Accuracy
-            from paddle.nn.layer.loss import CrossEntropyLoss
+            from paddle.nn import CrossEntropyLoss
             import paddle.vision.transforms as T
 
             device = paddle.set_device('cpu')
@@ -772,7 +772,8 @@ class EarlyStopping(Callback):
         self.best_weights = None
         self.stopped_epoch = 0
         self.save_best_model = save_best_model
-        self.save_dir = None  # `save_dir` is get from `config_callbacks`
+        # The value of `save_dir` is set in function `config_callbacks`
+        self.save_dir = None
         if mode not in ['auto', 'min', 'max']:
             warnings.warn('EarlyStopping mode %s is unknown, '
                           'fallback to auto mode.' % mode)
