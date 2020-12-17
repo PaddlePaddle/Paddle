@@ -33,13 +33,9 @@ inline std::vector<int> get_new_shape_xpu(
     PADDLE_ENFORCE_EQ(
         tensor->dims(), framework::make_ddim({1}),
         platform::errors::InvalidArgument("shape of dim tensor should be [1]"));
-    if (platform::is_xpu_place(tensor->place())) {
-      framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-      vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
-    } else {
-      vec_new_shape.push_back(static_cast<int32_t>(*tensor->data<int32_t>()));
-    }
+    framework::Tensor temp;
+    TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+    vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
   }
 
   return vec_new_shape;
@@ -49,12 +45,9 @@ template <typename T>
 inline std::vector<T> get_new_data_from_tensor_xpu(
     const Tensor* new_data_tensor) {
   std::vector<T> vec_new_data;
-  auto* new_data = new_data_tensor->data<T>();
   framework::Tensor cpu_starts_tensor;
-  if (platform::is_xpu_place(new_data_tensor->place())) {
-    TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
-    new_data = cpu_starts_tensor.data<T>();
-  }
+  TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
+  auto* new_data = cpu_starts_tensor.data<T>();
   vec_new_data = std::vector<T>(new_data, new_data + new_data_tensor->numel());
   return vec_new_data;
 }
@@ -67,9 +60,9 @@ class InterpolateV2XPUKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Out");
 
     auto input_dims = input->dims();
-    PADDLE_ENFORCE_EQ(input_dims.size(), 4,
-                      platform::errors::External(
-                          "XPU Interpolate v2 kernel only support 2d"));
+    PADDLE_ENFORCE_EQ(
+        input_dims.size(), 4,
+        platform::errors::External("XPU Interpolate kernel only support 2d"));
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
@@ -158,10 +151,10 @@ class InterpolateV2XPUKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "XPU nearest is only support NCHW"));
     }
-    int r = xpu::interpolate2d<float>(dev_ctx.x_context(), input->data<float>(),
-                                      output->data<float>(), n, c, in_h, in_w,
-                                      out_h, out_w, nearest, trans_mode,
-                                      (data_layout == DataLayout::kNCHW));
+    int r = xpu::interpolate2d<T>(dev_ctx.x_context(), input->data<T>(),
+                                  output->data<T>(), n, c, in_h, in_w, out_h,
+                                  out_w, nearest, trans_mode,
+                                  (data_layout == DataLayout::kNCHW));
     PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                       platform::errors::External("XPU interpolate2d kernel "
                                                  "return wrong value[%d %s]",
@@ -180,7 +173,7 @@ class InterpolateV2GradXPUKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(output_grad_dims.size(), 4,
                       platform::errors::External(
-                          "XPU Interpolategrad v2 kernel only support 2d"));
+                          "XPU Interpolategrad kernel only support 2d"));
 
     auto* input = ctx.Input<Tensor>("X");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
