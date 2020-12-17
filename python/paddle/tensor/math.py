@@ -2221,7 +2221,7 @@ def conj(x, name=None):
     This function computes the conjugate of the Tensor elementwisely.
 
     Args:
-        x (Tensor): The input thensor which hold the complex numbers. 
+        x (Tensor): The input tensor which hold the complex numbers. 
             Optional data types are: complex64, complex128, float32, float64, int32 or int64.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`

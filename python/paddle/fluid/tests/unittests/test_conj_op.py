@@ -111,6 +111,16 @@ class TestComplexConjOp(unittest.TestCase):
                     out_value = exe.run(feed=input_dict, fetch_list=[out.name])
                     self.assertTrue(np.array_equal(np_res, out_value[0]))
 
+    def test_conj_api_real_number(self):
+        for dtype in self._dtypes:
+            input = rand([2, 20, 2, 3]).astype(dtype)
+            for place in self._places:
+                with dg.guard(place):
+                    var_x = paddle.to_tensor(input)
+                    result = paddle.conj(var_x).numpy()
+                    target = np.conj(input)
+                    self.assertTrue(np.array_equal(result, target))
+
 
 if __name__ == "__main__":
     unittest.main()
