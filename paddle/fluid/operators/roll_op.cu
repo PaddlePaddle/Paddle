@@ -27,17 +27,21 @@ using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 __global__ void roll_cuda_kernel(const T* input, T* output, int64_t N,
-                                 int64_t start, int64_t size, int64_t stride) {
-  int64_t output_idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (output_idx >= N) {
+                                 int64_t* shifts, int64_t* strides, int64_t* sizes, int64_t nums) {
+  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= N) {
     return;
   }
-  int64_t dim_idx = output_idx % (stride * size) / stride;
-  int64_t input_idx = dim_idx >= (size - start)
-                          ? (output_idx - ((size - start) * stride))
-                          : (output_idx + (start * stride));
-  output[output_idx] = input[input_idx];
+  int64_t output_idx = idx;
+  int64_t dim_idx, dim_idx_shift;
+  for (int64_t i = 0; i < nums; i++) {
+    dim_idx = idx % (strides[i] * sizes[i]) / strides[i];
+    dim_idx_shift = (dim_idx + shifts[i]) % sizes[i];
+    output_idx = output_idx + (dim_idx_shift - dim_idx) * strides[i];
+  }
+  output[output_idx] = input[idx];
 }
+
 
 template <typename DeviceContext, typename T>
 class RollCUDAKernel : public framework::OpKernel<T> {
@@ -53,23 +57,41 @@ class RollCUDAKernel : public framework::OpKernel<T> {
     int64_t numel = in->numel();
     auto stream =
         context.template device_context<platform::CUDADeviceContext>().stream();
-
+    
     size_t nums = shifts.size();
     auto input_dim = in->dims();
     auto stride_dim = framework::stride(input_dim);
 
-    int64_t size, dim, start, stride;
+    int64_t dim, size;
+    size_t gpu_memory_size_ = sizeof(int64_t) * nums;
+    std::vector<int64_t> strides, sizes;
+    strides.resize(nums);
+    sizes.resize(nums);
+    paddle::memory::AllocationPtr shifts_gpu = memory::Alloc(context.GetPlace(), gpu_memory_size_);
+    paddle::memory::AllocationPtr strides_gpu = memory::Alloc(context.GetPlace(), gpu_memory_size_);
+    paddle::memory::AllocationPtr sizes_gpu = memory::Alloc(context.GetPlace(), gpu_memory_size_);
+
     for (size_t i = 0; i < nums; i++) {
       dim = dims[i] >= 0 ? dims[i] : dims[i] + input_dim.size();
       size = input_dim[dim];
-      start = (size - shifts[i]) % size;
-      stride = stride_dim[dim];
-
-      roll_cuda_kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                             PADDLE_CUDA_NUM_THREADS,
-                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-          in_data, out_data, numel, start, size, stride);
+      shifts[i] = (shifts[i] % size + size ) % size;
+      strides[i] = stride_dim[dim];
+      sizes[i] = size;
     }
+    paddle::memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, shifts_gpu->place()), shifts_gpu->ptr(), platform::CPUPlace(), shifts.data(),
+                           gpu_memory_size_, stream);
+    paddle::memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, strides_gpu->place()), strides_gpu->ptr(), platform::CPUPlace(), strides.data(),
+                           gpu_memory_size_, stream);
+    paddle::memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, sizes_gpu->place()), sizes_gpu->ptr(), platform::CPUPlace(), sizes.data(),
+                           gpu_memory_size_, stream);
+    int64_t* shifts_ptr = reinterpret_cast<int64_t*>(shifts_gpu->ptr());
+    int64_t* strides_ptr = reinterpret_cast<int64_t*>(strides_gpu->ptr());
+    int64_t* sizes_ptr = reinterpret_cast<int64_t*>(sizes_gpu->ptr());
+
+    roll_cuda_kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
+                            PADDLE_CUDA_NUM_THREADS,
+                        PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+        in_data, out_data, numel, shifts_ptr, strides_ptr, sizes_ptr, nums);
   }
 };
 
@@ -87,23 +109,41 @@ class RollGradCUDAKernel : public framework::OpKernel<T> {
     int64_t numel = in->numel();
     auto stream =
         context.template device_context<platform::CUDADeviceContext>().stream();
-
     size_t nums = shifts.size();
     auto input_dim = in->dims();
     auto stride_dim = framework::stride(input_dim);
 
-    int64_t size, dim, start, stride;
+    int64_t dim, size;
+    size_t gpu_memory_size_ = sizeof(int64_t) * nums;
+    std::vector<int64_t> strides, sizes;
+    strides.resize(nums);
+    sizes.resize(nums);
+    paddle::memory::AllocationPtr shifts_gpu = memory::Alloc(context.GetPlace(), gpu_memory_size_);
+    paddle::memory::AllocationPtr strides_gpu = memory::Alloc(context.GetPlace(), gpu_memory_size_);
+    paddle::memory::AllocationPtr sizes_gpu = memory::Alloc(context.GetPlace(), gpu_memory_size_);
+
     for (size_t i = 0; i < nums; i++) {
       dim = dims[i] >= 0 ? dims[i] : dims[i] + input_dim.size();
       size = input_dim[dim];
-      start = (size + shifts[i]) % size;
-      stride = stride_dim[dim];
-
-      roll_cuda_kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                             PADDLE_CUDA_NUM_THREADS,
-                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-          in_data, out_data, numel, start, size, stride);
+      shifts[i] = (( 0 - shifts[i]) % size + size ) % size;
+      strides[i] = stride_dim[dim];
+      sizes[i] = size;
     }
+
+    paddle::memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, shifts_gpu->place()), shifts_gpu->ptr(), platform::CPUPlace(), shifts.data(),
+                           gpu_memory_size_, stream);
+    paddle::memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, strides_gpu->place()), strides_gpu->ptr(), platform::CPUPlace(), strides.data(),
+                           gpu_memory_size_, stream);
+    paddle::memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, sizes_gpu->place()), sizes_gpu->ptr(), platform::CPUPlace(), sizes.data(),
+                           gpu_memory_size_, stream);
+    int64_t* shifts_ptr = reinterpret_cast<int64_t*>(shifts_gpu->ptr());
+    int64_t* strides_ptr = reinterpret_cast<int64_t*>(strides_gpu->ptr());
+    int64_t* sizes_ptr = reinterpret_cast<int64_t*>(sizes_gpu->ptr());
+
+    roll_cuda_kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
+                            PADDLE_CUDA_NUM_THREADS,
+                        PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+        in_data, out_data, numel, shifts_ptr, strides_ptr, sizes_ptr, nums);
   }
 };
 
