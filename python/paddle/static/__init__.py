@@ -20,10 +20,11 @@ __all__ = [
     'default_main_program', 'default_startup_program', 'Program', 'data',
     'InputSpec', 'save', 'load', 'save_inference_model', 'load_inference_model',
     'load_program_state', 'set_program_state', 'cpu_places', 'cuda_places',
-    'Variable'
+    'xpu_places', 'Variable'
 ]
 
 from . import nn
+from . import amp
 from .io import save_inference_model  #DEFINE_ALIAS
 from .io import load_inference_model  #DEFINE_ALIAS
 from ..fluid import Scope  #DEFINE_ALIAS
@@ -44,6 +45,7 @@ from ..fluid.framework import name_scope  #DEFINE_ALIAS
 from ..fluid.framework import program_guard  #DEFINE_ALIAS
 from ..fluid.framework import cpu_places  #DEFINE_ALIAS
 from ..fluid.framework import cuda_places  #DEFINE_ALIAS
+from ..fluid.framework import xpu_places  #DEFINE_ALIAS
 from ..fluid.framework import Variable  #DEFINE_ALIAS
 from ..fluid.layers.control_flow import Print  #DEFINE_ALIAS
 from ..fluid.layers.nn import py_func  #DEFINE_ALIAS
