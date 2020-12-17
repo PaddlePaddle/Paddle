@@ -31,7 +31,6 @@ void HeterServer::RegisterServiceHandler(std::string message_name,
 }
 
 void HeterServer::StartHeterService() {
-  std::unique_lock<std::mutex> running_lock(mutex_);
   server_.AddService(&service_, brpc::SERVER_DOESNT_OWN_SERVICE);
   brpc::ServerOptions options;
   if (server_.Start(endpoint_.c_str(), &options) != 0) {
@@ -46,6 +45,7 @@ void HeterServer::StartHeterService() {
   }
   condition_ready_.notify_all();
 
+  std::unique_lock<std::mutex> running_lock(mutex_);
   cv_.wait(running_lock, [&] {
     VLOG(0) << "Heter Server Stop.";
     return stoped_;
@@ -87,6 +87,7 @@ int32_t HeterService::stop_heter_worker(const PsRequestMessage& request,
   stop_cpu_worker_set_.insert(client_id);
   if (stop_cpu_worker_set_.size() == fan_in_) {
     is_exit_ = true;
+    VLOG(0) << "Stop heter Service done.";
   }
   return 0;
 }
