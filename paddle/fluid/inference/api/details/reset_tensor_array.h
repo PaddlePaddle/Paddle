@@ -16,9 +16,17 @@
 
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace details {

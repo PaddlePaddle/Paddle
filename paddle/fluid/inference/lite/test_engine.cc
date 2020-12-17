@@ -29,6 +29,7 @@ namespace inference {
 namespace lite {
 
 using inference::lite::AddTensorToBlockDesc;
+using paddle::inference::lite::AddFetchListToBlockDesc;
 using inference::lite::CreateTensor;
 using inference::lite::serialize_params;
 
@@ -65,7 +66,7 @@ void make_fake_model(std::string* model, std::string* param) {
   AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4}), true);
   AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({2, 4}), true);
   AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 4}), false);
-  AddTensorToBlockDesc(block_, "out", std::vector<int64_t>({2, 4}), false);
+  AddFetchListToBlockDesc(block_, "out");
 
   *block_->add_ops() = *feed0->Proto();
   *block_->add_ops() = *feed1->Proto();
@@ -102,10 +103,10 @@ TEST(EngineManager, engine) {
   config.model_from_memory = true;
   config.valid_places = {
 #ifdef PADDLE_WITH_CUDA
-      paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)}),
+      paddle::lite_api::Place({TARGET(kCUDA), PRECISION(kFloat)}),
 #endif
-      paddle::lite::Place({TARGET(kX86), PRECISION(kFloat)}),
-      paddle::lite::Place({TARGET(kHost), PRECISION(kAny)}),
+      paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
+      paddle::lite_api::Place({TARGET(kHost), PRECISION(kAny)}),
   };
 
   LOG(INFO) << "Create EngineManager";
@@ -118,7 +119,7 @@ TEST(EngineManager, engine) {
   ASSERT_EQ(inference::Singleton<inference::lite::EngineManager>::Global().Has(
                 unique_key),
             true);
-  paddle::lite::Predictor* engine_0 =
+  paddle::lite_api::PaddlePredictor* engine_0 =
       inference::Singleton<inference::lite::EngineManager>::Global().Get(
           unique_key);
   CHECK_NOTNULL(engine_0);

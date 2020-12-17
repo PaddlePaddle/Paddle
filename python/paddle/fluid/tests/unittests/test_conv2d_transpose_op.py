@@ -17,6 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
+import paddle
+paddle.enable_static()
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test import OpTest
@@ -111,7 +113,7 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
     return out
 
 
-class TestConv2dTransposeOp(OpTest):
+class TestConv2DTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
         self.dtype = np.float64
@@ -211,7 +213,7 @@ class TestConv2dTransposeOp(OpTest):
         self.op_type = "conv2d_transpose"
 
 
-class TestWithSymmetricPad(TestConv2dTransposeOp):
+class TestWithSymmetricPad(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -222,7 +224,7 @@ class TestWithSymmetricPad(TestConv2dTransposeOp):
         self.filter_size = [f_c, 6, 3, 3]
 
 
-class TestWithAsymmetricPad(TestConv2dTransposeOp):
+class TestWithAsymmetricPad(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 0, 1, 2]
         self.stride = [1, 1]
@@ -233,7 +235,7 @@ class TestWithAsymmetricPad(TestConv2dTransposeOp):
         self.filter_size = [f_c, 6, 3, 3]
 
 
-class TestWithSAMEPad(TestConv2dTransposeOp):
+class TestWithSAMEPad(TestConv2DTransposeOp):
     def init_test_case(self):
         self.stride = [2, 1]
         self.dilations = [1, 2]
@@ -244,7 +246,7 @@ class TestWithSAMEPad(TestConv2dTransposeOp):
         self.padding_algorithm = 'SAME'
 
 
-class TestWithVALIDPad(TestConv2dTransposeOp):
+class TestWithVALIDPad(TestConv2DTransposeOp):
     def init_test_case(self):
         self.stride = [1, 1]
         self.dilations = [1, 1]
@@ -255,7 +257,7 @@ class TestWithVALIDPad(TestConv2dTransposeOp):
         self.padding_algorithm = 'VALID'
 
 
-class TestWithGroups(TestConv2dTransposeOp):
+class TestWithGroups(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -266,7 +268,7 @@ class TestWithGroups(TestConv2dTransposeOp):
         self.filter_size = [f_c, 3, 3, 3]
 
 
-class TestWithStride(TestConv2dTransposeOp):
+class TestWithStride(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -277,7 +279,7 @@ class TestWithStride(TestConv2dTransposeOp):
         self.filter_size = [f_c, 6, 3, 3]
 
 
-class TestWithDilation(TestConv2dTransposeOp):
+class TestWithDilation(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -288,7 +290,7 @@ class TestWithDilation(TestConv2dTransposeOp):
         self.filter_size = [f_c, 6, 3, 3]
 
 
-class TestWithEvenUpsample(TestConv2dTransposeOp):
+class TestWithEvenUpsample(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [2, 2]
         self.stride = [2, 2]
@@ -300,7 +302,7 @@ class TestWithEvenUpsample(TestConv2dTransposeOp):
         self.filter_size = [f_c, 6, 5, 5]
 
 
-class TestWithEvenUpsampleOutputPadding(TestConv2dTransposeOp):
+class TestWithEvenUpsampleOutputPadding(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [2, 2]
         self.stride = [2, 2]
@@ -312,7 +314,7 @@ class TestWithEvenUpsampleOutputPadding(TestConv2dTransposeOp):
         self.filter_size = [f_c, 6, 5, 5]
 
 
-class Test_NHWC(TestConv2dTransposeOp):
+class Test_NHWC(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -324,7 +326,7 @@ class Test_NHWC(TestConv2dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithSymmetricPad_NHWC(TestConv2dTransposeOp):
+class TestWithSymmetricPad_NHWC(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -336,7 +338,7 @@ class TestWithSymmetricPad_NHWC(TestConv2dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithAsymmetricPad_NHWC(TestConv2dTransposeOp):
+class TestWithAsymmetricPad_NHWC(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 0, 1, 2]
         self.stride = [1, 1]
@@ -348,7 +350,7 @@ class TestWithAsymmetricPad_NHWC(TestConv2dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithGroups_NHWC(TestConv2dTransposeOp):
+class TestWithGroups_NHWC(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -360,7 +362,7 @@ class TestWithGroups_NHWC(TestConv2dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithStride_NHWC(TestConv2dTransposeOp):
+class TestWithStride_NHWC(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -372,7 +374,7 @@ class TestWithStride_NHWC(TestConv2dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithDilation_NHWC(TestConv2dTransposeOp):
+class TestWithDilation_NHWC(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -384,7 +386,7 @@ class TestWithDilation_NHWC(TestConv2dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithEvenUpsample_NHWC(TestConv2dTransposeOp):
+class TestWithEvenUpsample_NHWC(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [2, 2]
         self.stride = [2, 2]
@@ -397,7 +399,7 @@ class TestWithEvenUpsample_NHWC(TestConv2dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithEvenUpsample_NHWC_output_padding(TestConv2dTransposeOp):
+class TestWithEvenUpsample_NHWC_output_padding(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [2, 2]
         self.stride = [2, 2]
@@ -413,7 +415,7 @@ class TestWithEvenUpsample_NHWC_output_padding(TestConv2dTransposeOp):
 # ------------ test_cudnn ------------
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNN(TestConv2dTransposeOp):
+class TestCUDNN(TestConv2DTransposeOp):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
@@ -547,7 +549,7 @@ class TestCUDNNWithEvenUpsample(TestWithEvenUpsample):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNN_NHWC(TestConv2dTransposeOp):
+class TestCUDNN_NHWC(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -654,104 +656,9 @@ class TestCUDNNWithEvenUpsample_NHWC(TestWithEvenUpsample):
         self.op_type = "conv2d_transpose"
 
 
-class TestDepthwiseConvTranspose(TestConv2dTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [2, 2]
-        self.dilations = [1, 1]
-        self.input_size = [2, 8, 16, 16]  # NCHW
-        self.groups = 8
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [self.input_size[1], f_c, 4, 4]
-        self.op_type = "depthwise_conv2d_transpose"
-
-
-class TestDepthwiseConvTransposeAsymmetricPad(TestConv2dTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 0, 1, 2]
-        self.stride = [2, 2]
-        self.dilations = [1, 1]
-        self.input_size = [2, 8, 16, 16]  # NCHW
-        self.groups = 8
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [self.input_size[1], f_c, 3, 3]
-        self.op_type = "depthwise_conv2d_transpose"
-        self.data_format = 'NCHW'
-
-
-class TestDepthwiseConvTransposeSAMEPad(TestConv2dTransposeOp):
-    def init_test_case(self):
-        self.stride = [2, 2]
-        self.dilations = [1, 1]
-        self.input_size = [2, 8, 16, 16]  # NHWC
-        self.groups = 8
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [self.input_size[1], f_c, 3, 3]
-        self.op_type = "depthwise_conv2d_transpose"
-        self.padding_algorithm = 'SAME'
-
-
-class TestDepthwiseConvTransposeVALIDPad(TestConv2dTransposeOp):
-    def init_test_case(self):
-        self.stride = [2, 2]
-        self.dilations = [1, 1]
-        self.input_size = [2, 8, 16, 16]  # NHWC
-        self.groups = 8
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [self.input_size[1], f_c, 3, 3]
-        self.op_type = "depthwise_conv2d_transpose"
-        self.padding_algorithm = 'VALID'
-
-
-class TestDepthwiseConvTranspose_NHWC_4x4kernel(TestConv2dTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [2, 2]
-        self.dilations = [1, 1]
-        self.input_size = [2, 16, 16, 8]  # NHWC
-        self.groups = 8
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
-        self.filter_size = [self.input_size[3], f_c, 4, 4]
-        self.op_type = "depthwise_conv2d_transpose"
-        self.data_format = 'NHWC'
-
-
-class TestDepthwiseConvTranspose_NHWC_3x3kernel(TestConv2dTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [2, 2]
-        self.dilations = [1, 1]
-        self.input_size = [2, 16, 16, 8]  # NHWC
-        self.groups = 8
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
-        self.filter_size = [self.input_size[3], f_c, 3, 3]
-        self.op_type = "depthwise_conv2d_transpose"
-        self.data_format = 'NHWC'
-
-
-class TestDepthwiseConvTransposeAsymmetricPad_NHWC(TestConv2dTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 0, 1, 2]
-        self.stride = [2, 2]
-        self.dilations = [1, 1]
-        self.input_size = [2, 16, 16, 8]  # NHWC
-        self.groups = 8
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
-        self.filter_size = [self.input_size[3], f_c, 3, 3]
-        self.op_type = "depthwise_conv2d_transpose"
-        self.data_format = 'NHWC'
-
-
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNN_FP16(TestConv2dTransposeOp):
+class TestCUDNN_FP16(TestConv2DTransposeOp):
     def init_test_case(self):
         self.dtype = np.float16
         self.pad = [1, 1]
@@ -867,7 +774,7 @@ class TestCUDNNWithEvenUpsample_NHWC_FP16(TestCUDNN_FP16):
         self.data_format = 'NHWC'
 
 
-class TestConv2dTransposeAPI(unittest.TestCase):
+class TestConv2DTransposeAPI(unittest.TestCase):
     def test_case1(self):
         data1 = fluid.layers.data(
             name='data1', shape=[3, 5, 5], dtype='float32')
@@ -945,7 +852,7 @@ class TestConv2dTransposeAPI(unittest.TestCase):
         self.assertIsNotNone(results[6])
 
 
-class TestConv2dTransposeOpException(unittest.TestCase):
+class TestConv2DTransposeOpException(unittest.TestCase):
     def test_exception(self):
         data = fluid.layers.data(name='data', shape=[3, 5, 5], dtype="float32")
 

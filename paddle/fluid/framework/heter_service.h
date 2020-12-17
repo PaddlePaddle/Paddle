@@ -29,6 +29,7 @@ limitations under the License. */
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace framework {
@@ -100,6 +101,9 @@ class HeterTask {
     collect_label_time = 0;
     fill_sparse_time = 0;
     push_sparse_time = 0;
+    gpu_2_cpu_time = 0;
+    cpu_2_gpu_time = 0;
+    timeline.Reset();
   }
   void Show() {
     std::cout << "features size " << features_.size() << std::endl;
@@ -110,6 +114,8 @@ class HeterTask {
   }
   void PackTask(Scope* scope, int taskid, DataFeed* reader, int cur_batch,
                 const ProgramDesc& program);
+  void PackGpuTask(Scope* thread_scope, DataFeed* reader,
+                   const ProgramDesc& program);
 
   Scope* scope_{nullptr};
   int taskid_;
@@ -132,6 +138,9 @@ class HeterTask {
   double collect_label_time{0};
   double fill_sparse_time{0};
   double push_sparse_time{0};
+  double gpu_2_cpu_time{0};
+  double cpu_2_gpu_time{0};
+  platform::Timer timeline;
 };
 
 template <class T>

@@ -13,8 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_floordiv_op.h"
+
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -49,8 +66,6 @@ REGISTER_OP_WITHOUT_GRADIENT(elementwise_floordiv, ops::ElementwiseOp,
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_floordiv,
-    ops::ElementwiseFloorDivKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseFloorDivKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseFloorDivKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseFloorDivKernel<paddle::platform::CPUDeviceContext,
                                    int64_t>);

@@ -31,6 +31,7 @@ from ..unique_name import generate as unique_name
 
 import logging
 from ..data_feeder import check_dtype, check_type
+from paddle.fluid.framework import static_only
 
 __all__ = [
     'data', 'read_file', 'double_buffer', 'py_reader',
@@ -38,6 +39,7 @@ __all__ = [
 ]
 
 
+@static_only
 def data(name,
          shape,
          append_batch_size=True,

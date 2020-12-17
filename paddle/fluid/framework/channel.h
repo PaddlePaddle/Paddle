@@ -277,7 +277,7 @@ class ChannelObject {
     size_t finished = 0;
     while (finished < n && WaitForWrite(lock)) {
       size_t m =
-          std::min(n - finished, capacity_ + reading_count_ - data_.size());
+          (std::min)(n - finished, capacity_ + reading_count_ - data_.size());
       for (size_t i = 0; i < m; i++) {
         data_.push_back(std::move(p[finished++]));
       }

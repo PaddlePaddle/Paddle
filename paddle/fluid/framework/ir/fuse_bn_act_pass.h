@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -30,6 +31,9 @@ namespace ir {
 /*
  * Fuse the BatchNorm and activation.
  */
+class Graph;
+class Node;
+
 class FuseBatchNormActPass : public FusePassBase {
  public:
   virtual ~FuseBatchNormActPass() {}

@@ -37,8 +37,21 @@ class GatherOp : public framework::OperatorWithKernel {
                           "Output(Out) of GatherOp should not be null."));
 
     auto index_dims = ctx->GetInputDim("Index");
-    PADDLE_ENFORCE(index_dims.size() == 1 ||
-                   (index_dims.size() == 2 && index_dims[1] == 1));
+
+    if (index_dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          index_dims[1], 1,
+          platform::errors::InvalidArgument(
+              "The last dim of index should be 1 when it is 2D, but we get %d",
+              index_dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          index_dims.size(), 1,
+          platform::errors::InvalidArgument(
+              "The index should be 1D, when it is not 2D, but we get %d",
+              index_dims.size()));
+    }
+
     int batch_size = ctx->GetInputDim("Index")[0];
     framework::DDim output_dims(ctx->GetInputDim("X"));
     output_dims[0] = batch_size;
@@ -52,6 +65,15 @@ class GatherOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.device_context());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "Axis") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -70,6 +92,15 @@ class GatherGradOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
                                        ctx, framework::GradVarName("Out")),
                                    ctx.device_context());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "Axis") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -153,6 +184,6 @@ REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
                        ops::GatherGradientOpKernel<uint8_t>,
                        ops::GatherGradientOpKernel<int64_t>);
 REGISTER_OP_VERSION(gather)
-    .AddCheckpoint(R"ROC(upgrad gather, add attribut [axis])ROC",
-                   paddle::framework::compatible::OpVersionDesc().NewAttr(
-                       "axis", "Specify the axis of gather operation.", {}));
+    .AddCheckpoint(R"ROC(upgrad gather, add a new input [Axis])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewInput(
+                       "Axis", "Specify the axis of gather operation."));

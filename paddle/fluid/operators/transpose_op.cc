@@ -61,6 +61,19 @@ class TransposeOp : public framework::OperatorWithKernel {
     }
 
     framework::DDim out_dims(x_dims);
+#ifdef PADDLE_WITH_MKLDNN
+    // Here we need to match dims to paddle layout
+    // as we are producing non-oneDNN result
+    if ((x_dims.size() >= 3) &&
+        (paddle::platform::MKLDNNDeviceContext::tls()
+             .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC)) {
+      auto dims = framework::vectorize<int>(x_dims);
+      std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
+      x_dims = x_dims.reshape(dims);
+      VLOG(3)
+          << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
+    }
+#endif
     for (size_t i = 0; i < axis_size; i++) {
       out_dims[i] = x_dims[axis[i]];
     }
@@ -75,7 +88,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -173,7 +186,7 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -220,7 +233,7 @@ class Transpose2Op : public TransposeOp {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       using framework::proto::VarType;
@@ -259,6 +272,20 @@ class Transpose2GradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+template <typename T>
+class Transpose2DoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("transpose2");
+    grad_op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
+    grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    grad_op->SetOutput("XShape", this->Input("XShape"));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
 class Transpose2OpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -285,7 +312,7 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -308,25 +335,43 @@ REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex64>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     transpose_grad,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex64>,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex128>);
 
 REGISTER_OPERATOR(transpose2, ops::Transpose2Op, ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
                   ops::Transpose2GradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(transpose2_grad, ops::Transpose2OpGrad);
+REGISTER_OPERATOR(transpose2_grad, ops::Transpose2OpGrad,
+                  ops::Transpose2DoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
     transpose2, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex64>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     transpose2_grad,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex64>,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex128>);

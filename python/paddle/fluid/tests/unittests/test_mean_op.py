@@ -185,7 +185,7 @@ class TestMeanAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_shape)
+            x = paddle.fluid.data('X', self.x_shape)
             out1 = paddle.mean(x)
             out2 = paddle.tensor.mean(x)
             out3 = paddle.tensor.stat.mean(x)
@@ -204,7 +204,7 @@ class TestMeanAPI(unittest.TestCase):
         paddle.disable_static(self.place)
 
         def test_case(x, axis=None, keepdim=False):
-            x_tensor = paddle.to_variable(x)
+            x_tensor = paddle.to_tensor(x)
             out = paddle.mean(x_tensor, axis, keepdim)
             if isinstance(axis, list):
                 axis = tuple(axis)
@@ -249,7 +249,7 @@ class TestMeanAPI(unittest.TestCase):
         self.assertRaises(Exception, paddle.mean, x, 2)
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', [10, 12], 'int32')
+            x = paddle.fluid.data('X', [10, 12], 'int32')
             self.assertRaises(TypeError, paddle.mean, x)
 
 

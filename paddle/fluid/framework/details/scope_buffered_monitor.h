@@ -17,7 +17,9 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/scope.h"
+
 namespace paddle {
 namespace framework {
 namespace details {

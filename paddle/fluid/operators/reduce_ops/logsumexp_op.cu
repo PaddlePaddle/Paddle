@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/operators/reduce_ops/logsumexp_op.h"
 
-REGISTER_OP_CUDA_KERNEL(logsumexp,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          float, ops::LogsumexpFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          double, ops::LogsumexpFunctor>);
+namespace ops = paddle::operators;
+
+REGISTER_OP_CUDA_KERNEL(
+    logsumexp, ops::LogsumexpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LogsumexpKernel<paddle::platform::CUDADeviceContext, double>);

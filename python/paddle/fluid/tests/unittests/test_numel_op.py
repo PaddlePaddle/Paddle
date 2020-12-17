@@ -48,15 +48,15 @@ class TestNumelOp2(TestNumelOp):
         self.shape = (0, )
 
 
-class TestNumelOoAPI(unittest.TestCase):
+class TestNumelAPI(unittest.TestCase):
     def test_numel_static(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
             shape1 = [2, 1, 4, 5]
             shape2 = [1, 4, 5]
-            x_1 = paddle.data(shape=shape1, dtype='int32', name='x_1')
-            x_2 = paddle.data(shape=shape2, dtype='int32', name='x_2')
+            x_1 = paddle.fluid.data(shape=shape1, dtype='int32', name='x_1')
+            x_2 = paddle.fluid.data(shape=shape2, dtype='int32', name='x_2')
             input_1 = np.random.random(shape1).astype("int32")
             input_2 = np.random.random(shape2).astype("int32")
             out_1 = paddle.numel(x_1)
@@ -76,8 +76,8 @@ class TestNumelOoAPI(unittest.TestCase):
         paddle.disable_static(paddle.CPUPlace())
         input_1 = np.random.random([2, 1, 4, 5]).astype("int32")
         input_2 = np.random.random([1, 4, 5]).astype("int32")
-        x_1 = paddle.to_variable(input_1)
-        x_2 = paddle.to_variable(input_2)
+        x_1 = paddle.to_tensor(input_1)
+        x_2 = paddle.to_tensor(input_2)
         out_1 = paddle.numel(x_1)
         out_2 = paddle.numel(x_2)
         assert (np.array_equal(out_1.numpy().item(0), np.size(input_1)))

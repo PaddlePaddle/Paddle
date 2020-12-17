@@ -16,7 +16,9 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    warpctc, ops::WarpCTCKernel<paddle::platform::CUDADeviceContext, float>);
+    warpctc, ops::WarpCTCKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::WarpCTCKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     warpctc_grad,
-    ops::WarpCTCGradKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::WarpCTCGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::WarpCTCGradKernel<paddle::platform::CUDADeviceContext, double>);

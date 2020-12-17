@@ -142,6 +142,18 @@ class TestTrilTriuOpAPI(unittest.TestCase):
             self.assertTrue(np.allclose(tril_out, np.tril(data)))
             self.assertTrue(np.allclose(triu_out, np.triu(data)))
 
+    def test_fluid_api(self):
+        data = np.random.random([1, 9, 9, 4]).astype('float32')
+        x = fluid.data(shape=[1, 9, -1, 4], dtype='float32', name='x')
+        triu_out = fluid.layers.triu(x)
+
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        triu_out = exe.run(fluid.default_main_program(),
+                           feed={"x": data},
+                           fetch_list=[triu_out])
+
 
 if __name__ == '__main__':
     unittest.main()

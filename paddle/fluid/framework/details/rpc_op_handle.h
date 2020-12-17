@@ -26,6 +26,16 @@
 
 namespace paddle {
 namespace framework {
+class OpDesc;
+class Scope;
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 
 struct RPCOpHandle : public OpHandleBase {

@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/roi_align_op.h"
 #include <memory>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -35,13 +36,13 @@ class ROIAlignOp : public framework::OperatorWithKernel {
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
-    if (ctx->HasInput("RoisLod")) {
-      auto rois_lod_dims = ctx->GetInputDim("RoisLod");
+    if (ctx->HasInput("RoisNum")) {
+      auto rois_num_dims = ctx->GetInputDim("RoisNum");
       PADDLE_ENFORCE_EQ(
-          rois_lod_dims.size(), 1,
-          platform::errors::InvalidArgument("The RoisLod dimension should be 1"
-                                            ", but got dimension = %d",
-                                            rois_lod_dims.size()));
+          rois_num_dims.size(), 1,
+          platform::errors::InvalidArgument("The size of RoisNum should be 1"
+                                            ", but received size = %d",
+                                            rois_num_dims.size()));
     }
     PADDLE_ENFORCE_EQ(
         input_dims.size(), 4,
@@ -145,9 +146,9 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
-    AddInput("RoisLod",
+    AddInput("RoisNum",
              "(Tensor), "
-             "The lod info of rois.")
+             "The number of RoIs in each image.")
         .AsDispensable();
     AddOutput("Out",
               "(Tensor), "
@@ -203,7 +204,7 @@ class ROIAlignGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("roi_align_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("ROIs", this->Input("ROIs"));
-    op->SetInput("RoisLod", this->Input("RoisLod"));
+    op->SetInput("RoisNum", this->Input("RoisNum"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
@@ -231,3 +232,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, int>);
+REGISTER_OP_VERSION(roi_align)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade roi_align add a new input [RoisNum])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "RoisNum",
+            "The number of RoIs in each image. RoisNum is dispensable."));

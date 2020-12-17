@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace platform {

@@ -13,9 +13,23 @@
    limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/tensor_formatter.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class LoDTensor;
+class OpDesc;
+class Scope;
+class Variable;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 const char kCond[] = "Cond";
 const char kData[] = "Data";

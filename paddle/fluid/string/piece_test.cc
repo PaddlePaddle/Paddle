@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/string/piece.h"
 
-#include <sstream>
-
 #include "gtest/gtest.h"
 
 TEST(StringPiece, Construct) {

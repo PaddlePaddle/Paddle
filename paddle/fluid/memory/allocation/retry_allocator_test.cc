@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
+
 #include <algorithm>
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
@@ -20,6 +21,7 @@
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
@@ -45,7 +47,7 @@ TEST(RetryAllocator, RetryAllocator) {
 
   size_t thread_num = 4;
   size_t sleep_time = 40;
-  size_t extra_time = 10;
+  size_t extra_time = 20;
 
   // Reserve to perform more tests in the future
   std::vector<std::shared_ptr<Allocator>> allocators;
@@ -94,6 +96,7 @@ TEST(RetryAllocator, RetryAllocator) {
     bool is_all_equal = std::all_of(addresses.begin(), addresses.end(),
                                     [val](void *p) { return p == val; });
     ASSERT_TRUE(is_all_equal);
+    allocator->Release(platform::CPUPlace());
   }
 }
 
@@ -103,7 +106,8 @@ class DummyAllocator : public Allocator {
 
  protected:
   Allocation *AllocateImpl(size_t size) override {
-    PADDLE_THROW_BAD_ALLOC("Always BadAlloc");
+    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
+        "Here is a test exception, always BadAlloc."));
   }
 
   void FreeImpl(Allocation *) override {}
@@ -118,7 +122,7 @@ TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
       ASSERT_TRUE(false);
       allocation.reset();
     } catch (BadAlloc &ex) {
-      ASSERT_TRUE(std::string(ex.what()).find("Always BadAlloc") !=
+      ASSERT_TRUE(std::string(ex.what()).find("always BadAlloc") !=
                   std::string::npos);
     }
   }
@@ -132,6 +136,7 @@ TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
       auto allocation = allocator.Allocate(allocate_size);
       ASSERT_TRUE(false);
       allocation.reset();
+      allocator.Release(p);
     } catch (BadAlloc &ex) {
       ASSERT_TRUE(std::string(ex.what()).find("Cannot allocate") !=
                   std::string::npos);

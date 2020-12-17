@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/jit/op_desc_meta.h"
-#include "paddle/fluid/framework/op_info.h"
 
 namespace paddle {
 namespace imperative {

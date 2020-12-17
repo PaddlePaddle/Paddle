@@ -215,6 +215,10 @@ void VarBase::ClearGradient() {
 #endif
       }
     }
+    // TODO(zhouwei): It's better to free memory of grad by grad_t->claer.
+    // But will have some bug on mac CPU of yolov3 model, why?
+    // After fix this bug, function SetIsEmpty() isn't need
+    grad_var_->SharedVar()->SetIsEmpty(true);
   }
 }
 
@@ -276,6 +280,45 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     }
     return new_var;
   }
+}
+
+void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
+  if (SharedVar()->IsEmpty()) {
+    VLOG(3) << "deep copy Variable from " << src.Name() << " to " << Name();
+    SetPersistable(src.Persistable());
+    SetDataType(src.DataType());
+    SetType(src.Type());
+    SetOverridedStopGradient(src.OverridedStopGradient());
+    if (!src.SharedVar()->IsEmpty()) {
+      const platform::Place& place = src.Place();
+      if (src.Var().IsType<framework::LoDTensor>()) {
+        auto& src_tensor = src.Var().Get<framework::LoDTensor>();
+        auto* dst_tensor = MutableVar()->GetMutable<framework::LoDTensor>();
+        dst_tensor->set_lod(src_tensor.lod());
+        framework::TensorCopy(src_tensor, place, dst_tensor);
+      } else if (src.Var().IsType<framework::SelectedRows>()) {
+        auto& src_selected_rows = src.Var().Get<framework::SelectedRows>();
+        auto* dst_selected_rows =
+            MutableVar()->GetMutable<framework::SelectedRows>();
+        dst_selected_rows->set_height(src_selected_rows.height());
+        dst_selected_rows->set_rows(src_selected_rows.rows());
+        framework::TensorCopy(src_selected_rows.value(), place,
+                              dst_selected_rows->mutable_value());
+      }
+      if (blocking) {
+        platform::DeviceContextPool::Instance().Get(place)->Wait();
+      }
+    }
+  }
+}
+
+void VarBase::BumpInplaceVersion() {
+  PADDLE_ENFORCE_EQ(
+      Var().IsInitialized(), true,
+      platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized, please check if it has no data.",
+          Name()));
+  MutableVar()->BumpInplaceVersion();
 }
 
 void OpBase::SetType(const std::string& type) {

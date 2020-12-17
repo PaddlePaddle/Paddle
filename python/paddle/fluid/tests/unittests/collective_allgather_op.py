@@ -34,6 +34,8 @@ import paddle.fluid.layers as layers
 from functools import reduce
 from test_collective_base import TestCollectiveRunnerBase, runtime_main
 
+paddle.enable_static()
+
 
 class TestCollectiveAllGather(TestCollectiveRunnerBase):
     def __init__(self):

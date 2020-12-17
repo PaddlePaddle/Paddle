@@ -36,6 +36,7 @@ class InplaceTestBase(unittest.TestCase):
         self.fuse_all_optimizer_ops = False
 
     def setUp(self):
+        paddle.enable_static()
         self.initParameter()
         if self.use_cuda and fluid.core.is_compiled_with_cuda():
             self.device_count = fluid.core.get_cuda_device_count()
@@ -45,7 +46,7 @@ class InplaceTestBase(unittest.TestCase):
 
     def build_program_and_scope(self):
         self.place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
-        paddle.manual_seed(1)
+        paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
         startup_program = fluid.Program()
         main_program = fluid.Program()
@@ -114,8 +115,13 @@ class InplaceTestBase(unittest.TestCase):
                         fetch_val2, = exe.run(compiled_prog,
                                               feed=feed_dict,
                                               fetch_list=[fetch_var])
-
-                        self.assertTrue(np.array_equal(fetch_val1, fetch_val2))
+                        self.assertTrue(
+                            np.array_equal(fetch_val1, fetch_val2),
+                            "error var name: {}, fetch_val1: {}, fetch_val2: {}".
+                            format(
+                                fetch_var,
+                                fetch_val1[~np.equal(fetch_val1, fetch_val2)],
+                                fetch_val2[~np.equal(fetch_val1, fetch_val2)]))
 
     def check_multi_card_fetch_var(self):
         if self.is_invalid_test():
@@ -160,6 +166,12 @@ class InplaceTestBase(unittest.TestCase):
 
                 for item in fetch_vals:
                     self.assertTrue(np.array_equal(fetch_vals[0], item))
+                    self.assertTrue(
+                        np.array_equal(fetch_vals[0], item),
+                        "error var name: {}, fetch_vals[0]: {}, item: {}".
+                        format(fetch_var,
+                               fetch_vals[0][~np.equal(fetch_vals[0], item)],
+                               item[~np.equal(fetch_vals[0], item)]))
 
 
 class CUDAInplaceTest(InplaceTestBase):

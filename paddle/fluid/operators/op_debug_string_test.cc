@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include <string>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
 
 USE_OP(elementwise_add_grad);
 

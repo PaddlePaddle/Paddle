@@ -438,7 +438,7 @@ class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
             self.func(p)
 
 
-class TestConv3dDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
+class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 2, 2, 3]

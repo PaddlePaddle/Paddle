@@ -24,6 +24,20 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/device_context.h"
 
+namespace paddle {
+namespace framework {
+namespace details {
+struct VarHandle;
+}  // namespace details
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+namespace platform {
+struct NCCLContextMap;
+}  // namespace platform
+}  // namespace paddle
+
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif

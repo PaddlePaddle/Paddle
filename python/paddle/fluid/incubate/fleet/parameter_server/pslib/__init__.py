@@ -987,11 +987,63 @@ class DownpourOptimizer(DistributedOptimizer):
         """
         raise NotImplementedError()
 
+    def _remove_collective_ops(self, program, name):
+        """
+        colective init op should call once, so remove other call.
+        """
+        block = program.global_block()
+        for ids, op in list(enumerate(block.ops)):
+            if op.type == name:
+                block._remove_op(ids)
+                return
+
     def apply_gradients(self, params_grads):
         """
         Currently, apply_gradients function can not be called through DistributedOptimizer
         """
         raise NotImplementedError()
+
+    def get_dist_env(self):
+        trainer_id = int(os.getenv('PADDLE_TRAINER_ID', '0'))
+        trainer_endpoints = ''
+        current_endpoint = ''
+        num_trainers = 0
+        if os.getenv('PADDLE_TRAINER_ENDPOINTS') and os.getenv(
+                'PADDLE_CURRENT_ENDPOINT'):
+            trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS')
+            current_endpoint = os.getenv('PADDLE_CURRENT_ENDPOINT')
+            num_trainers = len(trainer_endpoints.split(','))
+
+        return {
+            'trainer_id': trainer_id,
+            'num_trainers': num_trainers,
+            'current_endpoint': current_endpoint,
+            'trainer_endpoints': trainer_endpoints
+        }
+
+    def _remove_collective_op_for_embedding(self, loss, table_name):
+        """
+        find multi-sparse-table
+        """
+        table_name = [name + "@GRAD" for name in table_name]
+        need_remove_op_index = []
+        block = loss.block.program.global_block()
+        collective_ops = ["c_sync_calc_stream", "c_allreduce_sum"]
+        for ids, op in list(enumerate(block.ops)):
+            if op.type in collective_ops:
+                if op.input("X")[0] in table_name:
+                    need_remove_op_index.append(ids)
+            if op.type == "lookup_table_grad":
+                need_remove_op_index.append(ids)
+            try:
+                if op.output("Out")[0] in table_name:
+                    need_remove_op_index.append(ids)
+            except:
+                pass
+
+        need_remove_op_index.sort(reverse=True)
+        for index in need_remove_op_index:
+            block._remove_op(index)
 
     def minimize(self,
                  losses,
@@ -1043,5 +1095,31 @@ class DownpourOptimizer(DistributedOptimizer):
 
         fleet._main_programs = programs
         fleet._scopes = scopes
+        if opt_info["use_ps_gpu"]:
+            from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+            # check start program
+
+            env = self.get_dist_env()
+            if not isinstance(losses, list):
+                startup_programs = [startup_programs]
+            for i in range(0, len(startup_programs)):
+                t = SingleProcessMultiThread()
+                start_program = startup_programs[i]
+                main_program = programs[i]
+                t.transpile(
+                    startup_program=start_program,
+                    main_program=main_program,
+                    rank=env["trainer_id"],
+                    endpoints=env["trainer_endpoints"],
+                    current_endpoint=env['current_endpoint'],
+                    wait_port=False)
+                if i > 0:
+                    self._remove_collective_ops(start_program,
+                                                "c_comm_init_all")
+            for i in range(0, len(losses)):
+                loss = losses[i]
+                embedding_table = self._distributed_optimizer._find_multi_distributed_lookup_table(
+                    [loss])
+                self._remove_collective_op_for_embedding(loss, embedding_table)
 
         return [optimize_ops, param_grads]

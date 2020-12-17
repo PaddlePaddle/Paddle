@@ -47,7 +47,8 @@ struct DataRecord {
       num_lines++;
       std::vector<std::string> data;
       split(line, '\t', &data);
-      PADDLE_ENFORCE(data.size() >= 4);
+      PADDLE_ENFORCE_GT(data.size(), 4, paddle::platform::errors::Fatal(
+                                            "The size of data is invaild."));
       // load title1 data
       std::vector<int64_t> title1_data;
       split_to_int64(data[0], ' ', &title1_data);
@@ -120,11 +121,17 @@ TEST(Analyzer_seq_conv1, profile) {
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
-    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    PADDLE_ENFORCE_GT(outputs.size(), 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be greater than 0."));
     auto output = outputs.back();
-    PADDLE_ENFORCE_EQ(output.size(), 1UL);
+    PADDLE_ENFORCE_EQ(output.size(), 1UL,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be equal to 0."));
     size_t size = GetSize(output[0]);
-    PADDLE_ENFORCE_GT(size, 0);
+    PADDLE_ENFORCE_GT(size, 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be greater than 0."));
     float *result = static_cast<float *>(output[0].data.data());
     // output is probability, which is in (0, 1).
     for (size_t i = 0; i < size; i++) {

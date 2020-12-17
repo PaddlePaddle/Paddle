@@ -14,13 +14,16 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNMemoryFormat = mkldnn::memory::format_tag;
@@ -81,12 +84,30 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
     return;
   }
 
+  auto print_dims = [](const std::vector<int>& dims) {
+    std::ostringstream oss;
+
+    if (!dims.empty()) {
+      oss << "[";
+      // Convert all but the last element to avoid a trailing ","
+      std::copy(dims.begin(), dims.end() - 1,
+                std::ostream_iterator<int>(oss, ","));
+
+      // Now add the last element with no delimiter
+      oss << dims.back() << "]";
+    }
+
+    return oss.str();
+  };
+
   switch (from) {
     case framework::DataLayout::kMKLDNN:
       if (to == framework::DataLayout::kNHWC) {
         auto dims = framework::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
         tensor_in->Resize(framework::make_ddim(dims));
+        VLOG(3) << "Rotating Shape from: kMKLDNN to: kNHWC output_shape"
+                << print_dims(dims);
       }
       break;
     case framework::DataLayout::kNHWC:
@@ -94,6 +115,8 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
         auto dims = framework::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
         tensor_in->Resize(framework::make_ddim(dims));
+        VLOG(3) << "Rotating Shape from: kNHWC to: kMKLDNN output_shape"
+                << print_dims(dims);
       }
       break;
     default:
@@ -110,11 +133,6 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
                                           mkldnn::memory::data_type data_type,
                                           MKLDNNMemoryFormat format) {
   return mkldnn::memory::desc({dims}, data_type, format);
-}
-
-inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
-  bool use_mkldnn = ctx.Attr<bool>("use_mkldnn");
-  return use_mkldnn && platform::is_cpu_place(ctx.GetPlace());
 }
 
 inline void ClearMKLDNNCache(const platform::Place& place) {
@@ -171,6 +189,8 @@ inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
                     const mkldnn::engine& engine) {
   auto reorder_prim = mkldnn::reorder(src, dst);
   mkldnn::stream astream(engine);
+  platform::RecordEvent record_reorder("int_reorder",
+                                       platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
 }
@@ -257,6 +277,10 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
             strides[3] >= strides[4] && strides[4] >= strides[1]) {
           return mkldnn::memory::format_tag::Acdeb8a;
         }
+        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
+            strides[2] >= strides[3] && strides[3] >= strides[4]) {
+          return mkldnn::memory::format_tag::Abcde8a;
+        }
       } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
             strides[2] >= strides[3] && strides[3] >= strides[4]) {
@@ -266,6 +290,10 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[4] && strides[4] >= strides[1]) {
           return mkldnn::memory::format_tag::Acdeb16a;
+        }
+        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
+            strides[2] >= strides[3] && strides[3] >= strides[4]) {
+          return mkldnn::memory::format_tag::Abcde16a;
         }
       } else if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
@@ -407,13 +435,39 @@ inline void AppendKey(std::string* key, const std::vector<T>& dims) {
   }
 }
 
+// If MKLDNN build and CPU place then register suffix in DeviceContext
+inline void AttachPointerHashToMKLDNNKey(void* ptr,
+                                         const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::MKLDNNDeviceContext* dev_ctx =
+        (platform::MKLDNNDeviceContext*)pool.Get(place);
+    dev_ctx->SetKeySuffix("E" +
+                          std::to_string(reinterpret_cast<uintptr_t>(ptr)));
+    // When NaiveExecutor/Executor is used no info on thread id is needed in a
+    // key
+    dev_ctx->DisableThreadInfoInKey();
+  }
+}
+
 template <typename... ArgTypes>
-inline std::string CreateKey(ArgTypes&&... args) {
+inline std::string CreateKey(const platform::MKLDNNDeviceContext& dev_ctx,
+                             ArgTypes&&... args) {
   std::string key;
   key.reserve(64);
   using expand_type = int[];
   expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
+  key += dev_ctx.GetKeySuffix();
   return key;
+}
+
+inline std::string ExtendKeyWithThreadInfoIfNeeded(
+    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
+  return ((dev_ctx.IsThreadIdUsedInKey() == true) &&
+          (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() ==
+           platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default))
+             ? key + "-t:" + ThreadIDasStr()
+             : key;
 }
 
 inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
@@ -443,6 +497,13 @@ inline bool HasOpINT8DataType(const paddle::framework::OpDesc* op) {
           op->GetAttrIfExists<bool>("use_quantizer"));
 }
 
+inline bool HasOpBFLOAT16DataType(const paddle::framework::OpDesc* op) {
+  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "bfloat16";
+}
+
+inline bool HasOpFLOAT32DataType(const paddle::framework::OpDesc* op) {
+  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "float32";
+}
 enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
 
 }  // namespace platform

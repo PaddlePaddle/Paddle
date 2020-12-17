@@ -18,6 +18,8 @@ import os
 import paddle.distributed.fleet.base.role_maker as role_maker
 import time
 
+paddle.enable_static()
+
 
 class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
     def setUp(self):
@@ -52,90 +54,15 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
             input=prediction, label=input_y)
         avg_cost = paddle.fluid.layers.mean(x=cost)
 
+        os.environ["FLAGS_LAUNCH_BARRIER"] = "0"
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.auto = True
         optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
-        self.assertTrue(optimizer.user_defined_strategy.a_sync)
-        a_sync_configs = optimizer.user_defined_strategy.a_sync_configs
-        self.assertTrue(a_sync_configs['k_steps'] == 0)
-
-    def test_a_sync_optimizer2(self):
-        os.environ["TRAINING_ROLE"] = "TRAINER"
-        import paddle.distributed.fleet as fleet
-
-        main_program = paddle.fluid.Program()
-        startup_program = paddle.fluid.Program()
-
-        paddle.fluid.framework.switch_main_program(main_program)
-        paddle.fluid.framework.switch_startup_program(startup_program)
-
-        fleet.init(role_maker.PaddleCloudRoleMaker())
-        input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32')
-        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
-
-        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-        fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-        prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
-
-        strategy = paddle.distributed.fleet.DistributedStrategy()
-        strategy.auto = True
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-        optimizer.minimize(avg_cost)
-
-        self.assertTrue(optimizer.user_defined_strategy.a_sync)
-        a_sync_configs = optimizer.user_defined_strategy.a_sync_configs
-        self.assertTrue(a_sync_configs['k_steps'] == 800)
-
-    def test_a_sync_optimizer3(self):
-        os.environ["TRAINING_ROLE"] = "TRAINER"
-        import paddle.distributed.fleet as fleet
-
-        main_program = paddle.fluid.Program()
-        startup_program = paddle.fluid.Program()
-
-        paddle.fluid.framework.switch_main_program(main_program)
-        paddle.fluid.framework.switch_startup_program(startup_program)
-
-        fleet.init(role_maker.PaddleCloudRoleMaker())
-        input_x = paddle.fluid.layers.data(
-            name="x",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=1,
-            append_batch_size=False)
-        x_embedding = paddle.fluid.layers.embedding(
-            is_distributed=False,
-            input=input_x,
-            size=[1000000000, 100000],
-            param_attr=paddle.fluid.ParamAttr(
-                name="embedding",
-                initializer=paddle.fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
-        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
-
-        fc_1 = paddle.fluid.layers.fc(input=x_embedding, size=64, act='tanh')
-        fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-        prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
-
-        strategy = paddle.distributed.fleet.DistributedStrategy()
-        strategy.auto = True
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-        optimizer.minimize(avg_cost)
-
-        self.assertTrue(optimizer.user_defined_strategy.a_sync)
-        a_sync_configs = optimizer.user_defined_strategy.a_sync_configs
+        self.assertTrue(fleet._final_strategy().a_sync)
+        a_sync_configs = fleet._final_strategy().a_sync_configs
         self.assertTrue(a_sync_configs['k_steps'] == 0)
 
 

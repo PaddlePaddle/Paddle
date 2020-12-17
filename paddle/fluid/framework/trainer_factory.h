@@ -16,10 +16,13 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/trainer.h"
 
 namespace paddle {
 namespace framework {
+
+class TrainerBase;
 
 class TrainerFactory {
  public:

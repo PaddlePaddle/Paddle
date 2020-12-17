@@ -36,6 +36,7 @@ def get_logger(name, level, fmt):
     formatter = logging.Formatter(fmt=fmt)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+    logger.propagate = False
     return logger
 
 
@@ -111,8 +112,8 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         _, scope, key = paths
         with self.server.delete_kv_lock:
             if self.server.delete_kv.get(scope) is None:
-                self.server.delete_kv[scope] = []
-            self.server.delete_kv[scope].append(key)
+                self.server.delete_kv[scope] = set()
+            self.server.delete_kv[scope].add(key)
         self.send_status_code(200)
         _http_server_logger.info(log_str)
 
@@ -150,7 +151,7 @@ class KVHTTPServer(HTTPServer, object):
         """
         ret = 0
         with self.delete_kv_lock:
-            ret = self.delete_kv.get(key, 0)
+            ret = len(self.delete_kv.get(key, set()))
         return ret
 
 
@@ -163,7 +164,7 @@ class KVServer:
         """Init."""
         self.http_server = KVHTTPServer(port, KVHandler)
         self.listen_thread = None
-        self.size = {}
+        self.size = size
 
     def start(self):
         """
@@ -181,7 +182,7 @@ class KVServer:
         self.listen_thread.join()
         self.http_server.server_close()
 
-    def shoud_stop(self):
+    def should_stop(self):
         """
         return whether the server should stop.
 

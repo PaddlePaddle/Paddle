@@ -15,7 +15,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUPTI
 
 #include "paddle/fluid/platform/dynload/cupti.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {

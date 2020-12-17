@@ -17,10 +17,10 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/framework/data_feed.h"
-
 namespace paddle {
 namespace framework {
+class DataFeed;
+
 typedef std::shared_ptr<DataFeed> (*Createdata_feedFunction)();
 typedef std::unordered_map<std::string, Createdata_feedFunction> data_feedMap;
 data_feedMap g_data_feed_map;

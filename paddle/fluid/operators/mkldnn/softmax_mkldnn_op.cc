@@ -12,11 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <iostream>
-#include <numeric>
-#include "mkldnn.hpp"
 #include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+namespace platform {
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -47,8 +53,8 @@ class SoftmaxMKLDNNHandler
                                  mkldnn::softmax_backward>(
             dev_ctx, mkldnn_engine, cpu_place,
             // Softmax may be inplace then uniq_name is no longer unique
-            platform::CreateKey(framework::vectorize(input->dims()), axis,
-                                uniq_name)) {
+            platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
+                                axis, uniq_name)) {
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(
           input->dims(), output->dims(),
@@ -72,7 +78,7 @@ class SoftmaxMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::softmax_forward,
                                  mkldnn::softmax_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, axis, uniq_name)) {
+            platform::CreateKey(dev_ctx, dims, axis, uniq_name)) {
     auto data_softmax_md =
         mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
     auto diff_softmax_md =
@@ -175,6 +181,7 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(softmax, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::SoftmaxMKLDNNKernel<float>);
+                   ops::SoftmaxMKLDNNKernel<float>,
+                   ops::SoftmaxMKLDNNKernel<paddle::platform::bfloat16>);
 REGISTER_OP_KERNEL(softmax_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::SoftmaxMKLDNNGradKernel<float>);

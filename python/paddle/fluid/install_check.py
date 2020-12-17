@@ -49,7 +49,7 @@ def run_check():
     This func should not be called only if you need to verify installation
 
     Examples:
-        .. code-block: python
+        .. code-block:: python
 
             import paddle.fluid as fluid
             fluid.install_check.run_check()
@@ -62,6 +62,8 @@ def run_check():
             # Your Paddle Fluid works well on MUTIPLE GPU or CPU.
             # Your Paddle Fluid is installed successfully! Let's start deep Learning with Paddle Fluid now
     """
+    paddle.enable_static()
+
     print("Running Verify Fluid Program ... ")
 
     device_list = []
@@ -157,3 +159,5 @@ def run_check():
         print(
             "Your Paddle Fluid is installed successfully ONLY for SINGLE GPU or CPU! "
             "\n Let's start deep Learning with Paddle Fluid now")
+
+    paddle.disable_static()

@@ -12,20 +12,19 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 
-import paddle.fluid as fluid
-from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential, Softmax
+import paddle
+import paddle.nn as nn
 
 __all__ = ['LeNet']
 
 
-class LeNet(fluid.dygraph.Layer):
+class LeNet(nn.Layer):
     """LeNet model from
     `"LeCun Y, Bottou L, Bengio Y, et al. Gradient-based learning applied to document recognition[J]. Proceedings of the IEEE, 1998, 86(11): 2278-2324.`_
 
     Args:
         num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 10.
-        classifier_activation (str): activation for the last fc layer. Default: 'softmax'.
 
     Examples:
         .. code-block:: python
@@ -35,28 +34,28 @@ class LeNet(fluid.dygraph.Layer):
             model = LeNet()
     """
 
-    def __init__(self, num_classes=10, classifier_activation='softmax'):
+    def __init__(self, num_classes=10):
         super(LeNet, self).__init__()
         self.num_classes = num_classes
-        self.features = Sequential(
-            Conv2d(
+        self.features = nn.Sequential(
+            nn.Conv2D(
                 1, 6, 3, stride=1, padding=1),
-            ReLU(),
-            Pool2D(2, 'max', 2),
-            Conv2d(
+            nn.ReLU(),
+            nn.MaxPool2D(2, 2),
+            nn.Conv2D(
                 6, 16, 5, stride=1, padding=0),
-            ReLU(),
-            Pool2D(2, 'max', 2))
+            nn.ReLU(),
+            nn.MaxPool2D(2, 2))
 
         if num_classes > 0:
-            self.fc = Sequential(
-                Linear(400, 120), Linear(120, 84), Linear(84, 10),
-                Softmax())  #Todo: accept any activation
+            self.fc = nn.Sequential(
+                nn.Linear(400, 120),
+                nn.Linear(120, 84), nn.Linear(84, num_classes))
 
     def forward(self, inputs):
         x = self.features(inputs)
 
         if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
+            x = paddle.flatten(x, 1)
             x = self.fc(x)
         return x

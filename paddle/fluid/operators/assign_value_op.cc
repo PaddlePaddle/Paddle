@@ -13,8 +13,23 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/assign_value_op.h"
+
 #include <string>
-#include <vector>
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

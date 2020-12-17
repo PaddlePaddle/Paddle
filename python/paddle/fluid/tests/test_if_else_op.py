@@ -28,6 +28,8 @@ from paddle.fluid.layers.control_flow import ConditionalBlock
 import unittest
 import numpy as np
 
+paddle.enable_static()
+
 
 class TestMNISTIfElseOp(unittest.TestCase):
     # FIXME: https://github.com/PaddlePaddle/Paddle/issues/12245#issuecomment-406462379

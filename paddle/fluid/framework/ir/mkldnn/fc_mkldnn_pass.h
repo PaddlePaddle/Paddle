@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 #include <memory>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -25,6 +26,8 @@ namespace ir {
 /*
  * Transpose weights of FC to comply with MKL-DNN interface
  */
+class Graph;
+
 class FCMKLDNNPass : public FusePassBase {
  public:
   virtual ~FCMKLDNNPass() {}

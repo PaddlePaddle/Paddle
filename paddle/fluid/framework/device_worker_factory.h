@@ -16,10 +16,13 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/device_worker.h"
 
 namespace paddle {
 namespace framework {
+
+class DeviceWorker;
 
 class DeviceWorkerFactory {
  public:

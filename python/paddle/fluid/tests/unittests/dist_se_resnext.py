@@ -30,6 +30,8 @@ import sys
 import signal
 from test_dist_base import TestDistRunnerBase, runtime_main
 
+paddle.enable_static()
+
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1

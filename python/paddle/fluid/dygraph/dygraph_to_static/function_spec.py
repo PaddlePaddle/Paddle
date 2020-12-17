@@ -12,20 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import six
 import inspect
 import numpy as np
 import collections
+
 import paddle
 from paddle.fluid import core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
+from paddle.fluid.dygraph.dygraph_to_static.utils import parse_varargs_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
+from paddle.fluid.dygraph.io import TranslatedLayer
 
 
 class FunctionSpec(object):
@@ -44,15 +47,20 @@ class FunctionSpec(object):
 
         # parse full argument names list.
         self._arg_names, self._default_kwargs = parse_arg_and_kwargs(function)
+        # parse *args
+        self.varargs_name = parse_varargs_name(function)
+        if self.varargs_name is not None and isinstance(function.__self__,
+                                                        TranslatedLayer):
+            self._arg_names += function.__self__._input_args_names
 
     def unified_args_and_kwargs(self, args, kwargs):
         """
         Moves kwargs with default value into arguments list to keep `args` contain the same length
         value as function definition.
-        
-        For example: 
-        
-            Given function definition: `def foo(x, a=1, b=2)`, 
+
+        For example:
+
+            Given function definition: `def foo(x, a=1, b=2)`,
             when calling it by `foo(23)`, the args is `[23]`, kwargs is `{a=1, b=2}`.
             In this function, it will return args with `[23, 1, 2]`, kwargs with `{}`
 
@@ -90,10 +98,23 @@ class FunctionSpec(object):
 
         return tuple(args), kwargs
 
+    def _replace_value_with_input_spec(self, args):
+        args_with_spec = []
+        for idx, input_var in enumerate(flatten(args)):
+            if isinstance(input_var, np.ndarray):
+                input_var = paddle.static.InputSpec.from_numpy(input_var)
+            elif isinstance(input_var, core.VarBase):
+                input_var = paddle.static.InputSpec.from_tensor(input_var)
+
+            args_with_spec.append(input_var)
+
+        args_with_spec = pack_sequence_as(args, args_with_spec)
+        return args_with_spec
+
     def args_to_input_spec(self, args, kwargs):
         """
         Converts input arguments into InputSpec.
-        
+
         1. If specific input_spec, use them to construct feed layers.
         2. If input_spec is None, consider all Tensor and Numpy.ndarray as feed layers
 
@@ -102,10 +123,11 @@ class FunctionSpec(object):
             kwargs(dict): kwargs arguments received by **kwargs.
 
         Return:
-            Same nest structure with args by replacing value with InputSpec.
+            Same nest structure with args and kwargs by replacing value with InputSpec.
         """
-        input_with_spec = []
 
+        args_with_spec = []
+        kwargs_with_spec = []
         if self._input_spec is not None:
             # Note: Because the value type and length of `kwargs` is uncertain.
             # So we don't support to deal this case while specificing `input_spec` currently.
@@ -123,19 +145,17 @@ class FunctionSpec(object):
                     format(len(args), len(self._input_spec)))
 
             # replace argument with corresponding InputSpec.
-            input_with_spec = convert_to_input_spec(args, self._input_spec)
+            args_with_spec = convert_to_input_spec(args, self._input_spec)
         else:
-            for idx, input_var in enumerate(flatten(args)):
-                if isinstance(input_var, np.ndarray):
-                    input_var = paddle.static.InputSpec.from_numpy(input_var)
-                elif isinstance(input_var, core.VarBase):
-                    input_var = paddle.static.InputSpec.from_tensor(input_var)
+            args_with_spec = self._replace_value_with_input_spec(args)
+            kwargs_with_spec = self._replace_value_with_input_spec(kwargs)
 
-                input_with_spec.append(input_var)
+        # If without specificing name in input_spec, add default name
+        # according to argument name from decorated function.
+        args_with_spec = replace_spec_empty_name(self._arg_names,
+                                                 args_with_spec)
 
-            input_with_spec = pack_sequence_as(args, input_with_spec)
-
-        return input_with_spec
+        return args_with_spec, kwargs_with_spec
 
     @switch_to_static_graph
     def to_static_inputs_with_spec(self, input_with_spec, main_program):
@@ -286,7 +306,7 @@ def convert_to_input_spec(inputs, input_spec):
         if len(inputs) > len(input_spec):
             for rest_input in inputs[len(input_spec):]:
                 if isinstance(rest_input, (core.VarBase, np.ndarray)):
-                    logging.warning(
+                    logging_utils.warn(
                         "The inputs constain `{}` without specificing InputSpec, its shape and dtype will be treated immutable. "
                         "Please specific InputSpec information in `@declarative` if you expect them as mutable inputs.".
                         format(type_name(rest_input)))
@@ -309,3 +329,61 @@ def convert_to_input_spec(inputs, input_spec):
         raise TypeError(
             "The type(input_spec) should be a `InputSpec` or dict/list/tuple of it, but received {}.".
             type_name(input_spec))
+
+
+def replace_spec_empty_name(args_name, input_with_spec):
+    """
+    Adds default name according to argument name from decorated function
+    if without specificing InputSpec.name
+
+    The naming rule are as followed:
+        1. If InputSpec.name is not None, do nothing.
+        2. If each argument `x` corresponds to an InputSpec, using the argument name like `x`
+        3. If the arguments `inputs` corresponds to a list(InputSpec), using name like `inputs_0`, `inputs_1`
+        4. If the arguments `input_dic` corresponds to a dict(InputSpec), using key as name.
+
+    For example:
+        
+        # case 1: foo(x, y)
+        foo = to_static(foo, input_spec=[InputSpec([None, 10]), InputSpec([None])])
+        print([in_var.name for in_var in foo.inputs])  # [x, y]
+
+        # case 2: foo(inputs) where inputs is a list
+        foo = to_static(foo, input_spec=[[InputSpec([None, 10]), InputSpec([None])]])
+        print([in_var.name for in_var in foo.inputs])  # [inputs_0, inputs_1]
+
+        # case 3: foo(inputs) where inputs is a dict
+        foo = to_static(foo, input_spec=[{'x': InputSpec([None, 10]), 'y': InputSpec([None])}])
+        print([in_var.name for in_var in foo.inputs])  # [x, y]
+    """
+    input_with_spec = list(input_with_spec)
+    candidate_arg_names = args_name[:len(input_with_spec)]
+
+    for i, arg_name in enumerate(candidate_arg_names):
+        input_spec = input_with_spec[i]
+        input_with_spec[i] = _replace_spec_name(arg_name, input_spec)
+
+    return input_with_spec
+
+
+def _replace_spec_name(name, input_spec):
+    """
+    Replaces InputSpec.name with given `name` while not specificing it.
+    """
+    if isinstance(input_spec, paddle.static.InputSpec):
+        if input_spec.name is None:
+            input_spec.name = name
+        return input_spec
+    elif isinstance(input_spec, (list, tuple)):
+        processed_specs = []
+        for i, spec in enumerate(input_spec):
+            new_name = "{}_{}".format(name, i)
+            processed_specs.append(_replace_spec_name(new_name, spec))
+        return processed_specs
+    elif isinstance(input_spec, dict):
+        processed_specs = {}
+        for key, spec in six.iteritems(input_spec):
+            processed_specs[key] = _replace_spec_name(key, spec)
+        return processed_specs
+    else:
+        return input_spec

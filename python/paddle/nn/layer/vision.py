@@ -52,7 +52,6 @@ class PixelShuffle(layers.Layer):
             import paddle.nn as nn
             import numpy as np
 
-            paddle.disable_static()
             x = np.random.randn(2, 9, 4, 4).astype(np.float32)
             x_var = paddle.to_tensor(x)
             pixel_shuffle = nn.PixelShuffle(3)

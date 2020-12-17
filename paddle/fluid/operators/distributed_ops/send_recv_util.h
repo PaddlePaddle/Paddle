@@ -34,16 +34,16 @@ inline bool NeedSend(const framework::Scope& scope,
       std::string::npos)
     return false;
   auto* var = scope.FindVar(varname);
-  PADDLE_ENFORCE_NOT_NULL(var, "Can not find variable '%s' in the send side.",
-                          varname);
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::NotFound(
+               "Can not find variable '%s' in the send side.", varname));
   if (var->IsType<framework::LoDTensor>()) {
     return var->Get<framework::LoDTensor>().IsInitialized();
   } else if (var->IsType<framework::SelectedRows>()) {
     return var->Get<framework::SelectedRows>().rows().size() > 0UL;
   } else {
-    PADDLE_THROW(
-        "Variable type in send side should be in "
-        "[LodTensor, SelectedRows]");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Variable type in send side should be LodTensor or SelectedRows."));
   }
   return false;
 }

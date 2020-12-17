@@ -29,6 +29,8 @@ namespace ir {
 //                 |                                   |
 //             other_op3
 //                 |
+class Graph;
+
 class SkipLayerNormFusePass : public FusePassBase {
  public:
   virtual ~SkipLayerNormFusePass() {}

@@ -36,7 +36,37 @@ __all__ = [
 
 
 class ReduceOp:
-    """Reduce Operation"""
+    """
+    Specify the type of operation used for element-wise reductions.
+    It should be one of the following values:
+
+        ReduceOp.SUM
+
+        ReduceOp.MAX
+
+        ReduceOp.MIN
+
+        ReduceOp.PROD
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+            from paddle.distributed import ReduceOp
+            from paddle.distributed import init_parallel_env
+
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            init_parallel_env()
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                np_data = np.array([[4, 5, 6], [4, 5, 6]])
+            else:
+                np_data = np.array([[1, 2, 3], [1, 2, 3]])
+            data = paddle.to_tensor(np_data)
+            paddle.distributed.all_reduce(data, op=ReduceOp.SUM)
+            out = data.numpy()
+            # [[5, 7, 9], [5, 7, 9]]
+    """
     SUM = 0
     MAX = 1
     MIN = 2
@@ -51,9 +81,19 @@ class _Group():
         self.nranks = rank_num
 
 
-_default_group = _Group(
-    int(os.getenv("PADDLE_TRAINER_ID", "0")),
-    int(os.getenv("PADDLE_TRAINERS_NUM", "1")))
+# NOTE(chenweihang): Lazily initialized global group information
+# If we initialize _default_group when import module, it will 
+# not update when we use spawn to run multi-process training 
+_default_group = None
+
+
+def _get_global_default_group():
+    global _default_group
+    if _default_group is None:
+        _default_group = _Group(
+            int(os.getenv("PADDLE_TRAINER_ID", "0")),
+            int(os.getenv("PADDLE_TRAINERS_NUM", "1")))
+    return _default_group
 
 
 def broadcast(tensor, src, group=0):
@@ -77,7 +117,6 @@ def broadcast(tensor, src, group=0):
             import paddle
             from paddle.distributed import init_parallel_env
 
-            paddle.disable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -135,7 +174,6 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0):
             from paddle.distributed import ReduceOp
             from paddle.distributed import init_parallel_env
 
-            paddle.disable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -210,7 +248,6 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
             import paddle
             from paddle.distributed import init_parallel_env
 
-            paddle.disable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -293,7 +330,6 @@ def all_gather(tensor_list, tensor, group=0):
             import paddle
             from paddle.distributed import init_parallel_env
 
-            paddle.disable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             tensor_list = []
@@ -313,6 +349,7 @@ def all_gather(tensor_list, tensor, group=0):
     op_type = 'c_allgather'
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+    _default_group = _get_global_default_group()
     if in_dygraph_mode():
         core.ops.c_allgather(tensor, out, 'use_calc_stream', True, 'ring_id',
                              group, 'nranks', _default_group.nranks)
@@ -367,7 +404,6 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
             import paddle
             from paddle.distributed import init_parallel_env
 
-            paddle.disable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -385,7 +421,7 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
             out = data1.numpy()
     """
     op_type = 'c_scatter'
-    global _default_group
+    _default_group = _get_global_default_group()
     rank = _default_group.rank
     nranks = _default_group.nranks
     if rank != src:
@@ -433,13 +469,12 @@ def barrier(group=0):
             import paddle
             from paddle.distributed import init_parallel_env
 
-            paddle.disable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             paddle.distributed.barrier()
     """
     op_type = 'barrier'
-    temp = paddle.fill_constant([1], dtype="int32", value="1")
+    temp = fill_constant([1], dtype="int32", value="1")
     if in_dygraph_mode():
         return core.ops.barrier(temp, temp, 'ring_id', group)
     if not isinstance(group, int):

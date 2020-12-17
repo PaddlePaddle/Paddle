@@ -56,14 +56,27 @@ __global__ void elementwise_kernel(const size_t total, const T *x_data,
 
 nvinfer1::Dims ElementWisePlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *input_dims, int num_inputs) {
-  PADDLE_ENFORCE_EQ(index, 0);
-  PADDLE_ENFORCE_EQ(num_inputs, 2);
-  PADDLE_ENFORCE_NOT_NULL(input_dims);
+  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
+                                  "There is only one output in TRT elementwise "
+                                  "op plugin, but got output index: %d.",
+                                  index));
+  PADDLE_ENFORCE_EQ(num_inputs, 2, platform::errors::InvalidArgument(
+                                       "There are 2 inputs in TRT elementwise "
+                                       "op plugin, but got input number: %d.",
+                                       num_inputs));
+  PADDLE_ENFORCE_NOT_NULL(
+      input_dims,
+      platform::errors::InvalidArgument(
+          "The input dims of TRT elementwise op plugin should not be null."));
   return input_dims[0];
 }
 
 int ElementWisePlugin::initialize() {
-  PADDLE_ENFORCE_GT(dims_y_.nbDims, 0);
+  PADDLE_ENFORCE_GT(dims_y_.nbDims, 0,
+                    platform::errors::InvalidArgument(
+                        "The dimension of input Y of TRT elementwise op plugin "
+                        "should be greater than 0, but got %d.",
+                        dims_y_.nbDims));
 
   axis_ = (axis_ == -1) ? dims_x_.nbDims - dims_y_.nbDims : axis_;
   int trimed_nb_dims = dims_y_.nbDims;
@@ -74,8 +87,18 @@ int ElementWisePlugin::initialize() {
   }
   dims_y_.nbDims = trimed_nb_dims;
 
-  PADDLE_ENFORCE_GE(dims_x_.nbDims, dims_y_.nbDims + axis_);
-  PADDLE_ENFORCE_LT(axis_, dims_x_.nbDims);
+  PADDLE_ENFORCE_GE(dims_x_.nbDims, dims_y_.nbDims + axis_,
+                    platform::errors::InvalidArgument(
+                        "We expect [number of x dims] >= [number of y dims + "
+                        "axis] in TRT elementwise op plugin, but got [number "
+                        "of x dims] = %d, [number of y dims + axis] = %d.",
+                        dims_x_.nbDims, dims_y_.nbDims + axis_));
+  PADDLE_ENFORCE_LT(
+      axis_, dims_x_.nbDims,
+      platform::errors::InvalidArgument("We expect [axis] < [number of x dims] "
+                                        "in TRT elementwise op plugin, but got "
+                                        "[axis] = %d, [number of x dims] = %d.",
+                                        axis_, dims_x_.nbDims));
 
   prev_size_ = 1;
   midd_size_ = 1;
@@ -86,7 +109,9 @@ int ElementWisePlugin::initialize() {
 
   for (int i = 0; i < dims_y_.nbDims; ++i) {
     PADDLE_ENFORCE_EQ(dims_x_.d[i + axis_], dims_y_.d[i],
-                      "Broadcast dimension mismatch.");
+                      platform::errors::InvalidArgument(
+                          "Broadcast dimension mismatch. The dims of input Y "
+                          "should be a subsequence of X."));
     midd_size_ *= dims_y_.d[i];
   }
 
@@ -221,7 +246,10 @@ int ElementwisePluginDynamic::enqueue(
     elementwise_kernel<<<block, thread, 0, stream>>>(
         num, x, y, out, prev_size, midd_size, post_size, details::Mul<float>());
   } else {
-    PADDLE_THROW("Not implemented.");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Paddle-TRT only support elementwise operation: {add, mul} currently, "
+        "but got %s.",
+        type_));
   }
 
   return cudaGetLastError() != cudaSuccess;

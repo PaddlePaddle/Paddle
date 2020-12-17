@@ -13,8 +13,24 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/isfinite_op.h"
+
 #include <string>
-#include <vector>
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -43,7 +59,11 @@ class OverflowOp : public framework::OperatorWithKernel {
     } else if (x_var->IsType<framework::SelectedRows>()) {
       dtype = x_var->Get<framework::SelectedRows>().value().type();
     } else {
-      PADDLE_THROW("Cannot find the input data type by all input data");
+      PADDLE_ENFORCE_EQ(
+          true, false,
+          platform::errors::InvalidArgument(
+              "The input type mismatch, the type of Input(X) must be Tensor or "
+              "SelectedRows, please check your input."));
     }
     return framework::OpKernelType(framework::proto::VarType::Type(dtype),
                                    ctx.GetPlace());

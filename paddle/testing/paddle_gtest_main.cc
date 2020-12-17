@@ -12,12 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cstring>
-
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/init.h"
 
 int main(int argc, char** argv) {
@@ -124,7 +121,7 @@ int main(int argc, char** argv) {
   int internal_argc = internal_argv.size();
   char** arr = internal_argv.data();
   paddle::platform::ParseCommandLineFlags(internal_argc, arr, true);
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
 
   int ret = RUN_ALL_TESTS();
 

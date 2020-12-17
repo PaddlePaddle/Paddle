@@ -875,6 +875,8 @@ class Optimizer(object):
     def clear_gradients(self):
         """
         Clear the gradients of all optimized parameters for model.
+
+        If not, new gradient will accumulat on previous gradient.
         
         Returns:
             None
@@ -3750,7 +3752,9 @@ class PipelineOptimizer(object):
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
         if not isinstance(optimizer, Optimizer) and not isinstance(
-                optimizer, paddle.optimizer.Optimizer):
+                optimizer, paddle.optimizer.Optimizer) and not isinstance(
+                    optimizer, paddle.fluid.contrib.mixed_precision.decorator.
+                    OptimizerWithMixedPrecision):
             raise ValueError("The 'optimizer' parameter for "
                              "PipelineOptimizer must be an instance of "
                              "Optimizer, but the given type is {}.".format(
@@ -4137,6 +4141,8 @@ class PipelineOptimizer(object):
                               "{} has not been set.".format(op.type))
             if not dev_spec in device_specs:
                 device_specs.append(dev_spec)
+        sorted_device_specs = sorted(device_specs)
+        assert sorted_device_specs == device_specs
         return device_specs
 
     def _insert_sendrecv_ops_for_boundaries(self, block):

@@ -22,23 +22,31 @@ class SGDOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(Param) of SGDOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of SGDOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                   "Input(LearningRate) of SGDOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                   "Output(ParamOut) of SGDOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
+                      platform::errors::NotFound(
+                          "Input(Param) of SGDOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Grad"), true,
+        platform::errors::NotFound("Input(Grad) of SGDOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"), true,
+                      platform::errors::NotFound(
+                          "Input(LearningRate) of SGDOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
+                      platform::errors::NotFound(
+                          "Output(ParamOut) of SGDOp should not be null."));
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
-                      "Maybe the Input variable LearningRate has not "
-                      "been initialized. You may need to confirm "
-                      "if you put exe.run(startup_program) "
-                      "after optimizer.minimize function.");
+                      platform::errors::NotFound(
+                          "Maybe the Input variable LearningRate has not "
+                          "been initialized. You may need to confirm "
+                          "if you put exe.run(startup_program) "
+                          "after optimizer.minimize function."));
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
-                      "Learning rate should have 1 element");
+                      platform::errors::InvalidArgument(
+                          "Learning rate should have 1 element. But received "
+                          "LearningRate dims [%s]",
+                          framework::product(lr_dims)));
     auto param_dim = ctx->GetInputDim("Param");
     if (ctx->GetInputsVarType("Grad")[0] ==
         framework::proto::VarType::LOD_TENSOR) {

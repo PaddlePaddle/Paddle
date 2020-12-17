@@ -32,6 +32,7 @@ from __future__ import print_function
 import itertools
 import numpy
 import paddle.dataset.common
+import paddle.utils.deprecated as deprecated
 import tarfile
 import six
 from six.moves import cPickle as pickle
@@ -75,6 +76,10 @@ def reader_creator(filename, sub_name, cycle=False):
     return reader
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.Cifar100",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train100():
     """
     CIFAR-100 training set creator.
@@ -90,6 +95,10 @@ def train100():
         'train')
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.Cifar100",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test100():
     """
     CIFAR-100 test set creator.
@@ -105,6 +114,10 @@ def test100():
         'test')
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.Cifar10",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train10(cycle=False):
     """
     CIFAR-10 training set creator.
@@ -123,6 +136,10 @@ def train10(cycle=False):
         cycle=cycle)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.Cifar10",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test10(cycle=False):
     """
     CIFAR-10 test set creator.
@@ -141,6 +158,10 @@ def test10(cycle=False):
         cycle=cycle)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.Cifar10",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5)
     paddle.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5)

@@ -108,7 +108,6 @@ class PipelineHelper(object):
 
     def _broadcast_params(self, ring_id):
         block = self.startup_program.global_block()
-        param = None
         for var_name in block.vars:
             if "nccl_id" in var_name: continue
             param = block.var(var_name)
@@ -125,7 +124,6 @@ class PipelineHelper(object):
                     OP_ROLE_KEY: OpRole.Forward
                 })
 
-        if param is None: return
         block.append_op(
             type='c_sync_comm_stream',
             inputs={'X': param},
@@ -187,6 +185,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         node_num = _get_node_num(endpoints)
         gpus_per_node = len(endpoints) // node_num
         self.startup_program = startup_program
+        self.local_rank = self._get_local_rank(current_endpoint, endpoints)
         if startup_program is None:
             self.startup_program = fluid.default_startup_program()
 

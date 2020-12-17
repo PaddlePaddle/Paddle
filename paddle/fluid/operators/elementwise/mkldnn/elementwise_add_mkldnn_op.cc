@@ -15,6 +15,16 @@
 #include "paddle/fluid/operators/elementwise/mkldnn/elementwise_mkldnn_op.h"
 
 namespace paddle {
+namespace framework {
+class ExecutionContext;
+}  // namespace framework
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 template <typename T>
 class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
@@ -56,6 +66,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(
     elementwise_add, MKLDNN, ::paddle::platform::CPUPlace,
     ops::EltwiseMKLDNNKernel<float, dnnl::algorithm::binary_add>,
+    ops::EltwiseMKLDNNKernel<paddle::platform::bfloat16,
+                             dnnl::algorithm::binary_add>,
     ops::EltwiseMKLDNNKernel<int8_t, dnnl::algorithm::binary_add>,
     ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_add>)
 

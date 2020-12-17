@@ -21,12 +21,13 @@ namespace math {
 
 template <typename T>
 struct GRUMetaValue {
-  T *gate_weight;
-  T *state_weight;
+  const T *gate_weight;
+  const T *state_weight;
+  const T *reset_bias;
   T *gate_value;
   T *reset_output_value;
   T *output_value;
-  T *prev_out_value;
+  const T *prev_out_value;
 };
 
 template <typename T>
@@ -37,6 +38,7 @@ struct GRUMetaGrad {
   T *reset_output_grad;
   T *output_grad;
   T *prev_out_grad;
+  T *bias_hh_grad;
 };
 
 template <typename DeviceContext, typename T>
@@ -55,6 +57,22 @@ struct GRUUnitGradFunctor {
                       const detail::ActivationType active_node,
                       const detail::ActivationType active_gate,
                       bool origin_mode);
+};
+
+template <typename DeviceContext, typename T>
+struct GRUUnitFunctorV2 {
+  static void compute(const DeviceContext &context, GRUMetaValue<T> value,
+                      int frame_size, int batch_size,
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate);
+};
+
+template <typename DeviceContext, typename T>
+struct GRUUnitGradFunctorV2 {
+  static void compute(const DeviceContext &context, GRUMetaValue<T> value,
+                      GRUMetaGrad<T> grad, int frame_size, int batch_size,
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate);
 };
 
 }  // namespace math

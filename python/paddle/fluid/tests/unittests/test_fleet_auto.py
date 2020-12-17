@@ -18,6 +18,8 @@ import os
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 
+paddle.enable_static()
+
 
 class TestDistributedStrategyAuto(unittest.TestCase):
     def setUp(self):
@@ -45,6 +47,9 @@ class TestDistributedStrategyAuto(unittest.TestCase):
         optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
+
+        applied_meta_list = fleet._get_applied_meta_list()
+        print("applied_meta_list: {}".format(applied_meta_list))
 
 
 if __name__ == "__main__":

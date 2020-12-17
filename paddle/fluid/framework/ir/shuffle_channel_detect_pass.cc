@@ -14,8 +14,8 @@
 
 #include <string>
 
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/shuffle_channel_detect_pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -82,6 +82,9 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(graph, {reshape1_op, reshape1_out, transpose_op,
                                  transpose_out, reshape2_op});
+    LOG_FIRST_N(WARNING, 1)
+        << "There is fluid.layers.shuffle_channel API already, maybe you can "
+           "use it instead of (reshape + transpose + reshape)";
   };
 
   gpd(graph, handler);
@@ -93,3 +96,8 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(shuffle_channel_detect_pass,
               paddle::framework::ir::ShuffleChannelDetectPass);
+REGISTER_PASS_CAPABILITY(shuffle_channel_detect_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("reshape2", 0)
+            .EQ("transpose2", 0));

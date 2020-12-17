@@ -151,8 +151,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         """
 
         exe = fluid.Executor(fluid.CPUPlace())
-        fleet.init_worker()
+
         exe.run(fluid.default_startup_program())
+        fleet.init_worker()
 
         batch_size = 4
 

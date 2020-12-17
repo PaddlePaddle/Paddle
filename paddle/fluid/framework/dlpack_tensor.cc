@@ -11,10 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <unordered_map>
-
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
+#include <unordered_map>
+#include "paddle/fluid/framework/data_type.h"
+
+namespace paddle {
+namespace platform {
+struct bfloat16;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
+
 namespace paddle {
 namespace framework {
 

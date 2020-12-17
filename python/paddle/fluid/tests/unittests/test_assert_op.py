@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import unittest
@@ -42,7 +43,7 @@ class TestAssertOp(unittest.TestCase):
                 shape=[1], dtype='bool', value=False)
             layers.Assert(condition)
 
-        with self.assertRaises(fluid.core.EnforceNotMet):
+        with self.assertRaises(ValueError):
             self.run_network(net_func)
 
     def test_assert_cond_numel_error(self):
@@ -51,7 +52,7 @@ class TestAssertOp(unittest.TestCase):
                 shape=[1, 2], dtype='bool', value=True)
             layers.Assert(condition, [])
 
-        with self.assertRaises(fluid.core.EnforceNotMet):
+        with self.assertRaises(ValueError):
             self.run_network(net_func)
 
     def test_assert_print_data(self):
@@ -62,7 +63,7 @@ class TestAssertOp(unittest.TestCase):
             layers.Assert(condition, [zero, one])
 
         print("test_assert_print_data")
-        with self.assertRaises(fluid.core.EnforceNotMet):
+        with self.assertRaises(ValueError):
             self.run_network(net_func)
 
     def test_assert_summary(self):
@@ -72,7 +73,7 @@ class TestAssertOp(unittest.TestCase):
             layers.Assert(condition, (x, ), 5)
 
         print("test_assert_summary")
-        with self.assertRaises(fluid.core.EnforceNotMet):
+        with self.assertRaises(ValueError):
             self.run_network(net_func)
 
     def test_assert_summary_greater_than_size(self):
@@ -82,9 +83,10 @@ class TestAssertOp(unittest.TestCase):
             layers.Assert(condition, [x], 10, name="test")
 
         print("test_assert_summary_greater_than_size")
-        with self.assertRaises(fluid.core.EnforceNotMet):
+        with self.assertRaises(ValueError):
             self.run_network(net_func)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

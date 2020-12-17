@@ -24,7 +24,10 @@ def kldiv_loss(x, target, reduction):
     loss = np.where(target >= 0, output, np.zeros_like(x))
 
     if reduction == "batchmean":
-        return loss.sum() / x.shape[0]
+        if len(x.shape) > 0:
+            return loss.sum() / x.shape[0]
+        else:
+            return loss.sum()
     if reduction == "mean":
         return loss.mean()
     if reduction == "sum":
@@ -87,11 +90,14 @@ class TestKLDivLossDygraph(unittest.TestCase):
         with paddle.fluid.dygraph.guard():
             kldiv_criterion = paddle.nn.KLDivLoss(reduction)
             pred_loss = kldiv_criterion(
-                paddle.to_variable(x), paddle.to_variable(target))
+                paddle.to_tensor(x), paddle.to_tensor(target))
             self.assertTrue(np.allclose(pred_loss.numpy(), gt_loss))
 
     def test_kl_loss_batchmean(self):
         self.run_kl_loss('batchmean')
+
+    def test_kl_loss_batchmean_shape(self):
+        self.run_kl_loss('batchmean', ())
 
     def test_kl_loss_mean(self):
         self.run_kl_loss('mean')
@@ -107,6 +113,21 @@ class TestKLDivLossDygraph(unittest.TestCase):
         label = paddle.fluid.data(name='label', shape=[5, 20])
 
         pred_loss = paddle.nn.functional.kl_div(input, label)
+
+
+class TestKLDivLossTypePromotion(unittest.TestCase):
+    def test_kl_div_promotion(self):
+
+        with paddle.fluid.dygraph.guard():
+            x1 = paddle.rand([5, 20], dtype='float32')
+            target1 = paddle.rand([5, 20], dtype='float64')
+
+            kldiv_criterion = paddle.nn.KLDivLoss()
+            pred_loss1 = kldiv_criterion(x1, target1)
+
+            x2 = paddle.rand([5, 20], dtype='float64')
+            target2 = paddle.rand([5, 20], dtype='float32')
+            pred_loss2 = paddle.nn.functional.kl_div(x2, target2)
 
 
 if __name__ == "__main__":

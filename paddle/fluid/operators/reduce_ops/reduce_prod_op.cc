@@ -14,6 +14,19 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
 
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_REDUCE_OP(reduce_prod);
 REGISTER_OP_CPU_KERNEL(reduce_prod,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,

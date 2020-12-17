@@ -29,6 +29,8 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
+paddle.enable_static()
+
 
 class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
     def net(self):
@@ -69,8 +71,8 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
-        fleet.init_worker()
         exe.run(fleet.startup_program)
+        fleet.init_worker()
 
         train_reader = paddle.batch(self.fake_reader(), batch_size=24)
         feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
@@ -120,6 +122,7 @@ from test_communicator_half_async import TestCommunicatorHalfAsyncEnd2End
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
+paddle.enable_static()
 
 class RunServer(TestCommunicatorHalfAsyncEnd2End):
     def runTest(self):

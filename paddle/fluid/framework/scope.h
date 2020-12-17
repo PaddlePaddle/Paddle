@@ -32,6 +32,12 @@ extern "C" {
 
 namespace paddle {
 namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 
 class Scope;
 

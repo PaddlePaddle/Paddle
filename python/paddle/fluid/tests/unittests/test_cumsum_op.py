@@ -21,13 +21,12 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
-from paddle import to_variable
 
 
 class TestCumsumOp(unittest.TestCase):
     def run_cases(self):
         data_np = np.arange(12).reshape(3, 4)
-        data = to_variable(data_np)
+        data = paddle.to_tensor(data_np)
 
         y = paddle.cumsum(data)
         z = np.cumsum(data_np)

@@ -12,23 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
+
+#include "glog/logging.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
-#include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/details/share_tensor_buffer_op_handle.h"
-#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/op_graph_view.h"
-#include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 using OpHandleBase = details::OpHandleBase;
 using ComputationOpHandle = details::ComputationOpHandle;

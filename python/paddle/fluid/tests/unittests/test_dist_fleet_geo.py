@@ -22,6 +22,9 @@ from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import f
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 from test_dist_fleet_base import TestFleetBase
 from dist_fleet_simnet_bow import train_network
+import paddle
+
+paddle.enable_static()
 
 
 class TestDistGeoCtr_2x2(TestFleetBase):

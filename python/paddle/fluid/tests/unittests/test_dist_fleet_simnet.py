@@ -18,6 +18,9 @@ import os
 import unittest
 import tempfile
 from test_dist_fleet_base import TestFleetBase
+import paddle
+
+paddle.enable_static()
 
 
 class TestDistSimnetASync2x2(TestFleetBase):

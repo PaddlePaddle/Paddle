@@ -21,6 +21,8 @@ import contextlib
 import paddle
 import paddle.fluid as fluid
 
+paddle.enable_static()
+
 file_dir = os.path.dirname(os.path.abspath(__file__))
 fluid.load_op_library(os.path.join(file_dir, 'librelu2_op.so'))
 

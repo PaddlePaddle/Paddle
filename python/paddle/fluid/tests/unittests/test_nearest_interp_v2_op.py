@@ -526,20 +526,6 @@ class TestNearestAPI(unittest.TestCase):
             self.assertTrue(np.allclose(results[i + 1], expect_res))
 
 
-class TestUpsampleNearest2dInterpOpAPI2_0(unittest.TestCase):
-    def test_case(self):
-
-        # dygraph
-        x_data = np.random.random((1, 3, 6, 6)).astype("float32")
-        upsample = paddle.nn.UpsamplingNearest2d(scale_factor=[2, 2])
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(x_data)
-            interp = upsample(x)
-            expect = nearest_neighbor_interp_np(
-                x_data, out_h=12, out_w=12, align_corners=False)
-            self.assertTrue(np.allclose(interp.numpy(), expect))
-
-
 class TestNearestInterpException(unittest.TestCase):
     def test_exception(self):
         input = fluid.data(name="input", shape=[1, 3, 6, 6], dtype="float32")

@@ -43,14 +43,10 @@ class MKLDNNHandlerT {
         engine_(engine),
         place_(cpu_place),
         key_common_(base_key),
+        key_(platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, base_key)),
         fwd_pd_(nullptr),
         bwd_pd_(nullptr) {
-    if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() !=
-        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
-      key_ = key_common_;
-    } else {
-      key_ = key_common_ + "-t:" + ThreadIDasStr();
-    }
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
   }
 
   std::shared_ptr<TForward> AcquireForwardPrimitive() {
@@ -191,6 +187,12 @@ class MKLDNNHandlerT {
   }
 
   std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
+      const std::string& suffix) {
+    return std::static_pointer_cast<mkldnn::memory>(
+        dev_ctx_.GetBlob(key_ + suffix));
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
       mkldnn::memory::desc md, void* ptr, const std::string& suffix) {
     const auto local_key = key_ + suffix;
     auto mem_p =
@@ -231,6 +233,9 @@ class MKLDNNHandlerT {
     }
 
     mkldnn::stream astream(engine_);
+
+    platform::RecordEvent record_reorder("int_reorder",
+                                         platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                  {MKLDNN_ARG_TO, *target_memory_p}});
     astream.wait();
@@ -257,6 +262,8 @@ class MKLDNNHandlerT {
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
 
         mkldnn::stream astream(engine_);
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                      {MKLDNN_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -275,6 +282,8 @@ class MKLDNNHandlerT {
       auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                      {MKLDNN_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -292,8 +301,8 @@ class MKLDNNHandlerT {
   const MKLDNNDeviceContext& dev_ctx_;
   mkldnn::engine engine_;
   platform::Place place_;
-  std::string key_;
   std::string key_common_;
+  std::string key_;
   std::shared_ptr<typename TForward::primitive_desc> fwd_pd_;
   std::shared_ptr<typename TBackward::primitive_desc> bwd_pd_;
 };
@@ -303,13 +312,11 @@ class MKLDNNHandler {
  public:
   MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
                 const std::string& base_key)
-      : dev_ctx_(dev_ctx), engine_(engine), key_common_(base_key) {
-    if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() !=
-        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
-      key_ = key_common_;
-    } else {
-      key_ = key_common_ + "-t:" + ThreadIDasStr();
-    }
+      : dev_ctx_(dev_ctx),
+        engine_(engine),
+        key_common_(base_key),
+        key_(platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, base_key)) {
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
@@ -342,6 +349,18 @@ class MKLDNNHandler {
       dev_ctx_.SetBlob(local_key, mem_p);
     } else {
       mem_p->set_data_handle(ptr);
+    }
+    return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
+      mkldnn::memory::desc md, const std::string& suffix) {
+    const auto local_key = key_ + suffix;
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    if (mem_p == nullptr) {
+      mem_p = std::make_shared<mkldnn::memory>(md, engine_);
+      dev_ctx_.SetBlob(local_key, mem_p);
     }
     return mem_p;
   }
@@ -407,6 +426,8 @@ class MKLDNNHandler {
           std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
       dev_ctx_.SetBlob(key_reorder_p, reorder_p);
       mkldnn::stream astream(engine_);
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
       reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                    {MKLDNN_ARG_TO, *target_memory_p}});
       astream.wait();
@@ -454,6 +475,8 @@ class MKLDNNHandler {
             std::shared_ptr<mkldnn::reorder>(new mkldnn::reorder(*reorder_pd));
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
 
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                      {MKLDNN_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -464,6 +487,8 @@ class MKLDNNHandler {
       auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                      {MKLDNN_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -475,8 +500,8 @@ class MKLDNNHandler {
  protected:
   const MKLDNNDeviceContext& dev_ctx_;
   mkldnn::engine engine_;
-  std::string key_;
   std::string key_common_;
+  std::string key_;
 };
 
 template <typename T>
@@ -491,7 +516,7 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(
-                framework::vectorize(x->dims()),
+                dev_ctx, framework::vectorize(x->dims()),
                 uniq_name + (algo == dnnl::algorithm::binary_mul ? "M" : ""))) {
     // bradcasting combined with in-place may require
     auto rankdiff = x->dims().size() - y->dims().size();
@@ -579,59 +604,6 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
   }
 };
 
-class SumMKLDNNHandler : public MKLDNNHandler {
- public:
-  SumMKLDNNHandler(const platform::MKLDNNDeviceContext& dev_ctx,
-                   mkldnn::engine engine, const std::string& base_key)
-      : platform::MKLDNNHandler(dev_ctx, engine, base_key) {}
-
-  std::shared_ptr<mkldnn::sum::primitive_desc> AcquireSumPrimitiveDescriptor(
-      const std::vector<std::shared_ptr<mkldnn::memory>>& src_mems,
-      const std::vector<float>& scales, const mkldnn::memory::desc& dst_md) {
-    const std::string key_sum_pd = key_ + "@sum_pd";
-
-    sum_pd_ = std::static_pointer_cast<mkldnn::sum::primitive_desc>(
-        dev_ctx_.GetBlob(key_sum_pd));
-    if (sum_pd_ == nullptr) {
-      // Get vector of inputs primitive descriptors
-      std::vector<mkldnn::memory::desc> src_ds;
-      for (auto& input_mem : src_mems) {
-        src_ds.push_back(input_mem->get_desc());
-      }
-
-      sum_pd_.reset(
-          new mkldnn::sum::primitive_desc(dst_md, scales, src_ds, engine_));
-      dev_ctx_.SetBlob(key_sum_pd, sum_pd_);
-    }
-
-    return sum_pd_;
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(void* ptr) {
-    return this->AcquireMemoryFromPrimitive(sum_pd_->dst_desc(), ptr,
-                                            "@dst_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_src2_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::sum> AcquireSum() {
-    auto prim_key = key_ + "@sum_p";
-    auto sum_p =
-        std::static_pointer_cast<mkldnn::sum>(dev_ctx_.GetBlob(prim_key));
-    if (sum_p == nullptr) {
-      sum_p = std::make_shared<mkldnn::sum>(*sum_pd_);
-      dev_ctx_.SetBlob(prim_key, sum_p);
-    }
-    return sum_p;
-  }
-
- private:
-  std::shared_ptr<mkldnn::sum::primitive_desc> sum_pd_;
-};
-
 template <typename T>
 class ActivationMKLDNNHandler
     : public MKLDNNHandlerT<T, mkldnn::eltwise_forward,
@@ -647,7 +619,7 @@ class ActivationMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, "a", algorithm, unique_name)) {
+            platform::CreateKey(dev_ctx, dims, "a", algorithm, unique_name)) {
     auto md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
 
     this->AcquireForwardPrimitiveDescriptor(mkldnn::prop_kind::forward_training,
@@ -665,7 +637,7 @@ class ActivationMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, "a", algorithm, unique_name)) {
+            platform::CreateKey(dev_ctx, dims, "a", algorithm, unique_name)) {
     auto diff_dst_md = platform::MKLDNNMemDesc(
         dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
     auto src_md =
@@ -696,7 +668,7 @@ class LRNMKLDNNHandler
 
       : platform::MKLDNNHandlerT<T, mkldnn::lrn_forward, mkldnn::lrn_backward>(
             dev_ctx, mkldnn_engine, cpu_place,
-            platform::CreateKey(framework::vectorize(input->dims()),
+            platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
                                 unique_name)) {
     if (!this->isCached()) {
       const int n = ctx.Attr<int>("n");
@@ -732,7 +704,7 @@ class LRNMKLDNNHandler
 
       : platform::MKLDNNHandlerT<T, mkldnn::lrn_forward, mkldnn::lrn_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, unique_name)) {
+            platform::CreateKey(dev_ctx, dims, unique_name)) {
     auto src_md =
         mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
     auto diff_md =
@@ -772,7 +744,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
       : platform::MKLDNNHandlerT<T, mkldnn::pooling_forward,
                                  mkldnn::pooling_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(framework::vectorize(input->dims()),
+            platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
                                 framework::ToMKLDNNDataType(input->type()),
                                 unique_name)) {
     if (!this->isCached()) {
@@ -853,6 +825,9 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
         CorrectOutputSize(src_tz, dst_tz, ksize, paddings, strides,
                           mkldnn_paddings[1]);
       }
+
+      ComputeAdaptivePoolParameters(ctx, src_tz, ksize, strides);
+
       this->AcquireForwardPrimitiveDescriptor(
           is_test ? mkldnn::prop_kind::forward_inference
                   : mkldnn::prop_kind::forward_training,
@@ -878,7 +853,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
       : platform::MKLDNNHandlerT<T, mkldnn::pooling_forward,
                                  mkldnn::pooling_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(diff_src_dims, dt, unique_name)) {
+            platform::CreateKey(dev_ctx, diff_src_dims, dt, unique_name)) {
     auto diff_dst_md = mkldnn::memory::desc(
         diff_dst_dims, platform::MKLDNNGetDataType<T>(), diff_dst_fmt);
     auto diff_src_md =
@@ -917,6 +892,27 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
       }
     }
     return mem_p;
+  }
+
+  static void ComputeAdaptivePoolParameters(
+      const paddle::framework::ExecutionContext& ctx,
+      const std::vector<int64_t>& src_tz, std::vector<int64_t>& ksize,
+      std::vector<int64_t>& strides) {
+    if (ctx.Attr<bool>("adaptive")) {
+      // (jczaja): oneDNN is supporting only unchangable in size pool window
+      PADDLE_ENFORCE_EQ(
+          src_tz[src_tz.size() - 1] % ksize[1], 0,
+          platform::errors::Unimplemented(
+              "Input dim must be divisible by corressponding ksize dim."));
+      PADDLE_ENFORCE_EQ(
+          src_tz[src_tz.size() - 2] % ksize[0], 0,
+          platform::errors::Unimplemented(
+              "Input dim must be divisible by corressponding ksize dim."));
+      ksize[0] = src_tz[src_tz.size() - 2] / ksize[0];
+      ksize[1] = src_tz[src_tz.size() - 1] / ksize[1];
+      strides[0] = ksize[0];
+      strides[1] = ksize[1];
+    }
   }
 
  private:
@@ -1175,6 +1171,12 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
         conv_bwd_weights_pd_->diff_weights_desc(), ptr, "@diff_weights_mem_p");
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireDiffWeightsMemoryFromWeightsPrimitive(
+      void) {
+    return this->AcquireMemoryFromPrimitive(
+        conv_bwd_weights_pd_->diff_weights_desc(), "@diff_weights_mem_p");
+  }
+
   std::shared_ptr<mkldnn::memory> AcquireDiffDstMemoryFromDataPrimitive(
       const std::shared_ptr<mkldnn::memory> user_memory_p,
       std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
@@ -1306,6 +1308,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       const mkldnn::memory::desc& src, const mkldnn::memory::desc& weights,
       boost::optional<const mkldnn::memory::desc&> bias,
       const mkldnn::memory::desc& dst, const std::vector<int64_t>& strides,
+      const std::vector<int64_t>& dilations,
       const std::vector<int64_t>& paddings, const mkldnn::engine& engine,
       const std::string& fuse_activation, float fuse_alpha, float fuse_beta,
       const bool fuse_residual_conn, mkldnn::prop_kind fwd_prop_kind,
@@ -1328,18 +1331,18 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
           dev_ctx_.GetBlob(key_conv_pd));
       if (conv_pd_ == nullptr) {
         mkldnn::memory::dims stride_dims = strides;
-
+        mkldnn::memory::dims dilations_dims = dilations;
         auto mkldnn_paddings = ToMkldnnPadding(paddings);
 
         auto conv_desc =
             bias ? typename forward_t::desc(
                        fwd_prop_kind, convolutional_algorithm<forward_t>::T,
-                       src, weights, *bias, dst, stride_dims,
+                       src, weights, *bias, dst, stride_dims, dilations_dims,
                        mkldnn_paddings[0], mkldnn_paddings[1])
                  : typename forward_t::desc(
                        fwd_prop_kind, convolutional_algorithm<forward_t>::T,
-                       src, weights, dst, stride_dims, mkldnn_paddings[0],
-                       mkldnn_paddings[1]);
+                       src, weights, dst, stride_dims, dilations_dims,
+                       mkldnn_paddings[0], mkldnn_paddings[1]);
 
         mkldnn::primitive_attr conv_attr =
             CreatePostOps(fuse_activation, fuse_alpha, fuse_beta,
