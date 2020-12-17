@@ -459,15 +459,13 @@ class FCPrimitiveFactory {
       constexpr float placeholder = 1.0f;  // beta
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                      negative_slope, placeholder);
-    }
-    else if (ctx.Attr<std::string>("activation_type") == "gelu") {
+    } else if (ctx.Attr<std::string>("activation_type") == "gelu") {
       constexpr float scale = 1.0f;
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_gelu,
                                      alpha, beta);
-    }
-    else if (ctx.Attr<std::string>("activation_type") == "tanh") {
+    } else if (ctx.Attr<std::string>("activation_type") == "tanh") {
       constexpr float scale = 1.0f;
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;

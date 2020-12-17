@@ -26,17 +26,16 @@ using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::string> act_types = {"gelu", "tanh"};
-  
-  for (std::string act_type : act_types)
-    FuseFCAct(graph, act_type);
+
+  for (std::string act_type : act_types) FuseFCAct(graph, act_type);
 }
 
-void FuseFCActOneDNNPass::FuseFCAct(
-    Graph *graph, const std::string &act_type) const {
-  PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument(
-                 "The input graph of "
-                 "FuseFCmActOneDNNPass should not be nullptr."));
+void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
+                                    const std::string &act_type) const {
+  PADDLE_ENFORCE_NOT_NULL(graph,
+                          platform::errors::InvalidArgument(
+                              "The input graph of "
+                              "FuseFCmActOneDNNPass should not be nullptr."));
   FusePassBase::Init("fc_act", graph);
 
   GraphPatternDetector gpd;
@@ -94,16 +93,15 @@ void FuseFCActOneDNNPass::FuseFCAct(
 
   gpd(graph, handler);
   AddStatis(found_fc_act_count);
-  PrettyLogDetail("---    fused %d fc with %s activation",
-                  found_fc_act_count, act_type);
+  PrettyLogDetail("---    fused %d fc with %s activation", found_fc_act_count,
+                  act_type);
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fc_act_fuse_pass,
-              paddle::framework::ir::FuseFCActOneDNNPass);
+REGISTER_PASS(fc_act_fuse_pass, paddle::framework::ir::FuseFCActOneDNNPass);
 REGISTER_PASS_CAPABILITY(fc_act_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()

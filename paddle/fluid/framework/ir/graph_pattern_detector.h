@@ -571,7 +571,7 @@ struct FCActOneDNN : public PatternBase {
   PATTERN_DECL_NODE(act);
   PATTERN_DECL_NODE(fc_out);
   PATTERN_DECL_NODE(act_out);
-};    
+};
 
 // Embedding
 struct Embedding : public PatternBase {
