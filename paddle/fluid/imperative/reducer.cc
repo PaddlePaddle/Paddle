@@ -199,7 +199,7 @@ void Reducer::InitializeDenseGroups(
 // Each parameter will be initialized according to the group information.
 // For the sparse parameter, sparse_contents_ in the group directly points
 // to the parameter. For dense parameters, first construct an empty Tensor().
-// Then specify the actual memory in MarkVariableReady.
+// Then specify the actual memory in MarkDenseVarReady.
 void Reducer::InitializeGroups(
     const std::vector<std::vector<size_t>> &group_indices) {
   VLOG(3) << "Start initialize groups ..";
@@ -223,7 +223,6 @@ void Reducer::InitializeGroups(
     if (variable_indices_.size() == 1 &&
         is_sparse_gradient_[variable_indices_.front()]) {
       // process the sparse gradient. one sparse, one group
-      group.sparse_contents_ = first_varbase->MutableGradVar();
       group.dtype_ = first_varbase->DataType();
       group.is_sparse_ = true;
     } else {
@@ -265,7 +264,7 @@ void Reducer::PrepareForBackward() {
 // Add hook function to each leaf node. When the gradient of a leaf node is
 // generated, if it is the sparse parameter, it will directly execute allreduce,
 // if it is the dense parameter, it will execute three steps: 1,
-// MarkVariableReady. Find the position of the corresponding group
+// MarkDenseVarReady. Find the position of the corresponding group
 // through var_index, share the gradient memory and the group dense_tensors,
 // the group counter is reduced by 1. 2, MarkGroupReady: When the group
 // counter is 0, it means that allreduce can be emitted, and
@@ -283,8 +282,11 @@ void Reducer::AddDistHook(VariableWrapper *var_warpper, size_t var_index) {
 
   if (!group.is_sparse_) {
     // Only dense_contents_ need memory copy
-    MarkVariableReady(var_index, var_warpper);
+    MarkDenseVarReady(var_index, var_warpper);
+  } else {
+    MarkSparseVarReady(var_index, var_warpper);
   }
+
   if (--group.pending_ == 0) {
     // can start allreduce
     MarkGroupReady(group_index);
@@ -295,7 +297,7 @@ void Reducer::AddDistHook(VariableWrapper *var_warpper, size_t var_index) {
   }
 }
 
-void Reducer::MarkVariableReady(size_t var_index,
+void Reducer::MarkDenseVarReady(size_t var_index,
                                 VariableWrapper *var_warpper) {
   const auto &var_locator = variable_locators_[var_index];
   auto group_index = var_locator.group_index;
@@ -306,6 +308,16 @@ void Reducer::MarkVariableReady(size_t var_index,
   auto tensor = var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
   group.dense_tensors_[inside_group_index].ShareDataWith(*tensor).Resize(
       {static_cast<int64_t>(length)});
+}
+
+void Reducer::MarkSparseVarReady(size_t var_index,
+                                 VariableWrapper *var_warpper) {
+  const auto &var_locator = variable_locators_[var_index];
+  auto group_index = var_locator.group_index;
+  auto &group = groups_[group_index];
+  group.sparse_contents_ = var_warpper->MutableVar();
+  group_to_sparse_[group_index] = std::move(*group.sparse_contents_);
+  *group.sparse_contents_ = framework::Variable();
 }
 
 void Reducer::MarkGroupReady(size_t group_index) {
@@ -328,8 +340,9 @@ void Reducer::MarkGroupReady(size_t group_index) {
     if (group.is_sparse_) {
       VLOG(3) << "sparse group [" << next_group_ << "] start allreduce in ring["
               << run_order << "]";
-      parallel_ctx_->AllReduceByStream(
-          *group.sparse_contents_, group.sparse_contents_, run_order, false);
+      parallel_ctx_->AllReduceByStream(group_to_sparse_.at(next_group_),
+                                       group.sparse_contents_, run_order,
+                                       false);
     } else {
       VLOG(3) << "dense group [" << next_group_ << "] start allreduce in ring["
               << run_order << "]";

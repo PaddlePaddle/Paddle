@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -133,7 +134,9 @@ class Reducer {
 
   void AddDistHook(VariableWrapper* var_warpper, size_t var_index);
 
-  void MarkVariableReady(size_t var_index, VariableWrapper* var_warpper);
+  void MarkDenseVarReady(size_t var_index, VariableWrapper* var_warpper);
+
+  void MarkSparseVarReady(size_t var_index, VariableWrapper* var_warpper);
 
   void MarkGroupReady(size_t group_index);
 
@@ -191,6 +194,9 @@ class Reducer {
   std::vector<std::shared_ptr<imperative::VarBase>> rebuild_vars_;
   std::vector<int64_t> rebuild_var_indices_;
   const std::vector<size_t> group_size_limits_;
+
+  // Following variables are to solve sparse allreduce
+  std::map<size_t, framework::Variable> group_to_sparse_;
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
