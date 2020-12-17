@@ -51,6 +51,8 @@ from .tensor.random import bernoulli
 
 from .tensor.attribute import rank  #DEFINE_ALIAS
 from .tensor.attribute import shape  #DEFINE_ALIAS
+from .tensor.attribute import real  #DEFINE_ALIAS
+from .tensor.attribute import imag  #DEFINE_ALIAS
 from .tensor.creation import to_tensor  #DEFINE_ALIAS
 from .tensor.creation import diag  #DEFINE_ALIAS
 from .tensor.creation import eye  #DEFINE_ALIAS
