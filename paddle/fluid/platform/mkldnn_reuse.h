@@ -1055,7 +1055,7 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
     if (mem_p == nullptr) {
       auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_, fmt);
 
-      auto dst_data = output->mutable_data(place, vtype_);
+      auto dst_data = output->mutable_data(place, vtype_, dst_md.get_size());
 
       mem_p = std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
       dev_ctx_.SetBlob(local_key, mem_p);
