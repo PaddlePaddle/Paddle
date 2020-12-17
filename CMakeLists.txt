@@ -86,7 +86,13 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        set(${flag_var} "${${flag_var}} /MP")
+        # NOTE(Avin0323): Less parallel count result in faster compilation with
+        # Unity Build.
+        if(WITH_UNITY_BUILD)
+            set(${flag_var} "${${flag_var}} /MP8")
+        else()
+            set(${flag_var} "${${flag_var}} /MP")
+        endif()
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
         set(${flag_var} "${${flag_var}} /w")

@@ -253,6 +253,11 @@ echo    Step 2. Buile Paddle ...
 echo    ========================================
 
 for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*9/10
+:: NOTE(Avin0323): Less `PARALLEL_PROJECT_COUNT` result in faster compilation
+:: with Unity Build.
+if "%WITH_UNITY_BUILD%" EQU "ON" (
+    if %PARALLEL_PROJECT_COUNT% GTR 6 set PARALLEL_PROJECT_COUNT=6
+)
 set build_times=1
 :build_tp
 echo Build third_party the %build_times% time:
