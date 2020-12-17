@@ -72,6 +72,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
 #ifdef PADDLE_WITH_CUDA
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
+  FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
   device_id_ = device_id;
 #else
   LOG(ERROR) << "Please compile with gpu to EnableGpu()";
@@ -492,7 +493,6 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
   double total_gpu_memory = gpu_total / 1024. / 1024.;
   float fraction_of_gpu_memory =
       static_cast<double>(memory_pool_init_size_mb()) / total_gpu_memory;
-  FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb();
   VLOG(3) << "total_gpu_memory is " << total_gpu_memory
           << "M, gpu_available is " << gpu_available / 1024. / 1024.
           << "M, memory_pool_init_size is " << memory_pool_init_size_mb()
