@@ -94,6 +94,10 @@ func (config *AnalysisConfig) MemoryPoolInitSizeMb() int {
 	return int(C.PD_MemoryPoolInitSizeMb(config.c))
 }
 
+func (config *AnalysisConfig) FractionOfGpuMemoryForPool() float32 {
+	return float32(C.PD_FractionOfGpuMemoryForPool(config.c))
+}
+
 func (config *AnalysisConfig) EnableCudnn() {
 	C.PD_EnableCUDNN(config.c)
 }
@@ -140,6 +144,10 @@ func (config *AnalysisConfig) SwitchIrDebug(x bool) {
 
 func (config *AnalysisConfig) EnableMkldnn() {
 	C.PD_EnableMKLDNN(config.c)
+}
+
+func (config *AnalysisConfig) MkldnnEnabled() bool {
+	return ConvertCBooleanToGo(C.PD_MkldnnEnabled(config.c))
 }
 
 func (config *AnalysisConfig) SetCpuMathLibraryNumThreads(n int) {
