@@ -133,7 +133,9 @@ class Reducer {
 
   void AddDistHook(VariableWrapper* var_warpper, size_t var_index);
 
-  void MarkVariableReady(size_t var_index, VariableWrapper* var_warpper);
+  void MarkDenseVarReady(size_t var_index, VariableWrapper* var_warpper);
+
+  void MarkSparseVarReady(size_t var_index, VariableWrapper* var_warpper);
 
   void MarkGroupReady(size_t group_index);
 
