@@ -747,7 +747,6 @@ void HeterBoxWorker::ProduceTasks() {
     object_pool_.Push(task);
   }
 }
-
 }  // end namespace framework
 }  // end namespace paddle
 #endif
