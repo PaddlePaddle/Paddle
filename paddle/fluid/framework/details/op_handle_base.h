@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -71,7 +72,7 @@ class OpHandleBase {
 
   virtual std::string Name() const = 0;
 
-  void Run(bool use_cuda);
+  void Run(ExecutionStrategy::UseDevice use_device);
 
   virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
 

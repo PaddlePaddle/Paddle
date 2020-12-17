@@ -27,22 +27,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// aligned vector generates vectorized load/store on CUDA
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) AlignedVector {
-  T val[Size];
-};
-
-template <typename T>
-inline int VectorizedSize(const T* pointer) {
-  uint64_t address = reinterpret_cast<uint64_t>(pointer);
-  constexpr int vec4 = std::alignment_of<AlignedVector<T, 4>>::value;  // NOLINT
-  if (address % vec4 == 0) {
-    return 4;
-  }
-  return 1;
-}
-
 template <typename T, typename MaskType>
 __global__ void RandomGenerator(const size_t n, uint64_t seed,
                                 const float dropout_prob, const T* src,
@@ -154,12 +138,9 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
         return;
       }
 
-      int threads = 512;
-      int grid = (x_numel + threads - 1) / threads;
       const auto& dev_ctx = context.cuda_device_context();
-      int blocks_per_sm =
-          dev_ctx.GetMaxPhysicalThreadCount() / dev_ctx.GetSMCount() / threads;
-      grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
+      platform::GpuLaunchConfig config =
+          platform::GetGpuLaunchConfig1D(dev_ctx, size);
 
       // increment is used to set the args(offset) of curand_init, which defines
       // offset in subsequence.
@@ -171,8 +152,10 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       uint64_t seed_data;
       uint64_t increment;
       int vec_size = VectorizedSize<T>(x_data);
-      auto offset =
-          ((x_numel - 1) / (threads * grid * vec_size) + 1) * vec_size;
+      auto offset = ((x_numel - 1) / (config.block_per_grid.x *
+                                      config.thread_per_block.x * vec_size) +
+                     1) *
+                    vec_size;
       int device_id = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace())
                           .GetDeviceId();
       auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
@@ -197,12 +180,15 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
         increment = offset;
       }
 
-      if (vec_size == 4) {
-        VectorizedRandomGenerator<T, uint8_t, 4><<<grid, threads, 0, stream>>>(
+      if (vec_size == 4 && size % 4 == 0) {
+        VectorizedRandomGenerator<
+            T, uint8_t,
+            4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
             size, seed_data, dropout_prob, x_data, mask_data, y_data,
             upscale_in_train, increment);
       } else {
-        RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
+        RandomGenerator<T, uint8_t><<<config.block_per_grid,
+                                      config.thread_per_block, 0, stream>>>(
             size, seed_data, dropout_prob, x_data, mask_data, y_data,
             upscale_in_train, increment);
       }
