@@ -118,7 +118,10 @@ void BasicEngine::PrepareGradAccumulators(
     for (const auto& var : pair.second) {
       if (!var) continue;
 
+      VLOG(10) << "PrepareGradAccumulators " << var->Name();
+
       if (!var->HasGradNode()) {
+        VLOG(10) << "PrepareGradAccumulators Leaf " << var->Name();
         auto& accumulator = leaf_basic_accumulators_[var.get()];
         if (!accumulator) {
           if (FLAGS_sort_sum_gradient) {
@@ -145,21 +148,29 @@ void BasicEngine::PrepareGradAccumulators(
           accumulator->SetPostHooks(var->GetLeafHooks());
         }
       } else {
+        VLOG(10) << "PrepareGradAccumulators no-leaf " << var->Name();
         for (auto& grad_pending_node : grad_pending_nodes) {
           PADDLE_ENFORCE_NOT_NULL(grad_pending_node,
                                   platform::errors::NotFound(
                                       "Grad pending node should not be null"));
+          VLOG(10) << "grad_pending_node " << var->Name();
 
           // whether var is grad_pending_node's input var
           bool flag_vars_grad_op = false;
           for (auto& grad_pending_op : *grad_pending_node) {
+            VLOG(10) << "grad_pending_op " << var->Name();
             grad_pending_op.EnforceHasInOut();
-            for (const auto& pending_in_pair : op.GetInsMap()) {
+            for (const auto& pending_in_pair : grad_pending_op.GetInsMap()) {
               if (!pending_in_pair.second.IsGrad()) {
                 continue;
               }
-              for (const auto& pending_in_var : pair.second) {
+              VLOG(10) << "pending_in_pair " << var->Name();
+              for (const auto& pending_in_var : pending_in_pair.second) {
+                VLOG(10) << "pending_in_var " << pending_in_var->Name();
                 if (var == pending_in_var) {
+                  VLOG(10) << "var == pending_in_var var " << var->Name();
+                  VLOG(10) << "var == pending_in_var pending_in_var "
+                           << pending_in_var->Name();
                   flag_vars_grad_op = true;
                   break;
                 }
@@ -167,7 +178,10 @@ void BasicEngine::PrepareGradAccumulators(
             }
           }
 
-          if (!flag_vars_grad_op) continue;
+          if (!flag_vars_grad_op) {
+            VLOG(10) << "continue " << var->Name();
+            continue;
+          }
 
           // grad_pending_node should be var.grad_node_, but it's changed in
           // inplace op
@@ -289,6 +303,7 @@ void BasicEngine::Execute() {
           // std::unordered_map<std::shared_ptr<GradOpNode>,
           // std::unordered_map<VariableWrapper*,
           // std::unique_ptr<GradientAccumulator>>>::iterator iter_node;
+          bool flag_find_grad = false;
           if (!var->HasGradNode()) {
             VLOG(10) << "Checkpoint leaf v1.1 " << var->Name();
             iter = leaf_basic_accumulators_.find(var.get());
@@ -308,13 +323,17 @@ void BasicEngine::Execute() {
                 VLOG(10) << "Checkpoint v1.4 " << var->Name();
                 iter = iter_node->second.find(var.get());
                 VLOG(10) << "Checkpoint v1.5 " << var->Name();
-                PADDLE_ENFORCE_EQ(
-                    iter != iter_node->second.end(), true,
-                    platform::errors::NotFound(
-                        "Cannot find gradient of variable %s", var->Name()));
-                break;
+                if (iter != iter_node->second.end()) {
+                  flag_find_grad = true;
+                  break;
+                }
+                // break;
               }
             }
+            PADDLE_ENFORCE_EQ(
+                flag_find_grad, true,
+                platform::errors::NotFound(
+                    "Cannot find gradient of variable %s", var->Name()));
           }
 
           VLOG(10) << "Checkpoint v2 " << var->Name();
