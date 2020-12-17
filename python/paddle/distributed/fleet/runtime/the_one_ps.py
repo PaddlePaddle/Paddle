@@ -475,6 +475,8 @@ class TheOnePSRuntime(RuntimeBase):
         kwargs['need_global_step'] = "0"
         kwargs["trainer_id"] = self.role_maker._role_id()
         kwargs["trainers"] = self.role_maker._worker_num()
+        if self.role_maker._is_heter_worker():
+            kwargs["trainer_id"] += kwargs["trainers"]
 
         for table in server.servers[0].tables:
             if table.table_class == "BarrierTable":
