@@ -115,7 +115,6 @@ endif()
 if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
     LIST(REMOVE_ITEM TEST_OPS test_desc_clone_dist)
-    LIST(REMOVE_ITEM TEST_OPS test_program_code_dist)
 endif()
 
 if(WIN32)
