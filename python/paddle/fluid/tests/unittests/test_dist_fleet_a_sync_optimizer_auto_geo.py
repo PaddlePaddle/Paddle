@@ -43,6 +43,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         paddle.fluid.framework.switch_startup_program(startup_program)
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
+
         input_x = paddle.fluid.layers.data(name="x", shape=[1], dtype='int64')
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
