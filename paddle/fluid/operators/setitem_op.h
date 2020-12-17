@@ -22,27 +22,13 @@
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/assign_value_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
-#include "paddle/fluid/operators/tensor_formatter.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-
-template <typename T>
-inline void PrintTensor(Tensor* tensor, const std::string& msg) {
-  VLOG(4) << " ----------  " << msg << "  ---------";
-  auto size = tensor->numel();
-  auto data = tensor->data<T>();
-
-  for (int i = 0; i < size; ++i) {
-    VLOG(4) << data[i];
-  }
-}
 
 inline const char* GetValueName(framework::proto::VarType::Type data_type,
                                 const char* value_name) {
@@ -93,7 +79,7 @@ inline framework::DDim GetSliceDims(const framework::DDim in_dims,
 }
 
 template <typename DeviceContext, typename T>
-class SetitemValueKernel : public framework::OpKernel<T> {
+class SetitemKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     const int rank = ctx.Output<framework::LoDTensor>("Out")->dims().size();
@@ -180,9 +166,8 @@ class SetitemValueKernel : public framework::OpKernel<T> {
     // - Step 1.3 Set 0 at `_index` of out tensor
     out_e.device(eigen_place) = out_e - pad_e;
 
-    // Step 2: Set a tensor with the same shape as out tensor. And the its data
-    // at
-    // '_index' is the same  as value_tensor, and data out of '_index' to zero
+    // Step 2: Set a tensor with the same shape as out tensor. And its data at
+    // '_index' is the same as value_tensor, and data out of '_index' to zero
 
     // - Step 2.1 Set the data of slice tensor to 0
     slice_e.device(eigen_place) = slice_e.constant(T(0));
@@ -190,24 +175,23 @@ class SetitemValueKernel : public framework::OpKernel<T> {
     // - Step 2.2 Set slice tensor with value
     if (value_tensor != nullptr) {
       // ElementwiseComputeEx can do broadcasting
-      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-          ctx, &slice_t, value_tensor, -1, AddFunctor<T>(), &slice_t);
+      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
+          ctx, &slice_t, value_tensor, -1, SubFunctor<T>(), &slice_t);
     } else {
       Tensor value_t(dtype);
       value_t.mutable_data<T>(value_dims, place);
       const char* value_name = nullptr;
       value_name = GetValueName(dtype, value_name);
       CopyVecotorToTensor<T>(value_name, &value_t, ctx);
-      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-          ctx, &slice_t, &value_t, -1, AddFunctor<T>(), &slice_t);
-      PrintTensor<T>(&slice_t, " slice tensor : add value :");
+      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
+          ctx, &slice_t, &value_t, -1, SubFunctor<T>(), &slice_t);
     }
 
     // - Step 2.3 Pad slice tensor with 0
     pad_e.device(eigen_place) = slice_e.pad(paddings, T(0));
 
     // Step 3: Set out tensor with value_tensor
-    out_e.device(eigen_place) = out_e + pad_e;
+    out_e.device(eigen_place) = out_e - pad_e;
   }
 };
 

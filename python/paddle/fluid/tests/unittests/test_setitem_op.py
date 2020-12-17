@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Test setitem op in static mode
+
 from __future__ import print_function
 
 import unittest
@@ -25,12 +27,12 @@ class TestSetitemBase(unittest.TestCase):
         paddle.enable_static()
         self.set_value()
         self.set_dtype()
-        self.shape = [2, 2, 3]
+        self.shape = [2, 3, 4]
         self.data = np.ones(self.shape).astype(self.dtype)
         self.program = paddle.static.Program()
 
     def set_value(self):
-        self.value = 0
+        self.value = 6
 
     def set_dtype(self):
         self.dtype = "float32"
@@ -58,17 +60,16 @@ class TestSetitemApi(TestSetitemBase):
                 self.data, out))
 
 
-class TestSetitem2(TestSetitemApi):
-    def set_value(self):
-        self.value = np.array([1])
+# 1. Test different type of item: int, python slice
+class TestSetitemItemInt(TestSetitemApi):
+    def _call_setitem(self, x):
+        x[0] = self.value
+
+    def _get_answer(self):
+        self.data[0] = self.value
 
 
-class TestSetitem3(TestSetitemApi):
-    def set_value(self):
-        self.value = np.array([1])
-
-
-class TestSetitem4(TestSetitemApi):
+class TestSetitemItemSlice(TestSetitemApi):
     def _call_setitem(self, x):
         x[0:2] = self.value
 
@@ -76,31 +77,92 @@ class TestSetitem4(TestSetitemApi):
         self.data[0:2] = self.value
 
 
-class TestSetitem5(TestSetitemApi):
+class TestSetitemItemSlice2(TestSetitemApi):
     def _call_setitem(self, x):
-        x[0:2, 1] = self.value
+        x[0:-1] = self.value
 
     def _get_answer(self):
-        self.data[0:2, 1] = self.value
+        self.data[0:-1] = self.value
 
 
-class TestSetitem6(TestSetitemApi):
+class TestSetitemItemSlice3(TestSetitemApi):
+    def _call_setitem(self, x):
+        x[0:-1, 0:2] = self.value
+
+    def _get_answer(self):
+        self.data[0:-1, 0:2] = self.value
+
+
+class TestSetitemItemSlice4(TestSetitemApi):
+    def _call_setitem(self, x):
+        x[0:, 1:2, :] = self.value
+
+    def _get_answer(self):
+        self.data[0:, 1:2, :] = self.value
+
+
+# 2. Test different type of value: int, float, numpy.ndarray, Tensor
+
+
+def create_test_value_numpy(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            self.value = np.array([1])
+
+    cls_name = "{0}_{1}".format(parent.__name__, "ValueInt")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_numpy(TestSetitemItemInt)
+create_test_value_numpy(TestSetitemItemSlice)
+create_test_value_numpy(TestSetitemItemSlice2)
+create_test_value_numpy(TestSetitemItemSlice3)
+create_test_value_numpy(TestSetitemItemSlice4)
+
+
+def create_test_value_tensor(parent):
+    class TestValueInt(parent):
+        def _call_setitem(self, x):
+            value = paddle.full(shape=[1], fill_value=3, dtype=self.dtype)
+            x[0, 1] = value
+
+        def _get_answer(self):
+            self.data[0, 1] = 3
+
+    cls_name = "{0}_{1}".format(parent.__name__, "ValueInt")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_tensor(TestSetitemItemInt)
+create_test_value_tensor(TestSetitemItemSlice)
+create_test_value_tensor(TestSetitemItemSlice2)
+create_test_value_tensor(TestSetitemItemSlice3)
+create_test_value_tensor(TestSetitemItemSlice4)
+
+# 3. Test different dtype: int32, int64, float32, bool
+
+
+class TestSetitemDtypeInt32(TestSetitemApi):
     def set_dtype(self):
         self.dtype = "int32"
 
 
-class TestSetitem7(TestSetitemApi):
+class TestSetitemDtypeInt64(TestSetitemApi):
     def set_dtype(self):
         self.dtype = "int64"
 
 
-# TODO(liym27): support bool
-# class TestSetitem8(TestSetitemApi):
-#     def set_dtype(self):
-#         self.dtype = "bool"
+class TestSetitemDtypeFloat32(TestSetitemApi):
+    def set_dtype(self):
+        self.dtype = "float32"
 
 
-class TestSetitem9(TestSetitemApi):
+class TestSetitemDtypeFloat64(TestSetitemApi):
+    def set_dtype(self):
+        self.dtype = "float64"
+
     def _call_setitem(self, x):
         value = paddle.full(shape=[1], fill_value=3, dtype=self.dtype)
         x[0, 1] = value
@@ -109,18 +171,33 @@ class TestSetitem9(TestSetitemApi):
         self.data[0, 1] = 3
 
 
+class TestSetitemDtypeBool(TestSetitemApi):
+    def set_dtype(self):
+        self.dtype = "bool"
+
+
 class TestError(TestSetitemBase):
     def test_tensor(self):
         with paddle.static.program_guard(self.program):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
 
-            with self.assertRaises(TypeError):
+            with self.assertRaisesRegexp(
+                    TypeError,
+                    "Only support to assign an integer, float, numpy.ndarray or "
+            ):
                 value = [1]
                 x[0] = value
 
-            with self.assertRaises(TypeError):
+            with self.assertRaisesRegexp(
+                    TypeError,
+                    "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
+            ):
                 y = paddle.ones(shape=self.shape, dtype="float64")
                 y[0] = 1
+
+            with self.assertRaisesRegexp(ValueError, "only support step is 1"):
+                value = [1]
+                x[0:1:2] = value
 
 
 if __name__ == '__main__':

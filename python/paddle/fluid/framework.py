@@ -1827,6 +1827,7 @@ class Variable(object):
         axes = []
         starts = []
         ends = []
+        max_integer = 2147483647
         for dim, slice_item in enumerate(item):
             if isinstance(slice_item, slice):
                 start = slice_item.start
@@ -1838,11 +1839,16 @@ class Variable(object):
 
                 start = 0 if start is None else start
                 step = 1 if step is None else step
-                assert (step == 1)
-                end = 10000000 if end is None else end
+
+                # TODO: support cases when step != 1
+                if step != 1:
+                    raise ValueError(
+                        "When assign a value to a paddle.Tensor, only support step is 1, "
+                        "but received step is {}.".format(step))
+                end = max_integer if end is None else end
             else:
                 start = slice_item
-                end = slice_item + 1 if slice_item != -1 else 10000000
+                end = slice_item + 1 if slice_item != -1 else max_integer
             axes.append(dim)
             starts.append(start)
             ends.append(end)
@@ -1875,7 +1881,7 @@ class Variable(object):
             else:
                 from .data_feeder import convert_dtype
                 raise TypeError(
-                    "When assign a numpy.ndarray to a paddle.Tensor, "
+                    "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
                     "the data type of the paddle.Tensor must be bool, float32, int32 or int64, but "
                     "received %s." % convert_dtype(dtype))
             attrs[value_name] = values
@@ -1890,10 +1896,7 @@ class Variable(object):
                     type(value)))
 
         self.block.append_op(
-            type="setitem_value",
-            inputs=inputs,
-            outputs={'Out': self},
-            attrs=attrs)
+            type="setitem", inputs=inputs, outputs={'Out': self}, attrs=attrs)
 
         return self
 

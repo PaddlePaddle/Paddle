@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/setitem_value_op.h"
-
-#include <string>
+#include "paddle/fluid/operators/setitem_op.h"
 
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    setitem_value,
-    ops::SetitemValueKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SetitemValueKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SetitemValueKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SetitemValueKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    setitem, ops::SetitemKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SetitemKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SetitemKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SetitemKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SetitemKernel<paddle::platform::CUDADeviceContext, bool>);

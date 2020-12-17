@@ -12,38 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/setitem_value_op.h"
+#include "paddle/fluid/operators/setitem_op.h"
 
 #include <string>
 
 namespace paddle {
-namespace framework {
-class InferShapeContext;
-class OpDesc;
-template <typename T>
-class EmptyGradOpMaker;
-}  // namespace framework
-namespace imperative {
-class OpBase;
-}  // namespace imperative
-namespace platform {
-struct CPUPlace;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 
-class SetitemValueOp : public framework::OperatorWithKernel {
+class SetitemOp : public framework::OperatorWithKernel {
  public:
-  SetitemValueOp(const std::string &type,
-                 const framework::VariableNameMap &inputs,
-                 const framework::VariableNameMap &outputs,
-                 const framework::AttributeMap &attrs)
+  SetitemOp(const std::string &type, const framework::VariableNameMap &inputs,
+            const framework::VariableNameMap &outputs,
+            const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SetitemValue");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Setitem");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Setitem");
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_LT(
         in_dims.size(), 7,
@@ -61,21 +46,22 @@ class SetitemValueOp : public framework::OperatorWithKernel {
   }
 };
 
-class SetitemValueOpMaker : public framework::OpProtoAndCheckerMaker {
+class SetitemOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "(Tensor) Output tensor of setitem_value operator.");
-    AddInput("ValueTensor", "(Tensor) Output tensor of setitem_value operator.")
+    AddInput("Input", "(Tensor) Input tensor of setitem operator.");
+    AddInput("ValueTensor", "(Tensor) Value tensor of setitem operator.")
         .AsDispensable();
+    AddOutput("Out",
+              "(Tensor) Output tensor of setitem operator. The output is the "
+              "same Tensor as input");
 
-    AddOutput("Out", "(Tensor) Output tensor of setitem_value operator.");
-
-    AddAttr<int>("dtype", "data type of values")
+    AddAttr<int>("dtype", "data type of input.")
         .InEnum(
             {framework::proto::VarType::BOOL, framework::proto::VarType::INT32,
-             framework::proto::VarType::FP32, framework::proto::VarType::INT64})
+             framework::proto::VarType::INT64, framework::proto::VarType::FP32,
+             framework::proto::VarType::FP64})
         .SetDefault(framework::proto::VarType::FP32);
-
     AddAttr<std::vector<int>>(
         "axes", "(list<int>) Axes that `starts` and `ends` apply to.");
     AddAttr<std::vector<int>>(
@@ -93,14 +79,10 @@ class SetitemValueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>("int64_values", "store the int64 values")
         .SetDefault({});
 
-    AddAttr<std::vector<int>>("shape",
-                              "(vector<int>) "
-                              "Shape of values.")
+    AddAttr<std::vector<int>>("shape", "(vector<int>) Shape of values.")
         .SetDefault({});
-    AddComment(R"DOC(
-SetitemValue operator
-
-$$Out = values$$
+    AddComment(R"DOC(Setitem operator.
+Assignment to a Tensor in static mode.
 )DOC");
   }
 };
@@ -110,13 +92,13 @@ $$Out = values$$
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    setitem_value, ops::SetitemValueOp, ops::SetitemValueOpMaker,
+    setitem, ops::SetitemOp, ops::SetitemOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
-    setitem_value,
-    ops::SetitemValueKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SetitemValueKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SetitemValueKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SetitemValueKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    setitem, ops::SetitemKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SetitemKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::SetitemKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SetitemKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SetitemKernel<paddle::platform::CPUDeviceContext, bool>);
