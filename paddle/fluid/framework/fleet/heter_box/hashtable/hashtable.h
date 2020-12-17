@@ -30,7 +30,8 @@ class TableContainer
                                       std::numeric_limits<KeyType>::max()> {
  public:
   TableContainer(size_t capacity)
-      : concurrent_unordered_map<KeyType, ValType, std::numeric_limits<KeyType>::max()>(
+      : concurrent_unordered_map<KeyType, ValType,
+                                 std::numeric_limits<KeyType>::max()>(
             capacity, ValType()) {}
 };
 
