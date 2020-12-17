@@ -59,8 +59,9 @@ __global__ void search_kernel(Table* table, const typename Table::key_type* cons
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     auto it = table->find(keys[i]);
-    assert(it != table->end() && "error: can't find key");
-    vals[i] = it->second;
+    if (it != table->end()) {
+      vals[i] = it->second;
+    }
   }
 }
 
@@ -74,7 +75,9 @@ __global__ void update_kernel(Table* table,
     const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < len) {
         auto it = table->find(keys[i]);
-        sgd.update_value((it.getter())->second, grads[i]);
+        if (it != table->end()) {
+          sgd.update_value((it.getter())->second, grads[i]);
+        }
     }
 }
 

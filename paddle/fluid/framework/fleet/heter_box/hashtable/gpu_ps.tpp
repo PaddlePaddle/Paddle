@@ -44,6 +44,7 @@ template <typename T>
 void show_tensor(T* input, size_t len, cudaStream_t stream, std::string name) {
   T tmp[len];
   cudaMemcpyAsync(&tmp, input, sizeof(T) * len, cudaMemcpyDeviceToHost, stream);
+  cudaStreamSynchronize(stream);
   std::cout << name;
   for (int i = 0; i < len; ++i) {
     std::cout << ":" << tmp[i];
@@ -310,6 +311,7 @@ void GpuPs<KeyType, ValType, GradType>::split_input_to_shard(KeyType* d_keys, in
                                              num_bits,
                                              stream));
   calc_shard_offset<<<grid_size, block_size_, 0, stream>>>(d_shard_index_ptr, left, right, len);
+  cudaStreamSynchronize(stream); 
   
 }
 
@@ -351,13 +353,56 @@ void GpuPs<KeyType, ValType, GradType>::pull_sparse(int num, KeyType* d_keys, Va
 
   cudaStreamSynchronize(stream); 
 
+  
+  std::vector<KeyType*> d_remote_shard_keys_ptr;
+  std::vector<ValType*> d_remote_shard_vals_ptr;
+  std::vector<std::shared_ptr<memory::Allocation>> d_remote_shard_keys;
+  std::vector<std::shared_ptr<memory::Allocation>> d_remote_shard_vals;
+  
+  for (int i = 0; i < total_gpu; ++i) {
+    int shard_len = right[i] - left[i] + 1;
+    if (shard_len == 0) {
+      continue;
+    }
+    platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    platform::CUDAPlace remote_place = platform::CUDAPlace(resource_->dev_id(i));
+    d_remote_shard_keys.push_back(memory::AllocShared(remote_place, shard_len * sizeof(KeyType)));
+    d_remote_shard_keys_ptr.push_back(reinterpret_cast<KeyType*>(d_remote_shard_keys[i]->ptr()));
+    
+    d_remote_shard_vals.push_back(memory::AllocShared(remote_place, shard_len * sizeof(ValType)));
+    d_remote_shard_vals_ptr.push_back(reinterpret_cast<ValType*>(d_remote_shard_vals[i]->ptr()));
+  }
+  
+  for (int i = 0; i < total_gpu; ++i) {
+    int shard_len = right[i] - left[i] + 1;
+    if (left[i] == -1 || right[i] == -1) {
+      continue;
+    }
+    cudaMemcpyAsync(d_remote_shard_keys_ptr[i], d_shard_keys_ptr + left[i], shard_len * sizeof(KeyType), cudaMemcpyDefault, stream);
+  }
+  cudaStreamSynchronize(stream); 
+  
   for (int i = 0; i < total_gpu; ++i) {
     if (left[i] == -1) {
       continue;
     }
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
-    tables_[i]->get(d_shard_keys_ptr + left[i], d_shard_vals_ptr + left[i], right[i] - left[i] + 1, resource_->stream(i));
+    //tables_[i]->get(d_shard_keys_ptr + left[i], d_shard_vals_ptr + left[i], right[i] - left[i] + 1, resource_->stream(i));
+    tables_[i]->get(d_remote_shard_keys_ptr[i], d_remote_shard_vals_ptr[i], right[i] - left[i] + 1, resource_->stream(i));
   }
+  for (int i = 0; i < total_gpu; ++i) {
+    cudaStreamSynchronize(resource_->stream(i));
+  }
+
+  for (int i = 0; i < total_gpu; ++i) {
+    int shard_len = right[i] - left[i] + 1;
+    if (left[i] == -1 || right[i] == -1) {
+      continue;
+    }
+    platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    cudaMemcpyAsync(d_shard_vals_ptr + left[i], d_remote_shard_vals_ptr[i], shard_len * sizeof(ValType), cudaMemcpyDefault, resource_->stream(i));
+  }
+  
   for (int i = 0; i < total_gpu; ++i) {
     cudaStreamSynchronize(resource_->stream(i));
   }

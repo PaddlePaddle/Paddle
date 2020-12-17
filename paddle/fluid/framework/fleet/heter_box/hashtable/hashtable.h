@@ -30,7 +30,7 @@ class TableContainer
  public:
   TableContainer(size_t capacity)
       : concurrent_unordered_map<KeyType, ValType, std::numeric_limits<KeyType>::max()>(
-            capacity, std::numeric_limits<ValType>::max()) {}
+            capacity, ValType()) {}
 };
 
 template <typename KeyType, typename ValType>
