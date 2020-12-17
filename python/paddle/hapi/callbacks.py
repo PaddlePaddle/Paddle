@@ -714,7 +714,7 @@ class EarlyStopping(Callback):
             from paddle.vision.models import LeNet
             from paddle.vision.datasets import MNIST
             from paddle.metric import Accuracy
-            from paddle.nn.layer.loss import CrossEntropyLoss
+            from paddle.nn import CrossEntropyLoss
             import paddle.vision.transforms as T
 
             device = paddle.set_device('cpu')
