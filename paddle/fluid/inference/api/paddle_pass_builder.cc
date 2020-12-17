@@ -163,7 +163,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "mul_gru_fuse_pass",                       //
                   "seq_concat_fc_fuse_pass",                 //
                   "fc_fuse_pass",                            //
-                  "repeated_fc_relu_fuse_pass",              //
+                  //"repeated_fc_relu_fuse_pass",              //
                   "squared_mat_sub_fuse_pass",               //
                   "conv_bn_fuse_pass",                       //
                   "conv_eltwiseadd_bn_fuse_pass",            //
@@ -206,7 +206,8 @@ void CpuPassStrategy::EnableMKLDNN() {
              "reshape_transpose_matmul_mkldnn_fuse_pass",  //
              "matmul_transpose_reshape_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
-             // "fc_mkldnn_pass",
+             "fc_mkldnn_pass",
+             "fc_act_fuse_pass",
              "batch_norm_act_fuse_pass",
              "mkldnn_inplace_pass",  // This pass should be activated after
                                      // fuses
