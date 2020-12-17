@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/imperative/nccl_context.h"
 
-#include "paddle/fluid/platform/collective_helper.h"
-
 namespace paddle {
 namespace imperative {
 #if defined(PADDLE_WITH_NCCL)
@@ -168,22 +166,51 @@ void NCCLParallelContext::BcastNCCLId(ncclUniqueId *nccl_id, int root) {
 }
 
 void NCCLParallelContext::Init() {
-  ncclUniqueId nccl_id;
-  if (strategy_.local_rank_ == 0) {
-    // generate the unique ncclid on the root worker
-    platform::dynload::ncclGetUniqueId(&nccl_id);
-    BcastNCCLId(&nccl_id, 0);
-  } else {
-    BcastNCCLId(&nccl_id, 0);
-  }
-  int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
-  VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
-          << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id;
+  for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
+    ncclUniqueId nccl_id;
+    if (strategy_.local_rank_ == 0) {
+      // generate the unique ncclid on the root worker
+      platform::dynload::ncclGetUniqueId(&nccl_id);
+      BcastNCCLId(&nccl_id, 0);
+    } else {
+      BcastNCCLId(&nccl_id, 0);
+    }
+    int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+    VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
+            << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
+            << " ring id: " << ring_id;
 
-  // it will assign nccl_comm in CUDADeviceContext within ring_id 0
-  platform::NCCLCommContext::Instance().CreateNCCLComm(
-      &nccl_id, strategy_.nranks_, strategy_.local_rank_, gpu_id, 0);
+    // it will assign nccl_comm in CUDADeviceContext within ring_id
+    platform::NCCLCommContext::Instance().CreateNCCLComm(
+        &nccl_id, strategy_.nranks_, strategy_.local_rank_, gpu_id, ring_id);
+  }
 }
+
+void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
+                                            framework::Variable *dst,
+                                            int ring_id, bool use_calc_stream) {
+  PADDLE_ENFORCE_EQ(
+      platform::is_gpu_place(place_), true,
+      platform::errors::Unimplemented(
+          "Dynamic graph mode does not support multi-CPU training yet."));
+  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place_);
+  cudaStream_t stream = nullptr;
+  if (use_calc_stream) {
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+    stream = static_cast<platform::CUDADeviceContext *>(dev_ctx)->stream();
+  } else {
+    stream = comm->stream();
+  }
+  AllReduce(src, dst, strategy_, stream);
+}
+
+paddle::platform::CUDADeviceContext *NCCLParallelContext::GetDeviceContext(
+    int ring_id) {
+  return platform::NCCLCommContext::Instance()
+      .Get(ring_id, place_)
+      ->dev_context();
+}
+
 #endif
 
 }  //  namespace imperative

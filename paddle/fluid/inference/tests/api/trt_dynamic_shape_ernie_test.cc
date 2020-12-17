@@ -83,7 +83,8 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   output_t->copy_to_cpu(out_data->data());
 }
 
-void trt_ernie(bool with_fp16, std::vector<float> result) {
+void trt_ernie(bool with_fp16, std::vector<float> result,
+               float near_tolerance) {
   AnalysisConfig config;
   std::string model_dir = FLAGS_infer_model;
   SetConfig(&config, model_dir, true);
@@ -126,19 +127,19 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
   run(config, &out_data);
 
   for (size_t i = 0; i < out_data.size(); i++) {
-    EXPECT_NEAR(result[i], out_data[i], 1e-5);
+    EXPECT_NEAR(result[i], out_data[i], near_tolerance);
   }
 }
 
 TEST(AnalysisPredictor, no_fp16) {
   std::vector<float> result = {0.597841, 0.219972, 0.182187};
-  trt_ernie(false, result);
+  trt_ernie(false, result, 1e-5);
 }
 
 TEST(AnalysisPredictor, fp16) {
-#ifdef SUPPORTS_CUDA_FP16
-  std::vector<float> result = {0.598336, 0.219558, 0.182106};
-  trt_ernie(true, result);
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
+  std::vector<float> result = {0.598, 0.219, 0.182};
+  trt_ernie(true, result, 3e-3);
 #endif
 }
 

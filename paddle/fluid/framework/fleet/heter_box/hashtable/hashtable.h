@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <vector>
 #include <limits>
 #include <memory>
+#include <vector>
 #include "thrust/pair.h"
 //#include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_box/cudf/concurrent_unordered_map.cuh.h"
@@ -26,7 +26,8 @@ namespace framework {
 
 template <typename KeyType, typename ValType>
 class TableContainer
-    : public concurrent_unordered_map<KeyType, ValType, std::numeric_limits<KeyType>::max()> {
+    : public concurrent_unordered_map<KeyType, ValType,
+                                      std::numeric_limits<KeyType>::max()> {
  public:
   TableContainer(size_t capacity)
       : concurrent_unordered_map<KeyType, ValType, std::numeric_limits<KeyType>::max()>(
@@ -40,14 +41,17 @@ class HashTable {
   virtual ~HashTable();
   HashTable(const HashTable&) = delete;
   HashTable& operator=(const HashTable&) = delete;
-  void insert(const KeyType* d_keys, const ValType* d_vals, size_t len, cudaStream_t stream);
-  void get(const KeyType* d_keys, ValType* d_vals, size_t len, cudaStream_t stream);
+  void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
+              cudaStream_t stream);
+  void get(const KeyType* d_keys, ValType* d_vals, size_t len,
+           cudaStream_t stream);
   void show();
-  
-  template <typename GradType, typename Sgd>
-  void update(const KeyType* d_keys, const GradType* d_grads, size_t len, Sgd sgd, cudaStream_t stream);
- private:
 
+  template <typename GradType, typename Sgd>
+  void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
+              Sgd sgd, cudaStream_t stream);
+
+ private:
   TableContainer<KeyType, ValType>* container_;
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};

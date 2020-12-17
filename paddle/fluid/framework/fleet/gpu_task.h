@@ -20,9 +20,9 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "common_value.h"  // NOLINT
 #include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
 #include "paddle/fluid/framework/scope.h"
-#include "common_value.h"
 
 namespace paddle {
 namespace framework {

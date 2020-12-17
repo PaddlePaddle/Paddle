@@ -51,7 +51,7 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
   auto hidden_size = ctx.Attr<int>("size");
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
   gpu_ps_ptr->PullSparse(ctx.GetPlace(), 0, all_keys, all_values, slot_lengths,
-                        hidden_size);
+                         hidden_size);
 #endif
 }
 
@@ -93,8 +93,8 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 #ifdef PADDLE_WITH_PSLIB
   auto hidden_size = ctx.Attr<int>("size");
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PushSparseGrad(ctx.GetPlace(), 0, all_keys, all_grad_values, slot_lengths,
-                        hidden_size, batch_size);
+  gpu_ps_ptr->PushSparseGrad(ctx.GetPlace(), 0, all_keys, all_grad_values,
+                             slot_lengths, hidden_size, batch_size);
 #endif
 }
 

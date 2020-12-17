@@ -14,35 +14,34 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
-#include "thrust/pair.h"
+#include "cub/cub.cuh"
+#include "gpu_resource.h"
+#include "hashtable.h"
+#include "paddle/fluid/framework/fleet/heter_box/optimizer/optimizer.cuh"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/memory/memory.h"
-#include "cub/cub.cuh"
-#include "hashtable.h"
-#include "gpu_resource.h"
-#include "paddle/fluid/framework/fleet/heter_box/optimizer/optimizer.cuh"
+#include "thrust/pair.h"
 
 #ifdef PADDLE_WITH_PSLIB
 
 namespace paddle {
 namespace framework {
 
-struct CustomGradMerger
-{
+struct CustomGradMerger {
   template <typename T>
-    CUB_RUNTIME_FUNCTION __forceinline__ __device__
-    T operator()(const T &a, const T &b) const {
-      T out;
-      out.slot = a.slot;
-      out.show = a.show + b.show;
-      out.clk = a.clk + b.clk;
-      out.lr_g = a.lr_g + b.lr_g;
-      for (int i = 0; i < MF_DIM; ++i) {
-        out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
-      }
-      return out;
+  CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
+  operator()(const T& a, const T& b) const {
+    T out;
+    out.slot = a.slot;
+    out.show = a.show + b.show;
+    out.clk = a.clk + b.clk;
+    out.lr_g = a.lr_g + b.lr_g;
+    for (int i = 0; i < MF_DIM; ++i) {
+      out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
     }
+    return out;
+  }
 };
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -56,18 +55,19 @@ class GpuPs {
   void split_input_to_shard(KeyType* d_keys, int* d_idx_ptr, size_t len, int* left, int* right, int gpu_num);
   void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len, int& uniq_len);
   void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
-  void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len, size_t chunk_size, int stream_num);
+  void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len,
+                size_t chunk_size, int stream_num);
   void dump();
   void show_one_table(int gpu_num);
   int get_index_by_devid(int devid);
-  
+
   template <typename Sgd>
-  void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len, Sgd& sgd);
-  
+  void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len,
+                   Sgd& sgd);
+
   int log2i(int x);
 
  private:
-  
   using Table = HashTable<KeyType, ValType>;
   int block_size_{256};
   float load_factor_{0.75};

@@ -14,6 +14,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
@@ -102,7 +104,11 @@ REGISTER_OP_CUDA_KERNEL(
                               paddle::platform::float16>,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext,
+                              paddle::platform::complex64>,
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext,
+                              paddle::platform::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_div_grad,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -110,8 +116,11 @@ REGISTER_OP_CUDA_KERNEL(
                                   paddle::platform::float16>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
-                                  int64_t>);
+                                  paddle::platform::complex64>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_div_grad_grad,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
@@ -123,4 +132,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         int>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        int64_t>);
+                                        int64_t>,
+    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        paddle::platform::complex64>,
+    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        paddle::platform::complex128>);

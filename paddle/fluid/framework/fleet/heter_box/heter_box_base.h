@@ -23,19 +23,23 @@ namespace framework {
 
 class HeterBoxBase {
  public:
-  HeterBoxBase() {};
-  HeterBoxBase(size_t capacity, std::shared_ptr<HeterBoxResource> resource) {};
-  virtual ~HeterBoxBase() {};
+  HeterBoxBase(){};
+  HeterBoxBase(size_t capacity, std::shared_ptr<HeterBoxResource> resource){};
+  virtual ~HeterBoxBase(){};
   HeterBoxBase(const HeterBoxBase&) = delete;
   HeterBoxBase& operator=(const HeterBoxBase&) = delete;
 
-  virtual void pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals, size_t len) = 0;
-  virtual void build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals, size_t len, size_t chunk_size, int stream_num) = 0;
+  virtual void pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals,
+                           size_t len) = 0;
+  virtual void build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
+                        size_t len, size_t chunk_size, int stream_num) = 0;
   virtual int get_index_by_devid(int devid) = 0;
   virtual void dump() = 0;
   virtual void show_one_table(int gpu_num) = 0;
-  virtual void push_sparse(int num, FeatureKey* d_keys, FeaturePushValue* d_grads, size_t len) = 0;
-  static HeterBoxBase* get_instance(size_t capacity, std::shared_ptr<HeterBoxResource> resource);
+  virtual void push_sparse(int num, FeatureKey* d_keys,
+                           FeaturePushValue* d_grads, size_t len) = 0;
+  static HeterBoxBase* get_instance(size_t capacity,
+                                    std::shared_ptr<HeterBoxResource> resource);
 };
 
 }  // end namespace framework

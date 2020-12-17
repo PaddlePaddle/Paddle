@@ -154,7 +154,7 @@ void PSGPUWorker::TrainFiles() {
   int cur_batch;
   while ((cur_batch = device_reader_->Next()) > 0) {
     VLOG(3) << "train file D";
-    for (auto &op : ops_) {
+    for (auto& op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
         if (op->Type().find(skip_ops_[t]) != std::string::npos) {
@@ -190,9 +190,7 @@ void PSGPUWorker::ResetStat() {
   total_inst_ = 0;
 }
 
-void PSGPUWorker::ProduceTasks() {
-  return;
-}
+void PSGPUWorker::ProduceTasks() { return; }
 
 }  // end namespace framework
 }  // end namespace paddle

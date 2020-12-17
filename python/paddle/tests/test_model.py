@@ -33,6 +33,8 @@ from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
+import paddle.vision.models as models
+import paddle.fluid.dygraph.jit as jit
 from paddle.io import DistributedBatchSampler, Dataset
 from paddle.hapi.model import prepare_distributed_context
 from paddle.fluid.dygraph.jit import declarative
@@ -564,6 +566,24 @@ class TestModelFunction(unittest.TestCase):
         nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
         paddle.summary(nlp_net, (1, 1, 2))
 
+    def test_static_flops(self):
+        paddle.disable_static()
+        net = models.__dict__['mobilenet_v2'](pretrained=False)
+        inputs = paddle.randn([1, 3, 224, 224])
+        static_program = jit._trace(net, inputs=[inputs])[1]
+        paddle.flops(static_program, [1, 3, 224, 224], print_detail=True)
+
+    def test_dynamic_flops(self):
+        net = models.__dict__['mobilenet_v2'](pretrained=False)
+
+        def customize_dropout(m, x, y):
+            m.total_ops += 0
+
+        paddle.flops(
+            net, [1, 3, 224, 224],
+            custom_ops={paddle.nn.Dropout: customize_dropout},
+            print_detail=True)
+
     def test_export_deploy_model(self):
         self.set_seed()
         np.random.seed(201)
@@ -591,8 +611,8 @@ class TestModelFunction(unittest.TestCase):
             with fluid.scope_guard(new_scope):
                 exe = fluid.Executor(place)
                 [inference_program, feed_target_names, fetch_targets] = (
-                    fluid.io.load_inference_model(
-                        dirname=save_dir, executor=exe))
+                    paddle.static.io.load_inference_model(
+                        path_prefix=save_dir, executor=exe))
                 results = exe.run(inference_program,
                                   feed={feed_target_names[0]: tensor_img},
                                   fetch_list=fetch_targets)
@@ -787,7 +807,6 @@ class TestModelWithLRScheduler(unittest.TestCase):
 class TestRaiseError(unittest.TestCase):
     def test_input_without_name(self):
         net = MyModel()
-
         inputs = [InputSpec([None, 10], 'float32')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         with self.assertRaises(ValueError):
@@ -809,6 +828,18 @@ class TestRaiseError(unittest.TestCase):
             model = Model(net)
             model.save(save_dir, training=False)
         paddle.enable_static()
+
+    def test_save_infer_model_without_file_prefix(self):
+        paddle.enable_static()
+        net = LeNet()
+        inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
+        model = Model(net, inputs)
+        model.prepare()
+        path = ""
+        tensor_img = np.array(
+            np.random.random((1, 1, 28, 28)), dtype=np.float32)
+        with self.assertRaises(ValueError):
+            model.save(path, training=False)
 
 
 if __name__ == '__main__':

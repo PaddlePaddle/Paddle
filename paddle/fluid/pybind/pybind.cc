@@ -58,6 +58,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
@@ -70,7 +71,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
-#include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/generator_py.h"
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
 #include "paddle/fluid/pybind/gloo_context_py.h"
@@ -79,6 +79,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 #ifdef PADDLE_WITH_NCCL
@@ -514,6 +515,9 @@ PYBIND11_MODULE(core_noavx, m) {
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
+
+  m.def("_promote_types_if_complex_exists",
+        &paddle::framework::PromoteTypesIfComplexExists);
 
   BindImperative(&m);
 
@@ -1373,7 +1377,6 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle
 
           place = paddle.CUDAPlace(0)
-          paddle.disable_static(place)
 
         )DOC")
       .def("__init__",
@@ -1490,7 +1493,9 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
       .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
-
+#ifdef PADDLE_WITH_XPU
+  m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
+#endif
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device.
     It represents a CPU device on which a tensor will be allocated and a model will run.
@@ -1979,6 +1984,11 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("size_of_dtype", framework::SizeOfType);
 
+#ifdef PADDLE_WITH_CUDA
+  m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
+  m.def("get_cublas_switch", platform::AllowTF32Cublas);
+#endif  // PADDLE_WITH_CUDA
+
   using VarQuantScale =
       std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
 
@@ -2070,6 +2080,11 @@ All parameter, weight, gradient are variables in Paddle.
                                               exec_strategy=exec_strategy)
         )DOC");
 
+  py::enum_<ExecutionStrategy::UseDevice>(exec_strategy, "UseDevice")
+      .value("CPU", ExecutionStrategy::UseDevice::kCPU)
+      .value("CUDA", ExecutionStrategy::UseDevice::kCUDA)
+      .value("XPU", ExecutionStrategy::UseDevice::kXPU);
+
   exec_strategy.def(py::init())
       .def_property(
           "num_threads",
@@ -2100,14 +2115,12 @@ All parameter, weight, gradient are variables in Paddle.
                     exec_strategy.num_threads = 4
             )DOC")
       .def_property(
-          "use_cuda",
-          [](const ExecutionStrategy &self) { return self.use_cuda_; },
-          [](ExecutionStrategy &self, bool use_cuda) {
-            self.use_cuda_ = use_cuda;
-          })  // FIXME(chengduo): Doesn't add doc for 'use_cuda', use_cuda may
-      // make user confuse, because ParallelExecutor has a parameter named
-      // 'use_cuda' too, in current implementation, ParallelExecutor's
-      // 'use_cuda' will rewrite ExecutionStrategy's 'use_cuda'.
+          "_use_device",
+          [](const ExecutionStrategy &self) { return self.use_device_; },
+          [](ExecutionStrategy &self, ExecutionStrategy::UseDevice use_device) {
+            self.use_device_ = use_device;
+          })  // NOTE(liuyuhui): Doesn't add doc for 'use_device', because
+              // use_device isn‘t exposed to users.
       .def_property(
           "allow_op_delay",
           [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
@@ -2797,9 +2810,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
-  BindPSGPUWrapper(&m);
+
 #ifdef PADDLE_WITH_PSLIB
   BindHeterWrapper(&m);
+  BindPSGPUWrapper(&m);
 #endif
   BindGlooWrapper(&m);
   BindBoxHelper(&m);

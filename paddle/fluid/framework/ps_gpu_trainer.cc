@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
-#include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
 #include "paddle/fluid/framework/fleet/gpu_task.h"
+#include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #ifdef PADDLE_WITH_PSLIB
@@ -32,7 +32,7 @@ namespace paddle {
 namespace framework {
 
 void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
-                                 Dataset* dataset) {
+                              Dataset* dataset) {
   dataset_ = dataset;
   thread_num_ = trainer_desc.thread_num();
   param_ = trainer_desc.downpour_param();
@@ -92,7 +92,7 @@ void PSGPUTrainer::RegisterHeterCallback() {
 }
 
 void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
-                                     const platform::Place& place) {
+                                  const platform::Place& place) {
   for (size_t i = 0; i < places_.size(); ++i) {
     workers_[i]->SetPlace(places_[i]);
     workers_[i]->SetReaderPlace(places_[i]);
@@ -116,7 +116,6 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
         LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
         TensorCopy(*root_tensor, place, thread_tensor);
-
       }
     }
   }
@@ -145,7 +144,7 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
   timeline.Start();
   MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
   auto fleet_ptr = FleetWrapper::GetInstance();
-  std::shared_ptr<GpuTask>  gpu_task = std::make_shared<GpuTask>();
+  std::shared_ptr<GpuTask> gpu_task = std::make_shared<GpuTask>();
   auto& multi_output_channel = dataset->GetCurOutputChannel();
   auto& input_channel = dataset->GetInputChannelRef();
   int gen_shard_num = multi_output_channel.size();
@@ -167,8 +166,9 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
     consume_task_pool[i].reset(new ::ThreadPool(1));
   }
   auto consume_func = [&local_keys](int shard_id, int feadim,
-                                          std::vector<uint64_t>& keys) {
-    local_keys[shard_id].insert(local_keys[shard_id].end(), keys.begin(), keys.end());
+                                    std::vector<uint64_t>& keys) {
+    local_keys[shard_id].insert(local_keys[shard_id].end(), keys.begin(),
+                                keys.end());
   };
 
   if (input_channel->Size() == 0) {
@@ -177,14 +177,13 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
     for (size_t i = 0; i < multi_output_channel.size(); i++) {
       int cur_channel_size = multi_output_channel[i]->Size();
       output_channels_data_size += cur_channel_size;
-      
     }
     CHECK(output_channels_data_size > 0);
     for (auto& ks : local_keys) {
-      ks.reserve(output_channels_data_size * 10); // magic number
+      ks.reserve(output_channels_data_size * 10);  // magic number
     }
-    auto gen_func = [&dataset, &device_num, &feadim, &consume_task_pool, &multi_output_channel,
-                   &consume_func](int i) {
+    auto gen_func = [&dataset, &device_num, &feadim, &consume_task_pool,
+                     &multi_output_channel, &consume_func](int i) {
       const std::deque<Record>& vec_data = multi_output_channel[i]->GetData();
       std::vector<std::vector<uint64_t>> task_keys(device_num);
       std::vector<std::future<void>> task_futures;
@@ -221,18 +220,20 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
     CHECK(input_channel_size > 0);
     CHECK(gen_shard_num > 0);
     for (auto& ks : local_keys) {
-      ks.reserve(input_channel_size * 10); // magic number
+      ks.reserve(input_channel_size * 10);  // magic number
     }
     const std::deque<Record>& vec_data = input_channel->GetData();
-    auto gen_func = [&dataset, &vec_data, &device_num, &gen_shard_num, &input_channel_size, &feadim, &consume_task_pool, multi_output_channel,
-                   &consume_func](int i) {
+    auto gen_func = [&dataset, &vec_data, &device_num, &gen_shard_num,
+                     &input_channel_size, &feadim, &consume_task_pool,
+                     multi_output_channel, &consume_func](int i) {
       std::vector<std::vector<uint64_t>> task_keys(device_num);
       std::vector<std::future<void>> task_futures;
       size_t per_shard_num = input_channel_size / gen_shard_num + 1;
       size_t total_size = vec_data.size();
       size_t start_index = i * per_shard_num;
-      size_t end_index = std::min(start_index+per_shard_num-1, total_size-1);
-      for (size_t j = start_index; j <= end_index ; j++) {
+      size_t end_index =
+          std::min(start_index + per_shard_num - 1, total_size - 1);
+      for (size_t j = start_index; j <= end_index; j++) {
         for (auto& feature : vec_data[j].uint64_feasigns_) {
           int shard = feature.sign().uint64_feasign_ % device_num;
           task_keys[shard].push_back(feature.sign().uint64_feasign_);
@@ -263,11 +264,12 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
   }
   timeline.Pause();
   VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
-  timeline.Start(); 
+  timeline.Start();
   auto unique_func = [&local_keys](int i) {
     auto& cur_keys = local_keys[i];
     std::sort(cur_keys.begin(), cur_keys.end());
-    cur_keys.erase(std::unique(cur_keys.begin(), cur_keys.end()), cur_keys.end());
+    cur_keys.erase(std::unique(cur_keys.begin(), cur_keys.end()),
+                   cur_keys.end());
   };
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(unique_func, i);
@@ -276,7 +278,7 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
     t.join();
   }
   timeline.Pause();
-  
+
   VLOG(0) << "GpuPs task unique cost " << timeline.ElapsedSec() << " seconds.";
 
   timeline.Start();
@@ -289,14 +291,16 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
     local_values[i].resize(local_keys[i].size());
     local_ptr[i].resize(local_keys[i].size());
   }
-  
-  auto ptl_func = [this, &local_keys, &local_values, &local_ptr, &table_id, &fleet_ptr](int i) {
+
+  auto ptl_func = [this, &local_keys, &local_values, &local_ptr, &table_id,
+                   &fleet_ptr](int i) {
     size_t key_size = local_keys[i].size();
     auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
-        (char**)(local_ptr[i].data()), table_id, local_keys[i].data(), key_size);
+        (char**)(local_ptr[i].data()), table_id, local_keys[i].data(),
+        key_size);
     tt.wait();
     auto status = tt.get();
-    //auto status = 0;
+    // auto status = 0;
     if (status != 0) {
       LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
       sleep(300);
@@ -336,7 +340,7 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
   for (std::thread& t : threads) {
     t.join();
   }
-  timeline.Pause(); 
+  timeline.Pause();
   VLOG(0) << "GpuPs pull sparse cost " << timeline.ElapsedSec() << " seconds.";
   gpu_ps_wrapper->BuildGPUPS(table_id, feadim, gpu_task);
 }
@@ -344,8 +348,7 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
 Scope* PSGPUTrainer::GetWorkerScope(int thread_id) { return nullptr; }
 
 template <typename T>
-void PSGPUTrainer::MergeToRootScope(LoDTensor* root_tensor,
-                                       LoDTensor* tensor) {
+void PSGPUTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
   LoDTensor tmp_root;
   TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();

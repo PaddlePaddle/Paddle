@@ -53,6 +53,7 @@ class TestRNNOp(OpTest):
         self.is_bidirec = False
         self.mode = "LSTM"
         self.is_test = False
+        self.dropout = 0.0
         self.set_attrs()
 
         self.direction_num = 2 if self.is_bidirec else 1
@@ -76,7 +77,8 @@ class TestRNNOp(OpTest):
             hidden_size,
             num_layers=self.num_layers,
             time_major=True,
-            direction=direction)
+            direction=direction,
+            dropout=self.dropout)
 
         flat_w = get_params_for_net(rnn1)
         output, (last_hidden, last_cell) = rnn1(
@@ -101,7 +103,7 @@ class TestRNNOp(OpTest):
                 'PreState': [('init_h', init_h), ('init_c', init_c)],
             }
         self.attrs = {
-            'dropout_prob': 0.0,
+            'dropout_prob': self.dropout,
             'is_bidirec': self.is_bidirec,
             'input_size': input_size,
             'hidden_size': hidden_size,

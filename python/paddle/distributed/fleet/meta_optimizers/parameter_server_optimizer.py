@@ -158,13 +158,13 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     ['vm_stat'], stdout=subprocess.PIPE).communicate()[0]
                 # Process vm_stat
                 vmLines = vm.split('\n')
-                sep = re.compile(':[\s]+')
+                sep = re.compile(r':[\s]+')
                 vmStats = {}
                 for row in range(1, len(vmLines) - 2):
                     rowText = vmLines[row].strip()
                     rowElements = sep.split(rowText)
                     vmStats[(rowElements[0]
-                             )] = int(rowElements[1].strip('\.')) * 4096
+                             )] = int(rowElements[1].strip(r'\.')) * 4096
                 return vmStats["Pages free"]
             elif platform.system() == "Linux":
                 mems = {}

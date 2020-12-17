@@ -20,37 +20,40 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-HeterBoxBase* HeterBoxBase::get_instance(size_t capacity, std::shared_ptr<HeterBoxResource> resource) {
+HeterBoxBase* HeterBoxBase::get_instance(
+    size_t capacity, std::shared_ptr<HeterBoxResource> resource) {
   return new HeterBox(capacity, resource);
 }
 
-HeterBox::HeterBox(size_t capacity, std::shared_ptr<HeterBoxResource> resource) {
-  gpu_ps_ = std::make_shared<GpuPs<FeatureKey, FeatureValue, FeaturePushValue> >(capacity, resource);
+HeterBox::HeterBox(size_t capacity,
+                   std::shared_ptr<HeterBoxResource> resource) {
+  gpu_ps_ = std::make_shared<GpuPs<FeatureKey, FeatureValue, FeaturePushValue>>(
+      capacity, resource);
   opt_ = Optimizer<FeatureValue, FeaturePushValue>();
 }
 
 HeterBox::~HeterBox() {}
 
-void HeterBox::pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals, size_t len) {
+void HeterBox::pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals,
+                           size_t len) {
   gpu_ps_->pull_sparse(num, d_keys, d_vals, len);
 }
 
-void HeterBox::build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals, size_t len, size_t chunk_size, int stream_num) {
-    gpu_ps_->build_ps(num, h_keys, h_vals, len, chunk_size, stream_num);
+void HeterBox::build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
+                        size_t len, size_t chunk_size, int stream_num) {
+  gpu_ps_->build_ps(num, h_keys, h_vals, len, chunk_size, stream_num);
 }
 
 int HeterBox::get_index_by_devid(int devid) {
   return gpu_ps_->get_index_by_devid(devid);
 }
 
-void HeterBox::dump() {
-}
+void HeterBox::dump() {}
 
-void HeterBox::show_one_table(int gpu_num) {
-  gpu_ps_->show_one_table(gpu_num);
-}
+void HeterBox::show_one_table(int gpu_num) { gpu_ps_->show_one_table(gpu_num); }
 
-void HeterBox::push_sparse(int num, FeatureKey* d_keys, FeaturePushValue* d_grads, size_t len) {
+void HeterBox::push_sparse(int num, FeatureKey* d_keys,
+                           FeaturePushValue* d_grads, size_t len) {
   gpu_ps_->push_sparse(num, d_keys, d_grads, len, opt_);
 }
 

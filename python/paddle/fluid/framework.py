@@ -23,6 +23,7 @@ import os
 import re
 import traceback
 import six
+import copy
 
 import numpy as np
 import subprocess
@@ -46,12 +47,12 @@ __all__ = [
     'name_scope',
     'cuda_places',
     'cpu_places',
+    'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
     'is_compiled_with_xpu',
     'Variable',
-    'ComplexVariable',
     'load_op_library',
     'require_version',
     'device_guard',
@@ -229,7 +230,7 @@ def _dygraph_only_(func):
 def _static_only_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
-        ), "We only support '%s()' in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
+        ), "In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '%s()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -354,6 +355,15 @@ def _cuda_ids():
     return device_ids
 
 
+def _xpu_ids():
+    xpus_env = os.getenv("FLAGS_selected_xpus")
+    if xpus_env:
+        device_ids = [int(s) for s in xpus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_xpu_device_count())
+    return device_ids
+
+
 def is_compiled_with_xpu():
     """
     Whether this whl package can be used to run the model on XPU.
@@ -428,6 +438,43 @@ def cuda_places(device_ids=None):
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
+
+
+def xpu_places(device_ids=None):
+    """
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_xpus` environment variable to set the visible XPU device.
+    This function creates a list of :code:`paddle.XPUPlace` objects.
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_xpus` would be checked first. For example, if
+    :code:`FLAGS_selected_xpus=0,1,2`, the returned list would
+    be [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+    If :code:`FLAGS_selected_xpus` is not set, all visible
+    xpu places would be returned.
+    If :code:`device_ids` is not None, it should be the device
+    ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
+    the returned list would be 
+    [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+    
+    Parameters:
+        device_ids (list or tuple of int, optional): list of XPU device ids.
+    Returns:
+        list of paddle.XPUPlace: Created XPU place list.
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+            xpu_places = static.xpu_places()
+    """
+    assert core.is_compiled_with_xpu(), \
+        "Not compiled with XPU"
+    if device_ids is None:
+        device_ids = _xpu_ids()
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.XPUPlace(dev_id) for dev_id in device_ids]
 
 
 def cpu_places(device_count=None):
@@ -643,6 +690,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.UINT8
     elif dtype == np.int8:
         return core.VarDesc.VarType.INT8
+    elif dtype == np.complex64:
+        return core.VarDesc.VarType.COMPLEX64
+    elif dtype == np.complex128:
+        return core.VarDesc.VarType.COMPLEX128
     else:
         raise ValueError("Not supported numpy dtype %s" % dtype)
 
@@ -1309,12 +1360,15 @@ class Variable(object):
                                                     dtype='float32')
                 print(new_variable._to_readable_code())
         """
+        # VarType.LOD_TENSOR -> LOD_TENSOR
+        type_str = str(self.type).split('.')[1]
         if self.type == core.VarDesc.VarType.SELECTED_ROWS or self.type == core.VarDesc.VarType.LOD_TENSOR:
-            var_str = "{name} : paddle.{type}.shape{shape}.astype({dtype})".\
-                format(i="{", e="}", name=self.name, type=self.type, shape=self.shape, dtype=self.dtype)
+            dtype_str = str(self.dtype).split('.')[1]
+            var_str = "{name} : {type}.shape{shape}.dtype({dtype}).stop_gradient({stop_gradient})".\
+                format(name=self.name, type=type_str, shape=self.shape, dtype=dtype_str, stop_gradient=self.stop_gradient)
         else:
-            var_str = "{name} : paddle.{type})".\
-                format(i="{", e="}", name=self.name, type=self.type)
+            var_str = "{name} : {type})".\
+                format(name=self.name, type=type_str)
 
         if type(self) == Parameter:
             if self.trainable:
@@ -1779,97 +1833,6 @@ def get_all_op_protos():
     return ret_values
 
 
-class ComplexVariable(object):
-    """
-    The ComplexTensor defined on the complex number domain. It contains two common 
-    real number Tensor as its members, :attr:`real` and :attr:`imag` 
-    holding the real part and imaginary part of complex numbers respectively.
-    
-    **Notes**:
-        **The constructor of ComplexTensor should not be invoked directly.**
-
-    Args:
-        real (Tensor): The Tensor holding real-part data.
-        imag (Tensor): The Tensor holding imaginery-part data.
-    
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            x = paddle.to_tensor([1.0+2.0j, 0.2])
-            print(x.name, x.dtype, x.shape)
-            # ({'real': 'generated_tensor_0.real', 'imag': 'generated_tensor_0.imag'}, complex64, [2])
-            print(x)
-            # ComplexTensor[real](shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #                     [        1., 0.20000000])
-            # ComplexTensor[imag](shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #                     [2., 0.])
-            print(type(x))
-            # <class 'paddle.ComplexTensor'>
-    """
-
-    def __new__(cls, *arg, **kwargs):
-        cls.__module__ = "paddle"
-        cls.__name__ = "ComplexTensor"
-        return super(ComplexVariable, cls).__new__(cls)
-
-    def __init__(self, real, imag):
-        assert real.shape == imag.shape, "The real part and imaginary part " \
-            "of a ComplexVariable should have the same shape!"
-        assert real.dtype == imag.dtype, "The real part and imaginary part " \
-            "of a ComplexVariable should have the same data type!"
-
-        self.real = real
-        self.imag = imag
-        if self.real.dtype in [
-                core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32
-        ]:
-            self._dtype = "complex64"
-        else:
-            self._dtype = "complex128"
-        self._shape = self.real.shape
-
-    def __getitem__(self, idx):
-        return ComplexVariable(self.real[idx], self.imag[idx])
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def name(self):
-        return {"real": self.real.name, "imag": self.imag.name}
-
-    @name.setter
-    def name(self, name):
-        # rename
-        if isinstance(name, str):
-            self.real.name = name + ".real"
-            self.imag.name = name + ".imag"
-        elif (isinstance(name, tuple) or isinstance(name,
-                                                    list)) and len(name) == 2:
-            self.real.name, self.imag.name = name[0], name[1]
-        else:
-            raise ValueError(
-                "An invalid name assigned to the ComplexVariable, "
-                "which must be a string, or a tuple or a list with length 2!")
-
-    def numpy(self):
-        return self.real.numpy() + 1j * self.imag.numpy()
-
-    def __str__(self):
-        from paddle.tensor.to_string import to_string
-        return "ComplexTensor containing:\n{real}\n{imag}".format(
-            real=to_string(self.real, "[real part]Tensor"),
-            imag=to_string(self.imag, "[imag part]Tensor"))
-
-    __repr__ = __str__
-
-
 class OpProtoHolder(object):
     """
     A global variable to hold all OpProtos from C++ as a map
@@ -2255,7 +2218,7 @@ class Operator(object):
         return self.desc.type()
 
     def input(self, name):
-        """
+        r"""
         Get the input arguments according to the input parameter name.
 
         Args:
@@ -2306,7 +2269,7 @@ class Operator(object):
         return self.desc.output_arg_names()
 
     def output(self, name):
-        """
+        r"""
         Get output arguments by the output parameter name.
 
         Args:
@@ -5358,6 +5321,36 @@ class ParamBase(core.VarBase):
         """
         return "Parameter containing:\n{tensor}".format(
             tensor=super(ParamBase, self).__str__())
+
+    def __deepcopy__(self, memo):
+        """
+        Deep copy parameter, it will always performs Tensor copy.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import copy
+                linear = paddle.nn.Linear(1, 3)
+                linear_copy = copy.deepcopy(linear)
+                
+                print(linear.weight)
+                # Parameter containing:
+                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
+                #     [[-0.30929261, -0.90929240, -1.07851017]])
+
+                print(linear_copy.weight)
+                # Parameter containing:
+                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
+                #     [[-0.30929261, -0.90929240, -1.07851017]])
+
+        """
+        state = copy.deepcopy(self.__dict__, memo)
+        state["name"] = self.name + unique_name.generate("_deepcopy")
+        new_param = ParamBase(self.shape, self.dtype, **state)
+        memo[id(self)] = new_param
+        new_param.copy_(self, True)
+        return new_param
 
     __repr__ = __str__
 

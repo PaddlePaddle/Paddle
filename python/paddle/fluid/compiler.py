@@ -18,7 +18,7 @@ import six
 import sys
 from .. import compat as cpt
 from . import framework
-from .framework import cuda_places, cpu_places
+from .framework import cuda_places, cpu_places, xpu_places
 
 from . import core
 
@@ -316,7 +316,7 @@ class CompiledProgram(object):
             "Subclass of CompiledProgram should implement _with_distributed method."
         )
 
-    def _compile_data_parallel(self, places, use_cuda=False, scope=None):
+    def _compile_data_parallel(self, places, use_device, scope=None):
         if self._share_vars_from:
             if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
@@ -342,15 +342,22 @@ class CompiledProgram(object):
 
         if self._exec_strategy is None:
             self._exec_strategy = ExecutionStrategy()
-        self._exec_strategy.use_cuda = use_cuda
+        self._exec_strategy._use_device = use_device
 
         if self._exec_strategy.num_threads == 0:
-            if self._exec_strategy.use_cuda:
+            if self._exec_strategy._use_device == ExecutionStrategy.UseDevice.CUDA:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
                 self._exec_strategy.num_threads = len(places) * 4
+            elif self._exec_strategy._use_device == ExecutionStrategy.UseDevice.XPU:
+                # Currently only single thread is supported in Kunlun XPU.
+                self._exec_strategy.num_threads = 1
             else:
                 self._exec_strategy.num_threads = len(places) * 2
+
+        if self._exec_strategy._use_device == ExecutionStrategy.UseDevice.XPU:
+            assert self._exec_strategy.num_threads == 1, \
+                "Currently only single thread is supported in Kunlun XPU."
 
         if self._build_strategy.num_trainers > 1:
             assert self._is_data_parallel, \
@@ -377,7 +384,7 @@ class CompiledProgram(object):
             self._build_strategy.enable_sequential_execution = True
 
         if self._program is not None and self._program._enable_dgc:
-            assert use_cuda, "DGC only used under CUDA environment."
+            assert self._exec_strategy._use_device == ExecutionStrategy.UseDevice.CUDA, "DGC only used under CUDA environment."
             assert self._build_strategy.num_trainers * len(
                 places) > 1, "DGC is not avaliable for single card training."
             assert self._build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "DGC \
@@ -447,11 +454,14 @@ class CompiledProgram(object):
                 raise NotImplementedError(
                     "If optimizer is used in control flow, "
                     "training on multi-places is not supported now.")
-
+            if isinstance(self._place, core.CUDAPlace):
+                use_device = ExecutionStrategy.UseDevice.CUDA
+            elif isinstance(self._place, core.XPUPlace):
+                use_device = ExecutionStrategy.UseDevice.XPU
+            else:
+                use_device = ExecutionStrategy.UseDevice.CPU
             self._executor = self._compile_data_parallel(
-                use_cuda=isinstance(self._place, core.CUDAPlace),
-                scope=self._scope,
-                places=self._places)
+                use_device=use_device, scope=self._scope, places=self._places)
         return self
 
     def _get_places(self, place, place_list):
@@ -461,7 +471,11 @@ class CompiledProgram(object):
                 assert p._type() == place._type(), \
                     "Place type not match. You may set wrong type of places."
         else:
-            place_list = cuda_places() if isinstance(
-                place, core.CUDAPlace) else cpu_places()
+            if isinstance(place, core.CUDAPlace):
+                place_list = cuda_places()
+            elif isinstance(place, core.XPUPlace):
+                place_list = xpu_places()
+            else:
+                place_list = cpu_places()
         assert place_list, "No places for execution."
         return place_list

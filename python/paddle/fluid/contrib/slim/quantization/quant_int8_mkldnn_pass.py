@@ -37,7 +37,7 @@ class QuantInt8MkldnnPass(object):
     """
 
     def __init__(self, _scope=None, _place=None):
-        """
+        r"""
         Args:
             scope(fluid.Scope): scope is used to initialize the new parameters.
             place(fluid.CPUPlace): place is used to initialize the new parameters.
