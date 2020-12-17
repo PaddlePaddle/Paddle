@@ -118,7 +118,7 @@ void BasicEngine::PrepareGradAccumulators(
     for (const auto& var : pair.second) {
       if (!var) continue;
 
-      if (var->IsLeafGrad()) {
+      if (!var->HasGradNode()) {
         auto& accumulator = leaf_basic_accumulators_[var.get()];
         if (!accumulator) {
           if (FLAGS_sort_sum_gradient) {
@@ -281,24 +281,33 @@ void BasicEngine::Execute() {
             continue;
           }
 
+          VLOG(10) << "Checkpoint v1 " << var->Name();
+
           std::unordered_map<VariableWrapper*,
                              std::unique_ptr<GradientAccumulator>>::iterator
               iter;
           // std::unordered_map<std::shared_ptr<GradOpNode>,
           // std::unordered_map<VariableWrapper*,
           // std::unique_ptr<GradientAccumulator>>>::iterator iter_node;
-          if (var->IsLeafGrad()) {
+          if (!var->HasGradNode()) {
+            VLOG(10) << "Checkpoint leaf v1.1 " << var->Name();
             iter = leaf_basic_accumulators_.find(var.get());
             PADDLE_ENFORCE_EQ(
                 iter != leaf_basic_accumulators_.end(), true,
                 platform::errors::NotFound(
                     "Cannot find gradient of variable %s", var->Name()));
+            VLOG(10) << "Checkpoint leaf v1.2 " << var->Name();
           } else {
+            VLOG(10) << "Checkpoint v1.1 " << var->Name();
             for (auto& grad_pending_node :
                  shared_cur_node->GradPendingNodes()) {
+              VLOG(10) << "Checkpoint v1.2 " << var->Name();
               const auto& iter_node = accumulators_.find(grad_pending_node);
+              VLOG(10) << "Checkpoint v1.3 " << var->Name();
               if (iter_node != accumulators_.end()) {
+                VLOG(10) << "Checkpoint v1.4 " << var->Name();
                 iter = iter_node->second.find(var.get());
+                VLOG(10) << "Checkpoint v1.5 " << var->Name();
                 PADDLE_ENFORCE_EQ(
                     iter != iter_node->second.end(), true,
                     platform::errors::NotFound(
@@ -307,6 +316,8 @@ void BasicEngine::Execute() {
               }
             }
           }
+
+          VLOG(10) << "Checkpoint v2 " << var->Name();
 
           // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor
           if (var->IsLeafGrad()) {
