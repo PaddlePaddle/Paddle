@@ -145,8 +145,11 @@ def get_numeric_gradient(place,
             return numpy_tensor[i]
         elif tensor_to_check_dtype == np.float32:
             return tensor._get_float_element(i)
-        else:
+        elif tensor_to_check_dtype == np.float64:
             return tensor._get_double_element(i)
+        else:
+            raise TypeError("Unsupported test data type %s." %
+                            tensor_to_check_dtype)
 
     def __set_elem__(tensor, i, e):
         if tensor_to_check_dtype == np.float16:
@@ -158,8 +161,11 @@ def get_numeric_gradient(place,
             tensor.set(numpy_tensor, place)
         elif tensor_to_check_dtype == np.float32:
             tensor._set_float_element(i, e)
-        else:
+        elif tensor_to_check_dtype == np.float64:
             tensor._set_double_element(i, e)
+        else:
+            raise TypeError("Unsupported test data type %s." %
+                            tensor_to_check_dtype)
 
     # we only compute gradient of one element each time.
     # we use a for loop to compute the gradient of every element.
