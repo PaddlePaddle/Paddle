@@ -176,55 +176,6 @@ __global__ void MatrixColReduce(const T *__restrict__ in, T *__restrict__ out,
   }
 }
 
-template <int BLOCK_W, int BLOCK_H>
-__global__ void FP16MatrixColReduce(
-    const paddle::platform::float16 *__restrict__ in,
-    paddle::platform::float16 *__restrict__ out, size_t width, size_t height) {
-  constexpr int repeats = BLOCK_H / BLOCK_W;
-  __shared__ paddle::platform::float16 sdata[BLOCK_H][BLOCK_W + 1];
-  size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
-  size_t width_stride = gridDim.x * blockDim.x;
-  size_t full_width = (width & (~((uint64_t)(BLOCK_W - 1)))) +
-                      ((width & (BLOCK_W - 1)) ? BLOCK_W : 0);
-  size_t full_height = (height & (~((uint64_t)(BLOCK_H - 1)))) +
-                       ((height & (BLOCK_H - 1)) ? BLOCK_H : 0);
-#pragma unroll
-  for (size_t w = idx; w < full_width; w += width_stride) {
-    for (int r = 0; r < repeats; r++) {
-      sdata[threadIdx.y + r * BLOCK_W][threadIdx.x] = 0;
-    }
-    __syncthreads();
-#pragma unroll
-    for (int r = 0; r < repeats; r++) {
-      size_t offset = w + (r * BLOCK_W + threadIdx.y) * width;
-#pragma unroll
-      for (size_t h = threadIdx.y + r * BLOCK_W; h < full_height;
-           h += BLOCK_H) {  // block-stride loop across matrix height
-        sdata[r * BLOCK_W + threadIdx.y][threadIdx.x] +=
-            (w < width && h < height)
-                ? in[offset]
-                : (static_cast<paddle::platform::float16>(0));
-        offset += width * BLOCK_H;
-      }
-    }
-    __syncthreads();
-
-    paddle::platform::float16 result =
-        static_cast<paddle::platform::float16>(0);
-    for (int r = 0; r < repeats; r++) {
-      paddle::platform::float16 val =
-          sdata[threadIdx.x + r * BLOCK_W][threadIdx.y];
-      for (int i = warpSize >> 1; i > 0; i >>= 1)
-        val += platform::CudaShuffleXorSync(0xFFFFFFFF, val, i);
-      __syncthreads();
-      result += val;
-    }
-    if (threadIdx.x == 0) sdata[0][threadIdx.y] = result;
-    __syncthreads();
-    if ((threadIdx.y == 0) && ((w) < width)) out[w] = sdata[0][threadIdx.x];
-  }
-}
-
 template <typename T>
 __global__ void MatrixReduceLongWidth(const T *__restrict__ in, T *out,
                                       size_t width, size_t height) {
@@ -390,21 +341,6 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
       int max_blocks = std::max(max_physical_threads / (block_x * block_y), 1);
       int theory_block = (width + blocks.x - 1) / blocks.x;
       dim3 grids(std::min(theory_block, max_blocks));
-      if (std::is_same<T, paddle::platform::float16>::value &&
-          (width / height) < 32) {
-        const paddle::platform::float16 *ptr1 =
-            reinterpret_cast<const paddle::platform::float16 *>(dout_data);
-        paddle::platform::float16 *ptr2 =
-            reinterpret_cast<paddle::platform::float16 *>(out_data);
-        if (height <= 32) {
-          FP16MatrixColReduce<32, 32><<<grids, blocks, 0, stream>>>(
-              ptr1, ptr2, width, height);
-        } else {
-          FP16MatrixColReduce<32, 64><<<grids, blocks, 0, stream>>>(
-              ptr1, ptr2, width, height);
-        }
-        return;
-      }
 
       if (width / height < 32) {
         MatrixColReduce<T, block_x, block_y><<<grids, blocks, 0, stream>>>(
