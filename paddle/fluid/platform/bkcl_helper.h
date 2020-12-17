@@ -98,8 +98,10 @@ struct BKCLContextMap {
     trainer_id_ = trainer_id;
   }
 
+  // Synchronization is required and can only be initialized with
+  // multithreading.
   int init() {
-    PADDLE_ENFORCE_EQ(!places.empty(), true,
+    PADDLE_ENFORCE_EQ(!places_.empty(), true,
                       platform::errors::InvalidArgument(
                           "The BKCL place should not be empty."));
     order_.reserve(places_.size());

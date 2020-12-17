@@ -52,6 +52,7 @@ struct GpuDevice;
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_header.h"
+#include "paddle/fluid/platform/xpu_info.h"
 #endif
 
 namespace paddle {
@@ -552,8 +553,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   const std::string& GetKeySuffix(void) const { return key_suffix_; }
 
   // Disable adding  thread ID to the key
-  void DisableThreadInfoInKey(void) { key_attach_thread_id_ = false; };
-  bool IsThreadIdUsedInKey(void) const { return key_attach_thread_id_; };
+  void DisableThreadInfoInKey(void) { key_attach_thread_id_ = false; }
+  bool IsThreadIdUsedInKey(void) const { return key_attach_thread_id_; }
 
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
