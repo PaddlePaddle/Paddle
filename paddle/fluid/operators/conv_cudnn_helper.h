@@ -461,7 +461,6 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
 
   static size_t GetWorkspaceSize(const ConvArgs& args, algo_t algo) {
     size_t workspace_size = 0;
-    // std::cout << "get worksize" << std::endl;
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
             args.handle, args.wdesc.desc(), args.odesc.desc(),
