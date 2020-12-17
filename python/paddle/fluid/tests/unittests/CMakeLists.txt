@@ -16,7 +16,6 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding_over_height)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
-list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_gen_nccl_id_op)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
@@ -115,8 +114,6 @@ endif()
 
 if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
-    LIST(REMOVE_ITEM TEST_OPS test_desc_clone_dist)
-    LIST(REMOVE_ITEM TEST_OPS test_program_code_dist)
 endif()
 
 if(WIN32)
@@ -134,6 +131,7 @@ LIST(REMOVE_ITEM TEST_OPS test_hdfs1)
 LIST(REMOVE_ITEM TEST_OPS test_hdfs2)
 LIST(REMOVE_ITEM TEST_OPS test_hdfs3)
 LIST(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
+
 if(APPLE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
@@ -451,6 +449,8 @@ if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_ctr")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_program")
 
     # TODO(sandyhouse): fix and add the ut back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_hallreduce")
