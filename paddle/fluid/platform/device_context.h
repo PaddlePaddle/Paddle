@@ -62,6 +62,10 @@ namespace platform {
 void SetAllowTF32Cublas(bool active);
 /*Get the global variable allow_tf32_cublas value*/
 bool AllowTF32Cublas();
+/*Set the value of the global variable allow_tf32_cudnn*/
+void SetAllowTF32Cudnn(bool active);
+/*Get the global variable allow_tf32_cudnn value*/
+bool AllowTF32Cudnn();
 #endif  // PADDLE_WITH_CUDA
 
 class DeviceContext {
@@ -368,9 +372,6 @@ class CUDADeviceContext : public DeviceContext {
     return thread_ctx_.at(this);
   }
 
-  void SetTF32Cudnn(bool active);
-  bool AllowTF32Cudnn() const;
-
  private:
   CUDAPlace place_;
   std::shared_ptr<CUDAContext> default_ctx_;
@@ -555,8 +556,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   const std::string& GetKeySuffix(void) const { return key_suffix_; }
 
   // Disable adding  thread ID to the key
-  void DisableThreadInfoInKey(void) { key_attach_thread_id_ = false; };
-  bool IsThreadIdUsedInKey(void) const { return key_attach_thread_id_; };
+  void DisableThreadInfoInKey(void) { key_attach_thread_id_ = false; }
+  bool IsThreadIdUsedInKey(void) const { return key_attach_thread_id_; }
 
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();

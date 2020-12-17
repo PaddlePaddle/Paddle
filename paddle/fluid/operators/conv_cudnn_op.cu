@@ -241,7 +241,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 
     args.handle = handle;
     args.cdesc.set(dtype, padding_common, strides, dilations,
-                   dev_ctx.AllowTF32Cudnn());
+                   platform::AllowTF32Cudnn());
 
 #if CUDNN_VERSION_MIN(7, 0, 1)
     // cudnn 7 can support groups, no need to do it manually
@@ -605,7 +605,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       args1.wdesc.set(transformed_filter_channel, layout_tensor, iwo_groups);
       args1.odesc.set(transformed_output_grad_channel, layout_tensor);
       args1.cdesc.set(dtype, padding_common, strides, dilations,
-                      dev_ctx.AllowTF32Cudnn(), c_groups);
+                      platform::AllowTF32Cudnn(), c_groups);
 
       using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
       data_algo =
@@ -623,7 +623,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                       iwo_groups);
       args2.odesc.set(transformed_output_grad_channel, layout_tensor);
       args2.cdesc.set(dtype, padding_common, strides, dilations,
-                      dev_ctx.AllowTF32Cudnn(), c_groups);
+                      platform::AllowTF32Cudnn(), c_groups);
 
       using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
       filter_algo =
@@ -984,7 +984,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
         args1.wdesc.set(*W, layout, iwo_group);
         args1.odesc.set(transformed_ddO_channel, iwo_group);
         args1.cdesc.set(dtype, padding_common, strides, dilations,
-                        dev_ctx.AllowTF32Cudnn(), c_group);
+                        platform::AllowTF32Cudnn(), c_group);
 
         using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
         fwd_algo1 = search1::Find<T>(args1, exhaustive_search, false, ctx);
@@ -1000,7 +1000,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
 
         args2.odesc.set(transformed_ddO_channel, iwo_group);
         args2.cdesc.set(dtype, padding_common, strides, dilations,
-                        dev_ctx.AllowTF32Cudnn(), c_group);
+                        platform::AllowTF32Cudnn(), c_group);
 
         using search2 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
         fwd_algo2 = search2::Find<T>(args2, exhaustive_search, false, ctx);
@@ -1018,7 +1018,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       args3.odesc.set(transformed_dO_channel, iwo_group);
 
       args3.cdesc.set(dtype, padding_common, strides, dilations,
-                      dev_ctx.AllowTF32Cudnn(), c_group);
+                      platform::AllowTF32Cudnn(), c_group);
 
       using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
       filter_algo =
@@ -1035,7 +1035,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       args4.wdesc.set(*ddW, layout, iwo_group);
       args4.odesc.set(transformed_dO_channel, iwo_group);
       args4.cdesc.set(dtype, padding_common, strides, dilations,
-                      dev_ctx.AllowTF32Cudnn(), c_group);
+                      platform::AllowTF32Cudnn(), c_group);
 
       using search4 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
       data_algo =

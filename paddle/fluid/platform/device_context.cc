@@ -58,10 +58,14 @@ namespace platform {
 bool allow_tf32_cublas = true;
 void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
 bool AllowTF32Cublas() { return allow_tf32_cublas; }
+
+bool allow_tf32_cudnn = true;
+void SetAllowTF32Cudnn(bool active) { allow_tf32_cudnn = active; }
+bool AllowTF32Cudnn() { return allow_tf32_cudnn; }
 #endif  // PADDLE_WITH_CUDA
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
-bool allow_tf32_cudnn{true};
+
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
@@ -366,10 +370,6 @@ CUDADeviceContext::~CUDADeviceContext() {
   }
 #endif
 }
-
-void CUDADeviceContext::SetTF32Cudnn(bool active) { allow_tf32_cudnn = active; }
-
-bool CUDADeviceContext::AllowTF32Cudnn() const { return allow_tf32_cudnn; }
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
