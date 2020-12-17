@@ -198,6 +198,7 @@ from .tensor.math import isinf  #DEFINE_ALIAS
 from .tensor.math import isnan  #DEFINE_ALIAS
 from .tensor.math import prod  #DEFINE_ALIAS
 from .tensor.math import broadcast_shape  #DEFINE_ALIAS
+from .tensor.math import conj  #DEFINE_ALIAS
 
 from .tensor.random import multinomial  #DEFINE_ALIAS
 from .tensor.random import standard_normal
