@@ -946,7 +946,6 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
         #load and save without running
         with unique_name.guard():
             layer_load = paddle.jit.load(model_path)
-            print(type(layer_load))
             paddle.jit.save(
                 layer_load,
                 model_path,
