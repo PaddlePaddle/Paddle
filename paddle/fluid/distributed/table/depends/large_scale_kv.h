@@ -79,7 +79,7 @@ struct VALUE {
     values_ = std::move(*values);
   }
 
-  void set(std::vector<Initializer *> inits, std::vector<int> numels) {
+  void set(const std::vector<Initializer *> &inits, std::vector<int> numels) {
     for (int x = 0; x < numels.size(); ++x) {
       auto &value = values_[x];
       value.reserve(numels[x]);
@@ -125,8 +125,8 @@ struct VALUE {
 
   std::vector<std::string> names_;
   int count_;
-  bool seen_after_last_save_;
   int unseen_days_;
+  bool seen_after_last_save_;
   bool is_entry_;
   std::vector<std::vector<float>> values_;
   std::unordered_map<std::string, int> places;
@@ -194,13 +194,13 @@ class ValueBlock {
     values_[id] = value;
   }
 
-  void Init(const uint64_t &id, const std::vector<Initializer *> inits,
+  void Init(const uint64_t &id, const std::vector<Initializer *> &inits,
             int count) {
     if (Has(id)) {
       PADDLE_THROW(platform::errors::AlreadyExists("id already exist, error"));
     }
 
-    if (inits->size() != value_names_.size()) {
+    if (inits.size() != value_names_.size()) {
       PADDLE_THROW(
           platform::errors::AlreadyExists("values can not match, error"));
     }
