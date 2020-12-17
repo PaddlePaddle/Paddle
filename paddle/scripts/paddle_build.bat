@@ -256,7 +256,7 @@ for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /
 :: NOTE(Avin0323): Less `PARALLEL_PROJECT_COUNT` result in faster compilation
 :: with Unity Build.
 if "%WITH_UNITY_BUILD%" EQU "ON" (
-    if %PARALLEL_PROJECT_COUNT% GTR 6 set PARALLEL_PROJECT_COUNT=6
+    if %PARALLEL_PROJECT_COUNT% GTR 8 set PARALLEL_PROJECT_COUNT=8
 )
 set build_times=1
 :build_tp
