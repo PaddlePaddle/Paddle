@@ -34,7 +34,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-void PrintTensor(Tensor* tensor, const std::string& msg) {
+inline void PrintTensor(Tensor* tensor, const std::string& msg) {
   VLOG(4) << " ----------  " << msg << "  ---------";
   auto size = tensor->numel();
   auto data = tensor->data<T>();
@@ -44,8 +44,8 @@ void PrintTensor(Tensor* tensor, const std::string& msg) {
   }
 }
 
-const char* GetValueName(framework::proto::VarType::Type data_type,
-                         const char* value_name) {
+inline const char* GetValueName(framework::proto::VarType::Type data_type,
+                                const char* value_name) {
   switch (data_type) {
     case framework::proto::VarType::BOOL:
       value_name = "bool_values";
@@ -68,10 +68,10 @@ const char* GetValueName(framework::proto::VarType::Type data_type,
   return value_name;
 }
 
-framework::DDim GetSliceDims(const framework::DDim in_dims,
-                             const std::vector<int> axes,
-                             const std::vector<int> starts,
-                             const std::vector<int> ends) {
+inline framework::DDim GetSliceDims(const framework::DDim in_dims,
+                                    const std::vector<int> axes,
+                                    const std::vector<int> starts,
+                                    const std::vector<int> ends) {
   framework::DDim slice_dims(in_dims);
 
   for (size_t i = 0; i < axes.size(); ++i) {
