@@ -1111,8 +1111,8 @@ class TranslatedLayer(layers.Layer):
                         "Adding persistent variable which  to layer is not supported now"
                     )
 
-        self._input_args_names = None
         self._is_test = True
+        self._input_args_names = None
 
     @staticmethod
     @framework.dygraph_only
