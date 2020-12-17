@@ -296,11 +296,16 @@ class BaseTransform(object):
 class ToTensor(BaseTransform):
     """Convert a ``PIL.Image`` or ``numpy.ndarray`` to ``paddle.Tensor``.
 
-    Converts a PIL.Image or numpy.ndarray (H x W x C) in the range
-    [0, 255] to a paddle.Tensor of shape (C x H x W) in the range [0.0, 1.0]
-    if the PIL Image belongs to one of the modes (L, LA, P, I, F, RGB, YCbCr, RGBA, CMYK, 1)
-    or if the numpy.ndarray has dtype = np.uint8. If you want output tensor keep (H x W x C)
-    format, you can set data_format = ``HWC`` .
+    Converts a PIL.Image or numpy.ndarray (H x W x C) to a paddle.Tensor of shape (C x H x W).
+
+    If input is a grayscale image (H x W), it will be converted to a image of shape (H x W x 1). 
+    And the shape of output tensor will be (1 x H x W).
+
+    If you want output tensor keep (H x W x C) format, you can set data_format = ``HWC`` .
+
+    Converts a PIL.Image or numpy.ndarray in the range [0, 255] to a paddle.Tensor in the 
+    range [0.0, 1.0] if the PIL Image belongs to one of the modes (L, LA, P, I, F, RGB, YCbCr, 
+    RGBA, CMYK, 1) or if the numpy.ndarray has dtype = np.uint8. 
 
     In the other cases, tensors are returned without scaling.
 
