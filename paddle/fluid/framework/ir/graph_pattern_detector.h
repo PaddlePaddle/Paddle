@@ -556,7 +556,8 @@ struct FCMKLDNN : public PatternBase {
 // \brief   Pattern looking for fc and a directly following activation
 // operator.
 //
-// \note    Currently only gelu and tanh are supported as an activation function.
+// \note    Currently only gelu and tanh are supported as an activation
+// function.
 //          Formula: act(fc(x))
 //          Op: fc + act
 struct FCActOneDNN : public PatternBase {
