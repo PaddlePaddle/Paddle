@@ -87,8 +87,8 @@ if(WIN32)
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
         # NOTE(Avin0323): Less parallel count result in faster compilation with
-        # Unity Build.
-        if(WITH_UNITY_BUILD)
+        # Unity Build on GPU.
+        if(WITH_UNITY_BUILD AND WITH_GPU)
             set(${flag_var} "${${flag_var}} /MP8")
         else()
             set(${flag_var} "${${flag_var}} /MP")
