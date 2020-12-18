@@ -532,6 +532,8 @@ class CompileTimeStrategy(object):
             if len(send_ctx) == 0:
                 raise ValueError(
                     "GeoSGD require sparse parameters in your net.")
+
+            return send_ctx
         else:
             return self.get_the_one_send_context(split_dense_table)
 
