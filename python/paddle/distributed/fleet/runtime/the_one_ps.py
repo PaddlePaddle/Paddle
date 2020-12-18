@@ -558,9 +558,14 @@ class TheOnePSRuntime(RuntimeBase):
             accessor = Accessor()
             accessor.accessor_class = "CommMergeAccessor"
             accessor.optimizer = None
-            accessor.feature_dim = 0 if ctx.is_distributed() else ctx.sections(
-            )[0]
-            accessor.embedding_dim = ctx.sections()[0] if ctx.is_sparse() else 1
+
+            if ctx.is_sparse():
+                accessor.feature_dim = ctx.sections()[0]
+                accessor.embedding_dim = ctx.sections()[1]
+            else:
+                accessor.feature_dim = ctx.sections()[0]
+                accessor.embedding_dim = 1
+
             return accessor
 
         def _build_barrier_table(idx):
@@ -624,9 +629,11 @@ class TheOnePSRuntime(RuntimeBase):
                         ctx.origin_varnames()[0]]
                 else:
                     common.table_name = "MergedDense"
+
                 common.parse_by_optimizer(ctx.origin_varnames()[0],
                                           ctx.is_sparse(),
-                                          ctx.sections()[0],
+                                          ctx.sections()[1] if ctx.is_sparse()
+                                          else ctx.sections()[0],
                                           self.compiled_strategy)
 
                 if is_sync:
