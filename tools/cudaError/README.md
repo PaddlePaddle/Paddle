@@ -19,4 +19,5 @@ bash start.sh 11.0
 ```
 will capture error message of CUDA11.0(in future).
 
+test
 Every time when Nvidia upgrade the CUDA major version, you need to run `bash start.sh` in current directory, and upload cudaErrorMessage.tar.gz to https://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz
