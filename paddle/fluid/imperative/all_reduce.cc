@@ -110,7 +110,9 @@ static void AllReduce(const framework::SelectedRows &src,
 
   auto sizeof_dtype = framework::SizeOfType(dtype);
   int64_t row_offset = 0;
-  if (stream != dev_ctx->stream()) dev_ctx->Wait();
+  if (stream != dev_ctx->stream()) {
+    dev_ctx->Wait();
+  }
   for (int i = 0; i < strategy.nranks_; ++i) {
     if (cpu_rows_num_ptr[i] > 0) {
       // 2. Broadcast the rows of SelectedRows
@@ -148,7 +150,6 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
       if (!dst->IsType<framework::SelectedRows>()) {
         dst->Clear();
       }
-      VLOG(0) << "SelectedRows allreduce not in-place";
       AllReduce(src.Get<framework::SelectedRows>(),
                 dst->GetMutable<framework::SelectedRows>(), strategy, stream);
     } else {
@@ -157,8 +158,7 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
       AllReduce(src.Get<framework::SelectedRows>(),
                 tmp_dst.GetMutable<framework::SelectedRows>(), strategy,
                 stream);
-      // The stream must be synchronized to ensure the accuracy of the move
-      // operation
+      // stream must synchronize to ensure accuracy of the move operation
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
       *dst = std::move(tmp_dst);
     }

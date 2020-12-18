@@ -311,8 +311,6 @@ void Reducer::MarkSparseVarReady(size_t var_index,
   auto group_index = var_locator.group_index;
   auto &group = groups_[group_index];
   group.sparse_contents_ = var_warpper->MutableVar();
-  // framework::Variable* sparse_var = var_warpper->MutableVar()
-  // group_to_sparse_.insert({group_index, framework::Variable()});
   group_to_sparse_[group_index] = std::move(*group.sparse_contents_);
   *group.sparse_contents_ = framework::Variable();
 }
@@ -333,8 +331,6 @@ void Reducer::MarkGroupReady(size_t group_index) {
     auto &group = groups_[next_group_];
     if (group.is_sparse_) {
       VLOG(3) << "sparse group [" << next_group_ << "] start allreduce...";
-      // parallel_ctx_->AllReduceByStream(*group.sparse_contents_,
-      //  group.sparse_contents_, 0, false);
       parallel_ctx_->AllReduceByStream(group_to_sparse_.at(next_group_),
                                        group.sparse_contents_, 0, false);
     } else {
