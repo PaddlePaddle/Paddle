@@ -255,19 +255,27 @@ int32_t CommonSparseTable::initialize_value() {
   auto accessor = _config.accessor();
   auto feasigns = accessor.fea_dim();
 
+  _shard_idx = shard_idx;
+  _shard_num = shard_num;
+
+  std::vector<uint64_t> feasigns;
+
+  for (size_t x = 0; x < accessor.fea_dim(); ++x) {
+    if (x % _shard_num == _shard_idx) {
+      feasigns.push_back(x);
+    }
+  }
+
   VLOG(1) << "has " << feasigns << " ids need to be pre inited";
 
   auto buckets = bucket(feasigns, 10);
-
   for (int x = 0; x < 10; ++x) {
     auto bucket_feasigns = buckets[x + 1] - buckets[x];
     std::vector<uint64_t> ids(bucket_feasigns);
-    std::generate(ids.begin(), ids.end(),
-                  [n = buckets[x]]() mutable { return n++; });
-
+    std::copy(feasigns.begin() + buckets[x], feasigns.begin() + buckets[x + 1],
+              ids.begin());
     std::vector<float> pulls;
     pulls.resize(bucket_feasigns * param_dim_);
-
     pull_sparse(pulls.data(), ids.data(), bucket_feasigns);
   }
 
