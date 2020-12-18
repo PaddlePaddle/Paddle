@@ -1050,10 +1050,10 @@ class TestInputSpecCompatibility(unittest.TestCase):
         input_y = paddle.uniform([8, 1], dtype='float64')
         expected_result = expect_layer(input_x, input_y)
         test_result = test_layer(input_x, input_y)
-        self.assertTrue(
-            float((expected_result[0] - test_result[0]).abs().max()) < 1e-5)
-        self.assertTrue(
-            float((expected_result[1] - test_result[1]).abs().max()) < 1e-5)
+        np.testing.assert_allclose(expected_result[0].numpy(),
+                                   test_result[0].numpy())
+        np.testing.assert_allclose(expected_result[1].numpy(),
+                                   test_result[1].numpy())
 
     def test_jit_save_compatible_input_sepc(self):
         layer = InputSepcLayer()

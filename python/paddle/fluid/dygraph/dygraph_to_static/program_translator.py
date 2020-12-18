@@ -473,8 +473,9 @@ class StaticFunction(object):
             if input_spec is None:
                 input_spec = self._function_spec.input_spec
             elif self._function_spec.input_spec is not None:
-                if not input_specs_compatible(input_spec,
-                                              self._function_spec.input_spec):
+                if not input_specs_compatible(
+                        flatten(input_spec),
+                        flatten(self._function_spec.input_spec)):
                     raise ValueError(
                         "The `input_spec`: {} used to construct concrete_program is conflict with the `input_spec`: {} in `@paddle.jit.to_static`".
                         format(input_spec, self._function_spec.input_spec))
