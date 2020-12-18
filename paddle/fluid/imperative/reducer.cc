@@ -218,7 +218,6 @@ void Reducer::InitializeGroups(
     if (variable_indices_.size() == 1 &&
         is_sparse_gradient_[variable_indices_.front()]) {
       // process the sparse gradient. one sparse, one group
-      group.sparse_contents_ = first_varbase->MutableGradVar();
       group.dtype_ = first_varbase->DataType();
       group.is_sparse_ = true;
     } else {
@@ -311,13 +310,11 @@ void Reducer::MarkSparseVarReady(size_t var_index,
   const auto &var_locator = variable_locators_[var_index];
   auto group_index = var_locator.group_index;
   auto &group = groups_[group_index];
-
-  if (group.sparse_contents_ != var_warpper->MutableVar()) {
-    VLOG(0) << "Address is different from initialize and markvariable";
-    group.sparse_contents_ = var_warpper->MutableVar();
-  } else {
-    VLOG(0) << "Address is same in initialize and markvariable";
-  }
+  group.sparse_contents_ = var_warpper->MutableVar();
+  // framework::Variable* sparse_var = var_warpper->MutableVar()
+  // group_to_sparse_.insert({group_index, framework::Variable()});
+  group_to_sparse_[group_index] = std::move(*group.sparse_contents_);
+  group.sparse_contents_ = nullptr;
 }
 
 void Reducer::MarkGroupReady(size_t group_index) {
@@ -336,7 +333,9 @@ void Reducer::MarkGroupReady(size_t group_index) {
     auto &group = groups_[next_group_];
     if (group.is_sparse_) {
       VLOG(3) << "sparse group [" << next_group_ << "] start allreduce...";
-      parallel_ctx_->AllReduceByStream(*group.sparse_contents_,
+      // parallel_ctx_->AllReduceByStream(*group.sparse_contents_,
+      //  group.sparse_contents_, 0, false);
+      parallel_ctx_->AllReduceByStream(group_to_sparse_.at(next_group_),
                                        group.sparse_contents_, 0, false);
     } else {
       VLOG(3) << "dense group [" << next_group_ << "] start allreduce...";
@@ -371,6 +370,7 @@ void Reducer::FinalizeBackward() {
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(comm_enent_.get(), comm_stream_));
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaStreamWaitEvent(compute_stream_, comm_enent_.get(), 0));
+
   if (!has_rebuilt_group_) {
     VLOG(3) << "Start rebuilding the groups";
     auto rebuild_group_indices = RebuildGruops();
