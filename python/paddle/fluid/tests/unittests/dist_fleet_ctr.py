@@ -101,7 +101,8 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
+            is_sparse=True,
+            padding_idx=0)
         dnn_pool = fluid.layers.sequence_pool(
             input=dnn_embedding, pool_type="sum")
         dnn_out = dnn_pool
@@ -123,7 +124,8 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
+            is_sparse=True,
+            padding_idx=0)
         lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
 
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
@@ -160,8 +162,12 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         Args:
             fleet(Fleet api): the fleet object of Parameter Server, define distribute training role
         """
-
-        exe = fluid.Executor(fluid.CPUPlace())
+        device_env = os.getenv("DEVICE", 'cpu')
+        if device_env == 'cpu':
+            device = fluid.CPUPlace()
+        elif device_env == 'gpu':
+            device = fluid.CUDAPlace(0)
+        exe = fluid.Executor(device)
 
         exe.run(fluid.default_startup_program())
         fleet.init_worker()
@@ -201,7 +207,12 @@ class TestDistCTR2x2(FleetDistRunnerBase):
     def do_dataset_training(self, fleet):
         train_file_list = ctr_dataset_reader.prepare_fake_data()
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        device_env = os.getenv("DEVICE", 'cpu')
+        if device_env == 'cpu':
+            device = fluid.CPUPlace()
+        elif device_env == 'gpu':
+            device = fluid.CUDAPlace(0)
+        exe = fluid.Executor(device)
 
         exe.run(fluid.default_startup_program())
         fleet.init_worker()

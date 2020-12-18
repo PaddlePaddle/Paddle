@@ -36,6 +36,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+
 DECLARE_double(eager_delete_tensor_gb);
 
 #ifdef WITH_GPERFTOOLS
@@ -54,6 +58,12 @@ static std::once_flag gProfileOnce;
 #ifdef WITH_GPERFTOOLS
 static bool gProfileStarted = false;
 #endif
+
+#ifdef PADDLE_WITH_CUDA
+std::once_flag p2p_init_flag;
+#endif
+
+using UseDevice = paddle::framework::details::ExecutionStrategy::UseDevice;
 
 class ParallelExecutorPrivate {
  public:
@@ -84,6 +94,8 @@ class ParallelExecutorPrivate {
       }
     }
   }
+
+  bool IsUseCUDA(UseDevice use_device);
 
   void SetHasFeed(size_t dev_idx, bool has_feed = true);
 
@@ -278,7 +290,7 @@ class ParallelExecutorPrivate {
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
-  bool use_cuda_;
+  UseDevice use_device_;
   bool use_all_reduce_;
   size_t nranks_;
 
@@ -287,6 +299,10 @@ class ParallelExecutorPrivate {
 
   details::ParallelSSAGraphExecutor *inference_executor_{nullptr};
 };
+
+bool ParallelExecutorPrivate::IsUseCUDA(UseDevice use_device) {
+  return use_device == UseDevice::kCUDA;
+}
 
 void ParallelExecutorPrivate::SetHasFeed(size_t dev_idx, bool has_feed) {
   if (inference_executor_) {
@@ -332,7 +348,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     auto addto_pass = ir::PassRegistry::Instance().Get("inplace_addto_op_pass");
     addto_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     addto_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-    addto_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    addto_pass->Set(ir::kUseCuda, new bool(use_device_ == UseDevice::kCUDA));
     VLOG(10) << "Start to apply inplace_addto_op_pass";
     graph = addto_pass->Apply(graph);
     VLOG(10) << "inplace_addto_op_pass Applied";
@@ -343,7 +359,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
         ir::PassRegistry::Instance().Get("buffer_shared_inplace_pass");
     inplace_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     inplace_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-    inplace_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    inplace_pass->Set(ir::kUseCuda, new bool(use_device_ == UseDevice::kCUDA));
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
@@ -358,7 +374,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
                                             &mem_opt_var_infos_);
     cross_op_memory_reuse_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
                                             &last_live_ops_of_vars);
-    cross_op_memory_reuse_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    cross_op_memory_reuse_pass->Set(ir::kUseCuda,
+                                    new bool(use_device_ == UseDevice::kCUDA));
     VLOG(10) << "Start to apply buffer_shared_cross_op_memory_reuse_pass";
     graph = cross_op_memory_reuse_pass->Apply(graph);
     VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
@@ -378,8 +395,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       continue;
     }
     std::unique_ptr<GarbageCollector> gc;
-#ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
             BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
@@ -388,20 +405,29 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
             BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use CUDA device since it's not compiled with CUDA,"
+          "Please recompile or reinstall Paddle with GPU support."));
+#endif
+    } else if (platform::is_xpu_place(place)) {
+#if defined(PADDLE_WITH_XPU)
+      gc.reset(new XPUGarbageCollector(
+          BOOST_GET_CONST(platform::XPUPlace, place), max_memory_size));
+      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use XPU device since it's not compiled with XPU,"
+          "Please recompile or reinstall Paddle with XPU support."));
+#endif
+    } else if (platform::is_cpu_place(place)) {
+      gc.reset(new CPUGarbageCollector(
+          BOOST_GET_CONST(platform::CPUPlace, place), max_memory_size));
+      VLOG(10) << "Created GarbageCollector at " << place;
     } else {
-#endif
-      if (platform::is_cpu_place(place)) {
-        gc.reset(new CPUGarbageCollector(
-            BOOST_GET_CONST(platform::CPUPlace, place), max_memory_size));
-        VLOG(10) << "Created GarbageCollector at " << place;
-      } else {
-        PADDLE_THROW(platform::errors::PreconditionNotMet(
-            "Unsupported place for garbage collection"));
-      }
-#ifdef PADDLE_WITH_CUDA
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "Unsupported place for garbage collection"));
     }
-#endif
-
     gcs_.emplace(place, std::move(gc));
   }
 
@@ -458,6 +484,41 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
   return executor && executor->NeedCreateLocalExeScope();
 }
 
+void InitP2P(const std::vector<platform::Place> &places) {
+#ifdef PADDLE_WITH_CUDA
+  std::call_once(p2p_init_flag, [&]() {
+    int count = places.size();
+    if (count <= 1) return;
+
+    std::vector<int> devices;
+    for (int i = 0; i < count; i++) {
+      if (!is_gpu_place(places[i])) return;
+
+      platform::CUDAPlace device =
+          BOOST_GET_CONST(platform::CUDAPlace, places[i]);
+      devices.push_back(device.GetDeviceId());
+    }
+
+    for (int i = 0; i < count; ++i) {
+      for (int j = 0; j < count; ++j) {
+        if (devices[i] == devices[j]) continue;
+        int can_acess = -1;
+        cudaError_t ret =
+            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
+        if (ret != cudaSuccess || can_acess != 1) {
+          LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
+                       << " to " << devices[j];
+        } else {
+          platform::CUDADeviceGuard guard(devices[i]);
+          cudaDeviceEnablePeerAccess(devices[j], 0);
+        }
+      }
+    }
+    VLOG(1) << "init p2p";
+  });
+#endif
+}
+
 ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const std::vector<std::string> &bcast_vars,
                                    const std::string &loss_var_name,
@@ -467,12 +528,10 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
-  PADDLE_ENFORCE(places.size() > 0 && !is_xpu_place(places[0]),
-                 platform::errors::Unavailable(
-                     "XPU is not supported in ParallelExecutor"));
+  InitP2P(places);
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
-  member_->use_cuda_ = exec_strategy.use_cuda_;
+  member_->use_device_ = exec_strategy.use_device_;
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
                              BuildStrategy::ReduceStrategy::kAllReduce;
@@ -485,7 +544,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     member_->use_all_reduce_ = true;
   }
 #if defined(PADDLE_WITH_CUDA) && defined(_WIN32)
-  if (member_->use_cuda_) {
+  if (member_->IsUseCUDA(member_->use_device_)) {
     PADDLE_ENFORCE_EQ(
         places.size(), 1,
         platform::errors::Unavailable("Windows can support Single GPU only."));
@@ -493,19 +552,30 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_NCCL)
-  PADDLE_ENFORCE_EQ(
-      places.size(), 1,
-      platform::errors::PermissionDenied(
-          "Your machine has multiple cards, "
-          "but the WITH_NCCL option is not turned on during compilation, "
-          "and you cannot use multi-card training or prediction. "
-          "Please recompile and turn on the WITH_NCCL option."));
+  if (member_->IsUseCUDA(member_->use_device_)) {
+    PADDLE_ENFORCE_EQ(
+        places.size(), 1,
+        platform::errors::PermissionDenied(
+            "Your machine has multiple cards, "
+            "but the WITH_NCCL option is not turned on during compilation, "
+            "and you cannot use multi-card training or prediction. "
+            "Please recompile and turn on the WITH_NCCL option."));
+  }
 #endif
+
+  std::string device_name;
+  if (member_->use_device_ == UseDevice::kCPU) {
+    device_name = "CPU";
+  } else if (member_->use_device_ == UseDevice::kCUDA) {
+    device_name = "CUDA";
+  } else {
+    device_name = "XPU";
+  }
 
   VLOG(1) << string::Sprintf(
       "The Program will be executed on %s using ParallelExecutor, %lu "
       "cards are used, so %lu programs are executed in parallel.",
-      (member_->use_cuda_ ? "CUDA" : "CPU"), places.size(), places.size());
+      device_name, places.size(), places.size());
 
   // Step 1. Bcast the bcast_vars to devs.
   // Create local scopes
@@ -529,7 +599,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   std::vector<ir::Graph *> graphs;
   if (member_->build_strategy_.async_mode_) {
-    PADDLE_ENFORCE_EQ(member_->use_cuda_, false,
+    PADDLE_ENFORCE_EQ(member_->IsUseCUDA(member_->use_device_), false,
                       platform::errors::Unavailable(
                           "gpu mode does not support async_mode_ now!"));
     graphs.push_back(graph);
@@ -552,7 +622,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
               << "you can force it off by env FLAGS_enable_parallel_graph=0";
   }
 
-  if (member_->use_cuda_ && member_->nranks_ > 1) {
+  if (member_->IsUseCUDA(member_->use_device_) && member_->nranks_ > 1) {
 #if defined(PADDLE_WITH_NCCL)
     member_->InitOrGetNCCLCommunicator(scope, &member_->build_strategy_);
 
@@ -601,36 +671,39 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     VLOG(3) << "use local async mode";
     graph = member_->build_strategy_.Apply(
         graph, {member_->places_[0]}, loss_var_name,
-        {member_->local_scopes_[0]}, 1, member_->use_cuda_,
-        member_->nccl_ctxs_);
+        {member_->local_scopes_[0]}, 1,
+        member_->IsUseCUDA(member_->use_device_), member_->nccl_ctxs_);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
       graphs[i] = member_->build_strategy_.Apply(
           graphs[i], {member_->places_[i]}, loss_var_name,
-          {member_->local_scopes_[i]}, 1, member_->use_cuda_,
-          member_->nccl_ctxs_);
+          {member_->local_scopes_[i]}, 1,
+          member_->IsUseCUDA(member_->use_device_), member_->nccl_ctxs_);
       async_graphs[i] = graphs[i];
     }
   } else {
     graph = member_->build_strategy_.Apply(
         graph, member_->places_, loss_var_name, member_->local_scopes_,
-        member_->nranks_, member_->use_cuda_, member_->nccl_ctxs_);
+        member_->nranks_, member_->IsUseCUDA(member_->use_device_),
+        member_->nccl_ctxs_);
   }
 #else
   if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use local async mode";
     graph = member_->build_strategy_.Apply(
         graph, {member_->places_[0]}, loss_var_name,
-        {member_->local_scopes_[0]}, 1, member_->use_cuda_);
+        {member_->local_scopes_[0]}, 1,
+        member_->IsUseCUDA(member_->use_device_));
     for (size_t i = 1; i < member_->places_.size(); ++i) {
       graphs[i] = member_->build_strategy_.Apply(
           graphs[i], {member_->places_[i]}, loss_var_name,
-          {member_->local_scopes_[i]}, 1, member_->use_cuda_);
+          {member_->local_scopes_[i]}, 1,
+          member_->IsUseCUDA(member_->use_device_));
       async_graphs[i] = graphs[i];
     }
   } else {
     graph = member_->build_strategy_.Apply(
         graph, member_->places_, loss_var_name, member_->local_scopes_,
-        member_->nranks_, member_->use_cuda_);
+        member_->nranks_, member_->IsUseCUDA(member_->use_device_));
   }
 #endif
 
@@ -828,7 +901,8 @@ void ParallelExecutor::BCastParamsToDevices(
         // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
         if (member_->build_strategy_.async_mode_) {
           share_memory();
-        } else if (member_->use_all_reduce_ || member_->use_cuda_ ||
+        } else if (member_->use_all_reduce_ ||
+                   member_->IsUseCUDA(member_->use_device_) ||
                    var == "@LR_DECAY_COUNTER@") {
           copy_memory();
         } else {
@@ -1059,7 +1133,7 @@ bool ParallelExecutor::EnableParallelGraphExecution(
     }
   }
 
-  if (!member_->use_all_reduce_ || !member_->use_cuda_) {
+  if (!member_->use_all_reduce_ || !member_->IsUseCUDA(member_->use_device_)) {
     if (build_strategy.enable_sequential_execution_ ||
         exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental) {
       enable_parallel_graph = false;

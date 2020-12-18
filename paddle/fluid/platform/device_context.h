@@ -43,7 +43,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
-#define EIGEN_USE_THREADS
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
@@ -57,6 +56,13 @@ struct GpuDevice;
 
 namespace paddle {
 namespace platform {
+
+#ifdef PADDLE_WITH_CUDA
+/*Set the value of the global variable allow_tf32_cublas*/
+void SetAllowTF32Cublas(bool active);
+/*Get the global variable allow_tf32_cublas value*/
+bool AllowTF32Cublas();
+#endif  // PADDLE_WITH_CUDA
 
 class DeviceContext {
  public:
@@ -73,17 +79,11 @@ class CPUDeviceContext : public DeviceContext {
 
   Eigen::DefaultDevice* eigen_device() const;
 
-  Eigen::ThreadPoolDevice* eigen_pool_device() const;
-
   Place GetPlace() const override;
-
-  inline void InitPoolDevice();
 
  private:
   CPUPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
-  std::unique_ptr<Eigen::ThreadPoolDevice> eigen_pool_device_;
-  std::unique_ptr<Eigen::ThreadPool> eigen_threadpool_;
 };
 
 template <typename Place>
@@ -168,7 +168,11 @@ class CUDAContext {
   /*! \brief  Call cublas function safely. */
   template <typename Callback>
   inline void CublasCall(Callback&& callback) const {
-    cublas_handle_->Call(std::forward<Callback>(callback));
+    if (cublas_tf32_tensor_core_handle_) {
+      cublas_tf32_tensor_core_handle_->Call(std::forward<Callback>(callback));
+    } else {
+      cublas_handle_->Call(std::forward<Callback>(callback));
+    }
   }
 
   /*! \brief  Check whether tensor core is supported */
@@ -195,7 +199,11 @@ class CUDAContext {
 #if CUDA_VERSION >= 9000
       cublas_tensor_core_handle_.reset(
           new CublasHandleHolder(RawStream(), CUBLAS_TENSOR_OP_MATH));
-#endif
+#if CUDA_VERSION >= 11000
+      cublas_tf32_tensor_core_handle_.reset(
+          new CublasHandleHolder(RawStream(), CUBLAS_TF32_TENSOR_OP_MATH));
+#endif  // CUDA_VERSION >= 11000
+#endif  // CUDA_VERSION >= 9000
     }
   }
 
@@ -238,6 +246,7 @@ class CUDAContext {
   void DestoryCuBlasContext() {
     cublas_handle_.reset();
     cublas_tensor_core_handle_.reset();
+    cublas_tf32_tensor_core_handle_.reset();
   }
 
   void DestoryCuSolverContext() {
@@ -254,6 +263,7 @@ class CUDAContext {
   cudnnHandle_t cudnn_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
+  std::unique_ptr<CublasHandleHolder> cublas_tf32_tensor_core_handle_;
   cusolverDnHandle_t cusolver_dn_handle_;
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
@@ -473,6 +483,7 @@ class MKLDNNDeviceContextThreadLocals {
 
   typedef MKLDNNDeviceContextThreadLocals self;
   struct Body {
+    bool said_once = false;
     size_t cur_mkldnn_session_id;
     // Current data input shape string.
     // - For fixed-shape, it's a null string in default.
@@ -492,6 +503,7 @@ class MKLDNNDeviceContextThreadLocals {
     void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
     void set_cur_paddle_data_layout(framework::DataLayout dl);
     framework::DataLayout get_cur_paddle_data_layout(void);
+    void log_lib_version(void);
   };
   MKLDNNDeviceContextThreadLocals() = default;
   MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =
@@ -535,6 +547,14 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // Remove all entries from the blob map
   void ResetBlobMap();
 
+  // Set a suffix to be added to key
+  void SetKeySuffix(const std::string& suffix) { key_suffix_ = suffix; }
+  const std::string& GetKeySuffix(void) const { return key_suffix_; }
+
+  // Disable adding  thread ID to the key
+  void DisableThreadInfoInKey(void) { key_attach_thread_id_ = false; };
+  bool IsThreadIdUsedInKey(void) const { return key_attach_thread_id_; };
+
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
 
@@ -556,6 +576,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
+  std::string key_suffix_;  // Key identifying current Executor
+  bool key_attach_thread_id_ = true;
 };
 #endif
 

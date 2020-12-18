@@ -274,7 +274,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
             print("skip gloo UT on MacOS/Win")
             return
 
-        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["TRAINING_ROLE"] = "WORKER"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
@@ -284,7 +284,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_RENDEZVOUS"] = "3"
         os.environ["PADDLE_GLOO_HTTP_ENDPOINT"] = "127.0.0.1:30019"
 
-        role = role_maker.PaddleCloudRoleMaker()
+        role = role_maker.PaddleCloudRoleMaker(is_collecitve=True)
         role._generate_role()
         import time
         time.sleep(3)
@@ -532,7 +532,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
             print("skip gloo UT on MacOS/Win")
             return
 
-        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["TRAINING_ROLE"] = "WORKER"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
@@ -542,7 +542,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_RENDEZVOUS"] = "3"
         os.environ["PADDLE_GLOO_HTTP_ENDPOINT"] = "127.0.0.1:30019"
 
-        role = role_maker.PaddleCloudRoleMaker()
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         role._generate_role()
         import time
         time.sleep(3)

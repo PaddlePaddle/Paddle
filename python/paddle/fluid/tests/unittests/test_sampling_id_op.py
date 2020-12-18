@@ -19,47 +19,12 @@ from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
-
-
-class TestSamplingIdOp(OpTest):
-    def setUp(self):
-        self.op_type = "sampling_id"
-        self.use_mkldnn = False
-        self.init_kernel_type()
-        self.X = np.random.random((100, 10)).astype('float32')
-        self.inputs = {"X": self.X}
-        self.Y = np.random.random(100).astype('int64')
-        self.outputs = {'Out': self.Y}
-        self.attrs = {'max': 1.0, 'min': 0.0, 'seed': 1}
-
-    def test_check_output(self):
-        self.check_output_customized(self.verify_output)
-        y1 = self.out
-        self.check_output_customized(self.verify_output)
-        y2 = self.out
-
-        # check dtype
-        assert y1.dtype == np.int64
-        assert y2.dtype == np.int64
-
-        # check output is index ids of inputs
-        inputs_ids = np.arange(self.X.shape[1])
-        assert np.isin(y1, inputs_ids).all()
-        assert np.isin(y2, inputs_ids).all()
-
-        self.assertTrue(np.array_equal(y1, y2))
-        self.assertEqual(len(y1), len(self.Y))
-
-    def verify_output(self, outs):
-        out = np.array(outs[0])
-        self.out = out
-
-    def init_kernel_type(self):
-        pass
+import paddle
 
 
 class TestSamplingIdShape(unittest.TestCase):
     def test_shape(self):
+        paddle.enable_static()
         x = fluid.layers.data(name='x', shape=[3], dtype='float32')
         output = fluid.layers.sampling_id(x)
 

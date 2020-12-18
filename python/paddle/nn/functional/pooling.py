@@ -534,6 +534,7 @@ def max_pool1d(x,
 
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn.functional as F
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
@@ -655,6 +656,7 @@ def max_pool2d(x,
         ShapeError: If the output's shape calculated is not greater than 0.
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn.functional as F
           import numpy as np
@@ -672,7 +674,8 @@ def max_pool2d(x,
                                              return_mask=True)
           # out.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool2d')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'max_pool2d')
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
         stride = kernel_size
@@ -784,6 +787,7 @@ def max_pool3d(x,
         ShapeError: If the output's shape calculated is not greater than 0.
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn.functional as F
           import numpy as np
@@ -887,6 +891,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
             ValueError: 'output_size' should be an integer.
     Examples:
         .. code-block:: python
+
               # average adaptive pool1d
               # suppose input data in shape of [N, C, L], `output_size` is m or [m],
               # output shape is [N, C, m], adaptive pool divide L dimension
@@ -907,7 +912,8 @@ def adaptive_avg_pool1d(x, output_size, name=None):
               # pool_out shape: [1, 3, 16])
     """
     pool_type = 'avg'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'adaptive_pool2d')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'adaptive_pool2d')
     _check_input(x, 3)
     check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
 
@@ -961,6 +967,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         ValueError: If `data_format` is not "NCHW" or "NHWC".
     Examples:
         .. code-block:: python
+
             # adaptive avg pool2d
             # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
             # output shape is [N, C, m, n], adaptive pool divide H and W dimensions
@@ -988,7 +995,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             # out.shape is [2, 3, 3, 3]
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  'adaptive_avg_pool2d')
     check_type(data_format, 'data_format', str, 'adaptive_avg_pool2d')
 
@@ -1062,6 +1069,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         ValueError: If `data_format` is not "NCDHW" or "NDHWC".
     Examples:
         .. code-block:: python
+
             # adaptive avg pool3d
             # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
             # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
@@ -1082,7 +1090,6 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
             import numpy as np
-
             input_data = np.random.rand(2, 3, 8, 32, 32)
             x = paddle.to_tensor(input_data)
             # x.shape is [2, 3, 8, 32, 32]

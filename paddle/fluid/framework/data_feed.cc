@@ -661,7 +661,7 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
@@ -717,7 +717,7 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
@@ -955,7 +955,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
@@ -1026,7 +1026,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));

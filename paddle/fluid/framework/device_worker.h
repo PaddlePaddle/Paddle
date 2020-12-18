@@ -92,6 +92,7 @@ class PullDenseWorker {
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
   void PullDense(bool force_update = false);
   void CreatePinVar();
+  void MergeDenseParam();
   int GetThreadIdByScope(const Scope* scope);
   void SetThreadIdByScope(const Scope* scope, int tid);
   static std::shared_ptr<PullDenseWorker> GetInstance() {
@@ -164,7 +165,12 @@ class DeviceWorker {
   virtual void SetDataFeed(DataFeed* data_feed);
   virtual void SetWorkerNum(int num) {}
   virtual void CacheProgram(const ProgramDesc& main_program) {}
+  virtual void ProduceTasks() {}
   virtual void GetXpuOpIndex() {}
+#ifdef PADDLE_WITH_CUDA
+  virtual void SetStream(const cudaStream_t stream) {}
+  virtual void SetEvent(const cudaEvent_t event) {}
+#endif
   virtual void SetNeedDumpField(bool need_dump_field) {
     need_dump_field_ = need_dump_field;
   }
@@ -187,6 +193,7 @@ class DeviceWorker {
     device_reader_->SetPlace(place);
   }
   virtual Scope* GetThreadScope() { return thread_scope_; }
+  DataFeed* device_reader_ = nullptr;
 
  protected:
   virtual void DumpParam(const Scope& scope, const int batch_id);
@@ -195,7 +202,6 @@ class DeviceWorker {
   Scope* root_scope_ = nullptr;
   Scope* thread_scope_;
   paddle::platform::Place place_;
-  DataFeed* device_reader_ = nullptr;
   int64_t batch_num_;
   FetchConfig fetch_config_;
   bool use_cvm_;
@@ -431,10 +437,110 @@ class HeterCpuWorker : public HogwildWorker {
 };
 #endif
 
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
+    (defined PADDLE_WITH_PSLIB)
+class HeterBoxWorker : public HogwildWorker {
+ public:
+  HeterBoxWorker() {}
+  virtual ~HeterBoxWorker() {}
+  virtual void Initialize(const TrainerDesc& desc);
+  virtual void TrainFiles();
+  virtual void SetNeedDump(bool need_dump_field);
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
+  virtual void SetWorkerNum(int num) { worker_num_ = num; }
+  virtual void CacheProgram(const ProgramDesc& main_program) {
+    new (&program_) ProgramDesc(main_program);
+  }
+  virtual void ProduceTasks() override;
+  virtual void SetStream(const cudaStream_t stream) { copy_stream_ = stream; }
+  virtual void SetEvent(const cudaEvent_t event) { event_ = event; }
+  virtual void TrainFilesWithProfiler() {}
+  void ResetStat();
+
+ protected:
+  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  void FillSparseValue(std::shared_ptr<HeterTask> task, size_t table_id);
+  void PushGradients();
+  void CollectLabelInfo(std::shared_ptr<HeterTask> task, size_t table_id);
+  void AdjustInsWeight(std::shared_ptr<HeterTask> task);
+  void DumpParam();
+  void CopySparseTable();
+  void CopyDenseTable();
+  void CopyDenseVars();
+
+ private:
+  int mpi_rank_;
+  std::mutex mutex_;
+  std::vector<std::string> send_var_list_;
+  int worker_num_;
+  ProgramDesc program_;
+  HeterObjectPool<HeterTask> object_pool_;
+  bool need_dump_param_;
+  std::vector<std::string> dump_param_;
+  bool need_to_push_dense_;
+  bool need_dump_field_;
+  bool dump_slot_;
+  bool need_to_push_sparse_;
+  std::vector<std::string> dump_fields_;
+  ChannelWriter<std::string> writer_;
+  DownpourWorkerParameter param_;
+  float scale_datanorm_;
+  // just save the value in param_ for easy access
+  std::map<uint64_t, std::string> label_var_name_;
+  std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
+  std::map<uint64_t, std::vector<std::string>> sparse_value_names_;
+  std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  platform::Place root_place_;
+  // actually pushed feasign of each table
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
+
+  // skipped ops
+  std::vector<std::string> skip_ops_;
+
+  std::vector<::std::future<int32_t>> push_sparse_status_;
+  std::vector<::std::future<int32_t>> push_dense_status_;
+
+  // adjust ins weight
+  AdjustInsWeightConfig adjust_ins_weight_config_;
+  std::vector<float> nid_show_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
+  // copy table
+  CopyTableConfig copy_table_config_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
+  paddle::framework::Channel<std::shared_ptr<HeterTask>> pull_queue_;
+  paddle::framework::Channel<std::shared_ptr<HeterTask>> push_queue_;
+  cudaEvent_t event_;
+  cudaStream_t copy_stream_;
+  int batch_cnt_{0};
+  std::atomic<int> done_cnt_{0};
+
+  double total_time_;
+  double read_time_;
+  double pack_time_;
+  double pull_sparse_local_time_;
+  double op_all_time_;
+  double xpu_op_time_;
+  double xpu_wait_time_;
+  double cpu_op_time_;
+  double collect_label_time_;
+  double fill_sparse_time_;
+  double push_sparse_time_;
+  double gpu_2_cpu_time_;
+  double cpu_2_gpu_time_;
+  uint64_t total_inst_;
+};
+#endif
+
 #if defined(PADDLE_WITH_NCCL)
 class SectionWorker : public DeviceWorker {
  public:
-  SectionWorker() { local_batch_id_ = 0; }
+  SectionWorker() {}
   ~SectionWorker() override {}
 
   void Initialize(const TrainerDesc& desc) override;
@@ -443,13 +549,12 @@ class SectionWorker : public DeviceWorker {
   void CreateDeviceResource(const ProgramDesc& main_prog) override{};
 
   void TrainFiles() override;
-  void TrainFilesWithProfiler() override;
+  void TrainFilesWithProfiler() override{};
 
   void PrintFetchVars() override {}
 
   const platform::Place& place() const { return place_; }
 
-  void SetSectionIndex(int section_id) { section_id_ = section_id; }
   void SetDeviceIndex(int tid) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
   void SetMicrobatchNum(int num) { num_microbatches_ = num; }
@@ -460,13 +565,8 @@ class SectionWorker : public DeviceWorker {
   void SetSkipVars(const std::vector<std::string>& skip_vars) {
     skip_vars_ = skip_vars;
   }
-  static void ResetBatchId() { batch_id_ = 0; }
-  static void ResetThreadCompletedFlag() { threads_completed = false; }
-
-  static std::atomic<int> cpu_id_;
 
  protected:
-  void AutoSetCPUAffinity(bool reuse);
   int section_id_;
   int thread_id_;
   int num_microbatches_;
@@ -475,12 +575,8 @@ class SectionWorker : public DeviceWorker {
   const Scope* minibatch_scope_;
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
-  static std::mutex thread_mutex;
-  static std::condition_variable thread_condition;
-  static bool threads_completed;
   std::shared_ptr<framework::ProgramDesc> program_;
   static uint64_t batch_id_;
-  uint64_t local_batch_id_;
 
   platform::DeviceContext* dev_ctx_ = nullptr;
 };

@@ -39,20 +39,15 @@ class GRUMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::gru_forward> {
                    const std::string& unique_name)
       : platform::MKLDNNHandlerT<T, dnnl::gru_forward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            CreateKey(unique_name, MKLDNNGetDataType<T>(), Ti)),
+            CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>(), Ti)),
         N(N),
         Ti(Ti),
         IC(IC),
         OC(OC) {
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
-    if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() !=
-        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
-      memory_key_ = CreateKey(unique_name, MKLDNNGetDataType<T>());
-    } else {
-      memory_key_ = CreateKey(unique_name, MKLDNNGetDataType<T>(), "-t:",
-                              platform::ThreadIDasStr());
-    }
+    memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(
+        dev_ctx, CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>()));
 
     // Is it int8 kernel
     const bool is_INT8 = std::is_same<T, uint8_t>::value;

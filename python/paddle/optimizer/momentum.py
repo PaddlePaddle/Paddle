@@ -16,12 +16,14 @@ from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
+from ..fluid.layer_helper import LayerHelper
+import paddle.fluid as fluid
 
 __all__ = ["Momentum"]
 
 
 class Momentum(Optimizer):
-    """
+    r"""
 
     Simple Momentum optimizer with velocity state
 
@@ -69,7 +71,6 @@ class Momentum(Optimizer):
 
             import paddle
             import numpy as np
-            paddle.disable_static()
             inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.to_tensor(inp)
@@ -105,12 +106,20 @@ class Momentum(Optimizer):
         self.type = "momentum"
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
+        if framework.in_dygraph_mode():
+            self.helper = LayerHelper(self.__class__.__name__)
+            for p in parameters:
+                self._add_accumulator(self._velocity_acc_str, p)
+        else:
+            all_parameters = fluid.default_main_program().global_block(
+            ).all_parameters()
+            self.helper = LayerHelper(self.__class__.__name__)
+            for p in all_parameters:
+                self._add_accumulator(self._velocity_acc_str, p)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
-
-        for p in parameters:
-            self._add_accumulator(self._velocity_acc_str, p)
+        # create accumulator in init func, so no implementation here
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)

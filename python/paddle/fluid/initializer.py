@@ -459,7 +459,7 @@ class TruncatedNormalInitializer(Initializer):
 
 
 class XavierInitializer(Initializer):
-    """
+    r"""
     This class implements the Xavier weight initializer from the paper
     `Understanding the difficulty of training deep feedforward neural
     networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_
@@ -595,7 +595,7 @@ class XavierInitializer(Initializer):
 
 
 class MSRAInitializer(Initializer):
-    """Implements the MSRA initializer a.k.a. Kaiming Initializer
+    r"""Implements the MSRA initializer a.k.a. Kaiming Initializer
 
     This class implements the weight initialization from the paper
     `Delving Deep into Rectifiers: Surpassing Human-Level Performance on

@@ -72,7 +72,9 @@ static void AllReduce(const framework::SelectedRows &src,
   const auto &src_rows = src.rows();
   framework::Vector<int64_t> rows_num_vector(strategy.nranks_);
   rows_num_vector[strategy.local_rank_] = static_cast<int64_t>(src_rows.size());
+  // CUDAMutableData use CalStream
   auto *gpu_rows_num_ptr = rows_num_vector.CUDAMutableData(place);
+  if (stream != dev_ctx->stream()) dev_ctx->Wait();
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
       gpu_rows_num_ptr + strategy.local_rank_, gpu_rows_num_ptr, 1, ncclInt64,
       comm, stream));
@@ -106,6 +108,7 @@ static void AllReduce(const framework::SelectedRows &src,
 
   auto sizeof_dtype = framework::SizeOfType(dtype);
   int64_t row_offset = 0;
+  if (stream != dev_ctx->stream()) dev_ctx->Wait();
   for (int i = 0; i < strategy.nranks_; ++i) {
     if (cpu_rows_num_ptr[i] > 0) {
       // 2. Broadcast the rows of SelectedRows

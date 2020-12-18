@@ -71,6 +71,10 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
 }
 
 std::string MultiTrainer::GetDumpPath(int tid) {
+  if (user_define_dump_filename_ != "") {
+    return string::format_string("%s/part-%s-%05d", dump_fields_path_.c_str(),
+                                 user_define_dump_filename_.c_str(), tid);
+  }
   return string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(),
                                mpi_rank_, tid);
 }

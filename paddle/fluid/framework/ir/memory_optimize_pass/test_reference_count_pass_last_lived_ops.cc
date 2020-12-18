@@ -88,7 +88,8 @@ class ReferenceCountPassTestHelper {
     FLAGS_eager_delete_tensor_gb = -1;
 
     details::ExecutionStrategy exec_strategy;
-    exec_strategy.use_cuda_ = use_cuda;
+    exec_strategy.use_device_ =
+        use_cuda ? (ExecutionStrategy::kCUDA) : (ExecutionStrategy::kCPU);
 
     executor_.reset(new ParallelExecutor(CreatePlaces(1, use_cuda), {}, "",
                                          &scope_, {}, exec_strategy,

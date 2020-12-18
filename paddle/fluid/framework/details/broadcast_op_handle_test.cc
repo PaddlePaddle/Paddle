@@ -34,7 +34,7 @@ TEST(BroadcastTester, TestCPUBroadcastTestSelectedRows) {
   test_op.TestBroadcastSelectedRows(input_scope_idx);
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_NCCL)
 TEST(BroadcastTester, TestGPUBroadcastTestLodTensor) {
   TestBroadcastOpHandle test_op;
   size_t input_scope_idx = 0;

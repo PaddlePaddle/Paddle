@@ -22,7 +22,6 @@ from collections import defaultdict
 import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
-from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 from ..fluid import framework
 from ..fluid import layers
@@ -47,7 +46,7 @@ __all__ = ['Optimizer']
 
 
 class Optimizer(object):
-    """Optimizer Base class.
+    r"""Optimizer Base class.
 
     Define the common interface of an optimizer.
     User should not use this class directly,
@@ -681,9 +680,6 @@ class Optimizer(object):
             parameter_list = parameters if parameters \
                 else self._parameter_list
 
-            if paddle.distributed.get_world_size() > 1:
-                apply_collective_grads(parameter_list)
-
             params_grads = []
             for param in parameter_list:
                 if not param.trainable:
@@ -797,6 +793,8 @@ class Optimizer(object):
     def clear_grad(self):
         """
         Clear the gradients of all optimized parameters for model.
+
+        If not, new gradient will accumulat on previous gradient.
         
         Returns:
             None
@@ -912,9 +910,6 @@ class Optimizer(object):
                 adam.step()
                 adam.clear_grad()
         """
-        if paddle.distributed.get_world_size() > 1:
-            apply_collective_grads(self._parameter_list)
-
         self._dtype = None
         params_grads = []
         for param in self._parameter_list:
