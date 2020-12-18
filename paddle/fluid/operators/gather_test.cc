@@ -13,10 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <iostream>
-#include <string>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/platform/place.h"

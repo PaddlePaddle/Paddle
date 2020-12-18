@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -840,6 +841,45 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
   }
 };
 
+template <typename T>
+class BatchNormDoubleGradKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    const auto *X = ctx.Input<Tensor>("X");
+    const auto *Scale = ctx.Input<Tensor>("Scale");
+    const auto *dY = ctx.Input<Tensor>("DY");
+    const auto *Saved_mean = ctx.Input<Tensor>("SavedMean");
+    const auto *Saved_variance = ctx.Input<Tensor>("SavedVariance");
+    const double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
+    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    const bool is_test = ctx.Attr<bool>("is_test");
+
+    PADDLE_ENFORCE_EQ(
+        is_test, false,
+        platform::errors::InvalidArgument(
+            "`is_test = True` CANNOT be used in train program. If "
+            "you want to use global status in pre_train model, "
+            "please set `use_global_stats = True`"));
+
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
+
+    const auto *ddX = ctx.Input<Tensor>("DDX");
+    const auto *ddScale = ctx.Input<Tensor>("DDScale");
+    const auto *ddBias = ctx.Input<Tensor>("DDBias");
+
+    auto *dX = ctx.Output<Tensor>("DX");
+    auto *dScale = ctx.Output<Tensor>("DScale");
+    auto *ddY = ctx.Output<Tensor>("DDY");
+
+    NormDoubleGradFunctor<platform::CUDADeviceContext, T>(
+        ctx, data_layout, X, Scale, dY, Saved_mean, Saved_variance, epsilon,
+        use_global_stats, ddX, ddScale, ddBias, dX, dScale, ddY);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -853,3 +893,7 @@ REGISTER_OP_CUDA_KERNEL(
     batch_norm_grad, ops::BatchNormGradKernel<plat::CUDADeviceContext, float>,
     ops::BatchNormGradKernel<plat::CUDADeviceContext, double>,
     ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    batch_norm_grad_grad,
+    ops::BatchNormDoubleGradKernel<plat::CUDADeviceContext, float>,
+    ops::BatchNormDoubleGradKernel<plat::CUDADeviceContext, double>);

@@ -66,7 +66,8 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kEmbSeqPool);
     ONE_CASE(kSgd);
     default:
-      PADDLE_THROW("Not support type: %d, or forget to add it.", kt);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "JIT kernel do not support type: %d.", kt));
       return "NOT JITKernel";
   }
   return nullptr;
@@ -79,7 +80,8 @@ const char* to_string(SeqPoolType tp) {
     ONE_CASE(kAvg);
     ONE_CASE(kSqrt);
     default:
-      PADDLE_THROW("Not support type: %d, or forget to add it.", tp);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "SeqPool JIT kernel do not support type: %d.", tp));
       return "NOT PoolType";
   }
   return nullptr;
@@ -100,7 +102,8 @@ KernelType to_kerneltype(const std::string& act) {
   } else if (lower == "tanh" || lower == "vtanh") {
     return kVTanh;
   }
-  PADDLE_THROW("Not support type: %s, or forget to add this case", act);
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Act JIT kernel do not support type: %s.", act));
   return kNone;
 }
 
@@ -109,12 +112,19 @@ void pack_weights<float>(const float* src, float* dst, int n, int k) {
   int block, rest;
   const auto groups = packed_groups(n, k, &block, &rest);
   std::for_each(groups.begin(), groups.end(), [&](int i) {
-    PADDLE_ENFORCE_GT(i, 0, "each element of groups should be larger than 0.");
+    PADDLE_ENFORCE_GT(i, 0, platform::errors::InvalidArgument(
+                                "Each element of groups should be larger than "
+                                "0. However the element: %d doesn't satify.",
+                                i));
   });
   int sum = std::accumulate(groups.begin(), groups.end(), 0);
   std::memset(dst, 0, k * sum * block * sizeof(float));
   PADDLE_ENFORCE_GE(sum * block, n,
-                    "The packed n should be equal to or larger than n");
+                    platform::errors::InvalidArgument(
+                        "The packed n (sum * block) should be equal to or "
+                        "larger than n (matmul row size). "
+                        "However, the packed n is %d and n is %d.",
+                        sum * block, n));
 
   const int block_len = sizeof(float) * block;
   int n_offset = 0;
@@ -136,7 +146,8 @@ void pack_weights<float>(const float* src, float* dst, int n, int k) {
 template <typename T>
 typename std::enable_if<!std::is_same<T, float>::value>::type pack_weights(
     const T* src, T* dst, int n, int k) {
-  PADDLE_THROW("Only support pack with float type.");
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Only supports pack weights with float type."));
 }
 
 }  // namespace jit

@@ -11,7 +11,7 @@ PADDLE_ROOT=./Paddle
 cd Paddle
 mkdir build
 cd build
-cmake -DFLUID_INFERENCE_INSTALL_DIR=$PADDLE_ROOT \
+cmake -DPADDLE_INFERENCE_INSTALL_DIR=$PADDLE_ROOT \
       -DCMAKE_BUILD_TYPE=Release \
       -DWITH_PYTHON=OFF \
       -DWITH_MKL=OFF \
@@ -40,7 +40,7 @@ see: [IMDB Dataset of 50K Movie Reviews | Kaggle](https://www.kaggle.com/lakshmi
     mkdir build
     cd build
     rm -rf *
-    PADDLE_LIB=path/to/Paddle/build/fluid_install_dir
+    PADDLE_LIB=path/to/Paddle/build/paddle_install_dir
     cmake .. -DPADDLE_LIB=$PADDLE_LIB  -DWITH_MKLDNN=OFF -DWITH_MKL=OFF
     make
 ```

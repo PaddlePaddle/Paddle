@@ -16,12 +16,18 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_set>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/fusion_group/subgraph.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
+namespace fusion_group {
+class SubGraph;
+}  // namespace fusion_group
 
 class FusionGroupPass : public FusePassBase {
  protected:

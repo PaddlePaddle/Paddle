@@ -120,7 +120,7 @@ class TestAmpScaler(unittest.TestCase):
         inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
 
         def run_simple_conv(inp_np, use_scaler=True):
-            paddle.manual_seed(10)
+            paddle.seed(10)
             paddle.framework.random._manual_program_seed(10)
             with fluid.dygraph.guard():
                 model = SimpleConv(
@@ -196,7 +196,125 @@ class TestAmpScaler(unittest.TestCase):
                     np.array_equal(param.numpy(), params_init[param.name]))
 
 
+def reader_decorator(reader):
+    def __reader__():
+        for item in reader():
+            img = np.array(item[0]).astype('float32').reshape(3, 224, 224)
+            label = np.array(item[1]).astype('int64').reshape(1)
+            yield img, label
+
+    return __reader__
+
+
+class TestResnet2(unittest.TestCase):
+    """
+    Use paddle-2.0 API
+    """
+
+    def train_resnet(self, enable_amp=True, use_data_loader=False):
+        seed = 90
+
+        batch_size = train_parameters["batch_size"]
+        batch_num = 1
+
+        paddle.seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
+
+        resnet = ResNet(use_cudnn=True)
+        optimizer = optimizer_setting(
+            train_parameters, parameter_list=resnet.parameters())
+        np.random.seed(seed)
+        train_reader = paddle.batch(
+            paddle.dataset.flowers.train(use_xmap=False), batch_size=batch_size)
+
+        dy_param_init_value = {}
+        for param in resnet.parameters():
+            dy_param_init_value[param.name] = param.numpy()
+
+        program = None
+        scaler = paddle.amp.GradScaler(
+            enable=enable_amp, init_loss_scaling=2.**10)
+
+        if use_data_loader:
+            train_reader = paddle.batch(
+                reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
+                batch_size=batch_size,
+                drop_last=True)
+            train_loader = fluid.io.DataLoader.from_generator(
+                capacity=4,
+                use_double_buffer=True,
+                iterable=True,
+                return_list=True)
+            train_loader.set_sample_list_generator(train_reader)
+            train_reader = train_loader
+
+        for batch_id, data in enumerate(train_reader()):
+            if batch_id >= batch_num:
+                break
+            if use_data_loader:
+                img, label = data
+            else:
+                dy_x_data = np.array(
+                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
+                if len(np.array([x[1]
+                                 for x in data]).astype('int64')) != batch_size:
+                    continue
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    -1, 1)
+
+                img = paddle.to_tensor(dy_x_data)
+                label = paddle.to_tensor(y_data)
+            label.stop_gradient = True
+
+            with paddle.amp.auto_cast(enable=enable_amp):
+                out = resnet(img)
+
+            loss = paddle.nn.functional.cross_entropy(input=out, label=label)
+            avg_loss = paddle.mean(x=loss)
+
+            dy_out = avg_loss.numpy()
+
+            scaled_loss = scaler.scale(avg_loss)
+            scaled_loss.backward()
+
+            scaler.minimize(optimizer, scaled_loss)
+
+            dy_grad_value = {}
+            for param in resnet.parameters():
+                if param.trainable:
+                    np_array = np.array(param._grad_ivar().value().get_tensor())
+                    dy_grad_value[param.name + fluid.core.grad_var_suffix(
+                    )] = np_array
+
+            resnet.clear_gradients()
+
+            dy_param_value = {}
+            for param in resnet.parameters():
+                dy_param_value[param.name] = param.numpy()
+        if use_data_loader:
+            train_reader._reset()
+        return dy_out, dy_param_value, dy_grad_value
+
+    def test_resnet(self):
+        with fluid.dygraph.guard():
+            out_fp32 = self.train_resnet(enable_amp=False)
+            out_amp = self.train_resnet(enable_amp=True)
+        print(out_fp32[0], out_amp[0])
+        self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
+
+    def test_with_data_loader(self):
+        with fluid.dygraph.guard():
+            out_fp32 = self.train_resnet(enable_amp=False, use_data_loader=True)
+            out_amp = self.train_resnet(enable_amp=True, use_data_loader=True)
+        print(out_fp32[0], out_amp[0])
+        self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
+
+
 class TestResnet(unittest.TestCase):
+    """
+    Use paddle-1.x API
+    """
+
     def train_resnet(self, enable_amp=True):
         seed = 90
 
@@ -204,7 +322,7 @@ class TestResnet(unittest.TestCase):
         batch_num = 1
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             resnet = ResNet(use_cudnn=True)

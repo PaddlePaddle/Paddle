@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -22,7 +21,7 @@ namespace framework {
 namespace compatible {
 
 TEST(test_operator_version, test_operator_version) {
-  REGISTER_OP_VERSION(test__)
+  REGISTER_OP_VERSION(op_name__)
       .AddCheckpoint(
           R"ROC(Fix the bug of reshape op, support the case of axis < 0)ROC",
           framework::compatible::OpVersionDesc().BugfixWithBehaviorChanged(
@@ -54,9 +53,27 @@ TEST(test_operator_version, test_operator_version) {
           framework::compatible::OpVersionDesc()
               .NewInput("X2", "The second input.")
               .NewOutput("Y2", "The second output."));
+
+  REGISTER_OP_VERSION(op_name_0__)
+      .AddCheckpoint(
+          R"ROC(
+        Incompatible upgrade of attribute [height], input [X2] and output [Y2]
+      )ROC",
+          framework::compatible::OpVersionDesc()
+              .DeleteAttr("height",
+                          "Parameters deleted due to interface alignment.")
+              .ModifyInput("X2", "Modify input due to interface alignment.")
+              .ModifyOutput("Y2", "Modify output due to interface alignment.")
+              .DeleteInput("X2", "Delete input due to interface alignment.")
+              .DeleteOutput("Y2", "Delete output due to interface alignment."));
 }
 
 TEST(test_pass_op_version_checker, test_pass_op_version_checker) {
+  const std::string fake_op_name{"op_name__"};
+  ASSERT_FALSE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
+      "no_registered_capability_pass"));
+
+  REGISTER_PASS_CAPABILITY(no_bind_pass);
   ASSERT_TRUE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
       "no_bind_pass"));
 
@@ -91,7 +108,7 @@ TEST(test_pass_op_version_checker, test_pass_op_version_checker) {
   REGISTER_PASS_CAPABILITY(test_pass4)
       .AddCombination(
           paddle::framework::compatible::OpVersionComparatorCombination()
-              .GE("test__", 5)
+              .GE(fake_op_name, 5)
               .EQ("fc", 0));
   ASSERT_FALSE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
       "test_pass4"));
@@ -99,7 +116,7 @@ TEST(test_pass_op_version_checker, test_pass_op_version_checker) {
   REGISTER_PASS_CAPABILITY(test_pass5)
       .AddCombination(
           paddle::framework::compatible::OpVersionComparatorCombination()
-              .GE("test__", 4)
+              .GE(fake_op_name, 4)
               .EQ("fc", 0));
   ASSERT_TRUE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
       "test_pass5"));
@@ -107,7 +124,7 @@ TEST(test_pass_op_version_checker, test_pass_op_version_checker) {
   REGISTER_PASS_CAPABILITY(test_pass6)
       .AddCombination(
           paddle::framework::compatible::OpVersionComparatorCombination()
-              .EQ("test__", 4)
+              .EQ(fake_op_name, 4)
               .EQ("fc", 0));
   ASSERT_TRUE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
       "test_pass6"));
@@ -115,7 +132,7 @@ TEST(test_pass_op_version_checker, test_pass_op_version_checker) {
   REGISTER_PASS_CAPABILITY(test_pass7)
       .AddCombination(
           paddle::framework::compatible::OpVersionComparatorCombination()
-              .NE("test__", 4)
+              .NE(fake_op_name, 4)
               .EQ("fc", 0));
   ASSERT_FALSE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
       "test_pass7"));

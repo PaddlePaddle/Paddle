@@ -16,6 +16,9 @@ import unittest
 import paddle
 import os
 import paddle.fluid as fluid
+import paddle.distributed.fleet as fleet
+
+paddle.enable_static()
 
 
 class TestFleetBase(unittest.TestCase):
@@ -27,7 +30,6 @@ class TestFleetBase(unittest.TestCase):
                        "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_fleet_init(self):
-        import paddle.distributed.fleet as fleet
 
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["POD_IP"] = "127.0.0.1"

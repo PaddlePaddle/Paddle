@@ -130,7 +130,7 @@ REGISTER_OP_VERSION(distribute_fpn_proposals)
               Upgrade distribute_fpn_proposals add a new input
               [RoisNum] and add a new output [MultiLevelRoIsNum].)ROC",
         paddle::framework::compatible::OpVersionDesc()
-            .NewInput("RoIsNum", "The number of RoIs in each image.")
+            .NewInput("RoisNum", "The number of RoIs in each image.")
             .NewOutput("MultiLevelRoisNum",
                        "The RoIs' number of each image on multiple "
                        "levels. The number on each level has the shape of (B),"

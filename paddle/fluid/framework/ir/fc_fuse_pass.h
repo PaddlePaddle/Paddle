@@ -26,6 +26,8 @@ namespace ir {
 /*
  * Fuse the MUL and ELEMENTWISE_ADD to a FCOp.
  */
+class Graph;
+
 class FCFusePass : public FusePassBase {
  public:
   virtual ~FCFusePass() {}

@@ -226,7 +226,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         traced_layer = None
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -294,7 +294,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             dy_last_hidden_value = last_hidden.numpy()
 
         with new_program_scope():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             ptb_model = PtbModel(
                 hidden_size=hidden_size,

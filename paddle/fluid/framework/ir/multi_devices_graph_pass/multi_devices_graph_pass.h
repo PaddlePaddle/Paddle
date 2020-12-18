@@ -20,17 +20,32 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
+namespace framework {
+namespace details {
+class OpHandleBase;
+struct VarHandle;
+}  // namespace details
+namespace ir {
+class Graph;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace platform {
 class NCCLContextMap;
+class NCCLCommunicator;
 }
 
 namespace framework {
 class Scope;
+
 namespace ir {
 
 constexpr char kLossVarName[] = "loss_var_name";

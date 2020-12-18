@@ -15,6 +15,7 @@
 #pragma once
 #include <memory>
 #include <utility>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 
 namespace paddle {

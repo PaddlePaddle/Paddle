@@ -191,12 +191,14 @@ class FleetTranspiler(Fleet):
         self._communicator = Communicator(
             trainer_config.mode, kwargs,
             trainer_config.get_communicator_flags())
+
         self._communicator.init_with_ctx(send_ctx, recv_ctx)
 
         if not self._communicator.is_running():
             self._communicator.start()
         else:
-            warnings.warn("communicator has been initialized, skip")
+            raise ValueError(
+                "Communicator can only be inited once, please check")
 
     def init_worker(self):
         """

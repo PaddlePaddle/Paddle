@@ -20,12 +20,79 @@ import os
 import signal
 import copy
 import sys
+import six
 import subprocess
 from contextlib import closing
 import socket
 
 logger = logging.getLogger("root")
 logger.propagate = False
+
+
+def get_cluster_from_args(args, selected_gpus):
+    node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
+    node_ip = args.node_ip
+    node_rank = node_ips.index(node_ip)
+
+    logger.debug("parsed from args:node_ips:{} node_ip:{} node_rank:{}".format(
+        node_ips, node_ip, node_rank))
+
+    free_ports = None
+    if not args.use_paddlecloud and len(
+            node_ips) <= 1 and args.started_port is None:
+        free_ports = find_free_ports(len(selected_gpus))
+        if free_ports is not None:
+            free_ports = list(free_ports)
+    else:
+        started_port = 6070
+        if args.started_port is not None:
+            started_port = args.started_port
+
+        free_ports = [
+            x for x in range(started_port, started_port + len(selected_gpus))
+        ]
+
+    trainer_endpoints = []
+    for ip in node_ips:
+        trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
+    return get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus)
+
+
+def get_gpus(selected_gpus):
+    if selected_gpus is None:
+        from paddle.fluid import core
+        gpus_num = core.get_cuda_device_count()
+        gpus = [str(x) for x in range(0, gpus_num)]
+    else:
+        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+        if cuda_visible_devices is None or cuda_visible_devices == "":
+            gpus = [x.strip() for x in selected_gpus.split(',')]
+        else:
+            # change selected_gpus into relative values
+            # e.g. CUDA_VISIBLE_DEVICES=4,5,6,7; args.selected_gpus=4,5,6,7;
+            # therefore selected_gpus=0,1,2,3
+            cuda_visible_devices_list = cuda_visible_devices.split(',')
+            for x in selected_gpus.split(','):
+                assert x in cuda_visible_devices_list, "Can't find "\
+                "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                % (x, cuda_visible_devices)
+            gpus = [
+                cuda_visible_devices_list.index(x.strip())
+                for x in selected_gpus.split(',')
+            ]
+            logger.info("Change selected_gpus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "CUDA_VISIBLE_DEVICES:{}".format(
+                            selected_gpus, gpus, cuda_visible_devices_list))
+
+    return gpus
+
+
+def _print_arguments(args):
+    print("-----------  Configuration Arguments -----------")
+    for arg, value in sorted(six.iteritems(vars(args))):
+        print("%s: %s" % (arg, value))
+    print("------------------------------------------------")
 
 
 class Hdfs(object):
@@ -227,18 +294,23 @@ def get_logger(log_level, name="root"):
     return logger
 
 
-def get_cluster(node_ips, node_ip, paddle_ports, selected_gpus):
-    assert type(paddle_ports) is list, "paddle_ports must be list"
+def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
+    assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
     cluster = Cluster(hdfs=None)
     trainer_rank = 0
     for node_rank, ip in enumerate(node_ips):
         pod = Pod()
         pod.rank = node_rank
         pod.addr = ip
+        cur_node_endpoints = trainer_endpoints[node_rank]
+        # when use paddlecloud, endpoints may > selected_gpus(user_defined)
+        assert len(cur_node_endpoints) >= len(
+            selected_gpus
+        ), "current trainer_endpoints size should be greater equal than selected_gpus size."
         for i in range(len(selected_gpus)):
             trainer = Trainer()
             trainer.gpus.append(selected_gpus[i])
-            trainer.endpoint = "%s:%d" % (ip, paddle_ports[i])
+            trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
 
@@ -253,7 +325,8 @@ def terminate_local_procs(procs):
     for p in procs:
         if p.proc.poll() is None:
             p.proc.terminate()
-            p.log_fn.close()
+            if p.log_fn:
+                p.log_fn.close()
             logger.debug("terminate process id:{}".format(p.proc.pid))
 
     #wait all process terminiated

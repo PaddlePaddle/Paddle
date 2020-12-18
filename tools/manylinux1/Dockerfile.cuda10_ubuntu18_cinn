@@ -1,0 +1,152 @@
+# A image for building paddle binaries
+# Use cuda devel base image for both cpu and gpu environment
+# When you modify it, please be aware of cudnn-runtime version
+FROM nvidia/cuda:10.1-cudnn7-devel-ubuntu18.04
+MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
+
+# ENV variables
+ARG WITH_GPU
+ARG WITH_AVX
+
+ENV WITH_GPU=${WITH_GPU:-ON}
+ENV WITH_AVX=${WITH_AVX:-ON}
+ENV DEBIAN_FRONTEND=noninteractive
+
+ENV HOME /root
+# Add bash enhancements
+COPY paddle/scripts/docker/root/ /root/
+
+RUN apt-get update && \
+  apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && \
+  apt-get update && \
+  apt-get install -y curl wget vim git unzip unrar tar xz-utils bzip2 gzip \ 
+    coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev
+
+
+# Downgrade gcc&&g++
+WORKDIR /usr/bin 
+      RUN apt-get update --fix-missing
+      COPY tools/dockerfile/build_scripts /build_scripts 
+      RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
+      RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ 
+      RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc 
+      RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ 
+      RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc 
+      RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ 
+      ENV PATH=/usr/local/gcc-8.2/bin:$PATH 
+
+RUN apt-get update && \
+  apt-get install -y python2.7 python2.7-dev \
+  python3.5 python3.5-dev \
+  python3.6 python3.6-dev \
+  python3.7 python3.7-dev \
+  python3.8 python3.8-dev && \
+  curl https://bootstrap.pypa.io/ez_setup.py -o - | python2.7 && easy_install pip && \
+  curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.5 && easy_install pip && \
+  curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.6 && easy_install pip && \
+  curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.7 && easy_install pip && \
+  curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.8 && easy_install pip && \
+  rm /usr/bin/python && ln -s /usr/bin/python2.7 /usr/bin/python && \
+  rm /usr/bin/python3 && ln -s /usr/bin/python3.5 /usr/bin/python3 && \
+  rm /usr/local/bin/pip && ln -s /usr/local/bin/pip2.7 /usr/local/bin/pip && \
+  rm /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.5 /usr/local/bin/pip3
+
+
+# install cmake
+WORKDIR /home
+RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.16.0-Linux-x86_64.tar.gz && rm cmake-3.16.0-Linux-x86_64.tar.gz
+ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
+
+
+# remove them when apt-get support 2.27 and higher version
+RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \ 
+    tar -xzf binutils-2.33.1.tar.gz && \ 
+    cd binutils-2.33.1 && \
+    ./configure && make -j && make install && cd .. && rm -rf binutils-2.33.1 binutils-2.33.1.tar.gz
+
+
+# Install Go and glide
+RUN wget -qO- https://paddle-ci.cdn.bcebos.com/go1.8.1.linux-amd64.tar.gz | \
+    tar -xz -C /usr/local && \
+    mkdir /root/gopath && \
+    mkdir /root/gopath/bin && \
+    mkdir /root/gopath/src
+ENV GOROOT=/usr/local/go GOPATH=/root/gopath
+# should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
+ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
+# install glide
+RUN curl -s -q https://glide.sh/get | sh
+
+# git credential to skip password typing
+RUN git config --global credential.helper store
+
+# Fix locales to en_US.UTF-8
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+
+RUN pip3 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
+    pip3 --no-cache-dir install ipykernel==4.6.0 wheel && \
+    pip3.6 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
+    pip3.6 --no-cache-dir install ipykernel==4.6.0 wheel && \
+    pip3.7 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
+    pip3.7 --no-cache-dir install ipykernel==4.6.0 wheel && \
+    pip3.8 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
+    pip3.8 --no-cache-dir install ipykernel==4.6.0 wheel && \
+    pip --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
+    pip --no-cache-dir install ipykernel==4.6.0 wheel 
+
+#For docstring checker
+RUN pip3 --no-cache-dir install pylint pytest astroid isort && \
+    pip3.6 --no-cache-dir install pylint pytest astroid isort && \
+    pip3.7 --no-cache-dir install pylint pytest astroid isort && \
+    pip3.8 --no-cache-dir install pylint pytest astroid isort && \
+    pip --no-cache-dir install pylint pytest astroid isort
+
+COPY ./python/requirements.txt /root/
+RUN pip3 --no-cache-dir install -r /root/requirements.txt && \
+    pip3.6 --no-cache-dir install -r /root/requirements.txt && \
+    pip3.7 --no-cache-dir install -r /root/requirements.txt && \
+    pip3.8 --no-cache-dir install -r /root/requirements.txt && \
+    pip --no-cache-dir install -r /root/requirements.txt
+
+
+# Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
+# https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
+# So install a newer version here.
+RUN wget -q http://mirrors.kernel.org/ubuntu/pool/universe/p/patchelf/patchelf_0.10-2_amd64.deb && \
+    dpkg -i patchelf_0.10-2_amd64.deb
+
+# Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
+#RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+#CMD source ~/.bashrc
+
+# ccache 3.7.9
+RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
+    tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
+    ./configure -prefix=/usr/local/ccache-3.7.9 && \
+    make -j8 && make install && \
+    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
+
+# For CINN environment 
+RUN apt update --fix-missing
+RUN apt-get install autoconf autogen
+RUN apt-get install libtool
+RUN apt-get install zlib1g-dev
+RUN apt install libginac-dev -y
+RUN apt install clang cmake -y
+RUN python3 -m pip install numpy
+RUN python3 -m pip install pybind11
+
+
+# Install LLVM
+RUN echo "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic main" >> /etc/apt/source.list
+RUN echo "deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic main" >> /etc/apt/source.list
+RUN echo "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main" >> /etc/apt/source.list
+RUN echo "deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main" >> /etc/apt/source.list
+RUN ln -s /usr/bin/llvm-config-6.0 /usr/bin/llvm-config
+RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add -
+
+RUN apt update
+RUN apt install libclang-dev llvm-10 llvm-10-dev libclang-10-dev -y
+
+
+EXPOSE 22

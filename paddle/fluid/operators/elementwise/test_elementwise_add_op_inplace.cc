@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <cstdlib>
-#include <memory>
 #include <random>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -33,9 +30,12 @@ namespace operators {
 static void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
   if (copy_to_gpu) {
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE(cudaMemcpy(dst, src, n, cudaMemcpyHostToDevice));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(dst, src, n, cudaMemcpyHostToDevice));
 #else
-    PADDLE_THROW("Not compiled with cuda");
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("Check your paddle version, current "
+                                          "version is not compiled with cuda"));
 #endif
   } else {
     std::memcpy(dst, src, n);
@@ -88,11 +88,22 @@ bool TestMain(const platform::Place &place, const framework::DDim &dims,
 
   framework::LoDTensor cpu_out;
   auto &out_tensor = scope.FindVar(out_name)->Get<framework::LoDTensor>();
-  PADDLE_ENFORCE(scope.kids().empty());
+  PADDLE_ENFORCE_EQ(scope.kids().empty(), true,
+                    platform::errors::InvalidArgument(
+                        "The scope can not have the child scopes,"
+                        "please check your code."));
   if (inplace) {
-    PADDLE_ENFORCE_EQ(&out_tensor, x);
+    PADDLE_ENFORCE_EQ(
+        &out_tensor, x,
+        platform::errors::InvalidArgument(
+            "The output tensor should be same as input x in inplace mode,"
+            " but now is not same."));
   } else {
-    PADDLE_ENFORCE_EQ(&out_tensor, z);
+    PADDLE_ENFORCE_EQ(
+        &out_tensor, z,
+        platform::errors::InvalidArgument(
+            "The output tensor should be same as output z in normal mode,"
+            " but now is not same."));
   }
 
   if (is_gpu_place) {

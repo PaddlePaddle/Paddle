@@ -87,7 +87,7 @@ class TestFillAnyLikeOpOverflow(TestFillAnyLikeOp):
         exception = None
         try:
             self.check_output(check_dygraph=False)
-        except core.EnforceNotMet as ex:
+        except ValueError as ex:
             exception = ex
         self.assertIsNotNone(exception)
 
@@ -98,4 +98,5 @@ class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

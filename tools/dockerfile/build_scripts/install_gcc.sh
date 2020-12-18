@@ -1,4 +1,19 @@
 #!/bin/bash
+
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Top-level build script called from Dockerfile
 
 # Stop at any error, show all commands
@@ -15,7 +30,7 @@ else
 fi
 
 if [ "$1" == "gcc82" ]; then
-  wget https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz 
+  wget -q https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz 
   tar -xvf gcc-8.2.0.tar.xz && \
   cd gcc-8.2.0 && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \

@@ -72,6 +72,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         test old fluid elementwise_mul api, it should fire Warinng function, 
         which insert the Warinng info on top of API's doc string.
         """
+        paddle.enable_static()
         # Initialization
         x = fluid.data(name='x', shape=[3, 2, 1], dtype='float32')
 
@@ -80,6 +81,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
 
         # captured        
         captured = get_warning_index(fluid.data)
+        paddle.disable_static()
 
         # testting
         self.assertGreater(expected, captured)

@@ -74,6 +74,7 @@ set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto
     eager_deletion_pass
     buffer_shared_inplace_op_pass
     buffer_shared_cross_op_memory_reuse_pass
+    inplace_addto_op_pass
     set_reader_device_info_utils
     add_reader_dependency_pass)
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
@@ -106,7 +107,7 @@ cc_test(exception_holder_test SRCS exception_holder_test.cc )
 
 set(IR_PASS_DEPS graph_viz_pass multi_devices_graph_pass
     multi_devices_graph_print_pass multi_devices_graph_check_pass
-    fuse_elewise_add_act_pass fuse_bn_act_pass 
+    fuse_elewise_add_act_pass fuse_bn_act_pass fuse_bn_add_act_pass 
     multi_batch_merge_pass 
     fuse_relu_depthwise_conv_pass
     lock_free_optimize_pass

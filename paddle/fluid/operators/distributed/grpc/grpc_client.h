@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <time.h>
 #include <atomic>
-
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
 #include <ctime>
@@ -46,6 +45,18 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+
+namespace grpc {
+class Channel;
+}  // namespace grpc
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -247,7 +258,7 @@ class GRPCClient : public RPCClient {
 
   VarHandlePtr AsyncCheckpointNotify(
       const std::string& ep, const std::string& dirname,
-      const std::string& varname,
+      const std::string& varname, const int mode,
       int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncDistributeNotify(
@@ -286,7 +297,7 @@ class GRPCClient : public RPCClient {
  private:
   grpc::CompletionQueue cq_;
   std::unordered_map<std::string, std::shared_ptr<grpc::Channel>> channels_;
-  std::unique_ptr<std::thread> client_thread_{nullptr};
+  std::vector<std::unique_ptr<std::thread>> client_threads_;
 
   // mutex for Wait client sync
   std::mutex sync_mutex_;

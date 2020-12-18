@@ -22,7 +22,14 @@
 #include <numeric>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/platform/cudnn_helper.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace platform {

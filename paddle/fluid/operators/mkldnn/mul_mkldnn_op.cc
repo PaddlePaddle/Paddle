@@ -13,12 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
-#include <vector>
-#include "paddle/fluid/framework/data_layout_transform.h"
-#include "paddle/fluid/memory/malloc.h"
+
 #include "paddle/fluid/operators/mul_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+namespace platform {
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -104,8 +110,12 @@ class MulPrimitiveFactory {
     auto reorder = mkldnn::reorder(reorder_pd);
 
     mkldnn::stream astream(engine_);
-    reorder.execute(astream, src_mem, dst_mem);
-    astream.wait();
+    {
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+      reorder.execute(astream, src_mem, dst_mem);
+      astream.wait();
+    }
 
     return dst_mem;
   }
@@ -261,8 +271,13 @@ class MulPrimitiveFactory {
     auto reorder = mkldnn::reorder(src_mem, dst_mem);
 
     mkldnn::stream astream(engine_);
-    reorder.execute(astream, src_mem, dst_mem);
-    astream.wait();
+
+    {
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+      reorder.execute(astream, src_mem, dst_mem);
+      astream.wait();
+    }
 
     return dst_mem;
   }
@@ -290,9 +305,11 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const MKLDNNDeviceContext &dev_ctx, const ExecutionContext &ctx,
     const Tensor *input_x, const Tensor *input_y,
     const mkldnn::engine &mkldnn_engine) {
-  const std::string key = platform::CreateKey(
-      input_x->type(), framework::vectorize(input_x->dims()), input_y->type(),
-      framework::vectorize(input_y->dims()), ctx.OutputName("Out"));
+  std::string key = platform::CreateKey(
+      dev_ctx, input_x->type(), framework::vectorize(input_x->dims()),
+      input_y->type(), framework::vectorize(input_y->dims()),
+      ctx.OutputName("Out"));
+  key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
   auto prim_creator = std::static_pointer_cast<MulPrimitiveFactory<XT, YT, OT>>(
       dev_ctx.GetBlob(key));
@@ -336,6 +353,7 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL Mul must use CPUPlace"));
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto &mkldnn_engine = dev_ctx.GetEngine();
 

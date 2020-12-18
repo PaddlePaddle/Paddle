@@ -19,7 +19,7 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
 
-from paddle.fluid.tests.unittests.test_conv2d_transpose_op import conv2dtranspose_forward_naive, TestConv2dTransposeOp
+from paddle.fluid.tests.unittests.test_conv2d_transpose_op import conv2dtranspose_forward_naive, TestConv2DTransposeOp
 
 
 def conv2d_bias_naive(out, bias):
@@ -30,7 +30,7 @@ def conv2d_bias_naive(out, bias):
     return out
 
 
-class TestConv2dTransposeMKLDNNOp(TestConv2dTransposeOp):
+class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
     def test_check_grad(self):
         return
 
@@ -64,7 +64,7 @@ class TestConv2dTransposeMKLDNNOp(TestConv2dTransposeOp):
 
     def setUp(self):
 
-        TestConv2dTransposeOp.setUp(self)
+        TestConv2DTransposeOp.setUp(self)
 
         output = self.outputs['Output']
 
@@ -86,46 +86,46 @@ class TestConv2dTransposeMKLDNNOp(TestConv2dTransposeOp):
         self.outputs['Output'] = output
 
 
-class TestMKLDNNFuseBias(TestConv2dTransposeMKLDNNOp):
+class TestMKLDNNFuseBias(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.fuse_bias = True
         self.bias_size = [6]
 
 
-class TestMKLDNNWithPad(TestConv2dTransposeMKLDNNOp):
+class TestMKLDNNWithPad(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.input_size = [2, 3, 10, 10]
 
 
-class TestMKLDNNWithStride(TestConv2dTransposeMKLDNNOp):
+class TestMKLDNNWithStride(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
 
 
-class TestMKLDNNWithAsymPad(TestConv2dTransposeMKLDNNOp):
+class TestMKLDNNWithAsymPad(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestMKLDNNWithSamePad(TestConv2dTransposeMKLDNNOp):
+class TestMKLDNNWithSamePad(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
-class TestMKLDNNWithValidPad(TestConv2dTransposeMKLDNNOp):
+class TestMKLDNNWithValidPad(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.padding_algorithm = "VALID"
 
@@ -136,3 +136,17 @@ class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
         self.data_format = "NHWC"
         N, C, H, W = self.input_size
         self.input_size = [N, H, W, C]
+
+
+class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
+        TestConv2DTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
+        self.stride = [2, 1]
+        self.dilations = [1, 2]
+        self.groups = 1
+        self.input_size = [4, 3, 8, 7]  # NCHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 6, 4, 3]
+        self.pad = [1, 3, 2, 1]
+        self.padding_algorithm = "EXPLICIT"

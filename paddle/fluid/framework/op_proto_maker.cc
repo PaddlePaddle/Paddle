@@ -43,7 +43,9 @@ OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddOutput(
 void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   std::unordered_set<std::string> names;
   auto checker = [&](const std::string& name) {
-    PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
+    PADDLE_ENFORCE_EQ(
+        names.count(name), 0,
+        platform::errors::AlreadyExists("Attribute [%s] is duplicated.", name));
     names.insert(name);
   };
   for (auto& attr : proto_->attrs()) {

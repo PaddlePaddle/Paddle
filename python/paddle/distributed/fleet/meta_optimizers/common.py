@@ -57,12 +57,12 @@ class CollectiveHelper(object):
         if startup_program is None:
             self.startup_program = fluid.default_startup_program()
 
-        endpoints = self.role_maker.get_trainer_endpoints()
-        current_endpoint = endpoints[self.role_maker.worker_index()]
+        endpoints = self.role_maker._get_trainer_endpoints()
+        current_endpoint = endpoints[self.role_maker._worker_index()]
         for ring_id in range(self.nrings):
             self._init_communicator(
                 self.startup_program, current_endpoint, endpoints,
-                self.role_maker.worker_index(), ring_id, self.wait_port)
+                self.role_maker._worker_index(), ring_id, self.wait_port)
         self._broadcast_params()
 
     def _init_communicator(self, program, current_endpoint, endpoints, rank,
@@ -98,6 +98,12 @@ class CollectiveHelper(object):
                 'ring_id': ring_id,
                 OP_ROLE_KEY: OpRole.Forward
             })
+
+    def _wait(self, current_endpoint, endpoints):
+        assert (self.wait_port)
+        other_endpoints = endpoints[:]
+        other_endpoints.remove(current_endpoint)
+        wait_server_ready(other_endpoints)
 
     def _broadcast_params(self):
         block = self.startup_program.global_block()

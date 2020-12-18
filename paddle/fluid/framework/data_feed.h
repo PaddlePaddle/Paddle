@@ -43,6 +43,15 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+class DataFeedDesc;
+class LoDTensor;
+class Scope;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 
 // DataFeed is the base virtual class for all ohther DataFeeds.
 // It is used to read files and parse the data for subsequent trainer.
@@ -418,6 +427,7 @@ class MultiSlotType {
 
   std::string DebugString() {
     std::stringstream ss;
+
     ss << "\ntype: " << type_ << "\n";
     ss << "offset: ";
     ss << "[";

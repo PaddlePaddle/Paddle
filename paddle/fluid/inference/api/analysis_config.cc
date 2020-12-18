@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
+#ifdef PADDLE_WITH_CUDA
+DECLARE_uint64(initial_gpu_memory_in_mb);
+#endif
+
 namespace paddle {
+struct MkldnnQuantizerConfig;
+
 extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kLiteSubgraphPasses;
 
@@ -67,6 +72,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
 #ifdef PADDLE_WITH_CUDA
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
+  FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
   device_id_ = device_id;
 #else
   LOG(ERROR) << "Please compile with gpu to EnableGpu()";
@@ -121,10 +127,14 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
+  CP_MEMBER(trt_use_oss_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
   CP_MEMBER(mkldnn_cache_capacity_);
+  // Bfloat16 related.
+  CP_MEMBER(use_mkldnn_bfloat16_);
+  CP_MEMBER(bfloat16_enabled_op_types_);
   // Quantization related.
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
@@ -171,6 +181,24 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #undef CP_MEMBER
 
   Update();
+  if (use_tensorrt_) {
+    // Update() will reset all the passes, when some tensorRT pass is deleted in
+    // other.pass_builder(), it will set again, so we just remove the
+    // deleted_pass.
+    auto all_passes = kTRTSubgraphPasses;
+    auto other_passes = other.pass_builder()->AllPasses();
+    // We should sort them, because the user may call the SwitchIrDebug
+    // interface, which will change the pass.
+    std::sort(all_passes.begin(), all_passes.end());
+    std::sort(other_passes.begin(), other_passes.end());
+    std::vector<std::string> deleted_passes;
+    std::set_difference(all_passes.begin(), all_passes.end(),
+                        other_passes.begin(), other_passes.end(),
+                        std::inserter(deleted_passes, deleted_passes.begin()));
+    for (auto ps : deleted_passes) {
+      pass_builder_->DeletePass(ps);
+    }
+  }
 }
 
 void AnalysisConfig::EnableCUDNN() {
@@ -219,7 +247,12 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 
 void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
-  use_mkldnn_bfloat16_ = true;
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_core)) {
+    use_mkldnn_bfloat16_ = true;
+  } else {
+    LOG(INFO) << "CPU does not support BFLOAT16 calculations";
+    use_mkldnn_bfloat16_ = false;
+  }
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnBfloat16";
   use_mkldnn_bfloat16_ = false;
@@ -230,7 +263,8 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
 
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
-                          "MkldnnQuantizer was not enabled yet.");
+                          platform::errors::PreconditionNotMet(
+                              "MkldnnQuantizer was not enabled yet."));
   return mkldnn_quantizer_config_.get();
 }
 
@@ -269,6 +303,8 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   optim_input_shape_ = optim_input_shape;
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
+
+void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
@@ -371,7 +407,7 @@ void AnalysisConfig::Update() {
   }
 
   if (use_xpu_) {
-#ifndef PADDLE_WITH_XPU
+#ifndef LITE_SUBGRAPH_WITH_XPU
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use an XPU device, but Paddle was not compiled "
         "with XPU-runtime."));
@@ -416,6 +452,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << use_mkldnn_quantizer_;
   ss << use_mkldnn_bfloat16_;
+  for (auto &item : bfloat16_enabled_op_types_) ss << item;
+  ss << ";";
   ss << model_from_memory_;
 
   ss << with_profile_;
@@ -449,12 +487,16 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
 #ifdef PADDLE_WITH_CUDA
   // Get the GPU memory details and calculate the fraction of memory for the
   // GPU memory pool.
-  size_t gpu_used, gpu_available;
+  size_t gpu_total, gpu_available;
   platform::SetDeviceId(device_id_);
-  platform::GpuMemoryUsage(&gpu_used, &gpu_available);
-  double total_gpu_memory = (gpu_used + gpu_available) / 1024. / 1024.;
+  platform::GpuMemoryUsage(&gpu_available, &gpu_total);
+  double total_gpu_memory = gpu_total / 1024. / 1024.;
   float fraction_of_gpu_memory =
       static_cast<double>(memory_pool_init_size_mb()) / total_gpu_memory;
+  VLOG(3) << "total_gpu_memory is " << total_gpu_memory
+          << "M, gpu_available is " << gpu_available / 1024. / 1024.
+          << "M, memory_pool_init_size is " << memory_pool_init_size_mb()
+          << "M.";
   return fraction_of_gpu_memory;
 #else
   return 0.;

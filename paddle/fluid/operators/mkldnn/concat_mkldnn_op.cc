@@ -86,8 +86,10 @@ class ConcatPrimitiveFactory {
   concat CreateConcatPrimitive(const concat::primitive_desc& concat_pd,
                                Tensor* output, platform::CPUPlace place,
                                const mkldnn::engine& mkldnn_engine) {
-    dst_mem = mkldnn::memory(concat_pd.dst_desc(), mkldnn_engine,
-                             output->mutable_data<T>(place));
+    dst_mem = mkldnn::memory(
+        concat_pd.dst_desc(), mkldnn_engine,
+        output->mutable_data<T>(place, concat_pd.dst_desc().get_size()));
+
     return concat(concat_pd);
   }
 
@@ -142,6 +144,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The axis is expected to be in range of [%d, %d), but got %d",
             -rank, rank, concat_axis));
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     if (concat_axis < 0) {
       concat_axis = concat_axis + rank;
     }
@@ -156,9 +159,10 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // If one of the multiple inputs of concat has an input size of 0, the
     // actual size of the multi_input will change
     std::string key = platform::CreateKey(
-        paddle::framework::vectorize<int>(multi_input[0]->dims()),
+        dev_ctx, paddle::framework::vectorize<int>(multi_input[0]->dims()),
         multi_input.size(), ctx.OutputName("Out"), dt,
         platform::ThreadIDasStr());
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
     const std::string key_prim = key + "@concat_p";
     const std::string key_concat_pd = key + "@concat_pd";
@@ -193,7 +197,9 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         prim_creator.SetSrcDataHandleByIndex(
             *srcs, i, to_void_cast<T>(multi_input[i]->data<T>()));
       }
-      prim_creator.SetDstDataHandle(*dst_mem, output->mutable_data<T>(place));
+      prim_creator.SetDstDataHandle(
+          *dst_mem,
+          output->mutable_data<T>(place, concat_pd->dst_desc().get_size()));
     }
 
     mkldnn::stream astream(mkldnn_engine);
@@ -217,5 +223,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(concat, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::ConcatMKLDNNOpKernel<float>,
+                   ops::ConcatMKLDNNOpKernel<paddle::platform::bfloat16>,
                    ops::ConcatMKLDNNOpKernel<int8_t>,
                    ops::ConcatMKLDNNOpKernel<uint8_t>);

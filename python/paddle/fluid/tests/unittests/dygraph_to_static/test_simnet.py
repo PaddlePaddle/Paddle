@@ -108,7 +108,7 @@ def train(conf_dict, to_static):
         place = fluid.CPUPlace()
 
     with fluid.dygraph.guard(place):
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
         conf_dict['dict_size'] = len(vocab)

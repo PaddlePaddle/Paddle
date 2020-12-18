@@ -111,7 +111,7 @@ class TestFunctionalConv2D(TestCase):
                     "weight", self.weight.shape, dtype=self.dtype)
                 if not self.no_bias:
                     bias = fluid.data("bias", self.bias.shape, dtype=self.dtype)
-                y = F.conv_transpose2d(
+                y = F.conv2d_transpose(
                     x,
                     weight,
                     None if self.no_bias else bias,
@@ -134,7 +134,7 @@ class TestFunctionalConv2D(TestCase):
             x = dg.to_variable(self.input)
             weight = dg.to_variable(self.weight)
             bias = None if self.no_bias else dg.to_variable(self.bias)
-            y = F.conv_transpose2d(
+            y = F.conv2d_transpose(
                 x,
                 weight,
                 bias,
@@ -215,7 +215,7 @@ class TestFunctionalConv2DError(TestCase):
                     "weight", self.weight_shape, dtype=self.dtype)
                 if not self.no_bias:
                     bias = fluid.data("bias", self.bias_shape, dtype=self.dtype)
-                y = F.conv_transpose2d(
+                y = F.conv2d_transpose(
                     x,
                     weight,
                     None if self.no_bias else bias,

@@ -17,6 +17,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
 #include "paddle_infer_declare.h"  // NOLINT
 
 ///

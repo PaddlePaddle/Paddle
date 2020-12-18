@@ -26,6 +26,8 @@ import paddle.fluid as fluid
 from paddle.dataset.common import download
 from paddle.fluid.contrib.slim.quantization import PostTrainingQuantization
 
+paddle.enable_static()
+
 random.seed(0)
 np.random.seed(0)
 

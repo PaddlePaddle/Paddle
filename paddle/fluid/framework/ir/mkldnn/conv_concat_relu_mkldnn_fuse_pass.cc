@@ -13,12 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_concat_relu_mkldnn_fuse_pass.h"
+
 #include <vector>
+
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 void ConvConcatReLUFusePass::FindConcatWithConvs(
     ir::Graph* graph,
@@ -121,3 +126,10 @@ void ConvConcatReLUFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(conv_concat_relu_mkldnn_fuse_pass,
               paddle::framework::ir::ConvConcatReLUFusePass);
+
+REGISTER_PASS_CAPABILITY(conv_concat_relu_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("concat", 0)
+            .EQ("relu", 0));

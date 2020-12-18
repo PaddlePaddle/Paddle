@@ -272,7 +272,7 @@ def train(args, fake_data_reader, to_static):
     random.seed(0)
     np.random.seed(0)
     with fluid.dygraph.guard(place):
-        paddle.manual_seed(1000)
+        paddle.seed(1000)
         paddle.framework.random._manual_program_seed(1000)
 
         video_model = TSM_ResNet("TSM", train_config, 'Train')

@@ -56,9 +56,9 @@ endif()
 
 
 cc_test(rpc_server_test SRCS rpc_server_test.cc
-    DEPS ${RPC_DEPS} executor scope proto_desc lookup_sparse_table_read_op scale_op)
+    DEPS ${RPC_DEPS} executor scope proto_desc lookup_sparse_table_read_op checkpoint_notify_op scale_op )
 cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler scope)
-cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_rpc memory)
+cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_rpc memory node)
 cc_library(parameter_send SRCS parameter_send.cc DEPS sendrecvop_rpc memory)
 cc_library(parameter_recv SRCS parameter_recv.cc DEPS sendrecvop_rpc memory)
 cc_library(communicator SRCS communicator.cc DEPS scope selected_rows tensor variable_helper selected_rows_functor simple_threadpool parameter_send parameter_recv generator)
@@ -67,4 +67,12 @@ if(WITH_GPU)
     cc_test(collective_server_test SRCS collective_server_test.cc 
         DEPS sendrecvop_rpc executor ${RPC_DEPS}
         selected_rows_functor  scope math_function)
+endif()
+if(WITH_TESTING)
+    if(TEST rpc_server_test)
+        set_tests_properties(rpc_server_test PROPERTIES TIMEOUT 120)
+    endif()
+    if(TEST heart_beat_monitor_test)
+        set_tests_properties(heart_beat_monitor_test PROPERTIES TIMEOUT 120)
+    endif()
 endif()

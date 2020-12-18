@@ -35,7 +35,7 @@ TEST(DeviceCode, cuda) {
     return;
   }
 
-  paddle::framework::InitDevices(false, {0});
+  paddle::framework::InitDevices({0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceCode code(place, "saxpy_kernel", saxpy_code);
 
@@ -90,7 +90,7 @@ TEST(DeviceCodePool, cuda) {
     return;
   }
 
-  paddle::framework::InitDevices(false, {0});
+  paddle::framework::InitDevices({0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::DeviceCodePool& pool =
       paddle::platform::DeviceCodePool::Init({place});

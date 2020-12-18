@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -35,6 +36,8 @@ TEST(SkipLayerNormFusePass, basic) {
   layers.layer_norm(elementwise_out, scale, bias);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+  graph->Set(kEmbEltwiseLayernormPass, new bool(true));
+  graph->Set(kMultiheadMatmulPass, new bool(true));
   auto pass = PassRegistry::Instance().Get("skip_layernorm_fuse_pass");
   int num_nodes_before = graph->Nodes().size();
   VLOG(3) << DebugString(graph);
@@ -52,6 +55,12 @@ TEST(SkipLayerNormFusePass, basic) {
       num_fused_nodes_after, 1,
       platform::errors::PreconditionNotMet(
           "The number of fusion nodes does not meet expectations after fuse"));
+}
+
+TEST(SkipLayerNormFusePass, pass_op_version_check) {
+  ASSERT_TRUE(
+      paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
+          .IsPassCompatible("skip_layernorm_fuse_pass"));
 }
 
 }  // namespace ir

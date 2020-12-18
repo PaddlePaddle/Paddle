@@ -17,7 +17,15 @@
 
 namespace paddle {
 namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
+
+class Graph;
 
 void FusePassBase::Init(const std::string& repr, Graph* graph) const {
   repr_ = repr;

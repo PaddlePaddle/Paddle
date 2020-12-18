@@ -26,8 +26,12 @@ limitations under the License. */
 #include "grpc++/grpc++.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 
+struct grpc_byte_buffer;
+
 namespace grpc {
 // A ZeroCopyInputStream that reads from grpc_byte_buffer
+class ByteBuffer;
+
 class GrpcBufferReader final
     : public ::google::protobuf::io::ZeroCopyInputStream {
   typedef void (CoreCodegenInterface::*OldReaderInitAPI)(

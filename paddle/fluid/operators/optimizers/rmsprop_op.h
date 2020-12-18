@@ -148,11 +148,15 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     auto &mom_tensor = *ctx.Input<LoDTensor>("Moment");
 
     PADDLE_ENFORCE_EQ(&p_tensor, param_out,
-                      "Param and ParamOut must be the same Tensor");
+                      platform::errors::InvalidArgument(
+                          "Param and ParamOut must be the same Tensor"));
     PADDLE_ENFORCE_EQ(&mom_tensor, moment_out,
-                      "Moment and MomentOut must be the same Tensor");
-    PADDLE_ENFORCE_EQ(&ms_tensor, mean_square_out,
-                      "MeanSquare and MeanSquareOut must be the same Tensor");
+                      platform::errors::InvalidArgument(
+                          "Moment and MomentOut must be the same Tensor"));
+    PADDLE_ENFORCE_EQ(
+        &ms_tensor, mean_square_out,
+        platform::errors::InvalidArgument(
+            "MeanSquare and MeanSquareOut must be the same Tensor"));
 
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
     size_t limit = static_cast<size_t>(ms_tensor.numel());
@@ -179,8 +183,10 @@ class RmspropOpKernel : public framework::OpKernel<T> {
           auto &mg_tensor = *ctx.Input<LoDTensor>("MeanGrad");
           auto mg = EigenVector<T>::Flatten(mg_tensor);
           auto *mean_grad_out = ctx.Output<LoDTensor>("MeanGradOut");
-          PADDLE_ENFORCE_EQ(&mg_tensor, mean_grad_out,
-                            "MeanGrad and MeanGradOut must be the same Tensor");
+          PADDLE_ENFORCE_EQ(
+              &mg_tensor, mean_grad_out,
+              platform::errors::InvalidArgument(
+                  "MeanGrad and MeanGradOut must be the same Tensor"));
           auto mg_out = EigenVector<T>::Flatten(*mean_grad_out);
 
           mg_out.device(place) = rho * mg + (1 - rho) * g;
@@ -198,8 +204,10 @@ class RmspropOpKernel : public framework::OpKernel<T> {
         if (centered) {
           auto &mg_tensor = *ctx.Input<LoDTensor>("MeanGrad");
           auto *mean_grad_out = ctx.Output<LoDTensor>("MeanGradOut");
-          PADDLE_ENFORCE_EQ(&mg_tensor, mean_grad_out,
-                            "MeanGrad and MeanGradOut must be the same Tensor");
+          PADDLE_ENFORCE_EQ(
+              &mg_tensor, mean_grad_out,
+              platform::errors::InvalidArgument(
+                  "MeanGrad and MeanGradOut must be the same Tensor"));
           for_range(CenteredRmspropFunctor<T, DenseRmspropGradFunctor<T>>(
               param_out->mutable_data<T>(ctx.GetPlace()),
               mean_square_out->mutable_data<T>(ctx.GetPlace()),
@@ -233,8 +241,10 @@ class RmspropOpKernel : public framework::OpKernel<T> {
       if (centered) {
         auto &mg_tensor = *ctx.Input<LoDTensor>("MeanGrad");
         auto *mean_grad_out = ctx.Output<LoDTensor>("MeanGradOut");
-        PADDLE_ENFORCE_EQ(&mg_tensor, mean_grad_out,
-                          "MeanGrad and MeanGradOut must be the same Tensor");
+        PADDLE_ENFORCE_EQ(
+            &mg_tensor, mean_grad_out,
+            platform::errors::InvalidArgument(
+                "MeanGrad and MeanGradOut must be the same Tensor"));
         for_range(CenteredRmspropFunctor<T, SparseRmspropGradFunctor<T>>(
             param_out->mutable_data<T>(ctx.GetPlace()),
             mean_square_out->mutable_data<T>(ctx.GetPlace()),
@@ -249,7 +259,12 @@ class RmspropOpKernel : public framework::OpKernel<T> {
             rho, epsilon, momentum, grad_func));
       }
     } else {
-      PADDLE_THROW("RMSProp only supports LoDTensor or SelectedRows gradient");
+      PADDLE_ENFORCE_EQ(false, true,
+                        platform::errors::PermissionDenied(
+                            "Unsupported Variable Type of Grad "
+                            "in RmspropOp. Excepted LodTensor "
+                            "or SelectedRows, But received [%s]",
+                            paddle::framework::ToTypeName(grad_var->Type())));
     }
   }
 };

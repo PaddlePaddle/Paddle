@@ -12,11 +12,69 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define EIGEN_USE_GPU
-
+#include <cuda_runtime.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/allclose_op.h"
+
+namespace paddle {
+namespace operators {
+
+template <typename T>
+struct GetTensorValue<platform::CUDADeviceContext, T> {
+  T operator()(const platform::CUDADeviceContext& dev_ctx,
+               const framework::Tensor& tensor) const {
+    const T* data = tensor.data<T>();
+    T value;
+    const auto gpu_place =
+        BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
+    memory::Copy(platform::CPUPlace(), &value, gpu_place, data, sizeof(T),
+                 dev_ctx.stream());
+    return value;
+  }
+};
+
+template <typename T>
+__global__ void AllcloseCUDAKernel(const T* in_data, const T* other_data,
+                                   const double rtol, const double atol,
+                                   bool equal_nan, int num, bool* out_data) {
+  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  bool val;
+  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+    const T a = in_data[i], b = other_data[i];
+    if (isnan(a) || isnan(b)) {
+      val = equal_nan && isnan(a) == isnan(b);
+    } else {
+      T left = (a > b ? a - b : b - a);
+      T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
+      T diff = (left > right ? left - right : right - left);
+      val = a == b || left <= right || diff <= 1e-15;
+    }
+    if (!val) *out_data = false;
+  }
+}
+
+template <typename T>
+struct AllcloseFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& dev_ctx,
+                  const framework::Tensor& in, const framework::Tensor& other,
+                  const double rtol, const double atol, bool equal_nan,
+                  framework::Tensor* output) {
+    int num = in.numel();
+    const T* in_data = in.data<T>();
+    const T* other_data = other.data<T>();
+    bool* out_data = output->mutable_data<bool>(dev_ctx.GetPlace());
+    int block = 1024;
+    int grid = (block - 1 + num) / block;
+    grid = (grid > block) ? block : grid;
+    cudaMemset(out_data, true, sizeof(bool));
+    AllcloseCUDAKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
+        in_data, other_data, rtol, atol, equal_nan, num, out_data);
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;

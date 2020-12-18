@@ -34,8 +34,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.distributed.fleet.base.util_factory import fleet_util
-from paddle.distributed.fleet import fleet
+import paddle.distributed.fleet as fleet
 
 __all__ = ['FleetDistHeterRunnerBase', 'TestFleetHeterBase', 'runtime_main']
 
@@ -82,7 +81,7 @@ class FleetDistHeterRunnerBase(object):
     def build_strategy(self, args):
         self.strategy = paddle.distributed.fleet.DistributedStrategy()
         self.strategy.a_sync = True
-
+        self.strategy.a_sync_configs = {"launch_barrier": True}
         return self.strategy
 
     def build_optimizer(self, avg_cost, strategy):
@@ -238,7 +237,10 @@ class TestFleetHeterBase(unittest.TestCase):
         return heter0_proc, heter1_proc, heter0_pipe, heter1_pipe
 
     def _run_cluster(self, model, envs):
-        env = {'GRAD_CLIP': str(self._grad_clip_mode)}
+        env = {
+            'GRAD_CLIP': str(self._grad_clip_mode),
+            'FLAGS_eager_delete_tensor_gb': str(-1)
+        }
         python_path = self._python_interp
         gloo_path = tempfile.mkdtemp()
 
@@ -286,28 +288,7 @@ class TestFleetHeterBase(unittest.TestCase):
         print("tr end communicate")
 
         tr0_ret = tr0.returncode
-        tr1_ret = tr0.returncode
-        print("tr get returncode: {}".format(tr0_ret))
-        if tr0_ret != 0:
-            print(
-                "========================Error tr0_err begin==========================="
-            )
-            os.system("cat {}".format(tempfile.gettempdir() + "/tr0_err.log"))
-            print(
-                "========================Error tr0_err end==========================="
-            )
-
-        if tr1_ret != 0:
-            print(
-                "========================Error tr1_err begin==========================="
-            )
-            os.system("cat {}".format(tempfile.gettempdir() + "/tr1_err.log"))
-            print(
-                "========================Error tr1_err end==========================="
-            )
-
-        self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")
-        self.assertEqual(tr1_ret, 0, "something wrong in tr1, please check")
+        tr1_ret = tr1.returncode
 
         # close trainer file
         tr0_pipe.close()
@@ -321,7 +302,8 @@ class TestFleetHeterBase(unittest.TestCase):
         ps1.terminate()
         heter0.terminate()
         heter1.terminate()
-
+        self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")
+        self.assertEqual(tr1_ret, 0, "something wrong in tr1, please check")
         shutil.rmtree(gloo_path)
         return 0, 0
 
@@ -376,8 +358,6 @@ def runtime_main(test_class):
     strategy = model.build_strategy(args)
     avg_cost = model.net(args)
     model.build_optimizer(avg_cost, strategy)
-    fleet_util._set_strategy(strategy)
-    fleet_util._set_role_maker(role)
 
     if args.role == "pserver" or args.role == "heter_trainer":
         model.run_pserver(args)

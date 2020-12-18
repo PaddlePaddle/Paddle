@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-from paddle.nn import Conv2d, Pool2D, BatchNorm, Linear, ReLU, Softmax
-from paddle.fluid.dygraph.container import Sequential
+import paddle
+import paddle.nn as nn
 
 from paddle.utils.download import get_weights_path_from_url
 
@@ -28,39 +27,19 @@ __all__ = [
 
 model_urls = {
     'vgg16': ('https://paddle-hapi.bj.bcebos.com/models/vgg16.pdparams',
-              'c788f453a3b999063e8da043456281ee')
+              '89bbffc0f87d260be9b8cdc169c991c4')
 }
 
 
-class Classifier(fluid.dygraph.Layer):
-    def __init__(self, num_classes, classifier_activation='softmax'):
-        super(Classifier, self).__init__()
-        self.linear1 = Linear(512 * 7 * 7, 4096)
-        self.linear2 = Linear(4096, 4096)
-        self.linear3 = Linear(4096, num_classes)
-        self.act = Softmax()  #Todo: accept any activation
-
-    def forward(self, x):
-        x = self.linear1(x)
-        x = fluid.layers.relu(x)
-        x = fluid.layers.dropout(x, 0.5)
-        x = self.linear2(x)
-        x = fluid.layers.relu(x)
-        x = fluid.layers.dropout(x, 0.5)
-        x = self.linear3(x)
-        out = self.act(x)
-        return out
-
-
-class VGG(fluid.dygraph.Layer):
+class VGG(nn.Layer):
     """VGG model from
     `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
 
     Args:
-        features (fluid.dygraph.Layer): vgg features create by function make_layers.
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+        features (nn.Layer): Vgg features create by function make_layers.
+        num_classes (int): Output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 1000.
-        classifier_activation (str): activation for the last fc layer. Default: 'softmax'.
+        with_pool (bool): Use pool before the last three fc layer or not. Default: True.
 
     Examples:
         .. code-block:: python
@@ -76,44 +55,52 @@ class VGG(fluid.dygraph.Layer):
 
     """
 
-    def __init__(self,
-                 features,
-                 num_classes=1000,
-                 classifier_activation='softmax'):
+    def __init__(self, features, num_classes=1000, with_pool=True):
         super(VGG, self).__init__()
         self.features = features
         self.num_classes = num_classes
+        self.with_pool = with_pool
+
+        if with_pool:
+            self.avgpool = nn.AdaptiveAvgPool2D((7, 7))
 
         if num_classes > 0:
-            classifier = Classifier(num_classes, classifier_activation)
-            self.classifier = self.add_sublayer("classifier",
-                                                Sequential(classifier))
+            self.classifier = nn.Sequential(
+                nn.Linear(512 * 7 * 7, 4096),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(4096, 4096),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(4096, num_classes), )
 
     def forward(self, x):
         x = self.features(x)
 
+        if self.with_pool:
+            x = self.avgpool(x)
+
         if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
+            x = paddle.flatten(x, 1)
             x = self.classifier(x)
+
         return x
 
 
 def make_layers(cfg, batch_norm=False):
     layers = []
     in_channels = 3
-
     for v in cfg:
         if v == 'M':
-            layers += [Pool2D(pool_size=2, pool_stride=2)]
+            layers += [nn.MaxPool2D(kernel_size=2, stride=2)]
         else:
+            conv2d = nn.Conv2D(in_channels, v, kernel_size=3, padding=1)
             if batch_norm:
-                conv2d = Conv2d(in_channels, v, kernel_size=3, padding=1)
-                layers += [conv2d, BatchNorm(v), ReLU()]
+                layers += [conv2d, nn.BatchNorm2D(v), nn.ReLU()]
             else:
-                conv2d = Conv2d(in_channels, v, kernel_size=3, padding=1)
-                layers += [conv2d, ReLU()]
+                layers += [conv2d, nn.ReLU()]
             in_channels = v
-    return Sequential(*layers)
+    return nn.Sequential(*layers)
 
 
 cfgs = {
@@ -132,19 +119,15 @@ cfgs = {
 
 
 def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
-    model = VGG(make_layers(
-        cfgs[cfg], batch_norm=batch_norm),
-                num_classes=1000,
-                **kwargs)
+    model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
 
     if pretrained:
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
             arch)
         weight_path = get_weights_path_from_url(model_urls[arch][0],
                                                 model_urls[arch][1])
-        assert weight_path.endswith(
-            '.pdparams'), "suffix of weight must be .pdparams"
-        param, _ = fluid.load_dygraph(weight_path)
+
+        param = paddle.load(weight_path)
         model.load_dict(param)
 
     return model

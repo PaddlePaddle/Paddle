@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/nccl_context.h"
+
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
 
 imperative::ParallelStrategy GetStrategy(int local_rank) {
-  std::vector<std::string> eps = {"127.0.0.1:9866", "127.0.0.1:9867"};
+  std::vector<std::string> eps = {"127.0.0.1:9866", "localhost:9867"};
   imperative::ParallelStrategy strategy;
   strategy.trainer_endpoints_ = eps;
   strategy.current_endpoint_ = eps[local_rank];

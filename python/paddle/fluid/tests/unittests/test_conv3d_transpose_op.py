@@ -17,6 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
+import paddle
+paddle.enable_static()
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test import OpTest
@@ -107,7 +109,7 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     return out
 
 
-class TestConv3dTransposeOp(OpTest):
+class TestConv3DTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
         self.use_cudnn = False
@@ -200,92 +202,92 @@ class TestConv3dTransposeOp(OpTest):
         self.op_type = "conv3d_transpose"
 
 
-class TestWithSymmetricPad(TestConv3dTransposeOp):
+class TestWithSymmetricPad(TestConv3DTransposeOp):
     def init_test_case(self):
         self.check_no_input = True
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        self.input_size = [1, 2, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
 
 
-class TestWithAsymmetricPad(TestConv3dTransposeOp):
+class TestWithAsymmetricPad(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 0, 1, 0, 1, 2]
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        self.input_size = [1, 2, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
 
 
-class TestWithSAMEPad(TestConv3dTransposeOp):
+class TestWithSAMEPad(TestConv3DTransposeOp):
     def init_test_case(self):
         self.stride = [1, 1, 2]
         self.dilations = [1, 2, 1]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5, 6]  # NCDHW
+        self.input_size = [1, 2, 5, 5, 6]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 4]
         self.padding_algorithm = 'SAME'
 
 
-class TestWithVALIDPad(TestConv3dTransposeOp):
+class TestWithVALIDPad(TestConv3DTransposeOp):
     def init_test_case(self):
         self.stride = [2, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        self.input_size = [1, 2, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 4, 3]
         self.padding_algorithm = 'VALID'
 
 
-class TestWithStride(TestConv3dTransposeOp):
+class TestWithStride(TestConv3DTransposeOp):
     def init_test_case(self):
         self.check_no_filter = True
         self.pad = [1, 1, 1]
         self.stride = [2, 2, 2]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        self.input_size = [1, 2, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
 
 
-class TestWithGroups(TestConv3dTransposeOp):
+class TestWithGroups(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 2
-        self.input_size = [2, 4, 5, 5, 5]  # NCHW
+        self.input_size = [1, 2, 5, 5, 5]  # NCHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 3, 3, 3, 3]
 
 
-class TestWithDilation(TestConv3dTransposeOp):
+class TestWithDilation(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
         self.dilations = [2, 2, 2]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        self.input_size = [1, 2, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
 
 
-class Test_NHWC(TestConv3dTransposeOp):
+class Test_NHWC(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 5, 5, 5, 3]  # NDHWC
+        self.input_size = [1, 5, 5, 5, 2]  # NDHWC
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 6, 3, 3, 3]
         self.data_format = 'NHWC'
@@ -294,7 +296,7 @@ class Test_NHWC(TestConv3dTransposeOp):
 # ------------ test_cudnn ------------
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNN(TestConv3dTransposeOp):
+class TestCUDNN(TestConv3DTransposeOp):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
@@ -308,7 +310,7 @@ class TestCUDNNWithSymmetricPad(TestWithSymmetricPad):
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        self.input_size = [1, 2, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
 
@@ -325,7 +327,7 @@ class TestCUDNNWithAsymmetricPad(TestWithAsymmetricPad):
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 3, 4, 4, 4]  # NCDHW
+        self.input_size = [1, 2, 4, 4, 4]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
 
@@ -341,7 +343,7 @@ class TestCUDNNWithSAMEPad(TestWithSAMEPad):
         self.stride = [1, 1, 2]
         self.dilations = [1, 2, 1]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        self.input_size = [1, 2, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 4, 3]
         self.padding_algorithm = 'SAME'
@@ -358,7 +360,7 @@ class TestCUDNNWithVALIDPad(TestWithVALIDPad):
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        self.input_size = [1, 2, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
         self.padding_algorithm = 'VALID'
@@ -376,7 +378,7 @@ class TestCUDNNWithStride(TestWithStride):
         self.stride = [2, 2, 2]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        self.input_size = [1, 2, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
 
@@ -393,7 +395,7 @@ class TestCUDNNWithGroups(TestWithGroups):
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 2
-        self.input_size = [2, 4, 5, 5, 5]  # NCHW
+        self.input_size = [1, 2, 5, 5, 5]  # NCHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 3, 3, 3, 3]
 
@@ -419,13 +421,13 @@ class TestCUDNNWithGroups(TestWithGroups):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNN_NHWC(TestConv3dTransposeOp):
+class TestCUDNN_NHWC(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 5, 5, 5, 3]  # NDHWC
+        self.input_size = [1, 5, 5, 5, 2]  # NDHWC
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 6, 3, 3, 3]
         self.data_format = 'NHWC'
@@ -443,7 +445,7 @@ class TestCUDNNWithSymmetricPad_NHWC(TestWithSymmetricPad):
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 5, 5, 5, 3]  # NDHWC
+        self.input_size = [1, 5, 5, 5, 2]  # NDHWC
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 6, 3, 3, 3]
         self.data_format = 'NHWC'
@@ -461,7 +463,7 @@ class TestCUDNNWithAsymmetricPad_NHWC(TestWithAsymmetricPad):
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 5, 5, 5, 3]  # NDHWC
+        self.input_size = [1, 5, 5, 5, 2]  # NDHWC
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 6, 3, 3, 3]
         self.data_format = 'NHWC'
@@ -479,7 +481,7 @@ class TestCUDNNWithStride_NHWC(TestWithStride):
         self.stride = [2, 2, 2]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 5, 5, 5, 3]  # NCDHW
+        self.input_size = [1, 5, 5, 5, 2]  # NDHWC
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 6, 3, 3, 3]
         self.data_format = 'NHWC'
@@ -497,7 +499,7 @@ class TestCUDNNWithGroups_NHWC(TestWithGroups):
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 2
-        self.input_size = [2, 5, 5, 5, 4]  # NCHW
+        self.input_size = [1, 5, 5, 5, 2]  # NDHWC
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 3, 3, 3, 3]
         self.data_format = 'NHWC'

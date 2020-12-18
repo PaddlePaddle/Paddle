@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
 
@@ -157,6 +158,30 @@ def while_loop_class_var(x):
     return foo.c
 
 
+def test_optim_break_in_for(x):
+    x = paddle.to_tensor(x)
+    for i in range(10):
+        if x.sum() > 5:
+            break
+            x += 10086
+        x += i
+        if i < 3:
+            x = x * 2
+    return x
+
+
+def test_optim_break_in_while(x):
+    x = paddle.to_tensor(x)
+    i = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
+    while i < 10:
+        if i > 5:
+            break
+            x += 10086
+        x += i
+        i += 1
+    return x
+
+
 class TestContinueInFor(unittest.TestCase):
     def setUp(self):
         self.input = np.zeros((1)).astype('int32')
@@ -224,6 +249,16 @@ class TestBreakInWhile(TestContinueInWhile):
 class TestWhileLoopClassVar(TestContinueInWhile):
     def init_dygraph_func(self):
         self.dygraph_func = while_loop_class_var
+
+
+class TestOptimBreakInFor(TestContinueInWhile):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_optim_break_in_for
+
+
+class TestOptimBreakInWhile(TestContinueInWhile):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_optim_break_in_while
 
 
 if __name__ == '__main__':

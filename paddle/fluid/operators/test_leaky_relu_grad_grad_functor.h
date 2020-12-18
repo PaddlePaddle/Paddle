@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <random>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/for_range.h"

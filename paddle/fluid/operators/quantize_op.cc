@@ -13,6 +13,7 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/operators/quantize_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -31,15 +32,21 @@ framework::OpKernelType QuantOp::GetExpectedKernelType(
 }
 
 void QuantOpMaker::Make() {
-  AddInput("Input", "input data");
-  AddOutput("Output", "output data");
+  AddInput("Input", "Input data");
+  AddOutput("Output", "Output data");
   AddAttr<bool>("is_negative_input",
                 "(bool, default false) Only used in mkldnn INT8 kernel")
       .SetDefault(false);
-  AddAttr<float>("Scale", "scale data").SetDefault({1.0f});
+  AddAttr<float>("Scale", "Scale data").SetDefault({1.0f});
+  AddAttr<float>(
+      "Shift",
+      "Shift data. When Shift is non-zero, data is quantized to unsigned int8.")
+      .SetDefault({0.0f});
   AddAttr<std::string>("output_format",
                        "Convert format to NHWC or NCHW during quantization.")
       .SetDefault("NHWC");
+  AddAttr<bool>("bfloat16", "(bool, default false) Convert to bfloat16")
+      .SetDefault(false);
   AddComment(R"DOC(This op will quantize data from FP32 to INT8)DOC");
 }
 
@@ -48,3 +55,10 @@ void QuantOpMaker::Make() {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(quantize, ops::QuantOp, ops::QuantOpMaker);
+
+REGISTER_OP_VERSION(quantize)
+    .AddCheckpoint(
+        R"ROC( Add a new attribute [bfloat16])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "bfloat16", "If true, float32 input is converted to bfloat16",
+            false));

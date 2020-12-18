@@ -16,6 +16,9 @@ from __future__ import print_function
 
 import paddle.fluid as fluid
 import unittest
+import paddle
+
+paddle.enable_static()
 
 
 class TestDataFeeder(unittest.TestCase):

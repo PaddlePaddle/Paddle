@@ -16,10 +16,13 @@ from ... import default_main_program
 from ... import default_startup_program
 from ... import layers
 from ... import unique_name
+from ... import program_guard
 from . import fp16_utils
-from .fp16_utils import update_loss_scaling, rewrite_program
+from .fp16_utils import rewrite_program
 from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
+from .amp_nn import check_finite_and_unscale
+from .amp_nn import update_loss_scaling
 
 __all__ = ["decorate"]
 
@@ -56,23 +59,49 @@ class OptimizerWithMixedPrecision(object):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
         self._param_grads = None
-        self._train_program = default_main_program()
-        self._startup_prog = default_startup_program()
+        self._train_program = None
+
+        self._is_distributed = False
         self._scaled_loss = None
+        self._loss_scaling = None
+        self._init_loss_scaling = init_loss_scaling
+        self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
+        self._learning_rate = optimizer._learning_rate
+        self._learning_rate_map = optimizer._learning_rate_map
+        if self._use_dynamic_loss_scaling:
+            self._incr_every_n_steps = incr_every_n_steps
+            self._decr_every_n_nan_or_inf = decr_every_n_nan_or_inf
+            self._incr_ratio = incr_ratio
+            self._decr_ratio = decr_ratio
+            self._num_good_steps = None
+            self._num_bad_steps = None
+
+    def _set_distributed(self, flag):
+        # if distributed, all cards will communication with each other,
+        # overlap communication and computation by split the
+        # check_finite_and_unscale op.
+        self._is_distributed = flag
+
+    def get_loss_scaling(self):
+        """Return the real-time loss scaling factor.
+        """
+        return self._loss_scaling
+
+    def get_scaled_loss(self):
+        """Return the scaled loss.
+        It's useful when you feed customed loss into executor.
+        """
+        return self._scaled_loss
+
+    def _init_amp_var(self):
         self._loss_scaling = layers.create_global_var(
             name=unique_name.generate("loss_scaling"),
             shape=[1],
-            value=init_loss_scaling,
+            value=self._init_loss_scaling,
             dtype='float32',
             persistable=True)
-        self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
+
         if self._use_dynamic_loss_scaling:
-            self._incr_every_n_steps = layers.fill_constant(
-                shape=[1], dtype='int32', value=incr_every_n_steps)
-            self._decr_every_n_nan_or_inf = layers.fill_constant(
-                shape=[1], dtype='int32', value=decr_every_n_nan_or_inf)
-            self._incr_ratio = incr_ratio
-            self._decr_ratio = decr_ratio
             self._num_good_steps = layers.create_global_var(
                 name=unique_name.generate("num_good_steps"),
                 shape=[1],
@@ -86,28 +115,16 @@ class OptimizerWithMixedPrecision(object):
                 dtype='int32',
                 persistable=True)
 
-        # Ensure the data type of learning rate vars is float32 (same as the 
+        # Ensure the data type of learning rate vars is float32 (same as the
         # master parameter dtype)
-        if isinstance(optimizer._learning_rate, float):
-            optimizer._learning_rate_map[default_main_program()] = \
-                        layers.create_global_var(
-                        name=unique_name.generate("learning_rate"),
-                        shape=[1],
-                        value=float(optimizer._learning_rate),
-                        dtype='float32',
-                        persistable=True)
-
-    def get_loss_scaling(self):
-        """Return the real-time loss scaling factor.
-        """
-        return self._loss_scaling
-
-    def get_scaled_loss(self):
-        """Return the scaled loss.
-        It's useful when you feed customed loss into executor.
-        """
-
-        return self._scaled_loss
+        if isinstance(self._optimizer._learning_rate, float):
+            self._optimizer._learning_rate_map[default_main_program()] = \
+                    layers.create_global_var(
+                    name=unique_name.generate("learning_rate"),
+                    shape=[1],
+                    value=float(self._optimizer._learning_rate),
+                    dtype='float32',
+                    persistable=True)
 
     def backward(self,
                  loss,
@@ -131,58 +148,75 @@ class OptimizerWithMixedPrecision(object):
             A list of (param, grad), which is a tuple of a parameter and its 
             gradient respectively, and the scaled loss.
         """
-        rewrite_program(self._train_program, self._amp_lists)
-        self._scaled_loss = loss * self._loss_scaling
-        self._params_grads = self._optimizer.backward(
-            self._scaled_loss, startup_program, parameter_list, no_grad_set,
-            callbacks)
-        # Change the op_role_var attr for some ops, so that gradients
-        # transferred across GPUs can be FP16.
-        update_role_var_grad(self._train_program, self._params_grads)
-        scaled_params_grads = []
-        for p, g in self._params_grads:
-            with self._train_program._optimized_guard([p, g]):
-                scaled_g = g / self._loss_scaling
-                scaled_params_grads.append([p, scaled_g])
+        train_program = loss.block.program
+        self._train_program = train_program
 
-        return scaled_params_grads
+        with program_guard(train_program, startup_program):
+            self._init_amp_var()
 
-    def apply_gradients(self, scaled_params_grads):
+            rewrite_program(train_program, self._amp_lists)
+            self._scaled_loss = loss * self._loss_scaling
+            params_grads = self._optimizer.backward(
+                self._scaled_loss, startup_program, parameter_list, no_grad_set,
+                callbacks)
+            # Change the op_role_var attr for some ops, so that gradients
+            # transferred across GPUs can be FP16.
+            update_role_var_grad(train_program, params_grads)
+        return params_grads
+
+    def apply_gradients(self, params_grads):
         """
         Check scaled gradients to determine whether to update loss scaling and update 
         parameters by their scaled gradients, 
   
         Args:
-            scaled_params_grads (list): A list of params and scaled grads.
+            params_grads (list): A list of params and scaled grads.
     
         Returns:
             A list of optimize operators.
         """
 
+        grads = [g for _, g in params_grads]
+        if not self._is_distributed:
+            with self._train_program._optimized_guard(grads):
+                grads, found_inf = check_finite_and_unscale(
+                    grads, self._loss_scaling, name="find_infinite_scale")
+        else:
+            # if distributed, split check_finite_and_unscale to overlap
+            # unscale with communication
+            found_infs = []
+            for p, g in params_grads:
+                with self._train_program._optimized_guard([p, g]):
+                    _, found_inf = check_finite_and_unscale(
+                        [g, ], self._loss_scaling, name="find_infinite_scale")
+                    found_infs.append(found_inf)
+
         if self._use_dynamic_loss_scaling:
+            if self._is_distributed:
+                with self._train_program._optimized_guard([]):
+                    all_infs = layers.concat(found_infs)
+                    found_inf = layers.reduce_any(all_infs)
 
-            grads = [layers.reduce_sum(g) for [_, g] in scaled_params_grads]
-            all_grads = layers.concat(grads)
-            all_grads_sum = layers.reduce_sum(all_grads)
-            is_overall_finite = layers.isfinite(all_grads_sum)
+            with self._train_program._optimized_guard([]):
+                update_loss_scaling(
+                    grads,
+                    found_inf,
+                    self._loss_scaling,
+                    self._num_good_steps,
+                    self._num_bad_steps,
+                    self._incr_every_n_steps,
+                    self._decr_every_n_nan_or_inf,
+                    self._incr_ratio,
+                    self._decr_ratio,
+                    name="update_loss_scaling")
 
-            update_loss_scaling(is_overall_finite, self._loss_scaling,
-                                self._num_good_steps, self._num_bad_steps,
-                                self._incr_every_n_steps,
-                                self._decr_every_n_nan_or_inf, self._incr_ratio,
-                                self._decr_ratio)
+        optimize_ops = self._optimizer.apply_gradients(params_grads)
+        return optimize_ops
 
-            # apply_gradient append all ops in global block, thus we shouldn't
-            # apply gradient in the switch branch.
-            with layers.Switch() as switch:
-                with switch.case(is_overall_finite):
-                    pass
-                with switch.default():
-                    for _, g in scaled_params_grads:
-                        layers.assign(layers.zeros_like(g), g)
-
-        optimize_ops = self._optimizer.apply_gradients(scaled_params_grads)
-
+    def apply_optimize(self, loss, startup_program, params_grads):
+        program = loss.block.program
+        with program_guard(program, startup_program):
+            optimize_ops = self.apply_gradients(params_grads)
         return optimize_ops
 
     def minimize(self,
@@ -210,7 +244,8 @@ class OptimizerWithMixedPrecision(object):
             parameter_list=parameter_list,
             no_grad_set=no_grad_set)
 
-        optimize_ops = self.apply_gradients(scaled_params_grads)
+        optimize_ops = self.apply_optimize(loss, startup_program,
+                                           scaled_params_grads)
 
         return optimize_ops, scaled_params_grads
 

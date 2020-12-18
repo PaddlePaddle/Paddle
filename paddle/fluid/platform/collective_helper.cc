@@ -14,11 +14,7 @@
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-
-#include <memory>
 #include <utility>
-
-#include "paddle/fluid/platform/dynload/nccl.h"
 
 namespace paddle {
 namespace platform {
@@ -46,6 +42,7 @@ class NCCLCommImpl : public NCCLComm {
   void set_dev_ctx(std::unique_ptr<CUDADeviceContext>&& dev_ctx) {
     dev_ctx_ = std::move(dev_ctx);
   }
+  CUDADeviceContext* dev_context() const override { return dev_ctx_.get(); }
 
  private:
   int ring_id_;

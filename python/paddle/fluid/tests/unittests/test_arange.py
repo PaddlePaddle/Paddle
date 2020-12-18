@@ -98,9 +98,9 @@ class TestArangeImperative(unittest.TestCase):
         x2 = paddle.tensor.arange(5)
         x3 = paddle.tensor.creation.arange(5)
 
-        start = paddle.to_variable(np.array([0], 'float32'))
-        end = paddle.to_variable(np.array([5], 'float32'))
-        step = paddle.to_variable(np.array([1], 'float32'))
+        start = paddle.to_tensor(np.array([0], 'float32'))
+        end = paddle.to_tensor(np.array([5], 'float32'))
+        step = paddle.to_tensor(np.array([1], 'float32'))
         x4 = paddle.arange(start, end, step, 'int64')
         paddle.enable_static()
 

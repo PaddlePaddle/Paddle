@@ -12,14 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <stdio.h>  // for removing the port file
-#include <csignal>
-#include <cstdlib>
-#include <fstream>
-#include <thread>  // NOLINT
-#include <vector>
-
 #include "paddle/fluid/operators/distributed/collective_server.h"
+#include <memory>
 
 DEFINE_int32(collective_get_thread_num, 5, "number of threads for rpc get");
 

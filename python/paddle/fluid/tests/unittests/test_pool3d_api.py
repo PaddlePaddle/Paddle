@@ -25,7 +25,7 @@ from paddle.nn.functional import avg_pool3d, max_pool3d
 from test_pool3d_op import adaptive_start_index, adaptive_end_index, pool3D_forward_naive, avg_pool3D_forward_naive, max_pool3D_forward_naive
 
 
-class TestPool3d_API(unittest.TestCase):
+class TestPool3D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -68,7 +68,7 @@ class TestPool3d_API(unittest.TestCase):
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            avg_pool3d_dg = paddle.nn.layer.AvgPool3d(
+            avg_pool3d_dg = paddle.nn.layer.AvgPool3D(
                 kernel_size=2, stride=None, padding="SAME")
             result = avg_pool3d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -83,7 +83,7 @@ class TestPool3d_API(unittest.TestCase):
                 stride=2,
                 padding=1,
                 ceil_mode=False,
-                count_include_pad=True)
+                exclusive=True)
 
             result_np = avg_pool3D_forward_naive(
                 input_np,
@@ -95,12 +95,12 @@ class TestPool3d_API(unittest.TestCase):
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            avg_pool3d_dg = paddle.nn.layer.AvgPool3d(
+            avg_pool3d_dg = paddle.nn.layer.AvgPool3D(
                 kernel_size=2,
                 stride=None,
                 padding=1,
                 ceil_mode=False,
-                count_include_pad=True)
+                exclusive=True)
             result = avg_pool3d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
@@ -120,7 +120,7 @@ class TestPool3d_API(unittest.TestCase):
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            avg_pool3d_dg = paddle.nn.layer.AvgPool3d(
+            avg_pool3d_dg = paddle.nn.layer.AvgPool3D(
                 kernel_size=2, stride=None, padding=0, ceil_mode=True)
             result = avg_pool3d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -159,7 +159,7 @@ class TestPool3d_API(unittest.TestCase):
                 pool_type='max')
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
-            max_pool3d_dg = paddle.nn.layer.MaxPool3d(
+            max_pool3d_dg = paddle.nn.layer.MaxPool3D(
                 kernel_size=2, stride=None, padding=0)
             result = max_pool3d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -175,7 +175,7 @@ class TestPool3d_API(unittest.TestCase):
                 stride=2,
                 padding=0,
                 data_format="NDHWC",
-                return_indices=False)
+                return_mask=False)
 
             result_np = pool3D_forward_naive(
                 input_np,
@@ -204,7 +204,7 @@ class TestPool3d_API(unittest.TestCase):
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            max_pool3d_dg = paddle.nn.layer.MaxPool3d(
+            max_pool3d_dg = paddle.nn.layer.MaxPool3D(
                 kernel_size=2, stride=None, padding=0, ceil_mode=True)
             result = max_pool3d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -225,7 +225,7 @@ class TestPool3d_API(unittest.TestCase):
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            max_pool3d_dg = paddle.nn.layer.MaxPool3d(
+            max_pool3d_dg = paddle.nn.layer.MaxPool3D(
                 kernel_size=2, stride=None, padding=1, ceil_mode=False)
             result = max_pool3d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -239,7 +239,7 @@ class TestPool3d_API(unittest.TestCase):
                 kernel_size=2,
                 stride=None,
                 padding="SAME",
-                return_indices=True)
+                return_mask=True)
 
             result_np = pool3D_forward_naive(
                 input_np,
@@ -250,7 +250,7 @@ class TestPool3d_API(unittest.TestCase):
                 padding_algorithm="SAME")
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
-            max_pool3d_dg = paddle.nn.layer.MaxPool3d(
+            max_pool3d_dg = paddle.nn.layer.MaxPool3D(
                 kernel_size=2, stride=2, padding=0)
             result = max_pool3d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -270,7 +270,7 @@ class TestPool3d_API(unittest.TestCase):
                 pool_type='max')
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
-            max_pool3d_dg = paddle.nn.layer.MaxPool3d(
+            max_pool3d_dg = paddle.nn.layer.MaxPool3D(
                 kernel_size=2, stride=2, padding=0)
             result = max_pool3d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -299,7 +299,7 @@ class TestPool3d_API(unittest.TestCase):
                 pool_type='avg')
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
-            avg_pool3d_dg = paddle.nn.layer.AvgPool3d(
+            avg_pool3d_dg = paddle.nn.layer.AvgPool3D(
                 kernel_size=2, stride=2, padding=0)
             result = avg_pool3d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -327,7 +327,7 @@ class TestPool3d_API(unittest.TestCase):
             self.check_max_dygraph_ceilmode_results(place)
 
 
-class TestPool3dError_API(unittest.TestCase):
+class TestPool3DError_API(unittest.TestCase):
     def test_error_api(self):
         def run1():
             with fluid.dygraph.guard():
@@ -467,7 +467,7 @@ class TestPool3dError_API(unittest.TestCase):
                     stride=2,
                     padding=0,
                     data_format='NDHWC',
-                    return_indices=True)
+                    return_mask=True)
 
         self.assertRaises(ValueError, run10)
 

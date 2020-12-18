@@ -12,13 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cuda.h>
-#include <cuda_runtime_api.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -74,7 +71,9 @@ TEST_F(TensorRTEngineTest, add_layer) {
                                   nvinfer1::DimsCHW{1, 1, 1});
   auto *fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, size,
                                         weight.get(), bias.get());
-  PADDLE_ENFORCE(fc_layer != nullptr);
+  PADDLE_ENFORCE_NOT_NULL(fc_layer,
+                          platform::errors::InvalidArgument(
+                              "TRT fully connected layer building failed."));
 
   engine_->DeclareOutput(fc_layer, 0, "y");
   LOG(INFO) << "freeze network";
@@ -116,7 +115,9 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
                                   nvinfer1::DimsCHW{1, 2, 1});
   auto *fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, 2,
                                         weight.get(), bias.get());
-  PADDLE_ENFORCE(fc_layer != nullptr);
+  PADDLE_ENFORCE_NOT_NULL(fc_layer,
+                          platform::errors::InvalidArgument(
+                              "TRT fully connected layer building failed."));
 
   engine_->DeclareOutput(fc_layer, 0, "y");
   engine_->FreezeNetwork();
@@ -160,7 +161,9 @@ TEST_F(TensorRTEngineTest, test_conv2d) {
   auto *conv_layer =
       TRT_ENGINE_ADD_LAYER(engine_, Convolution, *x, 1, nvinfer1::DimsHW{3, 3},
                            weight.get(), bias.get());
-  PADDLE_ENFORCE(conv_layer != nullptr);
+  PADDLE_ENFORCE_NOT_NULL(conv_layer,
+                          platform::errors::InvalidArgument(
+                              "TRT convolution layer building failed."));
   conv_layer->setStride(nvinfer1::DimsHW{1, 1});
   conv_layer->setPadding(nvinfer1::DimsHW{1, 1});
 
@@ -199,7 +202,9 @@ TEST_F(TensorRTEngineTest, test_pool2d) {
   auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *x, pool_t,
                                           nvinfer1::DimsHW{2, 2});
 
-  PADDLE_ENFORCE(pool_layer != nullptr);
+  PADDLE_ENFORCE_NOT_NULL(
+      pool_layer,
+      platform::errors::InvalidArgument("TRT pooling layer building failed."));
   pool_layer->setStride(nvinfer1::DimsHW{1, 1});
   pool_layer->setPadding(nvinfer1::DimsHW{0, 0});
 

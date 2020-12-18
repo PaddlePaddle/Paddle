@@ -38,7 +38,7 @@ class TestGaussianRandomOp(OpTest):
             "seed": 10,
             "use_mkldnn": self.use_mkldnn
         }
-        paddle.manual_seed(10)
+        paddle.seed(10)
 
         self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
 

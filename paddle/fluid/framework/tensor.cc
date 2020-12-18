@@ -13,7 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/var_type.h"
+
+namespace paddle {
+namespace memory {
+namespace allocation {
+class Allocation;
+}  // namespace allocation
+}  // namespace memory
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -53,7 +60,7 @@ void* Tensor::mutable_data(const platform::Place& place,
         requested_size, size,
         platform::errors::InvalidArgument(
             "The requested memory size is less than the memory size of Tensor. "
-            "But received requested memory size is d%, "
+            "But received requested memory size is %d, "
             "memory size of Tensor is %d.",
             requested_size, size));
     size = requested_size;
