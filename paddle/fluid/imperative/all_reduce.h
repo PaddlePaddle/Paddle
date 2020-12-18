@@ -40,7 +40,8 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
                const ParallelStrategy &strategy);
 
 void AllReduce(const framework::Variable &src, framework::Variable *dst,
-               const ParallelStrategy &strategy, cudaStream_t stream);
+               const ParallelStrategy &strategy, int ring_id,
+               bool use_calc_stream);
 
 }  // namespace imperative
 }  // namespace paddle

@@ -26,9 +26,24 @@
 
 namespace paddle {
 namespace imperative {
+static const platform::Place &GetVarPlace(const framework::Variable &src) {
+  if (src.IsType<framework::LoDTensor>()) {
+    return src.Get<framework::LoDTensor>().place();
+#if NCCL_VERSION_CODE >= 2212
+  } else if (src.IsType<framework::SelectedRows>()) {
+    return src.Get<framework::SelectedRows>().value().place();
+#endif
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Cannot get unsupported variable type %s for imperative allreduce, "
+        "only "
+        "LoDTensor and SelectedRows are supported.",
+        platform::demangle(framework::ToTypeName(src.Type()))));
+  }
+}
 
 static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
-                      const ParallelStrategy &strategy, cudaStream_t stream) {
+                      int ring_id, bool use_calc_stream) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
       platform::is_gpu_place(place), true,
@@ -41,18 +56,24 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
   auto *dst_ptr = dst->mutable_data(src.place(), src.type());
 
   auto nccl_dtype = platform::ToNCCLDataType(src.type());
-  auto comm = static_cast<platform::CUDADeviceContext *>(
-                  platform::DeviceContextPool::Instance().Get(place))
-                  ->nccl_comm();
-
+  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+  cudaStream_t stream = nullptr;
+  if (use_calc_stream) {
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    stream = static_cast<platform::CUDADeviceContext *>(dev_ctx)->stream();
+  } else {
+    stream = comm->stream();
+  }
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
-      src_ptr, dst_ptr, src.numel(), nccl_dtype, ncclSum, comm, stream));
+      src_ptr, dst_ptr, src.numel(), nccl_dtype, ncclSum, comm->comm(),
+      stream));
 }
 
 #if NCCL_VERSION_CODE >= 2212
 static void AllReduce(const framework::SelectedRows &src,
                       framework::SelectedRows *dst,
-                      const ParallelStrategy &strategy, cudaStream_t stream) {
+                      const ParallelStrategy &strategy, int ring_id,
+                      bool use_calc_stream) {
   VLOG(3) << "SelectedRows AllReduce start";
   const auto &src_tensor = src.value();
   const auto &place = src_tensor.place();
@@ -65,7 +86,9 @@ static void AllReduce(const framework::SelectedRows &src,
   auto nccl_dtype = platform::ToNCCLDataType(dtype);
   auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(place));
-  auto comm = dev_ctx->nccl_comm();
+
+  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+  cudaStream_t stream = (use_calc_stream ? dev_ctx->stream() : comm->stream());
 
   // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
   // but we can use other ways to implement is in the future
@@ -74,14 +97,14 @@ static void AllReduce(const framework::SelectedRows &src,
   rows_num_vector[strategy.local_rank_] = static_cast<int64_t>(src_rows.size());
   // CUDAMutableData use CalStream
   auto *gpu_rows_num_ptr = rows_num_vector.CUDAMutableData(place);
-  if (stream != dev_ctx->stream()) {
+  if (!use_calc_stream) {
     dev_ctx->Wait();
   }
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
       gpu_rows_num_ptr + strategy.local_rank_, gpu_rows_num_ptr, 1, ncclInt64,
-      comm, stream));
+      comm->comm(), stream));
 
-  if (stream != dev_ctx->stream()) {
+  if (!use_calc_stream) {
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
   }
 
@@ -110,7 +133,7 @@ static void AllReduce(const framework::SelectedRows &src,
 
   auto sizeof_dtype = framework::SizeOfType(dtype);
   int64_t row_offset = 0;
-  if (stream != dev_ctx->stream()) {
+  if (!use_calc_stream) {
     dev_ctx->Wait();
   }
   for (int i = 0; i < strategy.nranks_; ++i) {
@@ -118,13 +141,13 @@ static void AllReduce(const framework::SelectedRows &src,
       // 2. Broadcast the rows of SelectedRows
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBroadcast(
           src_rows_ptr, dst_rows_ptr + row_offset, cpu_rows_num_ptr[i],
-          ncclInt64, i, comm, stream));
+          ncclInt64, i, comm->comm(), stream));
       // 3. Broadcast the tensor data of SelectedRows
       auto *dst_tensor_ptr_i = reinterpret_cast<uint8_t *>(dst_tensor_ptr) +
                                row_offset * feature_size * sizeof_dtype;
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBroadcast(
           src_tensor_ptr, dst_tensor_ptr_i, cpu_rows_num_ptr[i] * feature_size,
-          nccl_dtype, i, comm, stream));
+          nccl_dtype, i, comm->comm(), stream));
       row_offset += cpu_rows_num_ptr[i];
     }
   }
@@ -137,13 +160,15 @@ static void AllReduce(const framework::SelectedRows &src,
 #endif
 
 void AllReduce(const framework::Variable &src, framework::Variable *dst,
-               const ParallelStrategy &strategy, cudaStream_t stream) {
+               const ParallelStrategy &strategy, int ring_id,
+               bool use_calc_stream) {
   if (src.IsType<framework::LoDTensor>()) {
     if (!dst->IsType<framework::LoDTensor>()) {
       dst->Clear();
     }
     AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>(), strategy, stream);
+              dst->GetMutable<framework::LoDTensor>(), ring_id,
+              use_calc_stream);
 #if NCCL_VERSION_CODE >= 2212
   } else if (src.IsType<framework::SelectedRows>()) {
     if (&src != dst) {
@@ -151,14 +176,21 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
         dst->Clear();
       }
       AllReduce(src.Get<framework::SelectedRows>(),
-                dst->GetMutable<framework::SelectedRows>(), strategy, stream);
+                dst->GetMutable<framework::SelectedRows>(), strategy, ring_id,
+                use_calc_stream);
     } else {
       // SelectedRows cannot be allreduce in-place
       framework::Variable tmp_dst;
       AllReduce(src.Get<framework::SelectedRows>(),
                 tmp_dst.GetMutable<framework::SelectedRows>(), strategy,
-                stream);
+                ring_id, use_calc_stream);
       // stream must synchronize to ensure accuracy of the move operation
+      const auto &place = GetVarPlace(src);
+      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+          platform::DeviceContextPool::Instance().Get(place));
+      auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+      cudaStream_t stream =
+          (use_calc_stream ? dev_ctx->stream() : comm->stream());
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
       *dst = std::move(tmp_dst);
     }
@@ -171,33 +203,9 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
   }
 }
 
-static const platform::Place &GetVarPlace(const framework::Variable &src) {
-  if (src.IsType<framework::LoDTensor>()) {
-    return src.Get<framework::LoDTensor>().place();
-#if NCCL_VERSION_CODE >= 2212
-  } else if (src.IsType<framework::SelectedRows>()) {
-    return src.Get<framework::SelectedRows>().value().place();
-#endif
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Cannot get unsupported variable type %s for imperative allreduce, "
-        "only "
-        "LoDTensor and SelectedRows are supported.",
-        platform::demangle(framework::ToTypeName(src.Type()))));
-  }
-}
-
 void AllReduce(const framework::Variable &src, framework::Variable *dst,
                const ParallelStrategy &strategy) {
-  const auto &place = GetVarPlace(src);
-  PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(place), true,
-      platform::errors::Unimplemented(
-          "Imperative mode does not support multi-CPU training yet."));
-  auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-      platform::DeviceContextPool::Instance().Get(place));
-  auto stream = dev_ctx->stream();
-  AllReduce(src, dst, strategy, stream);
+  AllReduce(src, dst, strategy, 0, true);
 }
 
 }  // namespace imperative

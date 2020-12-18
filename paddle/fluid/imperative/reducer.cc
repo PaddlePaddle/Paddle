@@ -376,17 +376,14 @@ std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
 
 void Reducer::FinalizeBackward() {
   // Must prevent compute_stream_ starting until all comm streams have finished
-  for (int i = 0; i < nrings_ - 1; ++i) {
+  for (int i = 0; i < nrings_; ++i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaEventRecord(comm_events_[i].get(), comm_streams_[i]));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamWaitEvent(comm_streams_[i + 1], comm_events_[i].get(), 0));
   }
-
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(comm_events_[nrings_ - 1].get(),
-                                              comm_streams_[nrings_ - 1]));
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaStreamWaitEvent(compute_stream_, comm_events_[nrings_ - 1].get(), 0));
+  for (int i = 0; i < nrings_; ++i) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaStreamWaitEvent(compute_stream_, comm_events_[i].get(), 0));
+  }
 
   if (!has_rebuilt_group_) {
     VLOG(3) << "Start rebuilding the groups";

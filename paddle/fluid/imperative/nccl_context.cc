@@ -203,15 +203,7 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
       platform::is_gpu_place(place_), true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place_);
-  cudaStream_t stream = nullptr;
-  if (use_calc_stream) {
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
-    stream = static_cast<platform::CUDADeviceContext *>(dev_ctx)->stream();
-  } else {
-    stream = comm->stream();
-  }
-  AllReduce(src, dst, strategy_, stream);
+  AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
 }
 
 paddle::platform::CUDADeviceContext *NCCLParallelContext::GetDeviceContext(
