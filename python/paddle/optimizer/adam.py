@@ -162,11 +162,15 @@ class Adam(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            self._add_accumulator(self._moment1_acc_str, p)
-            self._add_accumulator(self._moment2_acc_str, p)
+            acc_dtype = p.dtype
+            if acc_dtype == core.VarDesc.VarType.FP16:
+                acc_dtype = core.VarDesc.VarType.FP32
+            self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
+            self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
             self._add_accumulator(
                 name=self._beta1_pow_acc_str,
                 param=p,
+                dtype=acc_dtype,
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
                         else self._beta1,
                 shape=[1],
@@ -174,6 +178,7 @@ class Adam(Optimizer):
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
+                dtype=acc_dtype,
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
                         else self._beta2,
                 shape=[1],

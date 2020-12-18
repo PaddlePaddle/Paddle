@@ -239,13 +239,16 @@ class OptimizerWithMixedPrecision(object):
                         [g, ], self._loss_scaling, name="find_infinite_scale")
                     found_infs.append(found_inf)
         elif self._use_pure_fp16:
-            with self._train_program._optimized_guard(fp32_grads):
-                _, fp32_found_inf = check_finite_and_unscale(
-                    fp32_grads, self._loss_scaling, name="find_infinite_scale")
-            with self._train_program._optimized_guard(fp16_grads):
-                _, fp16_found_inf = check_finite_and_unscale(
-                    fp16_grads, self._loss_scaling, name="find_infinite_scale")
-            found_infs = [fp32_found_inf, fp16_found_inf]
+            if fp32_grads:
+                with self._train_program._optimized_guard(fp32_grads):
+                    _, fp32_found_inf = check_finite_and_unscale(
+                        fp32_grads, self._loss_scaling, name="find_infinite_scale")
+                found_infs.append(fp32_found_inf)
+            if fp16_grads:
+                with self._train_program._optimized_guard(fp16_grads):
+                    _, fp16_found_inf = check_finite_and_unscale(
+                        fp16_grads, self._loss_scaling, name="find_infinite_scale")
+                found_infs.append(fp16_found_inf)
         else:
             with self._train_program._optimized_guard(grads):
                 _, found_inf = check_finite_and_unscale(
@@ -258,31 +261,36 @@ class OptimizerWithMixedPrecision(object):
                     found_inf = layers.reduce_any(all_infs)
 
             if self._use_pure_fp16:
+                stop_update = False
                 with self._train_program._optimized_guard([]):
-                    update_loss_scaling(
-                        fp32_grads,
-                        found_inf,
-                        self._loss_scaling,
-                        self._num_good_steps,
-                        self._num_bad_steps,
-                        self._incr_every_n_steps,
-                        self._decr_every_n_nan_or_inf,
-                        self._incr_ratio,
-                        self._decr_ratio,
-                        stop_update=False,
-                        name="update_loss_scaling")
-                    update_loss_scaling(
-                        fp16_grads,
-                        found_inf,
-                        self._loss_scaling,
-                        self._num_good_steps,
-                        self._num_bad_steps,
-                        self._incr_every_n_steps,
-                        self._decr_every_n_nan_or_inf,
-                        self._incr_ratio,
-                        self._decr_ratio,
-                        stop_update=True,
-                        name="update_loss_scaling")
+                    if fp32_grads:
+                        update_loss_scaling(
+                            fp32_grads,
+                            found_inf,
+                            self._loss_scaling,
+                            self._num_good_steps,
+                            self._num_bad_steps,
+                            self._incr_every_n_steps,
+                            self._decr_every_n_nan_or_inf,
+                            self._incr_ratio,
+                            self._decr_ratio,
+                            stop_update=stop_update,
+                            name="update_loss_scaling")
+                        stop_update = True
+                    if fp16_grads:
+                        update_loss_scaling(
+                            fp16_grads,
+                            found_inf,
+                            self._loss_scaling,
+                            self._num_good_steps,
+                            self._num_bad_steps,
+                            self._incr_every_n_steps,
+                            self._decr_every_n_nan_or_inf,
+                            self._incr_ratio,
+                            self._decr_ratio,
+                            stop_update=stop_update,
+                            name="update_loss_scaling")
+                        stop_update = True
             else:
                 with self._train_program._optimized_guard([]):
                     update_loss_scaling(
