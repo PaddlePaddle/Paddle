@@ -28,6 +28,7 @@ import textwrap
 import numpy as np
 
 from paddle.fluid import unique_name
+from paddle.fluid.data_feeder import convert_dtype
 
 
 class BaseNodeVisitor(gast.NodeVisitor):
@@ -1219,3 +1220,39 @@ def unwrap(func):
         unwrapped_f = unwrapped_f.__wrapped__
 
     return unwrapped_f
+
+
+def input_specs_compatible(src_input_specs, other_input_specs):
+    """
+    Returns True if the two input specs are compatible, otherwise False.
+
+    args:
+        src_input_spec (list[InputSpec]|tuple(InputSpec)): list/tuple of
+            paddle.static.InputSpec
+        other_input_spec (list[InputSpec]|tuple(InputSpec)): list/tuple of
+            paddle.static.InputSpec
+    """
+    len_specs = len(src_input_specs)
+    if len_specs != len(other_input_specs):
+        return False
+
+    for i in range(len_specs):
+        src_shape = src_input_specs[i].shape
+        other_shape = other_input_specs[i].shape
+        len_shape = len(src_shape)
+        if len_shape != len(other_shape):
+            return False
+        for j in range(len_shape):
+            if src_shape[j] is None or src_shape[j] < 0:
+                continue
+            if other_shape[j] is None or other_shape[j] < 0:
+                continue
+            if src_shape[j] != other_shape[j]:
+                return False
+
+        src_dtype = convert_dtype(src_input_specs[i].dtype)
+        other_dtype = convert_dtype(other_input_specs[i].dtype)
+        if src_dtype != other_dtype:
+            return False
+
+    return True
