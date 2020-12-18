@@ -34,8 +34,7 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
                                     const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
-                              "The input graph of "
-                              "FuseFCmActOneDNNPass should not be nullptr."));
+                              "Graph cannot be nullptr."));
   FusePassBase::Init("fc_act", graph);
 
   GraphPatternDetector gpd;
