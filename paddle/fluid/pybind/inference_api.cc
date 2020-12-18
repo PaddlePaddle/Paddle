@@ -69,7 +69,8 @@ void BindMkldnnQuantizerConfig(py::module *m);
 #endif
 
 template <typename T>
-PaddleBuf PaddleBufCreate(py::array_t<T> data) {
+PaddleBuf PaddleBufCreate(
+    py::array_t<T, py::array::c_style | py::array::forcecast> data) {
   PaddleBuf buf(data.size() * sizeof(T));
   std::copy_n(static_cast<const T *>(data.data()), data.size(),
               static_cast<T *>(buf.data()));
@@ -77,7 +78,9 @@ PaddleBuf PaddleBufCreate(py::array_t<T> data) {
 }
 
 template <typename T>
-void PaddleBufReset(PaddleBuf &buf, py::array_t<T> data) {  // NOLINT
+void PaddleBufReset(
+    PaddleBuf &buf,                                                    // NOLINT
+    py::array_t<T, py::array::c_style | py::array::forcecast> data) {  // NOLINT
   buf.Resize(data.size() * sizeof(T));
   std::copy_n(static_cast<const T *>(data.data()), data.size(),
               static_cast<T *>(buf.data()));
@@ -85,7 +88,8 @@ void PaddleBufReset(PaddleBuf &buf, py::array_t<T> data) {  // NOLINT
 
 template <typename T>
 PaddleTensor PaddleTensorCreate(
-    py::array_t<T> data, const std::string name = "",
+    py::array_t<T, py::array::c_style | py::array::forcecast> data,
+    const std::string name = "",
     const std::vector<std::vector<size_t>> &lod = {}, bool copy = true) {
   PaddleTensor tensor;
 
@@ -137,8 +141,9 @@ py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
 }
 
 template <typename T>
-void ZeroCopyTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
-                          py::array_t<T> data) {
+void ZeroCopyTensorCreate(
+    ZeroCopyTensor &tensor,  // NOLINT
+    py::array_t<T, py::array::c_style | py::array::forcecast> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
   tensor.Reshape(std::move(shape));
@@ -146,8 +151,9 @@ void ZeroCopyTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
 }
 
 template <typename T>
-void PaddleInferTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
-                             py::array_t<T> data) {
+void PaddleInferTensorCreate(
+    paddle_infer::Tensor &tensor,  // NOLINT
+    py::array_t<T, py::array::c_style | py::array::forcecast> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
   tensor.Reshape(std::move(shape));

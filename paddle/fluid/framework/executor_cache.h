@@ -34,16 +34,29 @@ class ExecutorInfoCache {
    * The ExecutorPrepareContext is different while running forward program and
    * backward program. We add bool value into cached key to distinguish this.
    */
-  using KeyType = std::pair<const framework::ProgramDesc*, /*is_grad*/ bool>;
+  using KeyInfo = std::pair<const framework::ProgramDesc*, /*is_grad*/ bool>;
+  using KeyType = size_t;
 
   struct HashPair {
-    template <class T1, class T2>
-    size_t operator()(const std::pair<T1, T2>& p) const noexcept {
+    size_t operator()(const KeyInfo& key) const noexcept {
       size_t seed = 10;
-      hash_combine(&seed, p.first);
-      hash_combine(&seed, p.second);
+      auto* prog_desc = key.first;
+      /*
+       * Note(Aurelius84): DO NOT use only ProgramDesc* to calculate hash value
+       * because a new program will hold same pointer address after an older
+       * program is destructed with a small probability. Add op size while
+       * hashing because program may contains at least one block.
+       */
+      hash_combine(&seed, prog_desc);
+      for (size_t i = 0; i < prog_desc->Size(); ++i) {
+        hash_combine(&seed, &prog_desc->Block(i));
+        hash_combine(&seed, prog_desc->Block(i).OpSize());
+      }
+      hash_combine(&seed, key.second);
+      VLOG(1) << "hash value is : " << seed << " of pointer " << prog_desc;
       return seed;
     }
+
     template <typename T>
     void hash_combine(size_t* seed, const T& val) const {
       std::hash<T> hasher;
@@ -54,35 +67,45 @@ class ExecutorInfoCache {
   static ExecutorInfoCache& Instance();
 
   std::shared_ptr<framework::ExecutorPrepareContext> Get(
-      const KeyType& key) const {
+      const KeyInfo& key) const {
+    KeyType key_value = key_hash_func_(key);
     PADDLE_ENFORCE_EQ(
-        Has(key), true,
+        Has(key_value), true,
         platform::errors::NotFound(
             "(programDesc: %s, is_grad: %s) doesn't exist in ExecutorInfoCache",
             key.first, key.second));
-    return info_map_.at(key);
+    return info_map_.at(key_value);
+  }
+
+  bool Has(const KeyInfo& key) const {
+    KeyType key_value = key_hash_func_(key);
+    return Has(key_value);
   }
 
   bool Has(const KeyType& key) const {
     return info_map_.find(key) != info_map_.end();
   }
 
-  void Insert(const KeyType& key,
+  void Insert(const KeyInfo& key,
               std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx) {
+    KeyType key_value = key_hash_func_(key);
     PADDLE_ENFORCE_NE(
-        Has(key), true,
+        Has(key_value), true,
         platform::errors::NotFound(
             "(programDesc: %s, is_grad: %s) has existed in ExecutorInfoCache",
             key.first, key.second));
-
-    info_map_.insert(std::make_pair(key, exe_ctx));
+    info_map_.insert({key_value, exe_ctx});
   }
 
  private:
   ExecutorInfoCache() = default;
 
-  std::unordered_map<
-      KeyType, std::shared_ptr<framework::ExecutorPrepareContext>, HashPair>
+  HashPair key_hash_func_;
+
+  // Note: we shall avoid using raw pointer as key but use hash code,
+  // beacause pointer doesn't hold resource indeed.
+  std::unordered_map<KeyType,
+                     std::shared_ptr<framework::ExecutorPrepareContext>>
       info_map_;
   DISABLE_COPY_AND_ASSIGN(ExecutorInfoCache);
 };

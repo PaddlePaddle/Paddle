@@ -945,7 +945,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_cuda"
             env.update({
                 "FLAGS_selected_gpus": "{}".format(0),
-                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id % 2),
+                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
@@ -960,7 +960,7 @@ class TestDistBase(unittest.TestCase):
         if self._pipeline_mode:
             tr_cmd += " --use_pipeline"
         if self._mp_mode:
-            env = {"FLAGS_selected_gpus": "{}".format(trainer_id % 2)}
+            env = {"FLAGS_selected_gpus": "{}".format(trainer_id)}
 
         if self._nccl_comm_num > 1:
             tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
@@ -992,6 +992,7 @@ class TestDistBase(unittest.TestCase):
 
             global DIST_UT_PORT
             if DIST_UT_PORT == 0:
+                # NOTE(wangxi). hallreduce test must use 4cards after nccl>=2.7
                 for i in range(0, 4):
                     self._ps_endpoints += "127.0.0.1:%s," % (
                         self._find_free_port())
@@ -1110,7 +1111,8 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_vmodule"] = \
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
-                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,nccl_helper=10,grpc_client=10,grpc_server=10,request_handler_impl=10"
+                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10," \
+                "grpc_server=10,request_handler_impl=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         required_envs.update(need_envs)
