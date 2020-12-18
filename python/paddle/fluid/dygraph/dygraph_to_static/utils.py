@@ -882,6 +882,8 @@ class ForNodeVisitor(object):
                 self.node.iter.func,
                 gast.Attribute) and self.node.iter.func.attr == 'numpy':
             return True
+        elif isinstance(self.node.iter, gast.Subscript):
+            return True
         else:
             return False
 
