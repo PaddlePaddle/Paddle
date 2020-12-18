@@ -154,8 +154,6 @@ def train(use_pure_fp16=True, use_nesterov=False):
                 loss, = exe.run(compiled_program,
                                 feed=feeder.feed(data),
                                 fetch_list=[sum_cost])
-                print('PassID {0:1}, Train Batch ID {1:04}, train loss {2:2.4}'.
-                      format(pass_id, batch_id + 1, float(loss)))
                 train_loss_list.append(float(loss))
 
                 if batch_id >= 4:  # For speeding up CI
