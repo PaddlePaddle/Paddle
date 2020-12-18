@@ -314,7 +314,7 @@ void Reducer::MarkSparseVarReady(size_t var_index,
   // framework::Variable* sparse_var = var_warpper->MutableVar()
   // group_to_sparse_.insert({group_index, framework::Variable()});
   group_to_sparse_[group_index] = std::move(*group.sparse_contents_);
-  group.sparse_contents_ = nullptr;
+  *group.sparse_contents_ = framework::Variable();
 }
 
 void Reducer::MarkGroupReady(size_t group_index) {

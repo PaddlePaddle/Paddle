@@ -148,6 +148,7 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
       if (!dst->IsType<framework::SelectedRows>()) {
         dst->Clear();
       }
+      VLOG(0) << "SelectedRows allreduce not in-place";
       AllReduce(src.Get<framework::SelectedRows>(),
                 dst->GetMutable<framework::SelectedRows>(), strategy, stream);
     } else {
