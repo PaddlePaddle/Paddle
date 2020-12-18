@@ -55,6 +55,7 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
     GET_IR_NODE_FROM_SUBGRAPH(act, act, fc_act_pattern);
 
     auto *fc_op = fc->Op();
+    auto *act_op = act->Op();
 
     if (fc_op->HasAttr("use_mkldnn")) {
       PADDLE_ENFORCE(
@@ -64,26 +65,16 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
               "is used."));
     }
 
-    if (fc_op->HasAttr("trainable_statistics")) {
-      PADDLE_ENFORCE(
-          !BOOST_GET_CONST(bool, fc_op->GetAttr("trainable_statistics")),
-          platform::errors::PreconditionNotMet(
-              "The FC+Act fusion may happen only when mean and variance "
-              "are not calculated by current fc statistics."));
+    if(act_type == "gelu" && act_op->HasAttr("approximate")){
+        bool approximate = BOOST_GET_CONST(bool, act_op->GetAttr("approximate"));
+        std::string type = approximate ? "_tanh" : "_erf";
+        fc_op->SetAttr("activation_type", act_type + type);
     }
-
-    if (fc_op->HasAttr("is_test")) {
-      PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, fc_op->GetAttr("is_test")),
-          platform::errors::PreconditionNotMet(
-              "The FC+Act fusion may happen only during inference."));
-    }
+    else
+      fc_op->SetAttr("activation_type", act_type);
 
     fc_op->SetAttr("use_mkldnn", true);
-    fc_op->SetAttr("is_test", true);
-    fc_op->SetAttr("fuse_with_relu", true);
-    fc_op->SetAttr("trainable_statistics", false);
-    fc_op->SetAttr("activation_type", act_type);
+    
     fc_op->SetOutput("Out", {act_out->Name()});
 
     IR_OP_VAR_LINK(fc, act_out);
