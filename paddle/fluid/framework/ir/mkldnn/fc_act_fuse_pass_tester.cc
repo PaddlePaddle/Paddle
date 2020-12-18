@@ -231,12 +231,12 @@ void RunPassAndAssert(Graph* graph, const std::string& from,
 // ------------------------------ Test cases -----------------------------------
 
 TEST(FuseFCActOneDNNPass, ThrowUseMkldnn) {
-  auto prog =
-      BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
-  CreateOp(&prog, "fc", {{"Input", "x"},
-                                               {"Weights", "weights"},
-                                               {"Bias", "bias"},},
-                         {{"Out", "fc_y"}}, false);
+  auto prog = BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
+  CreateOp(&prog, "fc",
+           {
+               {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+           },
+           {{"Out", "fc_y"}}, false);
   CreateOp(&prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
 
   Graph graph(prog);
