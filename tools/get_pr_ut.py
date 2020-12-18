@@ -17,6 +17,8 @@ import os
 import json
 import re
 import sys
+import time
+import subprocess
 import requests
 from github import Github
 
@@ -60,8 +62,21 @@ class PRChecker(object):
             else:
                 break
             ix = ix + 1
-        if last_commit.message.find('test=full_case') != -1:
+        if last_commit.message.find('test=allcase') != -1:
             self.full_case = True
+
+    #todo: exception
+    def __wget_with_retry(self, url):
+        ix = 1
+        while ix < 6:
+            code = subprocess.call(
+                'wget -q --no-proxy --no-check-certificate {}'.format(url),
+                shell=True)
+            if code == 0:
+                return True
+            time.sleep(ix * 10)
+            ix += 1
+        return False
 
     def get_pr_files(self):
         """ Get files in pull request. """
@@ -101,6 +116,7 @@ class PRChecker(object):
 
     def get_comment_of_file(self, f):
         #content = self.repo.get_contents(f.replace(PADDLE_ROOT, ''), 'pull/').decoded_content
+        #todo: get file from github
         with open(f) as fd:
             lines = fd.readlines()
         lineno = 1
@@ -175,8 +191,11 @@ class PRChecker(object):
         check_added_ut = False
         ut_list = []
         file_ut_map = None
-        cmd = 'wget -q --no-proxy --no-check-certificate https://sys-p0.bj.bcebos.com/prec/file_ut.json' + self.suffix
-        os.system(cmd)
+        ret = self.__wget_with_retry(
+            'https://sys-p0.bj.bcebos.com/prec/file_ut.json{}'.format(
+                self.suffix))
+        if not ret:
+            exit(1)
         with open('file_ut.json' + self.suffix) as jsonfile:
             file_ut_map = json.load(jsonfile)
         for f in self.get_pr_files():
@@ -204,24 +223,25 @@ class PRChecker(object):
                 else:
                     ut_list.extend(file_ut_map.get(f))
         ut_list = list(set(ut_list))
-        cmd = 'wget -q --no-proxy --no-check-certificate https://sys-p0.bj.bcebos.com/prec/prec_delta' + self.suffix
-        os.system(cmd)
-        with open('prec_delta' + self.suffix) as delta:
-            for ut in delta:
-                ut_list.append(ut.rstrip('\r\n'))
+        ret = self.__wget_with_retry(
+            'https://sys-p0.bj.bcebos.com/prec/prec_delta{}'.format(
+                self.suffix))
+        if ret:
+            with open('prec_delta' + self.suffix) as delta:
+                for ut in delta:
+                    ut_list.append(ut.rstrip('\r\n'))
 
         if check_added_ut:
-            cmd = 'bash {}/tools/check_added_ut.sh >/tmp/pre_ut 2>&1'.format(
-                PADDLE_ROOT)
-            os.system(cmd)
             with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
                 for ut in utfile:
                     ut_list.append(ut.rstrip('\r\n'))
 
-        return ' '.join(ut_list)
+        return '\n'.join(ut_list)
 
 
 if __name__ == '__main__':
     pr_checker = PRChecker()
     pr_checker.init()
-    print(pr_checker.get_pr_ut())
+    #print(pr_checker.get_pr_ut())
+    with open('ut_list', 'w') as f:
+        f.write(pr_checker.get_pr_ut())

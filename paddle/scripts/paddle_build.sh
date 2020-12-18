@@ -1047,7 +1047,10 @@ EOF
 set +x
         precison_cases=""
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
-            precision_cases=`python $PADDLE_ROOT/tools/get_pr_ut.py`
+            python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
+            if [[ -f "ut_list" ]]; then
+                precision_cases=`cat ut_list`
+            fi
         fi
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ -a "$PADDLE_ROOT/added_ut" ];then
