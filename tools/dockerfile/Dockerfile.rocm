@@ -157,4 +157,7 @@ RUN wget https://github.com/ROCmSoftwarePlatform/hipCUB/archive/rocm-<hipcub_ver
     make -j8 && make install && \
     cd .. && rm -rf hipCUB-rocm-<hipcub_version>/
 
+ENV PATH=/opt/rocm/bin:$PATH
+RUN echo "export PATH=/opt/rocm/bin:\${PATH}" >> ~/.bashrc
+
 EXPOSE 22
