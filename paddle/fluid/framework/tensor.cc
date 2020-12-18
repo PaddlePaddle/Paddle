@@ -60,7 +60,7 @@ void* Tensor::mutable_data(const platform::Place& place,
         requested_size, size,
         platform::errors::InvalidArgument(
             "The requested memory size is less than the memory size of Tensor. "
-            "But received requested memory size is d%, "
+            "But received requested memory size is %d, "
             "memory size of Tensor is %d.",
             requested_size, size));
     size = requested_size;
