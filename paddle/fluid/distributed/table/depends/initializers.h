@@ -40,6 +40,12 @@ class Initializer {
     }
   }
 
+  virtual void GetValue(float *value, int numel) {
+    for (int x = 0; x < numel; ++x) {
+      value[x] = GetValue();
+    }
+  }
+
   virtual ~Initializer() {}
 
  protected:
@@ -60,6 +66,11 @@ class UniformInitializer : public Initializer {
   }
 
   float GetValue() override { return dist_(*random_engine_); }
+  void GetValue(float *value, int numel) {
+    for (int x = 0; x < numel; ++x) {
+      value[x] = dist_(random_engine_);
+    }
+  }
 
  private:
   float min_;
@@ -83,6 +94,11 @@ class GaussianInitializer : public Initializer {
   }
 
   float GetValue() override { return dist_(*random_engine_); }
+  void GetValue(float *value, int numel) {
+    for (int x = 0; x < numel; ++x) {
+      value[x] = dist_(random_engine_);
+    }
+  }
 
  private:
   float std_;
@@ -100,6 +116,7 @@ class FillConstantInitializer : public Initializer {
   }
 
   float GetValue() override { return value_; }
+  void GetValue(float *value, int numel) { std::fill_n(value, numel, value_); }
 
  private:
   float value_;

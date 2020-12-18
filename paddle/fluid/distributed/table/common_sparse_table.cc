@@ -251,6 +251,26 @@ int32_t CommonSparseTable::initialize_value() {
     auto shard = std::make_shared<ValueBlock>(common, &initializers_);
     shard_values_.emplace_back(shard);
   }
+
+  auto accessor = _config.accessor();
+  auto feasigns = accessor.fea_dim();
+
+  VLOG(1) << "has " << feasigns << " ids need to be pre inited";
+
+  auto buckets = bucket(feasigns, 10);
+
+  for (int x = 0; x < 10; ++x) {
+    auto bucket_feasigns = buckets[x + 1] - buckets[x];
+    std::vector<uint64_t> ids(bucket_feasigns);
+    std::generate(ids.begin(), ids.end(),
+                  [n = buckets[x]]() mutable { return n++; });
+
+    std::vector<float> pulls;
+    pulls.resize(bucket_feasigns * param_dim_);
+
+    pull_sparse(pulls.data(), ids.data(), bucket_feasigns);
+  }
+
   return 0;
 }
 

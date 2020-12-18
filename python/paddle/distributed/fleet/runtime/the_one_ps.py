@@ -558,7 +558,8 @@ class TheOnePSRuntime(RuntimeBase):
             accessor = Accessor()
             accessor.accessor_class = "CommMergeAccessor"
             accessor.optimizer = None
-            accessor.feature_dim = 0 if ctx.is_sparse() else ctx.sections()[0]
+            accessor.feature_dim = 0 if ctx.is_distributed() else ctx.sections(
+            )[0]
             accessor.embedding_dim = ctx.sections()[0] if ctx.is_sparse() else 1
             return accessor
 

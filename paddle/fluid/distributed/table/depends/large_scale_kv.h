@@ -82,8 +82,8 @@ struct VALUE {
   void set(const std::vector<Initializer *> &inits, std::vector<int> numels) {
     for (int x = 0; x < numels.size(); ++x) {
       auto &value = values_[x];
-      value.reserve(numels[x]);
-      inits[x]->GetValue(&value, numels[x]);
+      value.resize(numels[x]);
+      inits[x]->GetValue(value.data(), numels[x]);
     }
   }
 
