@@ -663,8 +663,11 @@ def _pull_sparse_v2(input,
     return outs
 
 
-def _pull_box_sparse(input, size, dtype='float32',
-                     is_distributed=False, is_sparse=False):
+def _pull_box_sparse(input,
+                     size,
+                     dtype='float32',
+                     is_distributed=False,
+                     is_sparse=False):
     r"""
     **Pull Box Sparse Layer**
 
@@ -709,9 +712,11 @@ def _pull_box_sparse(input, size, dtype='float32',
         inputs={'Ids': inputs,
                 'W': w},
         outputs={'Out': outs},
-        attrs={'size': size,
-               'is_distributed': is_distributed,
-               'is_sparse': is_sparse})
+        attrs={
+            'size': size,
+            'is_distributed': is_distributed,
+            'is_sparse': is_sparse
+        })
     if len(outs) == 1:
         return outs[0]
     return outs
