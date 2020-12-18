@@ -4463,10 +4463,6 @@ class PipelineOptimizer(object):
         new_startup_program = self._split_startup_program(startup_program,
                                                           local_rank)
 
-        with open("startup_prog_%d_0" % local_rank, 'w') as f:
-            f.writelines(str(new_startup_program))
-        with open("main_prog_%d_0" % local_rank, 'w') as f:
-            f.writelines(str(program_list[local_rank]['program']))
         # Step8: clear gradients before each mini-batch and 
         # accumulate gradients during backward
         self._clear_gradients(
