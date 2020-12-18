@@ -24,6 +24,7 @@ import unittest
 import os
 import copy
 import numpy as np
+from paddle.static.amp import decorate
 
 paddle.enable_static()
 
@@ -138,7 +139,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
 
         amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
             custom_black_varnames={"loss", "conv2d_0.w_0"})
-        mp_optimizer = fluid.contrib.mixed_precision.decorate(
+        mp_optimizer = decorate(
             optimizer=optimizer,
             amp_lists=amp_lists,
             init_loss_scaling=8.0,
@@ -442,7 +443,7 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
                 amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
                     custom_black_varnames={"loss", "conv2d_0.w_0"})
-                mp_optimizer = fluid.contrib.mixed_precision.decorate(
+                mp_optimizer = decorate(
                     optimizer=optimizer,
                     amp_lists=amp_lists,
                     init_loss_scaling=8.0,

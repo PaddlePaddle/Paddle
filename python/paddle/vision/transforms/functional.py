@@ -62,11 +62,11 @@ def to_tensor(pic, data_format='CHW'):
 
     Args:
         pic (PIL.Image|np.ndarray): Image to be converted to tensor.
-        data_format (str, optional): Data format of input img, should be 'HWC' or 
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
 
     Returns:
-        Tensor: Converted image. Data format is same as input img.
+        Tensor: Converted image. Data type is same as input img.
 
     Examples:
         .. code-block:: python
