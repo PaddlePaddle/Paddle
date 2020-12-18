@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <nvToolsExt.h>
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/fetch_async_op_handle.h"
@@ -330,7 +331,9 @@ bool FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
   try {
     VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
     if (LIKELY(!strategy_.dry_run_)) {
+      nvtxRangePush(op->Name().c_str());
       op->Run(strategy_.use_device_);
+      nvtxRangePop();
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
     return true;

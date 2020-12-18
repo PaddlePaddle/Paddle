@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <nvToolsExt.h>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -473,7 +474,10 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 
   for (int64_t i = start_op_index; i < end_op_index; ++i) {
     auto& op = ctx->ops_[i];
+    nvtxRangePush(op->Type().c_str());
     op->Run(*local_scope, place_);
+    nvtxRangePop();
+
     if (gc) {
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
     }

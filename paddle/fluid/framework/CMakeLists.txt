@@ -261,7 +261,7 @@ else()
   endif()
 endif()
 
-target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_helper conditional_block_op_helper)
+target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_helper conditional_block_op_helper nvToolsExt)
 
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor async_ssa_graph_executor
@@ -330,7 +330,7 @@ cc_library(paddle_framework_shared
     DEPS ${FLUID_FRAMEWORK_MODULES})
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 set_target_properties(paddle_framework_shared PROPERTIES OUTPUT_NAME paddle_framework)
-target_link_libraries(paddle_framework_shared ${os_dependency_modules})
+target_link_libraries(paddle_framework_shared ${os_dependency_modules} nvToolsExt)
 
 if (LINUX)
   set(FLUID_FRAMEWORK_SHARED_LIB
