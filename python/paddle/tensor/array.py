@@ -122,8 +122,8 @@ def array_write(x, i, array=None):
 
 def create_array(dtype):
     """
-    This OP creates an array. It is used as the input of :ref:`api_paddle_tensor_array_read` and
-    :ref:`api_paddle_tensor_array_write`.
+    This OP creates an array. It is used as the input of :ref:`api_paddle_tensor_array_array_read` and
+    :ref:`api_paddle_tensor_array_array_write`.
 
     Args:
         dtype (str): The data type of the elements in the array. Support data type: float32, float64, int32, int64 and bool.
