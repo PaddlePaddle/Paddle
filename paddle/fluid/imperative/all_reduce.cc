@@ -16,14 +16,6 @@
 
 #include "paddle/fluid/imperative/all_reduce.h"
 
-#include <string>
-#include <utility>
-
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/nccl_helper.h"
-#include "paddle/fluid/string/string_helper.h"
-
 namespace paddle {
 namespace imperative {
 static const platform::Place &GetVarPlace(const framework::Variable &src) {
@@ -43,7 +35,8 @@ static const platform::Place &GetVarPlace(const framework::Variable &src) {
 }
 
 static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
-                      int ring_id, bool use_calc_stream) {
+                      const cudaStream_t stream,
+                      const platform::NCCLComm *comm) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
       platform::is_gpu_place(place), true,
@@ -51,19 +44,9 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
           "Imperative mode does not support multi-CPU training yet."));
 
   const void *src_ptr = src.data<void>();
-
   dst->Resize(src.dims());
   auto *dst_ptr = dst->mutable_data(src.place(), src.type());
-
   auto nccl_dtype = platform::ToNCCLDataType(src.type());
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-  cudaStream_t stream = nullptr;
-  if (use_calc_stream) {
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-    stream = static_cast<platform::CUDADeviceContext *>(dev_ctx)->stream();
-  } else {
-    stream = comm->stream();
-  }
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
       src_ptr, dst_ptr, src.numel(), nccl_dtype, ncclSum, comm->comm(),
       stream));
@@ -72,8 +55,9 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
 #if NCCL_VERSION_CODE >= 2212
 static void AllReduce(const framework::SelectedRows &src,
                       framework::SelectedRows *dst,
-                      const ParallelStrategy &strategy, int ring_id,
-                      bool use_calc_stream) {
+                      const ParallelStrategy &strategy,
+                      const cudaStream_t stream,
+                      const platform::NCCLComm *comm) {
   VLOG(3) << "SelectedRows AllReduce start";
   const auto &src_tensor = src.value();
   const auto &place = src_tensor.place();
@@ -87,8 +71,7 @@ static void AllReduce(const framework::SelectedRows &src,
   auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(place));
 
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-  cudaStream_t stream = (use_calc_stream ? dev_ctx->stream() : comm->stream());
+  bool use_calc_stream = (dev_ctx->stream() == stream);
 
   // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
   // but we can use other ways to implement is in the future
@@ -162,13 +145,19 @@ static void AllReduce(const framework::SelectedRows &src,
 void AllReduce(const framework::Variable &src, framework::Variable *dst,
                const ParallelStrategy &strategy, int ring_id,
                bool use_calc_stream) {
+  const auto &place = GetVarPlace(src);
+  auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(place));
+  platform::NCCLComm *comm =
+      platform::NCCLCommContext::Instance().Get(ring_id, place);
+  cudaStream_t stream = (use_calc_stream ? dev_ctx->stream() : comm->stream());
+
   if (src.IsType<framework::LoDTensor>()) {
     if (!dst->IsType<framework::LoDTensor>()) {
       dst->Clear();
     }
     AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>(), ring_id,
-              use_calc_stream);
+              dst->GetMutable<framework::LoDTensor>(), stream, comm);
 #if NCCL_VERSION_CODE >= 2212
   } else if (src.IsType<framework::SelectedRows>()) {
     if (&src != dst) {
@@ -176,21 +165,15 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
         dst->Clear();
       }
       AllReduce(src.Get<framework::SelectedRows>(),
-                dst->GetMutable<framework::SelectedRows>(), strategy, ring_id,
-                use_calc_stream);
+                dst->GetMutable<framework::SelectedRows>(), strategy, stream,
+                comm);
     } else {
       // SelectedRows cannot be allreduce in-place
       framework::Variable tmp_dst;
       AllReduce(src.Get<framework::SelectedRows>(),
-                tmp_dst.GetMutable<framework::SelectedRows>(), strategy,
-                ring_id, use_calc_stream);
+                tmp_dst.GetMutable<framework::SelectedRows>(), strategy, stream,
+                comm);
       // stream must synchronize to ensure accuracy of the move operation
-      const auto &place = GetVarPlace(src);
-      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-          platform::DeviceContextPool::Instance().Get(place));
-      auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-      cudaStream_t stream =
-          (use_calc_stream ? dev_ctx->stream() : comm->stream());
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
       *dst = std::move(tmp_dst);
     }
