@@ -38,7 +38,8 @@ class ProximalAdagradOpKernel : public framework::OpKernel<T> {
     auto p = framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
     auto m = framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("Moment"));
     auto g = framework::EigenVector<T>::Flatten(*grad);
-    auto lr = framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
+    auto lr =
+        framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
 
     auto p_out = framework::EigenVector<T>::Flatten(*param_out);
     auto m_out = framework::EigenVector<T>::Flatten(*moment_out);
