@@ -277,7 +277,7 @@ class HeterBoxTrainer : public TrainerBase {
 };
 #endif
 
-#ifdef PADDLE_WITH_PSLIB
+#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
 class PSGPUTrainer : public TrainerBase {
  public:
   PSGPUTrainer() {}

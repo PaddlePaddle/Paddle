@@ -704,7 +704,7 @@ void FleetWrapper::PushDenseVarsSync(
     Scope* scope, const uint64_t table_id,
     const std::vector<std::string>& var_names) {}
 
-#ifdef PADDLE_WITH_PSLIB
+#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
 void FleetWrapper::PushDenseVarsAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names,

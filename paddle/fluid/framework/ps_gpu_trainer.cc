@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
-#ifdef PADDLE_WITH_PSLIB
+#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
 namespace paddle {

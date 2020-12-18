@@ -66,7 +66,8 @@ class PullBoxSparseOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("W",
              "(Tensor) The input represents embedding tensors, "
-             "which is a learnable parameter.");
+             "which is a learnable parameter.")
+        .AsDispensable();
     AddInput("Ids",
              "Input tensors with type int32 or int64 "
              "contains the ids to be looked up in BoxPS. "

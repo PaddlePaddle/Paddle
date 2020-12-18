@@ -537,7 +537,7 @@ class HeterBoxWorker : public HogwildWorker {
 };
 #endif
 
-#ifdef PADDLE_WITH_PSLIB
+#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
 class PSGPUWorker : public HogwildWorker {
  public:
   PSGPUWorker() {}
