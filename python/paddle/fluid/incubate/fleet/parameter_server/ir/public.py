@@ -599,9 +599,13 @@ class CompileTimeStrategy(object):
             var = self.origin_main_program.global_block().vars[
                 grad.merged_var.name]
 
-            sparse_ctx = CommContext(grad_name, splited_varname, ep_list,
-                                     var.shape, [grad_name], trainer_id, True,
-                                     True, is_distributed, idx)
+            shape = list(var.shape)
+            shape[0] = 0 if is_distributed else shape[0]
+
+            sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
+                                     [grad_name], trainer_id, True, True,
+                                     is_distributed, idx)
+
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
         return send_ctx
