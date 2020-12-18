@@ -2049,7 +2049,7 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out3)
             
             # keep_dim=True, out4 should be [[False], [True]], out.shape should be (2,1)
-            out4 = paddle.all(x, axis=1, keep_dim=True)
+            out4 = paddle.all(x, axis=1, keepdim=True)
             out4 = paddle.cast(out4, 'int32')  # [[False], [True]]
             print(out4)
             
@@ -2144,7 +2144,7 @@ def any(x, axis=None, keepdim=False, name=None):
             print(out3)
             
             # keep_dim=True, result should be [[True], [False]], out.shape should be (2,1)
-            out4 = paddle.any(x, axis=1, keep_dim=True)
+            out4 = paddle.any(x, axis=1, keepdim=True)
             out4 = paddle.cast(out4, 'int32')  # [[True], [False]]
             print(out4)
             
