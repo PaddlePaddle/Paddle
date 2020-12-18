@@ -469,8 +469,8 @@ class FCPrimitiveFactory {
       constexpr float scale = 1.0f;
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_gelu_tanh,
-                                     alpha, beta);
+      post_operations.append_eltwise(
+          scale, mkldnn::algorithm::eltwise_gelu_tanh, alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "gelu_erf") {
       constexpr float scale = 1.0f;
       constexpr float alpha = 0.0f;

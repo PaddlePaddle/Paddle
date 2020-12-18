@@ -65,16 +65,15 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
               "is used."));
     }
 
-    if(act_type == "gelu" && act_op->HasAttr("approximate")){
-        bool approximate = BOOST_GET_CONST(bool, act_op->GetAttr("approximate"));
-        std::string type = approximate ? "_tanh" : "_erf";
-        fc_op->SetAttr("activation_type", act_type + type);
-    }
-    else
+    if (act_type == "gelu" && act_op->HasAttr("approximate")) {
+      bool approximate = BOOST_GET_CONST(bool, act_op->GetAttr("approximate"));
+      std::string type = approximate ? "_tanh" : "_erf";
+      fc_op->SetAttr("activation_type", act_type + type);
+    } else
       fc_op->SetAttr("activation_type", act_type);
 
     fc_op->SetAttr("use_mkldnn", true);
-    
+
     fc_op->SetOutput("Out", {act_out->Name()});
 
     IR_OP_VAR_LINK(fc, act_out);
