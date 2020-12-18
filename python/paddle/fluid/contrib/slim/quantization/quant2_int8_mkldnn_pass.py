@@ -164,14 +164,14 @@ class Quant2Int8MkldnnPass(object):
                 if op.op().has_attr("max_range"):
                     _max_range = np.array(op.op().attr("max_range")).astype(
                         np.float64)
-                    self._weight_scales[input_name] = _max_range
+                    self._weight_scales[input_name] = np.array(
+                        self._s8_max * self._s8_max /
+                        _max_range).astype(np.float64)
                 else:
                     scale_name = op.input("Scales")[0]
-                    scales = np.array(
-                        self._s8_max * self._s8_max / self._load_param(
-                            self._scope, scale_name)).astype(np.float64)
-                    scales[scales == np.Inf] = 0.0
-                    self._weight_scales[input_name] = scales
+                    self._weight_scales[input_name] = np.array(
+                        self._load_param(self._scope, scale_name)).astype(
+                            np.float64)
 
         return graph
 
@@ -304,9 +304,9 @@ class Quant2Int8MkldnnPass(object):
         scales = self._weight_scales[output_var_name]
         weight = self._load_param(self._scope, weight_var_name)
         if scales.size == 1 or scales.size == weight.shape[0]:
-            w_fp32 = np.divide(np.multiply(weight, self._s8_max).T, scales.T).T
+            w_fp32 = np.multiply(np.divide(weight, self._s8_max).T, scales.T).T
         elif len(weight.shape) > 1 and scales.size == weight.shape[1]:
-            w_fp32 = np.divide(np.multiply(weight, self._s8_max), scales)
+            w_fp32 = np.multiply(np.divide(weight, self._s8_max), scales)
         else:
             raise ValueError(
                 "The size of weight scales vector ({}) does not match the dimensions ({}) of the weights tensor {}."
