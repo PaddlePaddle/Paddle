@@ -575,6 +575,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
     auto ddO = ctx.Output<Tensor>("DDOutput");
     auto dW = ctx.Output<Tensor>("DFilter");
     auto dX = ctx.Output<Tensor>("DInput");
+
     if (ddO) {
       ddO->mutable_data<T>(ctx.GetPlace());
       math::SetConstant<platform::CUDADeviceContext, T> set_zero;
@@ -615,8 +616,6 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
     Tensor transformed_ddO_channel(dO->type());
     Tensor transformed_dX_channel(X->type());
 
-    std::vector<int> output_vec = framework::vectorize<int>(ddO->dims());
-
     if (channel_last) {
       ResizeToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, X, &transformed_X_channel);
@@ -635,10 +634,10 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
             ctx, ddX, &transformed_ddX_channel);
       }
 
-      if (ddO) {
-        ResizeToChannelFirst<platform::CUDADeviceContext, T>(
-            ctx, ddO, &transformed_ddO_channel);
-      }
+      // if (ddO) {
+      //   ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+      //       ctx, ddO, &transformed_ddO_channel);
+      // }
       if (dX) {
         ResizeToChannelFirst<platform::CUDADeviceContext, T>(
             ctx, dX, &transformed_dX_channel);
@@ -652,9 +651,11 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
         transformed_ddX_channel = *ddX;
       }
       if (dX) {
-        transformed_dX_channel.ShareDataWith(*dX);
+        transformed_dX_channel = *dX;
       }
     }
+    std::vector<int> output_vec =
+        framework::vectorize<int>(transformed_dO_channel.dims());
 
     auto in_dims = transformed_X_channel.dims();
     auto filter_dims = W->dims();
@@ -763,13 +764,13 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       }
 
     } else {
-      transformed_X.ShareDataWith(transformed_X_channel);
-      transformed_dO.ShareDataWith(transformed_dO_channel);
+      transformed_X = transformed_X_channel;
+      transformed_dO = transformed_dO_channel;
       if (ddX) {
-        transformed_ddX.ShareDataWith(transformed_ddX_channel);
+        transformed_ddX = transformed_ddX_channel;
       }
       if (dX) {
-        transformed_dX.ShareDataWith(transformed_dX_channel);
+        transformed_dX = transformed_dX_channel;
       }
 
       if (paddings.size() == data_dim) {
@@ -807,7 +808,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                                               ctx.GetPlace());
     } else {
       ddO->mutable_data<T>(ctx.GetPlace());
-      transformed_ddO_channel.ShareDataWith(*ddO);
+      transformed_ddO_channel = *ddO;
       transformed_ddO_channel.Resize(
           framework::make_ddim(transformed_output_vec));
     }
@@ -880,9 +881,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
         ddw = ddW->data<T>();
         args2.handle = handle;
         args2.idesc.set(transformed_ddO_channel, iwo_group);
-
         args2.wdesc.set(*ddW, layout, iwo_group);
-
         args2.odesc.set(transformed_X, iwo_group);
         args2.cdesc.set(dtype, padding_common, strides, dilations, c_group);
         using search2 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
