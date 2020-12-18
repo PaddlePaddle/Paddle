@@ -68,7 +68,7 @@ class UniformInitializer : public Initializer {
   float GetValue() override { return dist_(*random_engine_); }
   void GetValue(float *value, int numel) {
     for (int x = 0; x < numel; ++x) {
-      value[x] = dist_(random_engine_);
+      value[x] = dist_(*random_engine_);
     }
   }
 
@@ -96,7 +96,7 @@ class GaussianInitializer : public Initializer {
   float GetValue() override { return dist_(*random_engine_); }
   void GetValue(float *value, int numel) {
     for (int x = 0; x < numel; ++x) {
-      value[x] = dist_(random_engine_);
+      value[x] = dist_(*random_engine_);
     }
   }
 
