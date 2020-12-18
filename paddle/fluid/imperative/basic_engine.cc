@@ -211,6 +211,7 @@ void BasicEngine::PrepareGradAccumulators(
                     "Gradientaccumulator."));
             accumulator->SetPostHooks(var->GetLeafHooks());
           }
+          break;
         }
       }
     }
