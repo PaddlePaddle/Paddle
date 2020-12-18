@@ -138,7 +138,13 @@ class CompileTimeStrategy(object):
 
         self.strategy = strategy
         self.role_maker = role_maker
-        self.is_heter_ps_mode = role_maker._is_heter_parameter_server_mode
+        try:
+            self.is_heter_ps_mode = role_maker._is_heter_parameter_server_mode
+        except:
+            warnings.warn(
+                "Using paddle.distributed.fleet instead of paddle.fluid.incubate.fleet"
+            )
+            self.is_heter_ps_mode = False
 
         self.origin_sparse_pairs = []
         self.origin_dense_pairs = []

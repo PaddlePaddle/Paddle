@@ -20,7 +20,7 @@ limitations under the License. */
 #include <random>
 #include <string>
 #include <unordered_map>
-#include <unordered_set> 
+#include <unordered_set>
 #include <vector>
 #include "brpc/channel.h"
 #include "brpc/controller.h"
@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
@@ -135,6 +136,7 @@ class HeterServer {
   virtual ~HeterServer() {}
 
   void Stop() {
+    VLOG(0) << "HeterServer Stop()";
     std::unique_lock<std::mutex> lock(mutex_);
     stoped_ = true;
     cv_.notify_all();
@@ -223,6 +225,7 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   int Handle(const MultiVarMsg* request, MultiVarMsg* response,
              brpc::Controller* cntl) override {
     platform::RecordEvent record_event("RequestSendAndRecvHandler->Handle");
+    FLAGS_eager_delete_tensor_gb = -1;
     auto& local_scope = scope_->NewScope();
     auto message_name = request->message_name();
     auto& request_io_buffer = cntl->request_attachment();
