@@ -48,7 +48,7 @@ def array_read(array, i):
     """
     This OP is used to read data at the specified position from the input array.
 
-    Case 1:
+    Case:
 
     .. code-block:: text
 
@@ -93,7 +93,7 @@ def array_write(x, i, array=None):
 
     Args:
         x (Tensor): The input data to be written into array. It's multi-dimensional
-            Tensor or LoDTensor. Data type: float32, float64, int32, int64.
+            Tensor or LoDTensor. Data type: float32, float64, int32, int64 and bool.
         i (Tensor): 1-D Tensor with shape [1], which represents the position into which
             ``x`` is written.
         array (list|Tensor, optional): The array into which ``x`` is written. The default value is None,
@@ -126,7 +126,7 @@ def create_array(dtype):
     :ref:`api_paddle_tensor_array_write`.
 
     Args:
-        dtype (str): The data type of the elements in the array. Support data type: float32, float64, int32, int64.
+        dtype (str): The data type of the elements in the array. Support data type: float32, float64, int32, int64 and bool.
 
     Returns:
         list|Tensor: An empty array. In dynamic mode, ``array`` is a Python list. But in static mode, array is a Tensor
