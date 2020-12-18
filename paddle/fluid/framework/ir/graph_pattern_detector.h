@@ -553,12 +553,12 @@ struct FCMKLDNN : public PatternBase {
 };
 
 //
-// \brief   Pattern looking for batch_norm and a directly following activation
+// \brief   Pattern looking for fc and a directly following activation
 // operator.
 //
-// \note    Currently only ReLU is supported as an activation function.
-//          Formula: act(bn(x))
-//          Op: batch_norm + act
+// \note    Currently only gelu and tanh are supported as an activation function.
+//          Formula: act(fc(x))
+//          Op: fc + act
 struct FCActOneDNN : public PatternBase {
   FCActOneDNN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fc_act_onednn") {}
