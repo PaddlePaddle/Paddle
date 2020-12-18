@@ -49,25 +49,25 @@ class PipelineHelper(object):
         rank = self.role_maker._worker_index()
 
         # Create ring 0 for all gpus in a pipeline
-        pipeline_endpoints = []
         pipeline_rank = rank % inner_parallelism
         pipeline_id = rank // inner_parallelism
-        for idx, ep in enumerate(endpoints):
-            if idx // inner_parallelism == pipeline_id:
-                pipeline_endpoints.append(ep)
+        start_index = pipeline_id * inner_parallelism
+        pipeline_endpoints = endpoints[start_index:start_index +
+                                       inner_parallelism]
         self._init_communicator(self.startup_program, current_endpoint,
                                 pipeline_endpoints, pipeline_rank, 0,
                                 self.wait_port)
 
         pipeline_num = len(endpoints) // inner_parallelism
         if pipeline_num == 1: return
-        # Create rings for gpus with the same gpu id
+        # Create rings for gpus with the same pipeline id
         eps = []
-        local_rank = self.role_maker._worker_index() % inner_parallelism
-        ring_id = local_rank + 1
+        pipeline_rank = self.role_maker._worker_index() % inner_parallelism
+        ring_id = pipeline_rank + 1
         for i in range(pipeline_num):
-            eps.append(endpoints[i * inner_parallelism + local_rank])
-        temp_rank = self.role_maker._worker_index() // inner_parallelism
+            eps.append(endpoints[i * inner_parallelism + pipeline_rank])
+        # rank in a ring of gpus with the same pipeline id
+        rank = self.role_maker._worker_index() // inner_parallelism
         self._init_communicator(self.startup_program, current_endpoint, eps,
                                 temp_rank, ring_id, self.wait_port)
         self._broadcast_params(ring_id)
