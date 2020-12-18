@@ -253,10 +253,6 @@ int32_t CommonSparseTable::initialize_value() {
   }
 
   auto accessor = _config.accessor();
-  auto feasigns = accessor.fea_dim();
-
-  _shard_idx = shard_idx;
-  _shard_num = shard_num;
 
   std::vector<uint64_t> feasigns;
 
@@ -266,9 +262,9 @@ int32_t CommonSparseTable::initialize_value() {
     }
   }
 
-  VLOG(1) << "has " << feasigns << " ids need to be pre inited";
+  VLOG(0) << "has " << feasigns.size() << " ids need to be pre inited";
 
-  auto buckets = bucket(feasigns, 10);
+  auto buckets = bucket(feasigns.size(), 10);
   for (int x = 0; x < 10; ++x) {
     auto bucket_feasigns = buckets[x + 1] - buckets[x];
     std::vector<uint64_t> ids(bucket_feasigns);

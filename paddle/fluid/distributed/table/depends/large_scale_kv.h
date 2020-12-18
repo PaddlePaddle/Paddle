@@ -223,8 +223,10 @@ class ValueBlock {
 
   void InitFromInitializer(const uint64_t &id,
                            const std::vector<std::string> &value_names) {
-    if (has_entry && Has(id)) {
-      Update(id);
+    if (Has(id)) {
+      if (has_entry) {
+        Update(id);
+      }
       return;
     }
     Init(id, initializer_list_, 1);
