@@ -2026,7 +2026,6 @@ def all(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
             
             # x is a bool Tensor with following elements:
@@ -2121,7 +2120,6 @@ def any(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
             
             # x is a bool Tensor with following elements:
