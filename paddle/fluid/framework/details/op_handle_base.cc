@@ -97,24 +97,30 @@ void OpHandleBase::InitXPU() {
       if (out_var_handle) {
         // ToDo: add XPU sync events
         // int dev_id =
-        //    boost::get<platform::XPUPlace>(out_var_handle->place()).device;
-        // PADDLE_ENFORCE(false, "debug");
+        //   BOOST_GET_CONST(platform::XPUPlace,
+        //   out_var_handle->place()).device;
+        // PADDLE_THROW(
+        //     platform::errors::Unimplemented("Not supported"));
       }
     }
   } else {
     PADDLE_ENFORCE_EQ(dev_ctxes_.size(), 1UL,
-                      "%s should have only one dev_ctx.", Name());
+                      platform::errors::InvalidArgument(
+                          "%s should have only one dev_ctx.", Name()));
     auto &place = dev_ctxes_.begin()->first;
-    int dev_id = boost::get<platform::XPUPlace>(place).device;
-    PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS,
-                   "xpu_set_device failed");
+    int dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+    PADDLE_ENFORCE_EQ(
+        xpu_set_device(dev_id), XPU_SUCCESS,
+        platform::errors::PreconditionNotMet("xpu_set_device failed"));
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
-        PADDLE_ENFORCE(platform::is_same_place(place, out_var_handle->place()),
-                       "The place of output(%s) is not consistent with the "
-                       "place of current op(%s).",
-                       out_var_handle->Name(), Name());
+        PADDLE_ENFORCE_EQ(
+            platform::is_same_place(place, out_var_handle->place()), true,
+            platform::errors::InvalidArgument(
+                "The place of output(%s) is not consistent with the "
+                "place of current op(%s).",
+                out_var_handle->Name(), Name()));
       }
     }
   }

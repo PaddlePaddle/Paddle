@@ -80,7 +80,7 @@ void BroadcastOpHandle::BroadcastOneVar(
             &VariableVisitor::GetMutableTensor(out_var));
       });
     }
-  } else {
+  } else if (platform::is_gpu_place(in_tensor.place())) {
 #if defined(PADDLE_WITH_NCCL)
     VarHandle *out_handle = nullptr;
     int root_id =
@@ -138,9 +138,14 @@ void BroadcastOpHandle::BroadcastOneVar(
     for (auto &p : places_) {
       nccl_ctxs_->DevCtx(p)->Wait();
     }
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#else
+    PADDLE_THROW(
+        platform::errors::PreconditionNotMet("Not compiled with NCLL."));
+#endif
+  } else {
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
     VarHandle *out_handle = nullptr;
-    int root_id = boost::get<platform::XPUPlace>(in_tensor.place()).device;
+    int root_id = BOOST_GET_CONST(platform::XPUPlace, in_tensor.place()).device;
     std::vector<std::function<void()>> broadcast_calls;
 
     int type = platform::ToBKCLDataType(in_tensor.type());
@@ -151,7 +156,7 @@ void BroadcastOpHandle::BroadcastOneVar(
                               ->FindVar(out_var_handle->name());
 
       int dst_id =
-          boost::get<platform::XPUPlace>(out_var_handle->place()).device;
+          BOOST_GET_CONST(platform::XPUPlace, out_var_handle->place()).device;
 
       auto &bkcl_ctx = bkcl_ctxs_->at(dst_id);
 
@@ -165,24 +170,29 @@ void BroadcastOpHandle::BroadcastOneVar(
                                .mutable_data(out_var_handle->place());
       }
 
-      broadcast_calls.emplace_back(
-          [send_recv_buffer, numel, type, root_id, &bkcl_ctx] {
-            PADDLE_ENFORCE(bkcl_broadcast(
-                bkcl_ctx.comm(), send_recv_buffer, send_recv_buffer, numel,
-                static_cast<BKCLDataType>(type), root_id, nullptr));
-          });
+      broadcast_calls.emplace_back([send_recv_buffer, numel, type, root_id,
+                                    &bkcl_ctx] {
+        PADDLE_ENFORCE_EQ(
+            bkcl_broadcast(bkcl_ctx.comm(), send_recv_buffer, send_recv_buffer,
+                           numel, static_cast<BKCLDataType>(type), root_id,
+                           nullptr),
+            BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl_broadcast failed"));
+      });
     }
 
     WaitInputVarGenerated();
     this->RunAndRecordEvent([&] {
       {
-        PADDLE_ENFORCE(bkcl_group_start() == BKCL_SUCCESS,
-                       "bkcl_group_start failed");
+        PADDLE_ENFORCE_EQ(
+            bkcl_group_start(), BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl_group_start failed"));
         for (auto &call : broadcast_calls) {
           call();
         }
-        PADDLE_ENFORCE(bkcl_group_end() == BKCL_SUCCESS,
-                       "bkcl_group_end failed");
+        PADDLE_ENFORCE_EQ(
+            bkcl_group_end(), BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl_group_end failed"));
       }
 
       if (!out_handle->IsTheSameVar(in_var_handle)) {
@@ -196,7 +206,7 @@ void BroadcastOpHandle::BroadcastOneVar(
     });
 #else
     PADDLE_THROW(
-        platform::errors::PreconditionNotMet("Not compiled with NCLL."));
+        platform::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
   }
 }

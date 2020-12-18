@@ -64,11 +64,17 @@ struct TestBroadcastOpHandle {
     if (nccl_ctxs_) {
       nccl_ctxs_->WaitAll();
     }
+#else
+    PADDLE_THROW(
+        platform::errors::PreconditionNotMet("Not compiled with NCLL."));
 #endif
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
     if (bkcl_ctxs_) {
       bkcl_ctxs_->WaitAll();
     }
+#else
+    PADDLE_THROW(
+        platform::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
   }
 

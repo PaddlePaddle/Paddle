@@ -42,7 +42,7 @@ inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
   if (type == framework::proto::VarType::FP32) {
     return BKCL_FLOAT;
   } else {
-    PADDLE_THROW("Not supported");
+    PADDLE_THROW(platform::errors::Unimplemented("Not supported"));
   }
 }
 
