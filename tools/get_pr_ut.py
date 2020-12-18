@@ -215,6 +215,9 @@ class PRChecker(object):
                         ut_list.append('nomap_comment_placeholder')
                     else:
                         return ''
+                elif f.find('get_pr_ut.py') != -1 or f.find(
+                        'get_pr_ut.py') != -1:
+                    ut_list.append('test_placeholder')
                 else:
                     return ''
             else:

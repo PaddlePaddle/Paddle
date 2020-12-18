@@ -78,6 +78,9 @@ class ApiMaxTest(unittest.TestCase):
         self.assertRaises(TypeError, test_axis_type)
 
     def test_imperative_api(self):
+        """
+        中文
+        """
         paddle.disable_static()
         np_x = np.array([10, 10]).astype('float64')
         x = paddle.to_tensor(np_x)
@@ -89,7 +92,6 @@ class ApiMaxTest(unittest.TestCase):
 
 class TestOutDtype(unittest.TestCase):
     def test_max(self):
-        #中文
         api_fn = paddle.max
         shape = [10, 16]
         check_out_dtype(
