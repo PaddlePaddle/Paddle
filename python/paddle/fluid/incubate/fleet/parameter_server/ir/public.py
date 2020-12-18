@@ -595,17 +595,22 @@ class CompileTimeStrategy(object):
             grad_name = grad.merged_var.name
             param_name = param.merged_var.name
             splited_varname = []
+
             for i in range(len(ep_list)):
                 splited_varname.append("{}.block{}".format(param_name, i))
+
             is_distributed = True if param_name in distibuted_varnames else False
 
             var = self.origin_main_program.global_block().vars[
                 grad.merged_var.name]
-            var_numel = reduce(lambda x, y: x * y, var.shape[1:])
 
-            sparse_ctx = CommContext(grad_name, splited_varname, ep_list,
-                                     [var_numel], [grad_name], trainer_id, True,
-                                     True, is_distributed, idx)
+            shape = list(var.shape)
+            shape[0] = 0 if is_distributed else shape[0]
+
+            sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
+                                     [grad_name], trainer_id, True, True,
+                                     is_distributed, idx)
+
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
         return send_ctx
