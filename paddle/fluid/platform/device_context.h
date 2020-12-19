@@ -65,6 +65,16 @@ void SetAllowTF32Cublas(bool active);
 bool AllowTF32Cublas();
 #endif  // PADDLE_WITH_CUDA
 
+enum DeviceType {
+  CPU = 0,
+  CUDA = 1,
+  XPU = 2,
+};
+
+constexpr DeviceType kCPU = DeviceType::CPU;
+constexpr DeviceType kCUDA = DeviceType::CUDA;
+constexpr DeviceType kXPU = DeviceType::XPU;
+
 class DeviceContext {
  public:
   virtual ~DeviceContext() PADDLE_MAY_THROW {}
