@@ -42,6 +42,7 @@ namespace platform {
 class NCCLContextMap;
 class NCCLCommunicator;
 class BKCLContextMap;
+class BKCLCommunicator;
 }
 
 namespace framework {

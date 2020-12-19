@@ -18,12 +18,12 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-using UseDevice = paddle::framework::details::ExecutionStrategy::UseDevice;
+using DeviceType = paddle::platform::DeviceType;
 
 TEST(BroadcastTester, TestCPUBroadcastTestLodTensor) {
   TestBroadcastOpHandle test_op;
   size_t input_scope_idx = 0;
-  test_op.InitCtxOnDevice(UseDevice::kCPU);
+  test_op.InitCtxOnDevice(kCPU);
   test_op.InitBroadcastOp(input_scope_idx);
   test_op.TestBroadcastLodTensor(input_scope_idx);
 }
@@ -31,7 +31,7 @@ TEST(BroadcastTester, TestCPUBroadcastTestLodTensor) {
 TEST(BroadcastTester, TestCPUBroadcastTestSelectedRows) {
   TestBroadcastOpHandle test_op;
   size_t input_scope_idx = 0;
-  test_op.InitCtxOnDevice(UseDevice::kCPU);
+  test_op.InitCtxOnDevice(kCPU);
   test_op.InitBroadcastOp(input_scope_idx);
   test_op.TestBroadcastSelectedRows(input_scope_idx);
 }
@@ -40,7 +40,7 @@ TEST(BroadcastTester, TestCPUBroadcastTestSelectedRows) {
 TEST(BroadcastTester, TestGPUBroadcastTestLodTensor) {
   TestBroadcastOpHandle test_op;
   size_t input_scope_idx = 0;
-  test_op.InitCtxOnDevice(UseDevice::kCUDA);
+  test_op.InitCtxOnDevice(kCUDA);
   test_op.InitBroadcastOp(input_scope_idx);
   test_op.TestBroadcastLodTensor(input_scope_idx);
 }
@@ -48,7 +48,7 @@ TEST(BroadcastTester, TestGPUBroadcastTestLodTensor) {
 TEST(BroadcastTester, TestGPUBroadcastTestSelectedRows) {
   TestBroadcastOpHandle test_op;
   size_t input_scope_idx = 0;
-  test_op.InitCtxOnDevice(UseDevice::kCUDA);
+  test_op.InitCtxOnDevice(kCUDA);
   test_op.InitBroadcastOp(input_scope_idx);
   test_op.TestBroadcastSelectedRows(input_scope_idx);
 }
@@ -58,7 +58,7 @@ TEST(BroadcastTester, TestGPUBroadcastTestSelectedRows) {
 TEST(BroadcastTester, TestXPUBroadcastTestLodTensor) {
   TestBroadcastOpHandle test_op;
   size_t input_scope_idx = 0;
-  test_op.InitCtxOnDevice(UseDevice::kXPU);
+  test_op.InitCtxOnDevice(p::kXPU);
   test_op.InitBroadcastOp(input_scope_idx);
   test_op.TestBroadcastLodTensor(input_scope_idx);
 }

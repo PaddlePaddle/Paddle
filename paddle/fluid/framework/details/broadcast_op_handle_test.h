@@ -33,7 +33,7 @@ struct VarHandle;
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-using UseDevice = paddle::framework::details::ExecutionStrategy::UseDevice;
+using DeviceType = paddle::platform::DeviceType;
 
 // test data amount
 const f::DDim kDims = {20, 20};
@@ -47,7 +47,7 @@ struct TestBroadcastOpHandle {
   std::vector<VarHandleBase*> vars_;
   std::vector<std::unique_ptr<ir::Node>> nodes_;
   std::vector<p::Place> place_list_;
-  UseDevice use_device_;
+  DeviceType use_device_;
 #if defined(PADDLE_WITH_NCCL)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
@@ -64,23 +64,17 @@ struct TestBroadcastOpHandle {
     if (nccl_ctxs_) {
       nccl_ctxs_->WaitAll();
     }
-#else
-    PADDLE_THROW(
-        platform::errors::PreconditionNotMet("Not compiled with NCLL."));
 #endif
 #if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
     if (bkcl_ctxs_) {
       bkcl_ctxs_->WaitAll();
     }
-#else
-    PADDLE_THROW(
-        platform::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
   }
 
-  void InitCtxOnDevice(UseDevice use_device) {
+  void InitCtxOnDevice(DeviceType use_device) {
     use_device_ = use_device;
-    if (use_device_ == UseDevice::kXPU) {
+    if (use_device_ == p::kXPU) {
 #if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
       int count = p::GetXPUDeviceCount();
       if (count <= 1) {
@@ -99,7 +93,7 @@ struct TestBroadcastOpHandle {
       PADDLE_THROW(
           platform::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
-    } else if (use_device_ == UseDevice::kCUDA) {
+    } else if (use_device_ == p::kCUDA) {
 #if defined(PADDLE_WITH_NCCL)
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
@@ -145,7 +139,7 @@ struct TestBroadcastOpHandle {
 
     nodes_.emplace_back(
         ir::CreateNodeForTest("node0", ir::Node::Type::kOperation));
-    if (use_device_ == UseDevice::kCUDA) {
+    if (use_device_ == p::kCUDA) {
 #if defined(PADDLE_WITH_NCCL)
       op_handle_ = new BroadcastOpHandle(nodes_.back().get(), local_scopes_,
                                          place_list_, nccl_ctxs_.get());
@@ -153,7 +147,7 @@ struct TestBroadcastOpHandle {
       PADDLE_THROW(
           platform::errors::PreconditionNotMet("Not compiled with NCCL."));
 #endif
-    } else if (use_device_ == UseDevice::kXPU) {
+    } else if (use_device_ == p::kXPU) {
 #if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
       op_handle_ = new BroadcastOpHandle(nodes_.back().get(), local_scopes_,
                                          place_list_, bkcl_ctxs_.get());
@@ -186,7 +180,7 @@ struct TestBroadcastOpHandle {
     op_handle_->AddInput(dummy_var_handle);
 
     for (size_t j = 0; j < place_list_.size(); ++j) {
-      if (use_device_ != UseDevice::kCUDA) {
+      if (use_device_ != kCUDA) {
         op_handle_->SetDeviceContext(place_list_[j], ctxs_[j].get());
       }
       nodes_.emplace_back(
@@ -312,7 +306,7 @@ struct TestBroadcastOpHandle {
     f::LoD lod{{0, 10, 20}};
     auto send_vector = InitLoDTensor("input", input_scope_idx, lod);
 
-    UseDevice use_device = UseDevice::kCPU;
+    DeviceType use_device = p::kCPU;
     op_handle_->Run(use_device);
 
     WaitAll();
@@ -327,7 +321,7 @@ struct TestBroadcastOpHandle {
     int height = static_cast<int>(kDims[0] * 2);
     auto send_vector = InitSelectedRows("input", input_scope_idx, rows, height);
 
-    UseDevice use_device = UseDevice::kCPU;
+    DeviceType use_device = p::kCPU;
     op_handle_->Run(use_device);
 
     WaitAll();

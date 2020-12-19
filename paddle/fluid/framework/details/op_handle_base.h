@@ -43,7 +43,8 @@ class Node;
 }  // namespace ir
 
 namespace details {
-
+using DeviceType = paddle::platform::DeviceType;
+using paddle::platform;
 // Wraps ir::Node and provide helper utilities.
 // It's responsible for populating necessary fields of ir::Node.
 class OpHandleBase {
@@ -72,7 +73,7 @@ class OpHandleBase {
 
   virtual std::string Name() const = 0;
 
-  void Run(ExecutionStrategy::UseDevice use_device);
+  void Run(DeviceType use_device);
 
   virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
 

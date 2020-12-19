@@ -32,7 +32,7 @@ namespace framework {
 namespace details {
 
 struct VarHandle;
-using UseDevice = paddle::framework::details::ExecutionStrategy::UseDevice;
+using DeviceType = paddle::platform::DeviceType;
 
 struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
   std::vector<std::string> out_varnames_;
@@ -56,7 +56,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
     // create op handle node
     nodes_.emplace_back(
         ir::CreateNodeForTest("fused_broadcast", ir::Node::Type::kOperation));
-    if (use_device_ == UseDevice::kCUDA) {
+    if (use_device_ == p::kCUDA) {
 #if defined(PADDLE_WITH_NCCL)
       op_handle_ = new FusedBroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
@@ -64,7 +64,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
       PADDLE_THROW(
           platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
-    } else if (use_device_ == UseDevice::kXPU) {
+    } else if (use_device_ == p::kXPU) {
 #if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
       op_handle_ = new FusedBroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, bkcl_ctxs_.get());
@@ -112,7 +112,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
           InitLoDTensor(varname, input_scope_idxes[i], lod, val_scalar));
     }
 
-    UseDevice use_device = UseDevice::kCPU;
+    DeviceType use_device = p::kCPU;
     op_handle_->Run(use_device);
 
     WaitAll();
@@ -136,7 +136,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
                                              rows, height, val_scalar));
     }
 
-    UseDevice use_device = UseDevice::kCPU;
+    DeviceType use_device = p::kCPU;
     op_handle_->Run(use_device);
 
     WaitAll();
@@ -153,7 +153,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
 TEST(FusedBroadcastTester, CPULodTensor) {
   TestFusedBroadcastOpHandle test_op;
   std::vector<size_t> input_scope_idxes = {0, 1};
-  test_op.InitCtxOnDevice(UseDevice::kCPU);
+  test_op.InitCtxOnDevice(p::kCPU);
   test_op.InitFusedBroadcastOp(input_scope_idxes);
   test_op.TestFusedBroadcastLoDTensor(input_scope_idxes);
 }
@@ -161,7 +161,7 @@ TEST(FusedBroadcastTester, CPULodTensor) {
 TEST(FusedBroadcastTester, CPUSelectedRows) {
   TestFusedBroadcastOpHandle test_op;
   std::vector<size_t> input_scope_idxes = {0, 1};
-  test_op.InitCtxOnDevice(UseDevice::kCPU);
+  test_op.InitCtxOnDevice(p::kCPU);
   test_op.InitFusedBroadcastOp(input_scope_idxes);
   test_op.TestFusedBroadcastSelectedRows(input_scope_idxes);
 }
@@ -170,7 +170,7 @@ TEST(FusedBroadcastTester, CPUSelectedRows) {
 TEST(FusedBroadcastTester, GPULodTensor) {
   TestFusedBroadcastOpHandle test_op;
   std::vector<size_t> input_scope_idxes = {0, 1};
-  test_op.InitCtxOnDevice(UseDevice::kCUDA);
+  test_op.InitCtxOnDevice(p::kCUDA);
   test_op.InitFusedBroadcastOp(input_scope_idxes);
   test_op.TestFusedBroadcastLoDTensor(input_scope_idxes);
 }
@@ -178,7 +178,7 @@ TEST(FusedBroadcastTester, GPULodTensor) {
 TEST(FusedBroadcastTester, GPUSelectedRows) {
   TestFusedBroadcastOpHandle test_op;
   std::vector<size_t> input_scope_idxes = {0, 1};
-  test_op.InitCtxOnDevice(UseDevice::kCUDA);
+  test_op.InitCtxOnDevice(p::kCUDA);
   test_op.InitFusedBroadcastOp(input_scope_idxes);
   test_op.TestFusedBroadcastSelectedRows(input_scope_idxes);
 }
