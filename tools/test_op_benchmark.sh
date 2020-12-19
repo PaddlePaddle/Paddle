@@ -27,6 +27,9 @@ declare -A CHANGE_OP_MAP
 # ops that benchmark repo has
 declare -A BENCHMARK_OP_MAP
 
+# searched header files
+declare -A INCLUDE_SEARCH_MAP
+
 function LOG {
   echo "[$0:${BASH_LINENO[0]}] $*" >&2
 }
@@ -55,7 +58,9 @@ function load_CHANGE_OP_FILES_by_header_file {
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
     elif [[ "$change_file" =~ ".h" ]]
     then
+      [ -n "${INCLUDE_SEARCH_MAP[$change_file]}" ] && continue
       LOG "[INFO] Found \"${1}\" include by \"${change_file}\", keep searching."
+      INCLUDE_SEARCH_MAP[$change_file]="searched"
       load_CHANGE_OP_FILES_by_header_file $change_file
     fi
   done
@@ -79,6 +84,7 @@ function load_CHANGE_OP_FILES {
     elif [[ "$change_file" =~ ".h" ]]
     then
       LOG "[INFO] Found \"${change_file}\" changed, keep searching."
+      INCLUDE_SEARCH_MAP[${change_file}]="searched"
       load_CHANGE_OP_FILES_by_header_file $change_file
     fi
   done
@@ -179,12 +185,8 @@ function run_op_benchmark_test {
   do
     echo "$api_info" >> $api_info_file
   done
-  # install tensorflow and pytorch
-  LOG "[INFO] Installing tensorflow==2.3.0 ..."
+  # install tensorflow for testing accuary
   pip install tensorflow==2.3.0 tensorflow-probability
-  LOG "[INFO] Installing pytorch==1.7.1 ..."
-  pip install torch==1.7.1+cu101 torchvision==0.8.2+cu101 torchaudio==0.7.2 \
-              -f https://download.pytorch.org/whl/torch_stable.html
   for branch_name in "develop" "test_pr"
   do
     git checkout $branch_name
@@ -222,7 +224,7 @@ function summary_problems {
     if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
     then
       exit_code=8
-      LOG "[WARNING] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
+      LOG "[FATAL] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
     fi
   done
   [ $exit_code -ne 0 ] && exit $exit_code
