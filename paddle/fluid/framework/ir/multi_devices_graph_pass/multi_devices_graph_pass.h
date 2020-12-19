@@ -72,9 +72,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   bool UseGPU() const;
 
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
   bool UseXPU() const;
-#endif
 
   virtual bool NeedCollectiveForGrad(const std::string &grad_name,
                                      std::vector<ir::Node *> ops) const;

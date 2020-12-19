@@ -329,8 +329,8 @@ bool MultiDevSSAGraphBuilderBase::UseGPU() const {
 }
 
 bool MultiDevSSAGraphBuilderBase::UseXPU() const {
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
   bool use_xpu = false;
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
   use_xpu = bkcl_ctxs_ != nullptr;
 #endif
   return use_xpu;
