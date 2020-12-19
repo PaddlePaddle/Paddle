@@ -44,7 +44,7 @@ class Node;
 
 namespace details {
 using DeviceType = paddle::platform::DeviceType;
-using paddle::platform;
+namespace p = paddle::platform;
 // Wraps ir::Node and provide helper utilities.
 // It's responsible for populating necessary fields of ir::Node.
 class OpHandleBase {

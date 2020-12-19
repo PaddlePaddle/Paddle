@@ -276,8 +276,9 @@ class ParallelExecutorPrivate {
             << ", num_trainers:" << bst.num_trainers_
             << ", trainer_id:" << bst.trainer_id_;
 
-    PADDLE_ENFORCE(!bst.use_hierarchical_allreduce_,
-                   "xpu doesn't support use_hierarchical_allreduce");
+    PADDLE_ENFORCE_EQ(bst.use_hierarchical_allreduce_, false,
+                      platform::errors::Unimplemented(
+                          "xpu doesn't support use_hierarchical_allreduce"));
 
     std::vector<BKCLUniqueId *> flat_bkcl_ids;
     if (nranks_ == 1) {
@@ -298,8 +299,9 @@ class ParallelExecutorPrivate {
       if (bkcl_id_var) {
         bkcl_id = bkcl_id_var->GetMutable<BKCLUniqueId>();
       } else {
-        PADDLE_ENFORCE(bkcl_get_unique_id(id.get()) == BKCL_SUCCESS,
-                       "bkcl get unique id failed");
+        PADDLE_ENFORCE_EQ(
+            bkcl_get_unique_id(id.get()), BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl get unique id failed"));
         bkcl_id = id.get();
       }
 
@@ -321,7 +323,9 @@ class ParallelExecutorPrivate {
     for (int i = 0; i < static_cast<int>(bst.bkcl_comm_num_); i++) {
       std::string var_name = platform::GetFlatBKCLVarName(i);
       auto bkcl_id_var = scope->FindVar(var_name);
-      PADDLE_ENFORCE(bkcl_id_var, "can't find %s bkcl_id_var", var_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          bkcl_id_var,
+          platform::errors::NotFound("can't find %s bkcl_id_var", var_name));
       auto bkcl_id = bkcl_id_var->GetMutable<BKCLUniqueId>();
       flat_bkcl_ids.push_back(bkcl_id);
     }
@@ -335,8 +339,9 @@ class ParallelExecutorPrivate {
     const std::string var_name = "BKCLCommunicator";
     auto var = scope->FindVar(var_name);
     if (var != nullptr) {
-      PADDLE_ENFORCE(var->IsInitialized(),
-                     "if %s exists, it must be initialized", var_name);
+      PADDLE_ENFORCE_EQ(var->IsInitialized(), true,
+                        platform::errors::PreconditionNotMet(
+                            "if %s exists, it must be initialized", var_name));
       VLOG(1) << "find " << var_name
               << " in scope, so use it and does not recreate!";
       bkcl_ctxs_ = var->GetMutable<platform::BKCLCommunicator>();
@@ -380,7 +385,7 @@ class ParallelExecutorPrivate {
 };
 
 bool ParallelExecutorPrivate::IsUseCUDA(DeviceType use_device) {
-  return use_device == kCUDA;
+  return use_device == p::kCUDA;
 }
 
 void ParallelExecutorPrivate::SetHasFeed(size_t dev_idx, bool has_feed) {
@@ -427,7 +432,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     auto addto_pass = ir::PassRegistry::Instance().Get("inplace_addto_op_pass");
     addto_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     addto_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-    addto_pass->Set(ir::kUseCuda, new bool(use_device_ == kCUDA));
+    addto_pass->Set(ir::kUseCuda, new bool(use_device_ == p::kCUDA));
     VLOG(10) << "Start to apply inplace_addto_op_pass";
     graph = addto_pass->Apply(graph);
     VLOG(10) << "inplace_addto_op_pass Applied";
@@ -438,7 +443,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
         ir::PassRegistry::Instance().Get("buffer_shared_inplace_pass");
     inplace_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     inplace_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-    inplace_pass->Set(ir::kUseCuda, new bool(use_device_ == kCUDA));
+    inplace_pass->Set(ir::kUseCuda, new bool(use_device_ == p::kCUDA));
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
@@ -454,7 +459,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     cross_op_memory_reuse_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
                                             &last_live_ops_of_vars);
     cross_op_memory_reuse_pass->Set(ir::kUseCuda,
-                                    new bool(use_device_ == kCUDA));
+                                    new bool(use_device_ == p::kCUDA));
     VLOG(10) << "Start to apply buffer_shared_cross_op_memory_reuse_pass";
     graph = cross_op_memory_reuse_pass->Apply(graph);
     VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
@@ -643,9 +648,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 #endif
 
   std::string device_name;
-  if (member_->use_device_ == kCPU) {
+  if (member_->use_device_ == p::kCPU) {
     device_name = "CPU";
-  } else if (member_->use_device_ == kCUDA) {
+  } else if (member_->use_device_ == p::kCUDA) {
     device_name = "CUDA";
   } else {
     device_name = "XPU";

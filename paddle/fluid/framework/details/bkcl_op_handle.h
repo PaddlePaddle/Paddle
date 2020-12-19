@@ -81,7 +81,7 @@ class BKCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE_GE(run_order_, 0, platform::errors::PreconditionNotMet(
                                          "run_order must > 0"));
     auto flat_bkcl_ctxs = bkcl_ctxs_->GetFlatCtx(run_order_);
-    int dev_id = boost::get<platform::XPUPlace>(place).device;
+    int dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
     auto& bkcl_ctx = flat_bkcl_ctxs->at(dev_id);
     auto comm = bkcl_ctx.comm_;
 
@@ -100,7 +100,7 @@ class BKCLOpHandleBase : public OpHandleBase {
                      BKCLOp op) {
     PADDLE_ENFORCE_GE(run_order_, 0, platform::errors::PreconditionNotMet(
                                          "run_order must > 0"));
-    PADDLE_ENFORCE_NE(use_hierarchical_allreduce_, true,
+    PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_, false,
                       platform::errors::Unimplemented(
                           "xpu doesn't support hierarchical all reduce"));
     if (!use_hierarchical_allreduce_) {

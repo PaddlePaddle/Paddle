@@ -49,7 +49,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 using DeviceType = paddle::platform::DeviceType;
-using paddle::platform;
+namespace p = paddle::platform;
 
 struct BuildStrategy {
   // ParallelExecutor supports two modes of ReduceStrategy, kAllReduce and

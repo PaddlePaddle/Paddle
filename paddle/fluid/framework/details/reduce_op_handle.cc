@@ -345,13 +345,13 @@ void ReduceOpHandle::RunImpl() {
           out_var_handle->place(), pre_in.type());
 
       auto out_p = out_var_handle->place();
-      int root_id = boost::get<platform::XPUPlace>(out_p).device;
+      int root_id = BOOST_GET_CONST(platform::XPUPlace, out_p).device;
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < var_scopes.size(); ++i) {
         auto &p = in_places[i];
         auto &lod_tensor = *lod_tensors[i];
 
-        int dev_id = boost::get<platform::XPUPlace>(p).device;
+        int dev_id = BOOST_GET_CONST(platform::XPUPlace, p).device;
         auto &bkcl_ctx = bkcl_ctxs_->at(dev_id);
 
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
@@ -364,23 +364,27 @@ void ReduceOpHandle::RunImpl() {
 
         int type = platform::ToBKCLDataType(lod_tensor.type());
         size_t numel = static_cast<size_t>(lod_tensor.numel());
-        all_reduce_calls.emplace_back(
-            [buffer, recvbuffer, type, numel, root_id, &bkcl_ctx] {
-              PADDLE_ENFORCE(bkcl_reduce(bkcl_ctx.comm(), buffer, recvbuffer,
-                                         numel, static_cast<BKCLDataType>(type),
-                                         BKCL_ADD, root_id, nullptr));
-            });
+        all_reduce_calls.emplace_back([buffer, recvbuffer, type, numel, root_id,
+                                       &bkcl_ctx] {
+          PADDLE_ENFORCE_EQ(bkcl_reduce(bkcl_ctx.comm(), buffer, recvbuffer,
+                                        numel, static_cast<BKCLDataType>(type),
+                                        BKCL_ADD, root_id, nullptr),
+                            BKCL_SUCCESS, platform::errors::Unavailable(
+                                              "bkcl_all_reduce failed"));
+        });
       }
 
       WaitInputVarGenerated();
       this->RunAndRecordEvent([&] {
-        PADDLE_ENFORCE(bkcl_group_start() == BKCL_SUCCESS,
-                       "bkcl_group_start failed");
+        PADDLE_ENFORCE_EQ(
+            bkcl_group_start(), BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl_group_start failed"));
         for (auto &call : all_reduce_calls) {
           call();
         }
-        PADDLE_ENFORCE(bkcl_group_end() == BKCL_SUCCESS,
-                       "bkcl_group_end failed");
+        PADDLE_ENFORCE_EQ(
+            bkcl_group_end(), BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl_group_end failed"));
       });
 #else
       PADDLE_THROW(

@@ -133,11 +133,11 @@ void OpHandleBase::InitXPU() {
 
 void OpHandleBase::Run(DeviceType use_device) {
 #ifdef PADDLE_WITH_CUDA
-  if (events_.empty() && use_device == kCUDA && dev_ctxes_.size() > 0) {
+  if (events_.empty() && use_device == p::kCUDA && dev_ctxes_.size() > 0) {
     InitCUDA();
   }
 #else
-  PADDLE_ENFORCE_NE(use_device, kCUDA,
+  PADDLE_ENFORCE_NE(use_device, p::kCUDA,
                     platform::errors::InvalidArgument(
                         "Argument use_cuda should be false when Paddle is not "
                         "compiled with CUDA."));

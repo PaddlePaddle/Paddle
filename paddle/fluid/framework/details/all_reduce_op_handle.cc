@@ -49,7 +49,12 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<platform::Place> &places,
                                      const platform::BKCLCommunicator *ctxs)
     : BKCLOpHandleBase(node, places, ctxs), local_scopes_(local_scopes) {
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
+  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size(),
+                    platform::errors::InvalidArgument(
+                        "The number of places and the number of local scopes "
+                        "should be equal, but got number of places is %d and "
+                        "number of local scopes is %d.",
+                        places_.size(), local_scopes_.size()));
 }
 #else
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
@@ -143,7 +148,10 @@ void AllReduceOpHandle::AllReduceImpl(
             "The dtype of tensors of the same variable in different local "
             "scopes should be equal."));
 #if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-    PADDLE_ENFORCE_EQ(is_xpu_place, platform::is_xpu_place(lod_tensor.place()));
+    PADDLE_ENFORCE_EQ(is_xpu_place, platform::is_xpu_place(lod_tensor.place()),
+                      platform::errors::PreconditionNotMet(
+                          "The place type of tensors of the same variable "
+                          "in different local scopes should be equal."));
 #endif
     PADDLE_ENFORCE_EQ(is_gpu_place, platform::is_gpu_place(lod_tensor.place()),
                       platform::errors::PreconditionNotMet(
@@ -199,7 +207,9 @@ void AllReduceOpHandle::AllReduceFunc(
 #endif
   } else if (is_xpu_place(places[0])) {
 #if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-    PADDLE_ENFORCE_NOT_NULL(bkcl_ctxs_, "bkcl_ctxs should not be nullptr.");
+    PADDLE_ENFORCE_NOT_NULL(bkcl_ctxs_,
+                            platform::errors::InvalidArgument(
+                                "The bkcl context should not be NULL."));
     BKCLDataType bkcl_dtype = platform::ToBKCLDataType(dtype);
     std::vector<std::function<void()>> all_reduce_calls;
     for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
@@ -212,7 +222,7 @@ void AllReduceOpHandle::AllReduceFunc(
     BKCLAllReduceFunc(all_reduce_calls);
 #else
     PADDLE_THROW(
-        platform::errors::PreconditionNotMet("Not compiled with XPU BKCL."));
+        platform::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
   } else {  // Special handle CPU only Operator's gradient. Like CRF
     auto &trg = *local_exec_scopes_[0]
@@ -246,12 +256,15 @@ void AllReduceOpHandle::BKCLAllReduceFunc(
     if (all_reduce_calls.size() == 1UL) {
       all_reduce_calls[0]();
     } else {
-      PADDLE_ENFORCE(bkcl_group_start() == BKCL_SUCCESS,
-                     "bkcl_group_start failed");
+      PADDLE_ENFORCE_EQ(
+          bkcl_group_start(), BKCL_SUCCESS,
+          platform::errors::PreconditionNotMet("bkcl_group_start failed"));
       for (auto &call : all_reduce_calls) {
         call();
       }
-      PADDLE_ENFORCE(bkcl_group_end() == BKCL_SUCCESS, "bkcl_group_end failed");
+      PADDLE_ENFORCE_EQ(
+          bkcl_group_end(), BKCL_SUCCESS,
+          platform::errors::PreconditionNotMet("bkcl_group_end failed"));
     }
   });
 }

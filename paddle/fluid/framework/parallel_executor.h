@@ -43,7 +43,7 @@ class ParallelExecutorPrivate;
 
 using details::BuildStrategy;
 using details::ExecutionStrategy;
-using paddle::platform;
+namespace p = paddle::platform;
 using DeviceType = paddle::platform::DeviceType;
 
 class ParallelExecutor {

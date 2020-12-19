@@ -180,7 +180,7 @@ struct TestBroadcastOpHandle {
     op_handle_->AddInput(dummy_var_handle);
 
     for (size_t j = 0; j < place_list_.size(); ++j) {
-      if (use_device_ != kCUDA) {
+      if (use_device_ != p::kCUDA) {
         op_handle_->SetDeviceContext(place_list_[j], ctxs_[j].get());
       }
       nodes_.emplace_back(
