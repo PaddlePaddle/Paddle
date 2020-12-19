@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set +e
+set -x
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
