@@ -185,6 +185,7 @@ class PRChecker(object):
         for l in diff_lines:
             if l not in comment_lines:
                 return False
+        print('PREC {} is only comment'.format(f))
         return True
 
     def get_pr_ut(self):
@@ -210,16 +211,24 @@ class PRChecker(object):
                     if self.is_only_comment(f):
                         ut_list.append('h_cu_comment_placeholder')
                     else:
+                        print(
+                            'PREC dismatch: {} not in file ut map and not md or comment'.
+                            format(f))
                         return ''
                 elif f.endswith('.cc') or f.endswith('.py') or f.endswith(
                         '.cu'):
                     if f.find('test_') != -1 or f.find('_test') != -1:
+                        print('PREC {} need check new ut'.format(f))
                         check_added_ut = True
                     elif self.is_only_comment(f):
                         ut_list.append('nomap_comment_placeholder')
                     else:
+                        print(
+                            'PREC dismatch: {} not in file ut map and not new ut or comment'.
+                            format(f))
                         return ''
                 else:
+                    print('PREC dismatch: {} not in file ut map'.format(f))
                     return ''
             else:
                 if self.is_only_comment(f):
