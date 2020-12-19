@@ -34,12 +34,12 @@ bash $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh cmake_gen_in_current_dir >p
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > /$PADDLE_ROOT/br-ut
 cd $PADDLE_ROOT/build
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > /$PADDLE_ROOT/pr-ut
-cd /$PADDLE_ROOT
-grep -F -x -v -f br-ut pr-ut > /$PADDLE_ROOT/added_ut
+cd $PADDLE_ROOT
+grep -F -x -v -f br-ut pr-ut > $PADDLE_ROOT/added_ut
 echo "New-UT:"
-cat /$PADDLE_ROOT/added_ut
+cat $PADDLE_ROOT/added_ut
 rm -rf prec_build
-rm /$PADDLE_ROOT/br-ut /$PADDLE_ROOT/pr-ut $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
+rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
 git checkout $CURBRANCH
 echo $CURBRANCH
 git branch -D prec_added_ut
