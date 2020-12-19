@@ -1044,16 +1044,14 @@ function parallel_test_base_gpu() {
     ========================================
 EOF
 
-set +x
+set -x
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
-            set -x
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
             if [[ -f "ut_list" ]]; then
                 precision_cases=`cat ut_list`
             fi
-            set +x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
@@ -1065,6 +1063,7 @@ set +x
                 exit 8;
             fi
         fi
+set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
         exclusive_tests=''        # cases list which would be run exclusively
