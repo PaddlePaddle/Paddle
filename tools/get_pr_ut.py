@@ -75,6 +75,8 @@ class PRChecker(object):
                 shell=True)
             if code == 0:
                 return True
+            print('PREC download {} error, retry {} time(s) after {} secs '.
+                  format(url, ix, ix * 10))
             time.sleep(ix * 10)
             ix += 1
         return False
@@ -238,6 +240,7 @@ class PRChecker(object):
         if check_added_ut:
             with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
                 for ut in utfile:
+                    print('PREC NEW UT: {}'.format(ut.rstrip('\r\n')))
                     ut_list.append(ut.rstrip('\r\n'))
 
         return '\n'.join(ut_list)

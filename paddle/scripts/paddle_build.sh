@@ -1046,6 +1046,7 @@ EOF
 
 set +x
         precison_cases=""
+        bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             set -x
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
@@ -1054,7 +1055,6 @@ set +x
             fi
             set +x
         fi
-        bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
             ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?

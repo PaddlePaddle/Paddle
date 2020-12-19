@@ -25,6 +25,7 @@ CURDIR=`pwd`
 cd $PADDLE_ROOT
 cp $PADDLE_ROOT/paddle/scripts/paddle_build.sh $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
 CURBRANCH=`git rev-parse --abbrev-ref HEAD`
+echo $CURBRANCH
 git checkout -b prec_added_ut upstream/${BRANCH}
 mkdir prec_build
 cd prec_build
@@ -39,6 +40,7 @@ cat /$PADDLE_ROOT/added_ut
 rm -rf prec_build
 rm /$PADDLE_ROOT/br-ut /$PADDLE_ROOT/pr-ut $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
 git checkout $CURBRANCH
+echo $CURBRANCH
 git branch -D prec_added_ut
 cd $CURDIR
 export CI_SKIP_CPP_TEST=
