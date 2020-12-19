@@ -4419,7 +4419,9 @@ class PipelineOptimizer(object):
         self._add_default_opdevice_attr(main_block)
 
         device_specs = self._check_validation(main_block)
-        assert len(device_specs) > 1
+        if len(device_specs) == 1:
+            print("Warning: If only one device is used, "
+                  "it's need to use pipeline.")
 
         # Step3: add send and recv ops between section boundaries
         self._insert_sendrecv_ops_for_boundaries(main_block)
