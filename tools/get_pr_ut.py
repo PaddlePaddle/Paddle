@@ -47,7 +47,7 @@ class PRChecker(object):
         """ Get pull request. """
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
-            print('No PR ID')
+            print('PREC No PR ID')
             exit(0)
         suffix = os.getenv('PREC_SUFFIX')
         if suffix:
@@ -63,6 +63,7 @@ class PRChecker(object):
                 break
             ix = ix + 1
         if last_commit.message.find('test=allcase') != -1:
+            print('PREC test=allcase is set')
             self.full_case = True
 
     #todo: exception
@@ -195,6 +196,7 @@ class PRChecker(object):
             'https://sys-p0.bj.bcebos.com/prec/file_ut.json{}'.format(
                 self.suffix))
         if not ret:
+            print('PREC download file_ut.json failed')
             exit(1)
         with open('file_ut.json' + self.suffix) as jsonfile:
             file_ut_map = json.load(jsonfile)
@@ -230,6 +232,8 @@ class PRChecker(object):
             with open('prec_delta' + self.suffix) as delta:
                 for ut in delta:
                     ut_list.append(ut.rstrip('\r\n'))
+        else:
+            print('PREC download prec_delta failed')
 
         if check_added_ut:
             with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
