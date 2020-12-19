@@ -248,4 +248,4 @@ if __name__ == '__main__':
     pr_checker.init()
     #print(pr_checker.get_pr_ut())
     with open('ut_list', 'w') as f:
-        f.write(pr_checker.get_pr_ut())
+        f.write('malloc_test')
