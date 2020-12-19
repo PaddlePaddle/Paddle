@@ -1050,7 +1050,9 @@ set -x
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
             if [[ -f "ut_list" ]]; then
+                set +x
                 precision_cases=`cat ut_list`
+                set -x
             fi
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
