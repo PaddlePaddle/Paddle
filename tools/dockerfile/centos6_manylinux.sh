@@ -63,6 +63,9 @@ function main() {
     cuda102cudnn7)
       make_cuda102cudnn7
       ;;
+    cuda102cudnn8)
+      make_cuda102cudnn8
+      ;;
     cuda11cudnn8)
       make_cuda11cudnn8
      ;;
