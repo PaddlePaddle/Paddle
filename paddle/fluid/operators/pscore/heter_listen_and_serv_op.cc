@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 
 #include "gflags/gflags.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/pscore/heter_listen_and_serv_op.h"
@@ -196,6 +197,9 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   VLOG(3) << "wait server thread to become ready...";
   rpc_service_->WaitServerReady();
   RunAsyncLoop(&executor, program, &recv_scope);
+  VLOG(3) << "Wait for Server_thread_ stop";
+  (server_thread_.get())->join();
+  VLOG(3) << "Server_thread_ stop";
 }
 
 class HeterListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {

@@ -114,6 +114,7 @@ endif()
 
 if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
+    LIST(REMOVE_ITEM TEST_OPS test_desc_clone_dist)
 endif()
 
 if(WIN32)
@@ -449,8 +450,6 @@ if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_ctr")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_program")
 
     # TODO(sandyhouse): fix and add the ut back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_hallreduce")
