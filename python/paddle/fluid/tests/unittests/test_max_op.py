@@ -90,6 +90,7 @@ class ApiMaxTest(unittest.TestCase):
 class TestOutDtype(unittest.TestCase):
     def test_max(self):
         api_fn = paddle.max
+        shape = None
         shape = [10, 16]
         check_out_dtype(
             api_fn,
