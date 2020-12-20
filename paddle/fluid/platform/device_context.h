@@ -30,6 +30,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#include "xpu/bkcl.h"
+#endif
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/data_layout.h"
@@ -118,9 +122,20 @@ class XPUDeviceContext : public DeviceContext {
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
+#ifdef PADDLE_WITH_XPU_BKCL
+  /*! \brief  Return nccl context. */
+  BKCLContext_t bkcl_context() const { return bkcl_context_; }
+
+  /*! \brief  Set bkcl context. */
+  void set_bkcl_context(BKCLContext_t context) { bkcl_context_ = context; }
+#endif
+
  private:
   XPUPlace place_;
   xpu::Context* context_;
+#ifdef PADDLE_WITH_XPU_BKCL
+  BKCLContext_t bkcl_context_;
+#endif
 
   // Need to be the same with other DeviceContext,
   // Eventhough eigen_device_ is not used in XPU

@@ -726,6 +726,27 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       auto &nccl_ctx = nccl_ctxs->at(member_->places_[dev_id]);
       dev_ctx->set_nccl_comm(nccl_ctx.comm());
     }
+#else
+    PADDLE_THROW(
+        platform::errors::PreconditionNotMet("Not compiled with CUDA."));
+#endif
+  }
+  if (member_->use_device_ == p::kXPU && member_->nranks_ > 1) {
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+    member_->InitOrGetBKCLCommunicator(scope, member_->build_strategy_);
+
+    auto *bkcl_ctxs =
+        member_->bkcl_ctxs_->GetSyncBatchNormCtx(scope, member_->places_);
+    auto &pool = platform::DeviceContextPool::Instance();
+    for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
+      auto *dev_ctx = static_cast<platform::XPUDeviceContext *>(
+          pool.Get(member_->places_[dev_id]));
+      auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[dev_id]);
+      dev_ctx->set_bkcl_context(bkcl_ctx.comm());
+    }
+#else
+    PADDLE_THROW(
+        platform::errors::PreconditionNotMet("Not compiled with XPU."));
 #endif
   }
   // broadcast parameters from the 0th device to others:
@@ -947,6 +968,9 @@ void ParallelExecutor::BCastParamsToDevices(
       continue;
     }
     auto &dims = main_tensor.dims();
+
+    VLOG(1) << "bcast var=" << var;
+
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #if defined(PADDLE_WITH_NCCL)
       std::vector<void *> buffers;
@@ -983,6 +1007,58 @@ void ParallelExecutor::BCastParamsToDevices(
         }
         nccl_ctxs->WaitAll();
       }
+#endif
+    } else if (paddle::platform::is_xpu_place(main_tensor.place())) {
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+      std::vector<void *> buffers;
+      buffers.reserve(member_->places_.size());
+      size_t numel = main_tensor.numel();
+      BKCLDataType data_type = BKCL_FLOAT;
+      // BKCLDataType data_type = platform::ToBKCLDataType(main_tensor.type());
+      for (size_t i = 0; i < member_->places_.size(); ++i) {
+        auto place = member_->places_[i];
+        void *buffer;
+
+        if (i == 0 && trainer_id == 0) {
+          buffer = const_cast<void *>(main_tensor.data<void>());
+        } else {
+          auto local_scope = member_->local_scopes_[i];
+          auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
+          t->Resize(dims);
+          buffer = t->mutable_data(place, main_tensor.type());
+        }
+        buffers.push_back(buffer);
+      }
+
+      PADDLE_ENFORCE_EQ(member_->places_.size(), buffers.size(),
+                        platform::errors::PreconditionNotMet(
+                            "variables' buffer size to bcast is %d, which is "
+                            "NOT equal to places size %d",
+                            buffers.size(), member_->places_.size()));
+      {
+        auto *bkcl_ctxs = member_->bkcl_ctxs_->DefaultFlatCtx();
+
+        PADDLE_ENFORCE_EQ(
+            bkcl_group_start(), BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl_group_start failed"));
+        for (size_t i = 0; i < member_->places_.size(); ++i) {
+          auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[i]);
+          if (main_tensor.type() == framework::proto::VarType::INT64) {
+            numel *= 2;
+          }
+          PADDLE_ENFORCE_EQ(
+              bkcl_broadcast(bkcl_ctx.comm(), buffers[i], buffers[i], numel,
+                             data_type, 0, NULL),
+              BKCL_SUCCESS,
+              platform::errors::Unavailable("bkcl_broadcast failed"));
+        }
+        PADDLE_ENFORCE_EQ(
+            bkcl_group_end(), BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl_group_end failed"));
+      }
+#else
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
     } else {
       platform::CPUPlace cpu;
