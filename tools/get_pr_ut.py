@@ -69,14 +69,20 @@ class PRChecker(object):
     #todo: exception
     def __wget_with_retry(self, url):
         ix = 1
+        proxy = '--no-proxy'
         while ix < 6:
+            if ix // 2 == 0:
+                proxy = ''
+            else:
+                proxy = '--no-proxy'
             code = subprocess.call(
-                'wget -q --no-proxy --no-check-certificate {}'.format(url),
+                'wget -q {} --no-check-certificate {}'.format(proxy, url),
                 shell=True)
             if code == 0:
                 return True
-            print('PREC download {} error, retry {} time(s) after {} secs '.
-                  format(url, ix, ix * 10))
+            print(
+                'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.
+                format(url, ix, ix * 10, proxy))
             time.sleep(ix * 10)
             ix += 1
         return False
