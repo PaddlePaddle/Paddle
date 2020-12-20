@@ -1051,6 +1051,7 @@ set -x
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
             if [[ -f "ut_list" ]]; then
                 set +x
+                echo "PREC length: "`wc -l ut_list`
                 precision_cases=`cat ut_list`
                 set -x
             fi
