@@ -242,21 +242,24 @@ class PRChecker(object):
                 else:
                     ut_list.extend(file_ut_map.get(f))
         ut_list = list(set(ut_list))
-        ret = self.__wget_with_retry(
-            'https://sys-p0.bj.bcebos.com/prec/prec_delta{}'.format(
-                self.suffix))
-        if ret:
-            with open('prec_delta' + self.suffix) as delta:
-                for ut in delta:
-                    ut_list.append(ut.rstrip('\r\n'))
-        else:
-            print('PREC download prec_delta failed')
 
         if check_added_ut:
             with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
                 for ut in utfile:
                     print('PREC NEW UT: {}'.format(ut.rstrip('\r\n')))
                     ut_list.append(ut.rstrip('\r\n'))
+
+        if ut_list:
+            ret = self.__wget_with_retry(
+                'https://sys-p0.bj.bcebos.com/prec/prec_delta{}'.format(
+                    self.suffix))
+            if ret:
+                with open('prec_delta' + self.suffix) as delta:
+                    for ut in delta:
+                        ut_list.append(ut.rstrip('\r\n'))
+            else:
+                print('PREC download prec_delta failed')
+                exit(1)
 
         return '\n'.join(ut_list)
 
