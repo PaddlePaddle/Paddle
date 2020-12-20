@@ -17,6 +17,8 @@ import os
 import json
 import re
 import sys
+import time
+import subprocess
 import requests
 from github import Github
 
@@ -45,7 +47,7 @@ class PRChecker(object):
         """ Get pull request. """
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
-            print('No PR ID')
+            print('PREC No PR ID')
             exit(0)
         suffix = os.getenv('PREC_SUFFIX')
         if suffix:
@@ -60,8 +62,30 @@ class PRChecker(object):
             else:
                 break
             ix = ix + 1
-        if last_commit.message.find('test=full_case') != -1:
+        if last_commit.message.find('test=allcase') != -1:
+            print('PREC test=allcase is set')
             self.full_case = True
+
+    #todo: exception
+    def __wget_with_retry(self, url):
+        ix = 1
+        proxy = '--no-proxy'
+        while ix < 6:
+            if ix // 2 == 0:
+                proxy = ''
+            else:
+                proxy = '--no-proxy'
+            code = subprocess.call(
+                'wget -q {} --no-check-certificate {}'.format(proxy, url),
+                shell=True)
+            if code == 0:
+                return True
+            print(
+                'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.
+                format(url, ix, ix * 10, proxy))
+            time.sleep(ix * 10)
+            ix += 1
+        return False
 
     def get_pr_files(self):
         """ Get files in pull request. """
@@ -101,6 +125,7 @@ class PRChecker(object):
 
     def get_comment_of_file(self, f):
         #content = self.repo.get_contents(f.replace(PADDLE_ROOT, ''), 'pull/').decoded_content
+        #todo: get file from github
         with open(f) as fd:
             lines = fd.readlines()
         lineno = 1
@@ -166,6 +191,7 @@ class PRChecker(object):
         for l in diff_lines:
             if l not in comment_lines:
                 return False
+        print('PREC {} is only comment'.format(f))
         return True
 
     def get_pr_ut(self):
@@ -175,8 +201,12 @@ class PRChecker(object):
         check_added_ut = False
         ut_list = []
         file_ut_map = None
-        cmd = 'wget -q --no-proxy --no-check-certificate https://sys-p0.bj.bcebos.com/prec/file_ut.json' + self.suffix
-        os.system(cmd)
+        ret = self.__wget_with_retry(
+            'https://sys-p0.bj.bcebos.com/prec/file_ut.json{}'.format(
+                self.suffix))
+        if not ret:
+            print('PREC download file_ut.json failed')
+            exit(1)
         with open('file_ut.json' + self.suffix) as jsonfile:
             file_ut_map = json.load(jsonfile)
         for f in self.get_pr_files():
@@ -187,16 +217,24 @@ class PRChecker(object):
                     if self.is_only_comment(f):
                         ut_list.append('h_cu_comment_placeholder')
                     else:
+                        print(
+                            'PREC dismatch: {} not in file ut map and not md or comment'.
+                            format(f))
                         return ''
                 elif f.endswith('.cc') or f.endswith('.py') or f.endswith(
                         '.cu'):
                     if f.find('test_') != -1 or f.find('_test') != -1:
+                        print('PREC {} need check new ut'.format(f))
                         check_added_ut = True
                     elif self.is_only_comment(f):
                         ut_list.append('nomap_comment_placeholder')
                     else:
+                        print(
+                            'PREC dismatch: {} not in file ut map and not new ut or comment'.
+                            format(f))
                         return ''
                 else:
+                    print('PREC dismatch: {} not in file ut map'.format(f))
                     return ''
             else:
                 if self.is_only_comment(f):
@@ -204,24 +242,28 @@ class PRChecker(object):
                 else:
                     ut_list.extend(file_ut_map.get(f))
         ut_list = list(set(ut_list))
-        cmd = 'wget -q --no-proxy --no-check-certificate https://sys-p0.bj.bcebos.com/prec/prec_delta' + self.suffix
-        os.system(cmd)
-        with open('prec_delta' + self.suffix) as delta:
-            for ut in delta:
-                ut_list.append(ut.rstrip('\r\n'))
+        ret = self.__wget_with_retry(
+            'https://sys-p0.bj.bcebos.com/prec/prec_delta{}'.format(
+                self.suffix))
+        if ret:
+            with open('prec_delta' + self.suffix) as delta:
+                for ut in delta:
+                    ut_list.append(ut.rstrip('\r\n'))
+        else:
+            print('PREC download prec_delta failed')
 
         if check_added_ut:
-            cmd = 'bash {}/tools/check_added_ut.sh >/tmp/pre_ut 2>&1'.format(
-                PADDLE_ROOT)
-            os.system(cmd)
             with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
                 for ut in utfile:
+                    print('PREC NEW UT: {}'.format(ut.rstrip('\r\n')))
                     ut_list.append(ut.rstrip('\r\n'))
 
-        return ' '.join(ut_list)
+        return '\n'.join(ut_list)
 
 
 if __name__ == '__main__':
     pr_checker = PRChecker()
     pr_checker.init()
-    print(pr_checker.get_pr_ut())
+    #print(pr_checker.get_pr_ut())
+    with open('ut_list', 'w') as f:
+        f.write(pr_checker.get_pr_ut())
