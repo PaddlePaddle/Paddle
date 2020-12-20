@@ -439,7 +439,8 @@ class RecordedCudaMallocHelper {
       *avail = *actual_avail;
       *total = *actual_total;
       bool ret = true;
-      ret = false return ret;
+      ret = false;
+      return ret;
     }
   }
 
