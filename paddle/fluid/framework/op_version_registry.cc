@@ -62,6 +62,37 @@ OpVersionDesc&& OpVersionDesc::BugfixWithBehaviorChanged(
   return std::move(*this);
 }
 
+OpVersionDesc&& OpVersionDesc::DeleteAttr(const std::string& name,
+                                          const std::string& remark) {
+  infos_.emplace_back(
+      new_update<OpUpdateType::kDeleteAttr>(OpAttrInfo(name, remark)));
+  return std::move(*this);
+}
+OpVersionDesc&& OpVersionDesc::ModifyInput(const std::string& name,
+                                           const std::string& remark) {
+  infos_.emplace_back(
+      new_update<OpUpdateType::kModifyInput>(OpInputOutputInfo(name, remark)));
+  return std::move(*this);
+}
+OpVersionDesc&& OpVersionDesc::ModifyOutput(const std::string& name,
+                                            const std::string& remark) {
+  infos_.emplace_back(
+      new_update<OpUpdateType::kModifyOutput>(OpInputOutputInfo(name, remark)));
+  return std::move(*this);
+}
+OpVersionDesc&& OpVersionDesc::DeleteInput(const std::string& name,
+                                           const std::string& remark) {
+  infos_.emplace_back(
+      new_update<OpUpdateType::kDeleteInput>(OpInputOutputInfo(name, remark)));
+  return std::move(*this);
+}
+OpVersionDesc&& OpVersionDesc::DeleteOutput(const std::string& name,
+                                            const std::string& remark) {
+  infos_.emplace_back(
+      new_update<OpUpdateType::kDeleteOutput>(OpInputOutputInfo(name, remark)));
+  return std::move(*this);
+}
+
 OpVersion& OpVersionRegistrar::Register(const std::string& op_type) {
   PADDLE_ENFORCE_EQ(
       op_version_map_.find(op_type), op_version_map_.end(),

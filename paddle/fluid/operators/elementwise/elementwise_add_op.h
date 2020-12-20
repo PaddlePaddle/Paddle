@@ -348,7 +348,7 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
       } else {
         size_t thread_nums = 1024;
         size_t block_nums = (width + thread_nums - 1) / thread_nums;
-        int vec_size = VectorizedSize<T>(dx_data);
+        int vec_size = VectorizedSize<T>(dout_data);
         if (vec_size == 4 && width % 4 == 0) {
           block_nums = (width / vec_size + thread_nums - 1) / thread_nums;
           VecMatrixReduceLongWidth<T,
