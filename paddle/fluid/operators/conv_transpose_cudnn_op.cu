@@ -634,10 +634,10 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
             ctx, ddX, &transformed_ddX_channel);
       }
 
-      // if (ddO) {
-      //   ResizeToChannelFirst<platform::CUDADeviceContext, T>(
-      //       ctx, ddO, &transformed_ddO_channel);
-      // }
+      if (ddO) {
+        ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+            ctx, ddO, &transformed_ddO_channel);
+      }
       if (dX) {
         ResizeToChannelFirst<platform::CUDADeviceContext, T>(
             ctx, dX, &transformed_dX_channel);
@@ -672,7 +672,6 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
     Tensor transformed_X(X->type());
     Tensor transformed_ddX(X->type());
 
-    Tensor transformed_dX(X->type());
     Tensor transformed_dO(dO->type());
 
     std::vector<int> padding_common(data_dim, 0);
@@ -706,7 +705,6 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
           framework::make_ddim(new_input_shape_vec));
       transformed_X.Resize(new_input_shape);
       transformed_ddX.Resize(new_input_shape);
-      transformed_dX.Resize(new_input_shape);
 
       framework::DDim new_output_grad_shape(
           framework::make_ddim(new_output_grad_shape_vec));
@@ -721,11 +719,6 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
               new_input_shape, dev_ctx);
       if (ddX) {
         transformed_ddX =
-            ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
-                new_input_shape, dev_ctx);
-      }
-      if (dX) {
-        transformed_dX =
             ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
                 new_input_shape, dev_ctx);
       }
@@ -768,9 +761,6 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       transformed_dO = transformed_dO_channel;
       if (ddX) {
         transformed_ddX = transformed_ddX_channel;
-      }
-      if (dX) {
-        transformed_dX = transformed_dX_channel;
       }
 
       if (paddings.size() == data_dim) {
@@ -975,7 +965,25 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
               workspace_size);
         }
       }
-      if (channel_last) {
+      if ((!is_sys_pad) && (!channel_last)) {
+        if (strides.size() == 2U) {
+          Slice<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, &transformed_ddO_channel, ddO, starts, ends, axes);
+        } else if (!is_sys_pad && strides.size() == 3U) {
+          Slice<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, &transformed_ddO_channel, ddO, starts, ends, axes);
+        }
+      } else if ((!is_sys_pad) && (channel_last)) {
+        if (strides.size() == 2U) {
+          Slice<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, &transformed_ddO_channel, &transformed_ddO_channel, starts,
+              ends, axes);
+        } else if (!is_sys_pad && strides.size() == 3U) {
+          Slice<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, &transformed_ddO_channel, &transformed_ddO_channel, starts,
+              ends, axes);
+        }
+
         TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
             ctx, &transformed_ddO_channel, ddO);
       }
@@ -1015,16 +1023,6 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                       transformed_dx + i * group_offset_in));
             },
             workspace_size);
-      }
-
-      if (!is_sys_pad) {
-        if (strides.size() == 2U) {
-          Slice<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, &transformed_ddO_channel, ddO, starts, ends, axes);
-        } else if (!is_sys_pad && strides.size() == 3U) {
-          Slice<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, &transformed_ddO_channel, ddO, starts, ends, axes);
-        }
       }
       if (channel_last) {
         TransToChannelLast<paddle::platform::CUDADeviceContext, T>(

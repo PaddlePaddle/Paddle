@@ -155,32 +155,5 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
 
-class TestConvTranspose2DoubleGradCheck_ChannelLast_AsyPadding(
-        TestConvTransposeDoubleGradCheck):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 3, 3, 2]
-        eps = 0.005
-        dtype = np.float64
-        x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(
-            input=x,
-            num_filters=2,
-            filter_size=1,
-            padding=[1, 0, 1, 0],
-            bias_attr=False,
-            use_cudnn=True,
-            groups=1,
-            data_format="NHWC")
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = fluid.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
-
-
 if __name__ == "__main__":
     unittest.main()
