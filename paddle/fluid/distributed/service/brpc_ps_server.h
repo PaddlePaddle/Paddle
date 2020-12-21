@@ -110,6 +110,9 @@ class PsService : public PsBaseService {
   int32_t print_table_stat(Table *table, const PsRequestMessage &request,
                            PsResponseMessage &response, brpc::Controller *cntl);
 
+  int32_t push_global_step(Table *table, const PsRequestMessage &request,
+                           PsResponseMessage &response, brpc::Controller *cntl);
+
   bool _is_initialize_shard_info;
   std::mutex _initialize_shard_mutex;
   std::unordered_map<int32_t, serviceHandlerFunc> _service_handler_map;

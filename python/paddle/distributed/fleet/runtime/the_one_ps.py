@@ -208,24 +208,23 @@ class CommonAccessor:
 
 class Tensor:
     def __init__(self):
-        self.tensor_class = None
-        self.param_name = None
-        self.grad_name = None
-        self.optimizer = None
-        self.feature_dim = -1
-        self.embedding_dim = -1
-        self.common_block_str = ""
+        self.main_program_id = None
+        self.startup_program_id = None
+        self.feed_var_name = None
+        self.fetch_var_name = None
+        self.tensor_table_class = False
 
     def to_string(self, indent):
-        accessor_str = "{}tensor {{{}\n{}}}"
+        program_str = "{}tensor {{{}\n{}}}"
         attrs = ""
-        attrs += "tensor_class: \"{}\" ".format(self.tensor_class)
-        attrs += "fea_dim: {} ".format(self.feature_dim)
-        attrs += "emb_dim: {} ".format(self.embedding_dim)
-        attrs += "param: \"{}\" ".format(self.param_name)
-        attrs += "grad: \"{}\" ".format(self.grad_name)
-        attrs += "common_block_map: \"{}\" ".format(self.common_block_str)
-        return accessor_str.format(
+        attrs += "feed_var_name: \"{}\" ".format(str(self.feed_var_name))
+        attrs += "fetch_var_name: \"{}\" ".format(str(self.fetch_var_name))
+        attrs += "startup_program_id: {} ".format(str(self.startup_program_id))
+        attrs += "main_program_id: {} ".format(str(self.main_program_id))
+        attrs += "tensor_table_class: \"{}\" ".format(
+            str(self.tensor_table_class))
+        attrs += "\n"
+        return program_str.format(
             conv_indent(indent), attrs, conv_indent(indent))
 
 
@@ -250,16 +249,16 @@ class Table:
         attrs += "\n"
         indent += 2
 
-        if self.tensor is not None:
-            attrs += self.tensor.to_string(indent)
-            attrs += "\n"
-
         if self.accessor is not None:
             attrs += self.accessor.to_string(indent)
             attrs += "\n"
 
         if self.common is not None:
             attrs += self.common.to_string(indent)
+            attrs += "\n"
+
+        if self.tensor is not None:
+            attrs += self.tensor.to_string(indent)
             attrs += "\n"
 
         return table_str.format(conv_indent(indent), attrs, conv_indent(indent))
@@ -384,6 +383,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()
         self._heter_client = None
+        self._server_sub_program = []
 
     def _set_basic_info(self, context):
         self.context = context
@@ -591,58 +591,117 @@ class TheOnePSRuntime(RuntimeBase):
             table.common = common
             return table
 
+        def _build_tensor_table(idx, tensor_dict):
+            table = Table()
+            table.id = idx
+            table.type = "PS_OTHER_TABLE"
+            table.table_class = tensor_dict["tensor_table_class"]
+            table.shard_num = 256
+
+            accessor = Accessor()
+            accessor.accessor_class = "CommMergeAccessor"
+            accessor.optimizer = None
+            accessor.feature_dim = 0
+            accessor.embedding_dim = 0
+            table.accessor = accessor
+
+            common = CommonAccessor()
+            common.table_name = tensor_dict["feed_var_name"]
+            common.trainer_num = self.compiled_strategy.get_trainers()
+            common.attrs = ""
+            common.dims = []
+            common.params = []
+            table.common = common
+
+            tensor = Tensor()
+            tensor.main_program_id = tensor_dict["main_program_id"]
+            tensor.startup_program_id = tensor_dict["startup_program_id"]
+            tensor.feed_var_name = tensor_dict["feed_var_name"]
+            tensor.fetch_var_name = tensor_dict["fetch_var_name"]
+            tensor.tensor_table_class = tensor_dict["tensor_table_class"]
+            table.tensor = tensor
+
+            return table
+
+        def _add_tensor_table(tables):
+            tensor_table_dict = self.compiled_strategy.get_tensor_table_dict()
+            program_idx = 0
+            for table_name in tensor_table_dict:
+                if tensor_table_dict[table_name]["startup_program"] != None:
+                    tensor_table_dict[table_name][
+                        "startup_program_id"] = program_idx
+                    self._server_sub_program.append(tensor_table_dict[
+                        table_name]["startup_program"].desc)
+                    program_idx += 1
+                if tensor_table_dict[table_name]["main_program"] != None:
+                    tensor_table_dict[table_name][
+                        "main_program_id"] = program_idx
+                    self._server_sub_program.append(tensor_table_dict[
+                        table_name]["main_program"].desc)
+                    program_idx += 1
+                # Todo: Hard code for lr_decay table apply table id
+                new_table = _build_tensor_table(
+                    len(tables), tensor_table_dict[table_name])
+                tables.append(new_table)
+            return tables
+
         def _get_tables():
             send_ctx = self.compiled_strategy.get_the_one_send_context(
                 use_origin_program=True,
                 split_dense_table=self.role_maker.
                 _is_heter_parameter_server_mode)
-            tables = [i for i in range(len(send_ctx) + 1)]
+            tables = []  # [i for i in range(len(send_ctx) + 1)]
 
             for idx, (name, ctx) in enumerate(send_ctx.items()):
                 table = Table()
                 table.id = ctx.table_id()
 
-                if ctx.is_sparse():
-                    if len(ctx.origin_varnames()) < 1:
-                        continue
-                    table.type = "PS_SPARSE_TABLE"
+                if not ctx.is_tensor_table():
+                    if ctx.is_sparse():
+                        if len(ctx.origin_varnames()) < 1:
+                            continue
+                        table.type = "PS_SPARSE_TABLE"
 
-                    if self.compiled_strategy.is_geo_mode():
-                        table.table_class = "SparseGeoTable"
+                        if self.compiled_strategy.is_geo_mode():
+                            table.table_class = "SparseGeoTable"
+                        else:
+                            table.table_class = "CommonSparseTable"
+                        table.shard_num = 256
+                    elif ctx.is_tensor_table:
+                        if len(ctx.origin_varnames()) < 1:
+                            continue
+                        table.type = "PS_DENSE_TABLE"
+                        table.table_class = "CommonDenseTable"
+                        table.shard_num = 256
+
+                    common = CommonAccessor()
+                    if ctx.is_sparse():
+                        common.table_name = self.compiled_strategy.grad_name_to_param_name[
+                            ctx.origin_varnames()[0]]
                     else:
-                        table.table_class = "CommonSparseTable"
-                    table.shard_num = 256
-                else:
-                    if len(ctx.origin_varnames()) < 1:
-                        continue
-                    table.type = "PS_DENSE_TABLE"
-                    table.table_class = "CommonDenseTable"
-                    table.shard_num = 256
+                        common.table_name = "MergedDense"
+                    common.parse_by_optimizer(ctx.origin_varnames()[0],
+                                              ctx.is_sparse(),
+                                              ctx.sections()[0],
+                                              self.compiled_strategy)
 
-                common = CommonAccessor()
-                if ctx.is_sparse():
-                    common.table_name = self.compiled_strategy.grad_name_to_param_name[
-                        ctx.origin_varnames()[0]]
-                else:
-                    common.table_name = "MergedDense"
-                common.parse_by_optimizer(ctx.origin_varnames()[0],
-                                          ctx.is_sparse(),
-                                          ctx.sections()[0],
-                                          self.compiled_strategy)
+                    if is_sync:
+                        common.sync = "true"
+                    else:
+                        common.sync = "false"
 
-                if is_sync:
-                    common.sync = "true"
-                else:
-                    common.sync = "false"
+                    table.common = common
 
-                table.common = common
+                    accessor = _build_merge_accessor(ctx)
+                    table.accessor = accessor
+                    tables.append(table)
 
-                accessor = _build_merge_accessor(ctx)
-                table.accessor = accessor
-                tables[table.id] = table
+            tensor_table_dict = self.compiled_strategy.get_tensor_table_dict()
+            if len(tensor_table_dict) > 0:
+                tables = _add_tensor_table(tables)
 
-            barrier_table = _build_barrier_table(len(send_ctx))
-            tables[-1] = barrier_table
+            barrier_table = _build_barrier_table(len(tables))
+            tables.append(barrier_table)
             return tables
 
         if is_server:
@@ -687,7 +746,8 @@ class TheOnePSRuntime(RuntimeBase):
             string_hosts.append(pshost.serialize_to_string())
 
         self._server = fluid.core.DistFleetWrapper()
-        self._server.init_server(proto_txt, string_hosts, role_id)
+        self._server.init_server(proto_txt, string_hosts, role_id,
+                                 self._server_sub_program)
 
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 

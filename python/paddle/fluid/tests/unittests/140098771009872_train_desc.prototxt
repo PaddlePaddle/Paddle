@@ -1,0 +1,10 @@
+class_name: "MultiTrainer"
+device_worker_name: "HogwildWorker"
+thread_num: 2
+debug: true
+fetch_config {
+  fetch_var_names: "mean_0.tmp_0"
+  fetch_var_str_format: "cost"
+  print_period: 2
+}
+thread_barrier: false

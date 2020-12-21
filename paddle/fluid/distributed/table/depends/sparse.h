@@ -31,17 +31,22 @@ namespace distributed {
 class SparseOptimizer {
  public:
   SparseOptimizer() {}
-  explicit SparseOptimizer(const CommonAccessorParameter& common) {}
+  explicit SparseOptimizer(const CommonAccessorParameter& common,
+                           std::shared_ptr<float>& lr) {}
   virtual void update(const uint64_t* keys, const float* update_values,
                       size_t num, const std::vector<uint64_t>& offsets,
                       ValueBlock* block) = 0;
+
+ protected:
+  std::shared_ptr<float>* learning_rate_;
 };
 
 // sum calc for sparse tensor
 class SSUM : public SparseOptimizer {
  public:
   SSUM(){};
-  explicit SSUM(const CommonAccessorParameter& common) {
+  explicit SSUM(const CommonAccessorParameter& common,
+                std::shared_ptr<float>& lr) {
     auto& names = common.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
       if (names[x] == "Param") {
@@ -49,6 +54,7 @@ class SSUM : public SparseOptimizer {
         update_numel = common.dims()[x];
       }
     }
+    learning_rate_ = &lr;
   }
 
   void update(const uint64_t* keys, const float* update_values, size_t num,
@@ -75,17 +81,19 @@ class SSUM : public SparseOptimizer {
 class SSGD : public SparseOptimizer {
  public:
   SSGD(){};
-  explicit SSGD(const CommonAccessorParameter& common) {
+  explicit SSGD(const CommonAccessorParameter& common,
+                std::shared_ptr<float>& lr) {
     auto& names = common.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
-      if (names[x] == "LearningRate") {
-        learning_rate_idx = x;
-      }
+      // if (names[x] == "LearningRate") {
+      //   learning_rate_idx = x;
+      // }
       if (names[x] == "Param") {
         param_idx = x;
         update_numel = common.dims()[x];
       }
     }
+    learning_rate_ = &lr;
   }
 
   void update(const uint64_t* keys, const float* update_values, size_t num,
@@ -95,7 +103,7 @@ class SSGD : public SparseOptimizer {
     for (auto x : offsets) {
       auto id = keys[x];
       auto values = block->Get(id);
-      float* learning_rate = values[learning_rate_idx]->data();
+      float* learning_rate = learning_rate_->get();
       float* param = values[param_idx]->data();
 
       std::vector<float> grads;
@@ -106,7 +114,6 @@ class SSGD : public SparseOptimizer {
     }
   }
 
-  int learning_rate_idx;
   int param_idx;
   int update_numel;
 };
@@ -115,12 +122,13 @@ class SSGD : public SparseOptimizer {
 class SAdam : public SparseOptimizer {
  public:
   SAdam() {}
-  explicit SAdam(const CommonAccessorParameter& common) {
+  explicit SAdam(const CommonAccessorParameter& common,
+                 std::shared_ptr<float>& lr) {
     auto& names = common.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
-      if (names[x] == "LearningRate") {
-        learning_rate_idx = x;
-      }
+      // if (names[x] == "LearningRate") {
+      //   learning_rate_idx = x;
+      // }
       if (names[x] == "Param") {
         param_idx = x;
         update_numel = common.dims()[x];
@@ -143,6 +151,8 @@ class SAdam : public SparseOptimizer {
     beta1 = 0.9;
     beta2 = 0.999;
     epsilon = 1.0e-8;
+
+    learning_rate_ = &lr;
   }
 
   void update(const uint64_t* keys, const float* update_values, size_t num,
@@ -152,7 +162,7 @@ class SAdam : public SparseOptimizer {
     for (auto x : offsets) {
       auto id = keys[x];
       auto values = block->Get(id);
-      float* learning_rate = values[learning_rate_idx]->data();
+      float* learning_rate = learning_rate_->get();
       float* param = values[param_idx]->data();
       float* moment1 = values[moment1_idx]->data();
       float* moment2 = values[moment2_idx]->data();
@@ -163,6 +173,7 @@ class SAdam : public SparseOptimizer {
       beta2_pow[0] = beta2_pow[0] * beta2;
 
       float lr_ = learning_rate[0];
+      VLOG(1) << "SAdam learning rate value： " << lr_;
       lr_ *= sqrt(1 - beta2_pow[0]) / (1 - beta1_pow[0]);
 
       std::vector<float> grad, grad2, tmp;
@@ -194,7 +205,6 @@ class SAdam : public SparseOptimizer {
     }
   }
 
-  int learning_rate_idx;
   int param_idx;
   int moment1_idx;
   int moment2_idx;

@@ -66,7 +66,12 @@ int32_t CommonDenseTable::initialize_value() {
     names_index_[varname] = x;
 
     for (int y = 0; y < dim; ++y) {
-      values_[x][y] = initializers_[varname]->GetValue();
+      if (varname == "LearningRate") {
+        values_[x][y] = initializers_[varname]->GetValue();
+        set_global_lr(&(values_[x][y]));
+      } else {
+        values_[x][y] = initializers_[varname]->GetValue();
+      }
     }
   }
 
@@ -80,11 +85,11 @@ int32_t CommonDenseTable::initialize_optimizer() {
   auto attrs = common.attributes();
 
   if (name == "sgd") {
-    optimizer_ = std::make_shared<DSGD>(common, &values_);
+    optimizer_ = std::make_shared<DSGD>(common, &values_, _global_lr);
   } else if (name == "adam") {
-    optimizer_ = std::make_shared<DAdam>(common, &values_);
+    optimizer_ = std::make_shared<DAdam>(common, &values_, _global_lr);
   } else if (name == "sum") {
-    optimizer_ = std::make_shared<DSUM>(common, &values_);
+    optimizer_ = std::make_shared<DSUM>(common, &values_, _global_lr);
   } else {
     VLOG(0) << "init optimizer failed";
   }

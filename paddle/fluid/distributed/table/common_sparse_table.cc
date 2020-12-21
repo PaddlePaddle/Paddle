@@ -260,11 +260,11 @@ int32_t CommonSparseTable::initialize_optimizer() {
   auto attrs = common.attributes();
 
   if (name == "sgd") {
-    optimizer_ = std::make_shared<SSGD>(common);
+    optimizer_ = std::make_shared<SSGD>(common, _global_lr);
   } else if (name == "adam") {
-    optimizer_ = std::make_shared<SAdam>(common);
+    optimizer_ = std::make_shared<SAdam>(common, _global_lr);
   } else if (name == "sum") {
-    optimizer_ = std::make_shared<SSUM>(common);
+    optimizer_ = std::make_shared<SSUM>(common, _global_lr);
   } else {
     VLOG(0) << "init optimizer failed";
   }

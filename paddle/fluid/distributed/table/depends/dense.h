@@ -33,22 +33,28 @@ class DenseOptimizer {
  public:
   DenseOptimizer() {}
   explicit DenseOptimizer(const CommonAccessorParameter& accessor,
-                          std::vector<std::vector<float>>* values) {}
+                          std::vector<std::vector<float>>* values,
+                          std::shared_ptr<float>& lr) {}
   virtual void update(const float* update_values, size_t num, int begin,
                       int end) = 0;
+
+ protected:
+  std::shared_ptr<float>* learning_rate_;
 };
 
 // sum calc for dense tensor
 class DSUM : public DenseOptimizer {
  public:
   explicit DSUM(const CommonAccessorParameter& accessor,
-                std::vector<std::vector<float>>* values) {
+                std::vector<std::vector<float>>* values,
+                std::shared_ptr<float>& lr) {
     auto& names = accessor.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
       if (names[x] == "Param") {
         param = (*values)[x].data();
       }
     }
+    learning_rate_ = &lr;
   }
 
   void update(const float* update_values, size_t num, int begin,
@@ -65,16 +71,18 @@ class DSUM : public DenseOptimizer {
 class DSGD : public DenseOptimizer {
  public:
   explicit DSGD(const CommonAccessorParameter& accessor,
-                std::vector<std::vector<float>>* values) {
+                std::vector<std::vector<float>>* values,
+                std::shared_ptr<float>& lr) {
     auto& names = accessor.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
-      if (names[x] == "LearningRate") {
-        learning_rate = (*values)[x].data();
-      }
+      // if (names[x] == "LearningRate") {
+      //   learning_rate = (*values)[x].data();
+      // }
       if (names[x] == "Param") {
         param = (*values)[x].data();
       }
     }
+    learning_rate_ = &lr;
   }
 
   void update(const float* update_values, size_t num, int begin,
@@ -85,11 +93,10 @@ class DSGD : public DenseOptimizer {
 
     auto blas = GetBlas<float>();
     blas.VCOPY(update_numel, update_values + begin, grads.data());
-    blas.SCAL(update_numel, *learning_rate, grads.data());
+    blas.SCAL(update_numel, *(learning_rate_->get()), grads.data());
     blas.VSUB(update_numel, param + begin, grads.data(), param + begin);
   }
 
-  float* learning_rate;
   float* param;
 };
 
@@ -97,12 +104,13 @@ class DSGD : public DenseOptimizer {
 class DAdam : public DenseOptimizer {
  public:
   explicit DAdam(const CommonAccessorParameter& accessor,
-                 std::vector<std::vector<float>>* values) {
+                 std::vector<std::vector<float>>* values,
+                 std::shared_ptr<float>& lr) {
     auto& names = accessor.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
-      if (names[x] == "LearningRate") {
-        learning_rate = (*values)[x].data();
-      }
+      // if (names[x] == "LearningRate") {
+      //   learning_rate = (*values)[x].data();
+      // }
       if (names[x] == "Param") {
         param = (*values)[x].data();
       }
@@ -119,7 +127,7 @@ class DAdam : public DenseOptimizer {
         beta2_pow = (*values)[x].data();
       }
     }
-
+    learning_rate_ = &lr;
     // add attr later
     beta1 = 0.9;
     beta2 = 0.999;
@@ -150,7 +158,8 @@ class DAdam : public DenseOptimizer {
     beta1_pow[0] = beta1_pow[0] * beta1;
     beta2_pow[0] = beta2_pow[0] * beta2;
 
-    float lr_ = learning_rate[0];
+    float lr_ = *(learning_rate_->get());
+    VLOG(1) << "DAdam learning rate: " << lr_;
     lr_ *= sqrt(1 - beta2_pow[0]) / (1 - beta1_pow[0]);
 
     float* tmp_ = tmp.data();
@@ -163,8 +172,6 @@ class DAdam : public DenseOptimizer {
     blas.SCAL(update_numel, lr_, tmp_);
     blas.VSUB(update_numel, param + begin, tmp_, param + begin);
   }
-
-  float* learning_rate;
 
   float* param;
   float* moment1;

@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/service/ps_client.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/service/service.h"
+#include "paddle/fluid/framework/program_desc.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -155,7 +156,10 @@ void RunServer() {
   _ps_env.set_ps_servers(&host_sign_list_, 1);
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(server_proto));
-  pserver_ptr_->configure(server_proto, _ps_env, 0);
+  std::vector<framework::ProgramDesc> empty_vec;
+  framework::ProgramDesc empty_prog;
+  empty_vec.push_back(empty_prog);
+  pserver_ptr_->configure(server_proto, _ps_env, 0, empty_vec);
   pserver_ptr_->start(ip_, port_);
 }
 

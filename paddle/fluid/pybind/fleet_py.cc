@@ -79,8 +79,8 @@ void BindCommunicatorContext(py::module* m) {
       .def(
           py::init<const std::string&, const std::vector<std::string>&,
                    const std::vector<std::string>&, const std::vector<int64_t>&,
-                   const std::vector<std::string>&, int, bool, bool, bool,
-                   int>())
+                   const std::vector<std::string>&, int, bool, bool, bool, int,
+                   bool>())
       .def("var_name", [](const CommContext& self) { return self.var_name; })
       .def("trainer_id",
            [](const CommContext& self) { return self.trainer_id; })
@@ -97,6 +97,8 @@ void BindCommunicatorContext(py::module* m) {
            [](const CommContext& self) { return self.is_distributed; })
       .def("origin_varnames",
            [](const CommContext& self) { return self.origin_varnames; })
+      .def("is_tensor_table",
+           [](const CommContext& self) { return self.is_tensor_table; })
       .def("__str__", [](const CommContext& self) { return self.print(); });
 }
 
