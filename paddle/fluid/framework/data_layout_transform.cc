@@ -181,8 +181,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
 
   if (in_format != out_format) {
     void* in_data = GetDataFromTensor(in, in_type);
-    const std::string key =
-        platform::CreateKey(in_tz, in_format, out_format, in_type);
+    std::string key =
+        platform::CreateKey(*dev_ctx, in_tz, in_format, out_format, in_type);
 
     platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type, *dev_ctx,
                                            cpu_engine, key);
