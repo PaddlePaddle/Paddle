@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_CUDA
 #ifdef __NVCC__
+#include <cuda_fp16.h>
 #include "cub/cub.cuh"
 #endif
 #endif
