@@ -131,13 +131,28 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
 };
 
-// NOTE(pangyoki): The same function with op_passing_outs_map, but used for
-// in-place ops.
-std::map<std::string, std::set<std::string>> op_inplace_passing_outs_map = {
-    {"squeeze2", {"Out"}},  // "X" -> "Out"
+// NOTE(pangyoki): Reuse VarBase Inplace Op. In this case, output will reuse
+// input varbase.
+// Has the same function as `op_passing_outs_map`, but used for in-place ops.
+// Because input and output use the same varbase, inplace ops need to pass the
+// outputs from Python instead of generating them in C++. And the mapping
+// relationship between the output and input varbase will be shown in Python
+// API.
+// The case where the Output is duplicated has not been considered.
+std::map<std::string, std::set<std::string>>
+    reuse_varbase_inplace_op_passing_outs_map = {
+        {"squeeze2", {"Out"}},
 };
+
+// NOTE(pangyoki): Reuse Tensor Inplace Op. In this case, a new output varbase
+// will be created, and this varbase will reuse the input varbase's tensor.
+// It's a 2-layer map. The key of outer map is the inplace op name, the value is
+// also a map which implies the mapping relationship between the output and
+// input
+// varbase.
+// The case where the Output is duplicated has not been considered.
 std::map<std::string, std::map<std::string, std::string>>
-    op_reuse_buffer_inplace_passing_outs_map = {
+    reuse_tensor_inplace_op_map = {
         {"squeeze2", {{"Out", "X"}}},  // "X" -> "Out"
 };
 
@@ -197,13 +212,28 @@ const char* RETURN_TEMPLATE = R"(outs["%s"][0])";
 const char* FUNCTION_ARGS = R"(%s, const py::args& args)";
 const char* FUNCTION_ARGS_NO_INPUT = R"(const py::args& args)";
 
-const char* REUSE_BUFFER_INPLACE_TEMPLATE =
+const char* REUSE_VARBASE_INPLACE_TEMPLATE =
+R"(
+    %s->BumpInplaceVersion();
+    VLOG(3) << "Inplace VarBase";
+)";
+
+const char* REUSE_TENSOR_INPLACE_TEMPLATE =
 R"(
     auto inplace_varbase_%s = std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()));
-    auto *out_tensor_%s = inplace_varbase_%s->MutableVar()->GetMutable<framework::LoDTensor>();
-    auto *in_tensor_%s = %s->MutableVar()->GetMutable<framework::LoDTensor>();
-    out_tensor_%s->ShareBufferWith(*in_tensor_%s);
+    inplace_varbase_%s->SetPersistable(%s->Persistable());
+    inplace_varbase_%s->SetType(%s->Type());
+    inplace_varbase_%s->SetDataType(%s->DataType());
+    inplace_varbase_%s->MutableVar()->SharePlaceholderWith(%s->Var());
+
+    VLOG(3) << "The output Var(" << inplace_varbase_%s->Name() << ") share tensor with Input Var(" << %s->Name() << ").";
 )";
+
+// Share Buffer Method:
+// auto *out_tensor_%s = inplace_varbase_%s->MutableVar()->
+// GetMutable<framework::LoDTensor>();
+// auto *in_tensor_%s = %s->MutableVar()->GetMutable<framework::LoDTensor>();
+// out_tensor_%s->ShareBufferWith(*in_tensor_%s);
 
 const char* OP_FUNCTION_TEMPLATE =
 R"(
@@ -242,9 +272,18 @@ static inline bool FindPassingOutsMap(const std::string& op_type,
   return op_passing_outs_map[op_type].count(out_name);
 }
 
-static inline bool FindInplacePassingOutsMap(const std::string& op_type,
-                                             const std::string& out_name) {
-  return op_inplace_passing_outs_map[op_type].count(out_name);
+static inline bool FindReuseVarbaseInplaceOpMap(const std::string& op_type) {
+  return reuse_varbase_inplace_op_passing_outs_map.count(op_type);
+}
+
+static inline bool FindReuseVarbaseInplacePassingOutsMap(
+    const std::string& op_type, const std::string& out_name) {
+  return reuse_varbase_inplace_op_passing_outs_map[op_type].count(out_name);
+}
+
+static inline bool FindReuseTensorInplaceOutsMap(const std::string& op_type,
+                                                 const std::string& out_name) {
+  return reuse_tensor_inplace_op_map[op_type].count(out_name);
 }
 
 static inline std::string TempName(const std::string& name) {
@@ -253,7 +292,7 @@ static inline std::string TempName(const std::string& name) {
 
 std::string GenerateOpFunctionsBody(
     const paddle::framework::proto::OpProto* op_proto, std::string func_name,
-    bool flag_inplace_reuse_varbase = false) {
+    bool flag_reuse_varbase_inplace_op = false) {
   auto& op_type = op_proto->type();
   std::string input_args = "";
   std::string ins_initializer = "{";
@@ -262,7 +301,7 @@ std::string GenerateOpFunctionsBody(
   int arg_idx = 0;
   int input_args_num = 0;
   std::string ins_cast_str = "";
-  std::string reuse_buffer_inplace_str = "";
+  std::string inplace_process_str = "";
   for (auto& input : op_proto->inputs()) {
     auto& in_name = input.name();
     // skip those dispensable inputs, like ResidualData in conv2d
@@ -322,9 +361,15 @@ std::string GenerateOpFunctionsBody(
         output.duplicable() ? OUT_VAR_LIST_TYPE : OUT_VAR_TYPE;
     const auto return_template =
         output.duplicable() ? RETURN_LIST_TEMPLATE : RETURN_TEMPLATE;
+
+    bool flag_output_varbase_needs_inplace = false;
+    if (flag_reuse_varbase_inplace_op) {
+      if (FindReuseVarbaseInplacePassingOutsMap(op_type, out_name)) {
+        flag_output_varbase_needs_inplace = true;
+      }
+    }
     if (FindPassingOutsMap(op_type, out_name) ||
-        (flag_inplace_reuse_varbase &&
-         FindInplacePassingOutsMap(op_type, out_name))) {
+        flag_output_varbase_needs_inplace) {
       if (input_args != "") {
         input_args += ",";
       }
@@ -339,6 +384,12 @@ std::string GenerateOpFunctionsBody(
         outs_initializer_with_null +=
             paddle::string::Sprintf(out_template, out_name, out_name);
       } else {
+        if (flag_output_varbase_needs_inplace) {
+          // increase inplace_version
+          inplace_process_str +=
+              paddle::string::Sprintf(REUSE_VARBASE_INPLACE_TEMPLATE, out_name);
+        }
+
         const auto out_template = output.duplicable()
                                       ? INPUT_LIST_INITIALIZER_TEMPLATE
                                       : INPUT_INITIALIZER_TEMPLATE;
@@ -346,28 +397,6 @@ std::string GenerateOpFunctionsBody(
             paddle::string::Sprintf(out_template, out_name, out_name);
         outs_initializer += ",";
       }
-    } else if (FindInplacePassingOutsMap(op_type, out_name)) {
-      if (output.duplicable()) {
-        if (input_args != "") {
-          input_args += ",";
-        }
-        auto out_num_str = paddle::string::Sprintf(ARG_OUT_NUM, out_name);
-        input_args += ARG_OUT_NUM_TYPE;
-        input_args += out_num_str;
-        input_args_num++;
-        outs_initializer += paddle::string::Sprintf(
-            OUT_DUPLICABLE_INITIALIZER_TEMPLATE, out_name, out_num_str);
-      } else {
-        std::string reuse_buffer_in_name =
-            op_reuse_buffer_inplace_passing_outs_map[op_type][out_name];
-        reuse_buffer_inplace_str += paddle::string::Sprintf(
-            REUSE_BUFFER_INPLACE_TEMPLATE, out_name, out_name, out_name,
-            reuse_buffer_in_name, reuse_buffer_in_name, out_name,
-            reuse_buffer_in_name);
-        outs_initializer += paddle::string::Sprintf(
-            OUT_INPLACE_INITIALIZER_TEMPLATE, out_name, out_name);
-      }
-      outs_initializer += ",";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the
@@ -382,6 +411,16 @@ std::string GenerateOpFunctionsBody(
         input_args_num++;
         outs_initializer += paddle::string::Sprintf(
             OUT_DUPLICABLE_INITIALIZER_TEMPLATE, out_name, out_num_str);
+      } else if (FindReuseTensorInplaceOutsMap(op_type, out_name)) {
+        std::string reuse_tensor_in_name =
+            reuse_tensor_inplace_op_map[op_type][out_name];
+        inplace_process_str += paddle::string::Sprintf(
+            REUSE_TENSOR_INPLACE_TEMPLATE, out_name, out_name,
+            reuse_tensor_in_name, out_name, reuse_tensor_in_name, out_name,
+            reuse_tensor_in_name, out_name, reuse_tensor_in_name, out_name,
+            reuse_tensor_in_name);
+        outs_initializer += paddle::string::Sprintf(
+            OUT_INPLACE_INITIALIZER_TEMPLATE, out_name, out_name);
       } else {
         outs_initializer +=
             paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
@@ -418,7 +457,7 @@ std::string GenerateOpFunctionsBody(
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(
       OP_FUNCTION_TEMPLATE, return_type, func_name, function_args, ins_cast_str,
-      op_type, input_args_num, reuse_buffer_inplace_str, outs_initializer,
+      op_type, input_args_num, inplace_process_str, outs_initializer,
       ins_initializer, ins_initializer_with_null + outs_initializer_with_null,
       op_type, return_str);
 
@@ -455,7 +494,9 @@ GenerateOpFunctions(const std::string& module_name) {
     op_function_list.emplace_back(std::move(op_function_str));
     bind_function_list.emplace_back(std::move(bind_function_str));
 
-    if (op_inplace_passing_outs_map.count(op_type)) {
+    if (FindReuseVarbaseInplaceOpMap(op_type)) {
+      // Reuse Varbase Inplace OP: op_type_.
+      // The inplace OP needs a new implementation method.
       std::string inplace_op_type = op_type + "_";
       std::string inplace_func_name = "imperative_" + inplace_op_type;
       std::string inplace_op_function_str =
