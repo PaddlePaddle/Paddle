@@ -211,6 +211,8 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
   const T* grad_;
   const T* param_;
   T* param_out_;
+  const MT* master_param_;
+  MT* master_param_out_;
 
   const int64_t* rows_;
   int64_t row_numel_;
@@ -221,8 +223,8 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
   SparseAdamFunctor(MT beta1, MT beta2, MT epsilon, const MT* beta1_pow,
                     const MT* beta2_pow, const MT* mom1, MT* mom1_out,
                     const MT* mom2, MT* mom2_out, const MT* lr, const T* grad,
-                    const T* param, T* param_out, const int64_t* rows,
-                    int64_t row_numel, int64_t row_count, bool lazy_mode)
+                    const T* param, T* param_out, const MT* master_param, MT* master_param_out,
+                    const int64_t* rows, int64_t row_numel, int64_t row_count, bool lazy_mode)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -236,6 +238,8 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
         grad_(grad),
         param_(param),
         param_out_(param_out),
+        master_param_(master_param),
+        master_param_out_(master_param_out),
         rows_(rows),
         row_numel_(row_numel),
         row_count_(row_count),
@@ -248,7 +252,7 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
     MT lr = *lr_;
     MT beta1_pow = *beta1_pow_;
     MT beta2_pow = *beta2_pow_;
-    MT p = static_cast<MT>(param_[i]);
+    MT p = master_param_ ? master_param_[i] : static_cast<MT>(param_[i]);
 
     // Calculation
     lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) / (static_cast<MT>(1.0) - beta1_pow);
@@ -261,6 +265,9 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
     param_out_[i] = static_cast<T>(p);
+    if (master_param_out_) {
+      master_param_out_[i] = p;
+    }
   }
 
   inline HOSTDEVICE void operator()(size_t i) const {

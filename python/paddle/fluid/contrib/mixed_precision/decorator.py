@@ -28,6 +28,8 @@ from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
 from .amp_nn import check_finite_and_unscale
 from .amp_nn import update_loss_scaling
+import types
+import warnings
 
 __all__ = ["decorate", "fp16_guard"]
 
@@ -333,6 +335,10 @@ class OptimizerWithMixedPrecision(object):
             The scaled loss by scaling factor, the list of optimize ops, and a
             list of scaled parameters and gradients.
         """
+        opt_dict = self._optimizer.__class__.__dict__
+        if 'minimize' in  opt_dict and isinstance(opt_dict['minimize'], types.FunctionType):
+            warnings.warn("The decorated optimizer has its own `minimize` method, but it will not be executed.")
+
         scaled_params_grads = self.backward(
             loss,
             startup_program=startup_program,
