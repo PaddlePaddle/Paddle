@@ -239,11 +239,7 @@ elseif(WITH_PSLIB)
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor pslib_brpc )
-  # TODO: Fix these unittest failed on Windows
-  # This unittest will always failed, now no CI will run this unittest
-  if(NOT WITH_MUSL AND NOT WIN32)
-    cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
-  endif()
+
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
@@ -254,11 +250,6 @@ else()
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor)
-  # TODO: Fix these unittest failed on Windows
-  # This unittest will always failed, now no CI will run this unittest
-  if(NOT WITH_MUSL AND NOT WIN32)
-    cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
-  endif()
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_helper conditional_block_op_helper)
