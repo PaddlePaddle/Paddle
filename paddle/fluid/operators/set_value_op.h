@@ -55,18 +55,18 @@ inline std::string GetValueName(framework::proto::VarType::Type data_type) {
 }
 
 inline framework::DDim GetSliceDims(const framework::DDim in_dims,
-                                    const std::vector<int> axes,
-                                    const std::vector<int> starts,
-                                    const std::vector<int> ends) {
+                                    const std::vector<int64_t> axes,
+                                    const std::vector<int64_t> starts,
+                                    const std::vector<int64_t> ends) {
   framework::DDim slice_dims(in_dims);
 
   for (size_t i = 0; i < axes.size(); ++i) {
-    int axis = axes[i];
-    int dim_value = in_dims[axis];
+    int64_t axis = axes[i];
+    int64_t dim_value = in_dims[axis];
 
-    int start = starts[i] < 0 ? (starts[i] + dim_value) : starts[i];
-    int end = ends[i] < 0 ? (ends[i] + dim_value) : ends[i];
-    start = std::max(start, 0);
+    int64_t start = starts[i] < 0 ? (starts[i] + dim_value) : starts[i];
+    int64_t end = ends[i] < 0 ? (ends[i] + dim_value) : ends[i];
+    start = std::max(start, static_cast<int64_t>(0));
     end = std::min(end, dim_value);
 
     PADDLE_ENFORCE_GT(end, start, platform::errors::InvalidArgument(
@@ -113,10 +113,10 @@ class SetValueKernel : public framework::OpKernel<T> {
 
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-    auto axes = ctx.Attr<std::vector<int>>("axes");
-    auto starts = ctx.Attr<std::vector<int>>("starts");
-    auto ends = ctx.Attr<std::vector<int>>("ends");
-    auto shape = ctx.Attr<std::vector<int>>("shape");
+    auto axes = ctx.Attr<std::vector<int64_t>>("axes");
+    auto starts = ctx.Attr<std::vector<int64_t>>("starts");
+    auto ends = ctx.Attr<std::vector<int64_t>>("ends");
+    auto shape = ctx.Attr<std::vector<int64_t>>("shape");
     auto* value_tensor = ctx.Input<framework::LoDTensor>("ValueTensor");
 
     auto in_dims = in->dims();

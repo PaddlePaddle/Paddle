@@ -62,13 +62,14 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
              framework::proto::VarType::INT64, framework::proto::VarType::FP32,
              framework::proto::VarType::FP64})
         .SetDefault(framework::proto::VarType::FP32);
-    AddAttr<std::vector<int>>(
-        "axes", "(list<int>) Axes that `starts` and `ends` apply to.");
-    AddAttr<std::vector<int>>(
+    AddAttr<std::vector<int64_t>>(
+        "axes", "(list<int64_t>) Axes that `starts` and `ends` apply to.");
+    AddAttr<std::vector<int64_t>>(
         "starts",
-        "(list<int>) Starting indices of corresponding axis in `axes`");
-    AddAttr<std::vector<int>>(
-        "ends", "(list<int>) Ending indices of corresponding axis in `axes`.");
+        "(list<int64_t>) Starting indices of corresponding axis in `axes`");
+    AddAttr<std::vector<int64_t>>(
+        "ends",
+        "(list<int64_t>) Ending indices of corresponding axis in `axes`.");
 
     AddAttr<std::vector<int>>("bool_values", "store the bool values")
         .SetDefault({});
@@ -79,7 +80,7 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>("int64_values", "store the int64 values")
         .SetDefault({});
 
-    AddAttr<std::vector<int>>("shape", "(vector<int>) Shape of values.")
+    AddAttr<std::vector<int64_t>>("shape", "(vector<int64_t>) Shape of values.")
         .SetDefault({});
     AddComment(R"DOC(SetValue operator.
 Assignment to a Tensor in static mode.
