@@ -369,3 +369,4 @@ def runtime_main(test_class):
             model.run_dataset_trainer(args)
         else:
             model.run_pyreader_trainer(args)
+        fleet.stop_worker()

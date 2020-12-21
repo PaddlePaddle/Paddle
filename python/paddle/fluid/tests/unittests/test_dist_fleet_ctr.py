@@ -24,6 +24,7 @@ class TestDistMnistSync2x2(TestFleetBase):
     def _setup_config(self):
         self._mode = "sync"
         self._reader = "pyreader"
+        self._need_test = 1
 
     def check_with_place(self,
                          model_file,
