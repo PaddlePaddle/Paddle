@@ -1896,7 +1896,7 @@ class Variable(object):
                     type(value)))
 
         self.block.append_op(
-            type="setitem", inputs=inputs, outputs={'Out': self}, attrs=attrs)
+            type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
         return self
 
 

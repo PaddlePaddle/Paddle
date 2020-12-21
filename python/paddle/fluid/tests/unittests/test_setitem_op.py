@@ -22,7 +22,7 @@ import numpy as np
 import paddle
 
 
-class TestSetitemBase(unittest.TestCase):
+class TestSetValueBase(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.set_dtype()
@@ -44,7 +44,7 @@ class TestSetitemBase(unittest.TestCase):
         self.data[0, 0] = self.value
 
 
-class TestSetitemApi(TestSetitemBase):
+class TestSetValueApi(TestSetValueBase):
     def test_api(self):
         with paddle.static.program_guard(self.program):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
@@ -61,7 +61,7 @@ class TestSetitemApi(TestSetitemBase):
 
 
 # 1. Test different type of item: int, python slice
-class TestSetitemItemInt(TestSetitemApi):
+class TestSetValueItemInt(TestSetValueApi):
     def _call_setitem(self, x):
         x[0] = self.value
 
@@ -69,7 +69,7 @@ class TestSetitemItemInt(TestSetitemApi):
         self.data[0] = self.value
 
 
-class TestSetitemItemSlice(TestSetitemApi):
+class TestSetValueItemSlice(TestSetValueApi):
     def _call_setitem(self, x):
         x[0:2] = self.value
 
@@ -77,7 +77,7 @@ class TestSetitemItemSlice(TestSetitemApi):
         self.data[0:2] = self.value
 
 
-class TestSetitemItemSlice2(TestSetitemApi):
+class TestSetValueItemSlice2(TestSetValueApi):
     def _call_setitem(self, x):
         x[0:-1] = self.value
 
@@ -85,7 +85,7 @@ class TestSetitemItemSlice2(TestSetitemApi):
         self.data[0:-1] = self.value
 
 
-class TestSetitemItemSlice3(TestSetitemApi):
+class TestSetValueItemSlice3(TestSetValueApi):
     def _call_setitem(self, x):
         x[0:-1, 0:2] = self.value
 
@@ -93,7 +93,7 @@ class TestSetitemItemSlice3(TestSetitemApi):
         self.data[0:-1, 0:2] = self.value
 
 
-class TestSetitemItemSlice4(TestSetitemApi):
+class TestSetValueItemSlice4(TestSetValueApi):
     def _call_setitem(self, x):
         x[0:, 1:2, :] = self.value
 
@@ -118,11 +118,11 @@ def create_test_value_int32(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_int32(TestSetitemItemInt)
-create_test_value_int32(TestSetitemItemSlice)
-create_test_value_int32(TestSetitemItemSlice2)
-create_test_value_int32(TestSetitemItemSlice3)
-create_test_value_int32(TestSetitemItemSlice4)
+create_test_value_int32(TestSetValueItemInt)
+create_test_value_int32(TestSetValueItemSlice)
+create_test_value_int32(TestSetValueItemSlice2)
+create_test_value_int32(TestSetValueItemSlice3)
+create_test_value_int32(TestSetValueItemSlice4)
 
 
 def create_test_value_int64(parent):
@@ -138,11 +138,11 @@ def create_test_value_int64(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_int64(TestSetitemItemInt)
-create_test_value_int64(TestSetitemItemSlice)
-create_test_value_int64(TestSetitemItemSlice2)
-create_test_value_int64(TestSetitemItemSlice3)
-create_test_value_int64(TestSetitemItemSlice4)
+create_test_value_int64(TestSetValueItemInt)
+create_test_value_int64(TestSetValueItemSlice)
+create_test_value_int64(TestSetValueItemSlice2)
+create_test_value_int64(TestSetValueItemSlice3)
+create_test_value_int64(TestSetValueItemSlice4)
 
 
 def create_test_value_fp32(parent):
@@ -158,11 +158,11 @@ def create_test_value_fp32(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_fp32(TestSetitemItemInt)
-create_test_value_fp32(TestSetitemItemSlice)
-create_test_value_fp32(TestSetitemItemSlice2)
-create_test_value_fp32(TestSetitemItemSlice3)
-create_test_value_fp32(TestSetitemItemSlice4)
+create_test_value_fp32(TestSetValueItemInt)
+create_test_value_fp32(TestSetValueItemSlice)
+create_test_value_fp32(TestSetValueItemSlice2)
+create_test_value_fp32(TestSetValueItemSlice3)
+create_test_value_fp32(TestSetValueItemSlice4)
 
 
 def create_test_value_bool(parent):
@@ -178,11 +178,11 @@ def create_test_value_bool(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_bool(TestSetitemItemInt)
-create_test_value_bool(TestSetitemItemSlice)
-create_test_value_bool(TestSetitemItemSlice2)
-create_test_value_bool(TestSetitemItemSlice3)
-create_test_value_bool(TestSetitemItemSlice4)
+create_test_value_bool(TestSetValueItemInt)
+create_test_value_bool(TestSetValueItemSlice)
+create_test_value_bool(TestSetValueItemSlice2)
+create_test_value_bool(TestSetValueItemSlice3)
+create_test_value_bool(TestSetValueItemSlice4)
 
 
 # 2.2 value is numpy.array (int32, int64, float32, bool)
@@ -199,11 +199,11 @@ def create_test_value_numpy_int32(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_numpy_int32(TestSetitemItemInt)
-create_test_value_numpy_int32(TestSetitemItemSlice)
-create_test_value_numpy_int32(TestSetitemItemSlice2)
-create_test_value_numpy_int32(TestSetitemItemSlice3)
-create_test_value_numpy_int32(TestSetitemItemSlice4)
+create_test_value_numpy_int32(TestSetValueItemInt)
+create_test_value_numpy_int32(TestSetValueItemSlice)
+create_test_value_numpy_int32(TestSetValueItemSlice2)
+create_test_value_numpy_int32(TestSetValueItemSlice3)
+create_test_value_numpy_int32(TestSetValueItemSlice4)
 
 
 def create_test_value_numpy_int64(parent):
@@ -219,11 +219,11 @@ def create_test_value_numpy_int64(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_numpy_int64(TestSetitemItemInt)
-create_test_value_numpy_int64(TestSetitemItemSlice)
-create_test_value_numpy_int64(TestSetitemItemSlice2)
-create_test_value_numpy_int64(TestSetitemItemSlice3)
-create_test_value_numpy_int64(TestSetitemItemSlice4)
+create_test_value_numpy_int64(TestSetValueItemInt)
+create_test_value_numpy_int64(TestSetValueItemSlice)
+create_test_value_numpy_int64(TestSetValueItemSlice2)
+create_test_value_numpy_int64(TestSetValueItemSlice3)
+create_test_value_numpy_int64(TestSetValueItemSlice4)
 
 
 def create_test_value_numpy_fp32(parent):
@@ -239,11 +239,11 @@ def create_test_value_numpy_fp32(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_numpy_fp32(TestSetitemItemInt)
-create_test_value_numpy_fp32(TestSetitemItemSlice)
-create_test_value_numpy_fp32(TestSetitemItemSlice2)
-create_test_value_numpy_fp32(TestSetitemItemSlice3)
-create_test_value_numpy_fp32(TestSetitemItemSlice4)
+create_test_value_numpy_fp32(TestSetValueItemInt)
+create_test_value_numpy_fp32(TestSetValueItemSlice)
+create_test_value_numpy_fp32(TestSetValueItemSlice2)
+create_test_value_numpy_fp32(TestSetValueItemSlice3)
+create_test_value_numpy_fp32(TestSetValueItemSlice4)
 
 
 def create_test_value_numpy_bool(parent):
@@ -259,11 +259,11 @@ def create_test_value_numpy_bool(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_numpy_bool(TestSetitemItemInt)
-create_test_value_numpy_bool(TestSetitemItemSlice)
-create_test_value_numpy_bool(TestSetitemItemSlice2)
-create_test_value_numpy_bool(TestSetitemItemSlice3)
-create_test_value_numpy_bool(TestSetitemItemSlice4)
+create_test_value_numpy_bool(TestSetValueItemInt)
+create_test_value_numpy_bool(TestSetValueItemSlice)
+create_test_value_numpy_bool(TestSetValueItemSlice2)
+create_test_value_numpy_bool(TestSetValueItemSlice3)
+create_test_value_numpy_bool(TestSetValueItemSlice4)
 
 
 # 2.3 value is a Paddle Tensor (int32, int64, float32, float64, bool)
@@ -284,11 +284,11 @@ def create_test_value_tensor_int32(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_tensor_int32(TestSetitemItemInt)
-create_test_value_tensor_int32(TestSetitemItemSlice)
-create_test_value_tensor_int32(TestSetitemItemSlice2)
-create_test_value_tensor_int32(TestSetitemItemSlice3)
-create_test_value_tensor_int32(TestSetitemItemSlice4)
+create_test_value_tensor_int32(TestSetValueItemInt)
+create_test_value_tensor_int32(TestSetValueItemSlice)
+create_test_value_tensor_int32(TestSetValueItemSlice2)
+create_test_value_tensor_int32(TestSetValueItemSlice3)
+create_test_value_tensor_int32(TestSetValueItemSlice4)
 
 
 def create_test_value_tensor_int64(parent):
@@ -308,11 +308,11 @@ def create_test_value_tensor_int64(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_tensor_int64(TestSetitemItemInt)
-create_test_value_tensor_int64(TestSetitemItemSlice)
-create_test_value_tensor_int64(TestSetitemItemSlice2)
-create_test_value_tensor_int64(TestSetitemItemSlice3)
-create_test_value_tensor_int64(TestSetitemItemSlice4)
+create_test_value_tensor_int64(TestSetValueItemInt)
+create_test_value_tensor_int64(TestSetValueItemSlice)
+create_test_value_tensor_int64(TestSetValueItemSlice2)
+create_test_value_tensor_int64(TestSetValueItemSlice3)
+create_test_value_tensor_int64(TestSetValueItemSlice4)
 
 
 def create_test_value_tensor_fp32(parent):
@@ -332,11 +332,11 @@ def create_test_value_tensor_fp32(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_tensor_fp32(TestSetitemItemInt)
-create_test_value_tensor_fp32(TestSetitemItemSlice)
-create_test_value_tensor_fp32(TestSetitemItemSlice2)
-create_test_value_tensor_fp32(TestSetitemItemSlice3)
-create_test_value_tensor_fp32(TestSetitemItemSlice4)
+create_test_value_tensor_fp32(TestSetValueItemInt)
+create_test_value_tensor_fp32(TestSetValueItemSlice)
+create_test_value_tensor_fp32(TestSetValueItemSlice2)
+create_test_value_tensor_fp32(TestSetValueItemSlice3)
+create_test_value_tensor_fp32(TestSetValueItemSlice4)
 
 
 def create_test_value_tensor_fp64(parent):
@@ -356,11 +356,11 @@ def create_test_value_tensor_fp64(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_tensor_fp64(TestSetitemItemInt)
-create_test_value_tensor_fp64(TestSetitemItemSlice)
-create_test_value_tensor_fp64(TestSetitemItemSlice2)
-create_test_value_tensor_fp64(TestSetitemItemSlice3)
-create_test_value_tensor_fp64(TestSetitemItemSlice4)
+create_test_value_tensor_fp64(TestSetValueItemInt)
+create_test_value_tensor_fp64(TestSetValueItemSlice)
+create_test_value_tensor_fp64(TestSetValueItemSlice2)
+create_test_value_tensor_fp64(TestSetValueItemSlice3)
+create_test_value_tensor_fp64(TestSetValueItemSlice4)
 
 
 def create_test_value_tensor_bool(parent):
@@ -380,15 +380,15 @@ def create_test_value_tensor_bool(parent):
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_tensor_bool(TestSetitemItemInt)
-create_test_value_tensor_bool(TestSetitemItemSlice)
-create_test_value_tensor_bool(TestSetitemItemSlice2)
-create_test_value_tensor_bool(TestSetitemItemSlice3)
-create_test_value_tensor_bool(TestSetitemItemSlice4)
+create_test_value_tensor_bool(TestSetValueItemInt)
+create_test_value_tensor_bool(TestSetValueItemSlice)
+create_test_value_tensor_bool(TestSetValueItemSlice2)
+create_test_value_tensor_bool(TestSetValueItemSlice3)
+create_test_value_tensor_bool(TestSetValueItemSlice4)
 
 
 # 3. Test different shape of value
-class TestSetitemValueShape1(TestSetitemApi):
+class TestSetValueValueShape1(TestSetValueApi):
     def set_value(self):
         self.value = np.array([3, 4, 5, 6])  # shape is (4,)
 
@@ -399,7 +399,7 @@ class TestSetitemValueShape1(TestSetitemApi):
         self.data[0] = self.value
 
 
-class TestSetitemValueShape2(TestSetitemApi):
+class TestSetValueValueShape2(TestSetValueApi):
     def set_value(self):
         self.value = np.array([[3, 4, 5, 6]])  # shape is (1,4)
 
@@ -410,7 +410,7 @@ class TestSetitemValueShape2(TestSetitemApi):
         self.data[0:1] = self.value
 
 
-class TestSetitemValueShape3(TestSetitemApi):
+class TestSetValueValueShape3(TestSetValueApi):
     def set_value(self):
         self.value = np.array(
             [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]])  # shape is (3,4)
@@ -422,7 +422,7 @@ class TestSetitemValueShape3(TestSetitemApi):
         self.data[0] = self.value
 
 
-class TestSetitemValueShape4(TestSetitemApi):
+class TestSetValueValueShape4(TestSetValueApi):
     def set_value(self):
         self.value = np.array(
             [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]).astype(
@@ -436,7 +436,7 @@ class TestSetitemValueShape4(TestSetitemApi):
 
 
 # 4. Test error
-class TestError(TestSetitemBase):
+class TestError(TestSetValueBase):
     def _value_type_error(self):
         with self.assertRaisesRegexp(
                 TypeError,

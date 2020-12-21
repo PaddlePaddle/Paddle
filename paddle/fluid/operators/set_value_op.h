@@ -47,7 +47,7 @@ inline std::string GetValueName(framework::proto::VarType::Type data_type) {
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported data type(code %d) for Setitem operator, only "
+          "Unsupported data type(code %d) for SetValue operator, only "
           "supports bool, int32, float32 and int64.",
           data_type));
   }
@@ -79,35 +79,35 @@ inline framework::DDim GetSliceDims(const framework::DDim in_dims,
 }
 
 template <typename DeviceContext, typename T>
-class SetitemKernel : public framework::OpKernel<T> {
+class SetValueKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     const int rank = ctx.Output<framework::LoDTensor>("Out")->dims().size();
     switch (rank) {
       case 1:
-        SetitemCompute<1>(ctx);
+        SetValueCompute<1>(ctx);
         break;
       case 2:
-        SetitemCompute<2>(ctx);
+        SetValueCompute<2>(ctx);
         break;
       case 3:
-        SetitemCompute<3>(ctx);
+        SetValueCompute<3>(ctx);
         break;
       case 4:
-        SetitemCompute<4>(ctx);
+        SetValueCompute<4>(ctx);
         break;
       case 5:
-        SetitemCompute<5>(ctx);
+        SetValueCompute<5>(ctx);
         break;
       case 6:
-        SetitemCompute<6>(ctx);
+        SetValueCompute<6>(ctx);
         break;
     }
   }
 
  private:
   template <size_t D>
-  void SetitemCompute(const framework::ExecutionContext& ctx) const {
+  void SetValueCompute(const framework::ExecutionContext& ctx) const {
     auto* in = ctx.Input<framework::LoDTensor>("Input");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
 

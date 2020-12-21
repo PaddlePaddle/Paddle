@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/setitem_op.h"
+#include "paddle/fluid/operators/set_value_op.h"
 
 #include <string>
 
 namespace paddle {
 namespace operators {
 
-class Setitem : public framework::OperatorWithKernel {
+class SetValue : public framework::OperatorWithKernel {
  public:
-  Setitem(const std::string &type, const framework::VariableNameMap &inputs,
-          const framework::VariableNameMap &outputs,
-          const framework::AttributeMap &attrs)
+  SetValue(const std::string &type, const framework::VariableNameMap &inputs,
+           const framework::VariableNameMap &outputs,
+           const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Setitem");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Setitem");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "SetValue");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SetValue");
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_LT(
         in_dims.size(), 7,
@@ -46,14 +46,14 @@ class Setitem : public framework::OperatorWithKernel {
   }
 };
 
-class SetitemMaker : public framework::OpProtoAndCheckerMaker {
+class SetValueMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "(Tensor) Input tensor of setitem operator.");
-    AddInput("ValueTensor", "(Tensor) Value tensor of setitem operator.")
+    AddInput("Input", "(Tensor) Input tensor of set_value operator.");
+    AddInput("ValueTensor", "(Tensor) Value tensor of set_value operator.")
         .AsDispensable();
     AddOutput("Out",
-              "(Tensor) Output tensor of setitem operator. The output is the "
+              "(Tensor) Output tensor of set_value operator. The output is the "
               "same Tensor as input");
 
     AddAttr<int>("dtype", "data type of input.")
@@ -81,7 +81,7 @@ class SetitemMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<std::vector<int>>("shape", "(vector<int>) Shape of values.")
         .SetDefault({});
-    AddComment(R"DOC(Setitem operator.
+    AddComment(R"DOC(SetValue operator.
 Assignment to a Tensor in static mode.
 )DOC");
   }
@@ -92,13 +92,13 @@ Assignment to a Tensor in static mode.
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    setitem, ops::Setitem, ops::SetitemMaker,
+    set_value, ops::SetValue, ops::SetValueMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
-    setitem, ops::SetitemKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SetitemKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SetitemKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SetitemKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SetitemKernel<paddle::platform::CPUDeviceContext, bool>);
+    set_value, ops::SetValueKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SetValueKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::SetValueKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SetValueKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SetValueKernel<paddle::platform::CPUDeviceContext, bool>);
