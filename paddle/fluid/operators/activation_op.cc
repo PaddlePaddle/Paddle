@@ -897,7 +897,7 @@ class SqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
 };
 
 // rsqrt Grad: dx = -0.5 * dy * y * y * y
-// rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = -1.5 * y * y * dy * ddx
+// rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = (3/y) * ddx
 template <typename T>
 class RsqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
  public:
@@ -907,6 +907,7 @@ class RsqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("rsqrt_grad_grad");
     op->SetInput("Out", this->Input("Out"));
+    op->SetInput("DX", this->Output(framework::GradVarName("X")));
     op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(this->Attrs());
     op->SetOutput("DOut", this->InputGrad("Out"));

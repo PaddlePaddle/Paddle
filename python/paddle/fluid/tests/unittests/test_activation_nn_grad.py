@@ -125,7 +125,7 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
-class TestSqrtDoubleGradCheck(unittest.TestCase):
+class TestRsqrtDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]

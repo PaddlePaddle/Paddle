@@ -1648,20 +1648,20 @@ struct RsqrtGradGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device>
   void operator()(const Device& dev, const framework::Tensor* Out,
                   const framework::Tensor* ddX, framework::Tensor* ddOut,
-                  framework::Tensor* dOut) const {
+                  framework::Tensor* dOut, const framework::Tensor* dX) const {
     auto* d = dev.eigen_device();
     auto ddx = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(ddX, "Input", "DDX", "RsqrtGradGrad"));
     auto out = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(Out, "Output", "Out", "RsqrtGradGrad"));
 
-    // rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = -1.5 * y * y * dy *
-    // ddx
+    // rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = (3/y) * dx * ddx
     if (dOut) {
+      auto dx = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "RsqrtGradGrad"));
       auto dout = framework::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(dOut, "Output", "DOut", "RsqrtGradGrad"));
-      // Currently, does it store gradients of backward in 'dout'?
-      dout.device(*d) = dout * static_cast<T>(-1.5) * out * out * ddx;
+      dout.device(*d) = (static_cast<T>(3.0) / out) * dx * ddx;
     }
     if (ddOut) {
       auto ddout = framework::EigenVector<T>::Flatten(
@@ -1858,15 +1858,15 @@ class SqrtDoubleGradKernel
 };
 
 // rsqrt Grad: dx = -0.5 * dy * y * y * y
-// rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = -1.5 * y * y * dy * ddx
+// rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = (3 / y) * dx * ddx
 template <typename DeviceContext, typename Functor>
 class RsqrtDoubleGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::Tensor *Out, *ddX;
-    Out = ddX = nullptr;
+    const framework::Tensor *Out, *dX, *ddX;
+    Out = dX = ddX = nullptr;
     framework::Tensor *ddOut, *dOut;
     ddOut = dOut = nullptr;
 
@@ -1898,13 +1898,23 @@ class RsqrtDoubleGradKernel
       dOut = ctx.Output<framework::Tensor>("DOut");
     }
 
+    // extract dx(input)
+    auto dx_var = ctx.InputVar("DX");
+    PADDLE_ENFORCE_NOT_NULL(
+        dx_var, platform::errors::NotFound(
+                    "Cannot get input Variable DX, variable name = %s",
+                    ctx.InputName("DX")));
+    if (dx_var) {
+      dX = ctx.Input<framework::Tensor>("DX");
+    }
+
     if (dOut) dOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
     if (ddOut) ddOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
 
     auto& place = ctx.template device_context<DeviceContext>();
 
     Functor functor;
-    functor(place, Out, ddX, ddOut, dOut);
+    functor(place, Out, ddX, ddOut, dOut, dX);
   }
 };
 
