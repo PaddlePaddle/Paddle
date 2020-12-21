@@ -21,12 +21,9 @@ limitations under the License. */
 #endif
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-
 #include <fstream>
 #include <string>
 
@@ -308,6 +305,23 @@ TEST(BuddyAllocator, SpeedAna) {
   std::cerr << "time cost " << diff.count() << std::endl;
 }
 
+TEST(BuddyAllocator, Release) {
+  // In a 8 GB machine, the pool size will be about 800 MB
+  FLAGS_fraction_of_gpu_memory_to_use = 0.1;
+  FLAGS_initial_gpu_memory_in_mb = 0;
+  FLAGS_reallocate_gpu_memory_in_mb = 0;
+
+  BuddyAllocator buddy_allocator(
+      std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
+      platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+
+  // Less than pool size
+  TestBuddyAllocator(&buddy_allocator, 10);
+  TestBuddyAllocator(&buddy_allocator, 10 << 10);
+  TestBuddyAllocator(&buddy_allocator, 50 << 20);
+
+  buddy_allocator.Release();
+}
 #endif
 
 }  // namespace detail

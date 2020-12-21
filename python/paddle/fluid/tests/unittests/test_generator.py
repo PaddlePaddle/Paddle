@@ -30,8 +30,6 @@ class TestGenerator(unittest.TestCase):
         """Test basic generator."""
         gen = generator.Generator()
         gen.manual_seed(123123143)
-        s = gen.initial_seed()
-        s = gen.seed()
         st = gen.get_state()
         gen.set_state(st)
         gen.random()

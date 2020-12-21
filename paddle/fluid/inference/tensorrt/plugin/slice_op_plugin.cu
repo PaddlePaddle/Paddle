@@ -26,8 +26,10 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-// Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
+SlicePlugin *CreateSlicePluginDeserialize(const void *buffer, size_t length) {
+  return new SlicePlugin(buffer, length);
+}
+REGISTER_TRT_PLUGIN("slice_plugin", CreateSlicePluginDeserialize);
 
 template <typename T>
 __global__ void SliceKernel(int num, int dims, const T *input,
@@ -56,11 +58,193 @@ __global__ void SliceKernel(int num, int dims, const T *input,
   }
 }
 
+SlicePlugin::SlicePlugin(std::vector<int> starts, std::vector<int> ends,
+                         std::vector<int> axes, bool with_fp16)
+    : starts_(starts), ends_(ends), axes_(axes) {
+  with_fp16_ = with_fp16;
+  cudaEventCreate(&copy_event_);
+  cudaStreamCreate(&copy_stream_);
+}
+
+SlicePlugin::SlicePlugin(void const *serial_data, size_t serial_length) {
+  deserializeBase(serial_data, serial_length);
+  DeserializeValue(&serial_data, &serial_length, &starts_);
+  DeserializeValue(&serial_data, &serial_length, &ends_);
+  DeserializeValue(&serial_data, &serial_length, &axes_);
+  cudaEventCreate(&copy_event_);
+  cudaStreamCreate(&copy_stream_);
+}
+
+SlicePlugin::~SlicePlugin() {
+  cudaStreamDestroy(copy_stream_);
+  cudaEventDestroy(copy_event_);
+  cudaFree(offset_temp_data_);
+}
+
+SlicePlugin *SlicePlugin::clone() const {
+  return new SlicePlugin(starts_, ends_, axes_, with_fp16_);
+}
+
+bool SlicePlugin::supportsFormat(nvinfer1::DataType type,
+                                 nvinfer1::PluginFormat format) const {
+  if (with_fp16_) {
+    return ((type == nvinfer1::DataType::kFLOAT ||
+             type == nvinfer1::DataType::kHALF) &&
+            (format == nvinfer1::PluginFormat::kNCHW));
+  } else {
+    return ((type == nvinfer1::DataType::kFLOAT) &&
+            (format == nvinfer1::PluginFormat::kNCHW));
+  }
+}
+
+nvinfer1::Dims SlicePlugin::getOutputDimensions(int index,
+                                                const nvinfer1::Dims *inputs,
+                                                int nb_input_dims) {
+  auto in_dims = inputs[0];
+  nvinfer1::Dims out_dims = in_dims;
+  for (size_t i = 0; i < axes_.size(); i++) {
+    int start = starts_[i];
+    int end = ends_[i];
+    out_dims.d[axes_[i] - 1] = end - start;
+  }
+  return out_dims;
+}
+
+int SlicePlugin::enqueue(int batch_size, const void *const *inputs,
+                         void **outputs, void *workspace, cudaStream_t stream) {
+  auto input_dims = getInputDims(0);
+
+  // notice input dims is [C, H, W], add input batch dim here
+  auto out_dims = getOutputDimensions(0, &input_dims, 1);
+  input_dims.nbDims += 1;
+  out_dims.nbDims += 1;
+  for (auto i = input_dims.nbDims; i > 0; --i) {
+    input_dims.d[i] = input_dims.d[i - 1];
+    out_dims.d[i] = out_dims.d[i - 1];
+  }
+  input_dims.d[0] = batch_size;
+  out_dims.d[0] = batch_size;
+
+  auto num_dims = input_dims.nbDims;
+  size_t out_num = ProductDim(out_dims);
+
+  std::vector<int> seg_offsets;
+  std::vector<int> offsets;
+  std::vector<int> extends;
+
+  offsets.resize(num_dims);
+  extends.resize(num_dims);
+  seg_offsets.resize(num_dims);
+
+  seg_offsets[num_dims - 1] = 1;
+  for (int i = num_dims - 2; i >= 0; i--) {
+    seg_offsets[i] = input_dims.d[i + 1] * seg_offsets[i + 1];
+  }
+  for (size_t i = 0; i < num_dims; ++i) {
+    offsets[i] = 0;
+    extends[i] = out_dims.d[i];
+  }
+  for (size_t i = 0; i < axes_.size(); ++i) {
+    offsets[axes_[i]] = starts_[i];
+  }
+
+  std::vector<int> offset_info;
+  for (size_t i = 0; i < num_dims; ++i) {
+    offset_info.push_back(offsets[i]);
+    offset_info.push_back(extends[i]);
+    offset_info.push_back(seg_offsets[i]);
+  }
+
+  if (offset_temp_data_ == nullptr) {
+    cudaMalloc(&offset_temp_data_, 3 * num_dims * sizeof(int));
+  }
+
+  cudaMemcpyAsync(offset_temp_data_, offset_info.data(),
+                  sizeof(int) * 3 * num_dims, cudaMemcpyHostToDevice,
+                  copy_stream_);
+
+  cudaEventRecord(copy_event_, copy_stream_);
+  cudaStreamWaitEvent(stream, copy_event_, 0);
+
+  int threads = 256;
+  int blocks = (out_num + threads - 1) / threads;
+  auto input_type = getDataType();
+  if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. Slice-->fp32";
+    const float *input1 = static_cast<const float *>(inputs[0]);
+    float *output = static_cast<float *>(outputs[0]);
+    SliceKernel<float><<<blocks, threads, 3 * num_dims * sizeof(int), stream>>>(
+        out_num, num_dims, input1, offset_temp_data_, output);
+  } else if (input_type == nvinfer1::DataType::kHALF) {
+    VLOG(1) << "TRT Plugin DataType selected. Slice-->fp16";
+    const half *input1 = static_cast<const half *>(inputs[0]);
+    half *output = static_cast<half *>(outputs[0]);
+    SliceKernel<half><<<blocks, threads, 3 * num_dims * sizeof(int), stream>>>(
+        out_num, num_dims, input1, offset_temp_data_, output);
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The Slice TRT Plugin's input type should be float or half."));
+  }
+  return cudaGetLastError() != cudaSuccess;
+}
+
+size_t SlicePlugin::getSerializationSize() {
+  return getBaseSerializationSize() + SerializedSize(getPluginType()) +
+         SerializedSize(starts_) + SerializedSize(ends_) +
+         SerializedSize(axes_);
+}
+
+void SlicePlugin::serialize(void *buffer) {
+  SerializeValue(&buffer, getPluginType());
+  serializeBase(buffer);
+  SerializeValue(&buffer, starts_);
+  SerializeValue(&buffer, ends_);
+  SerializeValue(&buffer, axes_);
+}
+
+// Dynamic Plugin below.
+#if IS_TRT_VERSION_GE(6000)
+SlicePluginDynamic::SlicePluginDynamic(std::vector<int> starts,
+                                       std::vector<int> ends,
+                                       std::vector<int> axes, bool with_fp16)
+    : starts_(starts), ends_(ends), axes_(axes) {
+  with_fp16_ = with_fp16;
+  cudaEventCreate(&copy_event_);
+  cudaStreamCreate(&copy_stream_);
+}
+
+SlicePluginDynamic::SlicePluginDynamic(void const *serialData,
+                                       size_t serialLength) {
+  DeserializeValue(&serialData, &serialLength, &starts_);
+  DeserializeValue(&serialData, &serialLength, &ends_);
+  DeserializeValue(&serialData, &serialLength, &axes_);
+  DeserializeValue(&serialData, &serialLength, &with_fp16_);
+  cudaEventCreate(&copy_event_);
+  cudaStreamCreate(&copy_stream_);
+}
+
+void SlicePluginDynamic::destroy() {
+  cudaStreamDestroy(copy_stream_);
+  cudaEventDestroy(copy_event_);
+  cudaFree(offset_temp_data_);
+  delete this;
+}
+
 int SlicePluginDynamic::initialize() { return 0; }
 
-size_t SlicePluginDynamic::getSerializationSize() const { return 0; }
+size_t SlicePluginDynamic::getSerializationSize() const {
+  size_t size = SerializedSize(starts_) + SerializedSize(ends_) +
+                SerializedSize(axes_) + SerializedSize(with_fp16_);
 
-void SlicePluginDynamic::serialize(void *buffer) const {}
+  return size;
+}
+
+void SlicePluginDynamic::serialize(void *buffer) const {
+  SerializeValue(&buffer, starts_);
+  SerializeValue(&buffer, ends_);
+  SerializeValue(&buffer, axes_);
+  SerializeValue(&buffer, with_fp16_);
+}
 
 nvinfer1::DimsExprs SlicePluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
@@ -91,19 +275,14 @@ bool SlicePluginDynamic::supportsFormatCombination(
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
-#ifdef SUPPORTS_CUDA_FP16
-    if (ban_fp16_) {
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
-    } else {
+    if (with_fp16_) {
       return (in.type == nvinfer1::DataType::kFLOAT ||
               in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
+    } else {
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
     }
-#else
-    return (in.type == nvinfer1::DataType::kFLOAT) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
   // output
@@ -136,9 +315,9 @@ int SlicePluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
   std::vector<int> offsets;
   std::vector<int> extends;
 
-  offsets.reserve(num_dims);
-  extends.reserve(num_dims);
-  seg_offsets.reserve(num_dims);
+  offsets.resize(num_dims);
+  extends.resize(num_dims);
+  seg_offsets.resize(num_dims);
 
   seg_offsets[num_dims - 1] = 1;
   for (int i = num_dims - 2; i >= 0; i--) {
@@ -160,35 +339,32 @@ int SlicePluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     offset_info.push_back(seg_offsets[i]);
   }
 
-  framework::Tensor offset_temp_tensor;
+  if (offset_temp_data_ == nullptr) {
+    cudaMalloc(&offset_temp_data_, 3 * num_dims * sizeof(int));
+  }
 
-  int device_id;
-  cudaGetDevice(&device_id);
-  offset_temp_tensor.Resize({3 * num_dims});
-  auto *offset_temp_data =
-      offset_temp_tensor.mutable_data<int>(platform::CUDAPlace(device_id));
+  cudaMemcpyAsync(offset_temp_data_, offset_info.data(),
+                  sizeof(int) * 3 * num_dims, cudaMemcpyHostToDevice,
+                  copy_stream_);
 
-  cudaMemcpyAsync(offset_temp_data, offset_info.data(),
-                  sizeof(int) * 3 * num_dims, cudaMemcpyHostToDevice, stream);
+  cudaEventRecord(copy_event_, copy_stream_);
+  cudaStreamWaitEvent(stream, copy_event_, 0);
 
   int threads = 256;
   int blocks = (out_num + threads - 1) / threads;
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. Slice-->fp32";
     const float *input1 = static_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
     SliceKernel<float><<<blocks, threads, 3 * num_dims * sizeof(int), stream>>>(
-        out_num, num_dims, input1, offset_temp_data, output);
+        out_num, num_dims, input1, offset_temp_data_, output);
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef SUPPORTS_CUDA_FP16
+    VLOG(1) << "TRT Plugin DataType selected. Slice-->fp16";
     const half *input1 = static_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
     SliceKernel<half><<<blocks, threads, 3 * num_dims * sizeof(int), stream>>>(
-        out_num, num_dims, input1, offset_temp_data, output);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "The cuda archs you specific should greater than 600."));
-#endif
+        out_num, num_dims, input1, offset_temp_data_, output);
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "The Slice TRT Plugin's input type should be float or half."));

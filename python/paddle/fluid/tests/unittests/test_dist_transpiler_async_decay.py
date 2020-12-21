@@ -17,6 +17,9 @@ from __future__ import print_function
 import unittest
 import gc
 import paddle.fluid as fluid
+import paddle
+
+paddle.enable_static()
 
 
 class TranspilerAsyncLRDecayTest(unittest.TestCase):

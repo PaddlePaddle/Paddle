@@ -12,28 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sys/types.h>
 #include <algorithm>
 #include <memory>
-#include <set>
-#include <string>
-#include <vector>
 
-#include "paddle/fluid/operators/distributed/parameter_recv.h"
-
+#include "glog/logging.h"
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/tensor.h"
-
+#include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/rpc_client.h"
-#include "paddle/fluid/operators/distributed/variable_response.h"
-#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/fluid/operators/distributed/parameter_recv.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+class RPCClient;
 
 using LoDTensor = framework::LoDTensor;
 using LoDTensor = framework::LoDTensor;
@@ -41,8 +40,72 @@ using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
 template <typename T>
-void RecvSelectedRows(const CommContext &rpc_ctx,
-                      const framework::Scope &scope) {
+void RecvSparseLodTensor(const CommContext &rpc_ctx,
+                         const framework::Scope &scope) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto cpu_place = platform::CPUPlace();
+  auto &cpu_ctx = *pool.Get(cpu_place);
+
+  distributed::RPCClient *rpc_client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
+
+  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
+  std::vector<const float *> tensors;
+  std::vector<distributed::VarHandlePtr> rets;
+  std::vector<std::string> recv_varnames;
+  for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+    auto &recv_var_name = rpc_ctx.splited_varnames[i];
+    VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
+    local_scope->Var(recv_var_name);
+    // sparse param in recv_scope is LoDTensor
+    rets.push_back(rpc_client->AsyncGetVarNoBarrier(
+        rpc_ctx.epmap[i], cpu_ctx, *local_scope.get(), recv_var_name,
+        recv_var_name));
+    recv_varnames.push_back(recv_var_name);
+  }
+
+  for (size_t i = 0; i < rets.size(); i++) {
+    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::ExecutionTimeout(
+                                               "internal error in RPCClient"));
+    auto &recv_var_name = recv_varnames[i];
+    auto *local_var = local_scope->FindVar(recv_var_name);
+    const auto *value = local_var->Get<framework::LoDTensor>().data<float>();
+    tensors.push_back(value);
+  }
+
+  auto *merged_var = scope.FindVar(rpc_ctx.var_name);
+
+  if (merged_var == nullptr || !merged_var->IsInitialized()) {
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("%s must initialized at first."));
+  }
+  auto dims1 = merged_var->Get<framework::LoDTensor>().dims()[1];
+  int64_t height = 0;
+  for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+    auto *splited_var = local_scope->FindVar(rpc_ctx.splited_varnames[i]);
+    height += splited_var->Get<framework::LoDTensor>().dims()[0];
+  }
+
+  PADDLE_ENFORCE_EQ(
+      merged_var->Get<framework::LoDTensor>().dims()[0], height,
+      platform::errors::InvalidArgument(
+          "Received variable must has same dimension with local variable."));
+
+  auto *merged_t = merged_var->GetMutable<framework::LoDTensor>();
+  auto *merged_d = merged_t->mutable_data<float>(cpu_place);
+
+  auto pserver_num = rpc_ctx.splited_varnames.size();
+  for (int x = 0; x < height; ++x) {
+    auto id = x % pserver_num;
+    auto idx = x / pserver_num;
+    std::memcpy(merged_d + x * dims1, tensors[id] + idx * dims1,
+                sizeof(float) * dims1);
+  }
+}
+
+template <typename T>
+void RecvGeoSparseRecords(const CommContext &rpc_ctx,
+                          const framework::Scope &scope) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto cpu_place = platform::CPUPlace();
   auto &cpu_ctx = *pool.Get(cpu_place);
@@ -84,9 +147,14 @@ void RecvSelectedRows(const CommContext &rpc_ctx,
     ids_num += recv_t.rows().size();
     width = recv_t.value().dims()[1];
 
-    std::transform(recv_t.rows().begin(), recv_t.rows().end(),
-                   std::back_inserter(all_ids),
-                   [&](int64_t id) { return id * pserver_num + i; });
+    if (rpc_ctx.is_distributed) {
+      std::copy(recv_t.rows().begin(), recv_t.rows().end(),
+                std::back_inserter(all_ids));
+    } else {
+      std::transform(recv_t.rows().begin(), recv_t.rows().end(),
+                     std::back_inserter(all_ids),
+                     [&](int64_t id) { return id * pserver_num + i; });
+    }
   }
 
   auto *var = scope.FindVar(rpc_ctx.var_name);
@@ -112,10 +180,6 @@ void RecvSelectedRows(const CommContext &rpc_ctx,
 
 template <typename T>
 void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto cpu_place = platform::CPUPlace();
-  auto &cpu_ctx = *pool.Get(cpu_place);
-
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
@@ -125,8 +189,13 @@ void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
   if (rpc_ctx.origin_varnames.size() == 1 &&
       rpc_ctx.splited_varnames.size() == 1) {
     auto varname = rpc_ctx.origin_varnames[0];
-    VLOG(4) << "recv " << varname << " from " << rpc_ctx.epmap[0];
-    rets.push_back(rpc_client->AsyncGetVarNoBarrier(rpc_ctx.epmap[0], cpu_ctx,
+    const auto place =
+        scope.FindVar(varname)->Get<framework::LoDTensor>().place();
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &ctx = *pool.Get(place);
+    VLOG(4) << "recv " << varname << " from " << rpc_ctx.epmap[0] << " in gpu? "
+            << platform::is_gpu_place(place);
+    rets.push_back(rpc_client->AsyncGetVarNoBarrier(rpc_ctx.epmap[0], ctx,
                                                     scope, varname, varname));
 
     for (size_t i = 0; i < rets.size(); i++) {
@@ -146,7 +215,8 @@ void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
 
 template <typename T>
 void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
-                                  const framework::Scope &scope, bool barrier) {
+                                  const framework::Scope &scope,
+                                  bool geo_records) {
   VLOG(3) << "ParameterRecv in " << rpc_ctx.var_name;
 
   PADDLE_ENFORCE_GE(rpc_ctx.origin_varnames.size(), 1,
@@ -154,18 +224,21 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
                         "origin_varnames.size() >= 1 is permitted"));
 
   if (rpc_ctx.is_sparse) {
-    RecvSelectedRows<T>(rpc_ctx, scope);
+    if (geo_records) {
+      RecvGeoSparseRecords<T>(rpc_ctx, scope);
+    } else {
+      RecvSparseLodTensor<T>(rpc_ctx, scope);
+    }
   } else {
     RecvLodTensor<T>(rpc_ctx, scope);
   }
 
   VLOG(3) << "ParameterRecv out " << rpc_ctx.var_name;
 }
-
 template <typename T>
 void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
                                   const framework::Scope &scope) {
-  this->operator()(rpc_ctx, scope, true);
+  this->operator()(rpc_ctx, scope, false);
 }
 
 template struct ParameterRecv<float>;

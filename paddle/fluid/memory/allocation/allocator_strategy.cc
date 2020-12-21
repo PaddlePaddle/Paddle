@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+
 #include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DECLARE_string(allocator_strategy);

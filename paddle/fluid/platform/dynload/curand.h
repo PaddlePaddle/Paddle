@@ -14,11 +14,10 @@ limitations under the License. */
 #pragma once
 
 #include <curand.h>
-
 #include <mutex>  // NOLINT
-#include "paddle/fluid/platform/port.h"
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace platform {

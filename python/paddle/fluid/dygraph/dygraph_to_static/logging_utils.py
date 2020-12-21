@@ -26,6 +26,8 @@ CODE_LEVEL_ENV_NAME = 'TRANSLATOR_CODE_LEVEL'
 DEFAULT_VERBOSITY = -1
 DEFAULT_CODE_LEVEL = -1
 
+LOG_AllTransformer = 100
+
 
 def synchronized(func):
     def wrapper(*args, **kwargs):
@@ -53,10 +55,15 @@ class TranslatorLogger(object):
             return
 
         self._initialized = True
+        self.logger_name = "Dynamic-to-Static"
         self._logger = log_helper.get_logger(
-            __name__, 1, fmt='%(asctime)s-%(levelname)s: %(message)s')
+            self.logger_name,
+            1,
+            fmt='%(asctime)s %(name)s %(levelname)s: %(message)s')
         self._verbosity_level = None
         self._transformed_code_level = None
+        self._need_to_echo_log_to_stdout = None
+        self._need_to_echo_code_to_stdout = None
 
     @property
     def logger(self):
@@ -86,6 +93,28 @@ class TranslatorLogger(object):
         self.check_level(level)
         self._transformed_code_level = level
 
+    @property
+    def need_to_echo_log_to_stdout(self):
+        if self._need_to_echo_log_to_stdout is not None:
+            return self._need_to_echo_log_to_stdout
+        return False
+
+    @need_to_echo_log_to_stdout.setter
+    def need_to_echo_log_to_stdout(self, log_to_stdout):
+        assert isinstance(log_to_stdout, (bool, type(None)))
+        self._need_to_echo_log_to_stdout = log_to_stdout
+
+    @property
+    def need_to_echo_code_to_stdout(self):
+        if self._need_to_echo_code_to_stdout is not None:
+            return self._need_to_echo_code_to_stdout
+        return False
+
+    @need_to_echo_code_to_stdout.setter
+    def need_to_echo_code_to_stdout(self, code_to_stdout):
+        assert isinstance(code_to_stdout, (bool, type(None)))
+        self._need_to_echo_code_to_stdout = code_to_stdout
+
     def check_level(self, level):
         if isinstance(level, (six.integer_types, type(None))):
             rv = level
@@ -110,34 +139,56 @@ class TranslatorLogger(object):
 
     def error(self, msg, *args, **kwargs):
         self.logger.error(msg, *args, **kwargs)
+        if self.need_to_echo_log_to_stdout:
+            self._output_to_stdout('ERROR: ' + msg, *args)
 
     def warn(self, msg, *args, **kwargs):
-        self.logger.warn(msg, *args, **kwargs)
+        self.logger.warning(msg, *args, **kwargs)
+        if self.need_to_echo_log_to_stdout:
+            self._output_to_stdout('WARNING: ' + msg, *args)
 
     def log(self, level, msg, *args, **kwargs):
         if self.has_verbosity(level):
-            self.logger.log(level, msg, *args, **kwargs)
+            msg_with_level = '(Level {}) {}'.format(level, msg)
+            self.logger.info(msg_with_level, *args, **kwargs)
+            if self.need_to_echo_log_to_stdout:
+                self._output_to_stdout('INFO: ' + msg_with_level, *args)
 
     def log_transformed_code(self, level, ast_node, transformer_name, *args,
                              **kwargs):
         if self.has_code_level(level):
             source_code = ast_to_source_code(ast_node)
-            header_msg = "After the level {} ast transformer: '{}', the transformed code:\n"\
-                .format(level, transformer_name)
+            if level == LOG_AllTransformer:
+                header_msg = "After the last level ast transformer: '{}', the transformed code:\n" \
+                    .format(transformer_name)
+            else:
+                header_msg = "After the level {} ast transformer: '{}', the transformed code:\n"\
+                    .format(level, transformer_name)
 
             msg = header_msg + source_code
             self.logger.info(msg, *args, **kwargs)
+
+            if self.need_to_echo_code_to_stdout:
+                self._output_to_stdout('INFO: ' + msg, *args)
+
+    def _output_to_stdout(self, msg, *args):
+        msg = self.logger_name + ' ' + msg
+        print(msg % args)
 
 
 _TRANSLATOR_LOGGER = TranslatorLogger()
 
 
-def set_verbosity(level=0):
+def set_verbosity(level=0, also_to_stdout=False):
     """
-    Sets the verbosity level of log for dygraph to static graph.
+    Sets the verbosity level of log for dygraph to static graph. Logs can be output to stdout by setting `also_to_stdout`.
+
     There are two means to set the logging verbosity:
-     1. Call function `set_verbosity`
-     2. Set environment variable `TRANSLATOR_VERBOSITY`
+
+    1. Call function `set_verbosity`
+
+    2. Set environment variable `TRANSLATOR_VERBOSITY`
+
 
     **Note**:
     `set_verbosity` has a higher priority than the environment variable.
@@ -145,6 +196,7 @@ def set_verbosity(level=0):
     Args:
         level(int): The verbosity level. The larger value idicates more verbosity.
             The default value is 0, which means no logging.
+        also_to_stdout(bool): Whether to also output log messages to `sys.stdout`.
 
     Examples:
         .. code-block:: python
@@ -159,27 +211,30 @@ def set_verbosity(level=0):
             # The verbosity level is now 3, but it has no effect because it has a lower priority than `set_verbosity`
     """
     _TRANSLATOR_LOGGER.verbosity_level = level
+    _TRANSLATOR_LOGGER.need_to_echo_log_to_stdout = also_to_stdout
 
 
 def get_verbosity():
     return _TRANSLATOR_LOGGER.verbosity_level
 
 
-LOG_AllTransformer = 100
-
-
-def set_code_level(level=LOG_AllTransformer):
+def set_code_level(level=LOG_AllTransformer, also_to_stdout=False):
     """
-    Sets the level to print code from specific level of Ast Transformer.
+    Sets the level to print code from specific level Ast Transformer. Code can be output to stdout by setting `also_to_stdout`.
+
     There are two means to set the code level:
-     1. Call function `set_code_level`
-     2. Set environment variable `TRANSLATOR_CODE_LEVEL`
+
+    1. Call function `set_code_level`
+
+    2. Set environment variable `TRANSLATOR_CODE_LEVEL`
+
 
     **Note**:
     `set_code_level` has a higher priority than the environment variable.
 
     Args:
         level(int): The level to print code. Default is 100, which means to print the code after all AST Transformers.
+        also_to_stdout(bool): Whether to also output code to `sys.stdout`.
 
     Examples:
         .. code-block:: python
@@ -195,6 +250,7 @@ def set_code_level(level=LOG_AllTransformer):
 
     """
     _TRANSLATOR_LOGGER.transformed_code_level = level
+    _TRANSLATOR_LOGGER.need_to_echo_code_to_stdout = also_to_stdout
 
 
 def get_code_level():

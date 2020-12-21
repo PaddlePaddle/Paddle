@@ -21,7 +21,7 @@ import paddle.fluid.initializer as I
 import unittest
 
 
-class Conv1dTestCase(unittest.TestCase):
+class Conv1DTestCase(unittest.TestCase):
     def __init__(self,
                  methodName='runTest',
                  batch_size=4,
@@ -37,7 +37,7 @@ class Conv1dTestCase(unittest.TestCase):
                  no_bias=False,
                  dtype="float32",
                  data_format="NCL"):
-        super(Conv1dTestCase, self).__init__(methodName)
+        super(Conv1DTestCase, self).__init__(methodName)
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.num_filters = num_filters
@@ -107,7 +107,7 @@ class Conv1dTestCase(unittest.TestCase):
 
     def paddle_nn_layer(self):
         x_var = paddle.to_tensor(self.input)
-        conv = nn.Conv1d(
+        conv = nn.Conv1D(
             self.num_channels,
             self.num_filters,
             self.filter_size,
@@ -139,7 +139,7 @@ class Conv1dTestCase(unittest.TestCase):
             self._test_equivalence(place)
 
 
-class Conv1dErrorTestCase(Conv1dTestCase):
+class Conv1DErrorTestCase(Conv1DTestCase):
     def runTest(self):
         place = fluid.CPUPlace()
         with dg.guard(place):
@@ -147,7 +147,7 @@ class Conv1dErrorTestCase(Conv1dTestCase):
                 self.paddle_nn_layer()
 
 
-class Conv1dTypeErrorTestCase(Conv1dTestCase):
+class Conv1DTypeErrorTestCase(Conv1DTestCase):
     def runTest(self):
         place = fluid.CPUPlace()
         with dg.guard(place):
@@ -156,27 +156,27 @@ class Conv1dTypeErrorTestCase(Conv1dTestCase):
 
 
 def add_cases(suite):
-    suite.addTest(Conv1dTestCase(methodName='runTest'))
-    suite.addTest(Conv1dTestCase(methodName='runTest', stride=[1], dilation=2))
-    suite.addTest(Conv1dTestCase(methodName='runTest', stride=2, dilation=(1)))
+    suite.addTest(Conv1DTestCase(methodName='runTest'))
+    suite.addTest(Conv1DTestCase(methodName='runTest', stride=[1], dilation=2))
+    suite.addTest(Conv1DTestCase(methodName='runTest', stride=2, dilation=(1)))
     suite.addTest(
-        Conv1dTestCase(
+        Conv1DTestCase(
             methodName='runTest', padding="same", no_bias=True))
     suite.addTest(
-        Conv1dTestCase(
+        Conv1DTestCase(
             methodName='runTest', filter_size=3, padding='valid'))
     suite.addTest(
-        Conv1dTestCase(
+        Conv1DTestCase(
             methodName='runTest', padding=2, data_format='NLC'))
-    suite.addTest(Conv1dTestCase(methodName='runTest', padding=[1]))
-    suite.addTest(Conv1dTestCase(methodName='runTest', padding=[1, 2]))
-    suite.addTest(Conv1dTestCase(methodName='runTest', padding=2))
-    suite.addTest(Conv1dTestCase(methodName='runTest'))
+    suite.addTest(Conv1DTestCase(methodName='runTest', padding=[1]))
+    suite.addTest(Conv1DTestCase(methodName='runTest', padding=[1, 2]))
+    suite.addTest(Conv1DTestCase(methodName='runTest', padding=2))
+    suite.addTest(Conv1DTestCase(methodName='runTest'))
     suite.addTest(
-        Conv1dTestCase(
+        Conv1DTestCase(
             methodName='runTest', groups=2, padding="valid"))
     suite.addTest(
-        Conv1dTestCase(
+        Conv1DTestCase(
             methodName='runTest',
             num_filters=6,
             num_channels=3,
@@ -187,22 +187,22 @@ def add_cases(suite):
 
 def add_error_cases(suite):
     suite.addTest(
-        Conv1dTypeErrorTestCase(
+        Conv1DTypeErrorTestCase(
             methodName='runTest', padding_mode="reflect", padding="valid"))
     suite.addTest(
-        Conv1dErrorTestCase(
+        Conv1DErrorTestCase(
             methodName='runTest', data_format="VALID"))
     suite.addTest(
-        Conv1dErrorTestCase(
+        Conv1DErrorTestCase(
             methodName='runTest', padding_mode="VALID"))
     suite.addTest(
-        Conv1dErrorTestCase(
+        Conv1DErrorTestCase(
             methodName='runTest', num_channels=5, groups=2))
     suite.addTest(
-        Conv1dErrorTestCase(
+        Conv1DErrorTestCase(
             methodName='runTest', num_filters=8, num_channels=15, groups=3))
     suite.addTest(
-        Conv1dErrorTestCase(
+        Conv1DErrorTestCase(
             methodName='runTest', padding=[1, 2, 3, 4, 5]))
 
 

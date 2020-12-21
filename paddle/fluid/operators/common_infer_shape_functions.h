@@ -17,12 +17,21 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+}  // namespace framework
+}  // namespace paddle
+
 // This file almostly contains all the infershape functions that are used in
 // operators.
 
 namespace paddle {
 namespace operators {
-
+namespace details {
+framework::DDim BroadcastTwoDims(const framework::DDim& x_dims,
+                                 const framework::DDim& y_dims, int axis = -1);
+}
 // shape input(0) -> output(0) without change.
 void UnaryOpUnchangedInferShape(framework::InferShapeContext* ctx);
 // shape input(0) -> output(0) without change, check if axis in range [-Rank(x),

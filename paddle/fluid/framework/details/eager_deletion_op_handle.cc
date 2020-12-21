@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/details/eager_deletion_op_handle.h"
+
 #include <memory>
 #include <unordered_set>
 #include <utility>
 
-#include "paddle/fluid/framework/details/eager_deletion_op_handle.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
@@ -47,15 +48,19 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     if (dynamic_cast<StreamGarbageCollector *>(gc_)) {
       platform::CUDADeviceGuard guard(
           BOOST_GET_CONST(platform::CUDAPlace, place).device);
-      PADDLE_ENFORCE(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
-      PADDLE_ENFORCE_NOT_NULL(event_);
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
+      PADDLE_ENFORCE_NOT_NULL(event_, platform::errors::InvalidArgument(
+                                          "The cuda envet created is NULL."));
     }
   }
 #endif
-  PADDLE_ENFORCE_NE(vars.empty(), true, platform::errors::InvalidArgument(
-                                            "Variable names are empty."));
+  PADDLE_ENFORCE_NE(vars.empty(), true,
+                    platform::errors::InvalidArgument(
+                        "The variables to be deleted are empty."));
   for (auto *var : var_infos_) {
-    PADDLE_ENFORCE_NOT_NULL(var);
+    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::InvalidArgument(
+                                     "The memory optimization info is NULL."));
   }
 }
 
@@ -64,7 +69,7 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
   if (event_) {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx_->GetPlace());
     platform::CUDADeviceGuard guard(gpu_place.device);
-    PADDLE_ENFORCE(cudaEventDestroy(event_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event_));
   }
 #endif
 }
@@ -78,12 +83,17 @@ void EagerDeletionOpHandle::InitCUDA() {
 }
 
 void EagerDeletionOpHandle::CallOnce() {
-  PADDLE_ENFORCE(vars_.empty(), "vars_ must be initialized here");
+  PADDLE_ENFORCE_EQ(
+      vars_.empty(), true,
+      platform::errors::InvalidArgument(
+          "The variables to be deleted should be initialized here."));
   Scope *exec_scope = local_exec_scopes_[0];
   for (auto *var_info : var_infos_) {
     auto *var = exec_scope->FindVar(var_info->Name());
-    PADDLE_ENFORCE_NOT_NULL(var, "Variable %s should not be nullptr",
-                            var_info->Name());
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound(
+                 "The variable(%s) to be inplaced is not found in scope.",
+                 var_info->Name()));
     vars_.emplace_back(var);
   }
 }
@@ -119,8 +129,9 @@ void EagerDeletionOpHandle::RunImpl() {
         garbages.emplace_back(t.MoveMemoryHolder());
       }
     } else {
-      PADDLE_THROW("Type %s of %s is not supported eager deletion",
-                   framework::ToTypeName(var->Type()), var_info->Name());
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "The variable(%s) of type %s is not supported in eager deletion.",
+          framework::ToTypeName(var->Type()), var_info->Name()));
     }
   }
 
@@ -137,8 +148,9 @@ void EagerDeletionOpHandle::ClearGarbages(
     auto callback_stream =
         reinterpret_cast<StreamGarbageCollector *>(gc_)->stream();
     auto callback_func = [=]() {
-      PADDLE_ENFORCE(cudaEventRecord(event_, compute_stream));
-      PADDLE_ENFORCE(cudaStreamWaitEvent(callback_stream, event_, 0));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, compute_stream));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaStreamWaitEvent(callback_stream, event_, 0));
     };
     gc_->Add(std::move(*garbages), callback_func);
   } else {

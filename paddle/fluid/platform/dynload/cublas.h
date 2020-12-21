@@ -19,6 +19,7 @@ limitations under the License. */
 #include <cuda.h>
 #include <mutex>  // NOLINT
 #include <type_traits>
+
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -60,8 +61,12 @@ extern void *cublas_dso_handle;
   __macro(cublasDcopy_v2);                \
   __macro(cublasSgemv_v2);                \
   __macro(cublasDgemv_v2);                \
+  __macro(cublasCgemv_v2);                \
+  __macro(cublasZgemv_v2);                \
   __macro(cublasSgemm_v2);                \
   __macro(cublasDgemm_v2);                \
+  __macro(cublasCgemm_v2);                \
+  __macro(cublasZgemm_v2);                \
   __macro(cublasHgemm);                   \
   __macro(cublasSgemmEx);                 \
   __macro(cublasSgeam);                   \

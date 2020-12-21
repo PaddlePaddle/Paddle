@@ -10,9 +10,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_pow_op.h"
-#include <memory>
+
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

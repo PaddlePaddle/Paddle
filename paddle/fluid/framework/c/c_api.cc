@@ -12,17 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
-
-#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/c/c_api.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/init.h"
 
 extern "C" {
 
@@ -49,7 +39,8 @@ std::vector<std::string> PD_GetGradOpDescStrs(
     for (size_t i = 0; i < op_num; ++i) {
       PADDLE_ENFORCE_EQ(
           grad_op_descs[i]->Proto()->SerializePartialToString(&ret[i]), true,
-          "Cannot serialize message.");
+          paddle::platform::errors::Unavailable(
+              "Cannot serialize operator desc message."));
     }
   }
   return ret;

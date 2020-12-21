@@ -20,6 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Graph;
+
 const char kGraphToProgramVarsToRemove[] =
     "__graph_to_program_vars_to_remove__";
 const char kGraphToProgramSortKind[] = "__graph_to_program_sort_kind__";

@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <utility>  // for move
 #include <vector>
+
 #include "paddle/fluid/operators/jit/gen_base.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/operators/jit/kernel_key.h"
@@ -28,6 +29,8 @@
 namespace paddle {
 namespace operators {
 namespace jit {
+
+struct KernelKey;
 
 extern std::map<size_t, std::shared_ptr<void>>& GetJITCodesMap();
 

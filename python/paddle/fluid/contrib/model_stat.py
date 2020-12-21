@@ -34,7 +34,6 @@ Example:
     Total FLOPs: 11692747751(11.69G)
 '''
 from collections import OrderedDict
-from prettytable import PrettyTable
 
 
 def summary(main_prog):
@@ -149,6 +148,8 @@ def _format_summary(collected_ops_list):
         summary_table: summary report format
         total: sum param and flops
     '''
+    _verify_dependent_package()
+
     summary_table = PrettyTable(
         ["No.", "TYPE", "INPUT", "OUTPUT", "PARAMs", "FLOPs"])
     summary_table.align = 'r'
@@ -174,6 +175,18 @@ def _format_summary(collected_ops_list):
     total['flops'] = total_flops
 
     return summary_table, total
+
+
+def _verify_dependent_package():
+    """
+    Verify whether `prettytable` is installed.
+    """
+    try:
+        from prettytable import PrettyTable
+    except ImportError:
+        raise ImportError(
+            "paddle.summary() requires package `prettytable`, place install it firstly using `pip install prettytable`. "
+        )
 
 
 def _print_summary(summary_table, total):

@@ -16,18 +16,29 @@
 
 #include <string>
 
+#include "google/protobuf/io/coded_stream.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/var_type.h"
-
-#include "google/protobuf/io/coded_stream.h"
-#include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_bytebuffer_stream.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
+
+namespace grpc {
+class ByteBuffer;
+}  // namespace grpc
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

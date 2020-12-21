@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_padding.h"
+
 #include <gtest/gtest.h>
-#include <vector>
 
 template <typename DeviceContext, typename T>
 void TestSequencePadding(const DeviceContext &context,

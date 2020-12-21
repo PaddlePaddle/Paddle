@@ -35,7 +35,7 @@ def random_reader():
 
 
 def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
-    paddle.manual_seed(1)
+    paddle.seed(1)
     paddle.framework.random._manual_program_seed(1)
     startup_prog = fluid.Program()
     main_prog = fluid.Program()

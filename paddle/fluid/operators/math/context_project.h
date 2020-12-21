@@ -16,8 +16,10 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/math/blas.h"
+
 #include "paddle/fluid/operators/math/im2col.h"
 
 namespace paddle {
@@ -134,7 +136,10 @@ class ContextProjectFunctor {
       }
     }
     if (padding_trainable) {
-      PADDLE_ENFORCE_NOT_NULL(padding_data);
+      PADDLE_ENFORCE_NOT_NULL(
+          padding_data,
+          platform::errors::InvalidArgument(
+              "The input tensor 'padding_data' should not be NULL."));
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
         if (lod_level_0[i] == lod_level_0[i + 1]) continue;
 

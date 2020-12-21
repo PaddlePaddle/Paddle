@@ -13,8 +13,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
-#include <memory>
+
 #include <string>
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -102,6 +115,12 @@ REGISTER_OP_CPU_KERNEL(
                       ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
+                      ops::SumFunctor>,
+    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::complex64, ops::SumFunctor>,
+    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::complex128,
+
                       ops::SumFunctor>);
 
 template <typename T>
@@ -112,4 +131,6 @@ using CPUReduceSumGradKernel =
 REGISTER_OP_CPU_KERNEL(reduce_sum_grad, CPUReduceSumGradKernel<float>,
                        CPUReduceSumGradKernel<double>,
                        CPUReduceSumGradKernel<int>,
-                       CPUReduceSumGradKernel<int64_t>);
+                       CPUReduceSumGradKernel<int64_t>,
+                       CPUReduceSumGradKernel<paddle::platform::complex64>,
+                       CPUReduceSumGradKernel<paddle::platform::complex128>);

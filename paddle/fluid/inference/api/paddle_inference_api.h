@@ -224,6 +224,17 @@ class PD_INFER_DECL Predictor {
   /// \brief Clear the intermediate tensors of the predictor
   void ClearIntermediateTensor();
 
+  ///
+  /// \brief Release all tmp tensor to compress the size of the memory pool.
+  /// The memory pool is considered to be composed of a list of chunks, if
+  /// the chunk is not occupied, it can be released.
+  ///
+  /// \return Number of bytes released. It may be smaller than the actual
+  /// released memory, because part of the memory is not managed by the
+  /// MemoryPool.
+  ///
+  uint64_t TryShrinkMemory();
+
  private:
   std::unique_ptr<paddle::PaddlePredictor> predictor_;
 };

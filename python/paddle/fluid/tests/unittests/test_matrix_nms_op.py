@@ -201,7 +201,8 @@ class TestMatrixNMSOp(OpTest):
         self.inputs = {'BBoxes': boxes, 'Scores': scores}
         self.outputs = {
             'Out': (nmsed_outs, [lod]),
-            'Index': (index_outs[:, None], [lod])
+            'Index': (index_outs[:, None], [lod]),
+            'RoisNum': np.array(lod).astype('int32')
         }
         self.attrs = {
             'background_label': 0,

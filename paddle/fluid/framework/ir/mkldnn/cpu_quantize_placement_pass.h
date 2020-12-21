@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -26,6 +27,8 @@ namespace ir {
 /*
  * Specifies which operators should be quantized.
  */
+class Graph;
+
 class CPUQuantizePlacementPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

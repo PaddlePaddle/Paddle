@@ -468,7 +468,7 @@ def build_optimizer(layer, cfg, loss=None):
 
 class DyGraphTrainModel(object):
     def __init__(self, cfg):
-        paddle.manual_seed(1)
+        paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
 
         self.generator = Generator(cfg)
@@ -529,7 +529,7 @@ class StaticGraphTrainModel(object):
                 shape=[None, cfg.c_dim], dtype='float32', name='label_trg')
             return image_real, label_org, label_trg
 
-        paddle.manual_seed(cfg.seed)
+        paddle.seed(cfg.seed)
         paddle.framework.random._manual_program_seed(cfg.seed)
         self.gen_program = fluid.Program()
         gen_startup_program = fluid.Program()
@@ -592,7 +592,7 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
         cfg = Config(place)
 
         dataset = create_mnist_dataset(cfg)
-        dataset = fluid.io.cache(dataset)
+        dataset = paddle.reader.cache(dataset)
 
         static_graph_model = StaticGraphTrainModel(cfg)
         static_loss = []

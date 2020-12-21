@@ -46,14 +46,14 @@ class PixelShuffleOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
               "The square of upscale_factor[%u] should divide the "
               "number of channel[%u]",
-              input_dims[1], upscale_factor * upscale_factor));
+              upscale_factor * upscale_factor, input_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
           input_dims[3] % (upscale_factor * upscale_factor), 0,
           platform::errors::InvalidArgument(
               "The square of upscale_factor[%u] should divide the "
               "number of channel[%u]",
-              input_dims[3], upscale_factor * upscale_factor));
+              upscale_factor * upscale_factor, input_dims[3]));
     }
     auto output_dims = input_dims;
     output_dims[0] = input_dims[0];

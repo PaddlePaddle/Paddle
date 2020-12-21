@@ -23,6 +23,8 @@ import math
 import sys
 import os
 
+paddle.enable_static()
+
 
 def train(use_cuda, save_dirname, is_local):
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')

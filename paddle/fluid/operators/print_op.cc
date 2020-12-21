@@ -12,12 +12,20 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <algorithm>
-#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/assign_op.h"
 #include "paddle/fluid/operators/tensor_formatter.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class LoDTensor;
+class OpDesc;
+class Scope;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

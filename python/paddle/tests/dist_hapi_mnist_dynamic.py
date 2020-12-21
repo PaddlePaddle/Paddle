@@ -68,7 +68,7 @@ class TestDistTraning(unittest.TestCase):
         inputs = [Input(im_shape, 'float32', 'image')]
         labels = [Input([None, 1], 'int64', 'label')]
 
-        model = Model(LeNet(classifier_activation=None), inputs, labels)
+        model = Model(LeNet(), inputs, labels)
         optim = fluid.optimizer.Momentum(
             learning_rate=0.001, momentum=.9, parameter_list=model.parameters())
         model.prepare(optim, CrossEntropyLoss(), Accuracy())

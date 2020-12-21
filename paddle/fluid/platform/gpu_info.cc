@@ -57,6 +57,16 @@ static int GetCUDADeviceCountImpl() {
   const auto *cuda_visible_devices = std::getenv("CUDA_VISIBLE_DEVICES");
   if (cuda_visible_devices != nullptr) {
     std::string cuda_visible_devices_str(cuda_visible_devices);
+    if (!cuda_visible_devices_str.empty()) {
+      cuda_visible_devices_str.erase(
+          0, cuda_visible_devices_str.find_first_not_of('\''));
+      cuda_visible_devices_str.erase(
+          cuda_visible_devices_str.find_last_not_of('\'') + 1);
+      cuda_visible_devices_str.erase(
+          0, cuda_visible_devices_str.find_first_not_of('\"'));
+      cuda_visible_devices_str.erase(
+          cuda_visible_devices_str.find_last_not_of('\"') + 1);
+    }
     if (std::all_of(cuda_visible_devices_str.begin(),
                     cuda_visible_devices_str.end(),
                     [](char ch) { return ch == ' '; })) {

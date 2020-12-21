@@ -20,6 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Graph;
+
 class FCElementwiseLayerNormFusePass : public FusePassBase {
  public:
   virtual ~FCElementwiseLayerNormFusePass() {}

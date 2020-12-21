@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -81,9 +82,11 @@ inline void UpdatePadding(std::vector<T>* paddings, const bool global_pooling,
       paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
     }
   } else {
-    PADDLE_ENFORCE_EQ(
-        data_dims.size() * 2, paddings->size(),
-        "Paddings size should be the same or twice as the pooling size.");
+    PADDLE_ENFORCE_EQ(data_dims.size() * 2, paddings->size(),
+                      platform::errors::InvalidArgument(
+                          "Paddings size %d should be the same or twice as the "
+                          "pooling size %d.",
+                          paddings->size(), data_dims.size() * 2));
   }
 
   // when padding_algorithm is "VALID" or "SAME"
@@ -200,7 +203,10 @@ class PoolKernel : public framework::OpKernel<T> {
                          pool_process, exclusive, adaptive, out);
         }
       } break;
-      default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
+      default: {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Pool op only supports 2D and 3D input."));
+      }
     }
   }
 };
@@ -252,7 +258,7 @@ class PoolGradKernel : public framework::OpKernel<T> {
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
       paddle::operators::math::SetConstant<DeviceContext, T> set_constant;
-      set_constant(dev_ctx, in_x_grad, 0.0);
+      set_constant(dev_ctx, in_x_grad, static_cast<T>(0.0));
 
       switch (ksize.size()) {
         case 2: {
@@ -287,7 +293,10 @@ class PoolGradKernel : public framework::OpKernel<T> {
                             adaptive, in_x_grad);
           }
         } break;
-        default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
+        default: {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Pool op only supports 2D and 3D input."));
+        }
       }
     }
   }

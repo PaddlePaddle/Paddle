@@ -19,6 +19,9 @@ import os
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+import paddle
+
+paddle.enable_static()
 
 
 class TestCCommInitOp(unittest.TestCase):

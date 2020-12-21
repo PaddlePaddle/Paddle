@@ -18,10 +18,11 @@ import os
 import io
 import tarfile
 import numpy as np
-import scipy.io as scio
 from PIL import Image
 
+import paddle
 from paddle.io import Dataset
+from paddle.utils import try_import
 from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ["Flowers"]
@@ -55,6 +56,10 @@ class Flowers(Dataset):
         transform(callable): transform to perform on image, None for on transform.
         download(bool): whether to download dataset automatically if
             :attr:`data_file` is not set. Default True
+        backend(str, optional): Specifies which type of image to be returned: 
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+            default backend is 'pil'. Default: None.
 
     Examples:
         
@@ -66,7 +71,7 @@ class Flowers(Dataset):
 
             for i in range(len(flowers)):
                 sample = flowers[i]
-                print(sample[0].shape, sample[1])
+                print(sample[0].size, sample[1])
 
     """
 
@@ -76,9 +81,19 @@ class Flowers(Dataset):
                  setid_file=None,
                  mode='train',
                  transform=None,
-                 download=True):
+                 download=True,
+                 backend=None):
         assert mode.lower() in ['train', 'valid', 'test'], \
                 "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+
+        if backend is None:
+            backend = paddle.vision.get_image_backend()
+        if backend not in ['pil', 'cv2']:
+            raise ValueError(
+                "Expected backend are one of ['pil', 'cv2'], but got {}"
+                .format(backend))
+        self.backend = backend
+
         self.flag = MODE_FLAG_MAP[mode.lower()]
 
         self.data_file = data_file
@@ -104,11 +119,15 @@ class Flowers(Dataset):
         # read dataset into memory
         self._load_anno()
 
+        self.dtype = paddle.get_default_dtype()
+
     def _load_anno(self):
         self.name2mem = {}
         self.data_tar = tarfile.open(self.data_file)
         for ele in self.data_tar.getmembers():
             self.name2mem[ele.name] = ele
+
+        scio = try_import('scipy.io')
 
         self.labels = scio.loadmat(self.label_file)['labels'][0]
         self.indexes = scio.loadmat(self.setid_file)[self.flag][0]
@@ -119,12 +138,19 @@ class Flowers(Dataset):
         img_name = "jpg/image_%05d.jpg" % index
         img_ele = self.name2mem[img_name]
         image = self.data_tar.extractfile(img_ele).read()
-        image = np.array(Image.open(io.BytesIO(image)))
+
+        if self.backend == 'pil':
+            image = Image.open(io.BytesIO(image))
+        elif self.backend == 'cv2':
+            image = np.array(Image.open(io.BytesIO(image)))
 
         if self.transform is not None:
             image = self.transform(image)
 
-        return image, label.astype('int64')
+        if self.backend == 'pil':
+            return image, label.astype('int64')
+
+        return image.astype(self.dtype), label.astype('int64')
 
     def __len__(self):
         return len(self.indexes)

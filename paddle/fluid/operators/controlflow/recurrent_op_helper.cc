@@ -13,14 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
-
 #include <algorithm>
 #include <string>
-#include <unordered_set>
-#include <utility>
 
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/recurrent_op.h"
+namespace paddle {
+namespace framework {
+class BlockDesc;
+class ProgramDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

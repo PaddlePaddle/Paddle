@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fill_constant_op.h"
 #include <string>
+#include "paddle/fluid/framework/op_version_registry.h"
 namespace paddle {
 namespace operators {
 
@@ -142,4 +143,15 @@ REGISTER_OP_CPU_KERNEL(fill_constant, ops::FillConstantKernel<float>,
                        ops::FillConstantKernel<int64_t>,
                        ops::FillConstantKernel<int>,
                        ops::FillConstantKernel<bool>,
-                       ops::FillConstantKernel<paddle::platform::float16>);
+                       ops::FillConstantKernel<paddle::platform::float16>,
+                       ops::FillConstantKernel<paddle::platform::complex64>,
+                       ops::FillConstantKernel<paddle::platform::complex128>);
+
+REGISTER_OP_VERSION(fill_constant)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade fill_constant, add a new input [ValueTensor].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "ValueTensor",
+            "In order to support new feature tensor support of Value"));

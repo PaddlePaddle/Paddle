@@ -35,22 +35,22 @@ class TestInstanceNorm(unittest.TestCase):
 
             def error1d():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                instance_norm1d = paddle.nn.InstanceNorm1d(1)
+                instance_norm1d = paddle.nn.InstanceNorm1D(1)
                 instance_norm1d(fluid.dygraph.to_variable(x_data_4))
 
             def error2d():
                 x_data_3 = np.random.random(size=(2, 1, 3)).astype('float32')
-                instance_norm2d = paddle.nn.InstanceNorm2d(1)
+                instance_norm2d = paddle.nn.InstanceNorm2D(1)
                 instance_norm2d(fluid.dygraph.to_variable(x_data_3))
 
             def error3d():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                instance_norm3d = paddle.nn.BatchNorm3d(1)
+                instance_norm3d = paddle.nn.BatchNorm3D(1)
                 instance_norm3d(fluid.dygraph.to_variable(x_data_4))
 
             def weight_bias_false():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                instance_norm3d = paddle.nn.BatchNorm3d(
+                instance_norm3d = paddle.nn.BatchNorm3D(
                     1, weight_attr=False, bias_attr=False)
 
             with fluid.dygraph.guard(p):
@@ -75,7 +75,7 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v2(x):
                 with fluid.dygraph.guard(p):
-                    bn = paddle.nn.InstanceNorm2d(shape[1])
+                    bn = paddle.nn.InstanceNorm2D(shape[1])
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
@@ -104,7 +104,7 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v2(x_np):
                 with program_guard(Program(), Program()):
-                    ins = paddle.nn.InstanceNorm2d(shape[1])
+                    ins = paddle.nn.InstanceNorm2D(shape[1])
                     x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = ins(x)
                     exe.run(fluid.default_startup_program())

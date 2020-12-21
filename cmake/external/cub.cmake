@@ -16,7 +16,7 @@ include(ExternalProject)
 
 set(CUB_PREFIX_DIR ${THIRD_PARTY_PATH}/cub)
 set(CUB_SOURCE_DIR ${THIRD_PARTY_PATH}/cub/src/extern_cub)
-set(CUB_REPOSITORY https://github.com/NVlabs/cub.git)
+set(CUB_REPOSITORY ${GIT_URL}/NVlabs/cub.git)
 set(CUB_TAG        1.8.0)
 
 cache_third_party(extern_cub

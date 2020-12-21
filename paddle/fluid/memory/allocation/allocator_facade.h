@@ -44,6 +44,9 @@ class AllocatorFacade {
   // Allocate a unique allocation.
   AllocationPtr Alloc(const platform::Place& place, size_t size);
 
+  // Release unused memory pool.
+  uint64_t Release(const platform::Place& place);
+
   // TODO(yy): Allocate a Copy-On-Write allocation?
  private:
   AllocatorFacade();

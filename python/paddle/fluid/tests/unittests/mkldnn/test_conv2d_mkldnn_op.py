@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
-from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp, TestConv2dOp_v2
+from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2DOp, TestConv2DOp_v2
 
 
 def conv2d_bias_naive(out, bias):
@@ -36,7 +36,7 @@ def conv2d_residual_naive(out, residual):
     return out
 
 
-class TestConv2dMKLDNNOp(TestConv2dOp):
+class TestConv2DMKLDNNOp(TestConv2DOp):
     def init_group(self):
         self.groups = 1
 
@@ -64,7 +64,7 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
         self.fuse_residual_connection = False
         self.input_residual_size = None
 
-        TestConv2dOp.setUp(self)
+        TestConv2DOp.setUp(self)
 
         output = self.outputs['Output']
 
@@ -106,9 +106,9 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
 
 @skip_check_grad_ci(
     reason="Fusion is for inference only, check_grad is not required.")
-class TestWithbreluFusion(TestConv2dMKLDNNOp):
+class TestWithbreluFusion(TestConv2DMKLDNNOp):
     def init_test_case(self):
-        TestConv2dMKLDNNOp.init_test_case(self)
+        TestConv2DMKLDNNOp.init_test_case(self)
         self.fuse_activation = "relu6"
         self.fuse_alpha = 6.0
         self.dsttype = np.float32
@@ -116,9 +116,9 @@ class TestWithbreluFusion(TestConv2dMKLDNNOp):
 
 @skip_check_grad_ci(
     reason="Fusion is for inference only, check_grad is not required.")
-class TestWithFuse(TestConv2dMKLDNNOp):
+class TestWithFuse(TestConv2DMKLDNNOp):
     def init_test_case(self):
-        TestConv2dMKLDNNOp.init_test_case(self)
+        TestConv2DMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.fuse_bias = True
         self.bias_size = [6]
@@ -126,22 +126,22 @@ class TestWithFuse(TestConv2dMKLDNNOp):
         self.input_residual_size = [2, 6, 5, 5]
 
 
-class TestWithPadWithBias(TestConv2dMKLDNNOp):
+class TestWithPadWithBias(TestConv2DMKLDNNOp):
     def init_test_case(self):
-        TestConv2dMKLDNNOp.init_test_case(self)
+        TestConv2DMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.input_size = [2, 3, 6, 6]
 
 
-class TestWithStride(TestConv2dMKLDNNOp):
+class TestWithStride(TestConv2DMKLDNNOp):
     def init_test_case(self):
-        TestConv2dMKLDNNOp.init_test_case(self)
+        TestConv2DMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]
 
 
-class TestWithGroup(TestConv2dMKLDNNOp):
+class TestWithGroup(TestConv2DMKLDNNOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -154,15 +154,15 @@ class TestWithGroup(TestConv2dMKLDNNOp):
         self.groups = 3
 
 
-class TestWith1x1(TestConv2dMKLDNNOp):
+class TestWith1x1(TestConv2DMKLDNNOp):
     def init_test_case(self):
-        TestConv2dMKLDNNOp.init_test_case(self)
+        TestConv2DMKLDNNOp.init_test_case(self)
         self.filter_size = [40, 3, 1, 1]
 
 
-class TestWithInput1x1Filter1x1(TestConv2dMKLDNNOp):
+class TestWithInput1x1Filter1x1(TestConv2DMKLDNNOp):
     def init_test_case(self):
-        TestConv2dMKLDNNOp.init_test_case(self)
+        TestConv2DMKLDNNOp.init_test_case(self)
         self.input_size = [2, 60, 1, 1]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
@@ -172,7 +172,7 @@ class TestWithInput1x1Filter1x1(TestConv2dMKLDNNOp):
         self.groups = 3
 
 
-class TestConv2dOp_AsyPadding_MKLDNN(TestConv2dOp_v2):
+class TestConv2DOp_AsyPadding_MKLDNN(TestConv2DOp_v2):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
@@ -182,19 +182,19 @@ class TestConv2dOp_AsyPadding_MKLDNN(TestConv2dOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestConv2dOp_Same_MKLDNN(TestConv2dOp_AsyPadding_MKLDNN):
+class TestConv2DOp_Same_MKLDNN(TestConv2DOp_AsyPadding_MKLDNN):
     def init_paddings(self):
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
-class TestConv2dOp_Valid_MKLDNN(TestConv2dOp_AsyPadding_MKLDNN):
+class TestConv2DOp_Valid_MKLDNN(TestConv2DOp_AsyPadding_MKLDNN):
     def init_paddings(self):
         self.pad = [1, 1]
         self.padding_algorithm = "VALID"
 
 
-class TestConv2dOp_Valid_NHWC_MKLDNN(TestConv2dOp_Valid_MKLDNN):
+class TestConv2DOp_Valid_NHWC_MKLDNN(TestConv2DOp_Valid_MKLDNN):
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -203,17 +203,36 @@ class TestConv2dOp_Valid_NHWC_MKLDNN(TestConv2dOp_Valid_MKLDNN):
         self.input_size = [N, H, W, C]
 
 
-class TestConv2dOp_Same_NHWC_MKLDNN(TestConv2dOp_Valid_NHWC_MKLDNN):
+class TestConv2DOp_Same_NHWC_MKLDNN(TestConv2DOp_Valid_NHWC_MKLDNN):
     def init_paddings(self):
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
-class TestConv2dOp_AsyPadding_NHWC_MKLDNN(TestConv2dOp_Valid_NHWC_MKLDNN):
+class TestConv2DOp_AsyPadding_NHWC_MKLDNN(TestConv2DOp_Valid_NHWC_MKLDNN):
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
+class TestMKLDNNDilations(TestConv2DMKLDNNOp):
+    def init_test_case(self):
+        TestConv2DMKLDNNOp.init_test_case(self)
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [12, f_c, 3, 3]
+
+    def init_dilation(self):
+        self.dilations = [2, 2]
+
+    def init_group(self):
+        self.groups = 3
+
+
 if __name__ == '__main__':
+    from paddle import enable_static
+    enable_static()
     unittest.main()

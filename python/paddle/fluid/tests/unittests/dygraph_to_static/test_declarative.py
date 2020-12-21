@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.static import InputSpec
 from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator, Layer, jit
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram, StaticLayer
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram, StaticFunction
 
 from test_basic_api_transformation import dyfunc_to_variable
 
@@ -81,14 +81,14 @@ class SimpleNet(Layer):
         return z
 
 
-class TestStaticLayerInstance(unittest.TestCase):
+class TestStaticFunctionInstance(unittest.TestCase):
     def test_instance_same_class(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             net_1 = SimpleNet()
             net_2 = SimpleNet()
 
-            self.assertTrue(isinstance(net_1.forward, StaticLayer))
-            self.assertTrue(isinstance(net_2.forward, StaticLayer))
+            self.assertTrue(isinstance(net_1.forward, StaticFunction))
+            self.assertTrue(isinstance(net_2.forward, StaticFunction))
             self.assertNotEqual(net_1.forward, net_2.forward)
 
             # convert layer into static progam of net_1
@@ -115,6 +115,7 @@ class TestInputSpec(unittest.TestCase):
             self.assertTrue(len(net.forward.program_cache) == 1)
 
             # 2. test save load
+            net.inner_function(x)
             jit.save(net, './simple_net')
             infer_net = fluid.dygraph.jit.load('./simple_net')
             pred = infer_net(x)
@@ -263,8 +264,9 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             concrete_program_5 = foo.get_concrete_program(InputSpec([10]))
 
         # 6. specific unknown kwargs `e`=4
-        concrete_program_5 = foo.get_concrete_program(
-            InputSpec([10]), InputSpec([10]), e=4)
+        with self.assertRaises(TypeError):
+            concrete_program_5 = foo.get_concrete_program(
+                InputSpec([10]), InputSpec([10]), e=4)
 
     def test_concrete_program(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
@@ -330,6 +332,51 @@ class TestDeclarativeAPI(unittest.TestCase):
             # AssertionError: We Only support to_variable in imperative mode,
             #  please use fluid.dygraph.guard() as context to run it in imperative Mode
             func(np.ones(5).astype("int32"))
+
+
+class TestDecorateModelDirectly(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        program_trans.enable(True)
+        self.x = to_variable(np.ones([4, 10]).astype('float32'))
+
+    def test_fake_input(self):
+        net = SimpleNet()
+        net = declarative(net)
+        y = net(self.x)
+        self.assertTrue(len(net.forward.program_cache) == 1)
+
+    def test_input_spec(self):
+        net = SimpleNet()
+        net = declarative(net, input_spec=[InputSpec([None, 8, 10])])
+        self.assertTrue(len(net.forward.inputs) == 1)
+        self.assertTrue(len(net.forward.program_cache) == 1)
+        input_shape = net.forward.inputs[0].shape
+        self.assertListEqual(list(input_shape), [-1, 8, 10])
+
+        # redecorate
+        net = declarative(net, input_spec=[InputSpec([None, 16, 10])])
+        input_shape = net.forward.inputs[0].shape
+        self.assertListEqual(list(input_shape), [-1, 16, 10])
+
+
+class TestErrorWithInitFromStaticMode(unittest.TestCase):
+    def test_raise_error(self):
+        # disable imperative
+        paddle.enable_static()
+
+        net = SimpleNet()
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            net.forward.concrete_program
+
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            net.forward.inputs
+
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            net.forward.outputs
 
 
 if __name__ == '__main__':

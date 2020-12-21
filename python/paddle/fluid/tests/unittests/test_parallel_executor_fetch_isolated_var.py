@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 import six
 import paddle.fluid as fluid
+import paddle
 
 
 def enable_parallel_ssa_executor(enabled=True):
@@ -57,6 +58,7 @@ class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
 
     def run_impl(self, use_gpu, dev_cnt, is_training, use_experimental_executor,
                  use_parallel_ssa_executor):
+        paddle.enable_static()
         enable_parallel_ssa_executor(use_parallel_ssa_executor)
 
         if fluid.is_compiled_with_cuda():

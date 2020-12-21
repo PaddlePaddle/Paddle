@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
 
@@ -52,10 +53,25 @@ def dyfunc_tensor_shape_4(x):
 def dyfunc_tensor_shape_5(x):
     # `res = fluid.layers.reshape(x, shape=(-1, s))` to
     # `res = fluid.layers.reshape(x, shape=(-1,
-    #           fluid.dygraph.dygraph_to_static.convert_operators.convert_var_shape(x)[0]))`
+    #           paddle.jit.dy2static.convert_var_shape(x)[0]))`
     x = fluid.dygraph.to_variable(x)
     s = x.shape[0]
     res = fluid.layers.reshape(x, shape=(-1, s))
+    return res
+
+
+def dyfunc_tuple_shape_1(x):
+    x = paddle.to_tensor(x)
+    a, b = x.shape
+    res = paddle.reshape(x, shape=(b, a))
+    return res
+
+
+def dyfunc_tuple_shape_2(x):
+    x = paddle.to_tensor(x)
+    shape = x.shape
+    a, b = shape
+    res = paddle.reshape(x, shape=(b, a))
     return res
 
 
@@ -65,7 +81,7 @@ def dyfunc_with_if_1(x):
     x_shape_0 = x.shape[0]
     if x_shape_0 < 1:
         # `res.shape[0]` is transformed into
-        #   `fluid.dygraph.dygraph_to_static.convert_operators.convert_var_shape(res)[0]`
+        #   `paddle.jit.dy2static.convert_var_shape(res)[0]`
         if res.shape[0] > 1:
             res = fluid.layers.fill_constant(
                 value=2, shape=x.shape, dtype="int32")
@@ -89,7 +105,7 @@ def dyfunc_with_if_2(x):
 def dyfunc_with_for_1(x):
     x = fluid.dygraph.to_variable(x)
     res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
-    # `x.shape[0]` is transformed into `fluid.dygraph.dygraph_to_static.convert_operators.convert_var_shape(x)[0]`
+    # `x.shape[0]` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
     for i in range(x.shape[0]):
         res += 1
     return res
@@ -100,7 +116,7 @@ def dyfunc_with_for_2(x):
     x_shape_0 = x.shape[0]
     res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
 
-    # `x_shape_0` is transformed into `fluid.dygraph.dygraph_to_static.convert_operators.convert_var_shape(x)[0]`
+    # `x_shape_0` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
     for i in range(x_shape_0):
         res += 1
     return res
@@ -124,7 +140,7 @@ def dyfunc_with_for_3(x):
 def dyfunc_with_while_1(x):
     x = fluid.dygraph.to_variable(x)
     res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
-    # `x.shape[0]` is transformed into `fluid.dygraph.dygraph_to_static.convert_operators.convert_var_shape(x)[0]`
+    # `x.shape[0]` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
     i = 1
     while i < x.shape[0]:
         res += 1
@@ -137,7 +153,7 @@ def dyfunc_with_while_2(x):
     x_shape_0 = x.shape[0]
     res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
     i = 1
-    # `x_shape_0` is transformed into `fluid.dygraph.dygraph_to_static.convert_operators.convert_var_shape(x)[0]`
+    # `x_shape_0` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
     while i < x_shape_0:
         res += 1
         i = i + 2
@@ -222,6 +238,18 @@ class TestTensorShapeBasic4(TestTensorShapeBasic):
 class TestTensorShapeBasic5(TestTensorShapeBasic):
     def init_test_func(self):
         self.dygraph_func = dyfunc_tensor_shape_5
+
+
+class TestTupleShape1(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.input = numpy.ones((5, 7)).astype("int32")
+        self.dygraph_func = dyfunc_tuple_shape_1
+
+
+class TestTupleShape2(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.input = numpy.ones((5, 7)).astype("int32")
+        self.dygraph_func = dyfunc_tuple_shape_2
 
 
 # 2. Tests with control flow if

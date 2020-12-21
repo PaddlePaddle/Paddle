@@ -18,6 +18,9 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import Quant2Int8MkldnnPass
+import paddle
+
+paddle.enable_static()
 
 
 class TestQuant2Int8MkldnnPass(unittest.TestCase):

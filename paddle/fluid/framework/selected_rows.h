@@ -27,7 +27,16 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 
 namespace paddle {
+namespace platform {
+class DeviceContext;
+class Place;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
+
+class Tensor;
 
 class SelectedRows {
   /*
@@ -82,7 +91,8 @@ class SelectedRows {
   int64_t Index(int64_t key) const {
     auto it = std::find(rows_.begin(), rows_.end(), key);
     if (it == rows_.end()) {
-      PADDLE_THROW("id %s not in table", key);
+      PADDLE_THROW(platform::errors::NotFound(
+          "Input id (%lld) is not in current rows table.", key));
     }
     return static_cast<int64_t>(std::distance(rows_.begin(), it));
   }

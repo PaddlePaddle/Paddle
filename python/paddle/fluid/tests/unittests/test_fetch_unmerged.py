@@ -28,7 +28,7 @@ class TestFetchUnmerged(unittest.TestCase):
         conv_pool_1 = fluid.nets.simple_img_conv_pool(
             input=img,
             filter_size=5,
-            num_filters=20,
+            num_filters=8,
             pool_size=2,
             pool_stride=2,
             pool_type='max',
@@ -37,12 +37,12 @@ class TestFetchUnmerged(unittest.TestCase):
         conv_pool_2 = fluid.nets.simple_img_conv_pool(
             input=conv_pool_1,
             filter_size=5,
-            num_filters=50,
+            num_filters=16,
             pool_size=2,
             pool_stride=2,
             pool_type='avg',
             act="relu")
-        hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
+        hidden = fluid.layers.fc(input=conv_pool_2, size=32, act='relu')
         prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_loss = fluid.layers.mean(loss)
@@ -75,8 +75,8 @@ class TestFetchUnmerged(unittest.TestCase):
         binary = fluid.CompiledProgram(main_program).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy)
 
-        iters = 3
-        batch_size = 64
+        iters = 2
+        batch_size = 16
         train_reader = paddle.batch(
             paddle.reader.shuffle(
                 paddle.dataset.mnist.train(), buf_size=500),

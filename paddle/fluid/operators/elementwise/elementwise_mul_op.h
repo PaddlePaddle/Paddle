@@ -30,31 +30,30 @@ class ElementwiseMulOp : public ElementwiseOp {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    using mkldnn::memory;
-    auto CanMKLDNNElementwiseMulBeUsed = [&]() {
-      auto x_dims = ctx.Input<Tensor>("X")->dims();
-      auto y_dims = ctx.Input<Tensor>("Y")->dims();
-      int rankdiff = x_dims.size() - y_dims.size();
-      // TODO(jczaja): Remove this when oneDNN performance for scalar
-      // broadcasting
-      // is improved (Ernie large situation)
-      if (rankdiff != 0 && y_dims.size() == 1 && y_dims[0] == 1) {
-        return false;
-      }
-
-      return true;
-    };
-
-    if (platform::CanMKLDNNBeUsed(ctx) && CanMKLDNNElementwiseMulBeUsed()) {
+    if (this->CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 

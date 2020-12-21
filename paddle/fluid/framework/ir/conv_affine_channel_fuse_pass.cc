@@ -13,17 +13,27 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_affine_channel_fuse_pass.h"
+
 #include <cmath>
-#include <functional>
-#include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
+class LoDTensor;
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
+
+class Node;
 
 #define GET_CONV_BN_NODES(pattern_name)                                    \
   /* OPERATORS */                                                          \
@@ -225,3 +235,14 @@ REGISTER_PASS(conv_affine_channel_fuse_pass,
               paddle::framework::ir::ConvAffineChannelFusePass);
 REGISTER_PASS(conv_eltwiseadd_affine_channel_fuse_pass,
               paddle::framework::ir::ConvEltwiseAddAffineChannelFusePass);
+REGISTER_PASS_CAPABILITY(conv_affine_channel_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("affine_channel", 0));
+REGISTER_PASS_CAPABILITY(conv_eltwiseadd_affine_channel_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("elementwise_add", 0)
+            .EQ("affine_channel", 0));

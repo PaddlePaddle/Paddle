@@ -62,6 +62,7 @@ TEST(ThreadLocalAllocator, cross_scope_release) {
         auto tl_allocator_impl =
             ThreadLocalCUDAAllocatorPool::Instance().Get(devices[j]);
         allocator_addresses[j][i] = tl_allocator_impl.get();
+        memory::Release(platform::CUDAPlace(devices[j]));
       }
     });
   }

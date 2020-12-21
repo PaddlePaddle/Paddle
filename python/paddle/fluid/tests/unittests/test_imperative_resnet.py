@@ -251,7 +251,7 @@ class TestDygraphResnet(unittest.TestCase):
         traced_layer = None
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             resnet = ResNet()
@@ -334,7 +334,7 @@ class TestDygraphResnet(unittest.TestCase):
                     dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             exe = fluid.Executor(fluid.CPUPlace(

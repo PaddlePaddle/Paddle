@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

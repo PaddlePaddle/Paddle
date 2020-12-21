@@ -46,16 +46,25 @@ class CPULinspaceKernel : public framework::OpKernel<T> {
 
     T start = start_t.data<T>()[0];
     T stop = stop_t.data<T>()[0];
-    PADDLE_ENFORCE(num > 0, "The num of linspace op should be larger than 0.");
+    PADDLE_ENFORCE_GT(num, 0, platform::errors::InvalidArgument(
+                                  "The num of linspace op should be larger "
+                                  "than 0, but received num is %d",
+                                  num));
 
     out->Resize(framework::make_ddim({num}));
 
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
     if (num > 1) {
+      // step should be of double type for all types
       double step = (static_cast<double>(stop - start)) / (num - 1);
+      int half_num = num / 2;
       for (int i = 0; i < num; ++i) {
-        out_data[i] = static_cast<T>(start + step * i);
+        if (i < half_num) {
+          out_data[i] = static_cast<T>(start + step * i);
+        } else {
+          out_data[i] = static_cast<T>(stop - step * (num - i - 1));
+        }
       }
     } else {
       out_data[0] = static_cast<T>(start);

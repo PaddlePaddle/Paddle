@@ -11,25 +11,19 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#if defined(PADDLE_WITH_NCCL)
-#include <nccl.h>
-#endif
-
-#include <stdint.h>
-#include <ostream>
 #include <string>
 
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "glog/logging.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
-#if defined(PADDLE_WITH_NCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
-#endif
+#include "paddle/fluid/operators/collective/gen_nccl_id_op_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -44,76 +38,22 @@ class CGenNCCLIdOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    // put nccl id in CPUPlace
-    auto& dev_ctx = *pool.Get(platform::CPUPlace());
     int rank = Attr<int>("rank");
     framework::Scope& local_scope = scope.NewScope();
 
+    std::function<std::string(size_t)> func = [&](size_t i) -> std::string {
+      return Output("Out");
+    };
+
     if (rank == 0) {
-      GenerateAndSend(&local_scope, dev_ctx);
+      std::vector<std::string> endpoint_list =
+          Attr<std::vector<std::string>>("other_endpoints");
+      SendBroadCastNCCLID(endpoint_list, 1, func, local_scope);
     } else {
-      GetIdByServer(&local_scope, dev_ctx);
+      std::string endpoint = Attr<std::string>("endpoint");
+      RecvBroadCastNCCLID(endpoint, 1, func, local_scope);
     }
     scope.DeleteScope(&local_scope);
-  }
-
- private:
-  void GenerateAndSend(framework::Scope* scope,
-                       const platform::DeviceContext& dev_ctx) const {
-    std::string var_name = Output("Out");
-    auto var = scope->FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var);
-    auto id = var->GetMutable<ncclUniqueId>();
-    PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(id));
-
-    std::vector<std::string> endpoint_list =
-        Attr<std::vector<std::string>>("other_endpoints");
-    distributed::RPCClient* client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
-
-    for (auto& ep : endpoint_list) {
-      VLOG(3) << "sending nccl id to " << ep;
-      client->AsyncSendVar(ep, dev_ctx, *scope, var_name);
-    }
-    client->Wait();
-    for (auto& ep : endpoint_list) {
-      client->AsyncSendBatchBarrier(ep);
-    }
-    client->Wait();
-    VLOG(3) << "sending completed...";
-  }
-
-  void GetIdByServer(framework::Scope* scope,
-                     const platform::DeviceContext& dev_ctx) const {
-    std::string endpoint = Attr<std::string>("endpoint");
-    // NOTE: Can not use unique_ptr here because the default
-    // deleter will call GRPC Server's base class's dtor and
-    // that will cause a wired crash.
-    distributed::RequestSendHandler rpc_h(distributed::DistributedMode::kSync);
-    std::unique_ptr<distributed::RPCServer> rpc_service(
-        new RPCSERVER_T(endpoint, 1));
-
-    rpc_service->RegisterRPC(distributed::kRequestSend, &rpc_h);
-    rpc_h.SetRPCServer(rpc_service.get());
-
-    framework::ProgramDesc empty_program;
-    framework::Executor executor(dev_ctx.GetPlace());
-    rpc_h.SetScope(scope);
-    rpc_h.SetDevCtx(&dev_ctx);
-    rpc_h.SetProgram(&empty_program);
-    rpc_h.SetExecutor(&executor);
-
-    std::thread server_thread(
-        std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
-
-    rpc_service->SetCond(distributed::kRequestSend);
-    VLOG(3) << "start getting nccl id from trainer 0...";
-    rpc_service->WaitBarrier(distributed::kRequestSend);
-    VLOG(3) << "got nccl id and stop server...";
-    rpc_service->ShutDown();
-    VLOG(3) << "rpc server stopped";
-    server_thread.join();
   }
 };
 
