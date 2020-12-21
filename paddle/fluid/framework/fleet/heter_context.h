@@ -21,13 +21,13 @@ limitations under the License. */
 #include <vector>
 
 #include "common_value.h"  // NOLINT
-#include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/hashtable/feature_value.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 
-class GpuTask {
+class HeterContext {
  public:
   Scope* scope_{nullptr};
   std::vector<std::vector<FeatureKey>> feature_keys_;

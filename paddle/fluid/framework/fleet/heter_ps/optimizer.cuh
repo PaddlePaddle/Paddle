@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <vector> 
 #include "optimizer_conf.h"
-#include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 
 #ifdef PADDLE_WITH_PSLIB
 

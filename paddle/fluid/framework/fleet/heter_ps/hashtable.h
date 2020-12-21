@@ -18,7 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "thrust/pair.h"
 //#include "cudf/concurrent_unordered_map.cuh.h"
-#include "paddle/fluid/framework/fleet/heter_box/cudf/concurrent_unordered_map.cuh.h"
+#include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #ifdef PADDLE_WITH_PSLIB
 
 namespace paddle {

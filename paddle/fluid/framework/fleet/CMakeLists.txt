@@ -1,8 +1,9 @@
 if(WITH_PSLIB)
     cc_library(fleet_wrapper SRCS fleet_wrapper.cc DEPS framework_proto variable_helper scope pslib_brpc pslib)
     if(WITH_NCCL)
-        nv_library(ps_gpu_wrapper SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc DEPS heter_box)
-        add_subdirectory(heter_box)
+        nv_library(ps_gpu_wrapper SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
+        DEPS heter_ps)
+        add_subdirectory(heter_ps)
     else()
         cc_library(ps_gpu_wrapper SRCS ps_gpu_wrapper.cc)
     endif(WITH_NCCL)

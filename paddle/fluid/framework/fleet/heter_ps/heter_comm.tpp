@@ -92,8 +92,8 @@ __global__ void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-GpuPs<KeyType, ValType, GradType>::GpuPs(
-    size_t capacity, std::shared_ptr<HeterBoxResource> resource) {
+HeterComm<KeyType, ValType, GradType>::HeterComm(
+    size_t capacity, std::shared_ptr<HeterPsResource> resource) {
   resource_ = resource;
   for (int i = 0; i < resource_->total_gpu(); ++i) {
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
@@ -103,7 +103,7 @@ GpuPs<KeyType, ValType, GradType>::GpuPs(
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-GpuPs<KeyType, ValType, GradType>::~GpuPs() {
+HeterComm<KeyType, ValType, GradType>::~HeterComm() {
   for (auto& table : tables_) {
     delete table;
     table = nullptr;
@@ -111,12 +111,12 @@ GpuPs<KeyType, ValType, GradType>::~GpuPs() {
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-void GpuPs<KeyType, ValType, GradType>::show_one_table(int gpu_num) {
+void HeterComm<KeyType, ValType, GradType>::show_one_table(int gpu_num) {
   tables_[gpu_num]->show();
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-int GpuPs<KeyType, ValType, GradType>::log2i(int x) {
+int HeterComm<KeyType, ValType, GradType>::log2i(int x) {
   unsigned res = 0;
   while (x >>= 1) {
     ++res;
@@ -125,12 +125,12 @@ int GpuPs<KeyType, ValType, GradType>::log2i(int x) {
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-int GpuPs<KeyType, ValType, GradType>::get_index_by_devid(int devid) {
+int HeterComm<KeyType, ValType, GradType>::get_index_by_devid(int devid) {
   return resource_->get_index_by_devid(devid);
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-void GpuPs<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
+void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
                                                  ValType* h_vals, size_t len,
                                                  size_t chunk_size,
                                                  int stream_num) {
@@ -182,7 +182,7 @@ void GpuPs<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-void GpuPs<KeyType, ValType, GradType>::merge_grad(int gpu_num, KeyType* d_keys,
+void HeterComm<KeyType, ValType, GradType>::merge_grad(int gpu_num, KeyType* d_keys,
                                                    GradType* d_grads,
                                                    size_t len, int& uniq_len) {
   int dev_id = resource_->dev_id(gpu_num);
@@ -233,7 +233,7 @@ void GpuPs<KeyType, ValType, GradType>::merge_grad(int gpu_num, KeyType* d_keys,
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-void GpuPs<KeyType, ValType, GradType>::split_input_to_shard(
+void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
     KeyType* d_keys, int* d_idx_ptr, size_t len, int* left, int* right,
     int gpu_num) {
   int total_gpu = resource_->total_gpu();
@@ -272,7 +272,7 @@ void GpuPs<KeyType, ValType, GradType>::split_input_to_shard(
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-void GpuPs<KeyType, ValType, GradType>::pull_sparse(int num, KeyType* d_keys,
+void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num, KeyType* d_keys,
                                                     ValType* d_vals,
                                                     size_t len) {
   if (len == 0) {
@@ -386,7 +386,7 @@ void GpuPs<KeyType, ValType, GradType>::pull_sparse(int num, KeyType* d_keys,
 
 template <typename KeyType, typename ValType, typename GradType>
 template <typename Sgd>
-void GpuPs<KeyType, ValType, GradType>::push_sparse(int gpu_num,
+void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
                                                     KeyType* d_keys,
                                                     GradType* d_grads,
                                                     size_t len, Sgd& sgd) {

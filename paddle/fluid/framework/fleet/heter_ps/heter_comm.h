@@ -17,7 +17,7 @@ limitations under the License. */
 #include "cub/cub.cuh"
 #include "gpu_resource.h"
 #include "hashtable.h"
-#include "paddle/fluid/framework/fleet/heter_box/optimizer/optimizer.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/place.h"
@@ -45,12 +45,12 @@ struct CustomGradMerger {
 };
 
 template <typename KeyType, typename ValType, typename GradType>
-class GpuPs {
+class HeterComm {
  public:
-  GpuPs(size_t capacity, std::shared_ptr<HeterBoxResource> resource);
-  virtual ~GpuPs();
-  GpuPs(const GpuPs&) = delete;
-  GpuPs& operator=(const GpuPs&) = delete;
+  HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource);
+  virtual ~HeterComm();
+  HeterComm(const HeterComm&) = delete;
+  HeterComm& operator=(const HeterComm&) = delete;
 
   void split_input_to_shard(KeyType* d_keys, int* d_idx_ptr, size_t len,
                             int* left, int* right, int gpu_num);
@@ -74,11 +74,11 @@ class GpuPs {
   int block_size_{256};
   float load_factor_{0.75};
   std::vector<Table*> tables_;
-  std::shared_ptr<HeterBoxResource> resource_;
+  std::shared_ptr<HeterPsResource> resource_;
   CustomGradMerger merger_;
 };
 
 }  // end namespace framework
 }  // end namespace paddle
-#include "paddle/fluid/framework/fleet/heter_box/hashtable/gpu_ps.tpp"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm.tpp"
 #endif

@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
-#include "paddle/fluid/framework/fleet/gpu_task.h"
-#include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_context.h"
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
@@ -143,17 +143,17 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
   timeline.Start();
   MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
   auto fleet_ptr = FleetWrapper::GetInstance();
-  std::shared_ptr<GpuTask> gpu_task = std::make_shared<GpuTask>();
+  std::shared_ptr<HeterContext> heter_context = std::make_shared<HeterContext>();
   auto& multi_output_channel = dataset->GetCurOutputChannel();
   auto& input_channel = dataset->GetInputChannelRef();
   int gen_shard_num = multi_output_channel.size();
   int device_num = places_.size();
   auto gpu_ps_wrapper = PSGPUWrapper::GetInstance();
-  auto& local_keys = gpu_task->feature_keys_;
+  auto& local_keys = heter_context->feature_keys_;
   local_keys.resize(device_num);
-  auto& local_values = gpu_task->feature_values_;
+  auto& local_values = heter_context->feature_values_;
   local_values.resize(device_num);
-  auto& local_ptr = gpu_task->value_ptr_;
+  auto& local_ptr = heter_context->value_ptr_;
   local_ptr.resize(device_num);
   for (auto& ks : local_keys) {
     ks.reserve(100000);
@@ -341,7 +341,7 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
   }
   timeline.Pause();
   VLOG(0) << "GpuPs pull sparse cost " << timeline.ElapsedSec() << " seconds.";
-  gpu_ps_wrapper->BuildGPUPS(table_id, feadim, gpu_task);
+  gpu_ps_wrapper->BuildGPUPS(table_id, feadim, heter_context);
 }
 
 Scope* PSGPUTrainer::GetWorkerScope(int thread_id) { return nullptr; }

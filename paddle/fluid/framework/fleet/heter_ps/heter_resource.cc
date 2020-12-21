@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_PSLIB
-#include "gpu_resource.h"
+#include "heter_resource.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
 namespace paddle {
@@ -38,7 +38,7 @@ GPUResource::~GPUResource() {
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(copy_stream_));
 }
 
-void HeterBoxResource::enable_p2p() {
+void HeterPsResource::enable_p2p() {
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
     platform::CUDADeviceGuard guard(dev_ids_[i]);
     for (size_t j = 0; j < dev_ids_.size(); ++j) {
@@ -60,7 +60,7 @@ void HeterBoxResource::enable_p2p() {
   }
 }
 
-HeterBoxResource::HeterBoxResource(const std::vector<int>& dev_ids) {
+HeterPsResource::HeterPsResource(const std::vector<int>& dev_ids) {
   dev_ids_ = dev_ids;
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
     std::shared_ptr<GPUResource> resource =
@@ -70,21 +70,21 @@ HeterBoxResource::HeterBoxResource(const std::vector<int>& dev_ids) {
   }
 }
 
-cudaStream_t HeterBoxResource::copy_stream(int num) {
+cudaStream_t HeterPsResource::copy_stream(int num) {
   return resources_[num]->copy_stream();
 }
 
-cudaStream_t HeterBoxResource::stream(int num) {
+cudaStream_t HeterPsResource::stream(int num) {
   return resources_[num]->stream();
 }
 
-int HeterBoxResource::dev_id(int num) { return dev_ids_[num]; }
+int HeterPsResource::dev_id(int num) { return dev_ids_[num]; }
 
-int HeterBoxResource::get_index_by_devid(int devid) {
+int HeterPsResource::get_index_by_devid(int devid) {
   return devid_2_index_[devid];
 }
 
-int HeterBoxResource::total_gpu() { return dev_ids_.size(); }
+int HeterPsResource::total_gpu() { return dev_ids_.size(); }
 
 }  // end namespace framework
 }  // end namespace paddle

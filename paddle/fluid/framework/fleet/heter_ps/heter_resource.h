@@ -43,12 +43,12 @@ class GPUResource {
   cudaStream_t copy_stream_;
 };
 
-class HeterBoxResource {
+class HeterPsResource {
  public:
-  HeterBoxResource(const std::vector<int>& dev_ids);
-  HeterBoxResource(const HeterBoxResource&) = delete;
-  HeterBoxResource& operator=(const HeterBoxResource&) = delete;
-  virtual ~HeterBoxResource() {}
+  HeterPsResource(const std::vector<int>& dev_ids);
+  HeterPsResource(const HeterPsResource&) = delete;
+  HeterPsResource& operator=(const HeterPsResource&) = delete;
+  virtual ~HeterPsResource() {}
   void enable_p2p();
   int total_gpu();
   int get_index_by_devid(int devid);

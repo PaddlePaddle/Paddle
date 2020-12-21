@@ -14,20 +14,20 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
-#include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 
 #ifdef PADDLE_WITH_PSLIB
 
 namespace paddle {
 namespace framework {
 
-class HeterBoxBase {
+class HeterPsBase {
  public:
-  HeterBoxBase(){};
-  HeterBoxBase(size_t capacity, std::shared_ptr<HeterBoxResource> resource){};
-  virtual ~HeterBoxBase(){};
-  HeterBoxBase(const HeterBoxBase&) = delete;
-  HeterBoxBase& operator=(const HeterBoxBase&) = delete;
+  HeterPsBase(){};
+  HeterPsBase(size_t capacity, std::shared_ptr<HeterPsResource> resource){};
+  virtual ~HeterPsBase(){};
+  HeterPsBase(const HeterPsBase&) = delete;
+  HeterPsBase& operator=(const HeterPsBase&) = delete;
 
   virtual void pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals,
                            size_t len) = 0;
@@ -38,8 +38,8 @@ class HeterBoxBase {
   virtual void show_one_table(int gpu_num) = 0;
   virtual void push_sparse(int num, FeatureKey* d_keys,
                            FeaturePushValue* d_grads, size_t len) = 0;
-  static HeterBoxBase* get_instance(size_t capacity,
-                                    std::shared_ptr<HeterBoxResource> resource);
+  static HeterPsBase* get_instance(size_t capacity,
+                                    std::shared_ptr<HeterPsResource> resource);
 };
 
 }  // end namespace framework

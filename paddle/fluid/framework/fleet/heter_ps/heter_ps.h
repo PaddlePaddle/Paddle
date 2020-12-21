@@ -14,22 +14,22 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
-#include "paddle/fluid/framework/fleet/heter_box/hashtable/gpu_ps.h"
-#include "paddle/fluid/framework/fleet/heter_box/heter_box_base.h"
-#include "paddle/fluid/framework/fleet/heter_box/optimizer/optimizer.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh"
 
 #ifdef PADDLE_WITH_PSLIB
 
 namespace paddle {
 namespace framework {
 
-class HeterBox : public HeterBoxBase {
+class HeterPs : public HeterPsBase {
  public:
-  HeterBox() {}
-  HeterBox(size_t capacity, std::shared_ptr<HeterBoxResource> resource);
-  virtual ~HeterBox();
-  HeterBox(const HeterBox&) = delete;
-  HeterBox& operator=(const HeterBox&) = delete;
+  HeterPs() {}
+  HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource);
+  virtual ~HeterPs();
+  HeterPs(const HeterPs&) = delete;
+  HeterPs& operator=(const HeterPs&) = delete;
 
   virtual void pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals,
                            size_t len) override;
@@ -42,7 +42,7 @@ class HeterBox : public HeterBoxBase {
                            FeaturePushValue* d_grads, size_t len) override;
 
  private:
-  std::shared_ptr<GpuPs<FeatureKey, FeatureValue, FeaturePushValue>> gpu_ps_;
+  std::shared_ptr<HeterComm<FeatureKey, FeatureValue, FeaturePushValue>> comm_;
   Optimizer<FeatureValue, FeaturePushValue> opt_;
 };
 

@@ -14,22 +14,22 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <vector>
-#include "paddle/fluid/framework/fleet/heter_box/hashtable/feature_value.h"
-#include "paddle/fluid/framework/fleet/heter_box/hashtable/gpu_ps.h"
-#include "paddle/fluid/framework/fleet/heter_box/hashtable/gpu_resource.h"
-#include "paddle/fluid/framework/fleet/heter_box/optimizer/optimizer.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
 using namespace paddle::framework;
 
-TEST(TEST_FLEET, gpu_ps) {
+TEST(TEST_FLEET, heter_comm) {
   int gpu_count = 3;
   std::vector<int> dev_ids;
   dev_ids.push_back(0);
   dev_ids.push_back(1);
   dev_ids.push_back(2);
-  std::shared_ptr<HeterBoxResource> resource =
-      std::make_shared<HeterBoxResource>(dev_ids);
+  std::shared_ptr<HeterPsResource> resource =
+      std::make_shared<HeterPsResource>(dev_ids);
   resource->enable_p2p();
   std::vector<size_t> count;
   std::vector<std::vector<FeatureKey>> keys;
@@ -55,13 +55,13 @@ TEST(TEST_FLEET, gpu_ps) {
     size = std::max(size, count[i]);
   }
 
-  auto gpu_ps =
-      std::make_shared<GpuPs<FeatureKey, FeatureValue, FeaturePushValue>>(
+  auto heter_comm =
+      std::make_shared<HeterComm<FeatureKey, FeatureValue, FeaturePushValue>>(
           size, resource);
   for (int i = 0; i < gpu_count; ++i) {
     std::cout << "building table: " << i << std::endl;
-    gpu_ps->build_ps(i, keys[i].data(), vals[i].data(), count[i], 10, 1);
-    gpu_ps->show_one_table(i);
+    heter_comm->build_ps(i, keys[i].data(), vals[i].data(), count[i], 10, 1);
+    heter_comm->show_one_table(i);
   }
 
   std::cout << "testing pull sparse:" << std::endl;
@@ -77,7 +77,7 @@ TEST(TEST_FLEET, gpu_ps) {
   pull_keys[3] = 1;
   pull_keys[4] = 6;
 
-  gpu_ps->pull_sparse(0, pull_keys, pull_vals, 5);
+  heter_comm->pull_sparse(0, pull_keys, pull_vals, 5);
   for (int i = 0; i < 5; i++) {
     std::cout << pull_keys[i] << ": " << pull_vals[i] << std::endl;
   }
@@ -101,10 +101,10 @@ TEST(TEST_FLEET, gpu_ps) {
     push_vals[i].show = push_keys[i];
     push_vals[i].clk = push_keys[i];
   }
-  gpu_ps->push_sparse(0, push_keys, push_vals, 5, opt);
+  heter_comm->push_sparse(0, push_keys, push_vals, 5, opt);
   for (int i = 0; i < gpu_count; ++i) {
     std::cout << "table " << i << ";" << std::endl;
-    gpu_ps->show_one_table(i);
+    heter_comm->show_one_table(i);
   }
 
   cudaFree(push_keys);
