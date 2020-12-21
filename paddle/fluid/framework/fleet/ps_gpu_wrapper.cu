@@ -1,16 +1,16 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #ifdef PADDLE_WITH_PSLIB
 #include <algorithm>
@@ -113,7 +113,7 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
                                const int64_t total_length) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(
-                        boost::get<platform::CUDAPlace>(place)))
+                        BOOST_GET_CONST(platform::CUDAPlace, place)))
                     ->stream();
   auto buf_value = memory::AllocShared(place, values.size() * sizeof(float*));
   float** gpu_values = reinterpret_cast<float**>(buf_value->ptr());
@@ -132,7 +132,7 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
                             int total_len) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(
-                        boost::get<platform::CUDAPlace>(place)))
+                        BOOST_GET_CONST(platform::CUDAPlace, place)))
                     ->stream();
   CopyKeysKernel<<<(total_len + 512 - 1) / 512, 512, 0, stream>>>(
       origin_keys, total_keys, gpu_len, slot_num, total_len);
@@ -148,7 +148,7 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
                                const int batch_size) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(
-                        boost::get<platform::CUDAPlace>(place)))
+                        BOOST_GET_CONST(platform::CUDAPlace, place)))
                     ->stream();
   auto slot_lengths_lod = slot_lengths;
   for (int i = 1; i < slot_lengths_lod.size(); i++) {
