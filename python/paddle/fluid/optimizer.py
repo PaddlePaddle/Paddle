@@ -5078,6 +5078,7 @@ class GradientMergeOptimizer(object):
         self.k_steps = k_steps
         self.type = "gradient_merge"
         self.avg = avg
+        self._optimize_ops = None
 
     def _set_k_steps(self, k_steps):
         self.k_steps = k_steps
@@ -5085,12 +5086,12 @@ class GradientMergeOptimizer(object):
     def _set_avg(self, avg):
         self.avg = avg
 
-    def minimize(self,
+    def backward(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None):
-
+                 no_grad_set=None,
+                 callbacks=None):
         assert isinstance(loss, Variable), "The loss should be an Variable."
         assert (
             parameter_list is None
@@ -5101,26 +5102,112 @@ class GradientMergeOptimizer(object):
 
         params_grads = self.inner_optimizer.backward(
             loss, startup_program=startup_program)
+        return params_grads
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        program = loss.block.program
+        with program_guard(program, startup_program):
+            optimize_ops = self.apply_gradients(params_grads)
+        return optimize_ops
+
+    def _is_the_backward_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        if op_maker.kOpRoleVarAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(backward):
+            return True
+        return False
+
+    def _remove_op_role_var(self, param, grad):
+        op_maker = core.op_proto_and_checker_maker
+        op = grad.op
+        assert self._is_the_backward_op(op), \
+            'grad.op={} is not the backward op which produces the grad={}' \
+            .format(op, grad.name)
+
+        block = grad.block
+        var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
+        assert param.name in var_attr, \
+            'when using GradientMergeOptimizer, param={} must be in var_attr={}' \
+            .format(param.name, var_attr)
+        assert grad.name in var_attr, \
+            'when using GradientMergeOptimizer, grad={} must be in var_attr={}' \
+            .format(param.name, var_attr)
+
+        # remove (param, grad) from op_role_var
+        var_attr.remove(param.name)
+        var_attr.remove(grad.name)
+        if len(var_attr) > 1:
+            op._set_attr(op_maker.kOpRoleVarAttrName(), var_attr)
+        else:
+            op._remove_attr(op_maker.kOpRoleVarAttrName())
+
+    def _add_op_role_var(self, op, param, grad):
+        grad.op = op
+
+        op_maker = core.op_proto_and_checker_maker
+        backward = op_maker.OpRole.Backward
+        op._set_attr(op_maker.kOpRoleAttrName(), backward)
+        op._set_attr(op_maker.kOpRoleVarAttrName(), [param.name, grad.name])
+
+    def _get_gm_control_var(self, main_block):
+        k_step_var = layers.create_global_var(
+            name="gradient_merge_k",
+            shape=[1],
+            value=int(self.k_steps),
+            dtype='int32',
+            persistable=True)
+
+        # Add Var step
+        step_var = layers.create_global_var(
+            name="gradient_merge_step",
+            shape=[1],
+            value=int(0),
+            dtype='int32',
+            persistable=True)
+
+        zero_var = layers.fill_constant(shape=[1], dtype='int32', value=0)
+
+        # step_var = (step_var + 1) % k_step
+        layers.increment(x=step_var, value=1.0, in_place=True)
+        main_block.append_op(
+            type='elementwise_mod',
+            inputs={'X': step_var,
+                    'Y': k_step_var},
+            outputs={'Out': step_var},
+            attrs={'axis': -1,
+                   'use_mkldnn': False})
+
+        # if step_var == 0
+        pred = layers.equal(step_var, zero_var)
+
+        return pred
+
+    def apply_gradients(self, params_grads):
+        main_program = default_main_program()
+        startup_program = default_startup_program()
+        main_block = main_program.global_block()
+        startup_block = startup_program.global_block()
+
+        pred = self._get_gm_control_var(main_block)
 
         #TODO(mapingshuo) support sparse embedding
-        for k, v in params_grads:
+        # step1: remove grad.op's op_role_var
+        for param, grad in params_grads:
             assert (
-                v.type != core.VarDesc.VarType.SELECTED_ROWS
+                param.type != core.VarDesc.VarType.SELECTED_ROWS
             ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
 
+            self._remove_op_role_var(param, grad)
+
         param_to_grad = {k.name: v for (k, v) in params_grads}
-
-        # Get startup_program and main_program
-        if startup_program is None:
-            startup_program = default_startup_program()
-        main_block = loss.block
-
-        # add some vars to the main_program and startup_program
-        startup_block = startup_program.global_block()
         param_names = param_to_grad.keys()
         param_to_gradient_merge = {}
 
-        for param_name in param_names:
+        new_params_grads = []
+        # step2: create gradient_merge var and init with 0
+        for param, grad in params_grads:
+            param_name = param.name
             param_var = main_block.var(param_name)
             assert (param_var is not None)
             gradient_merge_var = main_block.create_var(
@@ -5129,6 +5216,7 @@ class GradientMergeOptimizer(object):
                 dtype=param_var.dtype,
                 persistable=True)
             param_to_gradient_merge[param_name] = gradient_merge_var
+
             startup_gradient_merge_var = startup_block.create_var(
                 name=param_name + "@GRAD@GradientMerge",
                 shape=param_var.shape,
@@ -5143,92 +5231,70 @@ class GradientMergeOptimizer(object):
                     "value": float(0),
                 })
 
-        with framework.program_guard(main_block.program, startup_program):
-            # Add Var k to main prog and startup prog
-            gradient_merge_k = layers.create_global_var(
-                name="gradient_merge_k",
-                shape=[1],
-                value=int(self.k_steps),
-                dtype='int32',
-                persistable=True)
+            if self.avg:
+                # grad /= k_steps
+                main_block.append_op(
+                    type='scale',
+                    inputs={'X': grad},
+                    outputs={'Out': grad},
+                    attrs={
+                        'scale': 1.0 / self.k_steps,
+                        'bias': 0.0,
+                        'bias_after_scale': False
+                    })
 
-            # Add Var step
-            gradient_merge_step = layers.create_global_var(
-                name="gradient_merge_step",
-                shape=[1],
-                value=int(0),
-                dtype='int32',
-                persistable=True)
-            layers.increment(x=gradient_merge_step, value=1.0, in_place=True)
+            # grad_merge += grad
+            new_grad_op = main_block.append_op(
+                type="elementwise_add",
+                inputs={'X': grad,
+                        'Y': gradient_merge_var},
+                outputs={'Out': gradient_merge_var},
+                attrs={'axis': -1,
+                       'use_mkldnn': False})
+            self._add_op_role_var(new_grad_op, param, gradient_merge_var)
+            new_params_grads.append([param, gradient_merge_var])
 
-            # gradient merge
-            zero_var = layers.fill_constant(
-                shape=[1], dtype='float32', value=0.0)
-            one_var = layers.fill_constant(
-                shape=[1], dtype='float32', value=1.0)
+        def true_apply_gradient():
+            cur_block_idx = main_program.current_block_idx
+            cur_block = main_program.current_block()
 
-            mod = layers.elementwise_mod(gradient_merge_step, gradient_merge_k)
-            with layers.control_flow.Switch() as switch:
-                with switch.case(mod != zero_var):
-                    # 1. update the gradient_merge_vars
-                    #  gradient_merge_vars += gradient_vars
-                    cur_block = main_block.program.current_block()
-                    for param_name in param_names:
-                        grad = param_to_grad[param_name]
-                        grad_merge = param_to_gradient_merge[param_name]
-                        cur_block.append_op(
-                            type="elementwise_add",
-                            inputs={'X': grad,
-                                    'Y': grad_merge},
-                            outputs={'Out': grad_merge},
-                            attrs={'axis': -1,
-                                   'use_mkldnn': False})
+            # cur_block's backward_block is itself
+            cur_block._set_forward_block_idx(cur_block_idx)
 
-                with switch.default():
-                    # 1. update the graient_vars
-                    #     gradient_vars += gradient_merge_vars
-                    cur_block_idx = main_block.program.current_block_idx
-                    cur_block = main_block.program.current_block()
-                    for param_name in param_names:
-                        grad = param_to_grad[param_name]
-                        grad_merge = param_to_gradient_merge[param_name]
-                        if self.avg:
-                            tmp_var = layers.elementwise_add(grad, grad_merge)
-                            cur_block.append_op(
-                                type='scale',
-                                inputs={'X': tmp_var},
-                                outputs={'Out': grad},
-                                attrs={
-                                    'scale': 1.0 / self.k_steps,
-                                    'bias': 0.0,
-                                    'bias_after_scale': False
-                                })
-                        else:
-                            cur_block.append_op(
-                                type="elementwise_add",
-                                inputs={'X': grad,
-                                        'Y': grad_merge},
-                                outputs={'Out': grad},
-                                attrs={'axis': -1,
-                                       'use_mkldnn': False})
+            #target_grad_block = main_program._create_block(
+            #    parent_idx=cur_block.parent_idx)
+            #target_grad_block._set_forward_block_idx(cur_block_idx)
+            #main_program.current_block_idx = cur_block_idx
 
-                    # 2. apply_optimize
-                    target_grad_block = main_block.program._create_block(
-                        parent_idx=cur_block.parent_idx)
-                    target_grad_block._set_forward_block_idx(cur_block_idx)
-                    main_block.program.current_block_idx = cur_block_idx
+            self._optimize_ops = self.inner_optimizer.apply_gradients(
+                new_params_grads)
 
-                    optimize_ops = self.inner_optimizer.apply_optimize(
-                        loss,
-                        startup_program=startup_program,
-                        params_grads=params_grads)
+            # clear gradient_merge_vars
+            for param, new_grad in new_params_grads:
+                layers.fill_constant(
+                    shape=new_grad.shape,
+                    dtype=new_grad.dtype,
+                    value=0.0,
+                    out=new_grad)
 
-                    # 3. clear gradient_merge_vars
-                    for param_name in param_names:
-                        grad_merge = param_to_gradient_merge[param_name]
-                        layers.fill_constant(
-                            shape=grad_merge.shape,
-                            dtype=grad_merge.dtype,
-                            value=0.0,
-                            out=grad_merge)
+        layers.cond(pred, true_fn=true_apply_gradient, false_fn=None)
+
+        return self._optimize_ops
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        assert isinstance(loss, Variable), "The loss should be an Variable."
+
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
         return optimize_ops, params_grads
