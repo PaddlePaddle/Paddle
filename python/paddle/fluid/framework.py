@@ -47,6 +47,7 @@ __all__ = [
     'name_scope',
     'cuda_places',
     'cpu_places',
+    'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
@@ -354,6 +355,15 @@ def _cuda_ids():
     return device_ids
 
 
+def _xpu_ids():
+    xpus_env = os.getenv("FLAGS_selected_xpus")
+    if xpus_env:
+        device_ids = [int(s) for s in xpus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_xpu_device_count())
+    return device_ids
+
+
 def is_compiled_with_xpu():
     """
     Whether this whl package can be used to run the model on XPU.
@@ -428,6 +438,43 @@ def cuda_places(device_ids=None):
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
+
+
+def xpu_places(device_ids=None):
+    """
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_xpus` environment variable to set the visible XPU device.
+    This function creates a list of :code:`paddle.XPUPlace` objects.
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_xpus` would be checked first. For example, if
+    :code:`FLAGS_selected_xpus=0,1,2`, the returned list would
+    be [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+    If :code:`FLAGS_selected_xpus` is not set, all visible
+    xpu places would be returned.
+    If :code:`device_ids` is not None, it should be the device
+    ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
+    the returned list would be 
+    [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+    
+    Parameters:
+        device_ids (list or tuple of int, optional): list of XPU device ids.
+    Returns:
+        list of paddle.XPUPlace: Created XPU place list.
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+            xpu_places = static.xpu_places()
+    """
+    assert core.is_compiled_with_xpu(), \
+        "Not compiled with XPU"
+    if device_ids is None:
+        device_ids = _xpu_ids()
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.XPUPlace(dev_id) for dev_id in device_ids]
 
 
 def cpu_places(device_count=None):
