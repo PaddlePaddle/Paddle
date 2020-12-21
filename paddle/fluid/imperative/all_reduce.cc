@@ -89,7 +89,7 @@ static void AllReduce(const framework::SelectedRows &src,
       comm->comm(), stream));
 
   if (!use_calc_stream) {
-    PADDLE_THROW("code line 92 has been executed!!!")
+    PADDLE_THROW("code line 92 has been executed!!!");
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
   }
 
