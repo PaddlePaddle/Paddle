@@ -3438,7 +3438,7 @@ def layer_norm(input,
     - :math:`b`: the trainable bias parameter.
 
     Args:
-        input(Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64.
+        input(Tensor): A multi-dimension ``Tensor`` , and the data type is float16, float32 or float64.
         scale(bool, optional): Whether to learn the adaptive gain :math:`g` after
             normalization. Default: True.
         shift(bool, optional): Whether to learn the adaptive bias :math:`b` after
@@ -3478,7 +3478,7 @@ def layer_norm(input,
     assert in_dygraph_mode(
     ) is not True, "please use LayerNorm instead of layer_norm in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'layer_norm')
     dtype = helper.input_dtype()
 
