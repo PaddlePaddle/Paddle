@@ -21,7 +21,7 @@ import paddle.fluid.core as core
 import paddle
 import os
 import paddle.fluid as fluid
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
 from parallel_executor_test_base import DeviceType
 
 
