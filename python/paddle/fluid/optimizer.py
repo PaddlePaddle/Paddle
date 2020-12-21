@@ -2037,14 +2037,14 @@ class AdamOptimizer(Optimizer):
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
                         else self._beta1,
                 shape=[1],
-                type=core.VarDesc.VarType.LOD_TENSOR)
+                type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
                         else self._beta2,
                 shape=[1],
-                type=core.VarDesc.VarType.LOD_TENSOR)
+                type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -3850,13 +3850,11 @@ class PipelineOptimizer(object):
                     op_desc = op.desc
                     ap_op = program["program"].block(0).desc.append_op()
                     ap_op.copy_from(op_desc)
-                    #ap_op._set_attr(self._op_device_key, "")
             else:
                 program = device_program_map[device]
                 op_desc = op.desc
                 ap_op = program["program"].block(0).desc.append_op()
                 ap_op.copy_from(op_desc)
-                #ap_op._set_attr(self._op_device_key, "")
 
         for key in devices:
             program = device_program_map[key]
@@ -3865,11 +3863,31 @@ class PipelineOptimizer(object):
 
         return programs
 
+    def _get_op_device_for_startup_program(self, var_name):
+        """
+        For adam optimizer, it will add accumulators and initialize them
+        with fill_constant, and force the op device to cpu. Hence, we should
+        get the real op_device attribute of the fill_constant as the device
+        where the corresponding parameters on.
+        """
+        assert "beta1_pow_acc" in var_name or "beta2_pow_acc" in var_name
+        param_name = var_name[0:var_name.index('_beta')]
+        device = self._param_device_map[param_name]
+        return device
+
     def _split_startup_program(self, startup_program, local_rank):
         block = startup_program.block(0)
         new_startup_program = Program()
         for op in block.ops:
             device = op.attr(self._op_device_key)
+            if device == "cpu":
+                assert op.type == "fill_constant", (
+                    "For ops in startup "
+                    "program that with the op_device attribute of cpu, "
+                    "they must be fill_constant.")
+                output_var = op.output_arg_names[0]
+                device = self._get_op_device_for_startup_program(output_var)
+
             if device:
                 device_index = int(device.split(":")[1])
             else:
@@ -4069,9 +4087,14 @@ class PipelineOptimizer(object):
             if op.has_attr(self._op_device_key) and (
                     op.attr(self._op_device_key) != ""):
                 continue
-            assert self._op_role_var_key in op.attr_names
+            if not self._op_role_var_key in op.attr_names:
+                raise ValueError("For regulization and clip ops, they must "
+                                 "have the op_role_var attribute.")
             op_role_var = op.all_attrs()[self._op_role_var_key]
-            assert len(op_role_var) == 2
+            if not len(op_role_var) == 2:
+                raise ValueError("The number of elements in the op_role_var "
+                                 "must be two, but the value given "
+                                 "is: {}.".format(len(op_role_var)))
             param_name = op_role_var[0]
             device = self._param_device_map[param_name]
             op._set_attr(self._op_device_key, device)
@@ -4095,7 +4118,13 @@ class PipelineOptimizer(object):
                     op.attr(self._op_device_key) != ""):
                 first_device = op.attr(self._op_device_key)
                 break
-        assert first_device
+        if not first_device:
+            raise ValueError("To use pipeline, you must put your program "
+                             "on different devices using device_guard.")
+        first_device_type = first_device.split(":")[0]
+        if first_device_type != "gpu":
+            raise ValueError("Now only gpu devices are supported for "
+                             "pipeline parallelism.")
 
         # set op_device attr for lr-related ops
         lrsched_role = int(self._op_role.LRSched)
@@ -4105,12 +4134,21 @@ class PipelineOptimizer(object):
                 if op.type == "sum":
                     # For sum ops that compute the sum of @RENAMED@ vars
                     for name in op.desc.input_arg_names():
-                        assert '@RENAME@' in name
-                    assert len(op.desc.output_arg_names()) == 1
+                        if not '@RENAME@' in name:
+                            raise ValueError("For sum ops without the attribute"
+                                             " of op_device, their output must "
+                                             "a var with a name with the "
+                                             "substring @RENAMED@.")
+                    if len(op.desc.output_arg_names()) != 1:
+                        raise ValueError("For sum ops that compute the sum of "
+                                         "@RENAMED@ vars, they must have only "
+                                         "one output.")
                     out_name = op.desc.output_arg_names()[0]
                     post_op = self._find_post_op(block.ops, op, out_name)
                     device = post_op.attr(self._op_device_key)
-                    assert device
+                    if not device:
+                        raise ValueError("There is no op takes the var {} as "
+                                         "input.".format(out_name))
                     op._set_attr(self._op_device_key, device)
                     continue
 
@@ -4139,10 +4177,12 @@ class PipelineOptimizer(object):
             dev_spec = op.attr(self._op_device_key)
             assert dev_spec, ("op_device attribute for op "
                               "{} has not been set.".format(op.type))
+            dev_type = dev_spec.split(':')[0]
+            if not dev_type == "gpu":
+                raise ValueError("Now only gpu devices are supported "
+                                 "for pipeline parallelism.")
             if not dev_spec in device_specs:
                 device_specs.append(dev_spec)
-        sorted_device_specs = sorted(device_specs)
-        assert sorted_device_specs == device_specs
         return device_specs
 
     def _insert_sendrecv_ops_for_boundaries(self, block):
@@ -4421,7 +4461,14 @@ class PipelineOptimizer(object):
         device_specs = self._check_validation(main_block)
         if len(device_specs) == 1:
             print("Warning: If only one device is used, "
-                  "it's need to use pipeline.")
+                  "it's need to use pipeline parallelism.")
+        sorted_device_spec = sorted(
+            device_specs,
+            cmp=lambda x, y: cmp(int(x.split(':')[1]), int(y.split(':')[1])))
+        assert sorted_device_spec == device_specs, (
+            "With pipeline "
+            "parallelism, you must use gpu devices one after another "
+            "in the order of their ids.")
 
         # Step3: add send and recv ops between section boundaries
         self._insert_sendrecv_ops_for_boundaries(main_block)
@@ -4453,13 +4500,8 @@ class PipelineOptimizer(object):
 
         place_list = []
         for dev_spec in device_specs:
-            if dev_spec == "cpu":
-                place_list.append(core.CPUPlace())
-            elif "gpu" in dev_spec and ":" in dev_spec:
-                dev_index = dev_spec.split(":")[1]
-                place_list.append(core.CUDAPlace(local_rank))
-            else:
-                raise ValueError("Unknown device type: %s", dev_spec)
+            dev_index = dev_spec.split(":")[1]
+            place_list.append(core.CUDAPlace(local_rank))
 
         # Step7: Split startup program
         new_startup_program = self._split_startup_program(startup_program,
@@ -4472,11 +4514,6 @@ class PipelineOptimizer(object):
             dev_spec=device_specs[local_rank])
         self._accumulate_gradients(program_list[local_rank]['program']
                                    .global_block())
-
-        with open("startup_prog_%d" % local_rank, 'w') as f:
-            f.writelines(str(new_startup_program))
-        with open("main_prog_%d" % local_rank, 'w') as f:
-            f.writelines(str(program_list[local_rank]['program']))
 
         startup_program._pipeline_opt = {
             "startup_program": new_startup_program,
