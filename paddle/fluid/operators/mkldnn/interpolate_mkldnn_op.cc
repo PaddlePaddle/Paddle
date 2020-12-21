@@ -39,48 +39,18 @@ class InterpolateMKLDNNHandler
                            const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::resampling_forward>(
             dev_ctx, engine, cpu_place,
-            platform::CreateKey(
-                framework::vectorize(x->dims()),
-                uniq_name + (algo == dnnl::algorithm::resampling_nearest
-                                 ? "N"
-                                 : "L"))) {
+            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
+                                uniq_name)) {
     if (!this->isCached()) {
       const auto src_x_tz = framework::vectorize(x->dims());
       const auto dst_tz = framework::vectorize(z->dims());
-      const auto src0_md = dnnl::memory::desc(
+      const auto src_md = dnnl::memory::desc(
           src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
       const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
                                        MKLDNNMemoryFormat::any);
-      auto resampling_d = dnnl::resampling_forward::desc(
-          dnnl::prop_kind::forward_inference, algo, src0_md, dst_md);  // scale
-
-      this->fwd_pd_.reset(new dnnl::resampling_forward::primitive_desc(
-          resampling_d, this->engine_));
-
-      auto key_pd = this->key_ + "@fwd_pd";
-      this->dev_ctx_.SetBlob(key_pd, this->fwd_pd_);
+      this->AcquireForwardPrimitiveDescriptor(
+          dnnl::prop_kind::forward_inference, algo, src_md, dst_md);
     }
-  }
-
-  std::shared_ptr<resampling_forward::primitive_desc>
-  AcquireForwardPrimitiveDescriptor() {
-    const std::string key_pd = this->key_ + "@fwd_pd";
-    this->fwd_pd_ =
-        std::static_pointer_cast<dnnl::resampling_forward::primitive_desc>(
-            this->dev_ctx_.GetBlob(key_pd));
-    return this->fwd_pd_;
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
-      const framework::Tensor* input) {
-    const T* input_data = input->data<T>();
-    auto user_src_md = platform::MKLDNNMemDesc(
-        framework::vectorize(input->dims()), platform::MKLDNNGetDataType<T>(),
-        input->format());
-
-    return this->AcquireMemoryWithReorder(
-        user_src_md, this->fwd_pd_->src_desc(), to_void_cast<T>(input_data),
-        "@src_mem_p");
   }
 };
 
@@ -177,8 +147,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
                                         ctx.GetPlace(), x, z,
                                         ctx.OutputName("Out"));
 
-    auto resampling_pd = handler.AcquireForwardPrimitiveDescriptor();
-    auto src_memory_p = handler.AcquireSrcMemoryWithReorder(x);
+    auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(z);
 
     auto resampling_prim = handler.AcquireForwardPrimitive();
