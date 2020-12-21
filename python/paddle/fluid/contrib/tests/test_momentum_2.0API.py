@@ -212,7 +212,6 @@ class TestImageMultiPrecision(unittest.TestCase):
                 msg='Failed to test in pure FP16.')
 
         do_test(use_nesterov=False)
-        do_test(use_nesterov=True)
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
