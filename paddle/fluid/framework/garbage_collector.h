@@ -48,6 +48,10 @@ class GarbageCollector {
   template <typename Container, typename Callback>
   void Add(Container &&objs, Callback &&callback);
 
+  void DirectClearCallback(const std::function<void()> &callback) {
+    ClearCallback(callback);
+  }
+
  protected:
   virtual void ClearCallback(const std::function<void()> &callback) = 0;
 
