@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 import unittest
-from test_parallel_executor_seresnext_with_reduce_cpu import TestResnetWithReduceBase
+from test_parallel_executor_seresnext_with_reduce_cpu import TestResnetWithReduceBase, DeviceType
 
 
 class TestResnetWithReduceGPU(TestResnetWithReduceBase):
