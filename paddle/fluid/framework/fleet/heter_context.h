@@ -21,7 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "common_value.h"  // NOLINT
-#include "paddle/fluid/framework/fleet/heter_ps/hashtable/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {

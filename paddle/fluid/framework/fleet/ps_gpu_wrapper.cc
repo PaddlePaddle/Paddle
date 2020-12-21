@@ -44,7 +44,7 @@ std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
 
 void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim,
-                              std::shared_ptr<GpuTask> gpu_task) {
+                              std::shared_ptr<HeterContext> gpu_task) {
   platform::Timer timeline;
   timeline.Start();
   int shard_num = gpu_task->feature_keys_.size();
@@ -58,17 +58,17 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim,
     feature_keys_count[i] = gpu_task->feature_keys_[i].size();
     size_max = std::max(size_max, feature_keys_count[i]);
   }
-  if (GpuPs_) {
-    GpuPs_->show_one_table(0);
+  if (HeterPs_) {
+    HeterPs_->show_one_table(0);
     return;
   }
-  GpuPs_ = HeterBoxBase::get_instance(size_max, resource_);
+  HeterPs_ = HeterPsBase::get_instance(size_max, resource_);
   for (int i = 0; i < shard_num; ++i) {
     std::cout << "building table: " << i << std::endl;
-    GpuPs_->build_ps(i, gpu_task->feature_keys_[i].data(),
+    HeterPs_->build_ps(i, gpu_task->feature_keys_[i].data(),
                      gpu_task->feature_values_[i].data(), feature_keys_count[i],
                      10000, 2);
-    GpuPs_->show_one_table(i);
+    HeterPs_->show_one_table(i);
   }
   timeline.Pause();
   VLOG(0) << "GpuPs build table total costs: " << timeline.ElapsedSec()
@@ -95,7 +95,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
   } else if (platform::is_gpu_place(place)) {
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
-    int devid_2_index = GpuPs_->get_index_by_devid(device_id);
+    int devid_2_index = HeterPs_->get_index_by_devid(device_id);
     LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
     uint64_t* total_keys = reinterpret_cast<uint64_t*>(
         total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
@@ -121,7 +121,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     VLOG(3) << "Begin call PullSparseGPU in GPUPS, dev: " << devid_2_index
             << " len: " << total_length;
     pull_gpups_timer.Start();
-    GpuPs_->pull_sparse(devid_2_index, total_keys, total_values_gpu,
+    HeterPs_->pull_sparse(devid_2_index, total_keys, total_values_gpu,
                         static_cast<int>(total_length));
     // PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
     //                              "PullSparseGPU failed in GPUPS."));
@@ -164,7 +164,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
         "Warning:: CPUPlace is not supported in GPUPS now."));
   } else if (platform::is_gpu_place(place)) {
     int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
-    int devid_2_index = GpuPs_->get_index_by_devid(device_id);
+    int devid_2_index = HeterPs_->get_index_by_devid(device_id);
     LoDTensor& cached_total_keys_tensor = keys_tensor[devid_2_index];
     uint64_t* total_keys =
         reinterpret_cast<uint64_t*>(cached_total_keys_tensor.data<int64_t>());
@@ -175,7 +175,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     VLOG(3) << "Begin call PushSparseGPU in GPUPS, dev: " << devid_2_index
             << " len: " << total_length;
     push_gpups_timer.Start();
-    GpuPs_->push_sparse(devid_2_index, total_keys, total_grad_values_gpu,
+    HeterPs_->push_sparse(devid_2_index, total_keys, total_grad_values_gpu,
                         static_cast<int>(total_length));
     push_gpups_timer.Pause();
   } else {

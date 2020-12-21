@@ -25,7 +25,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/fleet/gpu_task.h"
+#include "paddle/fluid/framework/fleet/heter_context.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/scope.h"
@@ -74,11 +74,11 @@ class PSGPUWrapper {
                    const int batch_size);
 
   void BuildGPUPS(const uint64_t table_id, int feature_dim,
-                  std::shared_ptr<GpuTask> gpu_task);
+                  std::shared_ptr<HeterContext> context);
   void InitializeGPU(const std::vector<int>& dev_ids) {
     if (s_instance_ != NULL) {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
-      resource_ = std::make_shared<HeterBoxResource>(dev_ids);
+      resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
       keys_tensor.resize(resource_->total_gpu());
     }
@@ -105,7 +105,7 @@ class PSGPUWrapper {
       local_tables_;
   HeterPsBase* HeterPs_;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
-  std::shared_ptr<HeterBoxResource> resource_;
+  std::shared_ptr<HeterPsResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
   std::vector<int> slot_vector_;
 
