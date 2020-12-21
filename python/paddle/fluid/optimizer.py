@@ -5063,6 +5063,8 @@ class GradientMergeOptimizer(object):
             print("step=%d, cost=%f" % (i, cost_val[0]))
     """
 
+    GRAD_MERGE_COND_NAME = "grad_merge_cond_name"
+
     def __init__(self, inner_optimizer, k_steps=1, avg=True):
         if framework.in_dygraph_mode():
             raise Exception(
@@ -5142,46 +5144,75 @@ class GradientMergeOptimizer(object):
         else:
             op._remove_attr(op_maker.kOpRoleVarAttrName())
 
-    def _add_op_role_var(self, op, param, grad):
+    def _add_gm_op_role_var(self, op, param, grad, cond):
         grad.op = op
-
         op_maker = core.op_proto_and_checker_maker
         backward = op_maker.OpRole.Backward
+
+        # NOTE(wangxi). When distributed, we will insert grad_merge_all_reduce_op_handle
+        # in multi_devices_graph_pass, which will allreduce(grad) if cond is True, else
+        # do nothing.
+        # In this way, the gradient can be merged first, and then communicate when the
+        # condition is met, reducing the number of communications to increase the
+        # speed.
+        op._set_attr(self.GRAD_MERGE_COND_NAME, cond.name)
         op._set_attr(op_maker.kOpRoleAttrName(), backward)
         op._set_attr(op_maker.kOpRoleVarAttrName(), [param.name, grad.name])
 
-    def _get_gm_control_var(self, main_block):
+    def _get_gm_cond_var(self, main_block):
+        # Add const var
         k_step_var = layers.create_global_var(
             name="gradient_merge_k",
             shape=[1],
             value=int(self.k_steps),
             dtype='int32',
-            persistable=True)
+            persistable=True,
+            force_cpu=True)
 
-        # Add Var step
+        zero_var = layers.create_global_var(
+            name="gradient_merge_zero",
+            shape=[1],
+            value=int(0),
+            dtype='int32',
+            persistable=True,
+            force_cpu=True)
+
+        # Add step var & cond var
         step_var = layers.create_global_var(
             name="gradient_merge_step",
             shape=[1],
             value=int(0),
             dtype='int32',
-            persistable=True)
+            persistable=True,
+            force_cpu=True)
 
-        zero_var = layers.fill_constant(shape=[1], dtype='int32', value=0)
+        cond_var = layers.create_global_var(
+            name="gradient_merge_cond",
+            shape=[1],
+            value=bool(0),
+            dtype='bool',
+            persistable=True,
+            force_cpu=True)
 
-        # step_var = (step_var + 1) % k_step
-        layers.increment(x=step_var, value=1.0, in_place=True)
-        main_block.append_op(
-            type='elementwise_mod',
-            inputs={'X': step_var,
-                    'Y': k_step_var},
-            outputs={'Out': step_var},
-            attrs={'axis': -1,
-                   'use_mkldnn': False})
+        with device_guard("cpu"):
+            # step_var = (step_var + 1) % k_step
+            layers.increment(x=step_var, value=1.0, in_place=True)
+            main_block.append_op(
+                type='elementwise_mod',
+                inputs={'X': step_var,
+                        'Y': k_step_var},
+                outputs={'Out': step_var},
+                attrs={'axis': -1,
+                       'use_mkldnn': False})
 
-        # if step_var == 0
-        pred = layers.equal(step_var, zero_var)
+            # cond_var = (step_var == 0)
+            main_block.append_op(
+                type='equal',
+                inputs={'X': step_var,
+                        'Y': zero_var},
+                outputs={'Out': cond_var})
 
-        return pred
+        return cond_var
 
     def apply_gradients(self, params_grads):
         main_program = default_main_program()
@@ -5189,7 +5220,7 @@ class GradientMergeOptimizer(object):
         main_block = main_program.global_block()
         startup_block = startup_program.global_block()
 
-        pred = self._get_gm_control_var(main_block)
+        cond = self._get_gm_cond_var(main_block)
 
         #TODO(mapingshuo) support sparse embedding
         # step1: remove grad.op's op_role_var
@@ -5231,18 +5262,6 @@ class GradientMergeOptimizer(object):
                     "value": float(0),
                 })
 
-            if self.avg:
-                # grad /= k_steps
-                main_block.append_op(
-                    type='scale',
-                    inputs={'X': grad},
-                    outputs={'Out': grad},
-                    attrs={
-                        'scale': 1.0 / self.k_steps,
-                        'bias': 0.0,
-                        'bias_after_scale': False
-                    })
-
             # grad_merge += grad
             new_grad_op = main_block.append_op(
                 type="elementwise_add",
@@ -5251,20 +5270,29 @@ class GradientMergeOptimizer(object):
                 outputs={'Out': gradient_merge_var},
                 attrs={'axis': -1,
                        'use_mkldnn': False})
-            self._add_op_role_var(new_grad_op, param, gradient_merge_var)
+            self._add_gm_op_role_var(new_grad_op, param, gradient_merge_var,
+                                     cond)
             new_params_grads.append([param, gradient_merge_var])
 
         def true_apply_gradient():
             cur_block_idx = main_program.current_block_idx
             cur_block = main_program.current_block()
 
-            # cur_block's backward_block is itself
+            # cur_block's forward_block & backward_block is itself
             cur_block._set_forward_block_idx(cur_block_idx)
 
-            #target_grad_block = main_program._create_block(
-            #    parent_idx=cur_block.parent_idx)
-            #target_grad_block._set_forward_block_idx(cur_block_idx)
-            #main_program.current_block_idx = cur_block_idx
+            if self.avg:
+                for param, new_grad in new_params_grads:
+                    # grad /= k_steps
+                    cur_block.append_op(
+                        type='scale',
+                        inputs={'X': new_grad},
+                        outputs={'Out': new_grad},
+                        attrs={
+                            'scale': 1.0 / self.k_steps,
+                            'bias': 0.0,
+                            'bias_after_scale': False
+                        })
 
             self._optimize_ops = self.inner_optimizer.apply_gradients(
                 new_params_grads)
@@ -5277,7 +5305,7 @@ class GradientMergeOptimizer(object):
                     value=0.0,
                     out=new_grad)
 
-        layers.cond(pred, true_fn=true_apply_gradient, false_fn=None)
+        layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)
 
         return self._optimize_ops
 

@@ -2190,6 +2190,8 @@ class ConditionalBlock(object):
         grad_sub_block_idx = inside_block.backward_block_idx
         inside_block_idx = inside_block.idx
 
+        # if inside_block have grad_block and grad_block is not itself,
+        # we will append conditional block grad.
         return grad_sub_block_idx != -1 and grad_sub_block_idx != inside_block_idx
 
     def append_conditional_block_grad(self, parent_block, inside_block,

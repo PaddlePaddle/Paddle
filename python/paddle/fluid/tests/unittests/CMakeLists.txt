@@ -657,6 +657,7 @@ if (WITH_DISTRIBUTE AND NOT APPLE)
     if(WITH_GPU)
         set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT 120)
         set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_dist_mnist_gradient_merge PROPERTIES TIMEOUT 120)
     endif()
 endif()
 
