@@ -63,8 +63,11 @@ PreparedOp PreparedOp::Prepare(
 #ifdef PADDLE_WITH_XPU
   if (kernel_iter == kernels.end() &&
       is_xpu_place(expected_kernel_key.place_)) {
-    expected_kernel_key.place_ = platform::CPUPlace();
-    kernel_iter = kernels.find(expected_kernel_key);
+    auto basic_kernel_key = framework::OpKernelType(
+        expected_kernel_key.data_type_, platform::CPUPlace(),
+        expected_kernel_key.data_layout_, expected_kernel_key.library_type_,
+        expected_kernel_key.customized_type_value_);
+    kernel_iter = kernels.find(basic_kernel_key);
   }
 #endif
   // TODO(jiabin): Add operator.cc's line 1000 part back when we need that case
