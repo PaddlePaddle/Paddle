@@ -19,11 +19,11 @@
 namespace paddle {
 namespace operators {
 
-class SetitemOp : public framework::OperatorWithKernel {
+class Setitem : public framework::OperatorWithKernel {
  public:
-  SetitemOp(const std::string &type, const framework::VariableNameMap &inputs,
-            const framework::VariableNameMap &outputs,
-            const framework::AttributeMap &attrs)
+  Setitem(const std::string &type, const framework::VariableNameMap &inputs,
+          const framework::VariableNameMap &outputs,
+          const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
@@ -46,7 +46,7 @@ class SetitemOp : public framework::OperatorWithKernel {
   }
 };
 
-class SetitemOpMaker : public framework::OpProtoAndCheckerMaker {
+class SetitemMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input", "(Tensor) Input tensor of setitem operator.");
@@ -92,7 +92,7 @@ Assignment to a Tensor in static mode.
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    setitem, ops::SetitemOp, ops::SetitemOpMaker,
+    setitem, ops::Setitem, ops::SetitemMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 

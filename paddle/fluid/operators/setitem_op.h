@@ -30,20 +30,20 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-inline const char* GetValueName(framework::proto::VarType::Type data_type,
-                                const char* value_name) {
+inline std::string GetValueName(framework::proto::VarType::Type data_type) {
+  std::string value_name;
   switch (data_type) {
-    case framework::proto::VarType::BOOL:
-      value_name = "bool_values";
-      break;
     case framework::proto::VarType::INT32:
       value_name = "int32_values";
+      break;
+    case framework::proto::VarType::INT64:
+      value_name = "int64_values";
       break;
     case framework::proto::VarType::FP32:
       value_name = "fp32_values";
       break;
-    case framework::proto::VarType::INT64:
-      value_name = "int64_values";
+    case framework::proto::VarType::BOOL:
+      value_name = "bool_values";
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -83,7 +83,6 @@ class SetitemKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     const int rank = ctx.Output<framework::LoDTensor>("Out")->dims().size();
-
     switch (rank) {
       case 1:
         SetitemCompute<1>(ctx);
@@ -180,9 +179,9 @@ class SetitemKernel : public framework::OpKernel<T> {
     } else {
       Tensor value_t(dtype);
       value_t.mutable_data<T>(value_dims, place);
-      const char* value_name = nullptr;
-      value_name = GetValueName(dtype, value_name);
-      CopyVecotorToTensor<T>(value_name, &value_t, ctx);
+      auto value_name = GetValueName(dtype);
+      CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);
+      value_t.Resize(value_dims);
       ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
           ctx, &slice_t, &value_t, -1, SubFunctor<T>(), &slice_t);
     }

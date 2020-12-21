@@ -1827,7 +1827,7 @@ class Variable(object):
         axes = []
         starts = []
         ends = []
-        max_integer = 2147483647
+        max_integer = sys.maxsize
         for dim, slice_item in enumerate(item):
             if isinstance(slice_item, slice):
                 start = slice_item.start
@@ -1897,7 +1897,6 @@ class Variable(object):
 
         self.block.append_op(
             type="setitem", inputs=inputs, outputs={'Out': self}, attrs=attrs)
-
         return self
 
 
