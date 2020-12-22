@@ -31,8 +31,7 @@ class FCGeluTanhOneDnnFusePassTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name="data", shape=[-1, 128, 768], dtype="float32")
-            fc_out = fluid.layers.fc(
-                input=data, size=3072, num_flatten_dims=2)
+            fc_out = fluid.layers.fc(input=data, size=3072, num_flatten_dims=2)
             gelu_out = fluid.layers.gelu(fc_out, approximate=False)
 
         self.feeds = {"data": np.random.random((1, 128, 768)).astype("float32")}
@@ -45,16 +44,15 @@ class FCGeluTanhOneDnnFusePassTest(InferencePassTest):
 
     def test_check_output(self):
         self.check_output()
-        self.assertTrue(PassVersionChecker.IsCompatible(self.pass_name))
-
+      
+      
 class FCGeluErfOneDnnFusePassTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name="data", shape=[-1, 128, 768], dtype="float32")
-            fc_out = fluid.layers.fc(
-                input=data, size=3072, num_flatten_dims=2)
+            fc_out = fluid.layers.fc(input=data, size=3072, num_flatten_dims=2)
             gelu_out = fluid.layers.gelu(fc_out, approximate=True)
 
         self.feeds = {"data": np.random.random((1, 128, 768)).astype("float32")}
@@ -69,14 +67,14 @@ class FCGeluErfOneDnnFusePassTest(InferencePassTest):
         self.check_output()
         self.assertTrue(PassVersionChecker.IsCompatible(self.pass_name))
 
+
 class FCTanhOneDnnFusePassTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name="data", shape=[-1, 128, 768], dtype="float32")
-            fc_out = fluid.layers.fc(
-                input=data, size=3072, num_flatten_dims=2)
+            fc_out = fluid.layers.fc(input=data, size=3072, num_flatten_dims=2)
             tanh_out = fluid.layers.tanh(fc_out)
 
         self.feeds = {"data": np.random.random((1, 128, 768)).astype("float32")}
@@ -90,6 +88,7 @@ class FCTanhOneDnnFusePassTest(InferencePassTest):
     def test_check_output(self):
         self.check_output()
         self.assertTrue(PassVersionChecker.IsCompatible(self.pass_name))
+
 
 if __name__ == "__main__":
     unittest.main()
