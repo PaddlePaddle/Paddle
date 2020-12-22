@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/device_context.h"
 
+
 namespace paddle {
 namespace operators {
 

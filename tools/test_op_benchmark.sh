@@ -224,10 +224,13 @@ function summary_problems {
     if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
     then
       exit_code=8
-      LOG "[FATAL] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
+      LOG "[ERROR] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
     fi
   done
-  [ $exit_code -ne 0 ] && exit $exit_code
+  if [ $exit_code -ne 0 ]; then
+    LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
+    exit $exit_code
+  fi
 }
 
 function main {

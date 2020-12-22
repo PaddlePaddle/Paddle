@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/printf.h"
 
-
 namespace paddle {
 namespace operators {
 
