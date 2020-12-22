@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 #include "paddle/fluid/distributed/common/utils.h"
-
+DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
@@ -43,7 +43,7 @@ int32_t TensorTable::set_program_env(
 int32_t GlobalStepTable::initialize() {
   auto _program_config = _config.tensor();
   auto trainers_ = _config.common().trainer_num();
-
+  FLAGS_eager_delete_tensor_gb = -1;
   // Get Config
   if (_program_config.has_startup_program_id()) {
     startup_program_id_ = _program_config.startup_program_id();
@@ -113,6 +113,7 @@ int32_t GlobalStepTable::push_dense(const int64_t *values,
 
 int32_t GlobalStepTable::_run_program(const int64_t *values,
                                       const uint32_t trainer_id) {
+  FLAGS_eager_delete_tensor_gb = -1;
   auto counter = decay_counters_.at(trainer_id);
   counter += int(values[0]);
   decay_counters_.at(trainer_id) = counter;
@@ -125,8 +126,9 @@ int32_t GlobalStepTable::_run_program(const int64_t *values,
   for (auto &trainer_counter : decay_counters_) {
     global_counter += trainer_counter.second;
   }
-  value[0] = global_counter;
-  VLOG(1) << "GlobalStepTable::_run_program global_counter " << global_counter;
+  // hard code for increment op
+  value[0] = global_counter - 1;
+  VLOG(1) << "GlobalStepTable::_run_program global_counter " << value[0];
 
   executor_->RunPreparedContext(exec_context_.get(), scope_, false, false);
   VLOG(1) << "Run main_program_desc";

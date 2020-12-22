@@ -1208,13 +1208,13 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
         decay_startup_program = fluid.framework.Program()
         with fluid.program_guard(decay_main_program, decay_startup_program):
             lr = exponential_decay(lr_sheduler.base_lr, lr_decay_steps,
-                                   lr_sheduler.gamma)
+                                   lr_sheduler.gamma, True)
             lr_name = lr.name
             logging.warn(
-                "ExponentialDecay is set, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
-                "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
-                "\t strategy.a_sync = True \n"
-                "\t strategy.a_sync_configs= { lr_decay_steps : YOUR_DECAY_STEP } "
+                "ExponentialDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
+                "\t \t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
+                "\t \t strategy.a_sync = True \n"
+                "\t \t strategy.a_sync_configs= { lr_decay_steps : YOUR_DECAY_STEP } \n"
                 % lr_decay_steps)
     elif isinstance(lr_sheduler, CosineAnnealingDecay):
         pass
