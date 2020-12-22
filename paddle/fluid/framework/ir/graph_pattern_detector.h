@@ -567,7 +567,6 @@ struct FCActOneDNN : public PatternBase {
   PDNode* operator()(const std::string& act_type);
 
   // declare operator node's name
-  PATTERN_DECL_NODE(fc_in);
   PATTERN_DECL_NODE(fc);
   PATTERN_DECL_NODE(act);
   PATTERN_DECL_NODE(fc_out);

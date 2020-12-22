@@ -247,6 +247,89 @@ TEST(FuseFCActOneDNNPass, ThrowUseMkldnn) {
                paddle::platform::EnforceNotMet);
 }
 
+TEST(FuseFCActOneDNNPass, FuseWithGeluTanh) {
+  auto prog = BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
+  CreateOp(&prog, "fc",
+           {
+               {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+           },
+           {{"Out", "fc_y"}});
+  auto* act_op = CreateOp(&prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+  act_op->SetAttr("approximate", true);
+
+  Graph graph(prog);
+  constexpr int removed_nodes_count = 2;
+
+  RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count);
+  AssertOpsCount(graph, {{"fc", 1}, {"gelu", 0}});
+
+  for (const auto* node : graph.Nodes()) {
+    if (node->IsOp() && node->Op()->Type() == "fc") {
+      const auto* op = node->Op();
+      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
+      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      ASSERT_TRUE(op->HasAttr("activation_type"));
+      auto act_type = BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+      EXPECT_TRUE(act_type.compare("gelu_tanh") == 0);
+    }
+  }
+}
+
+TEST(FuseFCActOneDNNPass, FuseWithGeluErf) {
+  auto prog = BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
+  CreateOp(&prog, "fc",
+           {
+               {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+           },
+           {{"Out", "fc_y"}});
+  auto* act_op = CreateOp(&prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+  act_op->SetAttr("approximate", false);
+
+  Graph graph(prog);
+  constexpr int removed_nodes_count = 2;
+
+  RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count);
+  AssertOpsCount(graph, {{"fc", 1}, {"gelu", 0}});
+
+  for (const auto* node : graph.Nodes()) {
+    if (node->IsOp() && node->Op()->Type() == "fc") {
+      const auto* op = node->Op();
+      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
+      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      ASSERT_TRUE(op->HasAttr("activation_type"));
+      auto act_type = BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+      EXPECT_TRUE(act_type.compare("gelu_erf") == 0);
+    }
+  }
+}
+
+TEST(FuseFCActOneDNNPass, FuseWithGeluAuto) {
+  auto prog = BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
+  CreateOp(&prog, "fc",
+           {
+               {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+           },
+           {{"Out", "fc_y"}});
+  CreateOp(&prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+
+  Graph graph(prog);
+  constexpr int removed_nodes_count = 2;
+
+  RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count);
+  AssertOpsCount(graph, {{"fc", 1}, {"gelu", 0}});
+
+  for (const auto* node : graph.Nodes()) {
+    if (node->IsOp() && node->Op()->Type() == "fc") {
+      const auto* op = node->Op();
+      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
+      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      ASSERT_TRUE(op->HasAttr("activation_type"));
+      auto act_type = BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+      EXPECT_TRUE(act_type.compare("gelu") == 0);
+    }
+  }
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
