@@ -703,6 +703,7 @@ void BindImperative(py::module *m_ptr) {
                  self.Var().IsInitialized(), true,
                  platform::errors::InvalidArgument(
                      "Tensor %s has not been initialized!", self.Name()));
+
              PADDLE_ENFORCE_EQ(
                  self.Var().IsType<framework::LoDTensor>() ||
                      self.Var().IsType<framework::SelectedRows>(),
@@ -710,11 +711,14 @@ void BindImperative(py::module *m_ptr) {
                  platform::errors::InvalidArgument(
                      "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
                      self.Name()));
+
              auto detach_var = std::make_shared<imperative::VarBase>(
                  true, "detach_" + self.Name());
+
              detach_var->SetPersistable(self.Persistable());
              detach_var->SetType(self.Type());
              detach_var->SetDataType(self.DataType());
+
              if (self.Var().IsType<framework::LoDTensor>()) {
                const auto &origin_tensor =
                    self.Var().Get<framework::LoDTensor>();
@@ -726,6 +730,11 @@ void BindImperative(py::module *m_ptr) {
                auto *detach_tensor =
                    detach_var->MutableVar()->GetMutable<framework::LoDTensor>();
                detach_tensor->ShareDataWith(origin_tensor);
+               // NOTE(liym27): Call ShareInplaceVersionCounterWith to share the
+               // same TensorInplaceVersion, which is used to check whether
+               // inplace
+               // operations are correct.
+               detach_tensor->ShareInplaceVersionCounterWith(origin_tensor);
              } else {
                const auto &origin_selected_rows =
                    self.Var().Get<framework::SelectedRows>();
@@ -741,6 +750,9 @@ void BindImperative(py::module *m_ptr) {
                detach_selected_rows->set_rows(origin_selected_rows.rows());
                detach_selected_rows->mutable_value()->ShareDataWith(
                    origin_selected_rows.value());
+               detach_selected_rows->mutable_value()
+                   ->ShareInplaceVersionCounterWith(
+                       origin_selected_rows.value());
              }
              VLOG(3) << "The detached Tensor(" << detach_var->Name()
                      << ") share data with " << self.Name();
