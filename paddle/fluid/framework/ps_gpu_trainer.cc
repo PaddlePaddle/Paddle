@@ -143,7 +143,8 @@ void PSGPUTrainer::BuildGPUPSTask(int table_id, int feadim) {
   timeline.Start();
   MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
   auto fleet_ptr = FleetWrapper::GetInstance();
-  std::shared_ptr<HeterContext> heter_context = std::make_shared<HeterContext>();
+  std::shared_ptr<HeterContext> heter_context =
+      std::make_shared<HeterContext>();
   auto& multi_output_channel = dataset->GetCurOutputChannel();
   auto& input_channel = dataset->GetInputChannelRef();
   int gen_shard_num = multi_output_channel.size();
