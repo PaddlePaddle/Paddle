@@ -62,3 +62,10 @@ REGISTER_OP_VERSION(quantize)
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "bfloat16", "If true, float32 input is converted to bfloat16",
             false));
+
+REGISTER_OP_VERSION(quantize)
+    .AddCheckpoint(
+        R"ROC( Add a new attribute [Shift])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Shift", "Quantize data to uint8 if provided non-zero value.",
+            0.0f));
