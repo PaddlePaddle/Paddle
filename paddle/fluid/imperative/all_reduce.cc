@@ -119,6 +119,21 @@ static void AllReduce(const framework::SelectedRows &src,
   if (!use_calc_stream) {
     dev_ctx->Wait();
   }
+  if (std::all_of(cpu_rows_num_ptr, cpu_rows_num_ptr + strategy.nranks_,
+                  [&](int64_t row) { return row == cpu_rows_num_ptr[0]; })) {
+    // During sparse communication, the number of each card is the same.
+    // Here, allgather is used to speed up the allreduce.
+    auto row_sendcount = cpu_rows_num_ptr[0];
+    VLOG(3) << "allgather replaces broadcast to speed up in sparse allreduce";
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
+        src_rows_ptr, dst_rows_ptr, row_sendcount, ncclInt64, comm->comm(),
+        stream));
+    auto value_sendcount = cpu_rows_num_ptr[0] * feature_size;
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
+        src_tensor_ptr, dst_tensor_ptr, value_sendcount, nccl_dtype,
+        comm->comm(), stream));
+    return;
+  }
   for (int i = 0; i < strategy.nranks_; ++i) {
     if (cpu_rows_num_ptr[i] > 0) {
       // 2. Broadcast the rows of SelectedRows
