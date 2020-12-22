@@ -4027,7 +4027,8 @@ class PipelineOptimizer(object):
                 if device == first_dev_spec: continue
                 main_var = main_block.var(var_name)
                 assert main_var.is_data
-                assert var_name in first_block.vars
+                if not var_name in first_block.vars:
+                    self._create_var(first_block, main_var, var_name)
                 dev_index = int(device.split(':')[1])
                 first_block._insert_op(
                     index=insert_index,
