@@ -54,11 +54,14 @@ __global__ void DropoutGradCUDAKernel(const T* dout, const MaskType* mask,
 
   for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x * VecSize) {
     T dout_vec[VecSize];
-    LoadT* value = reinterpret_cast<LoadT*>(&dout_vec);
-    *value = *reinterpret_cast<const LoadT*>(&dout[i]);
+    LoadT* dout_value = reinterpret_cast<LoadT*>(&dout_vec);
+    *dout_value = *reinterpret_cast<const LoadT*>(&dout[i]);
+
+    MaskType mask_vec[VecSize];
+    MaskLoadT* mask_value = reinterpret_cast<MaskLoadT*>(&mask_vec);
+    *mask_value = *reinterpret_cast<const MaskLoadT*>(&mask[i]);
 
     T dx_vec[VecSize];
-    MaskType mask_vec[VecSize];
 
 #pragma unroll
     for (int ii = 0; ii < VecSize; ii++) {
