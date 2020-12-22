@@ -13,13 +13,9 @@
 // limitations under the License.
 
 #include <algorithm>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <map>
-#include <memory>
 #include <random>
-#include <sstream>
+#include <string>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -113,31 +109,16 @@ void RunOperator(const platform::Place &place, const std::string &op_type,
 
   auto &pool = platform::DeviceContextPool::Instance();
 
-  // In-place computation
-  if (inplace) {
-    auto op = num_inputs[op_type] > 1
-                  ? framework::OpRegistry::CreateOp(
-                        op_type, {{"X", {first_input}}, {"Y", {"x1"}}},
-                        {{"Out", {output_name}}}, {{"use_mkldnn", {true}}})
-                  : framework::OpRegistry::CreateOp(
-                        op_type, {{"X", {first_input}}},
-                        {{"Out", {output_name}}}, {{"use_mkldnn", {true}}});
+  auto op = num_inputs[op_type] > 1
+                ? framework::OpRegistry::CreateOp(
+                      op_type, {{"X", {first_input}}, {"Y", {"x1"}}},
+                      {{"Out", {output_name}}}, {{"use_mkldnn", {true}}})
+                : framework::OpRegistry::CreateOp(
+                      op_type, {{"X", {first_input}}}, {{"Out", {output_name}}},
+                      {{"use_mkldnn", {true}}});
 
-    op->Run(scope, place);
-    pool.Get(place)->Wait();
-  } else {
-    // Out of place computation
-    auto op_ref = num_inputs[op_type] > 1
-                      ? framework::OpRegistry::CreateOp(
-                            op_type, {{"X", {first_input}}, {"Y", {"x1"}}},
-                            {{"Out", {output_name}}}, {{"use_mkldnn", {true}}})
-                      : framework::OpRegistry::CreateOp(
-                            op_type, {{"X", {first_input}}},
-                            {{"Out", {output_name}}}, {{"use_mkldnn", {true}}});
-
-    op_ref->Run(scope, place);
-    pool.Get(place)->Wait();
-  }
+  op->Run(scope, place);
+  pool.Get(place)->Wait();
 }
 
 TEST(test_softmax_reuse_cache, cpu_place) {
