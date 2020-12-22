@@ -360,7 +360,7 @@ class ProgBarLogger(Callback):
             'count': 0,
             'samples': 0,
         }
-        if self._is_print() and (self.verbose == 2 or self.verbose == 3):
+        if self._is_print():
             print(
                 "The loss value printed in the log is the current step, and the metric is the average value of previous step."
             )
