@@ -4509,12 +4509,6 @@ class PipelineOptimizer(object):
             "startup_program": new_startup_program,
         }
 
-        with open("/tmp/start", 'w') as f:
-            f.writelines(str(startup_program))
-        with open("/tmp/start_%d" % local_rank, 'w') as f:
-            f.writelines(str(new_startup_program))
-        with open("/tmp/main_%d" % local_rank, 'w') as f:
-            f.writelines(str(program_list[local_rank]['program']))
         place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
