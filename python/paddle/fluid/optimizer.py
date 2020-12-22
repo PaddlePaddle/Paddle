@@ -4116,9 +4116,7 @@ class PipelineOptimizer(object):
                 break
         assert first_device
         first_device_type = first_device.split(":")[0]
-        assert first_device_type == "gpu", (
-            "Now only gpu devices are "
-            "supported for pipeline parallelism.")
+        assert first_device_type == "gpu"
 
         # set op_device attr for lr-related ops
         lrsched_role = int(self._op_role.LRSched)
