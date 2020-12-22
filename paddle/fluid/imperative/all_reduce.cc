@@ -81,7 +81,7 @@ static void AllReduce(const framework::SelectedRows &src,
   // CUDAMutableData use CalStream
   auto *gpu_rows_num_ptr = rows_num_vector.CUDAMutableData(place);
   if (!use_calc_stream) {
-    PADDLE_THROW("code line 84 has been executed!!!");
+    //PADDLE_THROW("code line 84 has been executed!!!");
     dev_ctx->Wait();
   }
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
