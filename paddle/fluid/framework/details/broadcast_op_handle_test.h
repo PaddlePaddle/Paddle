@@ -119,6 +119,9 @@ struct TestBroadcastOpHandle {
         place_list_.push_back(p);
         ctxs_.emplace_back(new p::CPUDeviceContext(p));
       }
+#if defined(PADDLE_WITH_XPU_BKCL)
+      bkcl_ctxs_.reset(nullptr);
+#endif
 #if defined(PADDLE_WITH_NCCL)
       nccl_ctxs_.reset(nullptr);
 #endif

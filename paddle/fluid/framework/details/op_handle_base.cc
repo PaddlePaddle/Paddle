@@ -95,9 +95,7 @@ void OpHandleBase::InitXPU() {
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
-        // TODO(liuyuhui): add XPU sync events
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "XPU now don't support sync events"));
+        // TODO(liuyuhui): XPU now don't support sync events, add later.
       }
     }
   } else {

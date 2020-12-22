@@ -328,14 +328,6 @@ bool MultiDevSSAGraphBuilderBase::UseGPU() const {
   return use_gpu;
 }
 
-bool MultiDevSSAGraphBuilderBase::UseXPU() const {
-  bool use_xpu = false;
-#if defined(PADDLE_WITH_XPU_BKCL)
-  use_xpu = bkcl_ctxs_ != nullptr;
-#endif
-  return use_xpu;
-}
-
 bool MultiDevSSAGraphBuilderBase::NeedCollectiveForGrad(
     const std::string &grad_name, std::vector<ir::Node *> ops) const {
   // if we have allreduce_op for current gradient variable in the graph,

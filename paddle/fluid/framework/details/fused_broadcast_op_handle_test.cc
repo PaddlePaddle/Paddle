@@ -184,6 +184,16 @@ TEST(FusedBroadcastTester, GPUSelectedRows) {
 }
 #endif
 
+#if defined(PADDLE_WITH_XPU_BKCL)
+TEST(FusedBroadcastTester, XPULodTensor) {
+  TestFusedBroadcastOpHandle test_op;
+  std::vector<size_t> input_scope_idxes = {0, 1};
+  test_op.InitCtxOnDevice(p::kXPU);
+  test_op.InitFusedBroadcastOp(input_scope_idxes);
+  test_op.TestFusedBroadcastLoDTensor(input_scope_idxes);
+}
+#endif
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
