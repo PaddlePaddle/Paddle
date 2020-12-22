@@ -271,7 +271,6 @@ class ImperativeQuantAware(object):
             for i in range(len(scopes) - 1):
                 obj = getattr(parent, scopes[i])
                 parent = obj
-
             quant_layer = self._get_quantized_counterpart(layer)
             setattr(obj, target, quant_layer)
 
