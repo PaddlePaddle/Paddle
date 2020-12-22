@@ -206,29 +206,6 @@ class CommonAccessor:
             conv_indent(indent), attrs, conv_indent(indent))
 
 
-class Tensor:
-    def __init__(self):
-        self.tensor_class = None
-        self.param_name = None
-        self.grad_name = None
-        self.optimizer = None
-        self.feature_dim = -1
-        self.embedding_dim = -1
-        self.common_block_str = ""
-
-    def to_string(self, indent):
-        accessor_str = "{}tensor {{{}\n{}}}"
-        attrs = ""
-        attrs += "tensor_class: \"{}\" ".format(self.tensor_class)
-        attrs += "fea_dim: {} ".format(self.feature_dim)
-        attrs += "emb_dim: {} ".format(self.embedding_dim)
-        attrs += "param: \"{}\" ".format(self.param_name)
-        attrs += "grad: \"{}\" ".format(self.grad_name)
-        attrs += "common_block_map: \"{}\" ".format(self.common_block_str)
-        return accessor_str.format(
-            conv_indent(indent), attrs, conv_indent(indent))
-
-
 class Table:
     def __init__(self):
         self.id = -1
@@ -237,7 +214,6 @@ class Table:
         self.type = None
         self.accessor = None
         self.common = None
-        self.tensor = None
 
     def to_string(self, indent):
         table_str = "{}downpour_table_param {{{}\n{}}}"
@@ -249,10 +225,6 @@ class Table:
         attrs += "type: {}".format(self.type)
         attrs += "\n"
         indent += 2
-
-        if self.tensor is not None:
-            attrs += self.tensor.to_string(indent)
-            attrs += "\n"
 
         if self.accessor is not None:
             attrs += self.accessor.to_string(indent)
