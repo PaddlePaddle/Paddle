@@ -1684,6 +1684,21 @@ function collect_ccache_hits() {
 
 
 function test_op_benchmark() {
+    # The PR will pass quickly when get approval from specific person.
+    # Xreki 12538138, luotao1 6836917, GaoWei8 53294385
+    set +x
+    approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
+    if [ "${approval_line}" != "" ]; then
+        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 53294385 12538138 6836917)
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "TRUE" ]; then
+            echo "==================================="
+            echo -e "\n current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
+            echo "==================================="
+            exit 0
+        fi
+    fi
+    set -x
     bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
 }
 
