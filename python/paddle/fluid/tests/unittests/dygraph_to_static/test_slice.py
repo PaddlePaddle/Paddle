@@ -23,6 +23,7 @@ SEED = 2020
 np.random.seed(SEED)
 prog_trans = paddle.jit.ProgramTranslator()
 
+
 @paddle.jit.to_static
 def test_slice_without_control_flow(x):
     # Python slice will not be transformed.
@@ -84,7 +85,7 @@ def test_slice_in_for_loop(x, iter_num=3):
 
 
 @paddle.jit.to_static
-def test_setitem(x):
+def test_set_value(x):
     x = paddle.to_tensor(x)
     x[0] = paddle.full(shape=[1], fill_value=2, dtype="float32")
     x[1:2, 0:1] = 10
@@ -140,12 +141,12 @@ class TestSliceInForLoop(TestSliceWithoutControlFlow):
         self.dygraph_func = test_slice_in_for_loop
 
 
-class TestSetitem(TestSliceWithoutControlFlow):
+class TestSetValue(TestSliceWithoutControlFlow):
     def init_input(self):
-        self.input = np.full([3,4,5], 5).astype('float32')
+        self.input = np.full([3, 4, 5], 5).astype('float32')
 
     def init_dygraph_func(self):
-        self.dygraph_func = test_setitem
+        self.dygraph_func = test_set_value
 
 
 if __name__ == '__main__':

@@ -21,6 +21,7 @@
 #include <utility>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/assign_value_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -83,6 +84,10 @@ class SetValueKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     const int rank = ctx.Output<framework::LoDTensor>("Out")->dims().size();
+
+    // TODO(liym27): A more elegent code to do this. C++ has to make template
+    //  integer as constant, but we had better have alternative writing in the
+    //  future.
     switch (rank) {
       case 1:
         SetValueCompute<1>(ctx);
@@ -127,7 +132,18 @@ class SetValueKernel : public framework::OpKernel<T> {
     auto& eigen_place =
         *ctx.template device_context<DeviceContext>().eigen_device();
 
-    out->ShareDataWith(*in);
+    // Here copy data from input to avoid data loss at PE and Graph level.
+    // TODO(liym27): Speed up in the future version.
+    // - Q: Why don't call ShareDataWith to speed up?
+    // - A: Because it's not supported to ShareDataWith on OP's input and output
+    // https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-and-ShareBufferWith-are-prohibited-in-OP
+    // - Q: Why don't delete Input, after all, the input and output are the same
+    // Tensor at program level?
+    // - A: If deleting Input, the graph will be complex, such as there will
+    // be two ops points to the output in graph: op1 -> output <- set_value.
+    // In this case, we have to find a way to handle the running order of
+    // set_value is what we want.
+    TensorCopy(*in, place, out);
 
     Tensor slice_t(dtype), pad_t(dtype);
     slice_t.mutable_data<T>(slice_dims, place);
