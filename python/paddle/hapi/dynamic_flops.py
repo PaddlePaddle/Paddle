@@ -255,7 +255,8 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     for m in model.sublayers():
         if len(list(m.children())) > 0:
             continue
-        if hasattr(m, 'total_ops') and hasattr(m, 'total_params'):
+        if set(['total_ops', 'total_params', 'input_shape',
+                'output_shape']).issubset(set(list(m._buffers.keys()))):
             total_ops += m.total_ops
             total_params += m.total_params
 
