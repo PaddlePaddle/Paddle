@@ -418,7 +418,7 @@ static void ClearNoNeedBufferInputs(OpBase* op) {
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
-    const platform::Place& place) {
+    const platform::Place& place, const NameVarTypeMap& fwd_in_dtypes) {
   const auto& info = op.Info();
   if (!info.dygraph_grad_op_maker_) {
     return nullptr;
@@ -429,6 +429,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     for (auto& grad_op : *grad_node) {
       grad_op.SetId(OpBase::GenerateUniqueId());
       grad_op.SetPlace(place);
+      grad_op.SetForwardInputDataTypes(fwd_in_dtypes);
       ClearNoNeedBufferInputs(&grad_op);
     }
     return grad_node;

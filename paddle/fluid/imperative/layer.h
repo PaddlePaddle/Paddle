@@ -248,7 +248,7 @@ class Layer {
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
-    const platform::Place& place);
+    const platform::Place& place, const NameVarTypeMap& fwd_in_dtypes);
 
 }  // namespace imperative
 }  // namespace paddle

@@ -882,8 +882,10 @@ void PartialGradTask::RunEachOp(OpBase *op) {
   OpBase::Run(op->InnerOp(), tmp_ins, tmp_outs, op->Attrs(), op->place());
 
   if (create_graph_) {
-    auto double_grad_node = CreateGradOpNode(op->InnerOp(), tmp_ins, tmp_outs,
-                                             op->Attrs(), op->place());
+    NameVarTypeMap fwd_in_dtypes;
+    auto double_grad_node =
+        CreateGradOpNode(op->InnerOp(), tmp_ins, tmp_outs, op->Attrs(),
+                         op->place(), fwd_in_dtypes);
     PADDLE_ENFORCE_NOT_NULL(
         double_grad_node,
         platform::errors::NotFound("The Op %s doesn't have any grad op. If you "

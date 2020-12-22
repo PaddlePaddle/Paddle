@@ -109,5 +109,48 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
   }
 }
 
+void HandleComplexToReal(const proto::VarType::Type& dst_type,
+                         Tensor* grad_tensor) {
+  // grad my be nullptr when stop gradient
+  if (grad_tensor == nullptr) {
+    return;
+  }
+  PADDLE_ENFORCE_EQ(grad_tensor->IsInitialized(), true,
+                    platform::errors::InvalidArgument(
+                        "The input grad tensor is not initialized."));
+
+  auto src_type = grad_tensor->type();
+  VLOG(3) << "Complex to Real in grad op: src dtype (" << src_type
+          << ") -> dst dtype (" << dst_type << ").";
+
+  if (framework::IsComplexType(src_type) &&
+      !framework::IsComplexType(dst_type)) {
+    auto& pool = platform::DeviceContextPool::Instance();
+    auto* ctx = pool.Get(grad_tensor->place());
+
+    // complex -> real
+    Tensor out;
+    out.Resize(grad_tensor->dims());
+    switch (src_type) {
+      case proto::VarType::COMPLEX64:
+        framework::VisitDataType(dst_type, CastDataType<platform::complex64>(
+                                               *grad_tensor, &out, ctx));
+        break;
+      case proto::VarType::COMPLEX128:
+        framework::VisitDataType(dst_type, CastDataType<platform::complex128>(
+                                               *grad_tensor, &out, ctx));
+        break;
+      default:
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Data type (%s) is not supported when casting complex to real data "
+            "type.",
+            DataTypeToString(src_type)));
+    }
+
+    // reset grad_tensor data
+    grad_tensor->ResetHolderWithType(out.MoveMemoryHolder(), dst_type);
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle
