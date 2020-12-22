@@ -95,4 +95,5 @@ REGISTER_PASS_CAPABILITY(fc_act_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("fc", 0)
             .LE("gelu", 0)
+            .LE("sigmoid", 0)
             .LE("tanh", 0));
