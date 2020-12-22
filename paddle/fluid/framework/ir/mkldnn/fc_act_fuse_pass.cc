@@ -96,4 +96,3 @@ REGISTER_PASS_CAPABILITY(fc_act_fuse_pass)
             .LE("fc", 0)
             .LE("gelu", 0)
             .LE("tanh", 0));
-            

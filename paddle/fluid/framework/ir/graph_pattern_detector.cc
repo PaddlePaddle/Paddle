@@ -1018,7 +1018,7 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
 }
 
 PDNode *patterns::FCActOneDNN::operator()(const std::string &act_type) {
-  auto* fc = pattern->NewNode(fc_repr())->assert_is_op("fc");
+  auto *fc = pattern->NewNode(fc_repr())->assert_is_op("fc");
   auto *fc_out = pattern->NewNode(fc_out_repr())
                      ->assert_is_op_output("fc", "Out")
                      ->assert_is_op_input(act_type);

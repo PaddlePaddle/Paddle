@@ -254,7 +254,8 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluTanh) {
                {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
            },
            {{"Out", "fc_y"}});
-  auto* act_op = CreateOp(&prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+  auto* act_op =
+      CreateOp(&prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
   act_op->SetAttr("approximate", true);
 
   Graph graph(prog);
@@ -269,7 +270,8 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluTanh) {
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("activation_type"));
-      auto act_type = BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+      auto act_type =
+          BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
       EXPECT_TRUE(act_type.compare("gelu_tanh") == 0);
     }
   }
@@ -282,7 +284,8 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluErf) {
                {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
            },
            {{"Out", "fc_y"}});
-  auto* act_op = CreateOp(&prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+  auto* act_op =
+      CreateOp(&prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
   act_op->SetAttr("approximate", false);
 
   Graph graph(prog);
@@ -297,7 +300,8 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluErf) {
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("activation_type"));
-      auto act_type = BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+      auto act_type =
+          BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
       EXPECT_TRUE(act_type.compare("gelu_erf") == 0);
     }
   }
@@ -324,7 +328,8 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluAuto) {
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("activation_type"));
-      auto act_type = BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+      auto act_type =
+          BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
       EXPECT_TRUE(act_type.compare("gelu") == 0);
     }
   }
@@ -351,7 +356,8 @@ TEST(FuseFCActOneDNNPass, FuseWithTanh) {
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("activation_type"));
-      auto act_type = BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+      auto act_type =
+          BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
       EXPECT_TRUE(act_type.compare("tanh") == 0);
     }
   }
