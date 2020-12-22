@@ -223,27 +223,23 @@ class ReduceKernel : public framework::OpKernel<T> {
 
     if (out_dtype < 0) {
       auto* cast_input = context.Input<Tensor>("X");
-      cast_out_dtype =
-          static_cast<framework::proto::VarType::Type>(cast_input->type());
-      framework::VisitDataType(
-          cast_out_dtype,
-          ReduceKernelFunctor<DeviceContext, T, Functor>(
-              cast_input, output, dims, keep_dim, reduce_all, context));
+      ReduceKernelFunctor<DeviceContext, T, Functor>(
+          cast_input, output, dims, keep_dim, reduce_all, context)
+          .template apply<T>();
     } else {
       Tensor tmp_tensor;
       cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
       auto* input = context.Input<Tensor>("X");
 
-      tmp_tensor.Resize(input->dims());
+      tmp_tensor.Resize(output->dims());
+      ReduceKernelFunctor<DeviceContext, T, Functor>(
+          input, &tmp_tensor, dims, keep_dim, reduce_all, context)
+          .template apply<T>();
       framework::VisitDataType(
           cast_out_dtype,
           CastOpFunctor<DeviceContext, T>(
-              input, &tmp_tensor,
+              &tmp_tensor, output,
               context.template device_context<DeviceContext>()));
-      framework::VisitDataType(
-          cast_out_dtype,
-          ReduceKernelFunctor<DeviceContext, T, Functor>(
-              &tmp_tensor, output, dims, keep_dim, reduce_all, context));
     }
   }
 };
