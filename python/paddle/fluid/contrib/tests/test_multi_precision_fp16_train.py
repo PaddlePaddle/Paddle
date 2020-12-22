@@ -122,11 +122,11 @@ def train(use_pure_fp16=True, use_nesterov=False):
         # Test program
         test_program = train_program.clone(for_test=True)
 
-        optimizer = fluid.contrib.optimizer.Momentum(
+        optimizer = paddle.optimizer.Momentum(
             learning_rate=0.001,
             momentum=0.9,
             use_nesterov=use_nesterov,
-            regularization=fluid.regularizer.L2Decay(1e-4),
+            weight_decay=fluid.regularizer.L2Decay(1e-4),
             multi_precision=use_pure_fp16,
             rescale_grad=1.0 / BATCH_SIZE)
 

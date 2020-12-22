@@ -124,7 +124,6 @@ if(NOT WITH_DISTRIBUTE)
 endif()
 
 if(WIN32)
-    LIST(REMOVE_ITEM TEST_OPS test_rnn_decode_api)
     LIST(REMOVE_ITEM TEST_OPS test_complex_matmul)
 endif()
 
