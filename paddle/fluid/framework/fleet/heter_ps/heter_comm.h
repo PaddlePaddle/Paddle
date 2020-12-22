@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "cub/cub.cuh"
-#include "heter_resource.h"
 #include "hashtable.h"
+#include "heter_resource.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"

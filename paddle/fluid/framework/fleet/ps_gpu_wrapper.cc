@@ -66,8 +66,8 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim,
   for (int i = 0; i < shard_num; ++i) {
     std::cout << "building table: " << i << std::endl;
     HeterPs_->build_ps(i, gpu_task->feature_keys_[i].data(),
-                     gpu_task->feature_values_[i].data(), feature_keys_count[i],
-                     10000, 2);
+                       gpu_task->feature_values_[i].data(), feature_keys_count[i],
+                       10000, 2);
     HeterPs_->show_one_table(i);
   }
   timeline.Pause();
@@ -122,7 +122,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
             << " len: " << total_length;
     pull_gpups_timer.Start();
     HeterPs_->pull_sparse(devid_2_index, total_keys, total_values_gpu,
-                        static_cast<int>(total_length));
+                          static_cast<int>(total_length));
     // PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
     //                              "PullSparseGPU failed in GPUPS."));
     pull_gpups_timer.Pause();
@@ -176,7 +176,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
             << " len: " << total_length;
     push_gpups_timer.Start();
     HeterPs_->push_sparse(devid_2_index, total_keys, total_grad_values_gpu,
-                        static_cast<int>(total_length));
+                          static_cast<int>(total_length));
     push_gpups_timer.Pause();
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
