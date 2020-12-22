@@ -1044,12 +1044,18 @@ function parallel_test_base_gpu() {
     ========================================
 EOF
 
-set +x
+set -x
         precison_cases=""
-        if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
-            precision_cases=`python $PADDLE_ROOT/tools/get_pr_ut.py`
-        fi
         bash $PADDLE_ROOT/tools/check_added_ut.sh
+        if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+            python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
+            if [[ -f "ut_list" ]]; then
+                set +x
+                echo "PREC length: "`wc -l ut_list`
+                precision_cases=`cat ut_list`
+                set -x
+            fi
+        fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
             ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
@@ -1060,6 +1066,7 @@ set +x
                 exit 8;
             fi
         fi
+set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
         exclusive_tests=''        # cases list which would be run exclusively
@@ -1682,6 +1689,21 @@ function collect_ccache_hits() {
 
 
 function test_op_benchmark() {
+    # The PR will pass quickly when get approval from specific person.
+    # Xreki 12538138, luotao1 6836917, GaoWei8 53294385
+    set +x
+    approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
+    if [ "${approval_line}" != "" ]; then
+        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 53294385 12538138 6836917)
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "TRUE" ]; then
+            echo "==================================="
+            echo -e "\n current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
+            echo "==================================="
+            exit 0
+        fi
+    fi
+    set -x
     bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
 }
 

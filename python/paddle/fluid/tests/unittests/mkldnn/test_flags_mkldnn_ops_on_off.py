@@ -33,7 +33,7 @@ class TestFlagsUseMkldnn(unittest.TestCase):
 
         self.relu_regex = b"^dnnl_verbose,exec,cpu,eltwise,.+alg:eltwise_relu alpha:0 beta:0,10x20x20"
         self.ew_add_regex = b"^dnnl_verbose,exec,cpu,binary.+alg:binary_add,10x20x30:10x20x30 10x20x30"
-        self.matmul_regex = b"^dnnl_verbose,exec,cpu,matmul,.*b10m20n20k30"
+        self.matmul_regex = b"^dnnl_verbose,exec,cpu,matmul,.*10x20x30:10x30x20:10x20x20"
 
     def flags_use_mkl_dnn_common(self, e):
         cmd = self._python_interp

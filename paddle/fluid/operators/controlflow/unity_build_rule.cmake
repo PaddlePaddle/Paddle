@@ -14,3 +14,7 @@ register_unity_group(cc
     logical_op.cc
     tensor_array_read_write_op.cc
     while_op.cc)
+register_unity_group(cu
+    logical_op.cu
+    compare_op.cu
+    compare_all_op.cu)
