@@ -46,8 +46,6 @@ from ..fluid.layers import exp    #DEFINE_ALIAS
 from ..fluid.layers import floor    #DEFINE_ALIAS
 from ..fluid.layers import log    #DEFINE_ALIAS
 from ..fluid.layers import reciprocal    #DEFINE_ALIAS
-from ..fluid.layers import reduce_all    #DEFINE_ALIAS
-from ..fluid.layers import reduce_any    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_max    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_min    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
@@ -69,6 +67,8 @@ from ..fluid import layers
 __all__ = [
         'abs',
         'acos',
+        'all',
+        'any',
         'asin',
         'atan',
         'ceil',
@@ -2026,16 +2026,14 @@ def all(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
             import numpy as np
             
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [True, True]]
-            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             print(x)
-            x = layers.cast(x, 'bool')
+            x = paddle.cast(x, 'bool')
             
             # out1 should be [False]
             out1 = paddle.all(x)  # [False]
@@ -2050,8 +2048,8 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out3)
             
             # keep_dim=True, out4 should be [[False], [True]], out.shape should be (2,1)
-            out4 = paddle.all(x, axis=1, keep_dim=True)
-            out4 = layers.cast(out4, 'int32')  # [[False], [True]]
+            out4 = paddle.all(x, axis=1, keepdim=True)
+            out4 = paddle.cast(out4, 'int32')  # [[False], [True]]
             print(out4)
             
     """
@@ -2122,16 +2120,14 @@ def any(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
             import numpy as np
             
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [False, False]]
-            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             print(x)
-            x = layers.cast(x, 'bool')
+            x = paddle.cast(x, 'bool')
             
             # out1 should be [True]
             out1 = paddle.any(x)  # [True]
@@ -2146,8 +2142,8 @@ def any(x, axis=None, keepdim=False, name=None):
             print(out3)
             
             # keep_dim=True, result should be [[True], [False]], out.shape should be (2,1)
-            out4 = paddle.any(x, axis=1, keep_dim=True)
-            out4 = layers.cast(out4, 'int32')  # [[True], [False]]
+            out4 = paddle.any(x, axis=1, keepdim=True)
+            out4 = paddle.cast(out4, 'int32')  # [[True], [False]]
             print(out4)
             
     """
