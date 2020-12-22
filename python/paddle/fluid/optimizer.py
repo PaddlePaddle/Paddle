@@ -3890,10 +3890,11 @@ class PipelineOptimizer(object):
                 device = self._get_op_device_for_startup_program(output_var)
 
             if device:
-                device_index = int(device.split(":")[1])
+                device_index = int(device.split(':')[1])
             else:
-                device_index = None
-            if device_index is not None and device_index != local_rank: continue
+                # LR related ops
+                device = None
+            if device and device_index != local_rank: continue
             op_desc = op.desc
             ap_op = new_startup_program.block(0).desc.append_op()
             ap_op.copy_from(op_desc)
