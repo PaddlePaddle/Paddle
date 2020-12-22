@@ -18,6 +18,7 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
+list(APPEND DIST_TEST_OPS test_gen_nccl_id_op)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
@@ -244,8 +245,6 @@ function(py_test_modules TARGET_NAME)
     endif()
     if(WIN32)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
-    else()
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)
     endif()
   endif()
 endfunction()
@@ -287,9 +286,7 @@ function(bash_test_modules TARGET_NAME)
     endif()
 
     if(bash_test_modules_LABELS)
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout} LABELS ${bash_test_modules_LABELS})
-    else()
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout})
+        set_tests_properties(${TARGET_NAME} PROPERTIES LABELS ${bash_test_modules_LABELS})
     endif()
 endfunction()
 
@@ -331,9 +328,7 @@ function(parallel_bash_test_modules TARGET_NAME)
     endif()
 
     if(parallel_bash_test_modules_LABELS)
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout} LABELS ${parallel_bash_test_modules_LABELS})
-    else()
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout})
+        set_tests_properties(${TARGET_NAME} PROPERTIES LABELS ${parallel_bash_test_modules_LABELS})
     endif()
 endfunction()
 
@@ -369,6 +364,8 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
+# disable test_cumsum_op temporaily
+list(REMOVE_ITEM TEST_OPS test_cumsum_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -544,7 +541,15 @@ if(WITH_DISTRIBUTE)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
-py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_profiler)
+# Coverage pipeline use cuda 10.1 now, profiler will random hang in cuda 10.1,
+# see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
+# We guess there are some bugs in cuda 10.1 or 10.2, 
+# since this unittest is stable in cuda 11 (py3 pipeline) now.
+if(NOT WITH_COVERAGE)
+  py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_profiler)
+  set_tests_properties(test_parallel_executor_profiler PROPERTIES LABELS "RUN_TYPE=DIST")
+  set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
+endif()
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
 if(WIN32)
     py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth CUDA_VISIBLE_DEVICES=0)
@@ -628,7 +633,6 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         test_parallel_executor_seresnext_base_gpu
         test_parallel_executor_seresnext_with_reduce_gpu
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
-        test_parallel_executor_profiler
         test_parallel_executor_fetch_isolated_var
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
@@ -716,7 +720,6 @@ set_tests_properties(test_concat_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sequence_pool PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)

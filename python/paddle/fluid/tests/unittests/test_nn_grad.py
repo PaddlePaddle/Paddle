@@ -329,5 +329,135 @@ class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestClipDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [2, 4, 10]
+        dtype = np.float64
+
+        x = layers.data('x', x_shape, False, dtype)
+        x.persistable = True
+        out = paddle.clip(x, min=-1., max=1.)
+        x_arr = np.random.uniform(-5., 5., x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check([x], out, x_init=x_arr, place=place)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestTransposeDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [3, 40]
+        perm = [1, 0]
+        dtype = np.float64
+
+        x = layers.data('x', x_shape, False, dtype)
+        x.persistable = True
+        out = paddle.transpose(x, perm)
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check([x], out, x_init=x_arr, place=place)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestTransposeDoubleGradCheckCase1(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [2, 3, 4, 5]
+        perm = [0, 2, 3, 1]
+        dtype = np.float64
+
+        x = layers.data('x', x_shape, False, dtype)
+        x.persistable = True
+        out = paddle.transpose(x, perm)
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check([x], out, x_init=x_arr, place=place)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConstantPadDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [2, 3, 4, 5]
+        pad = [1, 1, 1, 1]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', x_shape, False, dtype)
+        x.persistable = True
+        out = paddle.nn.functional.pad(x, pad)
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], out, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConstantPadDoubleGradCheckCase1(TestConstantPadDoubleGradCheck):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [2, 3, 4, 5]
+        pad = [1, 0, 1, 0, 1, 0, 1, 0]
+        dtype = np.float64
+
+        x = layers.data('x', x_shape, False, dtype)
+        x.persistable = True
+        out = paddle.nn.functional.pad(x, pad)
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check([x], out, x_init=x_arr, place=place)
+
+
+class TestConcatDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [2, 3, 4, 5]
+        pad = [1, 1, 1, 1]
+        dtype = np.float64
+
+        x1 = layers.data('x', x_shape, False, dtype)
+        x2 = layers.data('x', x_shape, False, dtype)
+        x1.persistable = True
+        x2.persistable = True
+        out = paddle.concat([x1, x2], axis=0)
+        x2_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+        x1_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x1, x2], out, x_init=[x1_arr, x2_arr], place=place)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 if __name__ == "__main__":
     unittest.main()

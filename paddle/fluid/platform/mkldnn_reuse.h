@@ -45,7 +45,9 @@ class MKLDNNHandlerT {
         key_common_(base_key),
         key_(platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, base_key)),
         fwd_pd_(nullptr),
-        bwd_pd_(nullptr) {}
+        bwd_pd_(nullptr) {
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
+  }
 
   std::shared_ptr<TForward> AcquireForwardPrimitive() {
     const std::string key_p = key_ + "@fwd_p";
@@ -313,7 +315,9 @@ class MKLDNNHandler {
       : dev_ctx_(dev_ctx),
         engine_(engine),
         key_common_(base_key),
-        key_(platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, base_key)) {}
+        key_(platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, base_key)) {
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
+  }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const mkldnn::memory::desc& md, void* ptr) {
@@ -1050,13 +1054,14 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     if (mem_p == nullptr) {
       auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_, fmt);
-
-      auto dst_data = output->mutable_data(place, vtype_);
+      auto dst_data = output->mutable_data(place, vtype_, dst_md.get_size());
 
       mem_p = std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
       dev_ctx_.SetBlob(local_key, mem_p);
     } else {
-      auto dst_data = output->mutable_data(place, vtype_);
+      // Even if memory object exists , we may be using it for diffrent tensor
+      auto dst_data =
+          output->mutable_data(place, vtype_, mem_p->get_desc().get_size());
       mem_p->set_data_handle(dst_data);
     }
     return mem_p;
