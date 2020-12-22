@@ -41,12 +41,12 @@ class PipelineHelper(object):
                                inner_parallelism=None):
         self.startup_program = startup_program
 
-        endpoints = self.role_maker._get_trainer_endpoints()
-        current_endpoint = endpoints[self.role_maker._worker_index()]
-        node_num = _get_node_num(endpoints)
-        assert len(endpoints) % node_num == 0
         nranks = self.role_maker._worker_num()
         rank = self.role_maker._worker_index()
+        endpoints = self.role_maker._get_trainer_endpoints()
+        current_endpoint = endpoints[rank]
+        node_num = _get_node_num(endpoints)
+        assert nranks % node_num == 0
 
         # Create ring 0 for all gpus in the same pipeline
         if inner_parallelism > 1:

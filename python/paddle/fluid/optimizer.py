@@ -40,6 +40,7 @@ from .dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpo
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
+from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 
@@ -3842,7 +3843,7 @@ class PipelineOptimizer(object):
                     op_desc = op.desc
                     ap_op = program["program"].block(0).desc.append_op()
                     ap_op.copy_from(op_desc)
-                    #ap_op._set_attr(self._op_device_key, "")
+                    # ap_op._set_attr(self._op_device_key, "")
             elif op.type == "create_py_reader" or op.type == "read" or op.type == "create_double_buffer_reader":
                 # Copy read related ops to all section to make them exit after each epoch.
                 for device in device_program_map.keys():
@@ -4087,14 +4088,9 @@ class PipelineOptimizer(object):
             if op.has_attr(self._op_device_key) and (
                     op.attr(self._op_device_key) != ""):
                 continue
-            if not self._op_role_var_key in op.attr_names:
-                raise ValueError("For regulization and clip ops, they must "
-                                 "have the op_role_var attribute.")
+            assert self._op_role_var_key in op.attr_names
             op_role_var = op.all_attrs()[self._op_role_var_key]
-            if not len(op_role_var) == 2:
-                raise ValueError("The number of elements in the op_role_var "
-                                 "must be two, but the value given "
-                                 "is: {}.".format(len(op_role_var)))
+            assert len(op_role_var) == 2
             param_name = op_role_var[0]
             device = self._param_device_map[param_name]
             op._set_attr(self._op_device_key, device)
@@ -4118,13 +4114,11 @@ class PipelineOptimizer(object):
                     op.attr(self._op_device_key) != ""):
                 first_device = op.attr(self._op_device_key)
                 break
-        if not first_device:
-            raise ValueError("To use pipeline, you must put your program "
-                             "on different devices using device_guard.")
+        assert first_device
         first_device_type = first_device.split(":")[0]
-        if first_device_type != "gpu":
-            raise ValueError("Now only gpu devices are supported for "
-                             "pipeline parallelism.")
+        assert first_device_type == "gpu", (
+            "Now only gpu devices are "
+            "supported for pipeline parallelism.")
 
         # set op_device attr for lr-related ops
         lrsched_role = int(self._op_role.LRSched)
@@ -4134,21 +4128,12 @@ class PipelineOptimizer(object):
                 if op.type == "sum":
                     # For sum ops that compute the sum of @RENAMED@ vars
                     for name in op.desc.input_arg_names():
-                        if not '@RENAME@' in name:
-                            raise ValueError("For sum ops without the attribute"
-                                             " of op_device, their output must "
-                                             "a var with a name with the "
-                                             "substring @RENAMED@.")
-                    if len(op.desc.output_arg_names()) != 1:
-                        raise ValueError("For sum ops that compute the sum of "
-                                         "@RENAMED@ vars, they must have only "
-                                         "one output.")
+                        assert '@RENAME@' in name
+                    assert len(op.desc.output_arg_names()) == 1
                     out_name = op.desc.output_arg_names()[0]
                     post_op = self._find_post_op(block.ops, op, out_name)
                     device = post_op.attr(self._op_device_key)
-                    if not device:
-                        raise ValueError("There is no op takes the var {} as "
-                                         "input.".format(out_name))
+                    assert device
                     op._set_attr(self._op_device_key, device)
                     continue
 
@@ -4178,9 +4163,8 @@ class PipelineOptimizer(object):
             assert dev_spec, ("op_device attribute for op "
                               "{} has not been set.".format(op.type))
             dev_type = dev_spec.split(':')[0]
-            if not dev_type == "gpu":
-                raise ValueError("Now only gpu devices are supported "
-                                 "for pipeline parallelism.")
+            assert dev_type == "gpu", ("Now only gpu devices are supported "
+                                       "for pipeline parallelism.")
             if not dev_spec in device_specs:
                 device_specs.append(dev_spec)
         return device_specs
@@ -4459,9 +4443,18 @@ class PipelineOptimizer(object):
         self._add_default_opdevice_attr(main_block)
 
         device_specs = self._check_validation(main_block)
-        sorted_device_spec = sorted(
-            device_specs,
-            cmp=lambda x, y: cmp(int(x.split(':')[1]), int(y.split(':')[1])))
+
+        def device_cmp(device1, device2):
+            dev1_id = int(device1.split(':')[1])
+            dev2_id = int(device2.split(':')[1])
+            if dev1_id < dev2_id:
+                return -1
+            elif dev1_id > dev2_id:
+                return 1
+            else:
+                return 0
+
+        sorted_device_spec = sorted(device_specs, key=cmp_to_key(device_cmp))
         assert sorted_device_spec == device_specs, (
             "With pipeline "
             "parallelism, you must use gpu devices one after another "
