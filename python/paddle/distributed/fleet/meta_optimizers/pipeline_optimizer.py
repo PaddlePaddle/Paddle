@@ -49,14 +49,15 @@ class PipelineHelper(object):
         rank = self.role_maker._worker_index()
 
         # Create ring 0 for all gpus in the same pipeline
-        pipeline_rank = rank % inner_parallelism
-        pipeline_id = rank // inner_parallelism
-        start_index = pipeline_id * inner_parallelism
-        pipeline_endpoints = endpoints[start_index:start_index +
-                                       inner_parallelism]
-        self._init_communicator(self.startup_program, current_endpoint,
-                                pipeline_endpoints, pipeline_rank, 0,
-                                self.wait_port)
+        if inner_parallelism > 1:
+            pipeline_rank = rank % inner_parallelism
+            pipeline_id = rank // inner_parallelism
+            start_index = pipeline_id * inner_parallelism
+            pipeline_endpoints = endpoints[start_index:start_index +
+                                           inner_parallelism]
+            self._init_communicator(self.startup_program, current_endpoint,
+                                    pipeline_endpoints, pipeline_rank, 0,
+                                    self.wait_port)
 
         pipeline_num = len(endpoints) // inner_parallelism
         if pipeline_num == 1: return
@@ -111,7 +112,7 @@ class PipelineHelper(object):
         for var_name in block.vars:
             if "nccl_id" in var_name: continue
             param = block.var(var_name)
-            if param.is_distributed or not param.persistable:
+            if not param.persistable:
                 continue
 
             block.append_op(

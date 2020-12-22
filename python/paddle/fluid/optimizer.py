@@ -4459,9 +4459,6 @@ class PipelineOptimizer(object):
         self._add_default_opdevice_attr(main_block)
 
         device_specs = self._check_validation(main_block)
-        if len(device_specs) == 1:
-            print("Warning: If only one device is used, "
-                  "it's need to use pipeline parallelism.")
         sorted_device_spec = sorted(
             device_specs,
             cmp=lambda x, y: cmp(int(x.split(':')[1]), int(y.split(':')[1])))
@@ -4518,6 +4515,13 @@ class PipelineOptimizer(object):
         startup_program._pipeline_opt = {
             "startup_program": new_startup_program,
         }
+
+        with open("/tmp/start", 'w') as f:
+            f.writelines(str(startup_program))
+        with open("/tmp/start_%d" % local_rank, 'w') as f:
+            f.writelines(str(new_startup_program))
+        with open("/tmp/main_%d" % local_rank, 'w') as f:
+            f.writelines(str(program_list[local_rank]['program']))
         place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
