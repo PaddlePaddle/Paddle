@@ -122,10 +122,6 @@ class VariableWrapper {
 
   framework::proto::VarType::Type Type() const { return type_; }
 
-  void SetDataType(framework::proto::VarType::Type data_type) {
-    data_type_ = data_type;
-  }
-
   std::shared_ptr<VariableWrapper> GetGradVar() const {
     return grad_var_.lock();
   }
@@ -139,6 +135,10 @@ class VariableWrapper {
   bool HasGradNode() const { return !grad_node_.expired(); }
 
   bool HasGradVar() const { return !grad_var_.expired(); }
+
+  void SetDataType(framework::proto::VarType::Type data_type) {
+    data_type_ = data_type;
+  }
 
   framework::proto::VarType::Type DataType() const {
     const framework::Tensor* tensor = nullptr;
@@ -158,6 +158,14 @@ class VariableWrapper {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
       return data_type_;
     }
+  }
+
+  void SetForwardDataType(framework::proto::VarType::Type data_type) {
+    fwd_data_type_ = data_type;
+  }
+
+  framework::proto::VarType::Type ForwardDataType() const {
+    return fwd_data_type_;
   }
 
   const platform::Place Place() const {
@@ -305,6 +313,9 @@ class VariableWrapper {
 
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};
+
+  framework::proto::VarType::Type fwd_data_type_{
+      static_cast<framework::proto::VarType::Type>(-1)};
 
   std::weak_ptr<VariableWrapper> grad_var_;
   std::weak_ptr<GradOpNode> grad_node_;

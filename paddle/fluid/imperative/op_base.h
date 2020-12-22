@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
@@ -131,12 +132,6 @@ class OpBase {
 
   void SetPlace(const platform::Place& place) { place_ = place; }
 
-  const NameVarTypeMap ForwardInputDataTypes() const { return fwd_in_types_; }
-
-  void SetForwardInputDataTypes(const NameVarTypeMap& fwd_in_types) {
-    fwd_in_types_ = fwd_in_types_;
-  }
-
   void EnforceHasInOut() const {
     PADDLE_ENFORCE_NE(
         ins_.empty() && outs_.empty(), true,
@@ -181,8 +176,6 @@ class OpBase {
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   size_t id_{-1UL};
-
-  NameVarTypeMap fwd_in_types_;
 
   std::weak_ptr<InteriorVarHookPipeline> pre_hooks_;
 };

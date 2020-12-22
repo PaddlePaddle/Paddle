@@ -857,6 +857,13 @@ void PartialGradTask::RunEachOp(OpBase *op) {
 
           auto new_grad_var = std::make_shared<VarBase>(true, grad_var->Name());
           new_grad_var->SetOverridedStopGradient(false);
+
+          VLOG(6) << "Original grad var fwd dtype: "
+                  << framework::DataTypeToString(grad_var->ForwardDataType())
+                  << ", new grad var fwd dtype: "
+                  << framework::DataTypeToString(
+                         new_grad_var->ForwardDataType());
+          new_grad_var->SetForwardDataType(grad_var->ForwardDataType());
           if (new_grad_var_iter->second->TotalRefCnt() > 1) {
             grads_to_accumulate_.emplace_back(new_grad_var_iter->second.get(),
                                               new_grad_var->SharedVar());
@@ -882,10 +889,8 @@ void PartialGradTask::RunEachOp(OpBase *op) {
   OpBase::Run(op->InnerOp(), tmp_ins, tmp_outs, op->Attrs(), op->place());
 
   if (create_graph_) {
-    NameVarTypeMap fwd_in_dtypes;
-    auto double_grad_node =
-        CreateGradOpNode(op->InnerOp(), tmp_ins, tmp_outs, op->Attrs(),
-                         op->place(), fwd_in_dtypes);
+    auto double_grad_node = CreateGradOpNode(op->InnerOp(), tmp_ins, tmp_outs,
+                                             op->Attrs(), op->place());
     PADDLE_ENFORCE_NOT_NULL(
         double_grad_node,
         platform::errors::NotFound("The Op %s doesn't have any grad op. If you "

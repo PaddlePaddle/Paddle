@@ -1291,7 +1291,8 @@ class OpTest(unittest.TestCase):
 
     def _assert_is_close(self, numeric_grads, analytic_grads, names,
                          max_relative_error, msg_prefix):
-
+        print("numeric_grads: ", numeric_grads)
+        print("analytic_grads: ", analytic_grads)
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
             # max_relative_error is 1e-7. According to the value of np.abs(a), we
@@ -1338,7 +1339,7 @@ class OpTest(unittest.TestCase):
                    user_defined_grad_outputs=None,
                    check_dygraph=True):
         self._check_grad_helper()
-        places = self._get_places()
+        places = [paddle.CPUPlace()]  # self._get_places()
         for place in places:
             self.check_grad_with_place(
                 place, inputs_to_check, output_names, no_grad_set,

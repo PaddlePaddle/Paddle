@@ -57,8 +57,5 @@ using NameVariableWrapperMap = NameVarMap<VariableWrapper>;
 
 using VariableWrapperList = std::vector<std::shared_ptr<VariableWrapper>>;
 
-using NameVarTypeMap =
-    std::map<std::string, std::vector<framework::proto::VarType::Type>>;
-
 }  // namespace imperative
 }  // namespace paddle

@@ -24,7 +24,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
@@ -36,37 +35,6 @@ DECLARE_bool(sort_sum_gradient);
 
 namespace paddle {
 namespace imperative {
-
-static framework::Tensor* GetTensorFromVar(framework::Variable* var) {
-  if (var->IsType<framework::LoDTensor>()) {
-    return var->GetMutable<framework::LoDTensor>();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    return var->GetMutable<framework::SelectedRows>()->mutable_value();
-  } else {
-    return nullptr;
-  }
-}
-
-static void HandleComplexToRealGrad(const NameVarTypeMap& in_dtypes,
-                                    NameVariableWrapperMap* outs) {
-  for (auto& pair : *outs) {
-    if (!pair.second.IsGrad()) {
-      continue;
-    }
-    const auto& dtype_vec = in_dtypes.at(pair.first);
-    for (size_t i = 0; i < pair.second.size(); ++i) {
-      auto& var = pair.second[i];
-      if (!var) {
-        continue;
-      }
-      if (var->DataType() != dtype_vec[i]) {
-        auto* variable = var->MutableVar();
-        auto* tensor = GetTensorFromVar(variable);
-        framework::HandleComplexToReal(dtype_vec[i], tensor);
-      }
-    }
-  }
-}
 
 void BasicEngine::Init(VarBase* var, bool retain_graph) {
   retain_graph_ = retain_graph;
@@ -272,6 +240,7 @@ void BasicEngine::Execute() {
           if (var->OverridedStopGradient() || iter->second->RefCnt() > 1) {
             auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
             tmp_var->SetType(var->Type());
+            tmp_var->SetForwardDataType(var->ForwardDataType());
             var = tmp_var;
             need_accu_var_list_.emplace_back(iter->second.get(), var);
             VLOG(10) << "create temporary var of " << var->Name()
@@ -309,10 +278,6 @@ void BasicEngine::Execute() {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
         OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
                     cur_op.place());
-
-        if (!cur_op.ForwardInputDataTypes().empty()) {
-          HandleComplexToRealGrad(cur_op.ForwardInputDataTypes(), &tmp_outs);
-        }
       }
 
       // Step 2: Sum Gradient of This graph

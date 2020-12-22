@@ -56,32 +56,6 @@ static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
   }
 }
 
-static bool ContainsComplex(const NameVarBaseMap& ins) {
-  for (const auto& pair : ins) {
-    for (const auto& var : pair.second) {
-      if (var != nullptr && framework::IsComplexType(var->DataType())) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-static void RecordInputDataTypes(const NameVarBaseMap& ins,
-                                 NameVarTypeMap* fwd_in_dtypes) {
-  for (const auto& pair : ins) {
-    for (const auto& var : pair.second) {
-      if (var == nullptr) {
-        continue;
-      }
-      VLOG(6) << "Record forward input (" << var->Name() << ")'s dtype ("
-              << var->DataType() << ")";
-      (*fwd_in_dtypes)[framework::GradVarName(pair.first)].emplace_back(
-          var->DataType());
-    }
-  }
-}
-
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward) {
@@ -112,11 +86,6 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     new_ins = AutoCastInputs(type, ins);
   }
 
-  NameVarTypeMap fwd_in_dtypes;
-  if (ContainsComplex(ins)) {
-    RecordInputDataTypes(ins, &fwd_in_dtypes);
-  }
-
   try {
     OpBase::Run(*op, new_ins, outs, attrs, place);
   } catch (platform::EnforceNotMet& exception) {
@@ -141,7 +110,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, new_ins, outs, attrs, place, fwd_in_dtypes);
+    CreateGradOpNode(*op, new_ins, outs, attrs, place);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }

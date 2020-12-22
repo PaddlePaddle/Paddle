@@ -148,9 +148,8 @@ void Tensor::ResetHolder(std::shared_ptr<memory::Allocation> holder) {
 
 void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
                                  const proto::VarType::Type type) {
-  type_ = type;
-  // Holder size checking need based on new type
   ResetHolder(holder);
+  type_ = type;
 }
 
 }  // namespace framework

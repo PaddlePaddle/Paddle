@@ -16,6 +16,7 @@
 
 #include <sstream>
 
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/infer_var_type_context.h"
@@ -36,12 +37,35 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
 }
 
 template <typename VarType>
+static void PrepareGradVarDataType(const std::shared_ptr<VarType>& var);
+
+template <>
+void PrepareGradVarDataType<VariableWrapper>(
+    const std::shared_ptr<VariableWrapper>& var) {
+  if (var->HasGradVar()) {
+    auto grad_var = var->GetGradVar();
+    VLOG(6) << "Set grad var (" << grad_var->Name() << ") dtype to ("
+            << framework::DataTypeToString(var->DataType()) << ").";
+    grad_var->SetForwardDataType(var->DataType());
+  }
+}
+
+template <>
+void PrepareGradVarDataType<VarBase>(const std::shared_ptr<VarBase>& var) {
+  if (var->HasGradVar()) {
+    auto& shared_var = var->SharedVar();
+    PrepareGradVarDataType<VariableWrapper>(shared_var);
+  }
+}
+
+template <typename VarType>
 static void PrepareData(const platform::Place& place,
                         const NameVarMap<VarType>& ins,
                         const framework::OperatorWithKernel& op,
                         const framework::OpKernelType& expected_kernel_key) {
   for (const auto& name_pair : ins) {
     for (const auto& var_base : name_pair.second) {
+      PrepareGradVarDataType(var_base);
       const auto* tensor = GetTensorFromVar(var_base->Var());
       if (tensor && tensor->IsInitialized()) {
         auto kernel_type_for_var = op.GetKernelTypeForVar(
@@ -56,6 +80,35 @@ static void PrepareData(const platform::Place& place,
                         &out);
           SetTensorToVariable(var_base->Var(), out, var_base->MutableVar());
         }
+      }
+    }
+  }
+}
+
+template <typename VarType>
+void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
+  for (auto& pair : outs) {
+    for (auto& var : pair.second) {
+      if (var->ForwardDataType() ==
+          static_cast<framework::proto::VarType::Type>(-1)) {
+        VLOG(6) << "Var (" << var->Name()
+                << ")'s forward data type is not set.";
+        continue;
+      }
+      if (!framework::IsComplexType(var->DataType()) ||
+          framework::IsComplexType(var->ForwardDataType())) {
+        continue;
+      }
+      const auto* tensor = GetTensorFromVar(var->Var());
+      if (tensor && tensor->IsInitialized()) {
+        VLOG(6) << "Complex to Real in grad op: src dtype ("
+                << framework::DataTypeToString(var->DataType())
+                << ") -> dst dtype ("
+                << framework::DataTypeToString(var->ForwardDataType()) << ").";
+        framework::Tensor out;
+        framework::TransComplexToReal(var->ForwardDataType(), var->DataType(),
+                                      *tensor, &out);
+        SetTensorToVariable(var->Var(), out, var->MutableVar());
       }
     }
   }
@@ -158,6 +211,8 @@ static void PreparedOpRunImpl(
 
   func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
                                         attrs));
+
+  HandleComplexGradToRealGrad<VarType>(outs);
 }
 
 void PreparedOp::Run(const NameVarMap<VarBase>& ins,
