@@ -120,7 +120,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
       }
     }
   }
-  minibatch_sn_ = 0.0;
+  // minibatch_sn_ = 0.0;
   item_sampling_slots_.resize(
       recall_ins_weight_config_.item_sampling_slot_size());
   for (int i = 0; i < recall_ins_weight_config_.item_sampling_slot_size();
@@ -259,7 +259,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     }
     int nid_ins_index = 0;
     int memcpy_offset = 0;
-    if (item_sampling_slots_.size() > 0) {
+    if (recall_ins_weight_config_.enable_ins_weight()) {
       memcpy_offset = 1;
     }
     for (int index = 0; index < len; ++index) {
@@ -412,8 +412,8 @@ void DownpourWorker::CopySparseTable() {
 }
 
 void DownpourWorker::FillInsWeight(size_t table_idx) {
-  if (item_sampling_slots_.size() == 0) {
-    VLOG(0) << "item_sampling_slot is not configured, skip fill ins_weight var";
+  if (!recall_ins_weight_config_.enable_ins_weight()) {
+    VLOG(0) << "enable_ins_weight=false, skip fill ins_weight var";
     return;
   }
   Variable* ins_weight_var = thread_scope_->FindVar(
@@ -438,7 +438,7 @@ void DownpourWorker::FillInsWeight(size_t table_idx) {
   auto& fea_value = feature_values_[table_id];
   size_t global_index = 0;
   size_t batch_size = device_reader_->GetCurBatchSize();
-  if (item_sampling_slots_.size() > 0) {
+  if (recall_ins_weight_config_.enable_ins_weight()) {
     item_freq_vec_.clear();
     item_freq_vec_.resize(batch_size);
     for (size_t vid = 0; vid < batch_size; vid++) {
@@ -623,7 +623,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
     total_time += timeline.ElapsedSec();
 
     timeline.Start();
-    minibatch_sn_ += 1.0;
+    fleet_ptr_->minibatch_sn_[thread_id_] += 1.0;
     if (copy_table_config_.need_copy()) {
       VLOG(3) << "copy_sparse_tables_.size " << copy_sparse_tables_.size();
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
@@ -676,7 +676,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
       adjust_ins_weight_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
       timeline.Start();
-      if (item_sampling_slots_.size() > 0) {
+      if (recall_ins_weight_config_.enable_ins_weight()) {
         FillInsWeight(i);
       }
       timeline.Pause();
@@ -733,7 +733,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
             break;
           }
         }
-        if (item_sampling_slots_.size() > 0) {
+        if (recall_ins_weight_config_.enable_ins_weight()) {
           timeline.Start();
           need_hit_interval_.clear();
           hit_interval_new_.clear();
@@ -768,8 +768,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
                 }
                 if (find_hit_slot > 0) {
                   std::unordered_map<uint64_t, float>& last_hit_minibatch_sn =
-                      last_hit_minibatch_sn_;
-                  float cur_minibatch_sn = minibatch_sn_;
+                      fleet_ptr_->last_hit_minibatch_sn_[thread_id_];
+                  float cur_minibatch_sn =
+                      fleet_ptr_->minibatch_sn_[thread_id_];
                   float hit_interval_new = table.initial_value();
                   auto it = last_hit_minibatch_sn.find(ids[fea_idx]);
                   if (it != last_hit_minibatch_sn.end()) {
@@ -970,7 +971,7 @@ void DownpourWorker::TrainFiles() {
   int batch_cnt = 0;
   int cur_batch;
   while ((cur_batch = device_reader_->Next()) > 0) {
-    minibatch_sn_ += 1.0;
+    fleet_ptr_->minibatch_sn_[thread_id_] += 1.0;
     if (copy_table_config_.need_copy()) {
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
         CopySparseTable();
@@ -1001,7 +1002,7 @@ void DownpourWorker::TrainFiles() {
       if (nid_iter != sparse_value_names_[tid].end()) {
         AdjustInsWeight();
       }
-      if (item_sampling_slots_.size() > 0) {
+      if (recall_ins_weight_config_.enable_ins_weight()) {
         FillInsWeight(i);
       }
     }
@@ -1093,7 +1094,7 @@ void DownpourWorker::TrainFiles() {
             break;
           }
         }
-        if (item_sampling_slots_.size() > 0) {
+        if (recall_ins_weight_config_.enable_ins_weight()) {
           need_hit_interval_.clear();
           hit_interval_new_.clear();
           need_hit_interval_.resize(features_[tid].size());
@@ -1127,8 +1128,9 @@ void DownpourWorker::TrainFiles() {
                 }
                 if (find_hit_slot > 0) {
                   std::unordered_map<uint64_t, float>& last_hit_minibatch_sn =
-                      last_hit_minibatch_sn_;
-                  float cur_minibatch_sn = minibatch_sn_;
+                      fleet_ptr_->last_hit_minibatch_sn_[thread_id_];
+                  float cur_minibatch_sn =
+                      fleet_ptr_->minibatch_sn_[thread_id_];
                   float hit_interval_new = table.initial_value();
                   auto it = last_hit_minibatch_sn.find(ids[fea_idx]);
                   if (it != last_hit_minibatch_sn.end()) {
