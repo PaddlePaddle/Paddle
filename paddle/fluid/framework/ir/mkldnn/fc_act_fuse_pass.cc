@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
-  std::vector<std::string> act_types = {"gelu", "tanh"};
+  std::vector<std::string> act_types = {"gelu", "tanh", "sigmoid"};
 
   for (std::string act_type : act_types) FuseFCAct(graph, act_type);
 }

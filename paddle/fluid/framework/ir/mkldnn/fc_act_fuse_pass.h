@@ -27,7 +27,7 @@ namespace ir {
  * \brief   Fuse the FC and activation operators into single OneDNN's
  *          FC with post-op.
  *
- * \note    Currently only GeLU and tanh are supported as an activation
+ * \note    Currently only GeLU, sigmoid and tanh are supported as an activation
  *  function.
  */
 class FuseFCActOneDNNPass : public FusePassBase {
