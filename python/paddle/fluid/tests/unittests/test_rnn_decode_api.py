@@ -672,8 +672,8 @@ class TestBeamSearch(ModuleApiTest):
                    hidden_size,
                    bos_id=0,
                    eos_id=1,
-                   beam_size=2,
-                   max_step_num=2):
+                   beam_size=4,
+                   max_step_num=20):
         embedder = paddle.fluid.dygraph.Embedding(
             size=[vocab_size, embed_dim], dtype="float64")
         output_layer = nn.Linear(hidden_size, vocab_size)
