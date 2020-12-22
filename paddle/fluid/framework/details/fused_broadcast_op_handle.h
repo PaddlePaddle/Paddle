@@ -53,7 +53,7 @@ struct FusedBroadcastOpHandle : public BroadcastOpHandle {
                          const platform::NCCLContextMap *nccl_ctx)
       : BroadcastOpHandle(node, local_scopes, places, nccl_ctx) {}
 #endif
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
   FusedBroadcastOpHandle(ir::Node *node,
                          const std::vector<Scope *> local_scopes,
                          const std::vector<platform::Place> &places,

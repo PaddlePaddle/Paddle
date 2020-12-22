@@ -41,7 +41,7 @@ struct NCCLContextMap;
 }  // namespace paddle
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/bkcl_helper.h"
 #endif
 
@@ -95,7 +95,7 @@ struct ReduceOpHandle : public OpHandleBase {
       }
     }
   }
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
   const platform::BKCLContextMap *bkcl_ctxs_;
   ReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places,

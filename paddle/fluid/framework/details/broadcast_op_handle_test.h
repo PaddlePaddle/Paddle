@@ -52,7 +52,7 @@ struct TestBroadcastOpHandle {
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
 
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
   std::unique_ptr<platform::BKCLContextMap> bkcl_ctxs_;
 #endif
 
@@ -65,7 +65,7 @@ struct TestBroadcastOpHandle {
       nccl_ctxs_->WaitAll();
     }
 #endif
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
     if (bkcl_ctxs_) {
       bkcl_ctxs_->WaitAll();
     }
@@ -75,7 +75,7 @@ struct TestBroadcastOpHandle {
   void InitCtxOnDevice(DeviceType use_device) {
     use_device_ = use_device;
     if (use_device_ == p::kXPU) {
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
       int count = p::GetXPUDeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-xpu Broadcast, because the XPU "
@@ -148,7 +148,7 @@ struct TestBroadcastOpHandle {
           platform::errors::PreconditionNotMet("Not compiled with NCCL."));
 #endif
     } else if (use_device_ == p::kXPU) {
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
       op_handle_ = new BroadcastOpHandle(nodes_.back().get(), local_scopes_,
                                          place_list_, bkcl_ctxs_.get());
 #else

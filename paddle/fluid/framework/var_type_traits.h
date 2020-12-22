@@ -31,7 +31,7 @@
 #endif
 #endif
 
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
 
@@ -46,7 +46,7 @@ class NCCLCommunicator;
 #endif
 #endif
 
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
 class BKCLCommunicator;
 #endif
 }  // namespace platform
@@ -157,7 +157,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #endif
     operators::CudnnRNNCache,
 #endif
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId, platform::BKCLCommunicator,
 #endif
     int, float>;

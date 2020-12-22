@@ -95,12 +95,9 @@ void OpHandleBase::InitXPU() {
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
-        // ToDo: add XPU sync events
-        // int dev_id =
-        //   BOOST_GET_CONST(platform::XPUPlace,
-        //   out_var_handle->place()).device;
-        // PADDLE_THROW(
-        //     platform::errors::Unimplemented("Not supported"));
+        // TODO(liuyuhui): add XPU sync events
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "XPU now don't support sync events"));
       }
     }
   } else {
@@ -137,11 +134,24 @@ void OpHandleBase::Run(DeviceType use_device) {
     InitCUDA();
   }
 #else
-  PADDLE_ENFORCE_NE(use_device, p::kCUDA,
-                    platform::errors::InvalidArgument(
-                        "Argument use_cuda should be false when Paddle is not "
-                        "compiled with CUDA."));
+  PADDLE_ENFORCE_NE(
+      use_device, p::kCUDA,
+      platform::errors::InvalidArgument(
+          "Argument use_device should not be kCUDA when Paddle is not "
+          "compiled with CUDA."));
 #endif
+
+  if (use_device == p::kXPU && dev_ctxes_.size() > 0) {
+#ifdef PADDLE_WITH_XPU
+    InitXPU();
+#else
+    PADDLE_ENFORCE_NE(
+        use_device, p::kXPU,
+        platform::errors::InvalidArgument(
+            "Argument use_device should not be kXPU when Paddle is not "
+            "compiled with XPU."));
+#endif
+  }
 
   // skip running current op, used with inplace_addto_op_pass
   if (skip_running_) {

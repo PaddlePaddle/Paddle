@@ -54,7 +54,7 @@ TEST(BroadcastTester, TestGPUBroadcastTestSelectedRows) {
 }
 #endif
 
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
 TEST(BroadcastTester, TestXPUBroadcastTestLodTensor) {
   TestBroadcastOpHandle test_op;
   size_t input_scope_idx = 0;

@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
 

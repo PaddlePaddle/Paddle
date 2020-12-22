@@ -139,19 +139,6 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
         strategy_, local_scopes_, local_exec_scopes, {places_[i]},
         graphs_.at(i).get()));
   }
-
-  //   if (places.size() > 0 && platform::is_xpu_place(places[0])) {
-  // #if defined(PADDLE_WITH_XPU)
-  //     for (size_t i = 0; i < places.size(); ++i) {
-  //       xpu_executors_.emplace_back(new details::XPUThreadedSSAGraphExecutor(
-  //           strategy_, local_scopes_, local_exec_scopes, {places_[i]},
-  //           graphs_.at(i).get()));
-  //     }
-  // #else
-  //     PADDLE_THROW(
-  //         platform::errors::PreconditionNotMet("Not compiled with XPU."));
-  // #endif
-  //  }
 }
 
 std::vector<ir::Graph *> ParallelSSAGraphExecutor::Graphs() {

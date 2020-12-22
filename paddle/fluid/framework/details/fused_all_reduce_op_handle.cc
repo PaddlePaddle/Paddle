@@ -37,7 +37,7 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     const platform::NCCLCommunicator *ctxs)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
       num_of_all_reduce_(num_of_all_reduce) {}
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce,
@@ -82,7 +82,7 @@ void FusedAllReduceOpHandle::RunImpl() {
 
 // Note: some gradient op doesn't have CUDAKernel, so the gradients of
 // those op are in CPUPlace, in this case, the all reduce should not be fused.
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
   // TODO(liuyuhui): XPU don't support fuse all reduce for now
   if (InputIsInDifferentPlace(in_var_handles) || true) {
 #else

@@ -70,11 +70,6 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<platform::Place> places_;
   std::vector<std::unique_ptr<ir::Graph>> graphs_;
 
-  // #if defined(PADDLE_WITH_XPU)
-  //   std::vector<std::unique_ptr<details::XPUThreadedSSAGraphExecutor>>
-  //       xpu_executors_;
-  // #endif
-
   std::vector<std::unique_ptr<details::FastThreadedSSAGraphExecutor>>
       executors_;
   ExceptionHolder exception_holder_;

@@ -43,7 +43,7 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                         "number of local scopes is %d.",
                         places_.size(), local_scopes_.size()));
 }
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
@@ -111,7 +111,7 @@ void AllReduceOpHandle::AllReduceImpl(
   places.reserve(num_places);
   int64_t numel = -1;
   bool is_gpu_place = false;
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
   bool is_xpu_place = false;
 #endif
   auto dtype = static_cast<framework::proto::VarType::Type>(0);
@@ -133,7 +133,7 @@ void AllReduceOpHandle::AllReduceImpl(
               in_var_handles[i]->name(), numel));
       dtype = lod_tensor.type();
       is_gpu_place = platform::is_gpu_place(lod_tensor.place());
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
       is_xpu_place = platform::is_xpu_place(lod_tensor.place());
 #endif
     }
@@ -147,7 +147,7 @@ void AllReduceOpHandle::AllReduceImpl(
         platform::errors::PreconditionNotMet(
             "The dtype of tensors of the same variable in different local "
             "scopes should be equal."));
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
     PADDLE_ENFORCE_EQ(is_xpu_place, platform::is_xpu_place(lod_tensor.place()),
                       platform::errors::PreconditionNotMet(
                           "The place type of tensors of the same variable "
@@ -206,7 +206,7 @@ void AllReduceOpHandle::AllReduceFunc(
         platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
   } else if (is_xpu_place(places[0])) {
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
     PADDLE_ENFORCE_NOT_NULL(bkcl_ctxs_,
                             platform::errors::InvalidArgument(
                                 "The bkcl context should not be NULL."));
@@ -249,7 +249,7 @@ void AllReduceOpHandle::AllReduceFunc(
   VLOG(10) << Name() << " size:" << numel * SizeOfType(dtype);
 }
 
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
 void AllReduceOpHandle::BKCLAllReduceFunc(
     const std::vector<std::function<void()>> &all_reduce_calls) {
   this->RunAndRecordEvent([&] {

@@ -162,7 +162,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
   if (multi_nccl_ctxs_) {
     nccl_ctxs_ = multi_nccl_ctxs_->DefaultFlatCtx();
   }
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
   multi_bkcl_ctxs_ = &Get<platform::BKCLCommunicator>(details::kBKCLCtxs);
   bkcl_ctxs_ = nullptr;
   if (multi_bkcl_ctxs_) {
@@ -330,7 +330,7 @@ bool MultiDevSSAGraphBuilderBase::UseGPU() const {
 
 bool MultiDevSSAGraphBuilderBase::UseXPU() const {
   bool use_xpu = false;
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
   use_xpu = bkcl_ctxs_ != nullptr;
 #endif
   return use_xpu;
@@ -385,7 +385,7 @@ void MultiDevSSAGraphBuilderBase::SetCommunicationContext(
     op_handle->SetDeviceContext(p,
                                 platform::DeviceContextPool::Instance().Get(p));
   }
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
   if (bkcl_ctxs_ == nullptr) {
     op_handle->SetDeviceContext(p,
                                 platform::DeviceContextPool::Instance().Get(p));
@@ -403,7 +403,7 @@ void MultiDevSSAGraphBuilderBase::CreateBroadcastOp(ir::Graph *result,
   auto *op_handle = new details::BroadcastOpHandle(
       result->CreateEmptyNode("broadcast", ir::Node::Type::kOperation),
       local_scopes_, places_, nccl_ctxs_);
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
   auto *op_handle = new details::BroadcastOpHandle(
       result->CreateEmptyNode("broadcast", ir::Node::Type::kOperation),
       local_scopes_, places_, bkcl_ctxs_);
@@ -440,7 +440,7 @@ void MultiDevSSAGraphBuilderBase::CreateFusedBroadcastOp(
   auto *op_handle = new details::FusedBroadcastOpHandle(
       result->CreateEmptyNode("fused_broadcast", ir::Node::Type::kOperation),
       local_scopes_, places_, nccl_ctxs_);
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
   auto *op_handle = new details::FusedBroadcastOpHandle(
       result->CreateEmptyNode("fused_broadcast", ir::Node::Type::kOperation),
       local_scopes_, places_, bkcl_ctxs_);
@@ -514,7 +514,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
         new details::AllReduceOpHandle(
             result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
             scopes, places, multi_nccl_ctxs_));
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
     result->Get<GraphOps>(kGraphOps).emplace_back(
         new details::AllReduceOpHandle(
             result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
@@ -597,7 +597,7 @@ details::VarHandle *MultiDevSSAGraphBuilderBase::CreateReduceOp(
   result->Get<GraphOps>(kGraphOps).emplace_back(new details::ReduceOpHandle(
       result->CreateEmptyNode("reduce", ir::Node::Type::kOperation),
       local_scopes_, places_, nccl_ctxs_));
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
   result->Get<GraphOps>(kGraphOps).emplace_back(new details::ReduceOpHandle(
       result->CreateEmptyNode("reduce", ir::Node::Type::kOperation),
       local_scopes_, places_, bkcl_ctxs_));

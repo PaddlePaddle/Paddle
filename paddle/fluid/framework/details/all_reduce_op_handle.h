@@ -34,7 +34,7 @@ class NCCLCommunicator;
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/nccl_helper.h"
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/framework/details/bkcl_op_handle.h"
 #include "paddle/fluid/platform/bkcl_helper.h"
 #endif
@@ -49,7 +49,7 @@ class AllReduceOpHandle : public NCCLOpHandleBase {
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
                     const platform::NCCLCommunicator *ctxs);
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
 class AllReduceOpHandle : public BKCLOpHandleBase {
  public:
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
@@ -74,9 +74,8 @@ class AllReduceOpHandle : public OpHandleBase {
 
   std::vector<Scope *> local_scopes_;
 
-#if !(PADDLE_WITH_NCCL || \
-      (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)))
-  // NCCLOpHandleBase already have these attributes.
+#if !(PADDLE_WITH_NCCL || PADDLE_WITH_XPU_BKCL)
+  // NCCLOpHandleBase and BKCLOpHandleBase already have these attributes.
   // Will polish it by class inheritance framework.
   std::vector<platform::Place> places_;
 #endif
@@ -88,7 +87,7 @@ class AllReduceOpHandle : public OpHandleBase {
   void SyncNCCLAllReduce();
 #endif
 
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
   void BKCLAllReduceFunc(
       const std::vector<std::function<void()>> &all_reduce_calls);
 #endif

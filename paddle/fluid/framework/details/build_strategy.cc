@@ -313,13 +313,13 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                 const std::vector<Scope *> &local_scopes,
                                 const size_t &nranks,
 #if defined(PADDLE_WITH_NCCL)
-                                DeviceType device,
+                                DeviceType use_device,
                                 platform::NCCLCommunicator *nccl_ctxs) const {
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-                                DeviceType device,
+                                DeviceType use_device,
                                 platform::BKCLCommunicator *bkcl_ctxs) const {
 #else
-                                DeviceType device) const {
+                                DeviceType use_device) const {
 #endif
   VLOG(1) << "apply all passes";
   // Create a default one if not finalized by user.
@@ -340,13 +340,13 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
 
 #if defined(PADDLE_WITH_NCCL)
       platform::NCCLCommunicator *nctx =
-          (device == p::kCUDA) ? nccl_ctxs : nullptr;
+          (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
       // ToDo: more check
       platform::BKCLCommunicator *bkcl_ctx =
-          (device == p::kXPU) ? bkcl_ctxs : nullptr;
+          (use_device == p::kXPU) ? bkcl_ctxs : nullptr;
       pass->Erase(kBKCLCtxs);
       pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, bkcl_ctx);
 #endif
@@ -360,7 +360,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                                     &local_scopes);
 #if defined(PADDLE_WITH_NCCL)
       platform::NCCLCommunicator *nctx =
-          (device == p::kCUDA) ? nccl_ctxs : nullptr;
+          (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
       pass->Erase(kUseHierarchicalAllReduce);
@@ -368,7 +368,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                       new bool(use_hierarchical_allreduce_));
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
       platform::BKCLCommunicator *nctx =
-          (device == p::kXPU) ? bkcl_ctxs : nullptr;
+          (use_device == p::kXPU) ? bkcl_ctxs : nullptr;
       pass->Erase(kBKCLCtxs);
       pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, nctx);
       pass->Erase(kUseHierarchicalAllReduce);
@@ -387,7 +387,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     } else if (pass->Type() == "all_reduce_deps_pass") {
 #if defined(PADDLE_WITH_NCCL)
       platform::NCCLCommunicator *nctx =
-          (device == p::kCUDA) ? nccl_ctxs : nullptr;
+          (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
       pass->Erase(kUseHierarchicalAllReduce);
@@ -395,7 +395,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                       new bool(use_hierarchical_allreduce_));
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
       platform::BKCLCommunicator *nctx =
-          (device == p::kXPU) ? bkcl_ctxs : nullptr;
+          (use_device == p::kXPU) ? bkcl_ctxs : nullptr;
       pass->Erase(kBKCLCtxs);
       pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, nctx);
       pass->Erase(kUseHierarchicalAllReduce);
@@ -408,25 +408,25 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       VLOG(1) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
               << ", num_trainers:" << num_trainers_;
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
-      if (device != p::kCUDA) {
+      if (use_device != p::kCUDA) {
         LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
                         "GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fusion_group_pass") {
-      pass->Set<bool>("use_gpu", new bool((device == p::kCUDA)));
-      if (device != p::kCUDA) {
+      pass->Set<bool>("use_gpu", new bool((use_device == p::kCUDA)));
+      if (use_device != p::kCUDA) {
         LOG(WARNING) << "fusion_group_pass is only supported on GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fuse_bn_act_pass") {
-      if (device != p::kCUDA) {
+      if (use_device != p::kCUDA) {
         LOG(WARNING) << "fuse_bn_act_pass is only supported on "
                         "GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fuse_bn_add_act_pass") {
-      if (device != p::kCUDA) {
+      if (use_device != p::kCUDA) {
         LOG(WARNING) << "fuse_bn_add_act_pass is only supported on "
                         "GPU, skipped.";
         continue;
@@ -435,7 +435,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
     } else if (pass->Type() == "backward_optimizer_op_deps_pass") {
-      if (device != p::kCUDA) {
+      if (use_device != p::kCUDA) {
         VLOG(1) << "backward_optimizer_op_deps_pass is only supported on "
                    "GPU, skipped.";
         continue;

@@ -338,7 +338,7 @@ void ReduceOpHandle::RunImpl() {
           platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
     } else if (paddle::platform::is_xpu_place(lod_tensors[0]->place())) {
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(

@@ -41,7 +41,7 @@ class FuseAllReduceOpPass : public ir::Pass {
 #if defined(PADDLE_WITH_NCCL)
     auto *multi_nccl_ctxs =
         &Get<platform::NCCLCommunicator>(details::kNCCLCtxs);
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
     auto *multi_bkcl_ctxs =
         &Get<platform::BKCLCommunicator>(details::kBKCLCtxs);
 #endif
@@ -95,7 +95,7 @@ class FuseAllReduceOpPass : public ir::Pass {
 #if defined(PADDLE_WITH_NCCL)
       InsertFusedAllReduce(places, local_scopes, group_size,
                            group_all_reduce_ops, multi_nccl_ctxs, &result);
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
       InsertFusedAllReduce(places, local_scopes, group_size,
                            group_all_reduce_ops, multi_bkcl_ctxs, &result);
 #else
@@ -160,7 +160,7 @@ class FuseAllReduceOpPass : public ir::Pass {
                             const std::vector<ir::Node *> &all_reduce_ops,
 #if defined(PADDLE_WITH_NCCL)
                             const platform::NCCLCommunicator *multi_nccl_ctxs,
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
                             const platform::BKCLCommunicator *multi_bkcl_ctxs,
 #endif
                             ir::Graph *result) const {
@@ -190,7 +190,7 @@ class FuseAllReduceOpPass : public ir::Pass {
 #if defined(PADDLE_WITH_NCCL)
     CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
                            local_scopes, multi_nccl_ctxs, result);
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
     CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
                            local_scopes, multi_bkcl_ctxs, result);
 #else
@@ -208,7 +208,7 @@ class FuseAllReduceOpPass : public ir::Pass {
       const std::vector<Scope *> &local_scopes,
 #if defined(PADDLE_WITH_NCCL)
       const platform::NCCLCommunicator *multi_nccl_ctxs,
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
       const platform::BKCLCommunicator *multi_bkcl_ctxs,
 #endif
       ir::Graph *result) const {
@@ -216,7 +216,7 @@ class FuseAllReduceOpPass : public ir::Pass {
     auto *op_handle = new details::FusedAllReduceOpHandle(
         result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation),
         local_scopes, places, num_of_all_reduce, multi_nccl_ctxs);
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
     auto *op_handle = new details::FusedAllReduceOpHandle(
         result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation),
         local_scopes, places, num_of_all_reduce, multi_bkcl_ctxs);
@@ -238,7 +238,7 @@ class FuseAllReduceOpPass : public ir::Pass {
     if (!multi_nccl_ctxs) {
       SetCommunicationContext(places, op_handle);
     }
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
     if (!multi_bkcl_ctxs) {
       SetCommunicationContext(places, op_handle);
     }

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #ifndef _WIN32
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
 #pragma once
 
 #include <stdio.h>
@@ -274,5 +274,5 @@ class BKCLCommunicator {
 }  // namespace platform
 }  // namespace paddle
 
-#endif  // PADDLE_WITH_XPU && PADDLE_WITH_XPU_BKCL
+#endif  // PADDLE_WITH_XPU_BKCL
 #endif

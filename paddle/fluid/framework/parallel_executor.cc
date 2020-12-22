@@ -270,7 +270,7 @@ class ParallelExecutorPrivate {
   }
 #endif
 
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
   void InitBKCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
     VLOG(1) << "bkcl comm num:" << bst.bkcl_comm_num_ << ", nranks:" << nranks_
             << ", num_trainers:" << bst.num_trainers_
@@ -370,7 +370,7 @@ class ParallelExecutorPrivate {
 
 #if defined(PADDLE_WITH_NCCL)
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
   platform::BKCLCommunicator *bkcl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
@@ -732,7 +732,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 #endif
   }
   if (member_->use_device_ == p::kXPU && member_->nranks_ > 1) {
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
     member_->InitOrGetBKCLCommunicator(scope, member_->build_strategy_);
 
     auto *bkcl_ctxs =
@@ -790,7 +790,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         graph, member_->places_, loss_var_name, member_->local_scopes_,
         member_->nranks_, member_->use_device_, member_->nccl_ctxs_);
   }
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
   if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use local async mode";
     graph = member_->build_strategy_.Apply(
@@ -1009,7 +1009,7 @@ void ParallelExecutor::BCastParamsToDevices(
       }
 #endif
     } else if (paddle::platform::is_xpu_place(main_tensor.place())) {
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();

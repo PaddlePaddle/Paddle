@@ -186,13 +186,13 @@ struct BuildStrategy {
                    const std::vector<Scope *> &local_scopes,
                    const size_t &nranks,
 #if defined(PADDLE_WITH_NCCL)
-                   DeviceType device,
+                   DeviceType use_device,
                    platform::NCCLCommunicator *nccl_ctxs) const;
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-                   DeviceType device,
+                   DeviceType use_device,
                    platform::BKCLCommunicator *bkcl_ctxs) const;
 #else
-                   DeviceType device) const;
+                   DeviceType use_device) const;
 #endif
 
   // If set true, ParallelExecutor would build the main_program into multiple

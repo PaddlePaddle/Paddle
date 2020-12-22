@@ -65,7 +65,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
           platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
     } else if (use_device_ == p::kXPU) {
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
       op_handle_ = new FusedBroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, bkcl_ctxs_.get());
 #else

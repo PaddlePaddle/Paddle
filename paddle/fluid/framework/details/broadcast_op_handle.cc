@@ -143,7 +143,7 @@ void BroadcastOpHandle::BroadcastOneVar(
         platform::errors::PreconditionNotMet("Not compiled with NCLL."));
 #endif
   } else {
-#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
     VarHandle *out_handle = nullptr;
     int root_id = BOOST_GET_CONST(platform::XPUPlace, in_tensor.place()).device;
     std::vector<std::function<void()>> broadcast_calls;
