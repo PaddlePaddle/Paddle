@@ -89,7 +89,8 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fc_act_mkldnn_fuse_pass, paddle::framework::ir::FuseFCActOneDNNPass);
+REGISTER_PASS(fc_act_mkldnn_fuse_pass,
+              paddle::framework::ir::FuseFCActOneDNNPass);
 REGISTER_PASS_CAPABILITY(fc_act_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
