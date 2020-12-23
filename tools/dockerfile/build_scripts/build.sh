@@ -30,8 +30,6 @@ CPYTHON_VERSIONS="3.8.0 3.7.0 3.6.0 3.5.1 2.7.15"
 # archive
 OPENSSL_ROOT=openssl-1.1.0i
 OPENSSL_HASH=ebbfc844a8c8cc0ea5dc10b86c9ce97f401837f3fa08c17b2cdadc118253cf99
-EPEL_RPM_HASH=e5ed9ecf22d0c4279e92075a64c757ad2b38049bcf5c16c4f2b75d5f6860dc0d
-DEVTOOLS_HASH=a8ebeb4bed624700f727179e6ef771dafe47651131a00a78b342251415646acc
 PATCHELF_HASH=f2aa40a6148cb3b0ca807a1bf836b081793e55ec9e5540a5356d800132be7e0a
 CURL_ROOT=curl-7.49.1
 CURL_HASH=eb63cec4bef692eab9db459033f409533e6d10e20942f4b060b32819e81885f1
@@ -51,15 +49,6 @@ source $MY_DIR/build_utils.sh
 
 # EPEL support
 yum -y install wget curl epel-release
-#curl -sLO https://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-#check_sha256sum epel-release-6-8.noarch.rpm $EPEL_RPM_HASH
-
-# Dev toolset (for LLVM and other projects requiring C++11 support)
-#curl -sLO http://people.centos.org/tru/devtools-2/devtools-2.repo
-#check_sha256sum devtools-2.repo $DEVTOOLS_HASH
-#mv devtools-2.repo /etc/yum.repos.d/devtools-2.repo
-#rpm -Uvh --replacepkgs epel-release-6*.rpm
-#rm -f epel-release-6*.rpm
 
 # Development tools and libraries
 yum -y install bzip2 make git patch unzip bison yasm diffutils \
@@ -117,9 +106,6 @@ rm -rf /usr/local/include/curl /usr/local/lib/libcurl* /usr/local/lib/pkgconfig/
 hash -r
 curl --version
 curl-config --features
-
-# Now we can delete our built SSL
-rm -rf /usr/local/ssl
 
 # Install patchelf (latest with unreleased bug fixes)
 # FIXME(typhoonzero): restore this when the link is fixed.
