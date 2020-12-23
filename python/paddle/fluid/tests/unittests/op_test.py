@@ -1337,7 +1337,7 @@ class OpTest(unittest.TestCase):
                    user_defined_grad_outputs=None,
                    check_dygraph=True):
         self._check_grad_helper()
-        places = [paddle.CPUPlace()]  # self._get_places()
+        places = self._get_places()
         for place in places:
             self.check_grad_with_place(
                 place, inputs_to_check, output_names, no_grad_set,

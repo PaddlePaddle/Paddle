@@ -127,6 +127,18 @@ static void PreparedOpRunImpl(
   func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
                                         attrs));
 
+  /**
+   * [ Why need handle complex gradient to real gradient? ]
+   *
+   * After the introduction of complex number calculations, Ops that support
+   * complex number calculations generally support type promotion, such as
+   * x(float32) + y(complex64) = out(complex64), then the type of the grad
+   * tensor should be dout(complex64), dx(float32), dy (complex64).
+   *
+   * But because the dout is complex64, the dx is also complex64 after
+   * grad op kernel executed, we need to recognize this situation and
+   * convert dx to float32 type. HandleComplexGradToRealGrad does this thing.
+   */
   HandleComplexGradToRealGrad<VarType>(outs);
 }
 

@@ -19,8 +19,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
-
 namespace paddle {
 namespace imperative {
 

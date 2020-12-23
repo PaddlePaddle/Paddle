@@ -1107,6 +1107,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
   }
 
+  // See [ Why need handle complex gradient to real gradient? ]
   HandleComplexGradToRealGrad(scope, runtime_ctx);
 
   if (!transfered_inplace_vars.empty()) {
@@ -1265,22 +1266,23 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       // 1. find grad_var & check whether is complex tensor
       auto var_name = var_name_item.second[i];
-      auto orig_var_name = GradOriginalVarName(var_name);
-      // only focus on gradient var
-      if (var_name == orig_var_name) {
+      auto* grad_var = output_vars[i];
+      // don't process LoDTensorArray temporarily,
+      // add support if necessary for complex number calculations in the future
+      if (!VarIsTensor(*grad_var)) {
+        VLOG(6) << "The gradient var is `"
+                << framework::ToTypeName(grad_var->Type())
+                << "` when handle complex grad to real grad.";
         continue;
       }
-      auto* grad_var = output_vars[i];
       auto* grad_tensor =
           GetMutableLoDTensorOrSelectedRowsValueFromVar(grad_var);
-      PADDLE_ENFORCE_NOT_NULL(
-          grad_tensor,
-          platform::errors::Unavailable(
-              "Gradient tensor is nullptr when handle complex data to real."));
-      PADDLE_ENFORCE_EQ(
-          grad_tensor->IsInitialized(), true,
-          platform::errors::Unavailable(
-              "Gradient tensor is nullptr when handle complex data to real."));
+      // skip nullptr tensor
+      if (grad_tensor == nullptr || !grad_tensor->IsInitialized()) {
+        VLOG(6) << "The gradient tensor is nullptr or not initialized when "
+                   "handle complex grad to real grad.";
+        continue;
+      }
       // only focus on complex dtype now
       auto src_type = grad_tensor->type();
       if (!IsComplexType(src_type)) {
@@ -1288,6 +1290,11 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
       }
 
       // 2. find forward var & check whether need to cast
+      auto orig_var_name = GradOriginalVarName(var_name);
+      // only focus on gradient var
+      if (var_name == orig_var_name) {
+        continue;
+      }
       auto* var = scope.FindVar(orig_var_name);
       // if forward var not exists, do nothing
       if (var == nullptr) {

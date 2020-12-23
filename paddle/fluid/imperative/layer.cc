@@ -361,19 +361,20 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   /**
    * [ Why need temporary inputs here? ]
    *
-   * PrepareData should not change original input attribute inplace,
-   * because the backward process may still use these attributes.
+   * PrepareData should not change original input tensor inplace.
+   * Suppose the user defines a tensor(int), enters an op to execute,
+   * and then this op rewrites GetExpectedKernelForVar, and converts
+   * this tensor to float type during execution. After the dynamic
+   * graph is executed, the user-defined variable will be lost, and
+   * the user cannot get the originally defined int tensor, because
+   * it has been converted to float, this should be regarded as a bug
+   * in certain usage scenarios
    *
    * In static graph mode, when op is executed, a temporary scope
    * `transfer_scope` is created before PrepareData, the data after
    * transform is stored in the temporary scope, and then discarded
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
-   *
-   * In a scenario with type promotion, the forward input may be
-   * promoted, but when the backward gradient is returned, the type
-   * needs to be downgraded according to the type of the forward input,
-   * which depends on the attributes of the forward input.
    */
   auto expected_kernel_key =
       GetExpectedKernelKey<VarType>(ins, outs, *op_kernel, place, attrs);

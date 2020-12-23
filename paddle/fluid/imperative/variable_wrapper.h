@@ -314,6 +314,10 @@ class VariableWrapper {
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};
 
+  // See [ Why need handle complex gradient to real gradient? ]
+  // Used for grad var to get the data type of its corresponding forward var,
+  // if inconsistent, the data type of grad var needs to be casted to be
+  // consistent with forward var
   framework::proto::VarType::Type fwd_data_type_{
       static_cast<framework::proto::VarType::Type>(-1)};
 

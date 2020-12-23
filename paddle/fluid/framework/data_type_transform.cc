@@ -128,8 +128,8 @@ void TransComplexToReal(const proto::VarType::Type& dst_type,
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Data type (%s) is not supported when casting complex to real data "
-          "type.",
+          "Data type (%s) is not supported when casting complex tensor to real "
+          "data type.",
           DataTypeToString(src_type)));
   }
 }
