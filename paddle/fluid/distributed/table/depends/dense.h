@@ -92,6 +92,7 @@ class DSGD : public DenseOptimizer {
     grads.resize(update_numel);
 
     auto blas = GetBlas<float>();
+    VLOG(1) << "DenseOptimizer learning rate: " << *(learning_rate_->get());
     blas.VCOPY(update_numel, update_values + begin, grads.data());
     blas.SCAL(update_numel, *(learning_rate_->get()), grads.data());
     blas.VSUB(update_numel, param + begin, grads.data(), param + begin);
