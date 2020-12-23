@@ -68,7 +68,6 @@ from .common import pad  #DEFINE_ALIAS
 from .common import cosine_similarity  #DEFINE_ALIAS
 from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
-from .common import assign  #DEFINE_ALIAS
 from .common import interpolate  #DEFINE_ALIAS
 from .common import upsample  #DEFINE_ALIAS
 from .common import bilinear  #DEFINE_ALIAS

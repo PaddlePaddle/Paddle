@@ -22,8 +22,10 @@ from .layer import rnn
 from .utils import weight_norm_hook
 
 from . import initializer
+from . import clip
 
 __all__ = []
+__all__ += clip.__all__
 __all__ += norm.__all__
 __all__ += extension.__all__
 __all__ += common.__all__
@@ -35,8 +37,6 @@ from .clip import ClipGradByGlobalNorm  #DEFINE_ALIAS
 from .clip import ClipGradByNorm  #DEFINE_ALIAS
 from .clip import ClipGradByValue  #DEFINE_ALIAS
 # from .clip import set_gradient_clip        #DEFINE_ALIAS
-from .clip import clip  #DEFINE_ALIAS
-from .clip import clip_by_norm  #DEFINE_ALIAS
 # from .control_flow import cond  #DEFINE_ALIAS
 # from .control_flow import DynamicRNN        #DEFINE_ALIAS
 # from .control_flow import StaticRNN        #DEFINE_ALIAS
@@ -72,7 +72,6 @@ from .layer.activation import ThresholdedReLU  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import Maxout  #DEFINE_ALIAS
 from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
-from .layer.common import Pool2D  #DEFINE_ALIAS
 from .layer.common import Pad1D  #DEFINE_ALIAS
 from .layer.common import Pad2D  #DEFINE_ALIAS
 from .layer.common import Pad3D  #DEFINE_ALIAS
