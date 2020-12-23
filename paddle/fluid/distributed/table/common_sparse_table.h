@@ -86,6 +86,7 @@ class CommonSparseTable : public SparseTable {
 
   bool sync = false;
   int param_dim_ = 0;
+  float init_lr = -1.0;
   std::shared_ptr<SparseOptimizer> optimizer_;
   std::unordered_map<std::string, Initializer*> initializers_;
   std::vector<std::shared_ptr<ValueBlock>> shard_values_;

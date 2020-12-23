@@ -85,9 +85,9 @@ class SSGD : public SparseOptimizer {
                 std::shared_ptr<float>& lr) {
     auto& names = common.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
-      // if (names[x] == "LearningRate") {
-      //   learning_rate_idx = x;
-      // }
+      if (names[x] == "LearningRate") {
+        learning_rate_idx = x;
+      }
       if (names[x] == "Param") {
         param_idx = x;
         update_numel = common.dims()[x];
@@ -104,6 +104,12 @@ class SSGD : public SparseOptimizer {
       auto id = keys[x];
       auto values = block->Get(id);
       float* learning_rate = learning_rate_->get();
+      if (*learning_rate == -1.0) {
+        learning_rate = values[learning_rate_idx]->data();
+      } else {
+        *(values[learning_rate_idx]->data()) = *learning_rate;
+      }
+
       float* param = values[param_idx]->data();
 
       std::vector<float> grads;
@@ -114,6 +120,7 @@ class SSGD : public SparseOptimizer {
     }
   }
 
+  int learning_rate_idx;
   int param_idx;
   int update_numel;
 };
@@ -126,9 +133,9 @@ class SAdam : public SparseOptimizer {
                  std::shared_ptr<float>& lr) {
     auto& names = common.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
-      // if (names[x] == "LearningRate") {
-      //   learning_rate_idx = x;
-      // }
+      if (names[x] == "LearningRate") {
+        learning_rate_idx = x;
+      }
       if (names[x] == "Param") {
         param_idx = x;
         update_numel = common.dims()[x];
@@ -163,6 +170,11 @@ class SAdam : public SparseOptimizer {
       auto id = keys[x];
       auto values = block->Get(id);
       float* learning_rate = learning_rate_->get();
+      if (*learning_rate == -1.0) {
+        learning_rate = values[learning_rate_idx]->data();
+      } else {
+        *(values[learning_rate_idx]->data()) = *learning_rate;
+      }
       float* param = values[param_idx]->data();
       float* moment1 = values[moment1_idx]->data();
       float* moment2 = values[moment2_idx]->data();
@@ -205,6 +217,7 @@ class SAdam : public SparseOptimizer {
     }
   }
 
+  int learning_rate_idx;
   int param_idx;
   int moment1_idx;
   int moment2_idx;

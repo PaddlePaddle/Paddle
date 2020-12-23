@@ -223,7 +223,8 @@ int32_t CommonSparseTable::initialize() {
 
   sync = _config.common().sync();
   VLOG(1) << "table " << _config.common().table_name() << " is sync: " << sync;
-
+  _global_lr = std::make_shared<float>();
+  *_global_lr = -1.0;
   initialize_value();
   initialize_optimizer();
   initialize_recorder();
