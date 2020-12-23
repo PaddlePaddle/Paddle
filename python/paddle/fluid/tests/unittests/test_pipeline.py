@@ -45,7 +45,6 @@ class TestPipeline(TestDistBase):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "pipeline_mnist_one_device.py",
-                delta=1e-4,
                 check_error_log=True,
                 log_name=flag_name)
 
