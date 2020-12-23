@@ -51,6 +51,8 @@ from .tensor.random import bernoulli
 
 from .tensor.attribute import rank  #DEFINE_ALIAS
 from .tensor.attribute import shape  #DEFINE_ALIAS
+from .tensor.attribute import real  #DEFINE_ALIAS
+from .tensor.attribute import imag  #DEFINE_ALIAS
 from .tensor.creation import to_tensor  #DEFINE_ALIAS
 from .tensor.creation import diag  #DEFINE_ALIAS
 from .tensor.creation import eye  #DEFINE_ALIAS
@@ -134,6 +136,7 @@ from .tensor.math import asin  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
 from .tensor.math import ceil  #DEFINE_ALIAS
 from .tensor.math import cos  #DEFINE_ALIAS
+from .tensor.math import tan  #DEFINE_ALIAS
 from .tensor.math import cosh  #DEFINE_ALIAS
 from .tensor.math import cumsum  #DEFINE_ALIAS
 # from .tensor.math import elementwise_add  #DEFINE_ALIAS
@@ -187,7 +190,6 @@ from .tensor.math import logsumexp  #DEFINE_ALIAS
 from .tensor.math import inverse  #DEFINE_ALIAS
 from .tensor.math import log1p  #DEFINE_ALIAS
 from .tensor.math import erf  #DEFINE_ALIAS
-# from .tensor.math import addcmul  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clip  #DEFINE_ALIAS
 from .tensor.math import trace  #DEFINE_ALIAS
@@ -197,6 +199,7 @@ from .tensor.math import isinf  #DEFINE_ALIAS
 from .tensor.math import isnan  #DEFINE_ALIAS
 from .tensor.math import prod  #DEFINE_ALIAS
 from .tensor.math import broadcast_shape  #DEFINE_ALIAS
+from .tensor.math import conj  #DEFINE_ALIAS
 
 from .tensor.random import multinomial  #DEFINE_ALIAS
 from .tensor.random import standard_normal

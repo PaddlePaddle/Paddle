@@ -28,6 +28,7 @@ import textwrap
 import numpy as np
 
 from paddle.fluid import unique_name
+from paddle.fluid.data_feeder import convert_dtype
 
 
 class BaseNodeVisitor(gast.NodeVisitor):
@@ -882,6 +883,8 @@ class ForNodeVisitor(object):
                 self.node.iter.func,
                 gast.Attribute) and self.node.iter.func.attr == 'numpy':
             return True
+        elif isinstance(self.node.iter, gast.Subscript):
+            return True
         else:
             return False
 
@@ -1028,18 +1031,40 @@ class ForNodeVisitor(object):
         return step_node
 
     def _build_cond_stmt(self, step_node, compare_node):
-        return gast.Compare(
-            left=gast.BinOp(
+        if not isinstance(step_node, (gast.Constant, gast.UnaryOp)):
+            raise NotImplementedError(
+                "Dynamic-to-Static only supports the step value is a constant or negative constant in 'for-range' statements, "
+                "such as '2', '-3'. But received: '{}'. Please fix code to be compatible with Dynamic-to-Static."
+                .format(ast_to_source_code(step_node).strip()))
+
+        if isinstance(step_node, gast.UnaryOp) or step_node.value < 0:
+            # eg:
+            # range(max, min, -2)
+            # ->
+            # i > min
+            return gast.Compare(
                 left=gast.Name(
                     id=self.iter_var_name
                     if self.is_for_range_iter() else self.iter_idx_name,
                     ctx=gast.Load(),
                     annotation=None,
                     type_comment=None),
-                op=gast.Add(),
-                right=step_node),
-            ops=[gast.LtE()],
-            comparators=[compare_node])
+                ops=[gast.Gt()],
+                comparators=[compare_node])
+        else:
+            # eg:
+            # range(min, max, 2)
+            # ->
+            # i < max
+            return gast.Compare(
+                left=gast.Name(
+                    id=self.iter_var_name
+                    if self.is_for_range_iter() else self.iter_idx_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None),
+                ops=[gast.Lt()],
+                comparators=[compare_node])
 
     def _build_index_increase_node(self, step_node):
         return gast.AugAssign(
@@ -1195,3 +1220,39 @@ def unwrap(func):
         unwrapped_f = unwrapped_f.__wrapped__
 
     return unwrapped_f
+
+
+def input_specs_compatible(src_input_specs, other_input_specs):
+    """
+    Returns True if the two input specs are compatible, otherwise False.
+
+    args:
+        src_input_spec (list[InputSpec]|tuple(InputSpec)): list/tuple of
+            paddle.static.InputSpec
+        other_input_spec (list[InputSpec]|tuple(InputSpec)): list/tuple of
+            paddle.static.InputSpec
+    """
+    len_specs = len(src_input_specs)
+    if len_specs != len(other_input_specs):
+        return False
+
+    for i in range(len_specs):
+        src_shape = src_input_specs[i].shape
+        other_shape = other_input_specs[i].shape
+        len_shape = len(src_shape)
+        if len_shape != len(other_shape):
+            return False
+        for j in range(len_shape):
+            if src_shape[j] is None or src_shape[j] < 0:
+                continue
+            if other_shape[j] is None or other_shape[j] < 0:
+                continue
+            if src_shape[j] != other_shape[j]:
+                return False
+
+        src_dtype = convert_dtype(src_input_specs[i].dtype)
+        other_dtype = convert_dtype(other_input_specs[i].dtype)
+        if src_dtype != other_dtype:
+            return False
+
+    return True

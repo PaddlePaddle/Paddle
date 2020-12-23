@@ -413,7 +413,8 @@
         "CRFDecoding.forward",
         "SequenceTagging.forward",
         "XPUPlace",
-        "is_compiled_with_xpu"
+        "is_compiled_with_xpu",
+        "xpu_places"
     ],
     "gpu_not_white":[
         "deformable_conv",

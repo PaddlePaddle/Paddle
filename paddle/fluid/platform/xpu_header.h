@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/platform/errors.h"
 #include "xpu/api.h"
+#include "xpu/refactor/fusion.h"
 #include "xpu/refactor/math.h"
 #include "xpu/refactor/nn.h"
 #include "xpu/runtime.h"

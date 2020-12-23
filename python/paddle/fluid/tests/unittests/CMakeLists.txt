@@ -18,6 +18,7 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
+list(APPEND DIST_TEST_OPS test_gen_nccl_id_op)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
@@ -83,10 +84,6 @@ endif()
 
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
-endif()
-
-if(WIN32)
-    LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
     LIST(REMOVE_ITEM TEST_OPS test_downpoursgd)
@@ -96,6 +93,8 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_3)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_unitaccessor)
     LIST(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
+    LIST(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_nlp)
+    LIST(REMOVE_ITEM TEST_OPS test_nvprof)
 
     # TODO: Fix these unittests failed on Windows
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
@@ -124,19 +123,7 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_program_code_dist)
 endif()
 
-if(WITH_MUSL)
-    # TODO: In the musl docker environment provided by SEC, 
-    # the calculation accuracy of testcase in this unittest 
-    # cannot meet the requirement, error like:
-    # AssertionError: 
-    #   2.3044646853182973e-07 not less than or equal to 1e-07
-    # SEC needs to follow up on this issue, and need to be 
-    # resolved before CI requared
-    LIST(REMOVE_ITEM TEST_OPS test_sigmoid_focal_loss_op)
-endif()
-
 if(WIN32)
-    LIST(REMOVE_ITEM TEST_OPS test_rnn_decode_api)
     LIST(REMOVE_ITEM TEST_OPS test_complex_matmul)
 endif()
 
@@ -257,8 +244,6 @@ function(py_test_modules TARGET_NAME)
     endif()
     if(WIN32)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
-    else()
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)
     endif()
   endif()
 endfunction()
@@ -300,9 +285,7 @@ function(bash_test_modules TARGET_NAME)
     endif()
 
     if(bash_test_modules_LABELS)
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout} LABELS ${bash_test_modules_LABELS})
-    else()
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout})
+        set_tests_properties(${TARGET_NAME} PROPERTIES LABELS ${bash_test_modules_LABELS})
     endif()
 endfunction()
 
@@ -344,13 +327,11 @@ function(parallel_bash_test_modules TARGET_NAME)
     endif()
 
     if(parallel_bash_test_modules_LABELS)
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout} LABELS ${parallel_bash_test_modules_LABELS})
-    else()
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout})
+        set_tests_properties(${TARGET_NAME} PROPERTIES LABELS ${parallel_bash_test_modules_LABELS})
     endif()
 endfunction()
 
-
+list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
@@ -377,10 +358,13 @@ list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
+list(REMOVE_ITEM TEST_OPS test_fuse_all_reduce_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
+# disable test_cumsum_op temporaily
+list(REMOVE_ITEM TEST_OPS test_cumsum_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -556,9 +540,25 @@ if(WITH_DISTRIBUTE)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
-py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_profiler)
+# Coverage pipeline use cuda 10.1 now, profiler will random hang in cuda 10.1,
+# see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
+# We guess there are some bugs in cuda 10.1 or 10.2, 
+# since this unittest is stable in cuda 11 (py3 pipeline) now.
+if(NOT WITH_COVERAGE)
+  py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_profiler)
+  set_tests_properties(test_parallel_executor_profiler PROPERTIES LABELS "RUN_TYPE=DIST")
+  set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
+endif()
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
-py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
+if(WIN32)
+    py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth CUDA_VISIBLE_DEVICES=0)
+    py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass ENVS CUDA_VISIBLE_DEVICES=0)
+    py_test_modules(test_feed_data_check_shape_type MODULES test_feed_data_check_shape_type ENVS CUDA_VISIBLE_DEVICES=0)
+else()
+    py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
+    py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass)
+    py_test_modules(test_feed_data_check_shape_type MODULES test_feed_data_check_shape_type)
+endif()
 
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 py_test_modules(test_fuse_bn_act_pass MODULES test_fuse_bn_act_pass ENVS FLAGS_cudnn_deterministic=1 FLAGS_cudnn_batchnorm_spatial_persistent=1 FLAGS_conv_workspace_size_limit=1000)
@@ -632,7 +632,6 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         test_parallel_executor_seresnext_base_gpu
         test_parallel_executor_seresnext_with_reduce_gpu
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
-        test_parallel_executor_profiler
         test_parallel_executor_fetch_isolated_var
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
@@ -696,7 +695,9 @@ set_tests_properties(test_parallel_executor_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_regularizer_api PROPERTIES TIMEOUT 150)
 set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 120)
+if(NOT WIN32)
+    set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 120)
+endif()
 set_tests_properties(test_add_reader_dependency PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilateral_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_buffer_shared_memory_reuse_pass PROPERTIES TIMEOUT 120)
@@ -718,7 +719,6 @@ set_tests_properties(test_concat_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sequence_pool PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
