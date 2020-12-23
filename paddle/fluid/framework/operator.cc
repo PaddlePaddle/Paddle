@@ -1266,7 +1266,16 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       // 1. find grad_var & check whether is complex tensor
       auto var_name = var_name_item.second[i];
+      auto orig_var_name = GradOriginalVarName(var_name);
+      // only focus on gradient var
+      if (var_name == orig_var_name) {
+        continue;
+      }
       auto* grad_var = output_vars[i];
+      // skip nullptr var
+      if (grad_var == nullptr) {
+        continue;
+      }
       // don't process LoDTensorArray temporarily,
       // add support if necessary for complex number calculations in the future
       if (!VarIsTensor(*grad_var)) {
@@ -1290,11 +1299,6 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
       }
 
       // 2. find forward var & check whether need to cast
-      auto orig_var_name = GradOriginalVarName(var_name);
-      // only focus on gradient var
-      if (var_name == orig_var_name) {
-        continue;
-      }
       auto* var = scope.FindVar(orig_var_name);
       // if forward var not exists, do nothing
       if (var == nullptr) {

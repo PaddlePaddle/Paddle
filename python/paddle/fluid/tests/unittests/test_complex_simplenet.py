@@ -15,9 +15,11 @@
 from __future__ import print_function
 
 import unittest
+import numpy as np
 
 import paddle
-import numpy as np
+
+import paddle.fluid.core as core
 
 
 class Optimization_ex1(paddle.nn.Layer):
@@ -40,7 +42,9 @@ class Optimization_ex1(paddle.nn.Layer):
 
 class TestComplexSimpleNet(unittest.TestCase):
     def setUp(self):
-        self.devices = ['cpu', 'gpu']
+        self.devices = ['cpu']
+        if core.is_compiled_with_cuda():
+            self.devices.append('gpu')
         self.iter = 10
         self.learning_rate = 0.5
         self.theta_size = [4, 4]
