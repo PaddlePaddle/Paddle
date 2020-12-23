@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
-#include "paddle/fluid/framework/ir/mkldnn/fc_act_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/fc_act_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/errors.h"
@@ -217,7 +217,7 @@ void RunPassAndAssert(Graph* graph, const std::string& from,
                       int added_nodes_count = 0) {
   EXPECT_TRUE(TestIsReachable(*graph, from, to));
   int original_nodes_num = graph->Nodes().size();
-  auto pass = PassRegistry::Instance().Get("fc_act_fuse_pass");
+  auto pass = PassRegistry::Instance().Get("fc_act_mkldnn_fuse_pass");
   pass->Apply(graph);
   int current_nodes_num = graph->Nodes().size();
 
@@ -395,4 +395,4 @@ TEST(FuseFCActOneDNNPass, FuseWithSigmoid) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(fc_act_fuse_pass);
+USE_PASS(fc_act_mkldnn_fuse_pass);

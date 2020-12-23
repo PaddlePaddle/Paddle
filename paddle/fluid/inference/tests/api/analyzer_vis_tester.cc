@@ -86,7 +86,7 @@ void profile(bool use_mkldnn = false) {
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
     cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-    cfg.pass_builder()->AppendPass("fc_act_fuse_pass");
+    cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
   }
   // cfg.pass_builder()->TurnOnDebug();
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -137,7 +137,7 @@ void compare(bool use_mkldnn = false) {
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
     cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-    cfg.pass_builder()->AppendPass("fc_act_fuse_pass");
+    cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

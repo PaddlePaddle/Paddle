@@ -40,7 +40,7 @@ class FCGeluTanhOneDnnFusePassTest(InferencePassTest):
         self.enable_mkldnn = True
 
     def set_params(self):
-        self.pass_name = "fc_act_fuse_pass"
+        self.pass_name = "fc_act_mkldnn_fuse_pass"
 
     def test_check_output(self):
         self.check_output()
@@ -61,7 +61,7 @@ class FCGeluErfOneDnnFusePassTest(InferencePassTest):
         self.enable_mkldnn = True
 
     def set_params(self):
-        self.pass_name = "fc_act_fuse_pass"
+        self.pass_name = "fc_act_mkldnn_fuse_pass"
 
     def test_check_output(self):
         self.check_output()
@@ -83,7 +83,7 @@ class FCTanhOneDnnFusePassTest(InferencePassTest):
         self.enable_mkldnn = True
 
     def set_params(self):
-        self.pass_name = "fc_act_fuse_pass"
+        self.pass_name = "fc_act_mkldnn_fuse_pass"
 
     def test_check_output(self):
         self.check_output()
@@ -105,7 +105,7 @@ class FCSigmoidOneDnnFusePassTest(InferencePassTest):
         self.enable_mkldnn = True
 
     def set_params(self):
-        self.pass_name = "fc_act_fuse_pass"
+        self.pass_name = "fc_act_mkldnn_fuse_pass"
 
     def test_check_output(self):
         self.check_output()
