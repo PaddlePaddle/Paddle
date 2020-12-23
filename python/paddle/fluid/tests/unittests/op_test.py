@@ -1291,8 +1291,6 @@ class OpTest(unittest.TestCase):
 
     def _assert_is_close(self, numeric_grads, analytic_grads, names,
                          max_relative_error, msg_prefix):
-        print("numeric_grads: ", numeric_grads)
-        print("analytic_grads: ", analytic_grads)
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
             # max_relative_error is 1e-7. According to the value of np.abs(a), we

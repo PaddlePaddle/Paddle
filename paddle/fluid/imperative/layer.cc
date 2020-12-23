@@ -357,9 +357,30 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   }
 
   VLOG(5) << LayerDebugString(op.Type(), ins, outs);
-  auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs);
 
-  prepared_op.Run(ins, outs, attrs);
+  /**
+   * [ Why need temporary inputs here? ]
+   *
+   * PrepareData should not change original input attribute inplace,
+   * because the backward process may still use these attributes.
+   *
+   * In static graph mode, when op is executed, a temporary scope
+   * `transfer_scope` is created before PrepareData, the data after
+   * transform is stored in the temporary scope, and then discarded
+   * after the execution of op, but the original input is directly
+   * overwritten in the previous dynamic graph implemention.
+   *
+   * In a scenario with type promotion, the forward input may be
+   * promoted, but when the backward gradient is returned, the type
+   * needs to be downgraded according to the type of the forward input,
+   * which depends on the attributes of the forward input.
+   */
+  auto expected_kernel_key =
+      GetExpectedKernelKey<VarType>(ins, outs, *op_kernel, place, attrs);
+  auto prepared_op = PreparedOp::Prepare(*op_kernel, expected_kernel_key);
+  auto tmp_ins = PrepareData<VarType>(*op_kernel, ins, expected_kernel_key);
+
+  prepared_op.Run(tmp_ins, outs, attrs);
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
 }
