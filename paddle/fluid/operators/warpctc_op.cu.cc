@@ -18,7 +18,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     warpctc, ops::WarpCTCKernel<paddle::platform::CUDADeviceContext, float>,
     ops::WarpCTCKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     warpctc_grad,
     ops::WarpCTCGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::WarpCTCGradKernel<paddle::platform::CUDADeviceContext, double>);

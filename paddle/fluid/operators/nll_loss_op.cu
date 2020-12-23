@@ -487,7 +487,7 @@ REGISTER_OP_CUDA_KERNEL(
     nll_loss,
     ops::NLLLossCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::NLLLossCUDAKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     nll_loss_grad,
     ops::NLLLossGradCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::NLLLossGradCUDAKernel<paddle::platform::CUDADeviceContext, double>);

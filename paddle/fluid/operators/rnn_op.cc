@@ -250,12 +250,12 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(rnn, ops::RNNOp, ops::RNNOpMaker,
                   ops::RNNGradOpMaker<paddle::framework::OpDesc>,
                   ops::RNNGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(rnn_grad, ops::RNNGradOp);
+REGISTER_GRAD_OPERATOR(rnn_grad, ops::RNNGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     rnn, ops::RNNCPUKernel<paddle::platform::CPUDeviceContext, float>,
     ops::RNNCPUKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     rnn_grad, ops::RNNCPUGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::RNNCPUGradKernel<paddle::platform::CPUDeviceContext, double>);

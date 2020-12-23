@@ -24,7 +24,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::UnStackKernel<plat::CUDADeviceContext, int64_t>,
     ops::UnStackKernel<plat::CUDADeviceContext, plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     unstack_grad, ops::UnStackGradKernel<plat::CUDADeviceContext, float>,
     ops::UnStackGradKernel<plat::CUDADeviceContext, double>,
     ops::UnStackGradKernel<plat::CUDADeviceContext, int>,

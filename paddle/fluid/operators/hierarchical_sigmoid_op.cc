@@ -268,15 +268,16 @@ REGISTER_OPERATOR(
     ops::HierarchicalSigmoidOpMaker<int>,
     ops::HierarchicalSigmoidGradMaker<paddle::framework::OpDesc>,
     ops::HierarchicalSigmoidGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(hierarchical_sigmoid_grad, ops::HierarchicalSigmoidGradOp,
-                  ops::HierarchicalSigmoidGradOpGradVarTypeInference,
-                  ops::HierarchicalSigmoidGradOpNoNeedBufferVarInferer);
+REGISTER_GRAD_OPERATOR(hierarchical_sigmoid_grad,
+                       ops::HierarchicalSigmoidGradOp,
+                       ops::HierarchicalSigmoidGradOpGradVarTypeInference,
+                       ops::HierarchicalSigmoidGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     hierarchical_sigmoid,
     ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext,
                                      double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     hierarchical_sigmoid_grad,
     ops::HierarchicalSigmoidGradOpKernel<paddle::platform::CPUDeviceContext,
                                          float>,

@@ -374,8 +374,8 @@ REGISTER_OPERATOR(
     ops::FusedElemwiseActivationMaker,
     ops::FusedElemwiseActivationGradMaker<paddle::framework::OpDesc>,
     ops::FusedElemwiseActivationGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(fused_elemwise_activation_grad,
-                  ops::FusedElemwiseActivationOpGrad);
+REGISTER_GRAD_OPERATOR(fused_elemwise_activation_grad,
+                       ops::FusedElemwiseActivationOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_activation,
@@ -384,7 +384,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
                                        double>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     fused_elemwise_activation_grad,
     ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
                                            float>,

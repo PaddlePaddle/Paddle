@@ -348,5 +348,5 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(batch_norm, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::BatchNormMKLDNNOpKernel<float>);
-REGISTER_OP_KERNEL(batch_norm_grad, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::BatchNormMKLDNNGradOpKernel<float>);
+REGISTER_OP_GRAD_KERNEL(batch_norm_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                        ops::BatchNormMKLDNNGradOpKernel<float>);

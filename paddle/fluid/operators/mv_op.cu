@@ -89,6 +89,6 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     mv, ops::MVKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MVKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     mv_grad, ops::MVGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MVGradKernel<paddle::platform::CUDADeviceContext, double>);

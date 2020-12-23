@@ -21,7 +21,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMinKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseMinKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseMinKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     elementwise_min_grad,
     ops::ElementwiseMinGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseMinGradKernel<paddle::platform::CUDADeviceContext, double>,

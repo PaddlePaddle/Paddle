@@ -783,6 +783,7 @@ REGISTER_OP_CUDA_KERNEL(pad3d, ops::Pad3dCUDAKernel<plat::float16>,
                         ops::Pad3dCUDAKernel<float>,
                         ops::Pad3dCUDAKernel<double>, ops::Pad3dCUDAKernel<int>,
                         ops::Pad3dCUDAKernel<int64_t>);
-REGISTER_OP_CUDA_KERNEL(pad3d_grad, ops::Pad3dGradCUDAKernel<plat::float16>,
-                        ops::Pad3dGradCUDAKernel<float>,
-                        ops::Pad3dGradCUDAKernel<double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(pad3d_grad,
+                             ops::Pad3dGradCUDAKernel<plat::float16>,
+                             ops::Pad3dGradCUDAKernel<float>,
+                             ops::Pad3dGradCUDAKernel<double>);

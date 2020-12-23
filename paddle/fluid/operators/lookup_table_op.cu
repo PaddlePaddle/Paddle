@@ -202,7 +202,7 @@ REGISTER_OP_CUDA_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
                         ops::LookupTableCUDAKernel<double>,
                         ops::LookupTableCUDAKernel<plat::float16>,
                         ops::LookupTableCUDAKernel<int8_t>);
-REGISTER_OP_CUDA_KERNEL(lookup_table_grad,
-                        ops::LookupTableGradCUDAKernel<float>,
-                        ops::LookupTableGradCUDAKernel<double>,
-                        ops::LookupTableGradCUDAKernel<plat::float16>);
+REGISTER_OP_CUDA_GRAD_KERNEL(lookup_table_grad,
+                             ops::LookupTableGradCUDAKernel<float>,
+                             ops::LookupTableGradCUDAKernel<double>,
+                             ops::LookupTableGradCUDAKernel<plat::float16>);

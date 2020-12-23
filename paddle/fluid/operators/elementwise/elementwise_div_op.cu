@@ -109,7 +109,7 @@ REGISTER_OP_CUDA_KERNEL(
                               paddle::platform::complex64>,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext,
                               paddle::platform::complex128>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     elementwise_div_grad,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
@@ -121,7 +121,7 @@ REGISTER_OP_CUDA_KERNEL(
                                   paddle::platform::complex64>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
                                   paddle::platform::complex128>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     elementwise_div_grad_grad,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         float>,

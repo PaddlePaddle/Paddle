@@ -257,17 +257,17 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(expand, ops::ExpandOp, ops::ExpandOpMaker,
                   ops::ExpandGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(expand_grad, ops::ExpandGradOp,
-                  ops::ExpandDoubleGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ExpandDoubleGradOpMaker<paddle::imperative::OpBase>,
-                  ops::ExpandGradNoNeedBufVarsInferer);
+REGISTER_GRAD_OPERATOR(expand_grad, ops::ExpandGradOp,
+                       ops::ExpandDoubleGradOpMaker<paddle::framework::OpDesc>,
+                       ops::ExpandDoubleGradOpMaker<paddle::imperative::OpBase>,
+                       ops::ExpandGradNoNeedBufVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ExpandKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ExpandKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ExpandKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ExpandKernel<paddle::platform::CPUDeviceContext, bool>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     expand_grad,
     ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, double>,

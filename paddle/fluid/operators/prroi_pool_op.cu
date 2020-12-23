@@ -373,7 +373,7 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(prroi_pool, ops::GPUPRROIPoolOpKernel<float>,
                         ops::GPUPRROIPoolOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     prroi_pool_grad,
     ops::GPUPRROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GPUPRROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, double>);

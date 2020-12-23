@@ -195,7 +195,7 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     concat, ops::ConcatXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     concat_grad,
     ops::ConcatGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 

@@ -91,7 +91,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
     softmax, ops::SoftmaxXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     softmax_grad,
     ops::SoftmaxGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 

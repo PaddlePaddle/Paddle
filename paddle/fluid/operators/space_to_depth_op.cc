@@ -205,15 +205,15 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(space_to_depth, ops::SpaceToDepthOp, ops::SpaceToDepthOpMaker,
                   ops::SpaceToDepthGradOpMaker<paddle::framework::OpDesc>,
                   ops::SpaceToDepthGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(space_to_depth_grad, ops::SpaceToDepthGradOp,
-                  ops::SpaceToDepthGradOpNoBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(space_to_depth_grad, ops::SpaceToDepthGradOp,
+                       ops::SpaceToDepthGradOpNoBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     space_to_depth,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     space_to_depth_grad,
     ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, double>,

@@ -44,7 +44,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     elementwise_min,
     ops::ElementwiseMinXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(elementwise_min_grad,
-                       ops::ElementwiseMinGradXPUKernel<
-                           paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_GRAD_KERNEL(elementwise_min_grad,
+                            ops::ElementwiseMinGradXPUKernel<
+                                paddle::platform::XPUDeviceContext, float>);
 #endif

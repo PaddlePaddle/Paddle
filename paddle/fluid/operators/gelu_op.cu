@@ -21,7 +21,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::GeluKernel<paddle::platform::CUDADeviceContext, double>,
     ops::GeluKernel<paddle::platform::CUDADeviceContext,
                     paddle::platform::float16>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     gelu_grad, ops::GeluGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GeluGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::GeluGradKernel<paddle::platform::CUDADeviceContext,

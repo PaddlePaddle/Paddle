@@ -20,7 +20,7 @@ REGISTER_OP_CUDA_KERNEL(
     unfold, ops::UnfoldOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::UnfoldOpKernel<paddle::platform::CUDADeviceContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     unfold_grad,
     ops::UnfoldGradOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::UnfoldGradOpKernel<paddle::platform::CUDADeviceContext, double>);

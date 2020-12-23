@@ -129,10 +129,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstm_unit, ops::LstmUnitOp, ops::LstmUnitOpMaker,
                   ops::LstmUnitGradOpMaker<paddle::framework::OpDesc>,
                   ops::LstmUnitGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(lstm_unit_grad, ops::LstmUnitGradOp);
+REGISTER_GRAD_OPERATOR(lstm_unit_grad, ops::LstmUnitGradOp);
 REGISTER_OP_CPU_KERNEL(lstm_unit,
                        ops::LstmUnitKernel<paddle::platform::CPUPlace, float>,
                        ops::LstmUnitKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     lstm_unit_grad, ops::LstmUnitGradKernel<paddle::platform::CPUPlace, float>,
     ops::LstmUnitGradKernel<paddle::platform::CPUPlace, double>);

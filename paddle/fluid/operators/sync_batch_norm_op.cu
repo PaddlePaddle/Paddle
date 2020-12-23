@@ -95,7 +95,7 @@ REGISTER_OP_CUDA_KERNEL(
     sync_batch_norm, ops::SyncBatchNormKernel<plat::CUDADeviceContext, float>,
     ops::SyncBatchNormKernel<plat::CUDADeviceContext, double>,
     ops::SyncBatchNormKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     sync_batch_norm_grad,
     ops::SyncBatchNormGradKernel<plat::CUDADeviceContext, float>,
     ops::SyncBatchNormGradKernel<plat::CUDADeviceContext, double>,

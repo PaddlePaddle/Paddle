@@ -1172,17 +1172,17 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ops::kConvMKLDNNINT8,
                                     ops::ConvMKLDNNOpKernel<int8_t, float>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
-                                    ::paddle::platform::CPUPlace, FP32,
-                                    ops::kConvMKLDNNFP32,
-                                    ops::ConvMKLDNNGradOpKernel<float>);
+REGISTER_OP_GRAD_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
+                                         ::paddle::platform::CPUPlace, FP32,
+                                         ops::kConvMKLDNNFP32,
+                                         ops::ConvMKLDNNGradOpKernel<float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv3d, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,
                                     ops::kConvMKLDNNFP32,
                                     ops::ConvMKLDNNOpKernel<float, float>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv3d_grad, MKLDNN,
-                                    ::paddle::platform::CPUPlace, FP32,
-                                    ops::kConvMKLDNNFP32,
-                                    ops::ConvMKLDNNGradOpKernel<float>);
+REGISTER_OP_GRAD_KERNEL_WITH_CUSTOM_TYPE(conv3d_grad, MKLDNN,
+                                         ::paddle::platform::CPUPlace, FP32,
+                                         ops::kConvMKLDNNFP32,
+                                         ops::ConvMKLDNNGradOpKernel<float>);

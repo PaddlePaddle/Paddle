@@ -366,7 +366,7 @@ REGISTER_OP_CUDA_KERNEL(
     group_norm,
     ops::GroupNormKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GroupNormKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     group_norm_grad,
     ops::GroupNormGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GroupNormGradKernel<paddle::platform::CUDADeviceContext, double>);

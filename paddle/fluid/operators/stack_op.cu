@@ -193,8 +193,8 @@ REGISTER_OP_CUDA_KERNEL(stack, ops::StackGPUKernel<float>,
                         ops::StackGPUKernel<int64_t>,
                         ops::StackGPUKernel<plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(stack_grad, ops::StackGradGPUKernel<float>,
-                        ops::StackGradGPUKernel<double>,
-                        ops::StackGradGPUKernel<int>,
-                        ops::StackGradGPUKernel<int64_t>,
-                        ops::StackGradGPUKernel<plat::float16>);
+REGISTER_OP_CUDA_GRAD_KERNEL(stack_grad, ops::StackGradGPUKernel<float>,
+                             ops::StackGradGPUKernel<double>,
+                             ops::StackGradGPUKernel<int>,
+                             ops::StackGradGPUKernel<int64_t>,
+                             ops::StackGradGPUKernel<plat::float16>);

@@ -335,15 +335,15 @@ REGISTER_OPERATOR(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
                   ops::MaxPool2dWithIndexOpMaker,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(max_pool2d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
-                  ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(max_pool2d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
+                       ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     max_pool2d_with_index,
     ops::MaxPoolWithIndexKernel<paddle::platform::CPUDeviceContext, float, int>,
     ops::MaxPoolWithIndexKernel<paddle::platform::CPUDeviceContext, double,
                                 int>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     max_pool2d_with_index_grad,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, float,
                                     int>,
@@ -354,15 +354,15 @@ REGISTER_OPERATOR(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
                   ops::MaxPool3dWithIndexOpMaker,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(max_pool3d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
-                  ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(max_pool3d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
+                       ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     max_pool3d_with_index,
     ops::MaxPoolWithIndexKernel<paddle::platform::CPUDeviceContext, float, int>,
     ops::MaxPoolWithIndexKernel<paddle::platform::CPUDeviceContext, double,
                                 int>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     max_pool3d_with_index_grad,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, float,
                                     int>,

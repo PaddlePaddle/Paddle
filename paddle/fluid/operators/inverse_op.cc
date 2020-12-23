@@ -118,12 +118,12 @@ REGISTER_OPERATOR(inverse, ops::InverseOp, ops::InverseOpMaker,
                   ops::InverseGradOpMaker<paddle::framework::OpDesc>,
                   ops::InverseGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(inverse_grad, ops::InverseGradOp);
+REGISTER_GRAD_OPERATOR(inverse_grad, ops::InverseGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     inverse, ops::InverseKernel<paddle::platform::CPUDeviceContext, float>,
     ops::InverseKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     inverse_grad,
     ops::InverseGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::InverseGradKernel<paddle::platform::CPUDeviceContext, double>);

@@ -140,9 +140,9 @@ REGISTER_OP_CPU_KERNEL(
     op::SeqConcatKernel<paddle::platform::CPUDeviceContext, int>,
     op::SeqConcatKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
-REGISTER_OPERATOR(sequence_concat_grad, op::SeqConcatGradOp,
-                  op::SeqConcatGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_GRAD_OPERATOR(sequence_concat_grad, op::SeqConcatGradOp,
+                       op::SeqConcatGradNoNeedBufferVarsInferer);
+REGISTER_OP_CPU_GRAD_KERNEL(
     sequence_concat_grad,
     op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
     op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, double>,

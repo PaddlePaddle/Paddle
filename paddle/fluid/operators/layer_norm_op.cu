@@ -947,7 +947,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::LayerNormKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LayerNormKernel<paddle::platform::CUDADeviceContext, double>,
     ops::LayerNormKernel<paddle::platform::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     layer_norm_grad,
     ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext, double>,

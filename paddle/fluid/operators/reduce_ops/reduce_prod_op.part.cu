@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
 
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     reduce_prod_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
                                             float, ops::ProdGradFunctor>,
     ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,

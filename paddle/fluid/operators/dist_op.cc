@@ -110,10 +110,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(dist, ops::DistOp, ops::DistOpMaker,
                   ops::DistGradOpMaker<paddle::framework::OpDesc>,
                   ops::DistGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(dist_grad, ops::DistOpGrad);
+REGISTER_GRAD_OPERATOR(dist_grad, ops::DistOpGrad);
 REGISTER_OP_CPU_KERNEL(
     dist, ops::DistKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DistKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     dist_grad, ops::DistGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DistGradKernel<paddle::platform::CPUDeviceContext, double>)

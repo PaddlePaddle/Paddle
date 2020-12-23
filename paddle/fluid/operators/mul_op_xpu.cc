@@ -178,6 +178,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
     mul, ops::MulXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     mul_grad, ops::MulGradXPUKernel<paddle::platform::XPUDeviceContext, float>)
 #endif

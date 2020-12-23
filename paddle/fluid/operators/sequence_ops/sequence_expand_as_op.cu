@@ -124,7 +124,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     sequence_expand_as_grad,
     ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext,

@@ -172,17 +172,17 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
                   ops::GatherGradOpMaker<paddle::framework::OpDesc>,
                   ops::GatherGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(gather_grad, ops::GatherGradOp,
-                  ops::GatherGradNoNeedBufferVarInferer);
+REGISTER_GRAD_OPERATOR(gather_grad, ops::GatherGradOp,
+                       ops::GatherGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>,
                        ops::GatherOpKernel<double>, ops::GatherOpKernel<int>,
                        ops::GatherOpKernel<uint8_t>,
                        ops::GatherOpKernel<int64_t>);
-REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
-                       ops::GatherGradientOpKernel<double>,
-                       ops::GatherGradientOpKernel<int>,
-                       ops::GatherGradientOpKernel<uint8_t>,
-                       ops::GatherGradientOpKernel<int64_t>);
+REGISTER_OP_CPU_GRAD_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
+                            ops::GatherGradientOpKernel<double>,
+                            ops::GatherGradientOpKernel<int>,
+                            ops::GatherGradientOpKernel<uint8_t>,
+                            ops::GatherGradientOpKernel<int64_t>);
 REGISTER_OP_VERSION(gather)
     .AddCheckpoint(R"ROC(upgrad gather, add a new input [Axis])ROC",
                    paddle::framework::compatible::OpVersionDesc().NewInput(

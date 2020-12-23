@@ -21,7 +21,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::LoDResetKernel<paddle::platform::CUDADeviceContext, double>,
     ops::LoDResetKernel<paddle::platform::CUDADeviceContext, int>,
     ops::LoDResetKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     lod_reset_grad,
     ops::LoDResetGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LoDResetGradKernel<paddle::platform::CUDADeviceContext, double>,

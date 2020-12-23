@@ -176,7 +176,7 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     pool2d, ops::PoolXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     pool2d_grad,
     ops::PoolGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 

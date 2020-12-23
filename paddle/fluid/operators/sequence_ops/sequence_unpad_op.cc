@@ -180,15 +180,15 @@ REGISTER_OPERATOR(sequence_unpad, ops::SequenceUnpadOp,
                   ops::SequenceUnpadOpMaker,
                   ops::SequenceUnpadGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceUnpadGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(sequence_unpad_grad, ops::SequenceUnpadGradOp,
-                  ops::SequenceUnpadGradOpNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(sequence_unpad_grad, ops::SequenceUnpadGradOp,
+                       ops::SequenceUnpadGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_unpad,
     ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     sequence_unpad_grad,
     ops::SequenceUnpadGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceUnpadGradOpKernel<paddle::platform::CPUDeviceContext, double>,

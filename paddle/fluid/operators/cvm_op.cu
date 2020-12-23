@@ -163,5 +163,5 @@ class CVMGradCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(cvm, ops::CVMCUDAKernel<float>,
                         ops::CVMCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(cvm_grad, ops::CVMGradCUDAKernel<float>,
-                        ops::CVMGradCUDAKernel<double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(cvm_grad, ops::CVMGradCUDAKernel<float>,
+                             ops::CVMGradCUDAKernel<double>);

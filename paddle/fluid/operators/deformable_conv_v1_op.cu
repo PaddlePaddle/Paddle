@@ -605,5 +605,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(deformable_conv_v1,
                         ops::DeformableConvV1CUDAKernel<float>);
-REGISTER_OP_CUDA_KERNEL(deformable_conv_v1_grad,
-                        ops::DeformableConvV1GradCUDAKernel<float>);
+REGISTER_OP_CUDA_GRAD_KERNEL(deformable_conv_v1_grad,
+                             ops::DeformableConvV1GradCUDAKernel<float>);

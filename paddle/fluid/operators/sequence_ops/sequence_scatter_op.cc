@@ -179,14 +179,14 @@ REGISTER_OPERATOR(sequence_scatter, ops::SequenceScatterOp,
                   ops::SequenceScatterOpMaker,
                   ops::SequenceScatterGradMaker<paddle::framework::OpDesc>,
                   ops::SequenceScatterGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(sequence_scatter_grad, ops::SequenceScatterGradOp,
-                  ops::SequenceScatterGradNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(sequence_scatter_grad, ops::SequenceScatterGradOp,
+                       ops::SequenceScatterGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(sequence_scatter, ops::SequenceScatterOpKernel<float>,
                        ops::SequenceScatterOpKernel<double>,
                        ops::SequenceScatterOpKernel<int>,
                        ops::SequenceScatterOpKernel<int64_t>);
-REGISTER_OP_CPU_KERNEL(sequence_scatter_grad,
-                       ops::SequenceScatterGradientOpKernel<float>,
-                       ops::SequenceScatterGradientOpKernel<double>,
-                       ops::SequenceScatterGradientOpKernel<int>,
-                       ops::SequenceScatterGradientOpKernel<int64_t>);
+REGISTER_OP_CPU_GRAD_KERNEL(sequence_scatter_grad,
+                            ops::SequenceScatterGradientOpKernel<float>,
+                            ops::SequenceScatterGradientOpKernel<double>,
+                            ops::SequenceScatterGradientOpKernel<int>,
+                            ops::SequenceScatterGradientOpKernel<int64_t>);

@@ -393,12 +393,12 @@ REGISTER_OPERATOR(
     ops::MatchMatrixTensorOpMaker,
     ops::MatchMatrixTensorGradOpMaker<paddle::framework::OpDesc>,
     ops::MatchMatrixTensorGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(match_matrix_tensor_grad, ops::MatchMatrixTensorOpGrad);
+REGISTER_GRAD_OPERATOR(match_matrix_tensor_grad, ops::MatchMatrixTensorOpGrad);
 
 REGISTER_OP_CPU_KERNEL(match_matrix_tensor,
                        ops::CPUMatchMatrixTensorOPKernel<
                            paddle::platform::CPUDeviceContext, float>);
 
-REGISTER_OP_CPU_KERNEL(match_matrix_tensor_grad,
-                       ops::CPUMatchMatrixTensorOPGradKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_GRAD_KERNEL(match_matrix_tensor_grad,
+                            ops::CPUMatchMatrixTensorOPGradKernel<
+                                paddle::platform::CPUDeviceContext, float>);

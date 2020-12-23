@@ -114,16 +114,16 @@ REGISTER_ELEMWISE_GRAD_MAKER(elementwise_add, Add);
 REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_add, Add);
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
+REGISTER_GRAD_OPERATOR(
     elementwise_add_grad, ops::ElementwiseOpGrad,
     ops::ElementwiseGradOpInplaceInferer, ops::ElementwiseGradNoBufVarsInferer,
     ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(elementwise_add_grad_grad,
-                  ops::ElementwiseOpDoubleGradWithoutDXDY,
-                  ops::ElementwiseDoubleGradOpInplaceInferer,
-                  ops::ElementwiseDoubleGradNoBufVarsInferer);
+REGISTER_GRAD_OPERATOR(elementwise_add_grad_grad,
+                       ops::ElementwiseOpDoubleGradWithoutDXDY,
+                       ops::ElementwiseDoubleGradOpInplaceInferer,
+                       ops::ElementwiseDoubleGradNoBufVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_add,
@@ -135,7 +135,7 @@ REGISTER_OP_CPU_KERNEL(
                               paddle::platform::complex64>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
                               paddle::platform::complex128>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     elementwise_add_grad,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, double>,
@@ -145,7 +145,7 @@ REGISTER_OP_CPU_KERNEL(
                                   paddle::platform::complex64>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext,
                                   paddle::platform::complex128>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     elementwise_add_grad_grad,
     ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         float>,

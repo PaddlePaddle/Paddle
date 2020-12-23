@@ -157,10 +157,10 @@ REGISTER_OPERATOR(cvm, ops::CVMOp, ops::CVMOpMaker,
                   ops::CVMGradOpMaker<paddle::imperative::OpBase>,
                   ops::CVMNoNeedBufferVarInferer);
 
-REGISTER_OPERATOR(cvm_grad, ops::CVMGradientOp,
-                  ops::CVMGradNoNeedBufferVarInferer);
+REGISTER_GRAD_OPERATOR(cvm_grad, ops::CVMGradientOp,
+                       ops::CVMGradNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(cvm, ops::CVMOpKernel<float>, ops::CVMOpKernel<double>);
 
-REGISTER_OP_CPU_KERNEL(cvm_grad, ops::CVMGradOpKernel<float>,
-                       ops::CVMGradOpKernel<double>);
+REGISTER_OP_CPU_GRAD_KERNEL(cvm_grad, ops::CVMGradOpKernel<float>,
+                            ops::CVMGradOpKernel<double>);

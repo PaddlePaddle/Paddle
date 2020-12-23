@@ -215,9 +215,9 @@ REGISTER_OP_CUDA_KERNEL(partial_sum, ops::PartialSumOpCUDAKernel<float>,
                         ops::PartialSumOpCUDAKernel<int64_t>,
                         ops::PartialSumOpCUDAKernel<plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(partial_sum_grad,
-                        ops::PartialSumGradOpCUDAKernel<float>,
-                        ops::PartialSumGradOpCUDAKernel<double>,
-                        ops::PartialSumGradOpCUDAKernel<int>,
-                        ops::PartialSumGradOpCUDAKernel<int64_t>,
-                        ops::PartialSumGradOpCUDAKernel<plat::float16>);
+REGISTER_OP_CUDA_GRAD_KERNEL(partial_sum_grad,
+                             ops::PartialSumGradOpCUDAKernel<float>,
+                             ops::PartialSumGradOpCUDAKernel<double>,
+                             ops::PartialSumGradOpCUDAKernel<int>,
+                             ops::PartialSumGradOpCUDAKernel<int64_t>,
+                             ops::PartialSumGradOpCUDAKernel<plat::float16>);

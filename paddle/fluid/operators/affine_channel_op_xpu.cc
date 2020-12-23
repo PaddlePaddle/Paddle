@@ -179,8 +179,9 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 using XPU = paddle::platform::XPUDeviceContext;
 
-REGISTER_OP_XPU_KERNEL(affine_channel, ops::AffineChannelXPUKernel<XPU, float>);
-REGISTER_OP_XPU_KERNEL(affine_channel_grad,
-                       ops::AffineChannelGradXPUKernel<XPU, float>);
+REGISTER_OP_XPU_GRAD_KERNEL(affine_channel,
+                            ops::AffineChannelXPUKernel<XPU, float>);
+REGISTER_OP_XPU_GRAD_KERNEL(affine_channel_grad,
+                            ops::AffineChannelGradXPUKernel<XPU, float>);
 
 #endif

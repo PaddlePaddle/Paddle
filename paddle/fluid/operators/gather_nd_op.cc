@@ -177,8 +177,8 @@ REGISTER_OPERATOR(gather_nd, ops::GatherNdOp, ops::GatherNdOpMaker,
                   ops::GatherNdGradOpMaker<paddle::framework::OpDesc>,
                   ops::GatherNdGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(gather_nd_grad, ops::GatherNdGradOp,
-                  ops::GatherNdGradNoNeedBufferVarInferer);
+REGISTER_GRAD_OPERATOR(gather_nd_grad, ops::GatherNdGradOp,
+                       ops::GatherNdGradNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(gather_nd, ops::GatherNdOpKernel<float>,
                        ops::GatherNdOpKernel<double>,
@@ -186,8 +186,8 @@ REGISTER_OP_CPU_KERNEL(gather_nd, ops::GatherNdOpKernel<float>,
                        ops::GatherNdOpKernel<int>, ops::GatherNdOpKernel<bool>,
                        ops::GatherNdOpKernel<uint8_t>);
 
-REGISTER_OP_CPU_KERNEL(gather_nd_grad, ops::GatherNdGradOpKernel<float>,
-                       ops::GatherNdGradOpKernel<double>,
-                       ops::GatherNdGradOpKernel<int64_t>,
-                       ops::GatherNdGradOpKernel<int>,
-                       ops::GatherNdGradOpKernel<uint8_t>);
+REGISTER_OP_CPU_GRAD_KERNEL(gather_nd_grad, ops::GatherNdGradOpKernel<float>,
+                            ops::GatherNdGradOpKernel<double>,
+                            ops::GatherNdGradOpKernel<int64_t>,
+                            ops::GatherNdGradOpKernel<int>,
+                            ops::GatherNdGradOpKernel<uint8_t>);

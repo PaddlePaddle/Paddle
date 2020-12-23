@@ -156,13 +156,13 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(cross, ops::CrossOp, ops::CrossOpMaker,
                   ops::CrossGradMaker<paddle::framework::OpDesc>,
                   ops::CrossGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(cross_grad, ops::CrossGradOp);
+REGISTER_GRAD_OPERATOR(cross_grad, ops::CrossGradOp);
 REGISTER_OP_CPU_KERNEL(
     cross, ops::CrossKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CrossKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CrossKernel<paddle::platform::CPUDeviceContext, int>,
     ops::CrossKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     cross_grad, ops::CrossGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CrossGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CrossGradKernel<paddle::platform::CPUDeviceContext, int>,

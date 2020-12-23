@@ -158,10 +158,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(gelu, ops::GeluOp, ops::GeluOpMaker,
                   ops::GeluGradOpMaker<paddle::framework::OpDesc>,
                   ops::GeluGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(gelu_grad, ops::GeluGradOp);
+REGISTER_GRAD_OPERATOR(gelu_grad, ops::GeluGradOp);
 REGISTER_OP_CPU_KERNEL(
     gelu, ops::GeluKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GeluKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     gelu_grad, ops::GeluGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GeluGradKernel<paddle::platform::CPUDeviceContext, double>);

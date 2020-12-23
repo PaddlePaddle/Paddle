@@ -21,7 +21,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     sequence_reshape_grad,
     ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext, double>,

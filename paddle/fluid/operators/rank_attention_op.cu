@@ -200,6 +200,6 @@ REGISTER_OP_CUDA_KERNEL(rank_attention,
                         ops::RankAttentionCUDAKernel<GPUCtx, float>,
                         ops::RankAttentionCUDAKernel<GPUCtx, double>);
 
-REGISTER_OP_CUDA_KERNEL(rank_attention_grad,
-                        ops::RankAttentionGradOpCUDAKernel<GPUCtx, float>,
-                        ops::RankAttentionGradOpCUDAKernel<GPUCtx, double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(
+    rank_attention_grad, ops::RankAttentionGradOpCUDAKernel<GPUCtx, float>,
+    ops::RankAttentionGradOpCUDAKernel<GPUCtx, double>);

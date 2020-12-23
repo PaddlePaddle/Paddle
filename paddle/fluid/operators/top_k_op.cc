@@ -145,12 +145,12 @@ REGISTER_OPERATOR(top_k, ops::TopkOp, ops::TopkOpMaker,
                   ops::TopkGradOpMaker<paddle::framework::OpDesc>,
                   ops::TopkGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(top_k_grad, ops::TopkOpGrad);
+REGISTER_GRAD_OPERATOR(top_k_grad, ops::TopkOpGrad);
 
 REGISTER_OP_CPU_KERNEL(top_k,
                        ops::TopkKernel<paddle::platform::CPUPlace, float>,
                        ops::TopkKernel<paddle::platform::CPUPlace, double>);
 
-REGISTER_OP_CPU_KERNEL(top_k_grad,
-                       ops::TopkGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::TopkGradKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_GRAD_KERNEL(
+    top_k_grad, ops::TopkGradKernel<paddle::platform::CPUPlace, float>,
+    ops::TopkGradKernel<paddle::platform::CPUPlace, double>);

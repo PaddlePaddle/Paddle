@@ -176,8 +176,8 @@ REGISTER_OP_CUDA_KERNEL(sigmoid_cross_entropy_with_logits,
                             paddle::platform::CUDADeviceContext, float>,
                         ops::GPUSigmoidCrossEntropyWithLogitsKernel<
                             paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(sigmoid_cross_entropy_with_logits_grad,
-                        ops::GPUSigmoidCrossEntropyWithLogitsGradKernel<
-                            paddle::platform::CUDADeviceContext, float>,
-                        ops::GPUSigmoidCrossEntropyWithLogitsGradKernel<
-                            paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(sigmoid_cross_entropy_with_logits_grad,
+                             ops::GPUSigmoidCrossEntropyWithLogitsGradKernel<
+                                 paddle::platform::CUDADeviceContext, float>,
+                             ops::GPUSigmoidCrossEntropyWithLogitsGradKernel<
+                                 paddle::platform::CUDADeviceContext, double>);

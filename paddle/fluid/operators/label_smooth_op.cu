@@ -106,7 +106,7 @@ REGISTER_OP_CUDA_KERNEL(
     label_smooth,
     ops::LabelSmoothGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LabelSmoothGPUKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     label_smooth_grad,
     ops::LabelSmoothGradGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LabelSmoothGradGPUKernel<paddle::platform::CUDADeviceContext, double>);

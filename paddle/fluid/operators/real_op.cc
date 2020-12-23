@@ -92,14 +92,14 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(real, ops::RealOp, ops::RealOpMaker,
                   ops::RealGradOpMaker<::paddle::framework::OpDesc>,
                   ops::RealGradOpMaker<::paddle::imperative::OpBase>);
-REGISTER_OPERATOR(real_grad, ops::RealGradOp);
+REGISTER_GRAD_OPERATOR(real_grad, ops::RealGradOp);
 
 REGISTER_OP_CPU_KERNEL(real, ops::RealKernel<paddle::platform::CPUDeviceContext,
                                              paddle::platform::complex64>,
                        ops::RealKernel<paddle::platform::CPUDeviceContext,
                                        paddle::platform::complex128>);
-REGISTER_OP_CPU_KERNEL(real_grad,
-                       ops::RealGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex64>,
-                       ops::RealGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex128>);
+REGISTER_OP_CPU_GRAD_KERNEL(
+    real_grad, ops::RealGradKernel<paddle::platform::CPUDeviceContext,
+                                   paddle::platform::complex64>,
+    ops::RealGradKernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex128>);

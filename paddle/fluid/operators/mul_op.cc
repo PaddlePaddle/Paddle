@@ -308,21 +308,21 @@ REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
                   ops::MulOpGradMaker<paddle::framework::OpDesc>,
                   ops::MulOpGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(mul_grad, ops::MulGradOp,
-                  ops::MulDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::MulDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(mul_grad, ops::MulGradOp,
+                       ops::MulDoubleGradMaker<paddle::framework::OpDesc>,
+                       ops::MulDoubleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(mul_grad_grad, ops::MulDoubleGradOp);
+REGISTER_GRAD_OPERATOR(mul_grad_grad, ops::MulDoubleGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     mul_grad_grad,
     ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);

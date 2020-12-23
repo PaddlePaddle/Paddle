@@ -477,13 +477,13 @@ namespace frm = paddle::framework;
 REGISTER_OPERATOR(var_conv_2d, ops::VarConv2dOP, ops::VarConv2dOpMaker,
                   ops::VarConv2dGradMaker<paddle::framework::OpDesc>,
                   ops::VarConv2dGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(var_conv_2d_grad, ops::VarConv2dOpGrad);
+REGISTER_GRAD_OPERATOR(var_conv_2d_grad, ops::VarConv2dOpGrad);
 
 REGISTER_OP_CPU_KERNEL(var_conv_2d,
                        ops::CPUVarConv2dOPKernel<plt::CPUDeviceContext, float>);
 //     ops::CPUVarConv2dOPKernel<plt::CPUDeviceContext,
 //                                       double>
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     var_conv_2d_grad,
     ops::CPUVarConv2dOPGradKernel<plt::CPUDeviceContext, float>);
 //     ops::CPUVarConv2dOPGradKernel<plt::CPUDeviceContext,

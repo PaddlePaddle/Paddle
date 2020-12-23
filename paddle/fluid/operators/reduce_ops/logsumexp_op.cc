@@ -168,12 +168,12 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(logsumexp, ops::LogsumexpOp, ops::LogsumexpOpMaker,
                   ops::LogsumexpGradOpMaker<paddle::framework::OpDesc>,
                   ops::LogsumexpGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(logsumexp_grad, ops::LogsumexpGrapOp);
+REGISTER_GRAD_OPERATOR(logsumexp_grad, ops::LogsumexpGrapOp);
 
 REGISTER_OP_CPU_KERNEL(
     logsumexp, ops::LogsumexpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LogsumexpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     logsumexp_grad,
     ops::LogsumexpGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LogsumexpGradKernel<paddle::platform::CPUDeviceContext, double>);

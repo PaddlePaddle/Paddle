@@ -182,8 +182,8 @@ REGISTER_OPERATOR(scatter_nd_add, ops::ScatterNdAddOp, ops::ScatterNdAddOpMaker,
                   ops::ScatterNdAddGradMaker<paddle::framework::OpDesc>,
                   ops::ScatterNdAddGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(scatter_nd_add_grad, ops::ScatterNdAddGradOp,
-                  ops::ScatterNdAddGradNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(scatter_nd_add_grad, ops::ScatterNdAddGradOp,
+                       ops::ScatterNdAddGradNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(scatter_nd_add, ops::ScatterNdAddOpKernel<float>,
                        ops::ScatterNdAddOpKernel<double>,
@@ -191,9 +191,9 @@ REGISTER_OP_CPU_KERNEL(scatter_nd_add, ops::ScatterNdAddOpKernel<float>,
                        ops::ScatterNdAddOpKernel<int>,
                        ops::ScatterNdAddOpKernel<uint8_t>);
 
-REGISTER_OP_CPU_KERNEL(scatter_nd_add_grad,
-                       ops::ScatterNdAddGradientOpKernel<float>,
-                       ops::ScatterNdAddGradientOpKernel<double>,
-                       ops::ScatterNdAddGradientOpKernel<int64_t>,
-                       ops::ScatterNdAddGradientOpKernel<int>,
-                       ops::ScatterNdAddGradientOpKernel<uint8_t>);
+REGISTER_OP_CPU_GRAD_KERNEL(scatter_nd_add_grad,
+                            ops::ScatterNdAddGradientOpKernel<float>,
+                            ops::ScatterNdAddGradientOpKernel<double>,
+                            ops::ScatterNdAddGradientOpKernel<int64_t>,
+                            ops::ScatterNdAddGradientOpKernel<int>,
+                            ops::ScatterNdAddGradientOpKernel<uint8_t>);

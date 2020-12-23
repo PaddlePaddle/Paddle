@@ -17,6 +17,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     squared_l2_norm,
     ops::SquaredL2NormKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     squared_l2_norm_grad,
     ops::SquaredL2NormGradKernel<paddle::platform::CUDADeviceContext, float>);

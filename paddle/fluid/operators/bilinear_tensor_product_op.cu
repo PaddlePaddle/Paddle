@@ -21,7 +21,7 @@ REGISTER_OP_CUDA_KERNEL(
                                      float>,
     ops::BilinearTensorProductKernel<paddle::platform::CUDADeviceContext,
                                      double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     bilinear_tensor_product_grad,
     ops::BilinearTensorProductGradKernel<paddle::platform::CUDADeviceContext,
                                          float>,

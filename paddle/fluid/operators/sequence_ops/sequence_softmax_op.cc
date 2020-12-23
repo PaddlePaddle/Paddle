@@ -161,13 +161,13 @@ REGISTER_OPERATOR(
     sequence_softmax, ops::SequenceSoftmaxOp, ops::SequenceSoftmaxOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(sequence_softmax_grad, ops::SequenceSoftmaxGradOp,
-                  ops::SequenceSoftmaxGradOpNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(sequence_softmax_grad, ops::SequenceSoftmaxGradOp,
+                       ops::SequenceSoftmaxGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_softmax,
     ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     sequence_softmax_grad,
     ops::SequenceSoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceSoftmaxGradKernel<paddle::platform::CPUDeviceContext, double>);

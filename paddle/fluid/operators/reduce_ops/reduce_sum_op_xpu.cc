@@ -152,7 +152,7 @@ class ReduceSumGradXPUKernel : public framework::OpKernel<T> {
 REGISTER_OP_XPU_KERNEL(
     reduce_sum,
     ops::ReduceSumXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     reduce_sum_grad,
     ops::ReduceSumGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 

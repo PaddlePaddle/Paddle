@@ -350,8 +350,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(yolov3_loss, ops::Yolov3LossOp, ops::Yolov3LossOpMaker,
                   ops::Yolov3LossGradMaker<paddle::framework::OpDesc>,
                   ops::Yolov3LossGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(yolov3_loss_grad, ops::Yolov3LossOpGrad);
+REGISTER_GRAD_OPERATOR(yolov3_loss_grad, ops::Yolov3LossOpGrad);
 REGISTER_OP_CPU_KERNEL(yolov3_loss, ops::Yolov3LossKernel<float>,
                        ops::Yolov3LossKernel<double>);
-REGISTER_OP_CPU_KERNEL(yolov3_loss_grad, ops::Yolov3LossGradKernel<float>,
-                       ops::Yolov3LossGradKernel<double>);
+REGISTER_OP_CPU_GRAD_KERNEL(yolov3_loss_grad, ops::Yolov3LossGradKernel<float>,
+                            ops::Yolov3LossGradKernel<double>);

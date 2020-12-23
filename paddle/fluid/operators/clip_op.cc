@@ -140,13 +140,13 @@ REGISTER_OPERATOR(clip, ops::ClipOp, ops::ClipOpMaker<float>,
                   ops::ClipGradOpMaker<paddle::framework::OpDesc>,
                   ops::ClipGradOpMaker<paddle::imperative::OpBase>,
                   ops::ClipInplaceInferer);
-REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad, ops::ClipGradInplaceInferer,
-                  ops::ClipDoubleGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ClipDoubleGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(clip_grad, ops::ClipOpGrad, ops::ClipGradInplaceInferer,
+                       ops::ClipDoubleGradOpMaker<paddle::framework::OpDesc>,
+                       ops::ClipDoubleGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     clip, ops::ClipKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ClipKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     clip_grad, ops::ClipGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ClipGradKernel<paddle::platform::CPUDeviceContext, double>);
 

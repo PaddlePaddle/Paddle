@@ -649,12 +649,12 @@ REGISTER_OPERATOR(
     pool2d, ops::PoolOp, ops::Pool2dOpMaker, ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad);
+REGISTER_GRAD_OPERATOR(pool2d_grad, ops::PoolOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
 
@@ -662,11 +662,11 @@ REGISTER_OPERATOR(
     pool3d, ops::PoolOp, ops::Pool3dOpMaker, ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(pool3d_grad, ops::PoolOpGrad);
+REGISTER_GRAD_OPERATOR(pool3d_grad, ops::PoolOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     pool3d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     pool3d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);

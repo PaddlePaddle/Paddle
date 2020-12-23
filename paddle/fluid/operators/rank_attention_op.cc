@@ -169,8 +169,8 @@ REGISTER_OPERATOR(rank_attention, ops::RankAttentionOp,
                   ops::RankAttentionGradOpMaker<paddle::framework::OpDesc>,
                   ops::RankAttentionGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(rank_attention_grad, ops::RankAttentionGradOp,
-                  ops::RankAttentionGradOpNoNeedBufferVarsInference);
+REGISTER_GRAD_OPERATOR(rank_attention_grad, ops::RankAttentionGradOp,
+                       ops::RankAttentionGradOpNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
     rank_attention,

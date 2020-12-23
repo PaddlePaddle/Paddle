@@ -148,6 +148,6 @@ class GatherGradOpXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(gather, ops::GatherOpXPUKernel<float>);
-REGISTER_OP_XPU_KERNEL(gather_grad, ops::GatherGradOpXPUKernel<float>);
+REGISTER_OP_XPU_GRAD_KERNEL(gather, ops::GatherOpXPUKernel<float>);
+REGISTER_OP_XPU_GRAD_KERNEL(gather_grad, ops::GatherGradOpXPUKernel<float>);
 #endif

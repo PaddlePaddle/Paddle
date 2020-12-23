@@ -342,15 +342,15 @@ REGISTER_OP_KERNEL(pool2d, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNOpKernel<float>,
                    ops::PoolCUDNNOpKernel<double>,
                    ops::PoolCUDNNOpKernel<plat::float16>);
-REGISTER_OP_KERNEL(pool2d_grad, CUDNN, plat::CUDAPlace,
-                   ops::PoolCUDNNGradOpKernel<float>,
-                   ops::PoolCUDNNGradOpKernel<double>,
-                   ops::PoolCUDNNGradOpKernel<plat::float16>);
+REGISTER_OP_GRAD_KERNEL(pool2d_grad, CUDNN, plat::CUDAPlace,
+                        ops::PoolCUDNNGradOpKernel<float>,
+                        ops::PoolCUDNNGradOpKernel<double>,
+                        ops::PoolCUDNNGradOpKernel<plat::float16>);
 
 REGISTER_OP_KERNEL(pool3d, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNOpKernel<float>,
                    ops::PoolCUDNNOpKernel<double>,
                    ops::PoolCUDNNOpKernel<plat::float16>);
-REGISTER_OP_KERNEL(pool3d_grad, CUDNN, plat::CUDAPlace,
-                   ops::PoolCUDNNGradOpKernel<float>,
-                   ops::PoolCUDNNGradOpKernel<double>);
+REGISTER_OP_GRAD_KERNEL(pool3d_grad, CUDNN, plat::CUDAPlace,
+                        ops::PoolCUDNNGradOpKernel<float>,
+                        ops::PoolCUDNNGradOpKernel<double>);

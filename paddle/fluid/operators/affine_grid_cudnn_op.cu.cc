@@ -118,6 +118,6 @@ namespace plat = paddle::platform;
 REGISTER_OP_KERNEL(affine_grid, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNAffineGridOpKernel<float>,
                    paddle::operators::CUDNNAffineGridOpKernel<double>);
-REGISTER_OP_KERNEL(affine_grid_grad, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNAffineGridGradOpKernel<float>,
-                   paddle::operators::CUDNNAffineGridGradOpKernel<double>);
+REGISTER_OP_GRAD_KERNEL(affine_grid_grad, CUDNN, plat::CUDAPlace,
+                        paddle::operators::CUDNNAffineGridGradOpKernel<float>,
+                        paddle::operators::CUDNNAffineGridGradOpKernel<double>);

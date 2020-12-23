@@ -19,7 +19,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::BmmKernel<paddle::platform::CUDADeviceContext,
                    paddle::platform::float16>);
 
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     bmm_grad, ops::BmmGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::BmmGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::BmmGradKernel<paddle::platform::CUDADeviceContext,

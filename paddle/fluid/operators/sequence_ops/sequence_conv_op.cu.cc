@@ -19,7 +19,7 @@ REGISTER_OP_CUDA_KERNEL(
     sequence_conv,
     ops::SequenceConvKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SequenceConvKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     sequence_conv_grad,
     ops::SequenceConvGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SequenceConvGradKernel<paddle::platform::CUDADeviceContext, double>);

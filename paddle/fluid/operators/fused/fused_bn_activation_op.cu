@@ -376,7 +376,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FusedBatchNormActKernel<plat::CUDADeviceContext, float>,
     ops::FusedBatchNormActKernel<plat::CUDADeviceContext, double>,
     ops::FusedBatchNormActKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     fused_batch_norm_act_grad,
     ops::FusedBatchNormActGradKernel<plat::CUDADeviceContext, float>,
     ops::FusedBatchNormActGradKernel<plat::CUDADeviceContext, double>,

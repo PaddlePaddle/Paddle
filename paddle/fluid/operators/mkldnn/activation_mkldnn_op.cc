@@ -268,7 +268,7 @@ namespace ops = paddle::operators;
 #define REGISTER_ACTIVATION_MKLDNN_KERNEL(act_type, functor, grad_functor) \
   REGISTER_OP_KERNEL(act_type, MKLDNN, ::paddle::platform::CPUPlace,       \
                      ops::MKLDNNActivationKernel<ops::functor<float>>);    \
-  REGISTER_OP_KERNEL(                                                      \
+  REGISTER_OP_GRAD_KERNEL(                                                 \
       act_type##_grad, MKLDNN, ::paddle::platform::CPUPlace,               \
       ops::MKLDNNActivationGradKernel<ops::grad_functor<float>>);
 
@@ -278,7 +278,7 @@ namespace ops = paddle::operators;
       act_type, MKLDNN, ::paddle::platform::CPUPlace,                         \
       ops::MKLDNNActivationKernel<ops::functor<float>>,                       \
       ops::MKLDNNActivationKernel<ops::functor<paddle::platform::bfloat16>>); \
-  REGISTER_OP_KERNEL(                                                         \
+  REGISTER_OP_GRAD_KERNEL(                                                    \
       act_type##_grad, MKLDNN, ::paddle::platform::CPUPlace,                  \
       ops::MKLDNNActivationGradKernel<ops::grad_functor<float>>);
 

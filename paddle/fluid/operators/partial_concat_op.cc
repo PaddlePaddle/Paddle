@@ -192,7 +192,7 @@ REGISTER_OPERATOR(partial_concat, ops::PartialConcatOp,
                   ops::PartialConcatGradMaker<paddle::framework::OpDesc>,
                   ops::PartialConcatGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(partial_concat_grad, ops::PartialConcatGradOp);
+REGISTER_GRAD_OPERATOR(partial_concat_grad, ops::PartialConcatGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     partial_concat,
@@ -201,8 +201,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::PartialConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::PartialConcatKernel<paddle::platform::CPUDeviceContext, int>);
 
-REGISTER_OP_CPU_KERNEL(partial_concat_grad,
-                       ops::PartialConcatGradientOpKernel<float>,
-                       ops::PartialConcatGradientOpKernel<int>,
-                       ops::PartialConcatGradientOpKernel<double>,
-                       ops::PartialConcatGradientOpKernel<int64_t>);
+REGISTER_OP_CPU_GRAD_KERNEL(partial_concat_grad,
+                            ops::PartialConcatGradientOpKernel<float>,
+                            ops::PartialConcatGradientOpKernel<int>,
+                            ops::PartialConcatGradientOpKernel<double>,
+                            ops::PartialConcatGradientOpKernel<int64_t>);

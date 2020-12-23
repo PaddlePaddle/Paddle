@@ -23,7 +23,7 @@ REGISTER_OP_CUDA_KERNEL(cross_entropy,
                         ops::CrossEntropyOpKernel<CUDACtx, double>,
                         ops::CrossEntropyOpKernel<CUDACtx, plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     cross_entropy_grad, ops::CrossEntropyGradientOpKernel<CUDACtx, float>,
     ops::CrossEntropyGradientOpKernel<CUDACtx, double>,
     ops::CrossEntropyGradientOpKernel<CUDACtx, plat::float16>);
@@ -33,7 +33,7 @@ REGISTER_OP_CUDA_KERNEL(cross_entropy2,
                         ops::CrossEntropyOpKernel2<CUDACtx, double>,
                         ops::CrossEntropyOpKernel2<CUDACtx, plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     cross_entropy_grad2, ops::CrossEntropyGradientOpKernel2<CUDACtx, float>,
     ops::CrossEntropyGradientOpKernel2<CUDACtx, double>,
     ops::CrossEntropyGradientOpKernel2<CUDACtx, plat::float16>);

@@ -293,4 +293,4 @@ REGISTER_OPERATOR(
     ops::FusedBatchNormActOpMaker, ops::FusedBatchNormActOpInferVarType,
     ops::FusedBatchNormActGradOpMaker<paddle::framework::OpDesc>,
     ops::FusedBatchNormActGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(fused_batch_norm_act_grad, ops::FusedBatchNormActGradOp);
+REGISTER_GRAD_OPERATOR(fused_batch_norm_act_grad, ops::FusedBatchNormActGradOp);

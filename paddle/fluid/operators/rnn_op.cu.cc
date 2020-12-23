@@ -633,5 +633,5 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(rnn, ops::RNNCudnnKernel<float>,
                         ops::RNNCudnnKernel<double>);
-REGISTER_OP_CUDA_KERNEL(rnn_grad, ops::RNNGradCudnnKernel<float>,
-                        ops::RNNGradCudnnKernel<double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(rnn_grad, ops::RNNGradCudnnKernel<float>,
+                             ops::RNNGradCudnnKernel<double>);

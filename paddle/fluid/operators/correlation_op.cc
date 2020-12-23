@@ -176,6 +176,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(correlation, ops::CorrelationOp, ops::CorrelationOpMaker,
                   ops::CorrelationOpGradMaker<paddle::framework::OpDesc>,
                   ops::CorrelationOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(correlation_grad, ops::CorrelationOpGrad);
+REGISTER_GRAD_OPERATOR(correlation_grad, ops::CorrelationOpGrad);
 REGISTER_OP_CPU_KERNEL(correlation, ops::CorrelationKernel<float>,
                        ops::CorrelationKernel<double>);

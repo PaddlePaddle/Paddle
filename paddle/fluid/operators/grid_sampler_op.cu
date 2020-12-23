@@ -492,6 +492,6 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(grid_sampler, ops::GridSampleOpCUDAKernel<float>,
                         ops::GridSampleOpCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(grid_sampler_grad,
-                        ops::GridSampleGradOpCUDAKernel<float>,
-                        ops::GridSampleGradOpCUDAKernel<double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(grid_sampler_grad,
+                             ops::GridSampleGradOpCUDAKernel<float>,
+                             ops::GridSampleGradOpCUDAKernel<double>);

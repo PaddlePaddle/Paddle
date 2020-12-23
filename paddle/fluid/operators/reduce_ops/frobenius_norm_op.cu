@@ -28,5 +28,6 @@ using CUDAFrobeniusNormGradKernel =
     ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, T,
                           ops::FrobeniusNormGradFunctor>;
 
-REGISTER_OP_CUDA_KERNEL(frobenius_norm_grad, CUDAFrobeniusNormGradKernel<float>,
-                        CUDAFrobeniusNormGradKernel<double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(frobenius_norm_grad,
+                             CUDAFrobeniusNormGradKernel<float>,
+                             CUDAFrobeniusNormGradKernel<double>);

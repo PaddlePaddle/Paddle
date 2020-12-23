@@ -44,7 +44,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     elementwise_max,
     ops::ElementwiseMaxXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(elementwise_max_grad,
-                       ops::ElementwiseMaxGradXPUKernel<
-                           paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_GRAD_KERNEL(elementwise_max_grad,
+                            ops::ElementwiseMaxGradXPUKernel<
+                                paddle::platform::XPUDeviceContext, float>);
 #endif

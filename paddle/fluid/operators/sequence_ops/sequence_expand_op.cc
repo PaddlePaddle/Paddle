@@ -261,15 +261,15 @@ REGISTER_OPERATOR(sequence_expand, ops::SequenceExpandOp,
                   ops::SequenceExpandOpGradMaker<paddle::framework::OpDesc>,
                   ops::SequenceExpandOpGradMaker<paddle::imperative::OpBase>,
                   ops::SequenceExpandOpNoNeedBufferVarsInferer);
-REGISTER_OPERATOR(sequence_expand_grad, ops::SequenceExpandOpGrad,
-                  ops::SequenceExpandGradOpNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(sequence_expand_grad, ops::SequenceExpandOpGrad,
+                       ops::SequenceExpandGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_expand,
     ops::SequenceExpandKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceExpandKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SequenceExpandKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SequenceExpandKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     sequence_expand_grad,
     ops::SequenceExpandGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceExpandGradKernel<paddle::platform::CPUDeviceContext, double>,

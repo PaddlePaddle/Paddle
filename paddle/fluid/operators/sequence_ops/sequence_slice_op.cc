@@ -148,15 +148,15 @@ REGISTER_OPERATOR(sequence_slice, ops::SequenceSliceOp,
                   ops::SequenceSliceOpMaker,
                   ops::SequenceSliceGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceSliceGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp,
-                  ops::SequenceSliceGradNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp,
+                       ops::SequenceSliceGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice,
     ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     sequence_slice_grad,
     ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, double>,

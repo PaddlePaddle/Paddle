@@ -24,7 +24,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ConcatKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::ConcatKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::ConcatKernel<paddle::platform::CUDADeviceContext, int>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, float>,

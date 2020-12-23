@@ -222,10 +222,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
                   ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
-                  ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
-                  ops::ConcatOpGradNoNeedBufferVarInferer);
+REGISTER_GRAD_OPERATOR(concat_grad, ops::ConcatOpGrad,
+                       ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
+                       ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
+                       ops::ConcatOpGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,
@@ -234,7 +234,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::ConcatKernel<paddle::platform::CPUDeviceContext,
                       paddle::platform::float16>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>,

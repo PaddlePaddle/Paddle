@@ -21,7 +21,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SequenceSliceOpKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SequenceSliceOpKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SequenceSliceOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     sequence_slice_grad,
     ops::SequenceSliceGradOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SequenceSliceGradOpKernel<paddle::platform::CUDADeviceContext, double>,

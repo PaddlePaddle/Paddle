@@ -143,7 +143,7 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     dropout, ops::DropoutXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     dropout_grad,
     ops::DropoutGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 #endif

@@ -172,6 +172,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     mish, ops::MishFP32CUDAKernel<paddle::platform::CUDADeviceContext>,
     ops::MishCUDAKernel<paddle::platform::CUDADeviceContext, double>)
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     mish_grad, ops::MishGradFP32CUDAKernel<paddle::platform::CUDADeviceContext>,
     ops::MishGradCUDAKernel<paddle::platform::CUDADeviceContext, double>)

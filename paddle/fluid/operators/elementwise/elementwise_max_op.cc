@@ -80,7 +80,7 @@ REGISTER_OPERATOR(elementwise_max, ops::ElementwiseOp,
                   ops::ElementwiseMaxGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseMaxGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(elementwise_max_grad, ops::ElementwiseOpGrad);
+REGISTER_GRAD_OPERATOR(elementwise_max_grad, ops::ElementwiseOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_max,
@@ -88,7 +88,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     elementwise_max_grad,
     ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, double>,

@@ -95,9 +95,9 @@ REGISTER_OP_CUDA_KERNEL(scatter_nd_add,
                         ops::ScatterNdAddOpCUDAKernel<CUDA, int>,
                         ops::ScatterNdAddOpCUDAKernel<CUDA, plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(scatter_nd_add_grad,
-                        ops::ScatterNdAddGradOpCUDAKernel<CUDA, float>,
-                        ops::ScatterNdAddGradOpCUDAKernel<CUDA, double>,
-                        ops::ScatterNdAddGradOpCUDAKernel<CUDA, int64_t>,
-                        ops::ScatterNdAddGradOpCUDAKernel<CUDA, int>,
-                        ops::ScatterNdAddGradOpCUDAKernel<CUDA, plat::float16>);
+REGISTER_OP_CUDA_GRAD_KERNEL(
+    scatter_nd_add_grad, ops::ScatterNdAddGradOpCUDAKernel<CUDA, float>,
+    ops::ScatterNdAddGradOpCUDAKernel<CUDA, double>,
+    ops::ScatterNdAddGradOpCUDAKernel<CUDA, int64_t>,
+    ops::ScatterNdAddGradOpCUDAKernel<CUDA, int>,
+    ops::ScatterNdAddGradOpCUDAKernel<CUDA, plat::float16>);

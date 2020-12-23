@@ -160,7 +160,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     batch_norm,
     ops::BatchNormXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     batch_norm_grad,
     ops::BatchNormGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 

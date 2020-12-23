@@ -197,12 +197,12 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(psroi_pool, ops::PSROIPoolOp, ops::PSROIPoolOpMaker,
                   ops::PSROIPoolGradMaker<paddle::framework::OpDesc>,
                   ops::PSROIPoolGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(psroi_pool_grad, ops::PSROIPoolGradOp);
+REGISTER_GRAD_OPERATOR(psroi_pool_grad, ops::PSROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     psroi_pool,
     ops::CPUPSROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUPSROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     psroi_pool_grad,
     ops::CPUPSROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUPSROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>);

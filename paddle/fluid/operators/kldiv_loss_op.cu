@@ -16,7 +16,7 @@ REGISTER_OP_CUDA_KERNEL(
     kldiv_loss,
     ops::KLDivLossKernel<paddle::platform::CUDADeviceContext, float>,
     ops::KLDivLossKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     kldiv_loss_grad,
     ops::KLDivLossGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::KLDivLossGradKernel<paddle::platform::CUDADeviceContext, double>);

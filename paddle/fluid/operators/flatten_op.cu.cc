@@ -22,7 +22,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, int>,
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     flatten_grad,
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, double>,
@@ -35,7 +35,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     flatten2_grad,
     ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, double>,
@@ -53,7 +53,7 @@ REGISTER_OP_CUDA_KERNEL(
                                       int8_t>,
     ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
                                       int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     flatten_contiguous_range_grad,
     ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
                                           float>,

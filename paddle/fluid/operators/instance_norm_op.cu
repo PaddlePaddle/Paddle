@@ -696,11 +696,11 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     instance_norm, ops::InstanceNormKernel<plat::CUDADeviceContext, float>,
     ops::InstanceNormKernel<plat::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     instance_norm_grad,
     ops::InstanceNormGradKernel<plat::CUDADeviceContext, float>,
     ops::InstanceNormGradKernel<plat::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     instance_norm_grad_grad,
     ops::InstanceNormDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                       float>,

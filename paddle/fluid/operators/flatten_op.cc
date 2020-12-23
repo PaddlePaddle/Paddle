@@ -405,16 +405,16 @@ REGISTER_OPERATOR(flatten, ops::FlattenOp, ops::FlattenOpMaker,
                   ops::FlattenGradOpMaker<paddle::framework::OpDesc>,
                   ops::FlattenGradOpMaker<paddle::imperative::OpBase>,
                   ops::FlattenOpInplaceInferer);
-REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp,
-                  ops::FlattenGradInplaceInferer,
-                  ops::FlattenGradNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(flatten_grad, ops::FlattenGradOp,
+                       ops::FlattenGradInplaceInferer,
+                       ops::FlattenGradNoNeedBufferVarsInferer);
 
 REGISTER_OPERATOR(flatten2, ops::Flatten2Op, ops::Flatten2OpMaker,
                   ops::Flatten2GradOpMaker<paddle::framework::OpDesc>,
                   ops::Flatten2GradOpMaker<paddle::imperative::OpBase>,
                   ops::FlattenOpInplaceInferer);
-REGISTER_OPERATOR(flatten2_grad, ops::Flatten2GradOp,
-                  ops::FlattenGradInplaceInferer);
+REGISTER_GRAD_OPERATOR(flatten2_grad, ops::Flatten2GradOp,
+                       ops::FlattenGradInplaceInferer);
 
 REGISTER_OPERATOR(
     flatten_contiguous_range, ops::FlattenContiguousRangeOp,
@@ -422,9 +422,9 @@ REGISTER_OPERATOR(
     ops::FlattenContiguousRangeGradOpMaker<paddle::framework::OpDesc>,
     ops::FlattenContiguousRangeGradOpMaker<paddle::imperative::OpBase>,
     ops::FlattenOpInplaceInferer);
-REGISTER_OPERATOR(flatten_contiguous_range_grad,
-                  ops::FlattenContiguousRangeGradOp,
-                  ops::FlattenGradInplaceInferer);
+REGISTER_GRAD_OPERATOR(flatten_contiguous_range_grad,
+                       ops::FlattenContiguousRangeGradOp,
+                       ops::FlattenGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     flatten, ops::FlattenKernel<paddle::platform::CPUDeviceContext, float>,
@@ -432,7 +432,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::FlattenKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FlattenKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::FlattenKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     flatten_grad,
     ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, double>,
@@ -445,7 +445,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int>,
     ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     flatten2_grad,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, double>,
@@ -463,7 +463,7 @@ REGISTER_OP_CPU_KERNEL(
                                       int8_t>,
     ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
                                       int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     flatten_contiguous_range_grad,
     ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
                                           float>,

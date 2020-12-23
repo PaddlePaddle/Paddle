@@ -209,10 +209,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(smooth_l1_loss, ops::SmoothL1LossOp, ops::SmoothL1LossOpMaker,
                   ops::SmoothL1LossGradMaker<paddle::framework::OpDesc>,
                   ops::SmoothL1LossGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(smooth_l1_loss_grad, ops::SmoothL1LossGradOp);
+REGISTER_GRAD_OPERATOR(smooth_l1_loss_grad, ops::SmoothL1LossGradOp);
 REGISTER_OP_CPU_KERNEL(
     smooth_l1_loss,
     ops::SmoothL1LossKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     smooth_l1_loss_grad,
     ops::SmoothL1LossGradKernel<paddle::platform::CPUDeviceContext, float>);

@@ -303,6 +303,7 @@ REGISTER_OPERATOR(
     ops::LoDTensorArray2TensorOpMaker, ops::LoDTensorArray2TensorOpInferShape,
     ops::TensorArrayToTensorGradOpMaker<paddle::framework::OpDesc>,
     ops::TensorArrayToTensorGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(tensor_array_to_tensor_grad, ops::LoDTensorArray2TensorGradOp,
-                  ops::LoDTensorArray2TensorGradInferShape,
-                  ops::LoDTensorArray2TensorGradInferVarType);
+REGISTER_GRAD_OPERATOR(tensor_array_to_tensor_grad,
+                       ops::LoDTensorArray2TensorGradOp,
+                       ops::LoDTensorArray2TensorGradInferShape,
+                       ops::LoDTensorArray2TensorGradInferVarType);

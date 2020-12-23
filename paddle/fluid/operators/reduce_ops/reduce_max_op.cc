@@ -23,7 +23,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::MaxFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
                       ops::MaxFunctor>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     reduce_max_grad, ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
                                            float, ops::MaxOrMinGradFunctor>,
     ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, double,

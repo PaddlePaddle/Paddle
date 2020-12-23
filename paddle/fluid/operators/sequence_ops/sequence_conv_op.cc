@@ -246,14 +246,14 @@ REGISTER_OPERATOR(sequence_conv, ops::SequenceConvOp, ops::SequenceConvOpMaker,
                   ops::SequenceConvGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceConvGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(sequence_conv_grad, ops::SequenceConvGradOp,
-                  ops::SequenceConvGradNoNeedBufferVarsInference);
+REGISTER_GRAD_OPERATOR(sequence_conv_grad, ops::SequenceConvGradOp,
+                       ops::SequenceConvGradNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
     sequence_conv,
     ops::SequenceConvKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceConvKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     sequence_conv_grad,
     ops::SequenceConvGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceConvGradKernel<paddle::platform::CPUDeviceContext, double>);

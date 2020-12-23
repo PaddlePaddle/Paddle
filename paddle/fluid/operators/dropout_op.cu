@@ -214,7 +214,7 @@ REGISTER_OP_CUDA_KERNEL(
     dropout, ops::GPUDropoutKernel<plat::CUDADeviceContext, float>,
     ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16>,
     ops::GPUDropoutKernel<plat::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     dropout_grad, ops::DropoutGradKernel<plat::CUDADeviceContext, float>,
     ops::DropoutGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::DropoutGradKernel<plat::CUDADeviceContext, double>);

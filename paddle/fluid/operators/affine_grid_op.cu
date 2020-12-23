@@ -206,6 +206,6 @@ class AffineGridGradOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(affine_grid, ops::AffineGridOpCUDAKernel<float>,
                         ops::AffineGridOpCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(affine_grid_grad,
-                        ops::AffineGridGradOpCUDAKernel<float>,
-                        ops::AffineGridGradOpCUDAKernel<double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(affine_grid_grad,
+                             ops::AffineGridGradOpCUDAKernel<float>,
+                             ops::AffineGridGradOpCUDAKernel<double>);

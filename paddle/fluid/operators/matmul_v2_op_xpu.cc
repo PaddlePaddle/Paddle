@@ -361,7 +361,7 @@ class MatMulV2XPUGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_XPU_KERNEL(matmul_v2, ops::MatMulV2XPUKernel<float>);
-REGISTER_OP_XPU_KERNEL(matmul_v2_grad, ops::MatMulV2XPUGradKernel<float>);
+REGISTER_OP_XPU_GRAD_KERNEL(matmul_v2, ops::MatMulV2XPUKernel<float>);
+REGISTER_OP_XPU_GRAD_KERNEL(matmul_v2_grad, ops::MatMulV2XPUGradKernel<float>);
 
 #endif

@@ -20,7 +20,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::PadConstantLikeKernel<paddle::platform::CUDADeviceContext, double>,
     ops::PadConstantLikeKernel<paddle::platform::CUDADeviceContext, int>,
     ops::PadConstantLikeKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     pad_constant_like_grad,
     ops::PadConstantLikeGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::PadConstantLikeGradKernel<paddle::platform::CUDADeviceContext,

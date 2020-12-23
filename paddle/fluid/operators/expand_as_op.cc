@@ -133,15 +133,15 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(expand_as, ops::ExpandAsOp, ops::ExpandAsOpMaker,
                   ops::ExpandAsGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandAsGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(expand_as_grad, ops::ExpandAsGradOp,
-                  ops::ExpandAsGradNoNeedBufVarsInferer);
+REGISTER_GRAD_OPERATOR(expand_as_grad, ops::ExpandAsGradOp,
+                       ops::ExpandAsGradNoNeedBufVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     expand_as, ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, bool>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     expand_as_grad,
     ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, int64_t>,

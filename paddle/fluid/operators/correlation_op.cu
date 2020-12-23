@@ -479,5 +479,6 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(correlation, ops::CorrelationCUDAKernel<float>,
                         ops::CorrelationCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(correlation_grad, ops::CorrelationCUDAGradKernel<float>,
-                        ops::CorrelationCUDAGradKernel<double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(correlation_grad,
+                             ops::CorrelationCUDAGradKernel<float>,
+                             ops::CorrelationCUDAGradKernel<double>);

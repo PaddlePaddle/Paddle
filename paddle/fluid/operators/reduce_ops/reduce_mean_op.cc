@@ -95,10 +95,10 @@ class __reduce_meanMaker__ : public ops::ReduceOpMaker {
 REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, __reduce_meanMaker__,
                   ops::ReduceMeanOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceMeanOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp,
-                  ops::ReduceMeanDoubleGradDescMaker,
-                  ops::ReduceMeanDoubleGradOpBaseMaker,
-                  ops::ReduceMeanGradNoNeedBufferVarInferer);
+REGISTER_GRAD_OPERATOR(reduce_mean_grad, ops::ReduceGradOp,
+                       ops::ReduceMeanDoubleGradDescMaker,
+                       ops::ReduceMeanDoubleGradOpBaseMaker,
+                       ops::ReduceMeanGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(reduce_mean,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                                          float, ops::MeanFunctor>,
@@ -110,5 +110,5 @@ using CPUReduceMeanGradKernel =
     ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, T,
                           ops::MeanGradFunctor, true>;
 
-REGISTER_OP_CPU_KERNEL(reduce_mean_grad, CPUReduceMeanGradKernel<float>,
-                       CPUReduceMeanGradKernel<double>);
+REGISTER_OP_CPU_GRAD_KERNEL(reduce_mean_grad, CPUReduceMeanGradKernel<float>,
+                            CPUReduceMeanGradKernel<double>);

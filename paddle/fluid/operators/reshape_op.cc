@@ -600,8 +600,8 @@ REGISTER_OPERATOR(
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     ops::ReshapeOpInplaceInferer);
-REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp,
-                  ops::ReshapeGradInplaceInferer);
+REGISTER_GRAD_OPERATOR(reshape_grad, ops::ReshapeGradOp,
+                       ops::ReshapeGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int, ops::ReshapeKernel,
@@ -614,13 +614,13 @@ REGISTER_OPERATOR(reshape2, ops::Reshape2Op, ops::Reshape2OpMaker,
                   ops::Reshape2GradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2GradMaker<paddle::imperative::OpBase>,
                   ops::ReshapeOpInplaceInferer);
-REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
-                  ops::Reshape2DoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::Reshape2DoubleGradMaker<paddle::imperative::OpBase>,
-                  ops::ReshapeGradInplaceInferer);
-REGISTER_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
-                  ops::ReshapeDoubleGradInplaceInferer,
-                  ops::ReshapeDoubleGradOpNoNeedBufferVarInferer);
+REGISTER_GRAD_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
+                       ops::Reshape2DoubleGradMaker<paddle::framework::OpDesc>,
+                       ops::Reshape2DoubleGradMaker<paddle::imperative::OpBase>,
+                       ops::ReshapeGradInplaceInferer);
+REGISTER_GRAD_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
+                       ops::ReshapeDoubleGradInplaceInferer,
+                       ops::ReshapeDoubleGradOpNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(
     reshape2, float, ops::ReshapeKernel, double, ops::ReshapeKernel, int8_t,

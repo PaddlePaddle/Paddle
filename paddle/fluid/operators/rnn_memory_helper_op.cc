@@ -170,7 +170,7 @@ REGISTER_OPERATOR(
     paddle::operators::RNNMemoryHelperOpShapeInference,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(rnn_memory_helper_grad,
-                  paddle::operators::RNNMemoryHelperGradOp,
-                  paddle::operators::RNNMemoryHelperGradOpInfoMaker,
-                  paddle::operators::RNNMemoryHelperGradOpShapeInference);
+REGISTER_GRAD_OPERATOR(rnn_memory_helper_grad,
+                       paddle::operators::RNNMemoryHelperGradOp,
+                       paddle::operators::RNNMemoryHelperGradOpInfoMaker,
+                       paddle::operators::RNNMemoryHelperGradOpShapeInference);

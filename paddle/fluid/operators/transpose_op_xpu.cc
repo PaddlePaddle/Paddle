@@ -93,13 +93,13 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     transpose,
     ops::TransposeXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     transpose_grad,
     ops::TransposeGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 REGISTER_OP_XPU_KERNEL(
     transpose2,
     ops::TransposeXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     transpose2_grad,
     ops::TransposeGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 

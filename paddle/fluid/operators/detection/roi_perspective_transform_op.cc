@@ -669,9 +669,9 @@ REGISTER_OPERATOR(
     ops::ROIPerspectiveTransformOpMaker,
     ops::ROIPerspectiveTransformGradMaker<paddle::framework::OpDesc>,
     ops::ROIPerspectiveTransformGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(roi_perspective_transform_grad,
-                  ops::ROIPerspectiveTransformGradOp);
+REGISTER_GRAD_OPERATOR(roi_perspective_transform_grad,
+                       ops::ROIPerspectiveTransformGradOp);
 REGISTER_OP_CPU_KERNEL(roi_perspective_transform,
                        ops::CPUROIPerspectiveTransformOpKernel<float>);
-REGISTER_OP_CPU_KERNEL(roi_perspective_transform_grad,
-                       ops::CPUROIPerspectiveTransformGradOpKernel<float>);
+REGISTER_OP_CPU_GRAD_KERNEL(roi_perspective_transform_grad,
+                            ops::CPUROIPerspectiveTransformGradOpKernel<float>);

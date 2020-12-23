@@ -102,13 +102,13 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(tril_triu, ops::TrilTriuOp, ops::TrilTriuOpMaker,
                   ops::TrilTriuGradOpMaker<paddle::framework::OpDesc>,
                   ops::TrilTriuGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(tril_triu_grad, ops::TrilTriuGradOp);
+REGISTER_GRAD_OPERATOR(tril_triu_grad, ops::TrilTriuGradOp);
 REGISTER_OP_CPU_KERNEL(
     tril_triu, ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     tril_triu_grad,
     ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, double>,

@@ -119,13 +119,14 @@ REGISTER_OPERATOR(elementwise_div, ops::ElementwiseOp,
                   ops::ElementwiseDivGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseDivGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(
+REGISTER_GRAD_OPERATOR(
     elementwise_div_grad, ops::ElementwiseOpGrad,
     ops::ElementwiseDivDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseDivDoubleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad,
-                  ops::ElementwiseDoubleGradOpInplaceInferer);
+REGISTER_GRAD_OPERATOR(elementwise_div_grad_grad,
+                       ops::ElementwiseDivOpDoubleGrad,
+                       ops::ElementwiseDoubleGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,
@@ -137,7 +138,7 @@ REGISTER_OP_CPU_KERNEL(
                               paddle::platform::complex64>,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext,
                               paddle::platform::complex128>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     elementwise_div_grad,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, double>,
@@ -148,7 +149,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext,
                                   paddle::platform::complex128>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     elementwise_div_grad_grad,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         float>,

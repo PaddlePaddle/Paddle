@@ -106,9 +106,9 @@ REGISTER_OP_CUDA_KERNEL(gather_nd, ops::GatherNdOpCUDAKernel<CUDA, float>,
                         ops::GatherNdOpCUDAKernel<CUDA, bool>,
                         ops::GatherNdOpCUDAKernel<CUDA, plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(gather_nd_grad,
-                        ops::GatherNdGradOpCUDAKernel<CUDA, float>,
-                        ops::GatherNdGradOpCUDAKernel<CUDA, double>,
-                        ops::GatherNdGradOpCUDAKernel<CUDA, int64_t>,
-                        ops::GatherNdGradOpCUDAKernel<CUDA, int>,
-                        ops::GatherNdGradOpCUDAKernel<CUDA, plat::float16>);
+REGISTER_OP_CUDA_GRAD_KERNEL(
+    gather_nd_grad, ops::GatherNdGradOpCUDAKernel<CUDA, float>,
+    ops::GatherNdGradOpCUDAKernel<CUDA, double>,
+    ops::GatherNdGradOpCUDAKernel<CUDA, int64_t>,
+    ops::GatherNdGradOpCUDAKernel<CUDA, int>,
+    ops::GatherNdGradOpCUDAKernel<CUDA, plat::float16>);

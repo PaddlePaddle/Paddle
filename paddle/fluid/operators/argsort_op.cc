@@ -125,14 +125,14 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(argsort, ops::ArgsortOp, ops::ArgsortOpMaker,
                   ops::ArgsortGradOpMaker<paddle::framework::OpDesc>,
                   ops::ArgsortGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(argsort_grad, ops::ArgsortGradOp,
-                  ops::ArgsortGradNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(argsort_grad, ops::ArgsortGradOp,
+                       ops::ArgsortGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(argsort,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, float>,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, double>,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, int>,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     argsort_grad, ops::ArgsortGradientKernel<paddle::platform::CPUPlace, float>,
     ops::ArgsortGradientKernel<paddle::platform::CPUPlace, double>,
     ops::ArgsortGradientKernel<paddle::platform::CPUPlace, int>,

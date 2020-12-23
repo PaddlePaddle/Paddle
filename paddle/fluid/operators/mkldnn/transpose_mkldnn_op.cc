@@ -151,8 +151,8 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
 REGISTER_OP_KERNEL(transpose, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNOpKernel<float>);
 
-REGISTER_OP_KERNEL(transpose_grad, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::TransposeMKLDNNGradOpKernel<float>);
+REGISTER_OP_GRAD_KERNEL(transpose_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                        ops::TransposeMKLDNNGradOpKernel<float>);
 
-REGISTER_OP_KERNEL(transpose2_grad, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::TransposeMKLDNNGradOpKernel<float>);
+REGISTER_OP_GRAD_KERNEL(transpose2_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                        ops::TransposeMKLDNNGradOpKernel<float>);

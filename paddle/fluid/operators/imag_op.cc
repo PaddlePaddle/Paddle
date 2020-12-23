@@ -93,14 +93,14 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(imag, ops::ImagOp, ops::ImagOpMaker,
                   ops::ImagGradOpMaker<paddle::framework::OpDesc>,
                   ops::ImagGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(imag_grad, ops::ImagGradOp);
+REGISTER_GRAD_OPERATOR(imag_grad, ops::ImagGradOp);
 
 REGISTER_OP_CPU_KERNEL(imag, ops::ImagKernel<paddle::platform::CPUDeviceContext,
                                              paddle::platform::complex64>,
                        ops::ImagKernel<paddle::platform::CPUDeviceContext,
                                        paddle::platform::complex128>);
-REGISTER_OP_CPU_KERNEL(imag_grad,
-                       ops::ImagGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex64>,
-                       ops::ImagGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex128>);
+REGISTER_OP_CPU_GRAD_KERNEL(
+    imag_grad, ops::ImagGradKernel<paddle::platform::CPUDeviceContext,
+                                   paddle::platform::complex64>,
+    ops::ImagGradKernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex128>);

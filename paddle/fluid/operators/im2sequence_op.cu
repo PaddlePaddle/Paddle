@@ -18,6 +18,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     im2sequence,
     ops::Im2SequenceKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     im2sequence_grad,
     ops::Im2SequenceGradKernel<paddle::platform::CUDADeviceContext, float>);

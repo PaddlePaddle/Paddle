@@ -21,7 +21,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::IndexSelectKernel<paddle::platform::CUDADeviceContext, double>,
     ops::IndexSelectKernel<paddle::platform::CUDADeviceContext, int>,
     ops::IndexSelectKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     index_select_grad,
     ops::IndexSelectGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::IndexSelectGradKernel<paddle::platform::CUDADeviceContext, double>,

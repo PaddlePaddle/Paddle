@@ -214,7 +214,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     data_norm, ops::DataNormKernel<paddle::platform::CUDADeviceContext, float>,
     ops::DataNormKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     data_norm_grad,
     ops::DataNormGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::DataNormGradKernel<paddle::platform::CUDADeviceContext, double>);

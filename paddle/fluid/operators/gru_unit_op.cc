@@ -280,13 +280,13 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(gru_unit, ops::GRUUnitOp, ops::GRUUnitOpMaker,
                   ops::GRUUnitGradOpMaker<paddle::framework::OpDesc>,
                   ops::GRUUnitGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(gru_unit_grad, ops::GRUUnitGradOp,
-                  ops::GRUUnitGradOpNoNeedBufferVarInferer);
+REGISTER_GRAD_OPERATOR(gru_unit_grad, ops::GRUUnitGradOp,
+                       ops::GRUUnitGradOpNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(
     gru_unit, ops::GRUUnitKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GRUUnitKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     gru_unit_grad,
     ops::GRUUnitGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GRUUnitGradKernel<paddle::platform::CPUDeviceContext, double>);

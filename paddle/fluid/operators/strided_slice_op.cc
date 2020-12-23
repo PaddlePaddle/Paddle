@@ -319,8 +319,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(strided_slice, ops::StridedSliceOp, ops::StridedSliceOpMaker,
                   ops::StridedSliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::StridedSliceOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(strided_slice_grad, ops::StridedSliceOpGrad,
-                  ops::StridedSliceOpGradNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(strided_slice_grad, ops::StridedSliceOpGrad,
+                       ops::StridedSliceOpGradNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     strided_slice,
@@ -333,7 +333,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext,
                             paddle::platform::complex128>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     strided_slice_grad,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,

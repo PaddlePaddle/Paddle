@@ -103,10 +103,11 @@ REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
                   ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
-                  ops::ReduceSumDoubleOpGradMaker<paddle::framework::OpDesc>,
-                  ops::ReduceSumDoubleOpGradMaker<paddle::imperative::OpBase>,
-                  ops::ReduceSumGradNoNeedBufferVarInferer);
+REGISTER_GRAD_OPERATOR(
+    reduce_sum_grad, ops::ReduceGradOp,
+    ops::ReduceSumDoubleOpGradMaker<paddle::framework::OpDesc>,
+    ops::ReduceSumDoubleOpGradMaker<paddle::imperative::OpBase>,
+    ops::ReduceSumGradNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(
     reduce_sum, ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,
@@ -128,9 +129,9 @@ using CPUReduceSumGradKernel =
     ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, T,
                              ops::SumGradFunctor, true>;
 
-REGISTER_OP_CPU_KERNEL(reduce_sum_grad, CPUReduceSumGradKernel<float>,
-                       CPUReduceSumGradKernel<double>,
-                       CPUReduceSumGradKernel<int>,
-                       CPUReduceSumGradKernel<int64_t>,
-                       CPUReduceSumGradKernel<paddle::platform::complex64>,
-                       CPUReduceSumGradKernel<paddle::platform::complex128>);
+REGISTER_OP_CPU_GRAD_KERNEL(
+    reduce_sum_grad, CPUReduceSumGradKernel<float>,
+    CPUReduceSumGradKernel<double>, CPUReduceSumGradKernel<int>,
+    CPUReduceSumGradKernel<int64_t>,
+    CPUReduceSumGradKernel<paddle::platform::complex64>,
+    CPUReduceSumGradKernel<paddle::platform::complex128>);

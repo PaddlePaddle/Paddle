@@ -21,8 +21,8 @@ REGISTER_OP_CUDA_KERNEL(real,
                                         paddle::platform::complex64>,
                         ops::RealKernel<paddle::platform::CUDADeviceContext,
                                         paddle::platform::complex128>);
-REGISTER_OP_CUDA_KERNEL(real_grad,
-                        ops::RealGradKernel<paddle::platform::CUDADeviceContext,
-                                            paddle::platform::complex64>,
-                        ops::RealGradKernel<paddle::platform::CUDADeviceContext,
-                                            paddle::platform::complex128>);
+REGISTER_OP_CUDA_GRAD_KERNEL(
+    real_grad, ops::RealGradKernel<paddle::platform::CUDADeviceContext,
+                                   paddle::platform::complex64>,
+    ops::RealGradKernel<paddle::platform::CUDADeviceContext,
+                        paddle::platform::complex128>);

@@ -337,7 +337,7 @@ namespace ops = paddle::operators;
 #define REGISTER_ACTIVATION_XPU_KERNEL(act_type, functor, grad_functor)  \
   REGISTER_OP_XPU_KERNEL(act_type,                                       \
                          ops::XPUActivationKernel<ops::functor<float>>); \
-  REGISTER_OP_XPU_KERNEL(                                                \
+  REGISTER_OP_XPU_GRAD_KERNEL(                                           \
       act_type##_grad,                                                   \
       ops::XPUActivationGradKernel<ops::grad_functor<float>>);
 

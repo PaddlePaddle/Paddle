@@ -128,11 +128,11 @@ REGISTER_OPERATOR(
     ops::SequenceTopkAvgPoolingOpMaker,
     ops::SequenceTopkAvgPoolGradOpMaker<paddle::framework::OpDesc>,
     ops::SequenceTopkAvgPoolGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(sequence_topk_avg_pooling_grad,
-                  ops::SequenceTopkAvgPoolingGradOp);
+REGISTER_GRAD_OPERATOR(sequence_topk_avg_pooling_grad,
+                       ops::SequenceTopkAvgPoolingGradOp);
 REGISTER_OP_CPU_KERNEL(sequence_topk_avg_pooling,
                        ops::SequenceTopkAvgPoolingKernel<
                            paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(sequence_topk_avg_pooling_grad,
-                       ops::SequenceTopkAvgPoolingGradKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_GRAD_KERNEL(sequence_topk_avg_pooling_grad,
+                            ops::SequenceTopkAvgPoolingGradKernel<
+                                paddle::platform::CPUDeviceContext, float>);

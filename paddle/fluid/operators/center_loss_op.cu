@@ -144,6 +144,6 @@ using GPUCtx = paddle::platform::CUDADeviceContext;
 REGISTER_OP_CUDA_KERNEL(center_loss, ops::CenterLossCUDAKernel<GPUCtx, float>,
                         ops::CenterLossCUDAKernel<GPUCtx, double>);
 
-REGISTER_OP_CUDA_KERNEL(center_loss_grad,
-                        ops::CenterLossGradKernel<GPUCtx, float>,
-                        ops::CenterLossGradKernel<GPUCtx, double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(center_loss_grad,
+                             ops::CenterLossGradKernel<GPUCtx, float>,
+                             ops::CenterLossGradKernel<GPUCtx, double>);

@@ -115,11 +115,11 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(mv, ops::MVOp, ops::MVOpMaker,
                   ops::MVOpGradMaker<paddle::framework::OpDesc>,
                   ops::MVOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(mv_grad, ops::MVOpGrad);
+REGISTER_GRAD_OPERATOR(mv_grad, ops::MVOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     mv, ops::MVKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MVKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     mv_grad, ops::MVGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MVGradKernel<paddle::platform::CPUDeviceContext, double>);

@@ -22,7 +22,7 @@ REGISTER_OP_CUDA_KERNEL(
                                 int>,
     ops::MaxPoolWithIndexKernel<paddle::platform::CUDADeviceContext, double,
                                 int>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     max_pool2d_with_index_grad,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CUDADeviceContext, float,
                                     int>,
@@ -35,7 +35,7 @@ REGISTER_OP_CUDA_KERNEL(
                                 int>,
     ops::MaxPoolWithIndexKernel<paddle::platform::CUDADeviceContext, double,
                                 int>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     max_pool3d_with_index_grad,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CUDADeviceContext, float,
                                     int>,

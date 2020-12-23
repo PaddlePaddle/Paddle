@@ -507,6 +507,6 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(bilateral_slice, ops::BilateralSliceOpCUDAKernel<float>,
                         ops::BilateralSliceOpCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(bilateral_slice_grad,
-                        ops::BilateralSliceGradOpCUDAKernel<float>,
-                        ops::BilateralSliceGradOpCUDAKernel<double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(bilateral_slice_grad,
+                             ops::BilateralSliceGradOpCUDAKernel<float>,
+                             ops::BilateralSliceGradOpCUDAKernel<double>);

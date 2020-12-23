@@ -31,7 +31,7 @@ REGISTER_OP_CUDA_KERNEL(
                                        int>,
     paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
                                        int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     sequence_concat_grad,
     paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
                                            float>,

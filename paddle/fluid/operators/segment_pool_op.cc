@@ -153,14 +153,14 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(segment_pool, ops::SegmentPoolOp, ops::SegmentPoolOpMaker,
                   ops::SegmentPoolGradOpMaker<paddle::framework::OpDesc>,
                   ops::SegmentPoolGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(segment_pool_grad, ops::SegmentPoolGradOp);
+REGISTER_GRAD_OPERATOR(segment_pool_grad, ops::SegmentPoolGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     segment_pool,
     ops::SegmentPoolKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SegmentPoolKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     segment_pool_grad,
     ops::SegmentPoolGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SegmentPoolGradKernel<paddle::platform::CPUDeviceContext, double>);

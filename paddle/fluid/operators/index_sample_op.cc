@@ -139,15 +139,15 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(index_sample, ops::IndexSampleOp, ops::IndexSampleOpMaker,
                   ops::IndexSampleGradMaker<paddle::framework::OpDesc>,
                   ops::IndexSampleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(index_sample_grad, ops::IndexSampleGradOp,
-                  ops::IndexSampleGradNoNeedBufferVarInferer);
+REGISTER_GRAD_OPERATOR(index_sample_grad, ops::IndexSampleGradOp,
+                       ops::IndexSampleGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     index_sample,
     ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, float>,
     ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, double>,
     ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, int>,
     ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     index_sample_grad,
     ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, double>,

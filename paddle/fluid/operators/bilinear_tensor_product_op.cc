@@ -211,14 +211,14 @@ REGISTER_OPERATOR(
     ops::BilinearTensorProductOpMaker,
     ops::BilinearTensorProductGradOpMaker<paddle::framework::OpDesc>,
     ops::BilinearTensorProductGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(bilinear_tensor_product_grad,
-                  ops::BilinearTensorProductOpGrad);
+REGISTER_GRAD_OPERATOR(bilinear_tensor_product_grad,
+                       ops::BilinearTensorProductOpGrad);
 REGISTER_OP_CPU_KERNEL(
     bilinear_tensor_product,
     ops::BilinearTensorProductKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BilinearTensorProductKernel<paddle::platform::CPUDeviceContext,
                                      double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     bilinear_tensor_product_grad,
     ops::BilinearTensorProductGradKernel<paddle::platform::CPUDeviceContext,
                                          float>,

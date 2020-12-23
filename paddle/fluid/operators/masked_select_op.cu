@@ -169,7 +169,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MaskedSelectCUDAKernel<paddle::platform::CUDADeviceContext, double>,
     ops::MaskedSelectCUDAKernel<paddle::platform::CUDADeviceContext, int>,
     ops::MaskedSelectCUDAKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     masked_select_grad,
     ops::MaskedSelectGradCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MaskedSelectGradCUDAKernel<paddle::platform::CUDADeviceContext,

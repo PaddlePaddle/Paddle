@@ -898,19 +898,20 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(matmul, ops::MatMulOp, ops::MatMulOpMaker,
                   ops::MatMulOpGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(matmul_grad, ops::MatMulOpGrad,
-                  ops::MatMulOpDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::MatMulOpDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(matmul_grad_grad, ops::MatMulOpDoubleGrad);
+REGISTER_GRAD_OPERATOR(
+    matmul_grad, ops::MatMulOpGrad,
+    ops::MatMulOpDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::MatMulOpDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(matmul_grad_grad, ops::MatMulOpDoubleGrad);
 REGISTER_OP_CPU_KERNEL(
     matmul, ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     matmul_grad,
     ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     matmul_grad_grad,
     ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);

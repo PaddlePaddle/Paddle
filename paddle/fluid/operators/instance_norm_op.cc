@@ -681,21 +681,22 @@ REGISTER_OPERATOR(instance_norm, ops::InstanceNormOp, ops::InstanceNormOpMaker,
                   ops::InstanceNormOpInferVarType,
                   ops::InstanceNormGradMaker<paddle::framework::OpDesc>,
                   ops::InstanceNormGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(instance_norm_grad, ops::InstanceNormGradOp,
-                  ops::InstanceNormDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::InstanceNormDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(instance_norm_grad_grad, ops::InstanceNormDoubleGradOp,
-                  ops::InstanceNormDoubleGradOpInplaceInferer);
+REGISTER_GRAD_OPERATOR(
+    instance_norm_grad, ops::InstanceNormGradOp,
+    ops::InstanceNormDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::InstanceNormDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(instance_norm_grad_grad, ops::InstanceNormDoubleGradOp,
+                       ops::InstanceNormDoubleGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     instance_norm,
     ops::InstanceNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::InstanceNormKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     instance_norm_grad,
     ops::InstanceNormGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::InstanceNormGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     instance_norm_grad_grad,
     ops::InstanceNormDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                       float>,

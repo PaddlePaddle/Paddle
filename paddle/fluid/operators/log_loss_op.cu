@@ -16,6 +16,6 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     log_loss, ops::LogLossKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     log_loss_grad,
     ops::LogLossGradKernel<paddle::platform::CUDADeviceContext, float>);

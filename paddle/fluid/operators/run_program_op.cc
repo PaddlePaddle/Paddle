@@ -168,12 +168,12 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(run_program, ops::RunProgramOp, ops::RunProgramOpMaker,
                   ops::RunProgramGradOpMaker<paddle::framework::OpDesc>,
                   ops::RunProgramGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(run_program_grad, ops::RunProgramGradOp);
+REGISTER_GRAD_OPERATOR(run_program_grad, ops::RunProgramGradOp);
 
 /* see [Why use single type kernel] */
 REGISTER_OP_CPU_KERNEL(
     run_program,
     ops::RunProgramOpKernel<paddle::platform::CPUDeviceContext, float>)
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     run_program_grad,
     ops::RunProgramGradOpKernel<paddle::platform::CPUDeviceContext, float>)

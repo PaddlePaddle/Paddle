@@ -224,9 +224,9 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(cos_sim, ops::CosSimOp, ops::CosSimOpMaker,
                   ops::CosSimGradOpMaker<paddle::framework::OpDesc>,
                   ops::CosSimGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(cos_sim_grad, ops::CosSimOpGrad);
+REGISTER_GRAD_OPERATOR(cos_sim_grad, ops::CosSimOpGrad);
 REGISTER_OP_CPU_KERNEL(
     cos_sim, ops::CosSimKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     cos_sim_grad,
     ops::CosSimGradKernel<paddle::platform::CPUDeviceContext, float>);

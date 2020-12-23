@@ -271,17 +271,17 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(tile, ops::TileOp, ops::TileOpMaker,
                   ops::TileGradOpMaker<paddle::framework::OpDesc>,
                   ops::TileGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(tile_grad, ops::TileGradOp,
-                  ops::TileDoubleGradOpMaker<paddle::framework::OpDesc>,
-                  ops::TileDoubleGradOpMaker<paddle::imperative::OpBase>,
-                  ops::TileGradNoNeedBufVarsInferer);
+REGISTER_GRAD_OPERATOR(tile_grad, ops::TileGradOp,
+                       ops::TileDoubleGradOpMaker<paddle::framework::OpDesc>,
+                       ops::TileDoubleGradOpMaker<paddle::imperative::OpBase>,
+                       ops::TileGradNoNeedBufVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     tile, ops::TileKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TileKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TileKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TileKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::TileKernel<paddle::platform::CPUDeviceContext, bool>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     tile_grad, ops::TileGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TileGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TileGradKernel<paddle::platform::CPUDeviceContext, int>,

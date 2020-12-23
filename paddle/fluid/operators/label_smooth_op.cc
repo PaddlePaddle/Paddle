@@ -152,12 +152,12 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(label_smooth, ops::LabelSmoothOp, ops::LabelSmoothOpMaker,
                   ops::LabelSmoothGradMaker<paddle::framework::OpDesc>,
                   ops::LabelSmoothGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(label_smooth_grad, ops::LabelSmoothGradOp);
+REGISTER_GRAD_OPERATOR(label_smooth_grad, ops::LabelSmoothGradOp);
 REGISTER_OP_CPU_KERNEL(
     label_smooth,
     ops::LabelSmoothKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LabelSmoothKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     label_smooth_grad,
     ops::LabelSmoothGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LabelSmoothGradKernel<paddle::platform::CPUDeviceContext, double>);

@@ -414,11 +414,11 @@ REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
                   ops::SliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::SliceOpGradMaker<paddle::imperative::OpBase>,
                   ops::SliceOpVarTypeInference);
-REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad,
-                  ops::SliceDoubleOpGradMaker<paddle::framework::OpDesc>,
-                  ops::SliceDoubleOpGradMaker<paddle::imperative::OpBase>,
-                  ops::SliceOpGradNoNeedBufferVarsInferer,
-                  ops::SliceOpGradVarTypeInference);
+REGISTER_GRAD_OPERATOR(slice_grad, ops::SliceOpGrad,
+                       ops::SliceDoubleOpGradMaker<paddle::framework::OpDesc>,
+                       ops::SliceDoubleOpGradMaker<paddle::imperative::OpBase>,
+                       ops::SliceOpGradNoNeedBufferVarsInferer,
+                       ops::SliceOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(
     slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,
@@ -430,7 +430,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::SliceKernel<paddle::platform::CPUDeviceContext,
                      paddle::platform::complex128>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     slice_grad, ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, float>,

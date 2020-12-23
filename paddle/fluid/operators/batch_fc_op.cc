@@ -147,8 +147,8 @@ REGISTER_OPERATOR(batch_fc, ops::BatchFCOp, ops::BatchFCOpMaker,
                   ops::BatchFCGradOpMaker<paddle::framework::OpDesc>,
                   ops::BatchFCGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(batch_fc_grad, ops::BatchFCGradOp,
-                  ops::BatchFCGradOpNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(batch_fc_grad, ops::BatchFCGradOp,
+                       ops::BatchFCGradOpNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     batch_fc, ops::BatchFCKernel<paddle::platform::CPUDeviceContext, float>,

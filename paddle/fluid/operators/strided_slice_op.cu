@@ -28,7 +28,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext,
                             paddle::platform::complex128>);
 
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     strided_slice_grad,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,

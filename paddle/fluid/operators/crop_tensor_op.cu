@@ -20,7 +20,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CropTensorKernel<paddle::platform::CUDADeviceContext, double>,
     ops::CropTensorKernel<paddle::platform::CUDADeviceContext, int>,
     ops::CropTensorKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     crop_tensor_grad,
     ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, double>,

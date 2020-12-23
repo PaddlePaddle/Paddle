@@ -303,12 +303,12 @@ REGISTER_OPERATOR(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
                   ops::SoftmaxGradMaker<paddle::framework::OpDesc>,
                   ops::SoftmaxGradMaker<paddle::imperative::OpBase>,
                   ops::SoftmaxWithCrossEntropyInplaceInferer);
-REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
-                  ops::SoftmaxWithCrossEntropyOpGrad,
-                  ops::SoftmaxWithCrossEntropyGradInplaceInferer);
+REGISTER_GRAD_OPERATOR(softmax_with_cross_entropy_grad,
+                       ops::SoftmaxWithCrossEntropyOpGrad,
+                       ops::SoftmaxWithCrossEntropyGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy,
                        ops::SoftmaxWithCrossEntropyKernel<float>,
                        ops::SoftmaxWithCrossEntropyKernel<double>);
-REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy_grad,
-                       ops::SoftmaxWithCrossEntropyGradKernel<float>,
-                       ops::SoftmaxWithCrossEntropyGradKernel<double>);
+REGISTER_OP_CPU_GRAD_KERNEL(softmax_with_cross_entropy_grad,
+                            ops::SoftmaxWithCrossEntropyGradKernel<float>,
+                            ops::SoftmaxWithCrossEntropyGradKernel<double>);

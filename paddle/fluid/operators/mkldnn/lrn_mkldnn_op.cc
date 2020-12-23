@@ -136,5 +136,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(lrn, MKLDNN, paddle::platform::CPUPlace,
                    ops::LRNMKLDNNOpKernel<float>);
-REGISTER_OP_KERNEL(lrn_grad, MKLDNN, paddle::platform::CPUPlace,
-                   ops::LRNMKLDNNGradOpKernel<float>);
+REGISTER_OP_GRAD_KERNEL(lrn_grad, MKLDNN, paddle::platform::CPUPlace,
+                        ops::LRNMKLDNNGradOpKernel<float>);

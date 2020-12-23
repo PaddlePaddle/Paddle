@@ -138,7 +138,8 @@ REGISTER_OPERATOR(reverse, ops::ReverseOp, ops::ReverseOpMaker,
                   ops::ReverseGradMaker<paddle::framework::OpDesc>,
                   ops::ReverseGradMaker<paddle::imperative::OpBase>,
                   ops::ReverseOpVarTypeInference);
-REGISTER_OPERATOR(reverse_grad, ops::ReverseOp, ops::ReverseOpVarTypeInference);
+REGISTER_GRAD_OPERATOR(reverse_grad, ops::ReverseOp,
+                       ops::ReverseOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(
     reverse, ops::ReverseKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ReverseKernel<paddle::platform::CPUDeviceContext, uint8_t>,

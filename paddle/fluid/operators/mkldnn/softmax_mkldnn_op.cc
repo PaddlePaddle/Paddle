@@ -183,5 +183,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(softmax, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::SoftmaxMKLDNNKernel<float>,
                    ops::SoftmaxMKLDNNKernel<paddle::platform::bfloat16>);
-REGISTER_OP_KERNEL(softmax_grad, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::SoftmaxMKLDNNGradKernel<float>);
+REGISTER_OP_GRAD_KERNEL(softmax_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                        ops::SoftmaxMKLDNNGradKernel<float>);

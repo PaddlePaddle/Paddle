@@ -66,7 +66,7 @@ class MeanGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     mean, ops::MeanXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     mean_grad,
     ops::MeanGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 #endif

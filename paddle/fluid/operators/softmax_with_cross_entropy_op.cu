@@ -533,7 +533,7 @@ REGISTER_OP_CUDA_KERNEL(
     softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyCUDAKernel<float>,
     ops::SoftmaxWithCrossEntropyCUDAKernel<paddle::platform::float16>,
     ops::SoftmaxWithCrossEntropyCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     softmax_with_cross_entropy_grad,
     ops::SoftmaxWithCrossEntropyGradCUDAKernel<float>,
     ops::SoftmaxWithCrossEntropyGradCUDAKernel<paddle::platform::float16>,

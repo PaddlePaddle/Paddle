@@ -252,8 +252,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(bilinear_interp, ops::InterpolateXPUKernel<float>);
 REGISTER_OP_XPU_KERNEL(nearest_interp, ops::InterpolateXPUKernel<float>);
 
-REGISTER_OP_XPU_KERNEL(bilinear_interp_grad,
-                       ops::InterpolateGradXPUKernel<float>);
-REGISTER_OP_XPU_KERNEL(nearest_interp_grad,
-                       ops::InterpolateGradXPUKernel<float>);
+REGISTER_OP_XPU_GRAD_KERNEL(bilinear_interp_grad,
+                            ops::InterpolateGradXPUKernel<float>);
+REGISTER_OP_XPU_GRAD_KERNEL(nearest_interp_grad,
+                            ops::InterpolateGradXPUKernel<float>);
 #endif

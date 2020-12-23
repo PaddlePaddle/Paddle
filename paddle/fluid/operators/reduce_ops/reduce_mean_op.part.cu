@@ -20,5 +20,5 @@ using CUDAReduceMeanGradKernel =
     ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, T,
                           ops::MeanGradFunctor, true>;
 
-REGISTER_OP_CUDA_KERNEL(reduce_mean_grad, CUDAReduceMeanGradKernel<float>,
-                        CUDAReduceMeanGradKernel<double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(reduce_mean_grad, CUDAReduceMeanGradKernel<float>,
+                             CUDAReduceMeanGradKernel<double>);

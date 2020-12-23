@@ -715,5 +715,5 @@ REGISTER_OPERATOR(
     recurrent, paddle::operators::RecurrentOp,
     paddle::operators::RecurrentOpProtoMaker,
     paddle::operators::RecurrentGradOpMaker<paddle::framework::OpDesc>);
-REGISTER_OPERATOR(recurrent_grad, paddle::operators::RecurrentGradOp,
-                  paddle::operators::RecurrentGradOpShapeInference);
+REGISTER_GRAD_OPERATOR(recurrent_grad, paddle::operators::RecurrentGradOp,
+                       paddle::operators::RecurrentGradOpShapeInference);

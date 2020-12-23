@@ -261,7 +261,7 @@ REGISTER_OP_CUDA_KERNEL(
     paddle::operators::TopkV2OpCUDAKernel<paddle::platform::CUDADeviceContext,
                                           paddle::platform::float16>);
 
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     top_k_v2_grad, paddle::operators::TopkV2OpGradCUDAKernel<
                        paddle::platform::CUDADeviceContext, float>,
     paddle::operators::TopkV2OpGradCUDAKernel<

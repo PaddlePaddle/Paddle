@@ -198,5 +198,5 @@ REGISTER_OPERATOR(shrink_rnn_memory, ops::ShrinkRNNMemoryOp,
                   ops::ShrinkRNNMemoryOpProtoMaker,
                   ops::ShrinkRNNGradOpMaker<paddle::framework::OpDesc>,
                   ops::ShrinkRNNGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(shrink_rnn_memory_grad, ops::ShrinkRNNMemoryGradOp,
-                  ops::ShrinkRNNMemoryGradInferShape);
+REGISTER_GRAD_OPERATOR(shrink_rnn_memory_grad, ops::ShrinkRNNMemoryGradOp,
+                       ops::ShrinkRNNMemoryGradInferShape);

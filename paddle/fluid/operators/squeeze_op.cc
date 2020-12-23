@@ -318,19 +318,21 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(squeeze, ops::SqueezeOp, ops::SqueezeOpMaker,
                   ops::SqueezeGradOpMaker<paddle::framework::OpDesc>,
                   ops::SqueezeGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(squeeze_grad, ops::SqueezeGradOp,
-                  ops::SqueezeDoubleGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SqueezeDoubleGradOpMaker<paddle::imperative::OpBase>,
-                  ops::SqueezeGradNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(
+    squeeze_grad, ops::SqueezeGradOp,
+    ops::SqueezeDoubleGradOpMaker<paddle::framework::OpDesc>,
+    ops::SqueezeDoubleGradOpMaker<paddle::imperative::OpBase>,
+    ops::SqueezeGradNoNeedBufferVarsInferer);
 
 REGISTER_OPERATOR(squeeze2, ops::Squeeze2Op, ops::Squeeze2OpMaker,
                   ops::Squeeze2GradOpMaker<paddle::framework::OpDesc>,
                   ops::Squeeze2GradOpMaker<paddle::imperative::OpBase>,
                   ops::SqueezeInplaceInferer);
-REGISTER_OPERATOR(squeeze2_grad, ops::Squeeze2GradOp,
-                  ops::Squeeze2DoubleGradOpMaker<paddle::framework::OpDesc>,
-                  ops::Squeeze2DoubleGradOpMaker<paddle::imperative::OpBase>,
-                  ops::SqueezeGradInplaceInferer);
+REGISTER_GRAD_OPERATOR(
+    squeeze2_grad, ops::Squeeze2GradOp,
+    ops::Squeeze2DoubleGradOpMaker<paddle::framework::OpDesc>,
+    ops::Squeeze2DoubleGradOpMaker<paddle::imperative::OpBase>,
+    ops::SqueezeGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     squeeze, ops::SqueezeKernel<paddle::platform::CPUDeviceContext, float>,
@@ -340,7 +342,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::SqueezeKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::SqueezeKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::SqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     squeeze_grad,
     ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, double>,
@@ -357,7 +359,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     squeeze2_grad,
     ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext, double>,

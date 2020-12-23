@@ -544,6 +544,6 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
 REGISTER_OPERATOR(
     while, paddle::operators::WhileOp, paddle::operators::WhileOpMaker,
     paddle::operators::WhileGradOpMaker<paddle::framework::OpDesc>);
-REGISTER_OPERATOR(while_grad, paddle::operators::WhileGradOp,
-                  paddle::operators::WhileGradOpShapeInference,
-                  paddle::operators::WhileGradOpVarTypeInference);
+REGISTER_GRAD_OPERATOR(while_grad, paddle::operators::WhileGradOp,
+                       paddle::operators::WhileGradOpShapeInference,
+                       paddle::operators::WhileGradOpVarTypeInference);

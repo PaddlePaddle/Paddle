@@ -21,7 +21,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ErfKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ErfKernel<paddle::platform::CUDADeviceContext,
                    paddle::platform::float16>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     erf_grad, ops::ErfGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ErfGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ErfGradKernel<paddle::platform::CUDADeviceContext,

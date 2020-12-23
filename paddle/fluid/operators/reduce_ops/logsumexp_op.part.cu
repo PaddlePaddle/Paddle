@@ -17,7 +17,7 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     logsumexp_grad,
     ops::LogsumexpGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LogsumexpGradKernel<paddle::platform::CUDADeviceContext, double>);

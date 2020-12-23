@@ -30,7 +30,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::KronKernel<paddle::platform::CUDADeviceContext,
                     paddle::platform::complex128>);
 
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     kron_grad, ops::KronGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::KronGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::KronGradKernel<paddle::platform::CUDADeviceContext,

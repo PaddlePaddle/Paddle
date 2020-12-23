@@ -69,7 +69,7 @@ class LogLossGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     log_loss, ops::LogLossXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     log_loss_grad,
     ops::LogLossGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 

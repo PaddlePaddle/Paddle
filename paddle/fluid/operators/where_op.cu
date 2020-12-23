@@ -107,7 +107,7 @@ REGISTER_OP_CUDA_KERNEL(
     paddle::operators::WhereKernel<platform::CUDADeviceContext, double>,
     paddle::operators::WhereKernel<platform::CUDADeviceContext, int>,
     paddle::operators::WhereKernel<platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     where_grad,
     paddle::operators::WhereGradKernel<platform::CUDADeviceContext, float>,
     paddle::operators::WhereGradKernel<platform::CUDADeviceContext, double>,

@@ -18,6 +18,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     dist, ops::DistKernel<paddle::platform::CUDADeviceContext, float>,
     ops::DistKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     dist_grad, ops::DistGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::DistGradKernel<paddle::platform::CUDADeviceContext, double>);

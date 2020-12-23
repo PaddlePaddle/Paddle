@@ -163,14 +163,14 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker,
                   ops::PadOpGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(pad_grad, ops::PadOpGrad,
-                  ops::PadOpDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::PadOpDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(pad_grad, ops::PadOpGrad,
+                       ops::PadOpDoubleGradMaker<paddle::framework::OpDesc>,
+                       ops::PadOpDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PadKernel<paddle::platform::CPUDeviceContext, double>,
     ops::PadKernel<paddle::platform::CPUDeviceContext, int>,
     ops::PadKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PadGradKernel<paddle::platform::CPUDeviceContext, double>);

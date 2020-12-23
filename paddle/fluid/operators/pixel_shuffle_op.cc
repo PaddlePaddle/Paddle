@@ -174,14 +174,14 @@ REGISTER_OPERATOR(pixel_shuffle, ops::PixelShuffleOp, ops::PixelShuffleOpMaker,
                   ops::PixelShuffleGradMaker<paddle::framework::OpDesc>,
                   ops::PixelShuffleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(pixel_shuffle_grad, ops::PixelShuffleGradOp);
+REGISTER_GRAD_OPERATOR(pixel_shuffle_grad, ops::PixelShuffleGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     pixel_shuffle,
     ops::PixelShuffleOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PixelShuffleOpKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     pixel_shuffle_grad,
     ops::PixelShuffleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PixelShuffleGradOpKernel<paddle::platform::CPUDeviceContext, double>);

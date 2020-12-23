@@ -199,7 +199,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     slice, ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, int>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     slice_grad,
     ops::SliceGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 #endif

@@ -211,9 +211,9 @@ REGISTER_OP_CUDA_KERNEL(partial_concat, ops::PartialConcatOpCUDAKernel<float>,
                         ops::PartialConcatOpCUDAKernel<int64_t>,
                         ops::PartialConcatOpCUDAKernel<plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(partial_concat_grad,
-                        ops::PartialConcatGradOpCUDAKernel<float>,
-                        ops::PartialConcatGradOpCUDAKernel<double>,
-                        ops::PartialConcatGradOpCUDAKernel<int>,
-                        ops::PartialConcatGradOpCUDAKernel<int64_t>,
-                        ops::PartialConcatGradOpCUDAKernel<plat::float16>);
+REGISTER_OP_CUDA_GRAD_KERNEL(partial_concat_grad,
+                             ops::PartialConcatGradOpCUDAKernel<float>,
+                             ops::PartialConcatGradOpCUDAKernel<double>,
+                             ops::PartialConcatGradOpCUDAKernel<int>,
+                             ops::PartialConcatGradOpCUDAKernel<int64_t>,
+                             ops::PartialConcatGradOpCUDAKernel<plat::float16>);

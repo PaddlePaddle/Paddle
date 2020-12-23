@@ -20,7 +20,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::RollKernel<paddle::platform::CUDADeviceContext, double>,
     ops::RollKernel<paddle::platform::CUDADeviceContext, int>,
     ops::RollKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     roll_grad, ops::RollGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::RollGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::RollGradKernel<paddle::platform::CUDADeviceContext, int>,

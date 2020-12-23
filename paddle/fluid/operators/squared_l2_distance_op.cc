@@ -192,11 +192,11 @@ REGISTER_OPERATOR(
     ops::SquaredL2DistanceOpMaker,
     ops::SquaredL2DistanceGradOpMaker<paddle::framework::OpDesc>,
     ops::SquaredL2DistanceGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp,
-                  ops::SquaredL2DistanceGradOpNoBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp,
+                       ops::SquaredL2DistanceGradOpNoBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_distance,
     ops::SquaredL2DistanceKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(squared_l2_distance_grad,
-                       ops::SquaredL2DistanceGradKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_GRAD_KERNEL(squared_l2_distance_grad,
+                            ops::SquaredL2DistanceGradKernel<
+                                paddle::platform::CPUDeviceContext, float>);

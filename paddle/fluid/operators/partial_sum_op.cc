@@ -190,7 +190,7 @@ REGISTER_OPERATOR(partial_sum, ops::PartialSumOp, ops::PartialSumOpMaker,
                   ops::PartialSumGradMaker<paddle::framework::OpDesc>,
                   ops::PartialSumGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(partial_sum_grad, ops::PartialSumGradOp);
+REGISTER_GRAD_OPERATOR(partial_sum_grad, ops::PartialSumGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     partial_sum,
@@ -199,7 +199,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::PartialSumKernel<paddle::platform::CPUDeviceContext, double>,
     ops::PartialSumKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
-REGISTER_OP_CPU_KERNEL(partial_sum_grad, ops::PartialSumGradientOpKernel<float>,
-                       ops::PartialSumGradientOpKernel<int>,
-                       ops::PartialSumGradientOpKernel<double>,
-                       ops::PartialSumGradientOpKernel<int64_t>);
+REGISTER_OP_CPU_GRAD_KERNEL(partial_sum_grad,
+                            ops::PartialSumGradientOpKernel<float>,
+                            ops::PartialSumGradientOpKernel<int>,
+                            ops::PartialSumGradientOpKernel<double>,
+                            ops::PartialSumGradientOpKernel<int64_t>);

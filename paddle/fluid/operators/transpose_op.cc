@@ -331,7 +331,7 @@ REGISTER_OPERATOR(
     transpose, ops::TransposeOp, ops::TransposeOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad);
+REGISTER_GRAD_OPERATOR(transpose_grad, ops::TransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
@@ -340,7 +340,7 @@ REGISTER_OP_CPU_KERNEL(
                          paddle::platform::complex64>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex128>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     transpose_grad,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>,
@@ -352,9 +352,10 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OPERATOR(transpose2, ops::Transpose2Op, ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
                   ops::Transpose2GradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(transpose2_grad, ops::Transpose2OpGrad,
-                  ops::Transpose2DoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(
+    transpose2_grad, ops::Transpose2OpGrad,
+    ops::Transpose2DoubleGradMaker<paddle::framework::OpDesc>,
+    ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
     transpose2, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
@@ -365,7 +366,7 @@ REGISTER_OP_CPU_KERNEL(
                          paddle::platform::complex64>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex128>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     transpose2_grad,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,

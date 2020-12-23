@@ -218,7 +218,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     roi_align,
     ops::XPUROIAlignOpKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     roi_align_grad,
     ops::XPUROIAlignGradOpKernel<paddle::platform::XPUDeviceContext, float>);
 

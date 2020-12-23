@@ -1033,8 +1033,8 @@ namespace plat = paddle::platform;
                                  paddle::imperative::OpBase>,               \
       std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(),      \
                        ops::ActFwdInplaceInferer, void>::type);             \
-  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ops::ActivationOpGrad,              \
-                    ops::ActivationGradOpInplaceInferer);
+  REGISTER_GRAD_OPERATOR(KERNEL_TYPE##_grad, ops::ActivationOpGrad,         \
+                         ops::ActivationGradOpInplaceInferer);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name, functor,        \
                                        grad_functor)                      \
@@ -1043,7 +1043,7 @@ namespace plat = paddle::platform;
                                       ops::functor<float>>,               \
       ops::ActivationKernel<paddle::platform::CPUDeviceContext,           \
                             ops::functor<double>>);                       \
-  REGISTER_OP_CPU_KERNEL(                                                 \
+  REGISTER_OP_CPU_GRAD_KERNEL(                                            \
       act_type##_grad,                                                    \
       ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,       \
                                 ops::grad_functor<float>>,                \
@@ -1061,18 +1061,18 @@ REGISTER_OPERATOR(
     ops::ActivationGradOpMaker<ops::ReluGradFunctor<float>::FwdDeps(),
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(relu_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::ReluDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::ReluDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
+REGISTER_GRAD_OPERATOR(relu_grad, ops::ActivationOpGrad,
+                       ops::ActivationGradOpInplaceInferer,
+                       ops::ReluDoubleGradMaker<paddle::framework::OpDesc>,
+                       ops::ReluDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(
     relu_grad_grad,
     ops::ActivationOpDoubleGrad2<ops::ReluGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     relu_grad_grad,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
                                     ops::ReluGradGradFunctor<float>>,
@@ -1091,18 +1091,18 @@ REGISTER_OPERATOR(
     ops::ActivationGradOpMaker<ops::LeakyReluGradFunctor<float>::FwdDeps(),
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(leaky_relu_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::LeakyReluDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::LeakyReluDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
+REGISTER_GRAD_OPERATOR(
+    leaky_relu_grad, ops::ActivationOpGrad, ops::ActivationGradOpInplaceInferer,
+    ops::LeakyReluDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::LeakyReluDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(
     leaky_relu_grad_grad,
     ops::ActivationOpDoubleGrad2<ops::LeakyReluGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(leaky_relu, LeakyRelu, LeakyReluFunctor,
                                LeakyReluGradFunctor);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     leaky_relu_grad_grad,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
                                     ops::LeakyReluGradGradFunctor<float>>,
@@ -1120,17 +1120,17 @@ REGISTER_OPERATOR(
     ops::ActivationGradOpMaker<ops::ELUGradFunctor<float>::FwdDeps(),
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(elu_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::ELUDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::ELUDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
+REGISTER_GRAD_OPERATOR(elu_grad, ops::ActivationOpGrad,
+                       ops::ActivationGradOpInplaceInferer,
+                       ops::ELUDoubleGradMaker<paddle::framework::OpDesc>,
+                       ops::ELUDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(
     elu_grad_grad,
     ops::ActivationOpDoubleGrad<ops::ELUGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(elu, ELU, ELUFunctor, ELUGradFunctor);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     elu_grad_grad, ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
                                             ops::ELUGradGradFunctor<float>>,
     ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
@@ -1148,17 +1148,17 @@ REGISTER_OPERATOR(
     ops::ActivationGradOpMaker<ops::SqrtGradFunctor<float>::FwdDeps(),
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(sqrt_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::SqrtDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::SqrtDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
+REGISTER_GRAD_OPERATOR(sqrt_grad, ops::ActivationOpGrad,
+                       ops::ActivationGradOpInplaceInferer,
+                       ops::SqrtDoubleGradMaker<paddle::framework::OpDesc>,
+                       ops::SqrtDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(
     sqrt_grad_grad,
     ops::ActivationOpDoubleGrad<ops::SqrtGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     sqrt_grad_grad, ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
                                               ops::SqrtGradGradFunctor<float>>,
     ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
@@ -1176,11 +1176,11 @@ REGISTER_OPERATOR(
     ops::ActivationGradOpMaker<ops::SquareGradFunctor<float>::FwdDeps(),
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(square_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::SquareDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::SquareDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
+REGISTER_GRAD_OPERATOR(square_grad, ops::ActivationOpGrad,
+                       ops::ActivationGradOpInplaceInferer,
+                       ops::SquareDoubleGradMaker<paddle::framework::OpDesc>,
+                       ops::SquareDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(
     square_grad_grad,
     ops::ActivationOpDoubleGrad<ops::SquareGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
@@ -1194,7 +1194,7 @@ REGISTER_OP_CPU_KERNEL(square,
                                              ops::SquareFunctor<int>>,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
                                              ops::SquareFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     square_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                                            ops::SquareGradFunctor<float>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
@@ -1204,7 +1204,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                               ops::SquareGradFunctor<int64_t>>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     square_grad_grad,
     ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
                                 ops::SquareGradGradFunctor<float>>,
@@ -1226,15 +1226,15 @@ REGISTER_OPERATOR(
     ops::PowGradOpMaker<paddle::imperative::OpBase>,
     std::conditional<ops::CanInplaceAct<ops::PowGradFunctor<float>>(),
                      ops::ActFwdInplaceInferer, void>::type);
-REGISTER_OPERATOR(pow_grad, ops::PowOpGrad,
-                  ops::ActivationGradOpInplaceInferer);
+REGISTER_GRAD_OPERATOR(pow_grad, ops::PowOpGrad,
+                       ops::ActivationGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     pow, ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<float>>,
     ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<double>>,
     ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<int>>,
     ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     pow_grad,
     ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<float>>,
     ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<double>>,
@@ -1251,8 +1251,8 @@ REGISTER_OPERATOR(
                                paddle::imperative::OpBase>,
     std::conditional<ops::CanInplaceAct<ops::ExpGradFunctor<float>>(),
                      ops::ActFwdInplaceInferer, void>::type);
-REGISTER_OPERATOR(exp_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer);
+REGISTER_GRAD_OPERATOR(exp_grad, ops::ActivationOpGrad,
+                       ops::ActivationGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(exp,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
@@ -1263,7 +1263,7 @@ REGISTER_OP_CPU_KERNEL(exp,
                                              ops::ExpFunctor<int>>,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
                                              ops::ExpFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     exp_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                                         ops::ExpGradFunctor<float>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
@@ -1283,11 +1283,11 @@ REGISTER_OPERATOR(
                                paddle::imperative::OpBase>,
     std::conditional<ops::CanInplaceAct<ops::AbsGradFunctor<float>>(),
                      ops::ActFwdInplaceInferer, void>::type);
-REGISTER_OPERATOR(abs_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
+REGISTER_GRAD_OPERATOR(abs_grad, ops::ActivationOpGrad,
+                       ops::ActivationGradOpInplaceInferer,
+                       ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
+                       ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(
     abs_grad_grad,
     ops::ActivationOpDoubleGrad<ops::AbsGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
@@ -1301,7 +1301,7 @@ REGISTER_OP_CPU_KERNEL(abs,
                                              ops::AbsFunctor<int>>,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
                                              ops::AbsFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     abs_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                                         ops::AbsGradFunctor<float>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
@@ -1310,7 +1310,7 @@ REGISTER_OP_CPU_KERNEL(
                               ops::AbsGradFunctor<int>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                               ops::AbsGradFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     abs_grad_grad,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
                                     ops::AbsGradGradFunctor<float>>,
@@ -1332,19 +1332,19 @@ REGISTER_OPERATOR(
     ops::ActivationGradOpMaker<ops::LogGradFunctor<float>::FwdDeps(),
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(log_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::LogDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::LogDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(log_grad, ops::ActivationOpGrad,
+                       ops::ActivationGradOpInplaceInferer,
+                       ops::LogDoubleGradMaker<paddle::framework::OpDesc>,
+                       ops::LogDoubleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(
+REGISTER_GRAD_OPERATOR(
     log_grad_grad,
     ops::ActivationOpDoubleGrad<ops::LogGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(log, Log, LogFunctor, LogGradFunctor);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     log_grad_grad, ops::LogDoubleGradKernel<plat::CPUDeviceContext,
                                             ops::LogGradGradFunctor<float>>,
     ops::LogDoubleGradKernel<plat::CPUDeviceContext,

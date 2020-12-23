@@ -133,7 +133,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     lookup_table_v2,
     ops::LookupTableV2XPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     lookup_table_v2_grad,
     ops::LookupTableV2GradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 #endif

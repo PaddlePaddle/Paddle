@@ -162,7 +162,7 @@ REGISTER_OP_CUDA_KERNEL(
     sequence_softmax,
     ops::SequenceSoftmaxKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SequenceSoftmaxKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     sequence_softmax_grad,
     ops::SequenceSoftmaxGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SequenceSoftmaxGradKernel<paddle::platform::CUDADeviceContext,

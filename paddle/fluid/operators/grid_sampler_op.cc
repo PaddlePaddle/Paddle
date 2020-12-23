@@ -227,13 +227,13 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(grid_sampler, ops::GridSampleOp, ops::GridSampleOpMaker,
                   ops::GridSampleGradMaker<paddle::framework::OpDesc>,
                   ops::GridSampleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(grid_sampler_grad, ops::GridSampleOpGrad);
+REGISTER_GRAD_OPERATOR(grid_sampler_grad, ops::GridSampleOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     grid_sampler,
     ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     grid_sampler_grad,
     ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, double>);

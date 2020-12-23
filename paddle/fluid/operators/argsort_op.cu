@@ -406,7 +406,7 @@ REGISTER_OP_CUDA_KERNEL(
                                            int64_t>,
     paddle::operators::ArgsortOpCUDAKernel<paddle::platform::CUDADeviceContext,
                                            paddle::platform::float16>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     argsort_grad, paddle::operators::ArgsortGradOpCUDAKernel<float>,
     paddle::operators::ArgsortGradOpCUDAKernel<double>,
     paddle::operators::ArgsortGradOpCUDAKernel<int>,

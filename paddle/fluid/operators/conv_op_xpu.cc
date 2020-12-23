@@ -110,10 +110,10 @@ REGISTER_OP_XPU_KERNEL(
     ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>);
 REGISTER_OP_XPU_KERNEL(
     conv2d, ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     conv2d_grad,
     ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     depthwise_conv2d_grad,
     ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 #endif

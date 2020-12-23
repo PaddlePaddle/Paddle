@@ -126,10 +126,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(selu, ops::SeluOp, ops::SeluOpMaker, ops::SeluOpInferVarType,
                   ops::SeluGradMaker<paddle::framework::OpDesc>,
                   ops::SeluGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(selu_grad, ops::SeluGradOp);
+REGISTER_GRAD_OPERATOR(selu_grad, ops::SeluGradOp);
 REGISTER_OP_CPU_KERNEL(
     selu, ops::SeluKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SeluKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     selu_grad, ops::SeluGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SeluGradKernel<paddle::platform::CPUDeviceContext, double>);

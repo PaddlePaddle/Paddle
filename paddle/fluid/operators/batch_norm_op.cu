@@ -889,11 +889,11 @@ REGISTER_OP_CUDA_KERNEL(
     batch_norm, ops::BatchNormKernel<plat::CUDADeviceContext, float>,
     ops::BatchNormKernel<plat::CUDADeviceContext, double>,
     ops::BatchNormKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     batch_norm_grad, ops::BatchNormGradKernel<plat::CUDADeviceContext, float>,
     ops::BatchNormGradKernel<plat::CUDADeviceContext, double>,
     ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     batch_norm_grad_grad,
     ops::BatchNormDoubleGradKernel<plat::CUDADeviceContext, float>,
     ops::BatchNormDoubleGradKernel<plat::CUDADeviceContext, double>);

@@ -297,7 +297,7 @@ REGISTER_OP_CUDA_KERNEL(
     psroi_pool,
     ops::GPUPSROIPoolOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GPUPSROIPoolOpKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     psroi_pool_grad,
     ops::GPUPSROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GPUPSROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, double>);

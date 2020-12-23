@@ -22,7 +22,7 @@ REGISTER_OP_CUDA_KERNEL(
     segment_pool,
     ops::SegmentPoolKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SegmentPoolKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     segment_pool_grad,
     ops::SegmentPoolGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SegmentPoolGradKernel<paddle::platform::CUDADeviceContext, double>);

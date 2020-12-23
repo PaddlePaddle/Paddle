@@ -23,7 +23,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TileKernel<paddle::platform::CUDADeviceContext, int>,
     ops::TileKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::TileKernel<paddle::platform::CUDADeviceContext, bool>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     tile_grad, ops::TileGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TileGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TileGradKernel<paddle::platform::CUDADeviceContext, plat::float16>,

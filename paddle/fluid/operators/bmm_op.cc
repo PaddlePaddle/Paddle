@@ -156,10 +156,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(bmm, ops::BmmOp, ops::BmmOpMaker,
                   ops::BmmOpGradMaker<paddle::framework::OpDesc>,
                   ops::BmmOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(bmm_grad, ops::BmmOpGrad);
+REGISTER_GRAD_OPERATOR(bmm_grad, ops::BmmOpGrad);
 REGISTER_OP_CPU_KERNEL(
     bmm, ops::BmmKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BmmKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     bmm_grad, ops::BmmGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BmmGradKernel<paddle::platform::CPUDeviceContext, double>);

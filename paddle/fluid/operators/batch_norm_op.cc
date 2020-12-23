@@ -1248,20 +1248,21 @@ REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
                   ops::BatchNormOpInferVarType,
                   ops::BatchNormGradMaker<paddle::framework::OpDesc>,
                   ops::BatchNormGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp,
-                  ops::BatchNormDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::BatchNormDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(batch_norm_grad_grad, ops::BatchNormDoubleGradOp,
-                  ops::BatchNormDoubleGradOpInplaceInferer);
+REGISTER_GRAD_OPERATOR(
+    batch_norm_grad, ops::BatchNormGradOp,
+    ops::BatchNormDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::BatchNormDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_GRAD_OPERATOR(batch_norm_grad_grad, ops::BatchNormDoubleGradOp,
+                       ops::BatchNormDoubleGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     batch_norm, ops::BatchNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BatchNormKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     batch_norm_grad,
     ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     batch_norm_grad_grad,
     ops::BatchNormDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BatchNormDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);

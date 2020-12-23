@@ -176,14 +176,14 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_pool, ops::SequencePoolOp, ops::SequencePoolOpMaker,
                   ops::SequencePoolGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequencePoolGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
-                  ops::SequencePoolGradOpNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
+                       ops::SequencePoolGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_pool,
     ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     sequence_pool_grad,
     ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, double>);

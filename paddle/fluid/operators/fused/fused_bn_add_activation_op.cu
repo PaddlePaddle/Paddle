@@ -331,7 +331,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     fused_bn_add_activation,
     ops::FusedBatchNormAddActKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(fused_bn_add_activation_grad,
-                        ops::FusedBatchNormAddActGradKernel<
-                            plat::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_GRAD_KERNEL(fused_bn_add_activation_grad,
+                             ops::FusedBatchNormAddActGradKernel<
+                                 plat::CUDADeviceContext, plat::float16>);
 #endif

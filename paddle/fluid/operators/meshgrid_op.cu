@@ -21,7 +21,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MeshgridKernel<paddle::platform::CUDADeviceContext, int>,
     ops::MeshgridKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::MeshgridKernel<paddle::platform::CUDADeviceContext, bool>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     meshgrid_grad,
     ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, double>,

@@ -118,7 +118,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ShuffleChannelOpCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ShuffleChannelOpCUDAKernel<paddle::platform::CUDADeviceContext,
                                     double>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     shuffle_channel_grad,
     ops::ShuffleChannelGradOpCUDAKernel<paddle::platform::CUDADeviceContext,
                                         float>,

@@ -165,6 +165,6 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(temporal_shift, ops::TemporalShiftOpCUDAKernel<float>,
                         ops::TemporalShiftOpCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(temporal_shift_grad,
-                        ops::TemporalShiftGradOpCUDAKernel<float>,
-                        ops::TemporalShiftGradOpCUDAKernel<double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(temporal_shift_grad,
+                             ops::TemporalShiftGradOpCUDAKernel<float>,
+                             ops::TemporalShiftGradOpCUDAKernel<double>);

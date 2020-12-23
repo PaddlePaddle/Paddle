@@ -261,15 +261,15 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_pad, ops::SequencePadOp, ops::SequencePadOpMaker,
                   ops::SequencePadGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequencePadGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(sequence_pad_grad, ops::SequencePadGradOp,
-                  ops::SequencePadGradOpNoNeedBufferVarsInferer);
+REGISTER_GRAD_OPERATOR(sequence_pad_grad, ops::SequencePadGradOp,
+                       ops::SequencePadGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_pad,
     ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     sequence_pad_grad,
     ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, double>,

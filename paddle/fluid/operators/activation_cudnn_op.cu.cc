@@ -187,7 +187,7 @@ namespace ops = paddle::operators;
   REGISTER_OP_KERNEL(act_type, CUDNN, plat::CUDAPlace,                    \
                      ops::CudnnActivationKernel<ops::functor<float>>,     \
                      ops::CudnnActivationKernel<ops::functor<double>>);   \
-  REGISTER_OP_KERNEL(                                                     \
+  REGISTER_OP_GRAD_KERNEL(                                                \
       act_type##_grad, CUDNN, plat::CUDAPlace,                            \
       ops::CudnnActivationGradKernel<ops::grad_functor<float>>,           \
       ops::CudnnActivationGradKernel<ops::grad_functor<double>>);

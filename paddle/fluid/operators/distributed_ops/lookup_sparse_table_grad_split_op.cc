@@ -65,13 +65,13 @@ random value and set the value into the table for the next looking up.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
+REGISTER_GRAD_OPERATOR(
     lookup_sparse_table_grad_split, ops::LookupSparseTableGradSplitOp,
     ops::LookupSparseTableGradSplitOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     lookup_sparse_table_grad_split,
     ops::LookupSparseTableGradSplitKernel<paddle::platform::CPUDeviceContext,
                                           float>,

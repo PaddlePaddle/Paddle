@@ -279,7 +279,7 @@ using XPUDeviceContext = paddle::platform::XPUDeviceContext;
 
 REGISTER_OP_XPU_KERNEL(deformable_conv,
                        ops::DeformableConvXPUKernel<XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_XPU_GRAD_KERNEL(
     deformable_conv_grad,
     ops::DeformableConvGradXPUKernel<XPUDeviceContext, float>);
 

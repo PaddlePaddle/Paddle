@@ -177,7 +177,7 @@ REGISTER_OPERATOR(matmul_v2, ops::MatMulV2Op, ops::MatMulV2OpMaker,
                   ops::MatMulV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2GradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad);
+REGISTER_GRAD_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     matmul_v2, ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, float>,
@@ -187,7 +187,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext,
                         paddle::platform::complex128>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     matmul_v2_grad,
     ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, double>,

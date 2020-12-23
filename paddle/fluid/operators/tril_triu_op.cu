@@ -22,7 +22,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TrilTriuOpKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TrilTriuOpKernel<paddle::platform::CUDADeviceContext, int>,
     ops::TrilTriuOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CUDA_GRAD_KERNEL(
     tril_triu_grad,
     ops::TrilTriuGradOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TrilTriuGradOpKernel<paddle::platform::CUDADeviceContext, double>,

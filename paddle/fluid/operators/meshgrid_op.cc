@@ -142,14 +142,14 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(meshgrid, ops::MeshgridOp, ops::MeshgridOpMaker,
                   ops::MeshgridGradOpMaker<paddle::framework::OpDesc>,
                   ops::MeshgridGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(meshgrid_grad, ops::MeshgridGradOp);
+REGISTER_GRAD_OPERATOR(meshgrid_grad, ops::MeshgridGradOp);
 REGISTER_OP_CPU_KERNEL(
     meshgrid, ops::MeshgridKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MeshgridKernel<paddle::platform::CPUDeviceContext, double>,
     ops::MeshgridKernel<paddle::platform::CPUDeviceContext, int>,
     ops::MeshgridKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     meshgrid_grad,
     ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, int64_t>,

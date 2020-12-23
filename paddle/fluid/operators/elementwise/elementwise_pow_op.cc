@@ -69,7 +69,7 @@ REGISTER_OPERATOR(elementwise_pow, ops::ElementwiseOp,
                   ops::ElementwisePowOpMaker, ops::ElementwiseOpInferVarType,
                   ops::ElementwisePowOpGradMaker<paddle::framework::OpDesc>,
                   ops::ElementwisePowOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(elementwise_pow_grad, ops::ElementwiseOpGrad);
+REGISTER_GRAD_OPERATOR(elementwise_pow_grad, ops::ElementwiseOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_pow,
@@ -77,7 +77,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_GRAD_KERNEL(
     elementwise_pow_grad,
     ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, double>,

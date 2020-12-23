@@ -157,5 +157,5 @@ using CUDA = paddle::platform::CUDADeviceContext;
 
 REGISTER_OP_CUDA_KERNEL(norm, ops::NormCUDAKernel<CUDA, float>,
                         ops::NormCUDAKernel<CUDA, double>);
-REGISTER_OP_CUDA_KERNEL(norm_grad, ops::NormGradCUDAKernel<CUDA, float>,
-                        ops::NormGradCUDAKernel<CUDA, double>);
+REGISTER_OP_CUDA_GRAD_KERNEL(norm_grad, ops::NormGradCUDAKernel<CUDA, float>,
+                             ops::NormGradCUDAKernel<CUDA, double>);
