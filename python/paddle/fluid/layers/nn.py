@@ -663,7 +663,11 @@ def _pull_sparse_v2(input,
     return outs
 
 
-def _pull_box_sparse(input, size, dtype='float32'):
+def _pull_box_sparse(input,
+                     size,
+                     dtype='float32',
+                     is_distributed=False,
+                     is_sparse=False):
     r"""
     **Pull Box Sparse Layer**
 
@@ -701,11 +705,18 @@ def _pull_box_sparse(input, size, dtype='float32'):
         helper.create_variable_for_type_inference(dtype)
         for i in range(len(inputs))
     ]
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=[size], dtype=dtype, is_bias=False)
     helper.append_op(
         type='pull_box_sparse',
-        inputs={'Ids': inputs},
+        inputs={'Ids': inputs,
+                'W': w},
         outputs={'Out': outs},
-        attrs={'size': size})
+        attrs={
+            'size': size,
+            'is_distributed': is_distributed,
+            'is_sparse': is_sparse
+        })
     if len(outs) == 1:
         return outs[0]
     return outs
