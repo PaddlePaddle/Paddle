@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+=======
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,6 +19,10 @@ limitations under the License. */
 #pragma once
 #include <glog/logging.h>
 
+<<<<<<< HEAD
+=======
+//#include <hip/hip_runtime_api.h>
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 #include <miopen/miopen.h>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -24,9 +32,16 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
+<<<<<<< HEAD
 extern std::once_flag miopen_dso_flag;
 extern void* miopen_dso_handle;
 extern bool HasCUDNN();
+=======
+extern std::once_flag cudnn_dso_flag;
+extern void* cudnn_dso_handle;
+extern bool HasMIOpen();
+
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 
 inline const char* miopenGetErrorString(miopenStatus_t status) {
   switch (status) {
@@ -51,6 +66,7 @@ inline const char* miopenGetErrorString(miopenStatus_t status) {
 }
 
 extern void EnforceCUDNNLoaded(const char* fn_name);
+<<<<<<< HEAD
 #define DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP(__name)                            \
   struct DynLoad__##__name {                                                \
     template <typename... Args>                                             \
@@ -143,10 +159,107 @@ MIOPEN_DNN_ROUTINE_EACH_AFTER_R4(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 
 // APIs in R5
 #define MIOPEN_DNN_ROUTINE_EACH_R5(__macro)  \
+=======
+#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                            \
+  struct DynLoad__##__name {                                               \
+    template <typename... Args>                                            \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
+      using cudnn_func = decltype(&::__name);                              \
+      std::call_once(cudnn_dso_flag, []() {                                \
+        cudnn_dso_handle = paddle::platform::dynload::GetCUDNNDsoHandle(); \
+      });                                                                  \
+      EnforceCUDNNLoaded(#__name);                                         \
+      static void* p_##__name = dlsym(cudnn_dso_handle, #__name);          \
+      return reinterpret_cast<cudnn_func>(p_##__name)(args...);            \
+    }                                                                      \
+  };                                                                       \
+  extern struct DynLoad__##__name __name
+
+
+/**
+ * include all needed cudnn functions in HPPL
+ * different cudnn version has different interfaces
+ **/
+#define CUDNN_DNN_ROUTINE_EACH(__macro)                   \
+  __macro(miopenSet4dTensorDescriptor);                    \
+  __macro(miopenSetTensorDescriptor);                    \
+  __macro(miopenInitConvolutionNdDescriptor);              \
+  __macro(miopenFindConvolutionForwardAlgorithm);         \
+  __macro(miopenGetConvolutionNdForwardOutputDim);         \
+  __macro(miopenFindConvolutionBackwardDataAlgorithm);     \
+  __macro(miopenFindConvolutionBackwardWeightsAlgorithm);  \
+  __macro(miopenGetTensorDescriptor);                      \
+  __macro(miopenCreateTensorDescriptor);                   \
+  __macro(miopenDestroyTensorDescriptor);                  \
+  __macro(miopenSet2dPoolingDescriptor);                   \
+  __macro(miopenGet2dPoolingDescriptor);                   \
+  __macro(miopenGetPoolingNdForwardOutputDim);                   \
+  __macro(miopenCreateConvolutionDescriptor);              \
+  __macro(miopenCreatePoolingDescriptor);                  \
+  __macro(miopenDestroyPoolingDescriptor);                 \
+  __macro(miopenPoolingGetWorkSpaceSize);                  \
+  __macro(miopenPoolingGetWorkSpaceSizeV2);                \
+  __macro(miopenSetNdPoolingDescriptor);                   \
+  __macro(miopenInitConvolutionDescriptor);               \
+  __macro(miopenDestroyConvolutionDescriptor);             \
+  __macro(miopenGetConvolutionNdDescriptor);               \
+  __macro(miopenDeriveBNTensorDescriptor);                 \
+  __macro(miopenCreate);                                   \
+  __macro(miopenDestroy);                                  \
+  __macro(miopenSetStream);                                \
+  __macro(miopenActivationForward);                        \
+  __macro(miopenActivationBackward);                       \
+  __macro(miopenConvolutionBackwardWeights);               \
+  __macro(miopenConvolutionForward);                       \
+  __macro(miopenConvolutionBackwardBias);                  \
+  __macro(miopenConvolutionForwardGetWorkSpaceSize);       \
+  __macro(miopenConvolutionBackwardDataGetWorkSpaceSize);  \
+  __macro(miopenTransformTensor);                          \
+  __macro(miopenPoolingForward);                           \
+  __macro(miopenPoolingBackward);                          \
+  __macro(miopenSoftmaxBackward);                          \
+  __macro(miopenSoftmaxForward);                           \
+  __macro(miopenCreateDropoutDescriptor);                  \
+  __macro(miopenDropoutGetStatesSize);                     \
+  __macro(miopenSetDropoutDescriptor);                     \
+  __macro(miopenCreateRNNDescriptor);                      \
+  __macro(miopenSetRNNDescriptor);                         \
+  __macro(miopenGetRNNParamsSize);                         \
+  __macro(miopenGetRNNWorkspaceSize);                      \
+  __macro(miopenGetRNNTrainingReserveSize);                \
+  __macro(miopenRNNForwardTraining);                       \
+  __macro(miopenRNNBackwardData);                          \
+  __macro(miopenRNNBackwardWeights);                       \
+  __macro(miopenRNNForwardInference);                      \
+  __macro(miopenDestroyDropoutDescriptor);                 \
+  __macro(miopenDestroyRNNDescriptor);                     \
+
+CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+
+#define CUDNN_DNN_ROUTINE_EACH_R2(__macro) \
+  __macro(miopenConvolutionBackwardData);   
+CUDNN_DNN_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+
+// APIs available after R3:
+#define CUDNN_DNN_ROUTINE_EACH_AFTER_R3(__macro)           \
+  __macro(miopenConvolutionBackwardWeightsGetWorkSpaceSize);  
+CUDNN_DNN_ROUTINE_EACH_AFTER_R3(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+
+// APIs available after R4:
+#define CUDNN_DNN_ROUTINE_EACH_AFTER_R4(__macro)    \
+  __macro(miopenBatchNormalizationForwardTraining);  \
+  __macro(miopenBatchNormalizationForwardInference); \
+  __macro(miopenBatchNormalizationBackward);
+CUDNN_DNN_ROUTINE_EACH_AFTER_R4(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+
+// APIs in R5
+#define CUDNN_DNN_ROUTINE_EACH_R5(__macro)  \
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
   __macro(miopenCreateActivationDescriptor); \
   __macro(miopenSetActivationDescriptor);    \
   __macro(miopenGetActivationDescriptor);    \
   __macro(miopenDestroyActivationDescriptor);
+<<<<<<< HEAD
 MIOPEN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 
 // APIs in R6
@@ -171,6 +284,32 @@ __macro(cudnnGetBatchNormalizationBackwardExWorkspaceSize);          \
 __macro(cudnnBatchNormalizationBackwardEx);                          \
 __macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);*/
 MIOPEN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
+=======
+CUDNN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+
+// APIs in R6
+#define CUDNN_DNN_ROUTINE_EACH_R6(__macro) \
+  /*__macro(miopenSetRNNDescriptor_v6);*/
+CUDNN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+
+#define CUDNN_DNN_ROUTINE_EACH_R7(__macro)                \
+  __macro(miopenSetConvolutionGroupCount);                 \
+  __macro(miopenCreateCTCLossDescriptor);                  \
+  __macro(miopenDestroyCTCLossDescriptor);                 \
+  __macro(miopenGetCTCLossDescriptor);                     \
+  __macro(miopenSetCTCLossDescriptor);                     \
+  __macro(miopenGetCTCLossWorkspaceSize);                  \
+  __macro(miopenCTCLoss);                                  
+CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+
+#define CUDNN_DNN_ROUTINE_EACH_AFTER_R7(__macro)                     \
+  /*__macro(cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize); \
+  __macro(cudnnBatchNormalizationForwardTrainingEx);                 \
+  __macro(cudnnGetBatchNormalizationBackwardExWorkspaceSize);        \
+  __macro(cudnnBatchNormalizationBackwardEx);                        \
+  __macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);*/
+CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

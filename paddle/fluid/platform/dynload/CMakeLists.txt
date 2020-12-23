@@ -14,7 +14,11 @@ if (NOT APPLE AND NOT WIN32)
     list(APPEND CUDA_SRCS nccl.cc)
   endif()
   if (WITH_ROCM_PLATFORM)
+<<<<<<< HEAD
     list(APPEND HIP_SRCS hiprtc.cc rocm_driver.cc)
+=======
+    list(APPEND HIP_SRCS nvrtc.cc cuda_driver.cc)
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
     if (WITH_RCCL)
       list(APPEND HIP_SRCS rccl.cc)
     endif()
@@ -31,9 +35,19 @@ if (CUPTI_FOUND)
 endif(CUPTI_FOUND)
 if(WITH_ROCM_PLATFORM)
   hip_library(dynload_cuda SRCS ${HIP_SRCS} DEPS dynamic_loader)
+<<<<<<< HEAD
   hip_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
 else()
   nv_library(dynload_cuda SRCS ${CUDA_SRCS} DEPS dynamic_loader)
+=======
+endif()
+if(WITH_GPU)
+  nv_library(dynload_cuda SRCS ${CUDA_SRCS} DEPS dynamic_loader)
+endif()
+if(WITH_ROCM_PLATFORM)
+  hip_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
+elseif()
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
   cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
 endif()
 if (WITH_MKLML)

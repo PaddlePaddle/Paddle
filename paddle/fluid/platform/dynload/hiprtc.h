@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+=======
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +27,7 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
+<<<<<<< HEAD
 extern std::once_flag hiprtc_dso_flag;
 extern void* hiprtc_dso_handle;
 extern bool HasNVRTC();
@@ -45,18 +50,54 @@ extern bool HasNVRTC();
  * include all needed hiprtc functions
  **/
 #define HIPRTC_ROUTINE_EACH(__macro) \
+  __macro(hiprtcVersion);            \
+=======
+extern std::once_flag nvrtc_dso_flag;
+extern void* nvrtc_dso_handle;
+extern bool HasNVRTC();
+
+#define DECLARE_DYNAMIC_LOAD_NVRTC_WRAP(__name)                            \
+  struct DynLoad__##__name {                                               \
+    template <typename... Args>                                            \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
+      using hiprtc_func = decltype(&::__name);                              \
+      std::call_once(nvrtc_dso_flag, []() {                                \
+        nvrtc_dso_handle = paddle::platform::dynload::GetNVRTCDsoHandle(); \
+      });                                                                  \
+      static void* p_##__name = dlsym(nvrtc_dso_handle, #__name);          \
+      return reinterpret_cast<hiprtc_func>(p_##__name)(args...);            \
+    }                                                                      \
+  };                                                                       \
+  extern struct DynLoad__##__name __name
+
+
+/**
+ * include all needed hiprtc functions
+ **/
+#define NVRTC_ROUTINE_EACH(__macro) \
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
   __macro(hiprtcGetErrorString);     \
   __macro(hiprtcCompileProgram);     \
   __macro(hiprtcCreateProgram);      \
   __macro(hiprtcDestroyProgram);     \
+<<<<<<< HEAD
   __macro(hiprtcGetCode);            \
+=======
+  __macro(hiprtcGetCode);             \
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
   __macro(hiprtcGetCodeSize);        \
   __macro(hiprtcGetProgramLog);      \
   __macro(hiprtcGetProgramLogSize)
 
+<<<<<<< HEAD
 HIPRTC_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_HIPRTC_WRAP);
 
 #undef DECLARE_DYNAMIC_LOAD_HIPRTC_WRAP
+=======
+NVRTC_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NVRTC_WRAP);
+
+#undef DECLARE_DYNAMIC_LOAD_NVRTC_WRAP
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 
 }  // namespace dynload
 }  // namespace platform

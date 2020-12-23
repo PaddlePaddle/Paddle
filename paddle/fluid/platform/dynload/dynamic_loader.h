@@ -34,6 +34,7 @@ void* GetNVRTCDsoHandle();
 void* GetCUDADsoHandle();
 void* GetWarpCTCDsoHandle();
 void* GetNCCLDsoHandle();
+void* GetRCCLDsoHandle();
 void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
 void* GetOpDsoHandle(const std::string& dso_name);

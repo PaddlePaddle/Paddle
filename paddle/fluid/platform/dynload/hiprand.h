@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+=======
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 namespace dynload {
+<<<<<<< HEAD
 extern std::once_flag hiprand_dso_flag;
 extern void *hiprand_dso_handle;
 
@@ -41,6 +46,26 @@ extern void *hiprand_dso_handle;
   extern DynLoad__##__name __name
 
 #define HIPRAND_RAND_ROUTINE_EACH(__macro)      \
+=======
+extern std::once_flag curand_dso_flag;
+extern void *curand_dso_handle;
+
+#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                             \
+  struct DynLoad__##__name {                                                 \
+    template <typename... Args>                                              \
+    hiprandStatus_t operator()(Args... args) {                                \
+      using curandFunc = decltype(&::__name);                                \
+      std::call_once(curand_dso_flag, []() {                                 \
+        curand_dso_handle = paddle::platform::dynload::GetCurandDsoHandle(); \
+      });                                                                    \
+      static void *p_##__name = dlsym(curand_dso_handle, #__name);           \
+      return reinterpret_cast<curandFunc>(p_##__name)(args...);              \
+    }                                                                        \
+  };                                                                         \
+  extern DynLoad__##__name __name
+
+#define CURAND_RAND_ROUTINE_EACH(__macro)      \
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
   __macro(hiprandCreateGenerator);              \
   __macro(hiprandSetStream);                    \
   __macro(hiprandSetPseudoRandomGeneratorSeed); \
@@ -49,7 +74,11 @@ extern void *hiprand_dso_handle;
   __macro(hiprandGenerateNormal);               \
   __macro(hiprandDestroyGenerator);
 
+<<<<<<< HEAD
 HIPRAND_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CURAND_WRAP);
+=======
+CURAND_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CURAND_WRAP);
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 
 }  // namespace dynload
 }  // namespace platform

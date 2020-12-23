@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+=======
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,12 +22,21 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
+<<<<<<< HEAD
 std::once_flag hiprand_dso_flag;
 void *hiprand_dso_handle;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 HIPRAND_RAND_ROUTINE_EACH(DEFINE_WRAP);
+=======
+std::once_flag curand_dso_flag;
+void *curand_dso_handle;
+
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
+
+CURAND_RAND_ROUTINE_EACH(DEFINE_WRAP);
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 
 }  // namespace dynload
 }  // namespace platform

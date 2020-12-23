@@ -14,10 +14,18 @@
 #pragma once
 
 #ifdef __HIPCC__
+<<<<<<< HEAD
 #include <hip/hip_runtime.h>
 #endif
 
 #if (defined(__CUDACC__) || defined(__HIPCC__))
+=======
+#include<hip/hip_runtime.h>
+#endif
+#if (defined(__CUDACC__) || defined(__HIPCC__))
+//#ifdef __CUDACC__
+
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 #define HOSTDEVICE __host__ __device__
 #define DEVICE __device__
 #define HOST __host__

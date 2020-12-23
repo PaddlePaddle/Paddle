@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+=======
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,24 +27,42 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
+<<<<<<< HEAD
 extern std::once_flag rccl_dso_flag;
 extern void* rccl_dso_handle;
 
 #define DECLARE_DYNAMIC_LOAD_RCCL_WRAP(__name)                           \
+=======
+extern std::once_flag nccl_dso_flag;
+extern void* nccl_dso_handle;
+
+#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                           \
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
   struct DynLoad__##__name {                                             \
     template <typename... Args>                                          \
     auto operator()(Args... args) -> decltype(__name(args...)) {         \
       using nccl_func = decltype(&::__name);                             \
+<<<<<<< HEAD
       std::call_once(rccl_dso_flag, []() {                               \
         rccl_dso_handle = paddle::platform::dynload::GetNCCLDsoHandle(); \
       });                                                                \
       static void* p_##__name = dlsym(rccl_dso_handle, #__name);         \
+=======
+      std::call_once(nccl_dso_flag, []() {                               \
+        nccl_dso_handle = paddle::platform::dynload::GetNCCLDsoHandle(); \
+      });                                                                \
+      static void* p_##__name = dlsym(nccl_dso_handle, #__name);         \
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
       return reinterpret_cast<nccl_func>(p_##__name)(args...);           \
     }                                                                    \
   };                                                                     \
   extern DynLoad__##__name __name
 
+<<<<<<< HEAD
 #define RCCL_RAND_ROUTINE_EACH(__macro) \
+=======
+#define NCCL_RAND_ROUTINE_EACH(__macro) \
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
@@ -57,7 +79,11 @@ extern void* rccl_dso_handle;
   __macro(ncclReduceScatter);           \
   __macro(ncclGetErrorString);
 
+<<<<<<< HEAD
 RCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
+=======
+NCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+>>>>>>> 3dfaefa74fbdc4d9d2b95db145e43d0f01cac198
 
 }  // namespace dynload
 }  // namespace platform
