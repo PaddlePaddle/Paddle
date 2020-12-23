@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_CUDA
 #ifdef __NVCC__
+#include <cuda.h>
+#include <cuda_fp16.h>
 #include "cub/cub.cuh"
 #endif
 #endif
@@ -181,6 +183,7 @@ template <int SIZE>
 __global__ void VecFP16MatrixColReduce(const __half2 *__restrict__ in,
                                        __half2 *__restrict__ out, size_t width,
                                        size_t height) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
   int by = blockIdx.y;
   __half2 zero = __half2half2(static_cast<__half>(0));
@@ -194,6 +197,7 @@ __global__ void VecFP16MatrixColReduce(const __half2 *__restrict__ in,
 
     atomicAdd(&(out[idx]), sum);
   }
+#endif
 }
 
 template <typename T>

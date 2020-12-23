@@ -441,9 +441,6 @@ class ProgBarLogger(Callback):
             num=self.eval_steps, verbose=self.verbose)
         if self._is_print():
             print('Eval begin...')
-            print(
-                "The loss value printed in the log is the current batch, and the metric is the average value of previous step."
-            )
 
         self._eval_timer['batch_start_time'] = time.time()
 

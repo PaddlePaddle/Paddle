@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/roll_op.h"
+
 #include <memory>
 #include <vector>
 

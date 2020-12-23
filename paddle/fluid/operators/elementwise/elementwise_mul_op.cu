@@ -75,6 +75,36 @@ static __global__ void SimpleElemwiseMulGradCUDAKernel(const T* x, const T* y,
   }
 }
 
+template <>
+__global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex64>(
+    const plat::complex64* x, const plat::complex64* y,
+    const plat::complex64* out, const plat::complex64* dout, int64_t size,
+    plat::complex64* dx, plat::complex64* dy) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while (col < size) {
+    plat::complex64 o = dout[col];
+    dx[col] = plat::complex64(y[col].real, -y[col].imag) * o;
+    dy[col] = plat::complex64(x[col].real, -x[col].imag) * o;
+    col += blockDim.x * gridDim.x;
+  }
+}
+
+template <>
+__global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex128>(
+    const plat::complex128* x, const plat::complex128* y,
+    const plat::complex128* out, const plat::complex128* dout, int64_t size,
+    plat::complex128* dx, plat::complex128* dy) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while (col < size) {
+    plat::complex128 o = dout[col];
+    dx[col] = plat::complex128(y[col].real, -y[col].imag) * o;
+    dy[col] = plat::complex128(x[col].real, -x[col].imag) * o;
+    col += blockDim.x * gridDim.x;
+  }
+}
+
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, plat::CUDADeviceContext>::value>::type
