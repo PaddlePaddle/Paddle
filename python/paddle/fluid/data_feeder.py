@@ -48,19 +48,9 @@ def convert_dtype(dtype):
         elif dtype == core.VarDesc.VarType.UINT8:
             return 'uint8'
         elif dtype == core.VarDesc.VarType.COMPLEX64:
-            result = 'c'
-            result += 'o'
-            result += 'mp'
-            result += 'le'
-            result += 'x64'
-            return result
+            return 'complex64'
         elif dtype == core.VarDesc.VarType.COMPLEX128:
-            result = 'c'
-            result += 'o'
-            result += 'mp'
-            result += 'le'
-            result += 'x128'
-            return result
+            return 'complex128'
     elif isinstance(dtype, type):
         if dtype in [
                 np.bool, np.float16, np.float32, np.float64, np.int8, np.int16,
