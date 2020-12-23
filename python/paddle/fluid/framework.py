@@ -1817,6 +1817,88 @@ class Variable(object):
     def __getitem__(self, item):
         return _getitem_impl_(self, item)
 
+    def __setitem__(self, item, value):
+        inputs = {'Input': self}
+
+        # 1. Parse item
+        if not isinstance(item, tuple):
+            item = [item]
+
+        axes = []
+        starts = []
+        ends = []
+        max_integer = sys.maxsize
+        for dim, slice_item in enumerate(item):
+            if isinstance(slice_item, slice):
+                start = slice_item.start
+                end = slice_item.stop
+                step = slice_item.step
+
+                if start is None and end is None and step is None:
+                    continue
+
+                start = 0 if start is None else start
+                step = 1 if step is None else step
+
+                # TODO: support cases when step != 1
+                if step != 1:
+                    raise ValueError(
+                        "When assign a value to a paddle.Tensor, only support step is 1, "
+                        "but received step is {}.".format(step))
+                end = max_integer if end is None else end
+            else:
+                start = slice_item
+                end = slice_item + 1 if slice_item != -1 else max_integer
+            axes.append(dim)
+            starts.append(start)
+            ends.append(end)
+
+        attrs = {'axes': axes, 'starts': starts, 'ends': ends}
+
+        # 2. Parse value
+        dtype = self.dtype
+        attrs['dtype'] = dtype
+
+        #  2.1 value is an integer of float
+        if isinstance(value, (int, float)):
+            value = np.array([value])
+
+        #  2.2 value is a np.ndarray
+        if isinstance(value, np.ndarray):
+            shape = list(value.shape)
+            if dtype == core.VarDesc.VarType.BOOL:
+                value_name = "bool_values"
+                values = [bool(v) for v in value.flat]
+            elif dtype == core.VarDesc.VarType.FP32:
+                value_name = "fp32_values"
+                values = [float(v) for v in value.flat]
+            elif dtype == core.VarDesc.VarType.INT32:
+                value_name = "int32_values"
+                values = [int(v) for v in value.flat]
+            elif dtype == core.VarDesc.VarType.INT64:
+                value_name = "int64_values"
+                values = [int(v) for v in value.flat]
+            else:
+                from .data_feeder import convert_dtype
+                raise TypeError(
+                    "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
+                    "the data type of the paddle.Tensor must be bool, float32, int32 or int64, but "
+                    "received %s." % convert_dtype(dtype))
+            attrs[value_name] = values
+            attrs["shape"] = shape
+
+        elif isinstance(value, Variable):
+            inputs["ValueTensor"] = value
+        else:
+            raise TypeError(
+                "Only support to assign an integer, float, numpy.ndarray or "
+                "paddle.Tensor to a paddle.Tensor, but received {}".format(
+                    type(value)))
+
+        self.block.append_op(
+            type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
+        return self
+
 
 def get_all_op_protos():
     """
