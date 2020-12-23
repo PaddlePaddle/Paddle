@@ -49,8 +49,10 @@ class BKCLOpHandleBase : public OpHandleBase {
   virtual ~BKCLOpHandleBase() {}
 
   void SetRunEnv(int run_order, bool use_hierarchical_allreduce) {
-    PADDLE_ENFORCE_GE(run_order, 0, platform::errors::PreconditionNotMet(
-                                        "run_order must >= 0"));
+    PADDLE_ENFORCE_GE(
+        run_order, 0,
+        platform::errors::InvalidArgument(
+            "The argument run_order must be >= 0, but got %d.", run_order));
     PADDLE_ENFORCE_NE(use_hierarchical_allreduce, true,
                       platform::errors::Unimplemented(
                           "xpu doesn't support hierarchical_allreduce"));
@@ -78,8 +80,10 @@ class BKCLOpHandleBase : public OpHandleBase {
   void FlatBKCLAllReduce(platform::Place place, const void* sendbuff,
                          void* recvbuff, size_t count, BKCLDataType datatype,
                          BKCLOp op) {
-    PADDLE_ENFORCE_GE(run_order_, 0, platform::errors::PreconditionNotMet(
-                                         "run_order must > 0"));
+    PADDLE_ENFORCE_GE(
+        run_order_, 0,
+        platform::errors::InvalidArgument(
+            "The argument run_order_ must be >= 0, but got %d.", run_order_));
     auto flat_bkcl_ctxs = bkcl_ctxs_->GetFlatCtx(run_order_);
     int dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
     auto& bkcl_ctx = flat_bkcl_ctxs->at(dev_id);
@@ -98,8 +102,10 @@ class BKCLOpHandleBase : public OpHandleBase {
   void BKCLAllReduce(platform::Place place, const void* sendbuff,
                      void* recvbuff, size_t count, BKCLDataType datatype,
                      BKCLOp op) {
-    PADDLE_ENFORCE_GE(run_order_, 0, platform::errors::PreconditionNotMet(
-                                         "run_order must > 0"));
+    PADDLE_ENFORCE_GE(
+        run_order_, 0,
+        platform::errors::InvalidArgument(
+            "The argument run_order_ must be >= 0, but got %d.", run_order_));
     PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_, false,
                       platform::errors::Unimplemented(
                           "xpu doesn't support hierarchical all reduce"));
