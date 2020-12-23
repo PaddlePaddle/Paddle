@@ -855,7 +855,7 @@ class OpTest(unittest.TestCase):
                                place,
                                no_check_set=None,
                                inplace_atol=None):
-        """Chech the inplace correctness of given op (self.op_type).
+        """Check the inplace correctness of given op (self.op_type).
         Run the op twice with same inputs, one enable inplace and another disable, compare their outputs.
 
         Args:
@@ -935,7 +935,7 @@ class OpTest(unittest.TestCase):
                             fwd_res,
                             grad_op_desc,
                             inplace_atol=None):
-        """Chech the inplace correctness of given grad_op_desc.
+        """Check the inplace correctness of given grad_op_desc.
 
         Run the grad op twice with same inputs, one enable inplace and another disable, compare their outputs.
         It works like _check_forward_inplace, but the way to construct program and feed_map differs.
