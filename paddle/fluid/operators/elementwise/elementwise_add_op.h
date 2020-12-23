@@ -409,7 +409,6 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
     if (dx != nullptr && dy == nullptr && dx->dims() == dout->dims()) {
       VLOG(4) << "Special case when dy is not needed and dx doesn't "
                  "reduce";
-      VLOG(4) << "dout data ptr: " << dout->data<void>();
       framework::TensorCopy(
           *dout, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), dx);
