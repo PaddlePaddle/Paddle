@@ -858,7 +858,7 @@ function(py_test TARGET_NAME)
                 FLAGS_cpu_deterministic=true
                 PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
                 COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-                ${PYTHON_EXECUTABLE} -m coverage run --branch -p --include=$ENV{PADDLE_GIT_DIFF_PY_FILE} ${py_test_SRCS} ${py_test_ARGS}
+                ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
       endif()
     else()
