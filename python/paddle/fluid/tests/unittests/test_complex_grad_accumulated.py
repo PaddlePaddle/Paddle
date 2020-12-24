@@ -25,9 +25,9 @@ import paddle.fluid.core as core
 class Optimization_ex1(paddle.nn.Layer):
     def __init__(self,
                  shape,
+                 dtype,
                  param_attr=paddle.nn.initializer.Uniform(
-                     low=-5., high=5.),
-                 dtype='float64'):
+                     low=-5., high=5.)):
         super(Optimization_ex1, self).__init__()
 
         self.theta0 = self.create_parameter(
@@ -67,27 +67,31 @@ class TestComplexGradAccumulated(unittest.TestCase):
         self.devices = ['cpu']
         if core.is_compiled_with_cuda():
             self.devices.append('gpu')
+        self.dtypes = ['float32', 'float64']
         self.theta_size = [4, 4]
 
-    def run_backward(self, device, mode):
+    def run_backward(self, device, dtype, mode):
         paddle.set_device(device)
 
-        myLayer = Optimization_ex1(self.theta_size)
+        myLayer = Optimization_ex1(self.theta_size, dtype)
 
         loss = myLayer(mode)
         loss.backward()
 
     def test_case_one_step(self):
         for dev in self.devices:
-            self.run_backward(dev, 1)
+            for dtype in self.dtypes:
+                self.run_backward(dev, dtype, 1)
 
     def test_case_two_step(self):
         for dev in self.devices:
-            self.run_backward(dev, 2)
+            for dtype in self.dtypes:
+                self.run_backward(dev, dtype, 2)
 
     def test_case_non_param(self):
         for dev in self.devices:
-            self.run_backward(dev, 3)
+            for dtype in self.dtypes:
+                self.run_backward(dev, dtype, 3)
 
 
 if __name__ == '__main__':
