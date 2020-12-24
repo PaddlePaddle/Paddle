@@ -1861,6 +1861,11 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         ;;
+      check_xpu_coverage)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        parallel_test
+        check_coverage
+        ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
         ;;
