@@ -98,8 +98,8 @@ NameVarMap<VarType> PrepareData(
   NameVarMap<VarType> tmp_ins(ins);
   for (auto& name_pair : tmp_ins) {
     for (auto& var_base : name_pair.second) {
-      PrepareGradVarDataType(var_base);
       const auto* tensor = GetTensorFromVar(var_base->Var());
+      PrepareGradVarDataType(var_base);
       if (tensor && tensor->IsInitialized()) {
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
@@ -126,11 +126,12 @@ class PreparedOp {
  public:
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
+             const framework::OpKernelType& kernel_type,
              const framework::OperatorWithKernel::OpKernelFunc& func,
              platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const framework::OperatorWithKernel& op,
-                            const framework::OpKernelType& expected_kernel_key);
+                            framework::OpKernelType* expected_kernel_key);
 
   void Run(const NameVarMap<VarBase>& in, const NameVarMap<VarBase>& out,
            const framework::AttributeMap& attrs);
@@ -142,6 +143,7 @@ class PreparedOp {
  private:
   const framework::OperatorBase& op_;
   const framework::RuntimeContext& ctx_;
+  framework::OpKernelType kernel_type_;
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
 };

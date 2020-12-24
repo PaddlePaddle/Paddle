@@ -1108,7 +1108,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   // See [ Why need handle complex gradient to real gradient? ]
-  HandleComplexGradToRealGrad(scope, runtime_ctx);
+  // Only handle the case where the current kernel data type is complex
+  if (framework::IsComplexType(kernel_type_->data_type_)) {
+    HandleComplexGradToRealGrad(scope, runtime_ctx);
+  }
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transferred.

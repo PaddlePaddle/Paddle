@@ -67,15 +67,19 @@ static void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
 
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::RuntimeContext& ctx,
+                       const framework::OpKernelType& kernel_type,
                        const framework::OperatorWithKernel::OpKernelFunc& func,
                        platform::DeviceContext* dev_ctx)
-    : op_(op), ctx_(ctx), func_(func), dev_ctx_(dev_ctx) {}
+    : op_(op),
+      ctx_(ctx),
+      kernel_type_(kernel_type),
+      func_(func),
+      dev_ctx_(dev_ctx) {}
 
-PreparedOp PreparedOp::Prepare(
-    const framework::OperatorWithKernel& op,
-    const framework::OpKernelType& expected_kernel_key) {
+PreparedOp PreparedOp::Prepare(const framework::OperatorWithKernel& op,
+                               framework::OpKernelType* expected_kernel_key) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(expected_kernel_key.place_);
+  auto* dev_ctx = pool.Get(expected_kernel_key->place_);
 
   // check if op[type] has kernel registered.
   auto& all_op_kernels = op.AllOpKernels();
@@ -90,29 +94,29 @@ PreparedOp PreparedOp::Prepare(
   auto& kernels = kernels_iter->second;
 
   framework::RuntimeContext ctx({}, {});
-  auto kernel_iter = kernels.find(expected_kernel_key);
+  auto kernel_iter = kernels.find(*expected_kernel_key);
 #ifdef PADDLE_WITH_XPU
+  // because xpu need change kernel place,
+  // so input expected_kernel_key need to be non-const
   if (kernel_iter == kernels.end() &&
-      is_xpu_place(expected_kernel_key.place_)) {
-    auto basic_kernel_key = framework::OpKernelType(
-        expected_kernel_key.data_type_, platform::CPUPlace(),
-        expected_kernel_key.data_layout_, expected_kernel_key.library_type_,
-        expected_kernel_key.customized_type_value_);
-    kernel_iter = kernels.find(basic_kernel_key);
+      is_xpu_place(expected_kernel_key->place_)) {
+    expected_kernel_key->place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(*expected_kernel_key);
   }
 #endif
   // TODO(jiabin): Add operator.cc's line 1000 part back when we need that case
   PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
                     platform::errors::NotFound(
                         "Operator %s does not have kernel for %s.", op.Type(),
-                        KernelTypeToString(expected_kernel_key)));
+                        KernelTypeToString(*expected_kernel_key)));
 
-  return PreparedOp(op, ctx, kernel_iter->second, dev_ctx);
+  return PreparedOp(op, ctx, kernel_iter->first, kernel_iter->second, dev_ctx);
 }
 
 template <typename VarType>
 static void PreparedOpRunImpl(
     const framework::OperatorBase& op, const framework::RuntimeContext& ctx,
+    const framework::OpKernelType& kernel_type,
     const framework::OperatorWithKernel::OpKernelFunc& func,
     platform::DeviceContext* dev_ctx, const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs) {
@@ -139,20 +143,23 @@ static void PreparedOpRunImpl(
    * grad op kernel executed, we need to recognize this situation and
    * convert dx to float32 type. HandleComplexGradToRealGrad does this thing.
    */
-  HandleComplexGradToRealGrad<VarType>(outs);
+  if (framework::IsComplexType(kernel_type.data_type_)) {
+    HandleComplexGradToRealGrad<VarType>(outs);
+  }
 }
 
 void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const NameVarMap<VarBase>& outs,
                      const framework::AttributeMap& attrs) {
-  PreparedOpRunImpl<VarBase>(op_, ctx_, func_, dev_ctx_, ins, outs, attrs);
+  PreparedOpRunImpl<VarBase>(op_, ctx_, kernel_type_, func_, dev_ctx_, ins,
+                             outs, attrs);
 }
 
 void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const NameVarMap<VariableWrapper>& outs,
                      const framework::AttributeMap& attrs) {
-  PreparedOpRunImpl<VariableWrapper>(op_, ctx_, func_, dev_ctx_, ins, outs,
-                                     attrs);
+  PreparedOpRunImpl<VariableWrapper>(op_, ctx_, kernel_type_, func_, dev_ctx_,
+                                     ins, outs, attrs);
 }
 
 }  // namespace imperative

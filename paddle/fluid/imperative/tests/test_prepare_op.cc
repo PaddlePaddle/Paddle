@@ -95,7 +95,7 @@ TEST(test_prepare_op, test_prepare_op) {
       split_attr_map);
   ASSERT_NO_FATAL_FAILURE(PreparedOp preparedOp = PreparedOp::Prepare(
                               dynamic_cast<framework::OperatorWithKernel&>(*op),
-                              expected_kernel_key));
+                              &expected_kernel_key));
 }
 
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
