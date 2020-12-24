@@ -287,8 +287,13 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
 }
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
-  PADDLE_ENFORCE_EQ(index, 0);
-  PADDLE_ENFORCE_GE(gpu_alloc_size_, size);
+  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
+                                  "The index should be 0, index is %d", index));
+  PADDLE_ENFORCE_GE(gpu_alloc_size_, size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated gpu memory (%d)",
+                        size, gpu_alloc_size_));
   gpu_alloc_size_ -= size;
 
   platform::RecordedCudaFree(p, size, gpu_id_);
@@ -332,9 +337,14 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
 void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   hipError_t err;
-  PADDLE_ENFORCE_EQ(index, 1);
+  PADDLE_ENFORCE_EQ(index, 1, platform::errors::InvalidArgument(
+                                  "The index should be 1, but got %d", index));
 
-  PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_, size);
+  PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_, size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated cuda pinned memory (%d)",
+                        size, cuda_pinnd_alloc_size_));
   cuda_pinnd_alloc_size_ -= size;
   err = hipHostFree(p);
   // Purposefully allow cudaErrorCudartUnloading, because
@@ -343,7 +353,10 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   // process is terminating, in which case we don't care if
   // cudaFreeHost succeeds.
   if (err != hipSuccess) {
-    PADDLE_ENFORCE(err, "hipFreeHost failed in GPUPinnedAllocator::Free.");
+    PADDLE_ENFORCE_EQ(
+        err, 0,
+        platform::errors::Fatal(
+            "hipFreeHost failed in GPUPinnedAllocator, error code is %d", err));
   }
 }
 

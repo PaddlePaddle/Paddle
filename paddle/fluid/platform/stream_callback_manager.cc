@@ -88,7 +88,7 @@ void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
 }
 
 void StreamCallbackManager::Wait() const {
-  PADDLE_ENFORCE(hipStreamSynchronize(stream_), "");
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_));
   {
     std::lock_guard<std::mutex> lock(mtx_);
     if (last_future_.valid()) {

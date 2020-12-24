@@ -228,9 +228,9 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
 
   void* p = nullptr;
 #ifdef PADDLE_WITH_CUDA
-  EXPECT_TRUE(cudaMalloc(&p, static_cast<size_t>(3) << 30) == cudaSuccess);
+  EXPECT_TRUE(cudaMalloc(&p, static_cast<size_t>(1) << 30) == cudaSuccess);
 #else
-  EXPECT_TRUE(hipMalloc(&p, static_cast<size_t>(3) << 30) == hipSuccess);
+  EXPECT_TRUE(hipMalloc(&p, static_cast<size_t>(1) << 30) == hipSuccess);
 #endif
   // BuddyAllocator should be able to alloc the remaining GPU
   BuddyAllocator buddy_allocator(
@@ -238,7 +238,7 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
       platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
 
   TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(1) << 30);
-  TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(2) << 30);
+  TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(1) << 30);
 
   if (p) {
 #ifdef PADDLE_WITH_CUDA
