@@ -100,6 +100,7 @@ diable_wingpu_test="^test_analysis_predictor$|\
 ^test_print_op$|\
 ^test_py_func_op$|\
 ^test_weight_decay$|\
+^test_conv2d_int8_mkldnn_op$|\
 ^test_crypto$|\
 ^test_callbacks$|\
 ^test_program_prune_backward$|\
