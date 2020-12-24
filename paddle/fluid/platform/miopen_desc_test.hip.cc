@@ -12,25 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cudnn_workspace_helper.h"
-#endif
-#include <cstdlib>
-#include <string>
-#include "boost/lexical_cast.hpp"
+#include "paddle/fluid/platform/miopen_desc.h"
+#include <gtest/gtest.h>
 
 namespace paddle {
 namespace platform {
 
-static int GetDefaultConvWorkspaceSizeLimitMBImpl() {
-  const char *env_str = std::getenv("FLAGS_conv_workspace_size_limit");
-  return env_str ? boost::lexical_cast<int>(std::string(env_str))
-                 : kDefaultConvWorkspaceSizeLimitMB;
+TEST(TensorDescriptor, Empty) {
+  ActivationDescriptor a;
+  TensorDescriptor t;
+  TensorDescriptor t1;
+  TensorDescriptor *t11 = new TensorDescriptor();
+  delete t11;
+  std::unique_ptr<TensorDescriptor> tt(new TensorDescriptor());
 }
 
-int GetDefaultConvWorkspaceSizeLimitMB() {
-  static auto workspace_size = GetDefaultConvWorkspaceSizeLimitMBImpl();
-  return workspace_size;
+TEST(TensorDescriptor, Normal) {
+  framework::Tensor tt;
+  tt.Resize({2, 3, 4});
+  tt.mutable_data<float>(platform::CPUPlace());
+
+  TensorDescriptor desc;
+  desc.set((const framework::Tensor)tt);
+  EXPECT_TRUE(desc.desc() != nullptr);
 }
 
 }  // namespace platform

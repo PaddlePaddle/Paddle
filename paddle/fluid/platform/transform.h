@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/place.h"
 
-#ifdef __NVCC__
+#if (defined(__NVCC__) || defined(__HIPCC__))
 #include <thrust/execution_policy.h>
 #include <thrust/transform.h>
 #include "paddle/fluid/platform/details/cuda_transform_iterator_cast.h"
@@ -76,17 +76,19 @@ struct Transform<platform::CPUDeviceContext> {
   }
 };
 
-#ifdef __NVCC__
+#if (defined(__NVCC__) || defined(__HIPCC__))
 template <>
 struct Transform<platform::CUDADeviceContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
   void operator()(const platform::CUDADeviceContext& context, InputIter first,
                   InputIter last, OutputIter result, UnaryOperation op) {
     auto place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "The CUDA Transform must be used in GPU place."));
+    PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
+#ifdef __NVCC__
     thrust::transform(thrust::cuda::par.on(context.stream()),
+#else
+    thrust::transform(thrust::hip::par.on(context.stream()),
+#endif
                       details::CastToCUDATransformIterator(first),
                       details::CastToCUDATransformIterator(last),
                       details::CastToCUDATransformIterator(result), op);
@@ -98,10 +100,12 @@ struct Transform<platform::CUDADeviceContext> {
                   InputIter1 last1, InputIter2 first2, OutputIter result,
                   BinaryOperation op) {
     auto place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "The CUDA Transform must be used in GPU place."));
+    PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
+#ifdef __NVCC__
     thrust::transform(thrust::cuda::par.on(context.stream()),
+#else
+    thrust::transform(thrust::hip::par.on(context.stream()),
+#endif
                       details::CastToCUDATransformIterator(first1),
                       details::CastToCUDATransformIterator(last1),
                       details::CastToCUDATransformIterator(first2),

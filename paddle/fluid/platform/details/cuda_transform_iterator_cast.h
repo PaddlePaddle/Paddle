@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifndef __NVCC__
+#if ((not defined(__NVCC__)) && (not defined(__HIPCC__)))
 #error device_ptr_cast must be include by .cu file
 #endif
 
