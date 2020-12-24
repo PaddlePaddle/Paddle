@@ -24,10 +24,6 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using framework::Tensor;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
 class RowConvOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -167,7 +163,7 @@ class RowConvKernel<platform::CPUDeviceContext, T>
     size_t num_sequence = batch_indices.size() - 1;
 
     auto future_context = filter->dims()[0];
-    auto weights = EigenMatrix<T>::From(*filter);
+    auto weights = framework::EigenMatrix<T>::From(*filter);
 
     for (size_t i = 0; i < num_sequence; i++) {
       int start = static_cast<int>(batch_indices[i]);
@@ -189,8 +185,8 @@ class RowConvKernel<platform::CPUDeviceContext, T>
       cur_output_sequence =
           cur_output_sequence.Resize({current_timesteps, input_dim});
 
-      auto cip_seq = EigenMatrix<T>::From(cur_input_sequence);
-      auto cot_seq = EigenMatrix<T>::From(cur_output_sequence);
+      auto cip_seq = framework::EigenMatrix<T>::From(cur_input_sequence);
+      auto cot_seq = framework::EigenMatrix<T>::From(cur_output_sequence);
 
       for (int k = 0; k < current_timesteps;
            k++) {  // For different time steps in the same sequence
@@ -247,7 +243,7 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
     if (d_filter) {
       d_filter->mutable_data<T>(context.GetPlace());
       auto dweights =
-          EigenMatrix<T>::From(*d_filter);  // Gradient of weight matrix
+          framework::EigenMatrix<T>::From(*d_filter);  // Gradient of weight matrix
       dweights.setZero();
 
       for (size_t i = 0; i < num_sequence; i++) {  // For different sequences
@@ -265,8 +261,8 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
         Tensor cur_doutput =
             d_out->Slice(start, end);  // Current output grad sequence
         cur_doutput = cur_doutput.Resize({current_timesteps, input_dim});
-        auto cur_ip = EigenMatrix<T>::From(cur_input);
-        auto cur_dout = EigenMatrix<T>::From(cur_doutput);
+        auto cur_ip = framework::EigenMatrix<T>::From(cur_input);
+        auto cur_dout = framework::EigenMatrix<T>::From(cur_doutput);
         for (int k = 0; k < current_timesteps;
              k++) {  // For different time steps in the same sequence
           for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
@@ -282,7 +278,7 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
 
     if (dx) {
       dx->mutable_data<T>(context.GetPlace());
-      auto weights = EigenMatrix<T>::From(*filter);
+      auto weights = framework::EigenMatrix<T>::From(*filter);
       for (size_t i = 0; i < num_sequence; i++) {  // For different sequences
         int start = static_cast<int>(batch_indices[i]);
         int end = static_cast<int>(batch_indices[i + 1]);
@@ -301,8 +297,8 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
             dx->Slice(start, end);  // Current input grad sequence
         cur_dinput = cur_dinput.Resize({current_timesteps, input_dim});
 
-        auto cur_dout = EigenMatrix<T>::From(cur_doutput);
-        auto cur_dip = EigenMatrix<T>::From(cur_dinput);
+        auto cur_dout = framework::EigenMatrix<T>::From(cur_doutput);
+        auto cur_dip = framework::EigenMatrix<T>::From(cur_dinput);
         cur_dip.setZero();
 
         for (int k = 0; k < current_timesteps;

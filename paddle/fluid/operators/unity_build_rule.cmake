@@ -189,7 +189,12 @@ register_unity_group(cc
     mkldnn/layer_norm_mkldnn_op.cc
     linspace_op.cc
     load_combine_op.cc
-    load_op.cc)
+    load_op.cc
+    row_conv_op.cc
+    tensor_array_to_tensor_op.cc
+    tile_op.cc
+    top_k_v2_op.cc
+    trace_op.cc)
 register_unity_group(cc
     lod_array_length_op.cc
     lod_rank_table_op.cc
@@ -200,7 +205,22 @@ register_unity_group(cc
     lrn_op.cc
     mkldnn/lrn_mkldnn_op.cc
     lstm_unit_op.cc
-    lstmp_op.cc)
+    lstmp_op.cc
+    transpose_op.cc
+    mkldnn/transpose_mkldnn_op.cc
+    tree_conv_op.cc
+    tril_triu_op.cc
+    truncated_gaussian_random_op.cc
+    unbind_op.cc
+    unfold_op.cc
+    space_to_depth_op.cc
+    spectral_norm_op.cc
+    split_op.cc
+    split_selected_rows_op.cc
+    spp_op.cc
+    squared_l2_norm_op.cc
+    squeeze_op.cc
+    stack_op.cc)
 register_unity_group(cc
     log_loss_op.cc
     lookup_table_v2_op.cc
@@ -213,7 +233,14 @@ register_unity_group(cc
     maxout_op.cc
     merge_lod_tensor_op.cc
     merge_selected_rows_op.cc
-    meshgrid_op.cc)
+    meshgrid_op.cc
+    sum_op.cc
+    mkldnn/sum_mkldnn_op.cc
+    tdm_child_op.cc
+    tdm_sampler_op.cc
+    teacher_student_sigmoid_loss_op.cc
+    temporal_shift_op.cc
+    )
 register_unity_group(cc
     concat_op.cc
     conv_shift_op.cc
@@ -243,7 +270,12 @@ register_unity_group(cc
     pad2d_op.cc
     pad3d_op.cc
     pad_constant_like_op.cc
-    pad_op.cc)
+    pad_op.cc
+    split_lod_tensor_op.cc
+    roi_pool_op.cc
+    selu_op.cc
+    shape_op.cc
+    shard_index_op.cc)
 register_unity_group(cc
     modified_huber_loss_op.cc
     mkldnn/mul_mkldnn_op.cc
@@ -259,7 +291,8 @@ register_unity_group(cc
     pull_box_extended_sparse_op.cc
     pull_box_sparse_op.cc
     pull_sparse_op.cc
-    pull_sparse_v2_op.cc)
+    pull_sparse_v2_op.cc
+    strided_slice_op.cc)
 register_unity_group(cc
     push_dense_op.cc
     quantize_op.cc
@@ -276,7 +309,15 @@ register_unity_group(cc
     requantize_op.cc
     mkldnn/requantize_mkldnn_op.cc
     reshape_op.cc
-    reverse_op.cc)
+    reverse_op.cc
+    shrink_rnn_memory_op.cc
+    shuffle_batch_op.cc
+    shuffle_channel_op.cc
+    sigmoid_cross_entropy_with_logits_op.cc
+    sign_op.cc
+    similarity_focus_op.cc
+    size_op.cc
+    softmax_op.cc)
 register_unity_group(cc
     rnn_memory_helper_op.cc
     roi_align_op.cc
@@ -292,51 +333,8 @@ register_unity_group(cc
     seed_op.cc
     segment_pool_op.cc
     select_input_op.cc
-    select_output_op.cc)
-register_unity_group(cc
-    roi_pool_op.cc
-    selu_op.cc
-    shape_op.cc
-    shard_index_op.cc
-    shrink_rnn_memory_op.cc
-    shuffle_batch_op.cc
-    shuffle_channel_op.cc
-    sigmoid_cross_entropy_with_logits_op.cc
-    sign_op.cc
-    similarity_focus_op.cc
-    size_op.cc
-    slice_op.cc
-    softmax_op.cc)
-register_unity_group(cc
-    space_to_depth_op.cc
-    spectral_norm_op.cc
-    split_lod_tensor_op.cc
-    split_op.cc
-    split_selected_rows_op.cc
-    spp_op.cc
-    squared_l2_norm_op.cc
-    squeeze_op.cc
-    stack_op.cc
-    strided_slice_op.cc
-    sum_op.cc
-    mkldnn/sum_mkldnn_op.cc
-    tdm_child_op.cc
-    tdm_sampler_op.cc
-    teacher_student_sigmoid_loss_op.cc
-    temporal_shift_op.cc)
-register_unity_group(cc
-    row_conv_op.cc
-    tensor_array_to_tensor_op.cc
-    tile_op.cc
-    top_k_v2_op.cc
-    trace_op.cc
-    transpose_op.cc
-    mkldnn/transpose_mkldnn_op.cc
-    tree_conv_op.cc
-    tril_triu_op.cc
-    truncated_gaussian_random_op.cc
-    unbind_op.cc
-    unfold_op.cc)
+    select_output_op.cc
+    slice_op.cc)
 register_unity_group(cu
     addmm_op.cu
     affine_channel_op.cu

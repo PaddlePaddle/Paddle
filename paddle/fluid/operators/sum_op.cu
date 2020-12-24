@@ -115,19 +115,19 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
     int64_t length_0 = in_0.numel();
     int64_t length_1 = in_1.numel();
     if (length_0 && length_1 && in_0.IsInitialized() && in_1.IsInitialized()) {
-      auto result = EigenVector<T>::Flatten(*out);
+      auto result = framework::EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
-      auto in_0_e = EigenVector<T>::Flatten(in_0);
-      auto in_1_e = EigenVector<T>::Flatten(in_1);
+      auto in_0_e = framework::EigenVector<T>::Flatten(in_0);
+      auto in_1_e = framework::EigenVector<T>::Flatten(in_1);
       result.device(place) = in_0_e + in_1_e;
     } else if (length_0 && in_0.IsInitialized()) {
-      auto result = EigenVector<T>::Flatten(*out);
+      auto result = framework::EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
-      result.device(place) = EigenVector<T>::Flatten(in_0);
+      result.device(place) = framework::EigenVector<T>::Flatten(in_0);
     } else if (length_1 && in_1.IsInitialized()) {
-      auto result = EigenVector<T>::Flatten(*out);
+      auto result = framework::EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
-      result.device(place) = EigenVector<T>::Flatten(in_1);
+      result.device(place) = framework::EigenVector<T>::Flatten(in_1);
     }
     return;
   }

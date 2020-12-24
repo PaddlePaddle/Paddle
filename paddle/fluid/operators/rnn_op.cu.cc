@@ -211,10 +211,11 @@ void weight_to_tensor(const platform::Place &place, cudaStream_t stream,
     const T *in_data = weight_list[i]->data<T>();
     auto in_size = weight_list[i]->numel();
 
-    paddle::memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, weight->place()),
-                 weight_data + weight_offset,
-                 BOOST_GET_CONST(platform::CUDAPlace, weight_list[i]->place()),
-                 in_data, in_size * sizeof(T), stream);
+    paddle::memory::Copy(
+        BOOST_GET_CONST(platform::CUDAPlace, weight->place()),
+        weight_data + weight_offset,
+        BOOST_GET_CONST(platform::CUDAPlace, weight_list[i]->place()),
+        in_data, in_size * sizeof(T), stream);
     weight_offset += in_size;
   }
 }
@@ -231,7 +232,7 @@ void weight_to_tensor_list(const platform::Place &place, cudaStream_t stream,
     T *weight_grad_data = (*weight_grad)[i]->mutable_data<T>(place);
     const T *src = weight_data + weight_offset;
 
-    memory::Copy(
+    paddle::memory::Copy(
         BOOST_GET_CONST(platform::CUDAPlace, (*weight_grad)[i]->place()),
         weight_grad_data, BOOST_GET_CONST(platform::CUDAPlace, weight->place()),
         src, in_size * sizeof(T), stream);

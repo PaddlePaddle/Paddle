@@ -115,8 +115,8 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
                           sub_result.dimensions()[0], y_dims[0]));
 
     if (sub_result.dimensions()[0] == y_dims[0]) {
-      auto y_grad =
-          framework::EigenMatrix<T>::From(*y_g, framework::make_ddim({y_dims[0], cols}));
+      auto y_grad = framework::EigenMatrix<T>::From(
+          *y_g, framework::make_ddim({y_dims[0], cols}));
       y_grad.device(eigen_place) = -1 * grad_mat;
     } else {
       auto col_sum_res = -1 * (grad_mat.sum(Eigen::array<int, 1>({{0}})));
