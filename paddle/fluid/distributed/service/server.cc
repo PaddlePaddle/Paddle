@@ -62,6 +62,8 @@ int32_t PSServer::configure(
   _environment = &env;
   _shuffled_ins =
       paddle::framework::MakeChannel<std::pair<uint64_t, std::string>>();
+  size_t shard_num = env.get_ps_servers().size();
+
   const auto &downpour_param = _config.downpour_server_param();
 
   uint32_t barrier_table = UINT32_MAX;
@@ -81,6 +83,7 @@ int32_t PSServer::configure(
     }
 
     table->set_program_env(scope_.get(), place_, &server_sub_program);
+    table->set_shard(_rank, shard_num);
     table->initialize(downpour_param.downpour_table_param(i),
                       config.fs_client_param());
     _table_map[downpour_param.downpour_table_param(i).table_id()].reset(table);

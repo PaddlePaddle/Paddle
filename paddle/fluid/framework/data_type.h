@@ -150,5 +150,19 @@ extern inline bool IsComplexType(const proto::VarType::Type type) {
 extern proto::VarType::Type PromoteTypesIfComplexExists(
     const proto::VarType::Type type_a, const proto::VarType::Type type_b);
 
+extern inline proto::VarType::Type ToComplexType(proto::VarType::Type t) {
+  switch (t) {
+    case proto::VarType::FP32:
+      return proto::VarType::COMPLEX64;
+    case proto::VarType::FP64:
+      return proto::VarType::COMPLEX128;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unknown complex value data type (%s), now only support float32 and "
+          "float64.",
+          DataTypeToString(t)));
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

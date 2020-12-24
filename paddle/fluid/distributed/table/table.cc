@@ -22,7 +22,6 @@
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
 #include "paddle/fluid/distributed/table/sparse_geo_table.h"
 #include "paddle/fluid/distributed/table/tensor_accessor.h"
-#include "paddle/fluid/distributed/table/tensor_table.h"
 
 namespace paddle {
 namespace distributed {

@@ -145,8 +145,11 @@ def get_numeric_gradient(place,
             return numpy_tensor[i]
         elif tensor_to_check_dtype == np.float32:
             return tensor._get_float_element(i)
-        else:
+        elif tensor_to_check_dtype == np.float64:
             return tensor._get_double_element(i)
+        else:
+            raise TypeError("Unsupported test data type %s." %
+                            tensor_to_check_dtype)
 
     def __set_elem__(tensor, i, e):
         if tensor_to_check_dtype == np.float16:
@@ -158,8 +161,11 @@ def get_numeric_gradient(place,
             tensor.set(numpy_tensor, place)
         elif tensor_to_check_dtype == np.float32:
             tensor._set_float_element(i, e)
-        else:
+        elif tensor_to_check_dtype == np.float64:
             tensor._set_double_element(i, e)
+        else:
+            raise TypeError("Unsupported test data type %s." %
+                            tensor_to_check_dtype)
 
     # we only compute gradient of one element each time.
     # we use a for loop to compute the gradient of every element.
@@ -1538,6 +1544,10 @@ class OpTest(unittest.TestCase):
                 grad_outputs = []
                 for grad_out_value in user_defined_grad_outputs:
                     grad_outputs.append(paddle.to_tensor(grad_out_value))
+                # delete the inputs which no need to calculate grad
+                for no_grad_val in no_grad_set:
+                    del (inputs[no_grad_val])
+
                 grad_inputs = paddle.grad(
                     outputs=fluid.layers.utils.flatten(outputs),
                     inputs=fluid.layers.utils.flatten(inputs),
@@ -1606,7 +1616,7 @@ class OpTest(unittest.TestCase):
             targets = [
                 outputs[name] for name in outputs if name in output_names
             ]
-            inputs = [inputs[name] for name in inputs if name in input_to_check]
+            inputs = [inputs[name] for name in input_to_check if name in inputs]
             grad_inputs = paddle.static.gradients(targets, inputs, grad_outputs,
                                                   no_grad_set)
             fetch_list = grad_inputs

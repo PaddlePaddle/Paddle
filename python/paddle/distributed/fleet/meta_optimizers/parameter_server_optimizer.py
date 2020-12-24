@@ -125,7 +125,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         if not compiled_config.is_geo_mode():
 
             from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
-
             is_sgd_adam = False
 
             main_program = compiled_config.get_origin_main_program()

@@ -27,6 +27,8 @@ struct DummyVarHandle;
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
+using UseDevice = paddle::framework::details::ExecutionStrategy::UseDevice;
+
 // test data amount
 const f::DDim kDims = {20, 20};
 
@@ -171,7 +173,8 @@ struct TestGatherOpHandle {
     out_selected_rows->mutable_value()->ShareDataWith(
         in_selected_rows->value());
 
-    op_handle_->Run(false);
+    UseDevice use_device = UseDevice::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
 

@@ -523,7 +523,8 @@ class TheOnePSRuntime(RuntimeBase):
             # for ps-heter mode, wait heter worker ready
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
             ):
-                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
+                wait_server_ready(
+                    self.role_maker._get_heter_worker_endpoints())
 
                 self._heter_client = HeterClient(
                     self.role_maker._get_heter_worker_endpoints(),
@@ -560,8 +561,22 @@ class TheOnePSRuntime(RuntimeBase):
             accessor = Accessor()
             accessor.accessor_class = "CommMergeAccessor"
             accessor.optimizer = None
+
+
+<< << << < HEAD
             accessor.feature_dim = 0 if ctx.is_sparse() else ctx.sections()[0]
-            accessor.embedding_dim = ctx.sections()[0] if ctx.is_sparse() else 1
+            accessor.embedding_dim = ctx.sections()[
+                                                  0] if ctx.is_sparse() else 1
+== == == =
+
+            if ctx.is_sparse():
+                accessor.feature_dim = ctx.sections()[0]
+                accessor.embedding_dim = ctx.sections()[1]
+            else:
+                accessor.feature_dim = ctx.sections()[0]
+                accessor.embedding_dim = 1
+
+>>>>>> > origin/develop
             return accessor
 
         def _build_barrier_table(idx):
@@ -650,7 +665,9 @@ class TheOnePSRuntime(RuntimeBase):
                 use_origin_program=True,
                 split_dense_table=self.role_maker.
                 _is_heter_parameter_server_mode)
+
             tables = []  # [i for i in range(len(send_ctx) + 1)]
+
 
             for idx, (name, ctx) in enumerate(send_ctx.items()):
                 table = Table()
@@ -749,6 +766,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._server.init_server(proto_txt, string_hosts, role_id,
                                  self._server_sub_program)
 
+
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 
         dist_varnames = get_sparse_tablenames(self.origin_main_program, True)
@@ -839,116 +857,12 @@ class TheOnePSRuntime(RuntimeBase):
 
         return is_valid
 
-    def _get_optimizer_op(self, param_name):
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
-
-        opts = _get_optimize_ops(self.origin_main_program)
-        for op in opts:
-            if "Param" in op.input_names and \
-                    "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
-                return op
-
-    def _get_optimizer_status(self, op, param_name):
-        supported_opts = [
-            "sgd", "adam", "adagrad", "adamax", "momentum", "lars_momentum",
-            "rmsprop", "decayed_adagrad", "ftrl"
-        ]
-
-        reshaped_val_map = {}
-        reshaped_val_map["sgd"] = []
-        reshaped_val_map["adam"] = ["moment1_0", "moment2_0"]
-        reshaped_val_map["adagrad"] = ["moment_0"]
-        reshaped_val_map["adamax"] = ["moment_0", "inf_norm_0"]
-        reshaped_val_map["momentum"] = ["velocity_0"]
-        reshaped_val_map["lars_momentum"] = ["velocity_0"]
-        reshaped_val_map[
-            "rmsprop"] = ["momentum_0", "mean_square_0", "mean_grad_0"]
-        reshaped_val_map["decayed_adagrad"] = ["moment_0"]
-        reshaped_val_map["ftrl"] = ["squared_0", "linear_0"]
-
-        orishaped_val_map = {}
-        orishaped_val_map["adam"] = ["beta1_pow_acc_0", "beta2_pow_acc_0"]
-        orishaped_val_map["adamax"] = ["beta1_pow_acc_0"]
-
-        if op not in supported_opts:
-            raise ValueError(
-                "fleet can not support optimizer: {}, only this can be supported: {}".
-                format(op, supported_opts))
-
-        reshaped_names = [
-            param_name + "_" + val for val in reshaped_val_map[op]
-        ]
-
-        if op not in orishaped_val_map:
-            origin_names = []
-        else:
-            origin_names = [
-                param_name + "_" + val for val in orishaped_val_map[op]
-            ]
-        return reshaped_names, origin_names
-
-    def _save_dense_params(self, executor, dirname, context, main_program):
-        self._communicator.recv()
-
-        prog = Program()
-        block = prog.global_block()
-        local_vars = []
-
-        for name, var_ctx in context.items():
-            if len(var_ctx.origin_varnames()) != 1:
-                raise ValueError("Dense can not support split now.")
-
-            varname = var_ctx.origin_varnames()[0]
-            local_vars.append(varname)
-
-            optimizer = self._get_optimizer_op(varname)
-            reshaped_varnames, origin_varnames = self._get_optimizer_status(
-                optimizer.type, varname)
-
-            for var_name in [varname] + reshaped_varnames + origin_varnames:
-                var = self.origin_main_program.global_block().vars[var_name]
-                block.append_op(
-                    type='recv_save',
-                    attrs={
-                        "trainer_id": self.role_maker._worker_index(),
-                        "shape": var.shape,
-                        "slice_shapes":
-                        [",".join([str(i) for i in var.shape])],
-                        "slice_varnames": [var.name],
-                        "remote_varnames": [var.name],
-                        "is_sparse": False,
-                        "endpoints": var_ctx.split_endpoints(),
-                        "file_path": os.path.join(dirname, var.name)
-                    })
-
-        executor.run(prog)
-        return local_vars
-
     def _save_sparse_params(self, executor, dirname, context, main_program):
         values = []
         for id, names in context.items():
             values.extend(names)
             self._worker.save_one_model(id, dirname, 0)
         return values
-
-    def _save_distributed_params(self, executor, dirname, context, mode):
-        prog = Program()
-        block = prog.global_block()
-
-        for name, var_ctx in context.items():
-            block.append_op(
-                type='checkpoint_notify',
-                attrs={
-                    "varname": name,
-                    "mode": mode,
-                    "slice_varnames": var_ctx.split_varnames(),
-                    "remote_varnames": var_ctx.split_varnames(),
-                    "endpoints": var_ctx.split_endpoints(),
-                    "dirname": dirname
-                })
-
-        executor.run(prog)
-        return context.keys()
 
     def _save_distributed_persistables(self, executor, dirname, main_program,
                                        mode):

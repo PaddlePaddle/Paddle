@@ -99,11 +99,8 @@ void BindCommunicatorContext(py::module* m) {
            [](const CommContext& self) { return self.origin_varnames; })
       .def("is_tensor_table",
            [](const CommContext& self) { return self.is_tensor_table; })
-      .def("__str__", [](const CommContext& self) { return self.print(); });
 }
 
-using paddle::distributed::AsyncCommunicator;
-using paddle::distributed::GeoCommunicator;
 using paddle::distributed::RecvCtxMap;
 using paddle::distributed::RpcCtxMap;
 using paddle::distributed::SyncCommunicator;
