@@ -1057,11 +1057,14 @@ set -x
             fi
         fi
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
-            echo "========================================"
-            echo "The new unit test has the same name as the existing unit test"
-            cat "$PADDLE_ROOT/duplicate_ut"
-            echo "========================================"
-            exit 8;
+            duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
+            if [[ "$duplicate_uts" != "" ]];then
+                echo "========================================"
+                echo "The new unit test has the same name as the existing unit test"
+                cat "$PADDLE_ROOT/duplicate_ut"
+                echo "========================================"
+                exit 8;
+            fi
         fi
             
         if [ -a "$PADDLE_ROOT/added_ut" ];then
