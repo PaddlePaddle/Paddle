@@ -590,6 +590,9 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // Set data to blob (i.e. name/data pair). Create blob if not existing
   void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
 
+  // Calculate number of oneDNN objects cached
+  unsigned int GetCachedObjectsNumber(void);
+
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;
 
