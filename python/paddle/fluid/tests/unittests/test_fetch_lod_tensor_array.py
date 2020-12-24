@@ -87,22 +87,12 @@ class TestFetchLoDTensorArray(unittest.TestCase):
 
     def test_fetch_lod_tensor_array(self):
         if fluid.core.is_compiled_with_cuda():
-            if os.name == 'nt':
-                print(
-                    "Skip cuda test in Windows because Windows version only supports 1 card now."
-                )
-                return
             self.check_network(use_cuda=True)
         self.check_network(use_cuda=False)
 
     def test_fetch_unmerged_parallel_graph(self):
         fluid.core.globals()['FLAGS_enable_parallel_graph'] = True
         if fluid.core.is_compiled_with_cuda():
-            if os.name == 'nt':
-                print(
-                    "Skip cuda test in Windows because Windows version only supports 1 card now."
-                )
-                return
             self.check_network(use_cuda=True)
         self.check_network(use_cuda=False)
         fluid.core.globals()['FLAGS_enable_parallel_graph'] = False
