@@ -500,13 +500,14 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
     // copy sliced data to output.
     const Eigen::DSizes<Eigen::DenseIndex, 2> slice_indices{0, 0};
     const Eigen::DSizes<Eigen::DenseIndex, 2> slice_sizes{num_rows, k};
-    auto e_indices = EigenMatrix<int64_t>::From(*indices_tensor, dim);
-    auto e_tmp_indices = EigenMatrix<int64_t>::From(temp_indices);
+    auto e_indices =
+        framework::EigenMatrix<int64_t>::From(*indices_tensor, dim);
+    auto e_tmp_indices = framework::EigenMatrix<int64_t>::From(temp_indices);
 
     std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(k)};
     auto dim = framework::make_ddim(odims);
-    auto e_values = EigenMatrix<T>::From(*out_tensor, dim);
-    auto e_tmp_values = EigenMatrix<T>::From(temp_values);
+    auto e_values = framework::EigenMatrix<T>::From(*out_tensor, dim);
+    auto e_tmp_values = framework::EigenMatrix<T>::From(temp_values);
 
     e_indices.device(dev) = e_tmp_indices.slice(slice_indices, slice_sizes);
     e_values.device(dev) = e_tmp_values.slice(slice_indices, slice_sizes);

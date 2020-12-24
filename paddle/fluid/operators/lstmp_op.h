@@ -31,10 +31,6 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 using platform::Transform;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
 template <typename T>
 class _ClipFunctor {
  public:
@@ -224,7 +220,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
       blas.MatMul(hidden_t, false, *proj_weight, false, static_cast<T>(1.0),
                   &proj_t, static_cast<T>(0.0));
       if (proj_act != math::detail::ActivationType::kIdentity) {
-        auto proj_t_dev = EigenMatrix<T>::From(proj_t);
+        auto proj_t_dev = framework::EigenMatrix<T>::From(proj_t);
         ActCompute(cell_act, place, proj_t_dev, proj_t_dev);
       }
       if (proj_clip && proj_clip > 0.0) {
@@ -419,8 +415,8 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       }
 
       if (proj_act != math::detail::ActivationType::kIdentity) {
-        auto cur_proj_dev = EigenMatrix<T>::From(cur_proj);
-        auto proj_g_dev = EigenMatrix<T>::From(proj_g);
+        auto cur_proj_dev = framework::EigenMatrix<T>::From(cur_proj);
+        auto proj_g_dev = framework::EigenMatrix<T>::From(proj_g);
         ActGradCompute(cell_act, place, cur_proj_dev, cur_proj_dev, proj_g_dev,
                        proj_g_dev);
       }

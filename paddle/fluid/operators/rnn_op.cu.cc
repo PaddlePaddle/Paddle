@@ -211,7 +211,7 @@ void weight_to_tensor(const platform::Place &place, cudaStream_t stream,
     const T *in_data = weight_list[i]->data<T>();
     auto in_size = weight_list[i]->numel();
 
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, weight->place()),
+    paddle::memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, weight->place()),
                  weight_data + weight_offset,
                  BOOST_GET_CONST(platform::CUDAPlace, weight_list[i]->place()),
                  in_data, in_size * sizeof(T), stream);

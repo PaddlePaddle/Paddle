@@ -24,20 +24,19 @@ namespace operators {
 using Tensor = framework::Tensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedPoolingDescriptor = platform::ScopedPoolingDescriptor;
-using DataLayout = platform::DataLayout;
 using PoolingMode = platform::PoolingMode;
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
-DataLayout getLayoutFromStr(std::string data_format) {
+platform::DataLayout getLayoutFromStr(std::string data_format) {
   if (data_format == "NHWC") {
-    return DataLayout::kNHWC;
+    return platform::DataLayout::kNHWC;
   } else if (data_format == "NCHW") {
-    return DataLayout::kNCHW;
+    return platform::DataLayout::kNCHW;
   } else if (data_format == "NCDHW") {
-    return DataLayout::kNCDHW;
+    return platform::DataLayout::kNCDHW;
   } else {
-    return DataLayout::kNCDHW;
+    return platform::DataLayout::kNCDHW;
   }
 }
 
@@ -91,10 +90,10 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
 
     Tensor transformed_input(input->type());
     Tensor transformed_output(output->type());
-    DataLayout layout;
+    platform::DataLayout layout;
 
     if (data_format == str_NDHWC) {
-      layout = DataLayout::kNCDHW;
+      layout = platform::DataLayout::kNCDHW;
       auto &dev_ctx =
           ctx.template device_context<paddle::platform::CUDADeviceContext>();
       std::vector<int> axis{0, 4, 1, 2, 3};
@@ -226,11 +225,11 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 
     input_grad->mutable_data<T>(ctx.GetPlace());
     Tensor transformed_input_grad(input_grad->type());
-    DataLayout layout;
+    platform::DataLayout layout;
     const std::string str_NCHW = "NCHW", str_NHWC = "NHWC";
     const std::string str_NCDHW = "NCDHW", str_NDHWC = "NDHWC";
     if (data_format == str_NDHWC) {
-      layout = DataLayout::kNCDHW;
+      layout = platform::DataLayout::kNCDHW;
       auto &dev_ctx =
           ctx.template device_context<paddle::platform::CUDADeviceContext>();
       std::vector<int> axis{0, 4, 1, 2, 3};

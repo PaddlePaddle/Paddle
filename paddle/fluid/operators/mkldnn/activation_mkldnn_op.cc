@@ -27,7 +27,6 @@ class MKLDNNDeviceContext;
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
 using framework::Tensor;
 using mkldnn::memory;
 using mkldnn::primitive;
@@ -43,7 +42,7 @@ class MKLDNNActivationKernel
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
     PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
+        x->layout(), framework::DataLayout::kMKLDNN,
         platform::errors::InvalidArgument("Wrong layout set for X tensor"));
     PADDLE_ENFORCE_NE(
         x->format(), MKLDNNMemoryFormat::undef,
@@ -60,7 +59,7 @@ class MKLDNNActivationGradKernel
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(diff_y->layout(), DataLayout::kMKLDNN,
+    PADDLE_ENFORCE_EQ(diff_y->layout(), framework::DataLayout::kMKLDNN,
                       platform::errors::InvalidArgument(
                           "Wrong layout set for Input OutGrad tensor"));
     PADDLE_ENFORCE_NE(diff_y->format(), MKLDNNMemoryFormat::undef,
@@ -115,7 +114,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
                                   {MKLDNN_ARG_TO, *dst_memory_p}});
   astream.wait();
 
-  y->set_layout(DataLayout::kMKLDNN);
+  y->set_layout(framework::DataLayout::kMKLDNN);
   y->set_format(GetMKLDNNFormat(*dst_memory_p));
 }
 
@@ -163,7 +162,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
                                   {MKLDNN_ARG_DIFF_SRC, *diff_src_memory_p}});
   astream.wait();
 
-  diff_x->set_layout(DataLayout::kMKLDNN);
+  diff_x->set_layout(framework::DataLayout::kMKLDNN);
   diff_x->set_format(GetMKLDNNFormat(*diff_src_memory_p));
 }
 

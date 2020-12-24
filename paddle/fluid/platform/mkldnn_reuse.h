@@ -28,7 +28,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-using framework::DataLayout;
 using framework::Tensor;
 using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = mkldnn::memory;
@@ -528,14 +527,14 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
 
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(
-          x->layout(), DataLayout::kMKLDNN,
+          x->layout(), framework::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument("Wrong layout set for X tensor."));
       PADDLE_ENFORCE_NE(
           x->format(), MKLDNNMemoryFormat::undef,
           platform::errors::InvalidArgument("Wrong format set for X tensor."));
 
       PADDLE_ENFORCE_EQ(
-          y->layout(), DataLayout::kMKLDNN,
+          y->layout(), framework::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument("Wrong layout set for Y tensor."));
       PADDLE_ENFORCE_NE(
           y->format(), MKLDNNMemoryFormat::undef,
@@ -748,7 +747,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
                                 framework::ToMKLDNNDataType(input->type()),
                                 unique_name)) {
     if (!this->isCached()) {
-      PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+      PADDLE_ENFORCE_EQ(input->layout(), framework::DataLayout::kMKLDNN,
                         platform::errors::InvalidArgument(
                             "Wrong layout set for Input tensor."));
       PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,

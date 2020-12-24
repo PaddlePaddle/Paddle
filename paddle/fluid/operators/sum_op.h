@@ -23,9 +23,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
 using LoDTensor = framework::LoDTensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 void SelectedRowsCompute(const framework::ExecutionContext &context) {
@@ -115,8 +112,8 @@ void LodTensorArrayCompute(const framework::ExecutionContext &context) {
                   "The lod message between inputs[%d] and"
                   " outputs[%d] must be same, but now is not same.",
                   i, i));
-          auto in = EigenVector<T>::Flatten(in_array[i]);
-          auto result = EigenVector<T>::Flatten(out_array[i]);
+          auto in = framework::EigenVector<T>::Flatten(in_array[i]);
+          auto result = framework::EigenVector<T>::Flatten(out_array[i]);
           result.device(*context.template device_context<DeviceContext>()
                              .eigen_device()) = result + in;
         }
@@ -145,7 +142,7 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
 
-      auto result = EigenVector<T>::Flatten(*out);
+      auto result = framework::EigenVector<T>::Flatten(*out);
       auto &place =
           *context.template device_context<DeviceContext>().eigen_device();
       int start = in_place ? 1 : 0;
@@ -155,8 +152,8 @@ class SumKernel : public framework::OpKernel<T> {
           auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
           auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
           if (in_0.numel() && in_1.numel()) {
-            auto in_0_e = EigenVector<T>::Flatten(in_0);
-            auto in_1_e = EigenVector<T>::Flatten(in_1);
+            auto in_0_e = framework::EigenVector<T>::Flatten(in_0);
+            auto in_1_e = framework::EigenVector<T>::Flatten(in_1);
             result.device(place) = in_0_e + in_1_e;
             start = 2;
           }
@@ -176,7 +173,7 @@ class SumKernel : public framework::OpKernel<T> {
           if (in_t.numel() == 0) {
             continue;
           }
-          auto in = EigenVector<T>::Flatten(in_t);
+          auto in = framework::EigenVector<T>::Flatten(in_t);
           result.device(place) = result + in;
         } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
           auto &in_t = in_vars[i]->Get<framework::SelectedRows>();

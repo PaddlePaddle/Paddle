@@ -83,12 +83,6 @@ inline std::vector<int> get_repeat_times(
 }
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using framework::To32BitIndex;
 
 template <typename DeviceContext, typename T>
@@ -167,9 +161,9 @@ class TileKernel : public framework::OpKernel<T> {
     }
 
     out0->Resize(out_dims);
-    auto x = EigenTensor<T, Rank>::From(*in0, new_in_dims);
+    auto x = framework::EigenTensor<T, Rank>::From(*in0, new_in_dims);
     out0->mutable_data<T>(context.GetPlace());
-    auto y = EigenTensor<T, Rank>::From(*out0, out_dims);
+    auto y = framework::EigenTensor<T, Rank>::From(*out0, out_dims);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
     // use 32-bit index to speed up
@@ -254,7 +248,7 @@ class TileGradKernel : public framework::OpKernel<T> {
     auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     out0->mutable_data<T>(context.GetPlace());
-    auto x_grad = EigenVector<T>::Flatten(*out0);
+    auto x_grad = framework::EigenVector<T>::Flatten(*out0);
     Eigen::DSizes<int, Dims * 2> reshape_dims;
     for (size_t i = 0; i < reshape_size; ++i) {
       reshape_dims[i] = reshape_dims_vec[i];
@@ -264,7 +258,7 @@ class TileGradKernel : public framework::OpKernel<T> {
       reduce_dims[i] = reduce_dims_vec[i];
     }
 
-    auto out_grad = EigenVector<T>::Flatten(*in0);
+    auto out_grad = framework::EigenVector<T>::Flatten(*in0);
     x_grad.device(
         *context.template device_context<DeviceContext>().eigen_device()) =
         out_grad.reshape(reshape_dims)

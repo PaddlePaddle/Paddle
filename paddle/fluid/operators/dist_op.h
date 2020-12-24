@@ -24,9 +24,6 @@
 namespace paddle {
 namespace operators {
 
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using framework::Tensor;
 
 template <int Rank>
@@ -83,9 +80,9 @@ static void DistFunction(const framework::ExecutionContext& context) {
   framework::DDim x_new_dims = GetNewDims(x_dims, Rank);
   framework::DDim y_new_dims = GetNewDims(y_dims, Rank);
 
-  auto x_t = EigenTensor<T, Rank>::From(*x, x_new_dims);
-  auto y_t = EigenTensor<T, Rank>::From(*y, y_new_dims);
-  auto out_t = EigenTensor<T, 1>::From(*out);
+  auto x_t = framework::EigenTensor<T, Rank>::From(*x, x_new_dims);
+  auto y_t = framework::EigenTensor<T, Rank>::From(*y, y_new_dims);
+  auto out_t = framework::EigenTensor<T, 1>::From(*out);
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
 
@@ -139,9 +136,9 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
   framework::DDim x_new_dims = GetNewDims(x_dims, Rank);
   framework::DDim y_new_dims = GetNewDims(y_dims, Rank);
   framework::DDim out_new_dims = GetNewDims(out_dims, Rank);
-  auto x_t = EigenTensor<T, Rank>::From(*x, x_new_dims);
-  auto y_t = EigenTensor<T, Rank>::From(*y, y_new_dims);
-  auto out_t = EigenTensor<T, Rank>::From(*out, out_new_dims);
+  auto x_t = framework::EigenTensor<T, Rank>::From(*x, x_new_dims);
+  auto y_t = framework::EigenTensor<T, Rank>::From(*y, y_new_dims);
+  auto out_t = framework::EigenTensor<T, Rank>::From(*out, out_new_dims);
 
   Eigen::DSizes<int, Rank> x_bcast_dims;
   Eigen::DSizes<int, Rank> y_bcast_dims;
@@ -157,10 +154,11 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
 
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
-  auto out_grad_t = EigenTensor<T, Rank>::From(*out_grad, out_new_dims);
+  auto out_grad_t =
+      framework::EigenTensor<T, Rank>::From(*out_grad, out_new_dims);
   framework::Tensor grad;
   grad.mutable_data<T>(new_dims, context.GetPlace());
-  auto grad_t = EigenTensor<T, Rank>::From(grad);
+  auto grad_t = framework::EigenTensor<T, Rank>::From(grad);
 
   auto x_minux_y = x_t.broadcast(x_bcast_dims) - y_t.broadcast(y_bcast_dims);
   auto x_minux_y_abs = x_minux_y.abs();
@@ -213,14 +211,14 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
   // the grad need to be sum along the broadcasted dimensions
   if (x_grad) {
     x_grad->mutable_data<T>(context.GetPlace());
-    auto x_grad_t = EigenTensor<T, Rank>::From(*x_grad, x_new_dims);
+    auto x_grad_t = framework::EigenTensor<T, Rank>::From(*x_grad, x_new_dims);
     x_grad_t.device(place) = grad_t.reshape(x_reshape_dims)
                                  .sum(reduce_dims)
                                  .reshape(x_grad_t.dimensions());
   }
   if (y_grad) {
     y_grad->mutable_data<T>(context.GetPlace());
-    auto y_grad_t = EigenTensor<T, Rank>::From(*y_grad, y_new_dims);
+    auto y_grad_t = framework::EigenTensor<T, Rank>::From(*y_grad, y_new_dims);
     y_grad_t.device(place) = -grad_t.reshape(y_reshape_dims)
                                   .sum(reduce_dims)
                                   .reshape(y_grad_t.dimensions());

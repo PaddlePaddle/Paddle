@@ -22,10 +22,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
 template <typename DeviceContext, typename T>
 void DotGradFunction(const Tensor* tensor_x, const Tensor* tensor_y,
                      const Tensor* tensor_dout, Tensor* tensor_dx,
@@ -51,12 +47,12 @@ void DotGradFunction(const Tensor* tensor_x, const Tensor* tensor_y,
       dy.device(dev) = x * dout.broadcast(size);
     }
   } else {
-    auto dout = EigenMatrix<T>::From(*tensor_dout);
+    auto dout = framework::EigenMatrix<T>::From(*tensor_dout);
 
     if (tensor_dx) {
       tensor_dx->mutable_data<T>(ctx.GetPlace());
-      auto y = EigenMatrix<T>::From(*tensor_y);
-      auto dx = EigenMatrix<T>::From(*tensor_dx);
+      auto y = framework::EigenMatrix<T>::From(*tensor_y);
+      auto dx = framework::EigenMatrix<T>::From(*tensor_dx);
       auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
       Eigen::DSizes<int, 2> size(1, tensor_dx->dims()[1]);
       dx.device(dev) = y * dout.broadcast(size);
@@ -64,8 +60,8 @@ void DotGradFunction(const Tensor* tensor_x, const Tensor* tensor_y,
 
     if (tensor_dy) {
       tensor_dy->mutable_data<T>(ctx.GetPlace());
-      auto x = EigenMatrix<T>::From(*tensor_x);
-      auto dy = EigenMatrix<T>::From(*tensor_dy);
+      auto x = framework::EigenMatrix<T>::From(*tensor_x);
+      auto dy = framework::EigenMatrix<T>::From(*tensor_dy);
       auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
       Eigen::DSizes<int, 2> size(1, tensor_dy->dims()[1]);
       dy.device(dev) = x * dout.broadcast(size);
@@ -124,9 +120,9 @@ class DotKernel : public framework::OpKernel<T> {
       auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
       out.device(dev) = (x * y).sum();
     } else {
-      auto out = EigenMatrix<T>::From(*tensor_out);
-      auto x = EigenMatrix<T>::From(*tensor_x);
-      auto y = EigenMatrix<T>::From(*tensor_y);
+      auto out = framework::EigenMatrix<T>::From(*tensor_out);
+      auto x = framework::EigenMatrix<T>::From(*tensor_x);
+      auto y = framework::EigenMatrix<T>::From(*tensor_y);
 
       auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
       out.device(dev) = (x * y).sum(Eigen::DSizes<int, 1>(1));
