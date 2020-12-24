@@ -25,6 +25,8 @@
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -161,6 +163,10 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
 
   PADDLE_TENSOR_ADD(float);
   PADDLE_TENSOR_ADD(double);
+  // NOTE(chenweihang): only support complex grad tensor accumulated,
+  // support selected rows if needed in the future
+  PADDLE_TENSOR_ADD(platform::complex64);
+  PADDLE_TENSOR_ADD(platform::complex128);
 
 #undef PADDLE_TENSOR_ADD
 
@@ -212,6 +218,7 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
 #endif
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CPUDeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CPUDeviceContext, double);
+
 #ifdef PADDLE_WITH_CUDA
   }
 #endif
