@@ -83,8 +83,8 @@ void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
       (*callback_func)();
     });
   });
-  PADDLE_ENFORCE(hipStreamAddCallback(stream_, StreamCallbackFunc, func, 0),
-                 "");
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      hipStreamAddCallback(stream_, StreamCallbackFunc, func));
 }
 
 void StreamCallbackManager::Wait() const {

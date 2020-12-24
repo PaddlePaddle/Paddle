@@ -239,7 +239,9 @@ size_t GpuMaxAllocSize() {
 
 static size_t GpuAllocSize(bool realloc) {
   size_t available_to_alloc = GpuAvailableMemToAlloc();
-  PADDLE_ENFORCE_GT(available_to_alloc, 0, "No enough available GPU memory");
+  PADDLE_ENFORCE_GT(
+      available_to_alloc, 0,
+      platform::errors::ResourceExhausted("Not enough available GPU memory."));
   // If FLAGS_initial_gpu_memory_in_mb is 0, then initial memory will be
   // allocated by fraction
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
@@ -247,8 +249,9 @@ static size_t GpuAllocSize(bool realloc) {
   size_t alloc_bytes =
       (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
                                            FLAGS_fraction_of_gpu_memory_to_use);
-  PADDLE_ENFORCE_GE(available_to_alloc, alloc_bytes,
-                    "No enough available GPU memory");
+  PADDLE_ENFORCE_GE(
+      available_to_alloc, alloc_bytes,
+      platform::errors::ResourceExhausted("Not enough available GPU memory."));
   VLOG(10) << "Alloc size is " << (alloc_bytes >> 20)
            << " MiB, is it Re-alloc: " << realloc;
   return alloc_bytes;

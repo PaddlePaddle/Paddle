@@ -99,7 +99,8 @@ inline miopenPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
     case PoolingMode::kMaximum:
       return miopenPoolingMax;
     default:
-      PADDLE_THROW("Unexpected pooling mode.");
+      PADDLE_THROW(
+          platform::errors::Unimplemented("Unexpected MIOPEN pooling mode."));
   }
 }
 
@@ -119,7 +120,8 @@ inline ActivationMode StringToActivationMode(const std::string& str) {
   } else if (str == "bandpass") {
     return ActivationMode::kBandPass;
   } else {
-    PADDLE_THROW("Unknown activation string: %s", str);
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Unexpected CUDNN pooling mode."));
   }
 }
 
@@ -298,15 +300,17 @@ class ScopedConvolutionDescriptor {
   inline miopenConvolutionDescriptor_t descriptor(
       miopenDataType_t type, const std::vector<int>& pads,
       const std::vector<int>& strides, const std::vector<int>& dilations) {
-    PADDLE_ENFORCE_EQ(pads.size(), strides.size());
-    PADDLE_ENFORCE_EQ(pads.size(), dilations.size());
+    PADDLE_ENFORCE_EQ(pads.size(), strides.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of pads and strides should be equal. But "
+                          "received size of pads is %d, size of strides is %d.",
+                          pads.size(), strides.size()));
     PADDLE_ENFORCE_EQ(
         pads.size(), dilations.size(),
         platform::errors::InvalidArgument(
             "The size of pads and dilations should be equal. But received size "
             "of pads is %d, size of dilations is %d.",
             pads.size(), dilations.size()));
-
     miopenConvolutionMode_t compute_mode = miopenConvolution;
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenInitConvolutionNdDescriptor(
         static_cast<miopenConvolutionDescriptor_t>(desc_),
