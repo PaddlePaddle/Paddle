@@ -1108,7 +1108,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transferred.
-    // TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
+    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
   }
   if (FLAGS_enable_unused_var_check) {
     // skip op that uses mkldnn because it has different memory reuse strategy.
