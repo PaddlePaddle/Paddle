@@ -242,8 +242,8 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
     auto future_context = filter->dims()[0];
     if (d_filter) {
       d_filter->mutable_data<T>(context.GetPlace());
-      auto dweights =
-          framework::EigenMatrix<T>::From(*d_filter);  // Gradient of weight matrix
+      auto dweights = framework::EigenMatrix<T>::From(
+          *d_filter);  // Gradient of weight matrix
       dweights.setZero();
 
       for (size_t i = 0; i < num_sequence; i++) {  // For different sequences

@@ -90,7 +90,7 @@ if(WIN32)
         # NOTE(Avin0323): Less parallel count result in faster compilation with
         # Unity Build on GPU.
         if(WITH_UNITY_BUILD AND WITH_GPU)
-            set(${flag_var} "${${flag_var}} /MP8")
+            set(${flag_var} "${${flag_var}} /MP6")
         else()
             set(${flag_var} "${${flag_var}} /MP")
         endif()

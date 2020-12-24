@@ -239,8 +239,7 @@ register_unity_group(cc
     tdm_child_op.cc
     tdm_sampler_op.cc
     teacher_student_sigmoid_loss_op.cc
-    temporal_shift_op.cc
-    )
+    temporal_shift_op.cc)
 register_unity_group(cc
     concat_op.cc
     conv_shift_op.cc
