@@ -390,6 +390,7 @@ EOF
         cp -r paddle_inference_install_dir paddle_inference
         tar -czf paddle_inference.tgz paddle_inference
         buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
+        echo "Paddle_Inference Size: $buildSize"
         echo "ipipe_log_param_Paddle_Inference_Size: $buildSize"
     else
         SYSTEM=`uname -s`
@@ -399,8 +400,10 @@ EOF
             com='du -h --max-depth=0'
         fi
         buildSize=$($com ${PADDLE_ROOT}/build |awk '{print $1}')
+        echo "Build Size: $buildSize"
         echo "ipipe_log_param_Build_Size: $buildSize"
         PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
+        echo "PR whl Size: $PR_whlSize"
         echo "ipipe_log_param_PR_whl_Size: $PR_whlSize"
     fi
 }
@@ -425,6 +428,7 @@ function cmake_gen_and_build() {
     cmake_gen $1
     build $2
     endTime_s=`date +%s`
+    echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s"
 }
 
@@ -462,6 +466,7 @@ function cmake_gen_and_build_mac() {
     cmake_gen $1
     build_mac
     endTime_s=`date +%s`
+    echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s"
 }
 
@@ -649,6 +654,7 @@ EOF
         fi
         #mactest_error=$?
         ut_endTime_s=`date +%s`
+        echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
         # Recovery proxy to avoid failure in later steps
@@ -931,8 +937,10 @@ EOF
     testcases=$1
     num=$(echo $testcases|grep -o '\^'|wc -l)
     if [ "$2" == "" ]; then
+        echo "exclusive TestCases count is $num"
         echo "ipipe_log_param_Exclusive_TestCases_Count: $num"
     else
+        echo "$2 card TestCases count is $num"
         echo "ipipe_log_param_${2}_Cards_TestCases_Count $num"
     fi
 }
@@ -1024,8 +1032,10 @@ function card_test() {
     wait; # wait for all subshells to finish
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
+        echo "exclusive TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
     else
+        echo "$2 card TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         echo "ipipe_log_param_${2}_Cards_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
     fi
     set +m
@@ -1324,6 +1334,7 @@ function parallel_test() {
         fi
     fi
     ut_total_endTime_s=`date +%s`
+    echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
     echo "ipipe_log_param_TestCases_Total_Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
 }
 
@@ -1603,6 +1614,7 @@ EOF
         exit 7;
     fi
     endTime_s=`date +%s`
+    echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s"
 
     build_size "paddle_inference"
@@ -1634,6 +1646,7 @@ EOF
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
     EXIT_CODE=$?
     fluid_endTime_s=`date +%s`
+    echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
     echo "ipipe_log_param_Test_Fluid_Lib_Total_Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"          
     ./clean.sh
     if [[ "$EXIT_CODE" != "0" ]]; then
@@ -1652,6 +1665,7 @@ EOF
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON}
     EXIT_CODE=$?
     fluid_train_endTime_s=`date +%s`
+    echo "test_fluid_lib_train Total Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
     echo "ipipe_log_param_Test_Fluid_Lib_Train_Total_Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
     ./clean.sh
     if [[ "$EXIT_CODE" != "0" ]]; then
