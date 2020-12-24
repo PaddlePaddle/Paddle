@@ -163,8 +163,8 @@ if(WITH_PYTHON)
   py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
   py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
-#Generate an empty #__init__ \
-    .py to make framework_py_proto as a valid python module.
+  #Generate an empty
+  #__init__.py to make framework_py_proto as a valid python module.
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
   add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto)
   if (NOT WIN32)
