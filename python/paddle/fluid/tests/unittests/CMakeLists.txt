@@ -201,9 +201,7 @@ if(WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
 endif()
 
-if(NOT WITH_DISTRIBUTE OR WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
-  list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
-endif()
+list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 
 if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
