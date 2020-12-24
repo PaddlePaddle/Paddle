@@ -561,22 +561,12 @@ class TheOnePSRuntime(RuntimeBase):
             accessor = Accessor()
             accessor.accessor_class = "CommMergeAccessor"
             accessor.optimizer = None
-
-
-<< << << < HEAD
-            accessor.feature_dim = 0 if ctx.is_sparse() else ctx.sections()[0]
-            accessor.embedding_dim = ctx.sections()[
-                                                  0] if ctx.is_sparse() else 1
-== == == =
-
             if ctx.is_sparse():
                 accessor.feature_dim = ctx.sections()[0]
                 accessor.embedding_dim = ctx.sections()[1]
             else:
                 accessor.feature_dim = ctx.sections()[0]
                 accessor.embedding_dim = 1
-
->>>>>> > origin/develop
             return accessor
 
         def _build_barrier_table(idx):
@@ -667,7 +657,6 @@ class TheOnePSRuntime(RuntimeBase):
                 _is_heter_parameter_server_mode)
 
             tables = []  # [i for i in range(len(send_ctx) + 1)]
-
 
             for idx, (name, ctx) in enumerate(send_ctx.items()):
                 table = Table()
@@ -766,11 +755,11 @@ class TheOnePSRuntime(RuntimeBase):
         self._server.init_server(proto_txt, string_hosts, role_id,
                                  self._server_sub_program)
 
-
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 
         dist_varnames = get_sparse_tablenames(self.origin_main_program, True)
-        sparse_varnames = get_sparse_tablenames(self.origin_main_program, False)
+        sparse_varnames = get_sparse_tablenames(
+            self.origin_main_program, False)
 
         distributed_varnames = dist_varnames + sparse_varnames
 
