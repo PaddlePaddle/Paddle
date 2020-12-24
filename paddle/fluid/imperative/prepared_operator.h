@@ -64,6 +64,27 @@ void PrepareGradVarDataType<VarBase>(const std::shared_ptr<VarBase>& var) {
   }
 }
 
+#ifdef PADDLE_WITH_XPU
+static void ReplaceXPUKernelIfNotExists(
+    const framework::OperatorWithKernel& op,
+    framework::OpKernelType* expected_kernel_key) {
+  auto& all_op_kernels = op.AllOpKernels();
+  auto kernels_iter = all_op_kernels.find(op.Type());
+  PADDLE_ENFORCE_NE(
+      kernels_iter, all_op_kernels.end(),
+      platform::errors::NotFound(
+          "There are no kernels which are registered in the %s operator.",
+          op.Type()));
+
+  auto& kernels = kernels_iter->second;
+  auto kernel_iter = kernels.find(*expected_kernel_key);
+  if (kernel_iter == kernels.end() &&
+      is_xpu_place(expected_kernel_key->place_)) {
+    expected_kernel_key->place_ = platform::CPUPlace();
+  }
+}
+#endif
+
 template <typename VarType>
 framework::OpKernelType GetExpectedKernelKey(
     const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
@@ -86,6 +107,9 @@ framework::OpKernelType GetExpectedKernelKey(
   auto expected_kernel_key =
       op.GetExpectedKernelType(DygraphExecutionContext<VarType>(
           op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs));
+#ifdef PADDLE_WITH_XPU
+  ReplaceXPUKernelIfNotExists(op, &expected_kernel_key);
+#endif
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   return expected_kernel_key;
@@ -131,7 +155,7 @@ class PreparedOp {
              platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const framework::OperatorWithKernel& op,
-                            framework::OpKernelType* expected_kernel_key);
+                            const framework::OpKernelType& expected_kernel_key);
 
   void Run(const NameVarMap<VarBase>& in, const NameVarMap<VarBase>& out,
            const framework::AttributeMap& attrs);

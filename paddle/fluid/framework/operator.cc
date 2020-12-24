@@ -1282,17 +1282,12 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
       // don't process LoDTensorArray temporarily,
       // add support if necessary for complex number calculations in the future
       if (!VarIsTensor(*grad_var)) {
-        VLOG(6) << "The gradient var is `"
-                << framework::ToTypeName(grad_var->Type())
-                << "` when handle complex grad to real grad.";
         continue;
       }
       auto* grad_tensor =
           GetMutableLoDTensorOrSelectedRowsValueFromVar(grad_var);
       // skip nullptr tensor
       if (grad_tensor == nullptr || !grad_tensor->IsInitialized()) {
-        VLOG(6) << "The gradient tensor is nullptr or not initialized when "
-                   "handle complex grad to real grad.";
         continue;
       }
       // only focus on complex dtype now
@@ -1307,19 +1302,26 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
       if (var == nullptr) {
         continue;
       }
+      if (!VarIsTensor(*var)) {
+        continue;
+      }
       const auto* tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       PADDLE_ENFORCE_NOT_NULL(
           tensor,
           platform::errors::Unavailable(
               "Forward tensor is nullptr when handle complex data to real."));
       // only need record type, the allocation may have been released
-      auto dst_type = tensor->RecordType();
+      auto dst_type = tensor->saved_type();
       // only focus on real dtype and need casting
       if (IsComplexType(dst_type)) {
         continue;
       }
 
       // 3. cast complex grad to real grad
+      VLOG(6) << "Transform " << framework::DataTypeToString(src_type)
+              << " var `" << var_name << "` to "
+              << framework::DataTypeToString(dst_type)
+              << " real var in static graph.";
       Tensor out;
       TransComplexToReal(dst_type, src_type, *grad_tensor, &out);
       SetTensorToVariable(*grad_var, out, grad_var);

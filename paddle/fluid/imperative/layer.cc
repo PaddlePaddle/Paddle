@@ -378,7 +378,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    */
   auto expected_kernel_key =
       GetExpectedKernelKey<VarType>(ins, outs, *op_kernel, place, attrs);
-  auto prepared_op = PreparedOp::Prepare(*op_kernel, &expected_kernel_key);
+  auto prepared_op = PreparedOp::Prepare(*op_kernel, expected_kernel_key);
   auto tmp_ins = PrepareData<VarType>(*op_kernel, ins, expected_kernel_key);
 
   prepared_op.Run(tmp_ins, outs, attrs);
