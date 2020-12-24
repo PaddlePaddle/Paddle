@@ -98,9 +98,11 @@ git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 :mkbuild
 if not exist build (
     echo Windows build cache FALSE
+    echo "ipipe_log_param_Windows_Build_Cache: FALSE"
     mkdir build
 ) else (
     echo Windows build cache TRUE
+    echo "ipipe_log_param_Windows_Build_Cache: TRUE"
 )
 cd /d build
 dir .
@@ -587,9 +589,11 @@ goto:eof
 for /f "tokens=2,4" %%i in ('clcache.exe -s ^| findstr "entries hits"') do set %%i=%%j
 if %hits% EQU 0 (
     echo "clcache hit rate: 0%%"
+    echo "ipipe_log_param_Clcache_Hit_Rate: 0%%"
 ) else (
     set /a rate=%hits%*10000/%entries%
     echo "clcache hit rate: %rate:~0,-2%.%rate:~-2%%%"
+    echo "ipipe_log_param_Clcache_Hit_Hate: %rate:~0,-2%.%rate:~-2%%%"
 )
 goto:eof
 

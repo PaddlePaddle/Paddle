@@ -1694,6 +1694,7 @@ function example() {
 function collect_ccache_hits() {
     rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
     echo "ccache hit rate: ${rate}%"
+    echo "ipipe_log_param_Ccache_Hit_Rate: ${rate}%"
 }
 
 
