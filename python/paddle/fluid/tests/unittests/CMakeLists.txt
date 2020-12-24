@@ -357,7 +357,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 # disable test_cumsum_op temporaily
-list(REMOVE_ITEM TEST_OPS test_cumsum_op)
+# list(REMOVE_ITEM TEST_OPS test_cumsum_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
