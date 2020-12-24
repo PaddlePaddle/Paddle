@@ -36,13 +36,7 @@ lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
 function gen_full_html_report() {
     lcov --extract coverage.info \
-        '/paddle/paddle/fluid/framework/*' \
-        '/paddle/paddle/fluid/imperative/*' \
-        '/paddle/paddle/fluid/inference/*' \
-        '/paddle/paddle/fluid/memory/*' \
-        '/paddle/paddle/fluid/operators/*' \
-        '/paddle/paddle/fluid/recordio/*' \
-        '/paddle/paddle/fluid/string/*' \
+        '/paddle/paddle/fluid/operators/*xpu*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
