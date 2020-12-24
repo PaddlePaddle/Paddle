@@ -28,6 +28,8 @@ def conv2d_forward_refer(input, filter, group, conv_param):
     return out
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support oneDNN INT8")
 class TestConv2DInt8Op(TestConv2DOp):
     def setUp(self):
         self.op_type = "conv2d"
