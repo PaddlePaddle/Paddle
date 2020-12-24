@@ -552,6 +552,27 @@ struct FCMKLDNN : public PatternBase {
   PATTERN_DECL_NODE(output);
 };
 
+//
+// \brief   Pattern looking for fc and a directly following activation
+// operator.
+//
+// \note    Currently only gelu and tanh are supported as an activation
+// function.
+//          Formula: act(fc(x))
+//          Op: fc + act
+struct FCActOneDNN : public PatternBase {
+  FCActOneDNN(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fc_act_onednn") {}
+
+  PDNode* operator()(const std::string& act_type);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(fc);
+  PATTERN_DECL_NODE(act);
+  PATTERN_DECL_NODE(fc_out);
+  PATTERN_DECL_NODE(act_out);
+};
+
 // Embedding
 struct Embedding : public PatternBase {
   Embedding(PDPattern* pattern, const std::string& name_scope)
