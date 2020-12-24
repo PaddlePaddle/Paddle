@@ -60,7 +60,6 @@ diable_wingpu_test="^test_analysis_predictor$|\
 ^test_decoupled_py_reader_data_check$|\
 ^test_eager_deletion_delete_vars$|\
 ^test_eager_deletion_while_op$|\
-^test_fetch_lod_tensor_array$|\
 ^test_fleet_base_single$|\
 ^test_fuse_elewise_add_act_pass$|\
 ^test_fuse_optimizer_pass$|\
