@@ -30,6 +30,7 @@ find_package(CUDA QUIET)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN"        OFF)
+option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
 endif()
@@ -86,7 +87,13 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        set(${flag_var} "${${flag_var}} /MP")
+        # NOTE(Avin0323): Less parallel count result in faster compilation with
+        # Unity Build on GPU.
+        if(WITH_UNITY_BUILD AND WITH_GPU)
+            set(${flag_var} "${${flag_var}} /MP8")
+        else()
+            set(${flag_var} "${${flag_var}} /MP")
+        endif()
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
         set(${flag_var} "${${flag_var}} /w")
@@ -103,6 +110,18 @@ if(WIN32)
 
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838")
+
+    if (WITH_WIN_DUMP_DBG)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Zi")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
+
+        foreach(flag_var CMAKE_SHARED_LINKER_FLAGS CMAKE_STATIC_LINKER_FLAGS CMAKE_EXE_LINKER_FLAGS CMAKE_LINKER_FLAGS)
+            set(${flag_var} "${${flag_var}} /DEBUG /OPT:REF /OPT:ICF")
+        endforeach(flag_var)
+
+        add_definitions("-DWITH_WIN_DUMP_DBG")
+    endif()
+
 else(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations")
 endif(WIN32)
@@ -226,17 +245,6 @@ if(WITH_GPU)
 endif()
 
 include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
-
-if(WITH_DISTRIBUTE)
-    if(WITH_GRPC)
-        message(STATUS "Use grpc framework.")
-        include(external/grpc)
-    else()
-        message(STATUS "Use brpc framework.")
-        include(external/leveldb)
-        include(external/brpc)
-    endif()
-endif()
 
 include(flags)              # set paddle compile flags
 
