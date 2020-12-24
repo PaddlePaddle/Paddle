@@ -154,9 +154,9 @@ for API_FILE in ${API_FILES[*]}; do
 done
 
 FILTER=`git diff --name-only upstream/develop | grep -v "tools/"`
-HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH $FILTER |grep -o -m 1 "const_cast" || true`
+HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -o -m 1 "const_cast" || true`
 if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1) approval for the usage (either add or delete) of const_cast.\n"
+    echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1) approval for the usage of const_cast.\n"
     check_approval 1 46782768 12538138 6836917
 fi
 
@@ -316,6 +316,22 @@ HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has benchmark issue 
 if [ "${HASUTFIXED}" != "" ]; then
     echo_line="${HASUTFIXED} You must have one RD (hysunflower or xiegegege or Xreki) approval.\n"
   check_approval 1 52739577 46314656 12538138
+fi
+
+# NOTE(Avin0323): Files with the name "unity_build_rule.cmake" are rules used
+# by Unity Build to combine source files. Changes to these rules may cause
+# errors in the compilation. Specific personal are required to approve the
+# modification of these files.
+UNITYBUILD_RULE_CHANGED=$(git diff --name-only upstream/$BRANCH |
+                          grep "unity_build_rule.cmake" || true)
+if [ -n "${UNITYBUILD_RULE_CHANGED}" -a -n "${GIT_PR_ID}" ]; then
+    echo_line="You must have one RD (Avin0323(Recommend) or zhouwei25 or
+               wanghuancoder or luotao1) approval for modifying
+               unity_build_rule.cmake which the rules of Unity Build."
+    echo_line=$(echo ${echo_line})
+    # Avin0323(16167147) zhouwei25(52485244)
+    # wanghuancoder(26922892) luotao1(6836917)
+    check_approval 1 16167147 52485244 26922892 6836917
 fi
 
 if [ -n "${echo_list}" ];then

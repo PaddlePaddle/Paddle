@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -86,6 +87,8 @@ class Group {
   std::vector<framework::Tensor> dense_tensors_;
 
   std::vector<size_t> length_;
+
+  int64_t all_length_{0};
   // Global indices of participating variables in the group
   std::vector<size_t> variable_indices_;
 
@@ -97,53 +100,15 @@ class Group {
   framework::proto::VarType::Type dtype_;
 
   // context is used to select the stream for concat
-  void ConcatTensors(const platform::CUDADeviceContext& context) {
-    switch (dtype_) {
-      case framework::proto::VarType::FP16:
-        ConcatTensorsForAllReduce<platform::float16>(context, dense_tensors_,
-                                                     &dense_contents_);
-        break;
-      case framework::proto::VarType::FP32:
-        ConcatTensorsForAllReduce<float>(context, dense_tensors_,
-                                         &dense_contents_);
-        break;
-      case framework::proto::VarType::FP64:
-        ConcatTensorsForAllReduce<double>(context, dense_tensors_,
-                                          &dense_contents_);
-        break;
-      default:
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Data type (%s) is not supported when it concats tensors for "
-            "allreduce.",
-            framework::DataTypeToString(dtype_)));
-    }
-  }
+  void ConcatTensors(const platform::CUDADeviceContext& context);
 
   // context is used to select the stream for split
-  void SplitTensors(const platform::CUDADeviceContext& context) {
-    switch (dtype_) {
-      case framework::proto::VarType::FP16:
-        SplitTensorsForAllReduce<platform::float16>(context, &dense_contents_,
-                                                    &dense_tensors_);
-        break;
-      case framework::proto::VarType::FP32:
-        SplitTensorsForAllReduce<float>(context, &dense_contents_,
-                                        &dense_tensors_);
-        break;
-      case framework::proto::VarType::FP64:
-        SplitTensorsForAllReduce<double>(context, &dense_contents_,
-                                         &dense_tensors_);
-        break;
-      default:
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Data type (%s) is not supported when it splits tensors for "
-            "allreduce.",
-            framework::DataTypeToString(dtype_)));
-    }
-  }
+  void SplitTensors(const platform::CUDADeviceContext& context);
+
+  friend std::ostream& operator<<(std::ostream&, const Group&);
 };
 
-struct VariableIndex {
+struct VariableLocator {
   // record the index in groups_
   size_t group_index;
   size_t inside_group_index;
@@ -155,22 +120,23 @@ class Reducer {
       const std::vector<std::shared_ptr<imperative::VarBase>>& vars,
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
-      std::shared_ptr<imperative::ParallelContext> parallel_ctx);
+      std::shared_ptr<imperative::ParallelContext> parallel_ctx,
+      const std::vector<size_t>& group_size_limits);
 
   virtual ~Reducer() {}
 
   void InitializeGroups(const std::vector<std::vector<size_t>>& group_indices);
 
-  int64_t InitializeDenseGroups(const std::vector<size_t>& variable_indices_,
-                                Group* p_group);
+  void InitializeDenseGroups(const std::vector<size_t>& variable_indices_,
+                             Group* p_group);
 
   void PrepareForBackward();
 
-  void AddDistHook(VariableWrapper* var_warpper,
-                   const VariableIndex& var_index);
+  void AddDistHook(VariableWrapper* var_warpper, size_t var_index);
 
-  void MarkVariableReady(const VariableIndex& var_index,
-                         VariableWrapper* var_warpper);
+  void MarkDenseVarReady(size_t var_index, VariableWrapper* var_warpper);
+
+  void MarkSparseVarReady(size_t var_index, VariableWrapper* var_warpper);
 
   void MarkGroupReady(size_t group_index);
 
@@ -178,15 +144,21 @@ class Reducer {
 
   void ReleaseReducer();
 
+  std::vector<std::vector<size_t>> RebuildGruops();
+
+  void CreateGroupEvents(int group_num);
+
   // Reducer Singleton
   static std::shared_ptr<Reducer> SetInstance(
       const std::vector<std::shared_ptr<imperative::VarBase>>& vars,
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
-      std::shared_ptr<imperative::ParallelContext> parallel_ctx) {
+      std::shared_ptr<imperative::ParallelContext> parallel_ctx,
+      const std::vector<size_t>& group_size_limits) {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::imperative::Reducer(
-          vars, group_indices, is_sparse_gradient, parallel_ctx));
+          vars, group_indices, is_sparse_gradient, parallel_ctx,
+          group_size_limits));
     }
     return s_instance_;
   }
@@ -208,17 +180,27 @@ class Reducer {
   std::once_flag once_flag_;
   std::vector<bool> is_sparse_gradient_;
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;
+  std::vector<VariableLocator> variable_locators_;
 
-  std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
-  std::shared_ptr<platform::CudaEventObject> comm_enent_;
+  // Following variables are to help sync stream
+  std::vector<std::shared_ptr<platform::CudaEventObject>> group_events_;
+  std::vector<std::shared_ptr<platform::CudaEventObject>> comm_events_;
   cudaStream_t compute_stream_;
-  cudaStream_t comm_stream_;
+  std::vector<cudaStream_t> comm_streams_;
+  int nrings_ = 1;
+
+  // Following variables are to help rebuild group
+  bool has_rebuilt_group_{false};
+  std::vector<std::shared_ptr<imperative::VarBase>> rebuild_vars_;
+  std::vector<int64_t> rebuild_var_indices_;
+  const std::vector<size_t> group_size_limits_;
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
     const std::vector<std::shared_ptr<imperative::VarBase>>& tensors,
     const std::vector<bool>& is_sparse_gradient,
-    const std::vector<size_t>& group_size_limits);
+    const std::vector<size_t>& group_size_limits,
+    const std::vector<int64_t>& tensor_indices = {});
 #endif
 
 }  // namespace imperative

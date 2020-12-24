@@ -100,23 +100,8 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
 
     def _try_to_compile(self, startup_program, main_program, loss):
         dist_strategy = self.user_defined_strategy
-        local_build_strategy = paddle.fluid.BuildStrategy()
-        local_build_strategy.enable_sequential_execution = \
-            dist_strategy.build_strategy.enable_sequential_execution
-        local_build_strategy.fuse_elewise_add_act_ops = \
-            dist_strategy.build_strategy.fuse_elewise_add_act_ops
-        local_build_strategy.fuse_bn_act_ops = \
-            dist_strategy.build_strategy.fuse_bn_act_ops
-        local_build_strategy.enable_auto_fusion = \
-            dist_strategy.build_strategy.enable_auto_fusion
-        local_build_strategy.fuse_relu_depthwise_conv = \
-            dist_strategy.build_strategy.fuse_relu_depthwise_conv
-        local_build_strategy.fuse_broadcast_ops = \
-            dist_strategy.build_strategy.fuse_broadcast_ops
-        local_build_strategy.fuse_all_optimizer_ops = \
-            dist_strategy.build_strategy.fuse_all_optimizer_ops
-        local_build_strategy.enable_inplace = \
-            dist_strategy.build_strategy.enable_inplace
+        local_build_strategy = dist_strategy.build_strategy
+
         local_build_strategy.use_hierarchical_allreduce = \
             dist_strategy.use_hierarchical_allreduce
         local_build_strategy.hierarchical_allreduce_inter_nranks = \

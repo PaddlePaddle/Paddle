@@ -46,6 +46,7 @@ set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
 rem -------set cache build work directory-----------
 rmdir build\python /s/q
+del build\CMakeCache.txt
 if "%WITH_CACHE%"=="OFF" (
     rmdir build /s/q
     goto :mkbuild
@@ -53,7 +54,7 @@ if "%WITH_CACHE%"=="OFF" (
 
 set error_code=0
 type %cache_dir%\error_code.txt
-set /p error_code=< %cache_dir%\error_code.txt
+: set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
     rmdir build /s/q
     goto :mkbuild
@@ -63,7 +64,7 @@ setlocal enabledelayedexpansion
 git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
-    git diff HEAD last_pr --stat --name-only | findstr ".cmake CMakeLists.txt paddle_build.bat"
+    git diff HEAD last_pr --stat --name-only | findstr "cmake/[a-zA-Z]*\.cmake CMakeLists.txt"
     if !ERRORLEVEL! EQU 0 (
         rmdir build /s/q
     )
@@ -73,6 +74,9 @@ if %ERRORLEVEL% EQU 0 (
     rmdir build /s/q
     git branch last_pr
 )
+
+:: set CI_SKIP_CPP_TEST if only *.py changed
+git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 
 :: for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
 :: set day_now=%datetime:~6,2%
@@ -117,10 +121,9 @@ rem call paddle_winci\Scripts\activate.bat
 rem ------pre install python requirement----------
 where python
 where pip
-pip install --upgrade pip --user
 pip install wheel --user
-pip install -U -r %work_dir%\python\requirements.txt --user
-pip install -U -r %work_dir%\python\unittest_py\requirements.txt --user
+pip install -r %work_dir%\python\requirements.txt --user
+pip install -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
     echo pip install requirements.txt failed!
     exit /b 7
@@ -138,6 +141,10 @@ set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 clcache.exe -M 21474836480
 
 rem ------show summary of current environment----------
+cmake --version
+nvcc --version
+where nvidia-smi
+nvidia-smi
 python %work_dir%\tools\summary_env.py
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
 
@@ -268,6 +275,9 @@ echo Build third_party successfully!
 
 set build_times=1
 :build_paddle
+:: reset clcache zero stats for collect PR's actual hit rate
+clcache.exe -z
+
 echo Build Paddle the %build_times% time:
 if "%WITH_CLCACHE%"=="OFF" (
     msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
@@ -288,6 +298,9 @@ if %ERRORLEVEL% NEQ 0 (
 echo Build Paddle successfully!
 echo 0 > %cache_dir%\error_code.txt
 type %cache_dir%\error_code.txt
+
+:: ci will collect clcache hit rate
+goto :collect_clcache_hits
 
 goto:eof
 
@@ -353,6 +366,7 @@ echo    ========================================
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
+set FLAGS_call_stack_level=2
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
@@ -395,62 +409,13 @@ echo    ========================================
 
 setlocal enabledelayedexpansion
 
-set FLAGS_fraction_of_gpu_memory_to_use=0.80
 :: set PATH=C:\Windows\System32;C:\Program Files\NVIDIA Corporation\NVSMI;%PATH%
 :: cmd /C nvidia-smi -L
 :: if %errorlevel% NEQ 0 exit /b 8
 :: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 set CUDA_DEVICE_COUNT=1
 
-rem TODO: fix these unittest that is bound to fail
-rem /*==================Disabled Windows unite==============================*/
-set diable_wingpu_test=test_analysis_predictor^|test_model^|test_add_reader_dependency^|test_bilateral_slice_op^|^
-test_cholesky_op^|test_dataloader_early_reset^|test_decoupled_py_reader^|test_decoupled_py_reader_data_check^|test_eager_deletion_delete_vars^|^
-test_eager_deletion_while_op^|test_feed_data_check_shape_type^|test_fleet_base_single^|test_fuse_all_reduce_pass^|test_fuse_elewise_add_act_pass^|^
-test_fuse_optimizer_pass^|test_generator_dataloader^|test_ir_memory_optimize_ifelse_op^|test_lr_scheduler^|^
-test_multiprocess_dataloader_iterable_dataset_dynamic^|test_multiprocess_dataloader_iterable_dataset_static^|test_parallel_dygraph_sync_batch_norm^|test_parallel_executor_drop_scope^|^
-test_parallel_executor_dry_run^|test_partial_eager_deletion_transformer^|test_prune^|test_py_reader_combination^|test_py_reader_pin_memory^|^
-test_py_reader_push_pop^|test_py_reader_using_executor^|test_reader_reset^|test_update_loss_scaling_op^|test_imperative_static_runner_while^|^
-test_flags_use_mkldnn^|test_optimizer_in_control_flow^|test_fuse_bn_act_pass^|^
-test_fuse_bn_add_act_pass^|test_activation_mkldnn_op^|test_tsm^|test_gru_rnn_op^|test_rnn_op^|test_simple_rnn_op^|test_pass_builder^|test_lstm_cudnn_op^|test_inplace_addto_strategy^|^
-test_ir_inplace_pass^|test_ir_memory_optimize_pass^|test_memory_reuse_exclude_feed_var^|test_mix_precision_all_reduce_fuse^|test_parallel_executor_pg^|test_print_op^|test_py_func_op^|^
-test_weight_decay^|test_mobile_net^|^
-test_conv2d_int8_mkldnn_op^|^
-test_crypto^|test_callbacks^|test_program_prune_backward^|test_imperative_ocr_attention_model
-rem /*===============================================================*/
-
-rem these unittest that cost long time, diabled temporarily, Maybe moved to the night
-set long_time_test=best_fit_allocator_test^|timer_test^|test_image_classification^|decorator_test^|^
-test_dataset_cifar^|test_dataset_imdb^|test_dataset_movielens^|test_datasets^|test_pretrained_model^|test_concat_op^|test_elementwise_add_op^|test_elementwise_sub_op^|test_gather_op^|test_gather_nd_op^|^
-test_sequence_concat^|test_sequence_conv^|test_sequence_pool^|test_sequence_slice_op^|test_space_to_depth_op^|test_activation_nn_grad^|test_activation_op^|test_auto_growth_gpu_memory_limit^|^
-test_bicubic_interp_op^|test_bicubic_interp_v2_op^|test_bilinear_interp_v2_op^|test_conv2d_op^|test_conv3d_op^|test_conv3d_transpose_part2_op^|test_conv_nn_grad^|test_crop_tensor_op^|^
-test_cross_entropy2_op^|test_cross_op^|test_deformable_conv_v1_op^|test_dropout_op^|test_dygraph_multi_forward^|test_elementwise_div_op^|test_elementwise_nn_grad^|test_empty_op^|^
-test_fused_elemwise_activation_op^|test_group_norm_op^|test_gru_op^|test_gru_unit_op^|test_imperative_lod_tensor_to_selected_rows^|test_imperative_optimizer^|test_imperative_ptb_rnn^|^
-test_imperative_save_load^|test_imperative_selected_rows_to_lod_tensor^|test_imperative_star_gan_with_gradient_penalty^|test_imperative_transformer_sorted_gradient^|test_layer_norm_op^|^
-test_masked_select_op^|test_multiclass_nms_op^|test_naive_best_fit_gpu_memory_limit^|test_nearest_interp_v2_op^|test_nn_grad^|test_norm_nn_grad^|^
-test_normal^|test_pool3d_op^|test_pool2d_op^|test_prroi_pool_op^|test_regularizer^|test_regularizer_api^|test_sgd_op^|test_softmax_with_cross_entropy_op^|test_static_save_load^|^
-test_trilinear_interp_op^|test_trilinear_interp_v2_op^|test_bilinear_interp_op^|test_nearest_interp_op^|test_sequence_conv^|test_transformer^|^
-test_beam_search_decoder^|test_argsort_op^|test_eager_deletion_gru_net^|test_lstmp_op^|test_label_semantic_roles^|^
-test_machine_translation^|test_row_conv_op^|test_deformable_conv_op^|test_inplace_softmax_with_cross_entropy^|test_conv2d_transpose_op^|test_conv3d_transpose_op^|^
-test_cyclic_cifar_dataset^|test_deformable_psroi_pooling^|test_elementwise_mul_op^|test_imperative_auto_mixed_precision^|test_imperative_optimizer_v2^|test_imperative_ptb_rnn_sorted_gradient^|^
-test_imperative_save_load_v2^|test_nan_inf^|test_norm_op^|test_reduce_op^|test_sigmoid_cross_entropy_with_logits_op^|test_stack_op^|test_strided_slice_op^|test_transpose_op
-test_imperative_static_runner_mnist
-
-set parallel_test=test_diag^|place_test^|cpu_helper_test^|cpu_helper_test^|device_context_test^|cudnn_helper_test
-
-set /a end=CUDA_DEVICE_COUNT-1
-
-for /L %%# in (0,1,%end%) do (
-    set CUDA_VISIBLE_DEVICES=%%#
-    ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -R "%parallel_test%" -E "%disable_ut_quickly%|%diable_wingpu_test%|%long_time_test%" -LE %nightly_label% --output-on-failure -C Release -j 2 --repeat until-pass:4 after-timeout:4
-    if !errorlevel! NEQ 0 exit /b 8
-)
-
-for /L %%# in (0,1,%end%) do (
-    set CUDA_VISIBLE_DEVICES=%%#
-    ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -E "%disable_ut_quickly%|%parallel_test%|%diable_wingpu_test%|%long_time_test%" -LE %nightly_label% --output-on-failure -C Release -j 1 --repeat until-pass:4 after-timeout:4
-    if !errorlevel! NEQ 0 exit /b 8
-)
+%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE%
 
 goto:eof
 
@@ -610,6 +575,17 @@ set /a ss=100%ss%%%100
 set /a end_secs=dd*86400+hh*3600+nn*60+ss
 set /a cost_secs=end_secs-start_sec
 echo "Windows %~3 Time: %cost_secs%s"
+goto:eof
+
+
+:collect_clcache_hits
+for /f "tokens=2,4" %%i in ('clcache.exe -s ^| findstr "entries hits"') do set %%i=%%j
+if %hits% EQU 0 (
+    echo "clcache hit rate: 0%%"
+) else (
+    set /a rate=%hits%*10000/%entries%
+    echo "clcache hit rate: %rate:~0,-2%.%rate:~-2%%%"
+)
 goto:eof
 
 
