@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#if defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #endif
@@ -167,3 +168,4 @@ bool IsCudaMallocRecorded(int dev_id);
 
 }  // namespace platform
 }  // namespace paddle
+#endif
