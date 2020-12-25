@@ -950,7 +950,7 @@ class Conv3D(_ConvNd):
             self.weight,
             bias=self.bias,
             stride=self._stride,
-            padding=self._padding,
+            padding=self._updated_padding,
             padding_algorithm=self._padding_algorithm,
             dilation=self._dilation,
             groups=self._groups,
