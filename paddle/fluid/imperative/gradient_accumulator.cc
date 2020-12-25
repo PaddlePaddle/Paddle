@@ -218,7 +218,6 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
 #endif
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CPUDeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CPUDeviceContext, double);
-
 #ifdef PADDLE_WITH_CUDA
   }
 #endif
