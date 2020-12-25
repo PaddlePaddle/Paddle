@@ -56,7 +56,8 @@ class MapMatmul2MulPass : public FusePassBase {
  *
  * Notice:
  *  the rank of input activation is obtained from var_desc,
- *  it maybe change in runtime.
+ *  it maybe change in runtime. Therefore, the pass considers
+ *  the above passes to reduce the impact on other models.
  */
 
 class Squeeze2MatmulFusePass : public FusePassBase {
@@ -70,8 +71,10 @@ class Squeeze2MatmulFusePass : public FusePassBase {
 /*
  * Fuse reshape2+matmul to mul
  * The reshape2 op must satisfy the following conditions:
- * 1. the rank of input X is 4
- * 2. the rank of shape attr is 2
+ * 1. reshape2 has one input node, which means it don't
+ *    have Shape or ShapeTensor input
+ * 2. the rank of input X is 4 and the last two dims of input X is 1
+ * 3. the rank of shape attr is 2
  *
  * The matmul op must satisfy the following conditions:
  * 1. the transpose_X and transpose_Y attrs are false
@@ -79,8 +82,9 @@ class Squeeze2MatmulFusePass : public FusePassBase {
  * 3. the rank of input X and Y is 2
  *
  * Notice:
- *  the rank of input activation is obtained from var_desc,
- *  it maybe change in runtime.
+ *  the shape and rank of input activation is obtained from var_desc,
+ *  they maybe change in runtime. Therefore, the pass considers
+ *  the above passes to reduce the impact on other models.
  */
 
 class Reshape2MatmulFusePass : public FusePassBase {

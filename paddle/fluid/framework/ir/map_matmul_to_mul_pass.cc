@@ -156,7 +156,9 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, fuse_pattern);
 
-    size_t reshape2_in_x_rank = (reshape2_in_x->Var()->GetShape()).size();
+    size_t reshape2_in_nums = reshape2_op->inputs.size();
+    auto reshape2_in_x_shape = reshape2_in_x->Var()->GetShape();
+    size_t reshape2_in_x_rank = reshape2_in_x_shape.size();
     std::vector<int> reshape2_op_shape =
         BOOST_GET_CONST(std::vector<int>, reshape2_op->Op()->GetAttr("shape"));
 
@@ -168,9 +170,11 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     size_t matmul_in_x_rank = (matmul_in_x->Var()->GetShape()).size();
     size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
 
-    if (reshape2_in_x_rank == 4 && reshape2_op_shape.size() == 2 &&
-        !transpose_X && !transpose_Y && std::abs(alpha - 1.0) < 1e-5 &&
-        matmul_in_x_rank == 2 && matmul_in_y_rank == 2) {
+    if (reshape2_in_nums == 1 && reshape2_in_x_rank == 4 &&
+        reshape2_in_x_shape[2] == 1 && reshape2_in_x_shape[3] == 1 &&
+        reshape2_op_shape.size() == 2 && !transpose_X && !transpose_Y &&
+        std::abs(alpha - 1.0) < 1e-5 && matmul_in_x_rank == 2 &&
+        matmul_in_y_rank == 2) {
       OpDesc desc;
       desc.SetType("mul");
       desc.SetInput("X", {reshape2_in_x->Name()});
@@ -199,8 +203,9 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
 REGISTER_PASS(map_matmul_to_mul_pass, paddle::framework::ir::MapMatmul2MulPass);
 REGISTER_PASS_CAPABILITY(map_matmul_to_mul_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "matmul", 0));
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("matmul", 0)
+            .EQ("mul", 0));
 
 REGISTER_PASS(squeeze2_matmul_fuse_pass,
               paddle::framework::ir::Squeeze2MatmulFusePass);
@@ -208,7 +213,8 @@ REGISTER_PASS_CAPABILITY(squeeze2_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("matmul", 0)
-            .EQ("squeeze2", 0));
+            .EQ("squeeze2", 0)
+            .EQ("mul", 0));
 
 REGISTER_PASS(reshape2_matmul_fuse_pass,
               paddle::framework::ir::Reshape2MatmulFusePass);
@@ -216,4 +222,5 @@ REGISTER_PASS_CAPABILITY(reshape2_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("matmul", 0)
-            .EQ("reshape2", 0));
+            .EQ("reshape2", 0)
+            .EQ("mul", 0));
