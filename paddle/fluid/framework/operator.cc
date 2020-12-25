@@ -1107,16 +1107,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
   }
 
+  if (!transfered_inplace_vars.empty()) {
+    // there is inplace variable has been transferred.
+    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
+  }
+
   // See [ Why need handle complex gradient to real gradient? ]
   // Only handle the case where the current kernel data type is complex
   if (framework::IsComplexType(kernel_type_->data_type_)) {
     HandleComplexGradToRealGrad(scope, runtime_ctx);
   }
 
-  if (!transfered_inplace_vars.empty()) {
-    // there is inplace variable has been transferred.
-    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
-  }
   if (FLAGS_enable_unused_var_check) {
     // skip op that uses mkldnn because it has different memory reuse strategy.
     // use attr here because some GradMakers (like ActivationGradOpMaker) add

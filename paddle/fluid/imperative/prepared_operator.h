@@ -43,10 +43,10 @@ namespace imperative {
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
 
 template <typename VarType>
-static void PrepareGradVarDataType(const std::shared_ptr<VarType>& var);
+static void SetForwardDataTypeOfGradVar(const std::shared_ptr<VarType>& var);
 
 template <>
-void PrepareGradVarDataType<VariableWrapper>(
+void SetForwardDataTypeOfGradVar<VariableWrapper>(
     const std::shared_ptr<VariableWrapper>& var) {
   if (var->HasGradVar()) {
     auto grad_var = var->GetGradVar();
@@ -57,10 +57,10 @@ void PrepareGradVarDataType<VariableWrapper>(
 }
 
 template <>
-void PrepareGradVarDataType<VarBase>(const std::shared_ptr<VarBase>& var) {
+void SetForwardDataTypeOfGradVar<VarBase>(const std::shared_ptr<VarBase>& var) {
   if (var->HasGradVar()) {
     auto& shared_var = var->SharedVar();
-    PrepareGradVarDataType<VariableWrapper>(shared_var);
+    SetForwardDataTypeOfGradVar<VariableWrapper>(shared_var);
   }
 }
 
@@ -123,7 +123,7 @@ NameVarMap<VarType> PrepareData(
   for (auto& name_pair : tmp_ins) {
     for (auto& var_base : name_pair.second) {
       const auto* tensor = GetTensorFromVar(var_base->Var());
-      PrepareGradVarDataType(var_base);
+      SetForwardDataTypeOfGradVar(var_base);
       if (tensor && tensor->IsInitialized()) {
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
