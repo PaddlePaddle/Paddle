@@ -1387,12 +1387,8 @@ def _dynamic_decode_imperative(decoder,
                     lambda x, y: _maybe_copy(x, y, finished), states,
                     next_states)
         else:
-            next_sequence_lengths = getattr(next_states, "lengths", None)
-            if next_sequence_lengths is None:
-                next_sequence_lengths = nn.elementwise_add(
-                    sequence_lengths,
-                    tensor.cast(
-                        nn.logical_not(next_finished), sequence_lengths.dtype))
+            next_sequence_lengths = getattr(next_states, "lengths",
+                                            sequence_lengths)
 
         outputs = map_structure(
             lambda x: ArrayWrapper(x),
@@ -1519,12 +1515,8 @@ def _dynamic_decode_declarative(decoder,
                     states,
                     next_states, )
         else:
-            next_sequence_lengths = getattr(next_states, "lengths", None)
-            if next_sequence_lengths is None:
-                next_sequence_lengths = nn.elementwise_add(
-                    sequence_lengths,
-                    tensor.cast(
-                        nn.logical_not(next_finished), sequence_lengths.dtype))
+            next_sequence_lengths = getattr(next_states, "lengths",
+                                            sequence_lengths)
 
         # create tensor array in global block after dtype[s] of outputs can be got
         outputs_arrays = map_structure(
