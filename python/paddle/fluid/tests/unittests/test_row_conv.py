@@ -61,53 +61,6 @@ class RowConvTestCase(unittest.TestCase):
         y_np, = exe.run(main, feed={"input": self.input}, fetch_list=[y])
         return y_np
 
-    def functional_declarative(self, place):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
-                x = fluid.data(
-                    "input", [-1, -1, self.num_channels], dtype=self.dtype)
-                w = fluid.data("weight", self.weight_shape, dtype=self.dtype)
-                y = F.extension.row_conv(x, w, act=self.act)
-        exe = fluid.Executor(place)
-        exe.run(start)
-        y_np, = exe.run(main,
-                        feed={"input": self.input,
-                              "weight": self.weight},
-                        fetch_list=[y])
-        return y_np
-
-    def functional_imperative(self, place):
-        with dg.guard(place):
-            x_var = dg.to_variable(self.input)
-            w_var = dg.to_variable(self.weight)
-            y_var = F.extension.row_conv(x_var, w_var, act=self.act)
-            y_np = y_var.numpy()
-        return y_np
-
-    def nn_layer(self, place):
-        with dg.guard(place):
-            x_var = dg.to_variable(self.input)
-            conv = nn.RowConv(
-                self.num_channels,
-                self.context_size,
-                param_attr=I.NumpyArrayInitializer(self.weight),
-                act=self.act,
-                dtype=self.dtype)
-            y_var = conv(x_var)
-            y_np = y_var.numpy()
-        return y_np
-
-    def _test_equivalence(self, place):
-        result1 = self.fluid_layer(place)
-        result2 = self.functional_declarative(place)
-        result3 = self.functional_imperative(place)
-        result4 = self.nn_layer(place)
-        np.testing.assert_array_almost_equal(result1, result2)
-        np.testing.assert_array_almost_equal(result2, result3)
-        np.testing.assert_array_almost_equal(result3, result4)
-
     def runTest(self):
         place = fluid.CPUPlace()
         self._test_equivalence(place)

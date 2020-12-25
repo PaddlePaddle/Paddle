@@ -106,7 +106,6 @@ from .layer.conv import Conv2DTranspose  #DEFINE_ALIAS
 from .layer.conv import Conv3DTranspose  #DEFINE_ALIAS
 # from .layer.conv import TreeConv        #DEFINE_ALIAS
 # from .layer.conv import Conv1D        #DEFINE_ALIAS
-from .layer.extension import RowConv  #DEFINE_ALIAS
 from .layer.common import Linear
 # from .layer.loss import NCELoss        #DEFINE_ALIAS
 from .layer.loss import BCEWithLogitsLoss  #DEFINE_ALIAS
