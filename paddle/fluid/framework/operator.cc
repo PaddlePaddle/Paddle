@@ -1410,12 +1410,6 @@ Scope* OperatorWithKernel::PrepareData(
         continue;
       }
 
-      auto out_var_names = OutputVars(true);
-      if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
-          out_var_names.end()) {
-        transfered_inplace_vars->emplace_back(var_name);
-      }
-
       VLOG(3) << "Transform Variable " << var_name << " from "
               << kernel_type_for_var << " to " << expected_kernel_key;
 
@@ -1457,13 +1451,33 @@ Scope* OperatorWithKernel::PrepareData(
       if (enable_cache_runtime_context_) {
         pre_scope_ = nullptr;
       }
+
+      // Create new var with the same name in transfer scopes
       auto* trans_var = new_scope->Var(var_name);
       input_vars[i] = trans_var;
+
+      // Find if inplace exists between input and output
+      // If inplace exists, set the new created var to inplaced output, and
+      // record its name in transfered_inplace_vars.
+      for (auto& pair : Outputs()) {
+        for (size_t j = 0; j < pair.second.size(); ++j) {
+          if (pair.second[j] == var_name) {
+            VLOG(4) << "Found inplace between input(" << var_name_item.first
+                    << ") and output(" << pair.first
+                    << "), the variable name is " << var_name;
+            ctx->outputs[pair.first][j] = trans_var;
+            transfered_inplace_vars->emplace_back(var_name);
+          }
+        }
+      }
+
+      // Do transfer
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);
     }
   }
+
   // If pre_scope = &scope, it means that scope is cached and the op is not in
   // while block. If new_scope = nullptr, it means that for each input of this
   // Op, there is no need to do PrepareData. So PrepareData could be skipped at

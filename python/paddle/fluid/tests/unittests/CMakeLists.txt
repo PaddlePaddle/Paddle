@@ -16,7 +16,6 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding_over_height)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
-list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_gen_nccl_id_op)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
@@ -108,19 +107,14 @@ if(NOT WITH_DISTRIBUTE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_ps)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_utils)
-    LIST(REMOVE_ITEM TEST_OPS test_lookup_sparse_table_split_op)
 
     # TODO: Fix these unittests failed on Windows
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
-    list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
-    list(REMOVE_ITEM TEST_OPS test_split_ids_op)
-    LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
 endif()
 
 if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
     LIST(REMOVE_ITEM TEST_OPS test_desc_clone_dist)
-    LIST(REMOVE_ITEM TEST_OPS test_program_code_dist)
 endif()
 
 if(WIN32)
@@ -137,6 +131,7 @@ LIST(REMOVE_ITEM TEST_OPS test_hdfs1)
 LIST(REMOVE_ITEM TEST_OPS test_hdfs2)
 LIST(REMOVE_ITEM TEST_OPS test_hdfs3)
 LIST(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
+
 if(APPLE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
@@ -206,9 +201,7 @@ if(WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
 endif()
 
-if(NOT WITH_DISTRIBUTE OR WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
-  list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
-endif()
+list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 
 if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
@@ -226,12 +219,12 @@ function(py_test_modules TARGET_NAME)
     set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    if(WITH_COVERAGE)
+    if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+                COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+                COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+                ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
                 COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
@@ -364,7 +357,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 # disable test_cumsum_op temporaily
-list(REMOVE_ITEM TEST_OPS test_cumsum_op)
+# list(REMOVE_ITEM TEST_OPS test_cumsum_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -405,15 +398,6 @@ set(TEST_OPS_WITH_GC
   test_mean_op
   test_pad2d_op
   test_scatter_op
-  test_sequence_concat
-  test_sequence_conv
-  test_sequence_pool
-  test_sequence_expand_as
-  test_sequence_expand
-  test_sequence_pad_op
-  test_sequence_unpad_op
-  test_sequence_scatter_op
-  test_sequence_slice_op
   test_slice_op
   test_space_to_depth_op
   test_squared_l2_distance_op)
@@ -686,7 +670,6 @@ set_tests_properties(test_nearest_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_profiler PROPERTIES TIMEOUT 120)
 set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_sequence_conv PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fetch_unmerged PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 120)
@@ -720,7 +703,6 @@ set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT 
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_sequence_pool PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
@@ -747,7 +729,6 @@ set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static PROPER
 set_tests_properties(test_lstm_cudnn_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_stack_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_sequence_concat PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_psroi_pooling PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT 120)
