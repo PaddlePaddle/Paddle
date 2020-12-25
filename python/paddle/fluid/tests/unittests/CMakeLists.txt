@@ -544,6 +544,7 @@ else()
     py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
     py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass)
     py_test_modules(test_feed_data_check_shape_type MODULES test_feed_data_check_shape_type)
+    py_test_modules(test_fetch_lod_tensor_array MODULES test_fetch_lod_tensor_array)
 endif()
 
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
