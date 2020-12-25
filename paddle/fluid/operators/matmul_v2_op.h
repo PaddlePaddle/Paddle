@@ -537,7 +537,7 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
       if (dx) dx->mutable_data<T>(ctx.GetPlace());
       if (dy) dy->mutable_data<T>(ctx.GetPlace());
       if (dout.numel() == 1) {
-        DotGradFunction<DeviceContext, T>(&x, &y, &dout, dx, dy, ctx);
+        DotGradFunction<DeviceContext, T>()(&x, &y, &dout, dx, dy, ctx);
         return;
       }
     }
