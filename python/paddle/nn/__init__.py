@@ -71,7 +71,6 @@ from .layer.activation import Tanhshrink  #DEFINE_ALIAS
 from .layer.activation import ThresholdedReLU  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import Maxout  #DEFINE_ALIAS
-from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
 from .layer.common import Pad1D  #DEFINE_ALIAS
 from .layer.common import Pad2D  #DEFINE_ALIAS
 from .layer.common import Pad3D  #DEFINE_ALIAS
