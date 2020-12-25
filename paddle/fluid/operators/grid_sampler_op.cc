@@ -245,4 +245,4 @@ REGISTER_OP_VERSION(grid_sampler)
       Upgrade grid_sampler add a new attribute [mode].
     )ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "grid_sampler", "In order to specify interpolation method", {}));
+            "grid_sampler", "In order to specify interpolation mode", {}));
