@@ -19,8 +19,7 @@ import paddle.fluid as fluid
 import contextlib
 import unittest
 import numpy as np
-from paddle.static.amp import cast_model_to_fp16
-from paddle.static.amp import cast_parameters_to_fp16
+from paddle.fluid.contrib.mixed_precision.fp16_utils import cast_model_to_fp16
 
 paddle.enable_static()
 
@@ -73,30 +72,10 @@ def resnet_cifar10(input, depth=32):
     return pool
 
 
-def compile(program, loss_name=None):
-    build_strategy = paddle.static.BuildStrategy()
-    exec_strategy = paddle.static.ExecutionStrategy()
-
-    exec_strategy.num_threads = 1
-    exec_strategy.num_iteration_per_drop_scope = 10000
-
-    build_strategy.fuse_bn_act_ops = True
-    build_strategy.fuse_elewise_add_act_ops = True
-    build_strategy.fuse_bn_add_act_ops = True
-
-    compiled_program = paddle.static.CompiledProgram(
-        program).with_data_parallel(
-            loss_name=loss_name,
-            build_strategy=build_strategy,
-            exec_strategy=exec_strategy)
-
-    return compiled_program
-
-
-def train(use_pure_fp16=True, use_nesterov=False):
+def train(use_pure_fp16=True, use_nesterov=False, use_adam=False):
     classdim = 10
     data_shape = [3, 32, 32]
-    BATCH_SIZE = 128
+    BATCH_SIZE = 32
     PASS_NUM = 1
 
     train_program = fluid.Program()
@@ -107,28 +86,36 @@ def train(use_pure_fp16=True, use_nesterov=False):
         images = fluid.layers.data(
             name='pixel', shape=data_shape, dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        net = resnet_cifar10(images, 32)
+        net = resnet_cifar10(images)
 
         logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
-        if use_pure_fp16:
-            cast_model_to_fp16(fluid.default_main_program())
-            logits_fp32 = fluid.layers.cast(x=logits, dtype="float32")
-        else:
-            logits_fp32 = logits
         cost = fluid.layers.softmax_with_cross_entropy(
-            logits_fp32, label, return_softmax=False)
+            logits, label, return_softmax=False)
         sum_cost = fluid.layers.reduce_sum(cost)
 
         # Test program
         test_program = train_program.clone(for_test=True)
 
-        optimizer = paddle.optimizer.Momentum(
-            learning_rate=0.001,
-            momentum=0.9,
-            use_nesterov=use_nesterov,
-            weight_decay=fluid.regularizer.L2Decay(1e-4),
-            multi_precision=use_pure_fp16,
-            rescale_grad=1.0 / BATCH_SIZE)
+        if use_adam:
+            optimizer = paddle.optimizer.AdamW(
+                learning_rate=0.001,
+                epsilon=1e-8,
+                weight_decay=0.0,
+                multi_precision=True)
+        else:
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=0.001,
+                momentum=0.9,
+                use_nesterov=use_nesterov,
+                weight_decay=fluid.regularizer.L2Decay(1e-4),
+                multi_precision=use_pure_fp16)
+
+        if use_pure_fp16:
+            optimizer = paddle.static.amp.decorate(
+                optimizer,
+                init_loss_scaling=128.0,
+                use_dynamic_loss_scaling=True,
+                use_pure_fp16=True)
 
         optimizer.minimize(sum_cost)
 
@@ -146,13 +133,12 @@ def train(use_pure_fp16=True, use_nesterov=False):
     def train_loop(main_program):
         exe.run(startup_prog)
         if use_pure_fp16:
-            cast_parameters_to_fp16(place, train_program, fluid.global_scope())
-        compiled_program = compile(train_program, sum_cost.name)
+            optimizer.amp_init(place)
         loss = 0.0
         for pass_id in range(PASS_NUM):
             train_loss_list = []
             for batch_id, data in enumerate(train_reader()):
-                loss, = exe.run(compiled_program,
+                loss, = exe.run(train_program,
                                 feed=feeder.feed(data),
                                 fetch_list=[sum_cost])
                 loss_v = loss[0] if isinstance(loss, np.ndarray) else loss
@@ -182,18 +168,25 @@ class TestImageMultiPrecision(unittest.TestCase):
         if not fluid.core.is_compiled_with_cuda():
             return
 
-        def do_test(use_nesterov=False):
-            suffix = "with Nesterov" if use_nesterov else "without Nesterov"
+        def do_test(use_nesterov=False, use_adam=False):
+            if use_adam:
+                suffix = "use Adam"
+            else:
+                suffix = "with Nesterov" if use_nesterov else "without Nesterov"
             with self.scope_prog_guard():
                 print("-----------------FP16 Train {}-----------------".format(
                     suffix))
                 train_loss_fp16, test_loss_fp16 = train(
-                    use_pure_fp16=True, use_nesterov=use_nesterov)
+                    use_pure_fp16=True,
+                    use_nesterov=use_nesterov,
+                    use_adam=use_adam)
             with self.scope_prog_guard():
                 print("-----------------FP32 Train {}-----------------".format(
                     suffix))
                 train_loss_fp32, test_loss_fp32 = train(
-                    use_pure_fp16=False, use_nesterov=use_nesterov)
+                    use_pure_fp16=False,
+                    use_nesterov=use_nesterov,
+                    use_adam=use_adam)
 
             self.assertTrue(
                 np.allclose(
@@ -214,6 +207,7 @@ class TestImageMultiPrecision(unittest.TestCase):
 
         do_test(use_nesterov=False)
         do_test(use_nesterov=True)
+        do_test(use_adam=True)
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
