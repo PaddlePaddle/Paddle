@@ -201,6 +201,14 @@ class VarBase {
 
   framework::proto::VarType::Type DataType() const { return var_->DataType(); }
 
+  void SetForwardDataType(framework::proto::VarType::Type data_type) {
+    var_->SetForwardDataType(data_type);
+  }
+
+  framework::proto::VarType::Type ForwardDataType() const {
+    return var_->ForwardDataType();
+  }
+
   const platform::Place Place() const { return var_->Place(); }
 
   void ClearGradient();

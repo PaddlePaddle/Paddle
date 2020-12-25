@@ -24,6 +24,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_transform.h"
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -1110,6 +1111,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     // there is inplace variable has been transferred.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
   }
+
+  // See [ Why need handle complex gradient to real gradient? ]
+  // Only handle the case where the current kernel data type is complex
+  if (framework::IsComplexType(kernel_type_->data_type_)) {
+    HandleComplexGradToRealGrad(scope, runtime_ctx);
+  }
+
   if (FLAGS_enable_unused_var_check) {
     // skip op that uses mkldnn because it has different memory reuse strategy.
     // use attr here because some GradMakers (like ActivationGradOpMaker) add
@@ -1252,6 +1260,73 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
     original_tensor->Resize(original_dims);
+  }
+}
+
+void OperatorWithKernel::HandleComplexGradToRealGrad(
+    const Scope& scope, RuntimeContext* ctx) const {
+  for (auto& var_name_item : Outputs()) {
+    std::vector<Variable*>& output_vars = ctx->outputs[var_name_item.first];
+    for (size_t i = 0; i < var_name_item.second.size(); ++i) {
+      // 1. find grad_var & check whether is complex tensor
+      auto var_name = var_name_item.second[i];
+      auto orig_var_name = GradOriginalVarName(var_name);
+      // only focus on gradient var
+      if (var_name == orig_var_name) {
+        continue;
+      }
+      auto* grad_var = output_vars[i];
+      // skip nullptr var
+      if (grad_var == nullptr) {
+        continue;
+      }
+      // don't process LoDTensorArray temporarily,
+      // add support if necessary for complex number calculations in the future
+      if (!VarIsTensor(*grad_var)) {
+        continue;
+      }
+      auto* grad_tensor =
+          GetMutableLoDTensorOrSelectedRowsValueFromVar(grad_var);
+      // skip nullptr tensor
+      if (grad_tensor == nullptr || !grad_tensor->IsInitialized()) {
+        continue;
+      }
+      // only focus on complex dtype now
+      auto src_type = grad_tensor->type();
+      if (!IsComplexType(src_type)) {
+        continue;
+      }
+
+      // 2. find forward var & check whether need to cast
+      auto* var = scope.FindVar(orig_var_name);
+      // if forward var not exists, do nothing
+      if (var == nullptr) {
+        continue;
+      }
+      if (!VarIsTensor(*var)) {
+        continue;
+      }
+      const auto* tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+      PADDLE_ENFORCE_NOT_NULL(
+          tensor,
+          platform::errors::Unavailable(
+              "Forward tensor is nullptr when handle complex data to real."));
+      // only need record type, the allocation may have been released
+      auto dst_type = tensor->saved_type();
+      // only focus on real dtype and need casting
+      if (IsComplexType(dst_type)) {
+        continue;
+      }
+
+      // 3. cast complex grad to real grad
+      VLOG(6) << "Transform " << framework::DataTypeToString(src_type)
+              << " var `" << var_name << "` to "
+              << framework::DataTypeToString(dst_type)
+              << " real var in static graph.";
+      Tensor out;
+      TransComplexToReal(dst_type, src_type, *grad_tensor, &out);
+      SetTensorToVariable(*grad_var, out, grad_var);
+    }
   }
 }
 
