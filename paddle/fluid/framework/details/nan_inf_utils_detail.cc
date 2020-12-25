@@ -335,6 +335,33 @@ void CheckVarHasNanOrInf(const std::string& op_type,
         var_name));
 #endif
     return;
+  } else if (platform::is_xpu_place(tensor->place())) {
+#ifdef PADDLE_WITH_XPU
+    if (tensor->type() != proto::VarType::FP32) {
+      return;
+    }
+
+    float* cpu_data = new float[tensor->numel()];
+    xpu_memcpy(cpu_data, tensor->data<float>(), tensor->numel() * sizeof(float),
+               XPU_DEVICE_TO_HOST);
+    bool flag = false;
+    for (int i = 0; i < tensor->numel(); i++) {
+      if (isnan(cpu_data[i]) || isinf(cpu_data[i])) {
+        flag = true;
+        break;
+      }
+    }
+    delete[] cpu_data;
+    PADDLE_ENFORCE_NE(
+        flag, true,
+        platform::errors::Fatal("Operator %s output Tensor %s contains Inf.",
+                                op_type, var_name));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Tensor[%s] use xpu place. PaddlePaddle must compile with XPU.",
+        var_name));
+#endif
+    return;
   }
 
   tensor_check<platform::CPUDeviceContext>(op_type, var_name, *tensor, place);
