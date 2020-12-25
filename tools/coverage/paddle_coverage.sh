@@ -82,7 +82,7 @@ function gen_full_html_report_xpu() {
 
 if [ ${WITH_XPU:-OFF} == "ON" ]; then
     gen_full_html_report_xpu || true
-else:
+else
     gen_full_html_report || true
 fi
 
