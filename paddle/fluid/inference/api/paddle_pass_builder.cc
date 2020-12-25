@@ -158,10 +158,13 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   // "embedding_fc_lstm_fuse_pass", //
                   // TODO(wilber): fix correctness problem.
                   // "fc_lstm_fuse_pass",                       //
-                  "mul_lstm_fuse_pass",                      //
-                  "fc_gru_fuse_pass",                        //
-                  "mul_gru_fuse_pass",                       //
-                  "seq_concat_fc_fuse_pass",                 //
+                  "mul_lstm_fuse_pass",         //
+                  "fc_gru_fuse_pass",           //
+                  "mul_gru_fuse_pass",          //
+                  "seq_concat_fc_fuse_pass",    //
+                  "squeeze2_matmul_fuse_pass",  //
+                  "reshape2_matmul_fuse_pass",  //
+                  "map_matmul_to_mul_pass",
                   "fc_fuse_pass",                            //
                   "repeated_fc_relu_fuse_pass",              //
                   "squared_mat_sub_fuse_pass",               //
