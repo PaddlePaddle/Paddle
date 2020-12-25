@@ -316,6 +316,7 @@ class DataLoader(object):
                  collate_fn=None,
                  num_workers=0,
                  use_buffer_reader=True,
+                 pin_memory=True,
                  use_shared_memory=True,
                  timeout=0,
                  worker_init_fn=None):
@@ -323,6 +324,7 @@ class DataLoader(object):
         self.collate_fn = collate_fn
         self.use_buffer_reader = use_buffer_reader
         self.worker_init_fn = worker_init_fn
+        self.pin_memory = pin_memory
 
         assert isinstance(dataset, Dataset), \
             "dataset should be subclass instance of paddle.io.Dataset"
@@ -390,11 +392,6 @@ class DataLoader(object):
                     drop_last=drop_last)
 
         self.auto_collate_batch = self.batch_sampler is not None
-
-        self.pin_memory = False
-        if in_dygraph_mode():
-            self.pin_memory = True if use_pinned_memory(
-            ) is None else use_pinned_memory()
 
     def __len__(self):
         if self.dataset_kind == _DatasetKind.ITER:
