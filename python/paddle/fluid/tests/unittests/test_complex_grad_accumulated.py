@@ -35,13 +35,16 @@ class Optimization_ex1(paddle.nn.Layer):
         self.theta1 = self.create_parameter(
             shape=shape, attr=param_attr, dtype=dtype, is_bias=False)
         self.A = paddle.to_tensor(
-            np.random.random((4, 4)) + np.random.random((4, 4)) * 1j)
+            np.random.random((4, 4)).astype(dtype) + np.random.random((4, 4))
+            .astype(dtype) * 1j)
         self.B = paddle.to_tensor(
-            np.random.random((4, 4)) + np.random.random((4, 4)) * 1j,
+            np.random.random((4, 4)).astype(dtype) + np.random.random(
+                (4, 4)).astype(dtype) * 1j,
             stop_gradient=False)
+        print(self.A)
 
     def forward(self, mode=1):
-        jj = paddle.to_tensor(np.array([1j]))
+        jj = paddle.to_tensor(np.array([1j]).astype(np.complex64))
         if mode == 1:
             # run all calc in one step
             loss = paddle.sum(self.A + (self.theta0 + self.theta1 * jj)) * (
