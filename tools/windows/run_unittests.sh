@@ -53,7 +53,6 @@ diable_wingpu_test="^test_analysis_predictor$|\
 ^test_dataloader_unkeep_order$|\
 ^test_model$|\
 ^test_add_reader_dependency$|\
-^test_bilateral_slice_op$|\
 ^test_cholesky_op$|\
 ^test_dataloader_early_reset$|\
 ^test_decoupled_py_reader$|\
