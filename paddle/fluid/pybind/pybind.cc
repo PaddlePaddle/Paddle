@@ -79,6 +79,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 #ifdef PADDLE_WITH_NCCL
@@ -102,12 +103,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/pybind/communicator_py.h"
-#endif
-
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
+#endif
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
 #include "pybind11/stl.h"
@@ -2810,8 +2811,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
+
 #ifdef PADDLE_WITH_PSLIB
   BindHeterWrapper(&m);
+#endif
+#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+  BindPSGPUWrapper(&m);
 #endif
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
@@ -2833,10 +2838,13 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
 #endif
+
 #ifdef PADDLE_WITH_DISTRIBUTE
-  BindCommunicator(&m);
+  BindDistFleetWrapper(&m);
+  BindPSHost(&m);
   BindCommunicatorContext(&m);
-  BindLargeScaleKV(&m);
+  BindDistCommunicator(&m);
+  BindHeterClient(&m);
 #endif
 }
 }  // namespace pybind

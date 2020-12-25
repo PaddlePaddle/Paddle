@@ -178,6 +178,7 @@ python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py coverage-diff.info 0.9
 
 echo "Assert Python Diff Coverage"
 
+
 if [ ${WITH_XPU:-OFF} == "ON" ]; then
     echo "XPU has no python coverage!"
 else

@@ -1616,7 +1616,7 @@ class OpTest(unittest.TestCase):
             targets = [
                 outputs[name] for name in outputs if name in output_names
             ]
-            inputs = [inputs[name] for name in inputs if name in input_to_check]
+            inputs = [inputs[name] for name in input_to_check if name in inputs]
             grad_inputs = paddle.static.gradients(targets, inputs, grad_outputs,
                                                   no_grad_set)
             fetch_list = grad_inputs
