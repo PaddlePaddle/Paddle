@@ -95,7 +95,7 @@ include_directories("${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io")
 if(NOT APPLE)
   find_package(Threads REQUIRED)
   link_libraries(${CMAKE_THREAD_LIBS_INIT})
-  if(WITH_PSLIB)
+  if(WITH_PSLIB OR WITH_DISTRIBUTE)
     set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl")
   else()
     set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
@@ -843,14 +843,14 @@ function(py_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    if(WITH_COVERAGE)
+    if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
       add_test(NAME ${TARGET_NAME}
-        COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
-        FLAGS_cpu_deterministic=true
-        PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
-        COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-        ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+              COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+              FLAGS_cpu_deterministic=true
+              PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+              COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+              ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
+              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
       add_test(NAME ${TARGET_NAME}
                COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true

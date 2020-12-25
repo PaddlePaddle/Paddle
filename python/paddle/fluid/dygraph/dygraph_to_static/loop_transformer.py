@@ -167,7 +167,13 @@ class NameVisitor(gast.NodeVisitor):
                 #       var_a = func2(x)
                 #
 
-                if isinstance(var_name_to_ctxs[name][0], gast.Load):
+                is_created = False
+                for ctx in var_name_to_ctxs[name]:
+                    if isinstance(ctx, gast.Store):
+                        is_created = True
+
+                if isinstance(var_name_to_ctxs[name][0],
+                              gast.Load) and is_created:
                     loop_var_names.add(name)
                     create_var_names.add(name)
 

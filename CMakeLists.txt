@@ -88,7 +88,13 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        set(${flag_var} "${${flag_var}} /MP")
+        # NOTE(Avin0323): Less parallel count result in faster compilation with
+        # Unity Build on GPU.
+        if(WITH_UNITY_BUILD AND WITH_GPU)
+            set(${flag_var} "${${flag_var}} /MP8")
+        else()
+            set(${flag_var} "${${flag_var}} /MP")
+        endif()
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
         set(${flag_var} "${${flag_var}} /w")
@@ -248,17 +254,6 @@ if(WITH_GPU)
 endif()
 
 include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
-
-if(WITH_DISTRIBUTE)
-    if(WITH_GRPC)
-        message(STATUS "Use grpc framework.")
-        include(external/grpc)
-    else()
-        message(STATUS "Use brpc framework.")
-        include(external/leveldb)
-        include(external/brpc)
-    endif()
-endif()
 
 include(flags)              # set paddle compile flags
 
