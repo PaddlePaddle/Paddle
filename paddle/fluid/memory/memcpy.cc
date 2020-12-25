@@ -269,7 +269,7 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
   if (UNLIKELY(num == 0)) return;
 
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
-          << dst_place << " by thream(" << stream << ")";
+          << dst_place << " by stream(" << stream << ")";
   if (dst_place == src_place) {
     platform::SetDeviceId(src_place.device);
     if (stream) {
