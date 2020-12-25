@@ -115,10 +115,13 @@ class MatMulXPUKernel : public framework::OpKernel<T> {
     const auto &x_dims = x->dims();
     const auto &y_dims = y->dims();
     if (x_dims.size() == 3 && y_dims.size() <= 2) {
-      // the transpose_X must be false, if is true, the transpose cost much time
+      // if transpose_X is true, the transpose cost much time
       if (!context.Attr<bool>("transpose_X")) {
         mat_dim_a.height_ *= mat_dim_a.batch_size_;
         mat_dim_a.batch_size_ = 0;
+      } else {
+        mat_dim_b.batch_size_ = mat_dim_a.batch_size_;
+        mat_dim_b.height_ = mat_dim_b.height_ / mat_dim_b.batch_size_;
       }
     }
 
@@ -238,10 +241,13 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
     const auto &a_dims = a.dims();
     const auto &b_dims = b.dims();
     if (a_dims.size() == 3 && b_dims.size() <= 2) {
-      // the transpose_X must be false, if is true, the transpose cost much time
+      // if transpose_X is true, the transpose cost much time
       if (!context.Attr<bool>("transpose_X")) {
         mat_dim_a.height_ *= mat_dim_a.batch_size_;
         mat_dim_a.batch_size_ = 0;
+      } else {
+        mat_dim_b.batch_size_ = mat_dim_a.batch_size_;
+        mat_dim_b.height_ = mat_dim_b.height_ / mat_dim_b.batch_size_;
       }
     }
 
