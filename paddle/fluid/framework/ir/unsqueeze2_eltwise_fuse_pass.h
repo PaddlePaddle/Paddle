@@ -20,14 +20,18 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Graph;
+
 //     |(rank 4)   |(rank 2)                    |(rank 4)    |(rank 2)
 //     |       unsqueeze2(axes=[2,3])           |            |
 //     |           |                    fuse     \          /
-//     |------elementwise_mul(axis=0)    ->   elementwise_mul(axis=-1)
+//     |------elementwise_mul(axis=-1)   ->   elementwise_mul(axis=0)
 //                 |                                   |
 //                 |                                   |
-class Graph;
-
+//
+// Notice:
+// the rank of input is obtained from var_desc,
+// it maybe change in runtime.
 class UnsqueezeEltwiseFusePass : public FusePassBase {
  public:
   virtual ~UnsqueezeEltwiseFusePass() {}
