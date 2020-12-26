@@ -16,6 +16,8 @@
 #include <tuple>
 #include <utility>
 
+// Refer to https://github.com/tensorflow/tensorflow/pull/17141
+
 // If we're on gcc 4.8 or older, there's a known bug that prevents the use of
 // intrinsics when the architecture is not defined in the flags. See
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57202
@@ -25,10 +27,11 @@
 #define GCC_WITHOUT_INTRINSICS
 #endif
 
-// Only try to use SSE3 instructions if we're on an x86 platform, and it's not
-// mobile, and we're not on a known bad gcc version.
 #if !defined(GCC_WITHOUT_INTRINSICS)
 #define DENORM_USE_INTRINSICS
+#endif
+
+#ifdef DENORM_USE_INTRINSICS
 #include <pmmintrin.h>
 #endif
 
@@ -38,7 +41,12 @@ namespace platform {
 static void SetDenormalState(bool flush_zero_mode, bool denormals_zero_mode) {
 #ifdef DENORM_USE_INTRINSICS
 #ifdef PADDLE_WITH_SSE3
-  // Restore flags
+  // Intel's C and Fortran compilers enable the denormals-are-zero (DAZ) and
+  // flush-to-zero (FTZ) flags for SSE by default for optimization levels higher
+  // than -O0.
+  // AArch32 NEON (SIMD) FPU always uses a flush-to-zero mode.
+  // Refer to https://en.wikipedia.org/wiki/Denormal_number
+  // and https://software.intel.com/sites/landingpage/IntrinsicsGuide/
   _MM_SET_FLUSH_ZERO_MODE(flush_zero_mode ? _MM_FLUSH_ZERO_ON
                                           : _MM_FLUSH_ZERO_OFF);
   _MM_SET_DENORMALS_ZERO_MODE(denormals_zero_mode ? _MM_DENORMALS_ZERO_ON
@@ -50,7 +58,6 @@ static void SetDenormalState(bool flush_zero_mode, bool denormals_zero_mode) {
 static std::pair<bool, bool> GetDenormalState() {
 #ifdef DENORM_USE_INTRINSICS
 #ifdef PADDLE_WITH_SSE3
-  // Save existing flags
   bool flush_zero_mode = _MM_GET_FLUSH_ZERO_MODE() == _MM_FLUSH_ZERO_ON;
   bool denormals_zero_mode =
       _MM_GET_DENORMALS_ZERO_MODE() == _MM_DENORMALS_ZERO_ON;

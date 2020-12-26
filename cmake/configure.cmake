@@ -29,6 +29,9 @@ if(WITH_AVX AND AVX_FOUND)
     add_definitions(-DPADDLE_WITH_AVX)
 elseif(SSE3_FOUND)
     set(SIMD_FLAG ${SSE3_FLAG})
+endif()
+
+if (SSE3_FOUND)
     # TODO: Runtime detection should be used here.
     add_definitions(-DPADDLE_WITH_SSE3)
 endif()
