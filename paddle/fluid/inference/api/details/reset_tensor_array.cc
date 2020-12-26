@@ -58,8 +58,6 @@ void TensorArrayBatchCleaner::CollectNoTensorVars(framework::Scope *scope) {
       auto *var = scope->FindVar(var_name);
       if (!var->IsInitialized()) continue;
       if (!valid_types_.count(var->Type())) {
-        VLOG(3) << "The variable " << var_name
-                << " will be reset because of its type: " << var->Type();
         no_tensor_vars_.insert(var);
       }
     }
