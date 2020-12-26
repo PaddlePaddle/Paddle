@@ -44,19 +44,26 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_pattern);
+    bool flag = true;
 
     bool transpose_X =
         BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
     bool transpose_Y =
         BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
     float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
+    flag = flag && !transpose_X && !transpose_Y && std::abs(alpha - 1.0) < 1e-5;
+
     std::vector<int64_t> x_shape = matmul_in_x->Var()->GetShape();
     std::vector<int64_t> y_shape = matmul_in_y->Var()->GetShape();
     size_t x_rank = x_shape.size();
     size_t y_rank = y_shape.size();
+    flag = flag && x_rank == 2 && y_rank == 2;
 
-    if (!transpose_X && !transpose_Y && std::abs(alpha - 1.0) < 1e-5 &&
-        x_rank == 2 && y_rank == 2) {
+    std::vector<Node*>& next_ops = matmul_out->outputs;
+    flag = flag && next_ops.size() == 1 &&
+           next_ops[0]->Name() == "elementwise_add";
+
+    if (flag) {
       OpDesc desc;
       desc.SetType("mul");
       desc.SetInput("X", {matmul_in_x->Name()});
@@ -98,10 +105,13 @@ void Squeeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, fuse_pattern);
+    bool flag = true;
 
     size_t squeeze2_in_x_rank = (squeeze2_in_x->Var()->GetShape()).size();
     std::vector<int> squeeze2_op_axes =
         BOOST_GET_CONST(std::vector<int>, squeeze2_op->Op()->GetAttr("axes"));
+    flag = flag && squeeze2_in_x_rank == 4 &&
+           squeeze2_op_axes == std::vector<int>{2, 3};
 
     bool transpose_X =
         BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
@@ -110,10 +120,15 @@ void Squeeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     size_t matmul_in_x_rank = (matmul_in_x->Var()->GetShape()).size();
     size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
+    flag = flag && !transpose_X && !transpose_Y &&
+           std::abs(alpha - 1.0) < 1e-5 && matmul_in_x_rank == 2 &&
+           matmul_in_y_rank == 2;
 
-    if (squeeze2_in_x_rank == 4 && squeeze2_op_axes == std::vector<int>{2, 3} &&
-        !transpose_X && !transpose_Y && std::abs(alpha - 1.0) < 1e-5 &&
-        matmul_in_x_rank == 2 && matmul_in_y_rank == 2) {
+    std::vector<Node*>& next_ops = matmul_out->outputs;
+    flag = flag && next_ops.size() == 1 &&
+           next_ops[0]->Name() == "elementwise_add";
+
+    if (flag) {
       OpDesc desc;
       desc.SetType("mul");
       desc.SetInput("X", {squeeze2_in_x->Name()});
@@ -155,12 +170,16 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, fuse_pattern);
+    bool flag = true;
 
     size_t reshape2_in_nums = reshape2_op->inputs.size();
     auto reshape2_in_x_shape = reshape2_in_x->Var()->GetShape();
     size_t reshape2_in_x_rank = reshape2_in_x_shape.size();
     std::vector<int> reshape2_op_shape =
         BOOST_GET_CONST(std::vector<int>, reshape2_op->Op()->GetAttr("shape"));
+    flag = flag && reshape2_in_nums == 1 && reshape2_in_x_rank == 4 &&
+           reshape2_in_x_shape[2] == 1 && reshape2_in_x_shape[3] == 1 &&
+           reshape2_op_shape.size() == 2;
 
     bool transpose_X =
         BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
@@ -169,12 +188,15 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     size_t matmul_in_x_rank = (matmul_in_x->Var()->GetShape()).size();
     size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
+    flag = flag && !transpose_X && !transpose_Y &&
+           std::abs(alpha - 1.0) < 1e-5 && matmul_in_x_rank == 2 &&
+           matmul_in_y_rank == 2;
 
-    if (reshape2_in_nums == 1 && reshape2_in_x_rank == 4 &&
-        reshape2_in_x_shape[2] == 1 && reshape2_in_x_shape[3] == 1 &&
-        reshape2_op_shape.size() == 2 && !transpose_X && !transpose_Y &&
-        std::abs(alpha - 1.0) < 1e-5 && matmul_in_x_rank == 2 &&
-        matmul_in_y_rank == 2) {
+    std::vector<Node*>& next_ops = matmul_out->outputs;
+    flag = flag && next_ops.size() == 1 &&
+           next_ops[0]->Name() == "elementwise_add";
+
+    if (flag) {
       OpDesc desc;
       desc.SetType("mul");
       desc.SetInput("X", {reshape2_in_x->Name()});

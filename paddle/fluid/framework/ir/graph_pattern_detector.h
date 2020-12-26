@@ -940,7 +940,6 @@ struct Reshape : public PatternBase {
 
 // Matmul op
 // Forward pass for matmul.
-// matmul_out is a result of the operator.
 struct Matmul : public PatternBase {
   Matmul(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "matmul") {}

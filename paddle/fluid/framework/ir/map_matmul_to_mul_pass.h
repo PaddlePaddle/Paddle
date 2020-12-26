@@ -24,11 +24,13 @@ namespace framework {
 namespace ir {
 
 /*
- * In order to fuse matmul+elementwise_add, replace matmul
- * op with mul op when the matmul op satisfies the following conditions:
+ * Map matmul to mul, so the optimization can use fc_fuse_pass.
+ * The mul op must satisfy the following conditions:
  * 1. the transpose_X and transpose_Y attrs are false
  * 2. the alpha attr is 1.0
  * 3. the rank of input X and Y is 2
+ * 4. the next op of matmul is only elementwise_add
+ *
  * Notice:
  *  the rank of input activation is obtained from var_desc,
  *  it maybe change in runtime.
@@ -44,7 +46,7 @@ class MapMatmul2MulPass : public FusePassBase {
 };
 
 /*
- * Fuse squeeze2+matmul to mul
+ * Fuse squeeze2+matmul to mul, so the optimization can use fc_fuse_pass.
  * The squeeze2 op must satisfy the following conditions:
  * 1. the rank of input X is 4
  * 2. the axis attr is [2, 3]
@@ -53,6 +55,7 @@ class MapMatmul2MulPass : public FusePassBase {
  * 1. the transpose_X and transpose_Y attrs are false
  * 2. the alpha attr is 1.0
  * 3. the rank of input X and Y is 2
+ * 4. the next op of matmul is only elementwise_add
  *
  * Notice:
  *  the rank of input activation is obtained from var_desc,
@@ -69,7 +72,7 @@ class Squeeze2MatmulFusePass : public FusePassBase {
 };
 
 /*
- * Fuse reshape2+matmul to mul
+ * Fuse reshape2+matmul to mul, so the optimization can use fc_fuse_pass.
  * The reshape2 op must satisfy the following conditions:
  * 1. reshape2 has one input node, which means it don't
  *    have Shape or ShapeTensor input
@@ -80,6 +83,7 @@ class Squeeze2MatmulFusePass : public FusePassBase {
  * 1. the transpose_X and transpose_Y attrs are false
  * 2. the alpha attr is 1.0
  * 3. the rank of input X and Y is 2
+ * 4. the next op of matmul is only elementwise_add
  *
  * Notice:
  *  the shape and rank of input activation is obtained from var_desc,
