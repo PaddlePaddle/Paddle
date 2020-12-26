@@ -49,10 +49,13 @@ class Quant2Int8MkldnnPass(object):
         self._fake_quantize_types = [
             'fake_quantize_moving_average_abs_max',
             'fake_quantize_range_abs_max',
-            'fake_quantize_dequantize_moving_average_abs_max'
         ]
         self._fake_dequantize_types = [
             'fake_dequantize_max_abs', 'fake_channel_wise_dequantize_max_abs'
+        ]
+        self._fake_quantize_dequantize_types = [
+            'fake_quantize_dequantize_abs_max',
+            'fake_quantize_dequantize_moving_average_abs_max'
         ]
         self._ops_to_quantize = _ops_to_quantize
         self._op_ids_to_skip = _op_ids_to_skip if _op_ids_to_skip is not None else set(
@@ -137,8 +140,12 @@ class Quant2Int8MkldnnPass(object):
             for var_name in var_names:
                 scales[var_name] = (use_unsigned_int, lod_tensor)
 
+        # fake_quantize_dequantize_abs_max doesn't have scale value
+        fake_ops = ['fake_quantize_dequantize_moving_average_abs_max']
+        fake_ops.extend(self._fake_quantize_types)
+
         for op in graph.all_op_nodes():
-            if op.name() in self._fake_quantize_types:
+            if op.name() in fake_ops:
                 bit_length = op.op().attr("bit_length")
                 assert bit_length == 8, 'Unsupported number quantization bits ({}). Only 8 is supported now.'.format(
                     bit_length)
@@ -244,8 +251,10 @@ class Quant2Int8MkldnnPass(object):
             if op.name() in self._fake_quantize_types:
                 self._remove_fake_quantize(graph, op)
 
-        for op in graph.all_op_nodes():
             if op.name() in self._fake_dequantize_types:
+                self._remove_fake_dequantize(graph, op)
+
+            if op.name() in self._fake_quantize_dequantize_types:
                 self._remove_fake_dequantize(graph, op)
 
         return graph
@@ -290,10 +299,15 @@ class Quant2Int8MkldnnPass(object):
                 ])
 
     def _dequantize_weights(self, graph):
+        # For the dygraph quantized model, the weights are real fp32.
+        # Only dequantize the weights of quantized op in static quantized model,
+        # in which the quantized ops have `quantization_type` attr.
         for op in graph.all_op_nodes():
-            if op.name() in self._conv_ops:
+            if op.name() in self._conv_ops \
+                and op.op().has_attr("quantization_type"):
                 self._dequantize_op_weights(graph, op, "Filter", "Output")
-            elif op.name() in self._mul_ops:
+            elif op.name() in self._mul_ops \
+                and op.op().has_attr("quantization_type"):
                 self._dequantize_op_weights(graph, op, "Y", "Out")
         return graph
 
