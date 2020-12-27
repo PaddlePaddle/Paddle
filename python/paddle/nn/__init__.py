@@ -34,9 +34,6 @@ __all__ += weight_norm_hook.__all__
 from .clip import ClipGradByGlobalNorm  #DEFINE_ALIAS
 from .clip import ClipGradByNorm  #DEFINE_ALIAS
 from .clip import ClipGradByValue  #DEFINE_ALIAS
-# from .clip import set_gradient_clip        #DEFINE_ALIAS
-from .clip import clip  #DEFINE_ALIAS
-from .clip import clip_by_norm  #DEFINE_ALIAS
 # from .control_flow import cond  #DEFINE_ALIAS
 # from .control_flow import DynamicRNN        #DEFINE_ALIAS
 # from .control_flow import StaticRNN        #DEFINE_ALIAS
