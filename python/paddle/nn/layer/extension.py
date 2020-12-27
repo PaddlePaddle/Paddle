@@ -59,8 +59,9 @@ class RowConv(layers.Layer):
 
     Examples:
         .. code-block:: python
-
-          from paddle import nn
+            
+          import paddle  
+          import paddle.nn as nn
           import paddle.nn.functional as F
           import numpy as np
 

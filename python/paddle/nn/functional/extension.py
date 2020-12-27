@@ -166,7 +166,7 @@ def row_conv(input, weight, act=None):
     Examples:
         .. code-block:: python
 
-            from paddle import fluid, nn
+            import paddle
             import paddle.nn.functional as F
             import numpy as np
 
