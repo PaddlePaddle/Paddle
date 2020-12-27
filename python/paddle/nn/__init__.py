@@ -68,8 +68,6 @@ from .layer.activation import Tanhshrink  #DEFINE_ALIAS
 from .layer.activation import ThresholdedReLU  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import Maxout  #DEFINE_ALIAS
-from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
-from .layer.common import Pool2D  #DEFINE_ALIAS
 from .layer.common import Pad1D  #DEFINE_ALIAS
 from .layer.common import Pad2D  #DEFINE_ALIAS
 from .layer.common import Pad3D  #DEFINE_ALIAS
@@ -105,7 +103,6 @@ from .layer.conv import Conv2DTranspose  #DEFINE_ALIAS
 from .layer.conv import Conv3DTranspose  #DEFINE_ALIAS
 # from .layer.conv import TreeConv        #DEFINE_ALIAS
 # from .layer.conv import Conv1D        #DEFINE_ALIAS
-from .layer.extension import RowConv  #DEFINE_ALIAS
 from .layer.common import Linear
 # from .layer.loss import NCELoss        #DEFINE_ALIAS
 from .layer.loss import BCEWithLogitsLoss  #DEFINE_ALIAS

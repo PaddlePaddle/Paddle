@@ -41,9 +41,7 @@ from .activation import LeakyReLU  #DEFINE_ALIAS
 from .activation import Sigmoid  #DEFINE_ALIAS
 from .activation import Softmax  #DEFINE_ALIAS
 from .activation import LogSoftmax  #DEFINE_ALIAS
-from .common import BilinearTensorProduct  #DEFINE_ALIAS
 from .common import Bilinear  #DEFINE_ALIAS
-from .common import Pool2D  #DEFINE_ALIAS
 from .common import Pad1D  #DEFINE_ALIAS
 from .common import Pad2D  #DEFINE_ALIAS
 from .common import Pad3D  #DEFINE_ALIAS
@@ -79,7 +77,6 @@ from .conv import Conv2DTranspose  #DEFINE_ALIAS
 from .conv import Conv3DTranspose  #DEFINE_ALIAS
 # from .conv import TreeConv        #DEFINE_ALIAS
 # from .conv import Conv1D        #DEFINE_ALIAS
-from .extension import RowConv  #DEFINE_ALIAS
 # from .loss import NCELoss        #DEFINE_ALIAS
 from .loss import BCEWithLogitsLoss  #DEFINE_ALIAS
 from .loss import CrossEntropyLoss  #DEFINE_ALIAS
