@@ -23,7 +23,6 @@ import itertools
 import threading
 import numpy as np
 import multiprocessing
-from collections import namedtuple
 
 # NOTE: queue has a different name in python2 and python3
 if six.PY2:
@@ -35,14 +34,11 @@ import paddle
 from .. import core, layers
 from ..framework import in_dygraph_mode
 from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL
-from .worker import ParentWatchDog, get_worker_info, _worker_loop, _DatasetKind
+from .worker import ParentWatchDog, get_worker_info, _worker_loop, _DatasetKind, _IterableDatasetStopIteration
 from .pin_memory import pin_memory, _pin_memory_loop
 from .batch_sampler import _InfiniteIterableSampler
 
 __all__ = ['get_worker_info']
-
-_IterableDatasetStopIteration = namedtuple('_IterableDatasetStopIteration',
-                                           ['worker_id'])
 
 
 def default_collate_fn(batch):

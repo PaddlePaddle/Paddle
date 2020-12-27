@@ -16,6 +16,7 @@ import os
 import six
 import sys
 import paddle
+from collections import namedtuple
 from .. import core
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from ..multiprocess_utils import _cleanup_mmap, CleanupFuncRegistrar, MP_STATUS_CHECK_INTERVAL
@@ -27,6 +28,11 @@ else:
     import queue
 
 __all__ = ['get_worker_info']
+
+
+class _IterableDatasetStopIteration(object):
+    def __init__(self, worker_id):
+        self.worker_id = worker_id
 
 
 class _DatasetKind(object):
@@ -102,7 +108,8 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
             except Exception as e:
                 if isinstance(
                         e, StopIteration) and dataset_kind == _DatasetKind.ITER:
-                    out_queue.put(_IterableDatasetStopIteration(worker_id))
+                    out_queue.put(
+                        (idx, _IterableDatasetStopIteration(worker_id)))
                     iterator_drained = True
                 else:
                     out_queue.put((idx, e))

@@ -16,6 +16,7 @@ import six
 import sys
 import paddle
 import numpy as np
+from .. import core
 from ..multiprocess_utils import MP_STATUS_CHECK_INTERVAL
 
 # NOTE: queue has a different name in python2 and python3
@@ -35,6 +36,9 @@ def pin_memory(data):
         return paddle.to_tensor(data, place=paddle.CUDAPinnedPlace())
     if isinstance(data, paddle.Tensor):
         return paddle.to_tensor(data, place=paddle.CUDAPinnedPlace())
+    if isinstance(data, paddle.fluid.LoDTensor):
+        # LoDTensor -> paddle.Tensor(VarBase)
+        return core.VarBase(data)
     if isinstance(data, Sequence):
         return [pin_memory(d) for d in data]
     if isinstance(data, Mapping):
