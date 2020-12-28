@@ -28,7 +28,7 @@ CPYTHON_VERSIONS="3.8.0 3.7.0 3.6.0 3.5.1 2.7.15"
 
 # openssl version to build, with expected sha256 hash of .tar.gz
 # archive
-OPENSSL_ROOT=openssl-1.1.0i
+OPENSSL_ROOT=openssl-1.0.2g
 OPENSSL_HASH=ebbfc844a8c8cc0ea5dc10b86c9ce97f401837f3fa08c17b2cdadc118253cf99
 PATCHELF_HASH=f2aa40a6148cb3b0ca807a1bf836b081793e55ec9e5540a5356d800132be7e0a
 CURL_ROOT=curl-7.49.1
