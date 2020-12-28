@@ -111,7 +111,8 @@ void Squeeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     std::vector<int> squeeze2_op_axes =
         BOOST_GET_CONST(std::vector<int>, squeeze2_op->Op()->GetAttr("axes"));
     flag = flag && squeeze2_in_x_rank == 4 &&
-           squeeze2_op_axes == std::vector<int>{2, 3};
+           squeeze2_op_axes == std::vector<int>{2, 3} &&
+           (matmul_in_x->outputs).size() == 1;
 
     bool transpose_X =
         BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
@@ -179,7 +180,7 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
         BOOST_GET_CONST(std::vector<int>, reshape2_op->Op()->GetAttr("shape"));
     flag = flag && reshape2_in_nums == 1 && reshape2_in_x_rank == 4 &&
            reshape2_in_x_shape[2] == 1 && reshape2_in_x_shape[3] == 1 &&
-           reshape2_op_shape.size() == 2;
+           reshape2_op_shape.size() == 2 && (matmul_in_x->outputs).size() == 1;
 
     bool transpose_X =
         BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));

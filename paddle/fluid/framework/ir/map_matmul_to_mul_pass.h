@@ -50,6 +50,7 @@ class MapMatmul2MulPass : public FusePassBase {
  * The squeeze2 op must satisfy the following conditions:
  * 1. the rank of input X is 4
  * 2. the axis attr is [2, 3]
+ * 3. the next op is only matmul
  *
  * The matmul op must satisfy the following conditions:
  * 1. the transpose_X and transpose_Y attrs are false
@@ -78,6 +79,7 @@ class Squeeze2MatmulFusePass : public FusePassBase {
  *    have Shape or ShapeTensor input
  * 2. the rank of input X is 4 and the last two dims of input X is 1
  * 3. the rank of shape attr is 2
+ * 4. the next op is only matmul
  *
  * The matmul op must satisfy the following conditions:
  * 1. the transpose_X and transpose_Y attrs are false
