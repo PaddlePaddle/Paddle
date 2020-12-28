@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 
-#include <memory>
 #include <string>
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
