@@ -250,11 +250,9 @@ class Quant2Int8MkldnnPass(object):
         for op in graph.all_op_nodes():
             if op.name() in self._fake_quantize_types:
                 self._remove_fake_quantize(graph, op)
-
-            if op.name() in self._fake_dequantize_types:
+            elif op.name() in self._fake_dequantize_types:
                 self._remove_fake_dequantize(graph, op)
-
-            if op.name() in self._fake_quantize_dequantize_types:
+            elif op.name() in self._fake_quantize_dequantize_types:
                 self._remove_fake_dequantize(graph, op)
 
         return graph
