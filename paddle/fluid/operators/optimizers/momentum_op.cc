@@ -120,8 +120,8 @@ REGISTER_OP_VERSION(momentum)
         paddle::framework::compatible::OpVersionDesc()
             .NewInput("MasterParam", "FP32 master weight for AMP.")
             .NewOutput("MasterParamOut",
-                    "The updated FP32 master weight for AMP. "
-                    "It shared memory with Input(MasterParam).")
+                       "The updated FP32 master weight for AMP. "
+                       "It shared memory with Input(MasterParam).")
             .NewAttr("regularization_method",
                      "(string) regularization_method, right now only support "
                      "l2decay or none",
