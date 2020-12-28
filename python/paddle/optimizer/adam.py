@@ -247,7 +247,6 @@ class Adam(Optimizer):
                 )
             self._add_moments_pows(p)
 
-
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 

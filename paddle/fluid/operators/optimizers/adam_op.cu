@@ -11,9 +11,9 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include "paddle/fluid/operators/amp/common.h"
 #include "paddle/fluid/operators/optimizers/adam_op.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/operators/amp/common.h"
 
 namespace paddle {
 namespace operators {
@@ -23,13 +23,14 @@ __global__ void AdamKernelREG(MT beta1, MT beta2, MT epsilon, MT beta1_pow_,
                               MT beta2_pow_, const MT* moment1, MT* moment1_out,
                               const MT* moment2, MT* moment2_out, const MT* lr_,
                               const T* grad, const T* param, T* param_out,
-                              const MT* master_param, MT* master_param_out, int ndim) {
+                              const MT* master_param, MT* master_param_out,
+                              int ndim) {
   MT lr = *lr_;
   MT beta1_pow = beta1_pow_;
   MT beta2_pow = beta2_pow_;
 
-  lr *=
-      sqrt(static_cast<MT>(1.0) - beta2_pow) / (static_cast<MT>(1.0) - beta1_pow);
+  lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
+        (static_cast<MT>(1.0) - beta1_pow);
 
   int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -53,17 +54,19 @@ __global__ void AdamKernelREG(MT beta1, MT beta2, MT epsilon, MT beta1_pow_,
 }
 
 template <typename T, typename MT>
-__global__ void AdamKernelMEM(MT beta1, MT beta2, MT epsilon, const MT* beta1_pow_,
-                              const MT* beta2_pow_, const MT* moment1,
-                              MT* moment1_out, const MT* moment2, MT* moment2_out,
-                              const MT* lr_, const T* grad, const T* param,
-                              T* param_out, const MT* master_param, MT* master_param_out, int ndim) {
+__global__ void AdamKernelMEM(MT beta1, MT beta2, MT epsilon,
+                              const MT* beta1_pow_, const MT* beta2_pow_,
+                              const MT* moment1, MT* moment1_out,
+                              const MT* moment2, MT* moment2_out, const MT* lr_,
+                              const T* grad, const T* param, T* param_out,
+                              const MT* master_param, MT* master_param_out,
+                              int ndim) {
   MT lr = *lr_;
   MT beta1_pow = *beta1_pow_;
   MT beta2_pow = *beta2_pow_;
 
-  lr *=
-      sqrt(static_cast<MT>(1.0) - beta2_pow) / (static_cast<MT>(1.0) - beta1_pow);
+  lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
+        (static_cast<MT>(1.0) - beta1_pow);
 
   int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -96,13 +99,14 @@ __global__ void UpdateBetaPow(T beta1, T beta2, const T* beta1_pow_,
 template <typename T, typename MT>
 __global__ void SparseAdamCUDAKernelREG(
     MT beta1, MT beta2, MT epsilon, const MT beta1_pow, const MT beta2_pow,
-    const MT* mom1_, MT* mom1_out_, const MT* mom2_, MT* mom2_out_, const MT* lr_,
-    const T* grad_, const T* param_, T* param_out_, const MT* master_param,
-    MT* master_param_out, const int64_t* rows_, int64_t row_numel, int64_t row_count,
-    bool lazy_mode, int ndim) {
+    const MT* mom1_, MT* mom1_out_, const MT* mom2_, MT* mom2_out_,
+    const MT* lr_, const T* grad_, const T* param_, T* param_out_,
+    const MT* master_param, MT* master_param_out, const int64_t* rows_,
+    int64_t row_numel, int64_t row_count, bool lazy_mode, int ndim) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   MT lr = *lr_;
-  lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) / (static_cast<MT>(1.0) - beta1_pow);
+  lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
+        (static_cast<MT>(1.0) - beta1_pow);
 
   for (; id < ndim; id += blockDim.x * gridDim.x) {
     auto row_idx =
@@ -113,7 +117,9 @@ __global__ void SparseAdamCUDAKernelREG(
       MT mom1 = mom1_[id];
       MT mom2 = mom2_[id];
       MT p = master_param ? master_param[id] : static_cast<MT>(param_[id]);
-      MT g = row_idx >= 0 ? static_cast<MT>(grad_[row_idx * row_numel + id % row_numel]) : static_cast<MT>(0);
+      MT g = row_idx >= 0
+                 ? static_cast<MT>(grad_[row_idx * row_numel + id % row_numel])
+                 : static_cast<MT>(0);
       mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
       mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
       p -= lr * (mom1 / (sqrt(mom2) +
@@ -214,8 +220,9 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
     const MPDType* master_in_data =
         multi_precision ? master_param->data<MPDType>() : nullptr;
     MPDType* master_out_data =
-        multi_precision ? master_param_out->mutable_data<MPDType>(ctx.GetPlace())
-                        : nullptr;
+        multi_precision
+            ? master_param_out->mutable_data<MPDType>(ctx.GetPlace())
+            : nullptr;
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
@@ -230,11 +237,14 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
           beta2_pow->place() == platform::CPUPlace()) {
         // Compute with betapow in REG
         AdamKernelREG<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1, beta2, epsilon, *beta1_pow->data<MPDType>(), *beta2_pow->data<MPDType>(),
-            mom1->data<MPDType>(), mom1_out->mutable_data<MPDType>(ctx.GetPlace()),
-            mom2->data<MPDType>(), mom2_out->mutable_data<MPDType>(ctx.GetPlace()),
+            beta1, beta2, epsilon, *beta1_pow->data<MPDType>(),
+            *beta2_pow->data<MPDType>(), mom1->data<MPDType>(),
+            mom1_out->mutable_data<MPDType>(ctx.GetPlace()),
+            mom2->data<MPDType>(),
+            mom2_out->mutable_data<MPDType>(ctx.GetPlace()),
             lr->data<MPDType>(), grad->data<T>(), param->data<T>(),
-            param_out->mutable_data<T>(ctx.GetPlace()), master_in_data, master_out_data, param->numel());
+            param_out->mutable_data<T>(ctx.GetPlace()), master_in_data,
+            master_out_data, param->numel());
         // Cpu update
         beta1_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
             beta1 * beta1_pow->data<MPDType>()[0];
@@ -242,14 +252,18 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
             beta2 * beta2_pow->data<MPDType>()[0];
       } else {
         AdamKernelMEM<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1, beta2, epsilon, beta1_pow->data<MPDType>(), beta2_pow->data<MPDType>(),
-            mom1->data<MPDType>(), mom1_out->mutable_data<MPDType>(ctx.GetPlace()),
-            mom2->data<MPDType>(), mom2_out->mutable_data<MPDType>(ctx.GetPlace()),
+            beta1, beta2, epsilon, beta1_pow->data<MPDType>(),
+            beta2_pow->data<MPDType>(), mom1->data<MPDType>(),
+            mom1_out->mutable_data<MPDType>(ctx.GetPlace()),
+            mom2->data<MPDType>(),
+            mom2_out->mutable_data<MPDType>(ctx.GetPlace()),
             lr->data<MPDType>(), grad->data<T>(), param->data<T>(),
-            param_out->mutable_data<T>(ctx.GetPlace()), master_in_data, master_out_data, param->numel());
+            param_out->mutable_data<T>(ctx.GetPlace()), master_in_data,
+            master_out_data, param->numel());
         // Update with gpu
         UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
-            beta1, beta2, beta1_pow->data<MPDType>(), beta2_pow->data<MPDType>(),
+            beta1, beta2, beta1_pow->data<MPDType>(),
+            beta2_pow->data<MPDType>(),
             beta1_pow_out->mutable_data<MPDType>(ctx.GetPlace()),
             beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
       }
@@ -294,13 +308,17 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
         int ndim = param->numel();
         int blocks = (ndim + threads - 1) / threads;
 
-        SparseAdamCUDAKernelREG<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1, beta2, epsilon, *beta1_pow->data<MPDType>(), *beta2_pow->data<MPDType>(),
-            mom1->data<MPDType>(), mom1_out->mutable_data<MPDType>(ctx.GetPlace()),
-            mom2->data<MPDType>(), mom2_out->mutable_data<MPDType>(ctx.GetPlace()),
+        SparseAdamCUDAKernelREG<
+            T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+            beta1, beta2, epsilon, *beta1_pow->data<MPDType>(),
+            *beta2_pow->data<MPDType>(), mom1->data<MPDType>(),
+            mom1_out->mutable_data<MPDType>(ctx.GetPlace()),
+            mom2->data<MPDType>(),
+            mom2_out->mutable_data<MPDType>(ctx.GetPlace()),
             lr->data<MPDType>(), grad_data, param->data<T>(),
-            param_out->mutable_data<T>(ctx.GetPlace()), master_in_data, master_out_data, rows, row_numel,
-            grad_merge.rows().size(), lazy_mode, ndim);
+            param_out->mutable_data<T>(ctx.GetPlace()), master_in_data,
+            master_out_data, rows, row_numel, grad_merge.rows().size(),
+            lazy_mode, ndim);
         // Update with cpu
         beta1_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
             beta1 * beta1_pow->data<MPDType>()[0];
@@ -308,12 +326,15 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
             beta2 * beta2_pow->data<MPDType>()[0];
       } else {
         SparseAdamFunctor<T, GPUAdam, MPDType> functor(
-            beta1, beta2, epsilon, beta1_pow->data<MPDType>(), beta2_pow->data<MPDType>(),
-            mom1->data<MPDType>(), mom1_out->mutable_data<MPDType>(ctx.GetPlace()),
-            mom2->data<MPDType>(), mom2_out->mutable_data<MPDType>(ctx.GetPlace()),
+            beta1, beta2, epsilon, beta1_pow->data<MPDType>(),
+            beta2_pow->data<MPDType>(), mom1->data<MPDType>(),
+            mom1_out->mutable_data<MPDType>(ctx.GetPlace()),
+            mom2->data<MPDType>(),
+            mom2_out->mutable_data<MPDType>(ctx.GetPlace()),
             lr->data<MPDType>(), grad_data, param->data<T>(),
-            param_out->mutable_data<T>(ctx.GetPlace()), master_in_data, master_out_data, rows, row_numel,
-            grad_merge.rows().size(), lazy_mode);
+            param_out->mutable_data<T>(ctx.GetPlace()), master_in_data,
+            master_out_data, rows, row_numel, grad_merge.rows().size(),
+            lazy_mode);
 
         // FIXME(minqiyang): remove BinarySearch in GPU later
         platform::ForRange<platform::CUDADeviceContext> for_range(
@@ -323,7 +344,8 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
         for_range(functor);
         // update beta1 and beta2
         UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
-            beta1, beta2, beta1_pow->data<MPDType>(), beta2_pow->data<MPDType>(),
+            beta1, beta2, beta1_pow->data<MPDType>(),
+            beta2_pow->data<MPDType>(),
             beta1_pow_out->mutable_data<MPDType>(ctx.GetPlace()),
             beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
       }

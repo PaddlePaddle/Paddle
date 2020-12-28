@@ -196,6 +196,17 @@ class OptimizerWithMixedPrecision(object):
                  scope=None,
                  test_program=None,
                  use_fp16_test=False):
+        """
+        Init the amp training, such as cast fp32 parameters to fp16 type.
+  
+        Args:
+            place(CPUPlace|CUDAPlace): place is used to initialize 
+                fp32 parameters with fp16 values.
+            scope(Scope): The scope is used to find fp32 parameters.
+            test_program(Program): The testing program.
+            use_fp16_test(bool): Whether to use fp16 testing.
+
+        """
         assert self._train_program is not None, \
             "Please call the minimize method first."
         if self._use_pure_fp16:
@@ -212,7 +223,7 @@ class OptimizerWithMixedPrecision(object):
     def apply_gradients(self, params_grads):
         """
         Check scaled gradients to determine whether to update loss scaling and update 
-        parameters by their scaled gradients, 
+        parameters by their scaled gradients.
   
         Args:
             params_grads (list): A list of params and scaled grads.
@@ -244,12 +255,16 @@ class OptimizerWithMixedPrecision(object):
             if fp32_grads:
                 with self._train_program._optimized_guard(fp32_grads):
                     _, fp32_found_inf = check_finite_and_unscale(
-                        fp32_grads, self._loss_scaling, name="find_infinite_scale")
+                        fp32_grads,
+                        self._loss_scaling,
+                        name="find_infinite_scale")
                 found_infs.append(fp32_found_inf)
             if fp16_grads:
                 with self._train_program._optimized_guard(fp16_grads):
                     _, fp16_found_inf = check_finite_and_unscale(
-                        fp16_grads, self._loss_scaling, name="find_infinite_scale")
+                        fp16_grads,
+                        self._loss_scaling,
+                        name="find_infinite_scale")
                 found_infs.append(fp16_found_inf)
         else:
             with self._train_program._optimized_guard(grads):
@@ -336,8 +351,11 @@ class OptimizerWithMixedPrecision(object):
             list of scaled parameters and gradients.
         """
         opt_dict = self._optimizer.__class__.__dict__
-        if 'minimize' in  opt_dict and isinstance(opt_dict['minimize'], types.FunctionType):
-            warnings.warn("The decorated optimizer has its own `minimize` method, but it will not be executed.")
+        if 'minimize' in opt_dict and isinstance(opt_dict['minimize'],
+                                                 types.FunctionType):
+            warnings.warn(
+                "The decorated optimizer has its own `minimize` method, but it will not be executed."
+            )
 
         scaled_params_grads = self.backward(
             loss,
@@ -378,6 +396,8 @@ def decorate(optimizer,
         decr_ratio(float): The less-than-one-multiplier to use when decreasing 
                            the loss scaling.
         use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling.
+        use_pure_fp16(bool): Whether to use the pure fp16 training.
+        use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
 
     Returns:
         An optimizer acting like a normal one but with mixed-precision training 

@@ -191,7 +191,7 @@ class AdamFunctor<T, CPUAdam> {
   }
 };
 
-template <typename T, typename Flavour, typename MT=T>
+template <typename T, typename Flavour, typename MT = T>
 class SparseAdamFunctor;
 
 template <typename T, typename MT>
@@ -223,8 +223,9 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
   SparseAdamFunctor(MT beta1, MT beta2, MT epsilon, const MT* beta1_pow,
                     const MT* beta2_pow, const MT* mom1, MT* mom1_out,
                     const MT* mom2, MT* mom2_out, const MT* lr, const T* grad,
-                    const T* param, T* param_out, const MT* master_param, MT* master_param_out,
-                    const int64_t* rows, int64_t row_numel, int64_t row_count, bool lazy_mode)
+                    const T* param, T* param_out, const MT* master_param,
+                    MT* master_param_out, const int64_t* rows,
+                    int64_t row_numel, int64_t row_count, bool lazy_mode)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -255,11 +256,13 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
     MT p = master_param_ ? master_param_[i] : static_cast<MT>(param_[i]);
 
     // Calculation
-    lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) / (static_cast<MT>(1.0) - beta1_pow);
+    lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
+          (static_cast<MT>(1.0) - beta1_pow);
 
     mom1 = beta1_ * mom1 + (static_cast<MT>(1.0) - beta1_) * g;
     mom2 = beta2_ * mom2 + (static_cast<MT>(1.0) - beta2_) * g * g;
-    p -= lr * (mom1 / (sqrt(mom2) + epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+    p -= lr * (mom1 / (sqrt(mom2) +
+                       epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
 
     // Write back to global memory
     moment1_out_[i] = mom1;
@@ -276,7 +279,9 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
     if (lazy_mode_ && row_idx < 0) {
       return;
     } else {
-      MT g = row_idx >= 0 ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_]) : static_cast<MT>(0);
+      MT g = row_idx >= 0
+                 ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_])
+                 : static_cast<MT>(0);
       adam_update(i, g);
     }
   }

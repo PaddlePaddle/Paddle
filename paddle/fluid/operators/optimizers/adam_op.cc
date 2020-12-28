@@ -159,9 +159,9 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator");
     AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator");
     AddOutput("MasterParamOut",
-            "The updated FP32 master weight for AMP. "
-            "It shared memory with Input(MasterParam).")
-      .AsDispensable();
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
 
     AddAttr<float>("beta1",
                    "(float, default 0.9) "
@@ -190,9 +190,9 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
                      "will run in multithread mode")
         .SetDefault(1000);
     AddAttr<bool>("multi_precision",
-                "(bool, default false) "
-                "Whether to use multi-precision during weight updating.")
-      .SetDefault(false);
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Adam Optimizer.
@@ -225,11 +225,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::AdamOpKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_VERSION(adam)
-    .AddCheckpoint(R"ROC(
+    .AddCheckpoint(
+        R"ROC(
       Upgrade adam add 1 attribute [multi_precision].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr(
-                "multi_precision",
-                "(bool) Whether to use multi-precision during weight updating.",
-                false));
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "multi_precision",
+            "(bool) Whether to use multi-precision during weight updating.",
+            false));
