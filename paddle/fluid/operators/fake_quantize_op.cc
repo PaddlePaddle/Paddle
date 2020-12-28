@@ -16,6 +16,7 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/clip_op.h"
 #include "paddle/fluid/platform/transform.h"
 
@@ -805,3 +806,12 @@ REGISTER_OPERATOR(fake_channel_wise_quantize_dequantize_abs_max,
 REGISTER_OP_CPU_KERNEL(
     fake_channel_wise_quantize_dequantize_abs_max,
     ops::FakeChannelWiseQuantizeDequantizeAbsMaxKernel<CPU, float>);
+
+REGISTER_OP_VERSION(moving_average_abs_max_scale)
+    .AddCheckpoint(
+        R"ROC(Incompatible upgrade of output [Out])ROC",
+        paddle::framework::compatible::OpVersionDesc().DeleteOutput(
+            "Out",
+            "Delete output in order to make the inference model not "
+            "save moving_average_abs_max_scale operator. This will "
+            "make the quantitative model be correctly applied in inference."));
