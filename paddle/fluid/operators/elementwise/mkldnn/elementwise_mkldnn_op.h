@@ -16,7 +16,6 @@
 #include <unordered_map>
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
