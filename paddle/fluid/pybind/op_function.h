@@ -180,8 +180,8 @@ ConstructReuseAllocationOutput(
         reuse_allocation_output_var->MutableVar()
             ->GetMutable<framework::LoDTensor>();
     reuse_allocation_output_tensor->ShareDataWith(input_tensor);
-
-    // reuse_allocation_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
+    reuse_allocation_output_tensor->ShareInplaceVersionCounterWith(
+        input_tensor);
   } else {
     const auto& input_selected_rows =
         input_var->Var().Get<framework::SelectedRows>();
@@ -198,8 +198,8 @@ ConstructReuseAllocationOutput(
     reuse_allocation_output_selected_rows->set_rows(input_selected_rows.rows());
     reuse_allocation_output_selected_rows->mutable_value()->ShareDataWith(
         input_selected_rows.value());
-
-    // reuse_allocation_output_selected_rows->mutable_value()->ShareInplaceVersionCounterWith(input_selected_rows.value());
+    reuse_allocation_output_selected_rows->mutable_value()
+        ->ShareInplaceVersionCounterWith(input_selected_rows.value());
   }
 
   VLOG(3) << "The output Var(" << reuse_allocation_output_var->Name()
