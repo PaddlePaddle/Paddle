@@ -97,9 +97,9 @@ class Compose(object):
         .. code-block:: python
 
             from paddle.vision.datasets import Flowers
-            from paddle.vision.transforms import Compose, ColorJitter, Resize, ToTensor
+            from paddle.vision.transforms import Compose, ColorJitter, Resize
 
-            transform = Compose([ColorJitter(), Resize(size=608), ToTensor()])
+            transform = Compose([ColorJitter(), Resize(size=608)])
             flowers = Flowers(mode='test', transform=transform)
 
             for i in range(10):
