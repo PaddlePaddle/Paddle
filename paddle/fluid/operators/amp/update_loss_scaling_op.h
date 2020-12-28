@@ -17,7 +17,7 @@
 #include <cmath>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/amp/common.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"

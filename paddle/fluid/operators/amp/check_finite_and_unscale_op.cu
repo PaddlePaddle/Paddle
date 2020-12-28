@@ -15,7 +15,7 @@ limitations under the License. */
 #include <cuda.h>
 
 #include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
-#include "paddle/fluid/operators/amp/common.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
