@@ -84,7 +84,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
-EGISTER_OP_VERSION(elementwise_pow)
+REGISTER_OP_VERSION(elementwise_pow)
     .AddCheckpoint(
         R"ROC(Register elementwise_pow for adding the attribute of Scale_y)ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
