@@ -39,7 +39,10 @@ void Tensor::check_memory_size() const {
           numel() * SizeOfType(type()), memory_size()));
 }
 
-Tensor::Tensor(const proto::VarType::Type& dtype) : type_(dtype), offset_(0) {}
+Tensor::Tensor(const proto::VarType::Type& dtype)
+    : type_(dtype),
+      offset_(0),
+      inplace_version_counter_(std::make_shared<TensorInplaceVersion>(0)) {}
 
 size_t Tensor::memory_size() const {
   return holder_ == nullptr ? 0UL : holder_->size() - offset_;
@@ -87,6 +90,15 @@ void* Tensor::mutable_data(const platform::Place& place,
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
   src.check_memory_size();
   *this = src;
+  return *this;
+}
+Tensor& Tensor::ShareInplaceVersionCounterWith(const Tensor& src) {
+  PADDLE_ENFORCE_NOT_NULL(
+      inplace_version_counter_,
+      platform::errors::PreconditionNotMet(
+          "Tensor does not hold inplace_version_counter_."));
+
+  inplace_version_counter_ = src.inplace_version_counter_;
   return *this;
 }
 

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import six
+import os
 import logging
 from collections import defaultdict
 
@@ -39,6 +40,7 @@ from .dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpo
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
+from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 
@@ -106,8 +108,12 @@ class Optimizer(object):
         self.regularization = regularization
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
-        # the learning rate type should be inferenced from loss
+
         self._dtype = None
+        # Infer the dtype form parameter
+        if self._parameter_list:
+            self._dtype = self._parameter_list[0].dtype
+
         # each program should have a independent learning rate
         # program -> Variable(learning_rate)
         self._learning_rate_map = dict()
@@ -766,7 +772,10 @@ class Optimizer(object):
         else:
             act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
 
-        self._dtype = loss.dtype
+        # Infer dtype by loss if None
+        if self._dtype is None:
+            self._dtype = loss.dtype
+
         if framework.in_dygraph_mode():
             parameter_list = parameter_list if parameter_list \
                 else self._parameter_list
@@ -3773,7 +3782,7 @@ class PipelineOptimizer(object):
         self._op_device_key = op_maker.kOpDeviceAttrName()
         self._param_device_map = None
 
-    def _create_vars(self, block, main_program):
+    def _create_vars(self, block, ori_block):
         # Create vars for block, copied from main_program's global block
         used_var_set = set()
         for op_idx in range(block.desc.op_size()):
@@ -3785,7 +3794,8 @@ class PipelineOptimizer(object):
                 if var in used_var_set or "_blocking_queue" in var:
                     continue
                 used_var_set.add(var)
-                source_var = main_program.block(0).var(str(var))
+                if block._find_var_recursive(str(var)): continue
+                source_var = ori_block._var_recursive(str(var))
                 if source_var.type == core.VarDesc.VarType.READER:
                     block.create_var(
                         name=var,
@@ -3840,45 +3850,65 @@ class PipelineOptimizer(object):
                     op_desc = op.desc
                     ap_op = program["program"].block(0).desc.append_op()
                     ap_op.copy_from(op_desc)
-                    ap_op._set_attr(self._op_device_key, "")
-            elif op.type == "create_py_reader" or op.type == "read":
+                    # ap_op._set_attr(self._op_device_key, "")
+            elif op.type == "create_py_reader" or op.type == "read" or op.type == "create_double_buffer_reader":
                 # Copy read related ops to all section to make them exit after each epoch.
                 for device in device_program_map.keys():
                     program = device_program_map[device]
                     op_desc = op.desc
                     ap_op = program["program"].block(0).desc.append_op()
                     ap_op.copy_from(op_desc)
-                    ap_op._set_attr(self._op_device_key, "")
             else:
                 program = device_program_map[device]
                 op_desc = op.desc
                 ap_op = program["program"].block(0).desc.append_op()
                 ap_op.copy_from(op_desc)
-                ap_op._set_attr(self._op_device_key, "")
 
-        for key in sorted(device_program_map.keys()):
+        for key in devices:
             program = device_program_map[key]
             program['program']._sync_with_cpp()
             programs.append(program)
 
         return programs
 
+    def _get_op_device_for_startup_program(self, var_name):
+        """
+        For adam optimizer, it will add accumulators and initialize them
+        with fill_constant, and force the op device to cpu. Hence, we should
+        get the real op_device attribute of the fill_constant as the device
+        where the corresponding parameters on.
+        """
+        assert "beta1_pow_acc" in var_name or "beta2_pow_acc" in var_name
+        param_name = var_name[0:var_name.index('_beta')]
+        device = self._param_device_map[param_name]
+        return device
+
     def _split_startup_program(self, startup_program, local_rank):
         block = startup_program.block(0)
         new_startup_program = Program()
         for op in block.ops:
             device = op.attr(self._op_device_key)
+            if device == "cpu":
+                assert op.type == "fill_constant", (
+                    "For ops in startup "
+                    "program that with the op_device attribute of cpu, "
+                    "they must be fill_constant.")
+                output_var = op.output_arg_names[0]
+                device = self._get_op_device_for_startup_program(output_var)
+
             if device:
-                device_index = int(device.split(":")[1])
+                device_index = int(device.split(':')[1])
             else:
-                device_index = None
-            if device_index is not None and device_index != local_rank: continue
+                # LR related ops
+                device = None
+            if device and device_index != local_rank: continue
             op_desc = op.desc
             ap_op = new_startup_program.block(0).desc.append_op()
             ap_op.copy_from(op_desc)
             ap_op._set_attr(self._op_device_key, "")
         new_startup_program._sync_with_cpp()
-        self._create_vars(new_startup_program.block(0), startup_program)
+        self._create_vars(
+            new_startup_program.block(0), startup_program.global_block())
         return new_startup_program
 
     def _find_post_op(self, ops, cur_op, var_name):
@@ -4093,6 +4123,8 @@ class PipelineOptimizer(object):
                 first_device = op.attr(self._op_device_key)
                 break
         assert first_device
+        first_device_type = first_device.split(":")[0]
+        assert first_device_type == "gpu"
 
         # set op_device attr for lr-related ops
         lrsched_role = int(self._op_role.LRSched)
@@ -4136,10 +4168,11 @@ class PipelineOptimizer(object):
             dev_spec = op.attr(self._op_device_key)
             assert dev_spec, ("op_device attribute for op "
                               "{} has not been set.".format(op.type))
+            dev_type = dev_spec.split(':')[0]
+            assert dev_type == "gpu", ("Now only gpu devices are supported "
+                                       "for pipeline parallelism.")
             if not dev_spec in device_specs:
                 device_specs.append(dev_spec)
-        sorted_device_specs = sorted(device_specs)
-        assert sorted_device_specs == device_specs
         return device_specs
 
     def _insert_sendrecv_ops_for_boundaries(self, block):
@@ -4216,6 +4249,7 @@ class PipelineOptimizer(object):
             device = self._param_device_map[param_name]
             if device != dev_spec: continue
             grad_name = self._append_grad_suffix(param_name)
+            if not main_block.has_var(grad_name): continue
             grad_var = main_block.vars[grad_name]
             main_block._insert_op(
                 index=0,
@@ -4297,6 +4331,7 @@ class PipelineOptimizer(object):
                     ap_op = new_sub_block.desc.append_op()
                     ap_op.copy_from(op_desc)
                 new_sub_block._sync_with_cpp()
+                self._create_vars(new_sub_block, origin_sub_block)
                 op._set_attr('sub_block:', new_sub_block)
 
     def _get_device_info(self, block):
@@ -4318,6 +4353,7 @@ class PipelineOptimizer(object):
             prog = prog_info['program']
             block = prog.block(0)
             for var_name in block.vars:
+                if var_name == "double_buffer_0": continue
                 var = block.var(var_name)
                 if not var.persistable: continue
                 if not var_name in var_info:
@@ -4413,30 +4449,33 @@ class PipelineOptimizer(object):
         self._add_default_opdevice_attr(main_block)
 
         device_specs = self._check_validation(main_block)
-        assert len(device_specs) > 1
+
+        def device_cmp(device1, device2):
+            dev1_id = int(device1.split(':')[1])
+            dev2_id = int(device2.split(':')[1])
+            if dev1_id < dev2_id:
+                return -1
+            elif dev1_id > dev2_id:
+                return 1
+            else:
+                return 0
+
+        sorted_device_spec = sorted(device_specs, key=cmp_to_key(device_cmp))
+        assert sorted_device_spec == device_specs, (
+            "With pipeline "
+            "parallelism, you must use gpu devices one after another "
+            "in the order of their ids.")
 
         # Step3: add send and recv ops between section boundaries
         self._insert_sendrecv_ops_for_boundaries(main_block)
-
-        place_list = []
-        place_id_list = []
-        for dev_spec in device_specs:
-            if dev_spec == "cpu":
-                place_list.append(core.CPUPlace())
-                place_id_list.append(-1)
-            elif "gpu" in dev_spec and ":" in dev_spec:
-                dev_index = dev_spec.split(":")[1]
-                place_list.append(core.CUDAPlace(int(dev_index)))
-                place_id_list.append(int(dev_index))
-            else:
-                raise ValueError("Unknown device type: %s", dev_spec)
 
         # Step4: split program into sections and add pairs of
         # send and recv ops for data var.
         main_program = main_block.program
         program_list = self._split_program(main_program, device_specs)
         for p in program_list:
-            self._create_vars(p["program"].block(0), main_program)
+            self._create_vars(p["program"].block(0),
+                              main_program.global_block())
         self._insert_sendrecv_for_data_var(main_block, program_list,
                                            startup_program, device_specs)
 
@@ -4452,7 +4491,13 @@ class PipelineOptimizer(object):
                 isinstance(main_program._pipeline_opt, dict) and
                 'local_rank' in main_program._pipeline_opt), \
                 "You must use pipeline with fleet"
-        local_rank = main_program._pipeline_opt['local_rank']
+        local_rank = main_program._pipeline_opt['local_rank'] % len(
+            device_specs)
+
+        place_list = []
+        for dev_spec in device_specs:
+            dev_index = dev_spec.split(":")[1]
+            place_list.append(core.CUDAPlace(local_rank))
 
         # Step7: Split startup program
         new_startup_program = self._split_startup_program(startup_program,
@@ -4466,21 +4511,18 @@ class PipelineOptimizer(object):
         self._accumulate_gradients(program_list[local_rank]['program']
                                    .global_block())
 
-        with open("startup_prog_%d" % local_rank, 'w') as f:
-            f.writelines(str(new_startup_program))
-        with open("main_prog_%d" % local_rank, 'w') as f:
-            f.writelines(str(program_list[local_rank]['program']))
-
         startup_program._pipeline_opt = {
             "startup_program": new_startup_program,
         }
+
+        place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
             "inner_parallelism": len(device_specs),
             "section_program": program_list[local_rank],
             "place": place_list[local_rank],
-            "place_id": place_id_list[local_rank],
+            "place_id": place_id,
             "sync_steps": -1,
             "num_microbatches": self._num_microbatches,
             "start_cpu_core_id": self._start_cpu_core_id,
