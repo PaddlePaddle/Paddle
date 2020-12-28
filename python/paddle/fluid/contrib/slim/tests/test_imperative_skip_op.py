@@ -26,8 +26,7 @@ from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, ReLU6
-from paddle.nn import Linear, Conv2D, Softmax, BatchNorm
+from paddle.nn import Linear, Conv2D, Softmax
 from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.log_helper import get_logger
 
@@ -63,9 +62,6 @@ class ImperativeLenet(fluid.dygraph.Layer):
             weight_attr=conv2d_w1_attr,
             bias_attr=conv2d_b1_attr)
         self.conv2d_0.skip_quant = True
-
-        self.batch_norm_0 = BatchNorm(6)
-        self.relu_0 = ReLU()
         self.pool2d_0 = Pool2D(pool_size=2, pool_type='max', pool_stride=2)
         self.conv2d_1 = Conv2D(
             in_channels=6,
@@ -76,9 +72,6 @@ class ImperativeLenet(fluid.dygraph.Layer):
             weight_attr=conv2d_w2_attr,
             bias_attr=conv2d_b2_attr)
         self.conv2d_1.skip_quant = False
-
-        self.batch_norm_1 = BatchNorm(16)
-        self.relu6_0 = ReLU6()
         self.pool2d_1 = Pool2D(pool_size=2, pool_type='max', pool_stride=2)
         self.linear_0 = Linear(
             in_features=400,
@@ -86,16 +79,12 @@ class ImperativeLenet(fluid.dygraph.Layer):
             weight_attr=fc_w1_attr,
             bias_attr=fc_b1_attr)
         self.linear_0.skip_quant = True
-
-        self.leaky_relu_0 = LeakyReLU()
         self.linear_1 = Linear(
             in_features=120,
             out_features=84,
             weight_attr=fc_w2_attr,
             bias_attr=fc_b2_attr)
         self.linear_1.skip_quant = False
-
-        self.sigmoid_0 = Sigmoid()
         self.linear_2 = Linear(
             in_features=84,
             out_features=num_classes,
@@ -106,20 +95,14 @@ class ImperativeLenet(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         x = self.conv2d_0(inputs)
-        x = self.batch_norm_0(x)
-        x = self.relu_0(x)
         x = self.pool2d_0(x)
         x = self.conv2d_1(x)
-        x = self.batch_norm_1(x)
-        x = self.relu6_0(x)
         x = self.pool2d_1(x)
 
         x = fluid.layers.flatten(x, 1)
 
         x = self.linear_0(x)
-        x = self.leaky_relu_0(x)
         x = self.linear_1(x)
-        x = self.sigmoid_0(x)
         x = self.linear_2(x)
         x = self.softmax_0(x)
 
@@ -129,7 +112,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
 class TestImperativeOutSclae(unittest.TestCase):
     def test_out_scale_acc(self):
         seed = 1000
-        lr = 0.1
+        lr = 0.001
 
         imperative_out_scale = ImperativeQuantAware()
 
