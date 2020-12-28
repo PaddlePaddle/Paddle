@@ -10,13 +10,14 @@ ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 ENV PATH /opt/rh/devtoolset-2/root/usr/bin:$PATH
-ENV LD_LIBRARY_PATH /opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH /usr/local/ssl/lib:/opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:${LD_LIBRARY_PATH}
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
-RUN yum install -y gettext-devel sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz wget curl-devel
+RUN yum install -y bzip2 gettext-devel sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz wget curl-devel
 COPY build_scripts /build_scripts
 RUN bash build_scripts/build.sh
 RUN bash build_scripts/install_nccl2.sh 
+RUN bash build_scripts/install_trt.sh 
 RUN rm -rf build_scripts
 
 ENV SSL_CERT_FILE=/opt/_internal/certs.pem
@@ -25,7 +26,7 @@ ENV SSL_CERT_FILE=/opt/_internal/certs.pem
 RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
   tar -xvf git-2.17.1.tar.gz && \
   cd git-2.17.1 && \
-  ./configure --prefix=/usr/local && \
+  ./configure --with-openssl=/usr/local/ssl --prefix=/usr/local && \
   make -j8 && make install 
 
 # for paddle
@@ -37,10 +38,10 @@ RUN wget --no-check-certificate -qO- https://storage.googleapis.com/golang/go1.8
 
 
 ENV GOROOT=/usr/local/go GOPATH=/root/gopath
-ENV PATH=${GOROOT}/bin:${GOPATH}/bin:${PATH}
+ENV PATH=/usr/local/ssl:${GOROOT}/bin:${GOPATH}/bin:${PATH}
 
 # protobuf 3.6.1
-RUN cd /opt && wget -q --no-check-certificate https://github.com/google/protobuf/releases/download/v3.6.1/protobuf-cpp-3.6.1.tar.gz && \
+RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/protobuf-cpp-3.6.1.tar.gz && \ 
     tar xzf protobuf-cpp-3.6.1.tar.gz && \
     cd protobuf-3.6.1 && ./configure && make -j4 && make install && cd .. && rm -f protobuf-cpp-3.6.1.tar.gz
 
@@ -78,8 +79,5 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     ./configure -prefix=/usr/local/ccache-3.7.9 && \
     make -j8 && make install && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
-
-# Downgrade gcc&&g++
-<install_gcc>
 
 CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]

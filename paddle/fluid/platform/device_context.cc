@@ -482,6 +482,15 @@ MKLDNNDeviceContextThreadLocals::Body::get_cur_paddle_data_layout(void) {
   return cur_paddle_data_layout;
 }
 
+void MKLDNNDeviceContextThreadLocals::Body::log_lib_version(void) {
+  if (!said_once) {
+    said_once = true;
+    auto dv = dnnl::version();
+    LOG(INFO) << "oneDNN v" << dv->major << "." << dv->minor << "."
+              << dv->patch;
+  }
+}
+
 void MKLDNNDeviceContext::ResetBlobMap() {
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
   if (!block_next_cache_clearing_) {

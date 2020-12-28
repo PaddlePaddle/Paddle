@@ -22,6 +22,8 @@ from __future__ import print_function
 from .random import randperm
 from .attribute import rank  #DEFINE_ALIAS
 from .attribute import shape  #DEFINE_ALIAS
+from .attribute import real  #DEFINE_ALIAS
+from .attribute import imag  #DEFINE_ALIAS
 from .creation import to_tensor  #DEFINE_ALIAS
 from .creation import diag  #DEFINE_ALIAS
 from .creation import eye  #DEFINE_ALIAS
@@ -156,7 +158,6 @@ from .math import log2  #DEFINE_ALIAS
 from .math import log10  #DEFINE_ALIAS
 from .math import log1p  #DEFINE_ALIAS
 from .math import erf  #DEFINE_ALIAS
-# from .math import addcmul  #DEFINE_ALIAS
 from .math import addmm  #DEFINE_ALIAS
 from .math import clip  #DEFINE_ALIAS
 from .math import trace  #DEFINE_ALIAS
@@ -168,6 +169,7 @@ from .math import prod  #DEFINE_ALIAS
 from .math import all  #DEFINE_ALIAS
 from .math import any  #DEFINE_ALIAS
 from .math import broadcast_shape  #DEFINE_ALIAS
+from .math import conj  #DEFINE_ALIAS
 
 from .random import multinomial  #DEFINE_ALIAS
 from .random import standard_normal

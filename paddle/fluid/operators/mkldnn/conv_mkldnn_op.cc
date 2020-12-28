@@ -95,7 +95,7 @@ class ConvMKLDNNHandlerT
                      const std::string& unique_name)
       : platform::MKLDNNHandlerT<T, mkldnn::convolution_forward>(
             dev_ctx, mkldnn_engine, cpu_place,
-            platform::CreateKey(framework::vectorize(input->dims()),
+            platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
                                 unique_name)) {
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(
@@ -521,8 +521,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
 
-    std::string key = platform::CreateKey(
-        src_tz, src_dt, ctx.InputName("Input") + ctx.InputName("Filter"));
+    std::string key =
+        platform::CreateKey(dev_ctx, src_tz, src_dt,
+                            ctx.InputName("Input") + ctx.InputName("Filter"));
 
     const std::string key_conv_pd = key + "@conv_pd";
     bool need_s8_to_u8 = false;
@@ -537,21 +538,17 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // This is workaround for hacky implementation
     // of conv int8 mkl-dnn. Once conv fp32 and conv int8
     // are merged/unified, this will disappear
-    std::string key_tid = "";
-    if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() ==
-        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
-      key_tid = "-t:" + platform::ThreadIDasStr();
-    }
+    auto key_tid = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
-    auto prim_key = key + key_tid + "@conv_p";
-    auto dst_key = key + key_tid + "@dst_mem_p";
-    auto src_key = key + key_tid + "@src_mem_p";
-    auto weights_key = key + key_tid + "@weights_mem_p";
-    auto bias_key = key + key_tid + "@bias_mem_p";
-    auto user_src_key = key + key_tid + "@user_src_mem_p";
-    auto user_residual_key = key + key_tid + "@user_residual_data_mem_p";
-    auto src_reorder_key = key + key_tid + "@src_mem_preorder_p";
-    auto residual_reorder_key = key + key_tid + "@residual_data_mem_preorder_p";
+    auto prim_key = key_tid + "@conv_p";
+    auto dst_key = key_tid + "@dst_mem_p";
+    auto src_key = key_tid + "@src_mem_p";
+    auto weights_key = key_tid + "@weights_mem_p";
+    auto bias_key = key_tid + "@bias_mem_p";
+    auto user_src_key = key_tid + "@user_src_mem_p";
+    auto user_residual_key = key_tid + "@user_residual_data_mem_p";
+    auto src_reorder_key = key_tid + "@src_mem_preorder_p";
+    auto residual_reorder_key = key_tid + "@residual_data_mem_preorder_p";
 
     conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
         dev_ctx.GetBlob(prim_key));
@@ -964,10 +961,11 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // Get an unique name from "argument" name of "input" and "Filter" variable
     // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
-    const std::string key = platform::CreateKey(
-        src_tz, ctx.InputName("Input") + ctx.InputName("Filter"));
+    std::string key = platform::CreateKey(
+        dev_ctx, src_tz, ctx.InputName("Input") + ctx.InputName("Filter"));
 
     const std::string key_conv_pd = key + "@fwd_pd";
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
     std::vector<primitive> pipeline;
 
     // Create user memory descriptors
@@ -1082,8 +1080,9 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         mkldnn::memory::format_tag out_format =
             weights_tz.size() == 6 ? mkldnn::memory::format_tag::goidhw
                                    : mkldnn::memory::format_tag::goihw;
-        const std::string key =
-            platform::CreateKey(weights_tz, filter_fmt, out_format, in_type);
+        std::string key = platform::CreateKey(dev_ctx, weights_tz, filter_fmt,
+                                              out_format, in_type);
+        key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
         platform::ReorderMKLDNNHandler handler(weights_tz, filter_grad->type(),
                                                in_type, dev_ctx, mkldnn_engine,

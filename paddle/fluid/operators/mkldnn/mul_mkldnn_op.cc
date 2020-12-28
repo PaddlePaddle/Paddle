@@ -296,9 +296,11 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const MKLDNNDeviceContext &dev_ctx, const ExecutionContext &ctx,
     const Tensor *input_x, const Tensor *input_y,
     const mkldnn::engine &mkldnn_engine) {
-  const std::string key = platform::CreateKey(
-      input_x->type(), framework::vectorize(input_x->dims()), input_y->type(),
-      framework::vectorize(input_y->dims()), ctx.OutputName("Out"));
+  std::string key = platform::CreateKey(
+      dev_ctx, input_x->type(), framework::vectorize(input_x->dims()),
+      input_y->type(), framework::vectorize(input_y->dims()),
+      ctx.OutputName("Out"));
+  key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
   auto prim_creator = std::static_pointer_cast<MulPrimitiveFactory<XT, YT, OT>>(
       dev_ctx.GetBlob(key));
@@ -342,6 +344,7 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL Mul must use CPUPlace"));
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto &mkldnn_engine = dev_ctx.GetEngine();
 

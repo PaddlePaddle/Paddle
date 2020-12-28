@@ -361,8 +361,9 @@ class FCPrimitiveFactory {
 
   void CacheWeightsAndBias(const MKLDNNDeviceContext& dev_ctx,
                            const ExecutionContext& ctx) {
-    const std::string key =
-        platform::CreateKey(platform::ThreadIDasStr(), dev_ctx.GetKeySuffix());
+    std::string key = platform::CreateKey(dev_ctx);
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+
     const std::string weights_key = key + ctx.InputName("W");
     const std::string bias_key = key + ctx.InputName("Bias");
     dev_ctx.SetBlob(weights_key, weights_);
@@ -532,10 +533,11 @@ static void ExecuteFc(const ExecutionContext& ctx, const LoDTensor* input,
                       const Tensor* w, const Tensor* bias, LoDTensor* output,
                       bool fuse_relu, bool force_fp32_output) {
   auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-  const std::string prim_key = platform::CreateKey(
-      platform::ThreadIDasStr(), dev_ctx.GetKeySuffix(), input->format(),
-      input->dims()[0], framework::vectorize<int>(w->dims()),
-      ctx.OutputName("Out"));
+  std::string prim_key = platform::CreateKey(
+      dev_ctx, input->format(), input->dims()[0],
+      framework::vectorize<int>(w->dims()), ctx.OutputName("Out"));
+  prim_key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, prim_key);
+
   constexpr bool is_int8 =
       std::is_same<T_in, int8_t>::value || std::is_same<T_in, uint8_t>::value;
   bool is_bfloat16 = std::is_same<T_in, paddle::platform::bfloat16>::value;
@@ -561,6 +563,7 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(ctx.GetPlace()), true,
         platform::errors::PreconditionNotMet("FC MKL-DNN must use CPUPlace."));
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     auto input = ctx.Input<LoDTensor>("Input");
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");
