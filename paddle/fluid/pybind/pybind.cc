@@ -103,12 +103,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/pybind/communicator_py.h"
-#endif
-
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
+#endif
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
 #include "pybind11/stl.h"
@@ -1308,6 +1308,7 @@ All parameter, weight, gradient are variables in Paddle.
        "The module will return special predefined variable name in Paddle")
       .def("empty", []() { return kEmptyVarName; })
       .def("temp", []() { return kTempVarName; });
+
   // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
       .def_static("create",
@@ -2080,10 +2081,10 @@ All parameter, weight, gradient are variables in Paddle.
                                               exec_strategy=exec_strategy)
         )DOC");
 
-  py::enum_<ExecutionStrategy::UseDevice>(exec_strategy, "UseDevice")
-      .value("CPU", ExecutionStrategy::UseDevice::kCPU)
-      .value("CUDA", ExecutionStrategy::UseDevice::kCUDA)
-      .value("XPU", ExecutionStrategy::UseDevice::kXPU);
+  py::enum_<paddle::platform::DeviceType>(m, "DeviceType", py::arithmetic())
+      .value("CPU", paddle::platform::DeviceType::CPU)
+      .value("CUDA", paddle::platform::DeviceType::CUDA)
+      .value("XPU", paddle::platform::DeviceType::XPU);
 
   exec_strategy.def(py::init())
       .def_property(
@@ -2117,7 +2118,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property(
           "_use_device",
           [](const ExecutionStrategy &self) { return self.use_device_; },
-          [](ExecutionStrategy &self, ExecutionStrategy::UseDevice use_device) {
+          [](ExecutionStrategy &self, paddle::platform::DeviceType use_device) {
             self.use_device_ = use_device;
           })  // NOTE(liuyuhui): Doesn't add doc for 'use_device', because
               // use_device isn‘t exposed to users.
@@ -2837,10 +2838,13 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
 #endif
+
 #ifdef PADDLE_WITH_DISTRIBUTE
-  BindCommunicator(&m);
+  BindDistFleetWrapper(&m);
+  BindPSHost(&m);
   BindCommunicatorContext(&m);
-  BindLargeScaleKV(&m);
+  BindDistCommunicator(&m);
+  BindHeterClient(&m);
 #endif
 }
 }  // namespace pybind

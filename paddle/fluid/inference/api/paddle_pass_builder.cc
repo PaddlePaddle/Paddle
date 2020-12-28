@@ -71,7 +71,8 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "conv_affine_channel_fuse_pass",                 //
+  "conv_affine_channel_fuse_pass",  //
+      "adaptive_pool2d_convert_global_pass",
       "conv_eltwiseadd_affine_channel_fuse_pass",  //
       "shuffle_channel_detect_pass",               //
       "quant_conv2d_dequant_fuse_pass",            //
@@ -82,6 +83,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "multihead_matmul_fuse_pass_v2",          //
       "skip_layernorm_fuse_pass",               //
       "conv_bn_fuse_pass",                      //
+      "unsqueeze2_eltwise_fuse_pass",           //
       "squeeze2_matmul_fuse_pass",              //
       "reshape2_matmul_fuse_pass",              //
       "map_matmul_to_mul_pass",                 //
@@ -216,6 +218,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "matmul_transpose_reshape_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
              // "fc_mkldnn_pass",
+             // "fc_act_mkldnn_fuse_pass",
              "batch_norm_act_fuse_pass",
              "mkldnn_inplace_pass",  // This pass should be activated after
                                      // fuses
