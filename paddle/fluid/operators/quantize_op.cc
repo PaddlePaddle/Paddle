@@ -61,9 +61,7 @@ REGISTER_OP_VERSION(quantize)
         R"ROC( Add a new attribute [bfloat16])ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "bfloat16", "If true, float32 input is converted to bfloat16",
-            false));
-
-REGISTER_OP_VERSION(quantize)
+            false))
     .AddCheckpoint(
         R"ROC( Add a new attribute [Shift])ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
