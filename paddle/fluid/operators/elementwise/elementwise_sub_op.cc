@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
@@ -156,3 +157,12 @@ REGISTER_OP_CPU_KERNEL(
                                         paddle::platform::complex64>,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         paddle::platform::complex128>);
+
+REGISTER_OP_VERSION(elementwise_sub)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_sub for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_sub.",
+            1.0f));
