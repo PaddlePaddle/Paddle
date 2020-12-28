@@ -490,7 +490,7 @@ def rotate(img,
         M[0, 2] += (nw - w) * 0.5
         M[1, 2] += (nh - h) * 0.5
 
-        w, h = nw, nh
+        w, h = int(nw), int(nh)
 
     if len(img.shape) == 3 and img.shape[2] == 1:
         return cv2.warpAffine(
