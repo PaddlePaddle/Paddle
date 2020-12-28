@@ -120,7 +120,10 @@ class Tensor {
   friend struct EigenVector;
 
  public:
-  Tensor() : type_(proto::VarType::FP32), offset_(0) {}
+  Tensor()
+      : type_(proto::VarType::FP32),
+        offset_(0),
+        inplace_version_counter_(std::make_shared<TensorInplaceVersion>(0)) {}
 
   explicit Tensor(const proto::VarType::Type&);
 
@@ -170,6 +173,9 @@ class Tensor {
 
   /*! The internal of two tensors share the same memory block. */
   Tensor& ShareDataWith(const Tensor& src);
+
+  /*! The internal of two tensors share the same inplace version counter. */
+  Tensor& ShareInplaceVersionCounterWith(const Tensor& src);
 
   /**
    * @brief  Return a sub-tensor of the given tensor.
@@ -252,7 +258,7 @@ class Tensor {
                            const proto::VarType::Type type);
 
   TensorInplaceVersion& InplaceVersionCounter() {
-    return inplace_version_counter_;
+    return *inplace_version_counter_;
   }
 
  private:
@@ -290,7 +296,7 @@ class Tensor {
    *          PlaceHolder::ptr_ and where the tensor data really begins.
    */
   size_t offset_;
-  TensorInplaceVersion inplace_version_counter_;
+  std::shared_ptr<TensorInplaceVersion> inplace_version_counter_;
 };
 
 }  // namespace framework
