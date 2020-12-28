@@ -148,8 +148,7 @@ ConstructDuplicableOutput(const size_t num) {
   return res;
 }
 
-static inline std::shared_ptr<imperative::VarBase>
-ConstructReuseAllocationOutput(
+static inline std::shared_ptr<imperative::VarBase> ConstructViewOutput(
     const std::shared_ptr<imperative::VarBase>& input_var) {
   PADDLE_ENFORCE_EQ(
       input_var->Var().IsInitialized(), true,
@@ -163,11 +162,11 @@ ConstructReuseAllocationOutput(
                         input_var->Name()));
 
   auto tracer = imperative::GetCurrentTracer();
-  auto reuse_allocation_output_var = std::shared_ptr<imperative::VarBase>(
+  auto view_output_var = std::shared_ptr<imperative::VarBase>(
       new imperative::VarBase(tracer->GenerateUniqueName()));
-  reuse_allocation_output_var->SetPersistable(input_var->Persistable());
-  reuse_allocation_output_var->SetType(input_var->Type());
-  reuse_allocation_output_var->SetDataType(input_var->DataType());
+  view_output_var->SetPersistable(input_var->Persistable());
+  view_output_var->SetType(input_var->Type());
+  view_output_var->SetDataType(input_var->DataType());
 
   if (input_var->Var().IsType<framework::LoDTensor>()) {
     const auto& input_tensor = input_var->Var().Get<framework::LoDTensor>();
@@ -176,12 +175,10 @@ ConstructReuseAllocationOutput(
         platform::errors::InvalidArgument(
             "LoDTensor %s has not been initialized!", input_var->Name()));
 
-    auto* reuse_allocation_output_tensor =
-        reuse_allocation_output_var->MutableVar()
-            ->GetMutable<framework::LoDTensor>();
-    reuse_allocation_output_tensor->ShareDataWith(input_tensor);
-    reuse_allocation_output_tensor->ShareInplaceVersionCounterWith(
-        input_tensor);
+    auto* view_output_tensor =
+        view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
+    view_output_tensor->ShareDataWith(input_tensor);
+    view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
   } else {
     const auto& input_selected_rows =
         input_var->Var().Get<framework::SelectedRows>();
@@ -190,22 +187,20 @@ ConstructReuseAllocationOutput(
         platform::errors::InvalidArgument(
             "SelectedRows %s has not been initialized!", input_var->Name()));
 
-    auto* reuse_allocation_output_selected_rows =
-        reuse_allocation_output_var->MutableVar()
-            ->GetMutable<framework::SelectedRows>();
-    reuse_allocation_output_selected_rows->set_height(
-        input_selected_rows.height());
-    reuse_allocation_output_selected_rows->set_rows(input_selected_rows.rows());
-    reuse_allocation_output_selected_rows->mutable_value()->ShareDataWith(
+    auto* view_output_selected_rows =
+        view_output_var->MutableVar()->GetMutable<framework::SelectedRows>();
+    view_output_selected_rows->set_height(input_selected_rows.height());
+    view_output_selected_rows->set_rows(input_selected_rows.rows());
+    view_output_selected_rows->mutable_value()->ShareDataWith(
         input_selected_rows.value());
-    reuse_allocation_output_selected_rows->mutable_value()
-        ->ShareInplaceVersionCounterWith(input_selected_rows.value());
+    view_output_selected_rows->mutable_value()->ShareInplaceVersionCounterWith(
+        input_selected_rows.value());
   }
 
-  VLOG(3) << "The output Var(" << reuse_allocation_output_var->Name()
+  VLOG(3) << "The output Var(" << view_output_var->Name()
           << ") share allocation with Input Var(" << input_var->Name() << ").";
 
-  return reuse_allocation_output_var;
+  return view_output_var;
 }
 }  // namespace pybind
 }  // namespace paddle
