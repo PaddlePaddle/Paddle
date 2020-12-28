@@ -123,7 +123,7 @@ class XPUDeviceContext : public DeviceContext {
   void Wait() const override;
 
 #ifdef PADDLE_WITH_XPU_BKCL
-  /*! \brief  Return nccl context. */
+  /*! \brief  Return bkcl context. */
   BKCLContext_t bkcl_context() const { return bkcl_context_; }
 
   /*! \brief  Set bkcl context. */
