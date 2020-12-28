@@ -35,14 +35,14 @@ class TestTransformerWithIR(TestParallelExecutorBase):
             # check python transpiler
             self.check_network_convergence(
                 transformer,
-                use_device=DeviceType.GPU,
+                use_device=DeviceType.CUDA,
                 feed_data_reader=get_feed_data_reader(),
                 use_ir_memory_optimize=False,
                 iter=2)
             # check IR memory optimize
             self.check_network_convergence(
                 transformer,
-                use_device=DeviceType.GPU,
+                use_device=DeviceType.CUDA,
                 feed_data_reader=get_feed_data_reader(),
                 use_ir_memory_optimize=True,
                 iter=2)

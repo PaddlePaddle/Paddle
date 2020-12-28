@@ -35,7 +35,7 @@ class TestParallelExecutorBase(unittest.TestCase):
     @classmethod
     def check_network_convergence(cls,
                                   method,
-                                  use_device=DeviceType.GPU,
+                                  use_device=DeviceType.CUDA,
                                   iter=5,
                                   batch_size=None,
                                   feed_dict=None,
@@ -76,7 +76,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                               main, method, optimizer)
 
         place = fluid.CUDAPlace(
-            0) if use_device == DeviceType.GPU else fluid.XPUPlace(
+            0) if use_device == DeviceType.CUDA else fluid.XPUPlace(
                 0) if use_device == DeviceType.XPU else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup)
@@ -97,7 +97,7 @@ class TestParallelExecutorBase(unittest.TestCase):
 
         if batch_size is not None:
             batch_size *= fluid.core.get_cuda_device_count(
-            ) if use_device == DeviceType.GPU else fluid.core.get_xpu_device_count(
+            ) if use_device == DeviceType.CUDA else fluid.core.get_xpu_device_count(
             ) if use_device == DeviceType.XPU else int(
                 os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
 
@@ -127,7 +127,7 @@ class TestParallelExecutorBase(unittest.TestCase):
     @classmethod
     def check_pass_conflict(cls,
                             method,
-                            use_device=DeviceType.GPU,
+                            use_device=DeviceType.CUDA,
                             feed_dict=None,
                             get_data_from_feeder=None,
                             use_reduce=False,
@@ -148,7 +148,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                               main, method, optimizer)
 
         place = fluid.CUDAPlace(
-            0) if use_device == DeviceType.GPU else fluid.XPUPlace(
+            0) if use_device == DeviceType.CUDA else fluid.XPUPlace(
                 0) if use_device == DeviceType.XPU else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup)
@@ -186,7 +186,7 @@ class TestParallelExecutorBase(unittest.TestCase):
         build_strategy.enable_inplace = enable_inplace
         build_strategy.enable_sequential_execution = enable_sequential_execution
 
-        if use_device == DeviceType.GPU and core.is_compiled_with_cuda():
+        if use_device == DeviceType.CUDA and core.is_compiled_with_cuda():
             build_strategy.remove_unnecessary_lock = True
         if use_device == DeviceType.XPU and core.is_compiled_with_xpu():
             build_strategy.fuse_elewise_add_act_ops = False
