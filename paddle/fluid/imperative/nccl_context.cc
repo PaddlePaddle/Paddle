@@ -186,7 +186,7 @@ void NCCLParallelContext::Init() {
 
   int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
   for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
-    VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
+    VLOG(1) << "init nccl context nranks: " << strategy_.nranks_
             << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
             << " ring id: " << ring_id;
     // it will assign nccl_comm in CUDADeviceContext within ring_id
