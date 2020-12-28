@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex64.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 namespace paddle {
 namespace framework {
