@@ -24,6 +24,15 @@ def check_path_exists(path):
     assert os.path.exists(path), "%s does not exist." % path
 
 
+def parse_case_name(log_file_name):
+    """Parse case name.
+    """
+    case_id, case_info = log_file_name.split("-")
+    direction = case_info.split(".")[0].split("_")[-1]
+
+    return "%s(%s)" % (case_id, direction)
+
+
 def parse_log_file(log_file):
     """Load one case result from log file.
     """
@@ -40,6 +49,9 @@ def parse_log_file(log_file):
 
     if result is None:
         logging.warning("Parse %s fail!" % log_file)
+
+    if result.get("disabled", False) == True:
+        return None
 
     return result
 
@@ -76,6 +88,7 @@ def check_speed_result(case_name, develop_data, pr_data, pr_result):
     for line in pr_result.get("parameters").strip().split("\n"):
         logging.info("\t%s" % line)
 
+    return True
     return gpu_time_diff > 0.05
 
 
@@ -157,7 +170,7 @@ if __name__ == "__main__":
         pr_result = parse_log_file(os.path.join(args.pr_logs_dir, log_file))
         if develop_result is None or pr_result is None:
             continue
-        case_name = log_file.split("-")[0]
+        case_name = parse_case_name(log_file)
         compare_benchmark_result(case_name, develop_result, pr_result,
                                  check_results)
 
