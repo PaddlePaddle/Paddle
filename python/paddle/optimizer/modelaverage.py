@@ -269,6 +269,49 @@ class ModelAverage(Optimizer):
                  startup_program=None,
                  parameters=None,
                  no_grad_set=None):
+        """
+        Add operations to minimize ``loss`` by updating ``parameters``.
+
+        Args:
+            loss (Tensor): A ``Tensor`` containing the value to minimize.
+            startup_program (Program, optional): :ref:`api_fluid_Program` for
+                initializing parameters in ``parameters``. The default value
+                is None, at this time :ref:`api_fluid_default_startup_program` will be used.
+            parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
+                to minimize ``loss``. The default value is None, at this time all parameters
+                will be updated.
+            no_grad_set (set, optional): Set of ``Tensor``  or ``Tensor.name`` that don't need
+                to be updated. The default value is None.
+
+        Returns:
+            tuple: tuple (optimize_ops, params_grads), A list of operators appended
+            by minimize and a list of (param, grad) tensor pairs, param is
+            ``Parameter``, grad is the gradient value corresponding to the parameter.
+            In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
+            indicate program pruning. If so, the program will be pruned by ``feed`` and 
+            ``fetch_list`` before run, see details in ``Executor``.
+
+        Examples:
+        
+            .. code-block:: python
+
+                import paddle
+                import numpy as np
+                inp = paddle.ones(shape=[1, 10], dtype='float32')
+                linear = paddle.nn.Linear(10, 1)
+                out = linear(inp)
+                loss = paddle.mean(out)
+                sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+
+                modelaverage = paddle.optimizer.ModelAverage(sgd,
+                                                            0.15,
+                                                            parameters=linear.parameters(),
+                                                            min_average_window=2,
+                                                            max_average_window=4)
+                loss.backward()
+                modelaverage.step()
+                modelaverage.clear_grad()
+        """
         assert isinstance(loss, Variable), "The loss should be an Tensor."
 
         optimize_ops, params_grads = self.inner_optimizer.minimize(
@@ -301,6 +344,7 @@ class ModelAverage(Optimizer):
             None
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
@@ -318,7 +362,7 @@ class ModelAverage(Optimizer):
                                                             max_average_window=4)
                 loss.backward()
                 modelaverage.step()
-                adam.clear_grad()
+                modelaverage.clear_grad()
         """
         self.inner_optimizer.step()
 
@@ -340,12 +384,16 @@ class ModelAverage(Optimizer):
     @imperative_base.no_grad
     def apply(self, executor=None, need_restore=True):
         """
-        Execute the optimizer and update parameters once.
-        
-        Returns:
-            None
+        Apply the average of the cumulative ``Parameter`` to the parameters of the current model.
+
+        Args:
+            executor(None|paddle.static.Executor): The network executor in static-graph mode.
+            need_restore(bool): Restore flag variable, if set to True, the network will restore
+                the parameters of the network to the default value, if set to False,
+                it will not be restored. The default value is True.
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
@@ -416,12 +464,13 @@ class ModelAverage(Optimizer):
     @imperative_base.no_grad
     def restore(self, executor=None):
         """
-        Execute the optimizer and update parameters once.
+        Restore ``Parameter`` values of current model.
         
-        Returns:
-            None
+        Args:
+            executor(None|paddle.static.Executor): The network executor in static-graph mode.
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
