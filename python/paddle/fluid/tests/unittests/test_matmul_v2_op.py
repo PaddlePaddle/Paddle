@@ -358,6 +358,53 @@ create_test_fp16_class(TestMatMuklOp16)
 create_test_fp16_class(TestMatMuklOp17)
 
 
+class TestMatMulV2API(unittest.TestCase):
+    def setUp(self):
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input_x = fluid.data(name="input_x", shape=[4, 3], dtype="float32")
+            input_y = fluid.data(name="input_y", shape=[3, 4], dtype="float32")
+
+            result = paddle.matmul(input_x, input_y)
+
+            x_np = np.random.random([4, 3]).astype("float32")
+            y_np = np.random.random([3, 4]).astype("float32")
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input_x": x_np,
+                                    "input_y": y_np},
+                              fetch_list=[result])
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                input_x = np.random.random([4, 3]).astype("float64")
+                input_y = np.random.random([3, 4]).astype("float64")
+                x = paddle.to_tensor(input_x)
+                y = paddle.to_tensor(input_y)
+                result = paddle.matmul(x, y)
+
+    def test_dygraph_fp16(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                with fluid.dygraph.guard(place):
+                    input_x = np.random.random([4, 3]).astype("float16")
+                    input_y = np.random.random([3, 4]).astype("float16")
+                    x = paddle.to_tensor(input_x)
+                    y = paddle.to_tensor(input_y)
+                    result = paddle.matmul(x, y)
+
+
 class TestComplexMatMulOp(OpTest):
     def setUp(self):
         self.op_type = "matmul_v2"
