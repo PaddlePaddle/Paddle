@@ -24,21 +24,24 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 
 
-def create_convert_shape_node(var_shape_node):
+def create_convert_shape_node(var_shape_node, slice_node=None):
     assert isinstance(var_shape_node, (gast.Attribute, gast.Subscript))
 
-    convert_var_shape_func = "paddle.jit.dy2static.convert_var_shape"
-
     if isinstance(var_shape_node, gast.Attribute):
-        api_shape_node = gast.Call(
-            func=gast.parse(convert_var_shape_func).body[0].value,
-            args=[var_shape_node.value],
-            keywords=[])
+        args = [ast_to_source_code(var_shape_node.value).strip()]
+        if slice_node:
+            args.append(ast_to_source_code(slice_node).strip())
+
+        convert_var_shape_func = "paddle.jit.dy2static.convert_var_shape({})".format(
+            ",".join(args))
+
+        api_shape_node = gast.parse(convert_var_shape_func).body[0].value
         return api_shape_node
 
     if isinstance(var_shape_node, gast.Subscript):
         result_node = copy.deepcopy(var_shape_node)
-        result_node.value = create_convert_shape_node(result_node.value)
+        result_node = create_convert_shape_node(result_node.value,
+                                                result_node.slice)
         return result_node
 
 
@@ -70,6 +73,22 @@ class TensorShapeTransformer(gast.NodeTransformer):
         if self._update_name_to_var_shape(node):
             return node
         self.generic_visit(node)
+        return node
+
+    def visit_Subscript(self, node):
+        value_node = node.value
+        slice_node = node.slice
+        if isinstance(value_node, gast.Name):
+            if value_node.id in self.name_to_var_shape and self._used_by_paddle_api(
+                    value_node):
+                var_shape_node = self.name_to_var_shape[value_node.id]
+                return create_convert_shape_node(var_shape_node, slice_node)
+
+        if isinstance(value_node, gast.Attribute):
+            if self._used_by_paddle_api(value_node) and self.is_var_shape(
+                    value_node):
+                return create_convert_shape_node(value_node, slice_node)
+
         return node
 
     def visit_Attribute(self, node):

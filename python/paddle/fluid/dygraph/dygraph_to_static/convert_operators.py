@@ -262,14 +262,28 @@ def convert_len(var):
         return len(var)
 
 
-def convert_var_shape(x):
+def convert_var_shape(x, idx=None):
     """
     A function representation of the shape of variable.
     """
-    if isinstance(x, Variable):
-        return nn.shape(x)
+
+    def has_negetive(list_shape, idx=None):
+        if idx is not None:
+            return list_shape[idx] < 0
+
+        num_negetive = sum([1 if i < 0 else 0 for i in list_shape])
+        return num_negetive > 0
+
+    if idx is None:
+        if has_negetive(x.shape, idx) and isinstance(x, Variable):
+            return nn.shape(x)
+        else:
+            return x.shape
     else:
-        return x.shape
+        if has_negetive(x.shape, idx) and isinstance(x, Variable):
+            return nn.shape(x)[idx]
+        else:
+            return x.shape[idx]
 
 
 def convert_shape_compare(left, *args):
