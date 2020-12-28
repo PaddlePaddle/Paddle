@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import os
 import six
+import sys
 import unittest
 
 import paddle
@@ -89,13 +90,12 @@ def train():
     return check_result
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestNoSingleProcessUsingMultiGpusInSpawn(unittest.TestCase):
     def test_multi_gpus_used(self):
-        context = dist.spawn(train, nprocs=8)
-        for res_queue in context.return_queues:
-            self.assertFalse(res_queue.get())
+        if core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+            context = dist.spawn(train, nprocs=2)
+            for res_queue in context.return_queues:
+                self.assertFalse(res_queue.get())
 
 
 if __name__ == '__main__':
