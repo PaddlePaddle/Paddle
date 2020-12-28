@@ -941,7 +941,7 @@ EOF
         echo "ipipe_log_param_Exclusive_TestCases_Count: $num"
     else
         echo "$2 card TestCases count is $num"
-        echo "ipipe_log_param_${2}_Cards_TestCases_Count $num"
+        echo "ipipe_log_param_${2}_Cards_TestCases_Count: $num"
     fi
 }
 
