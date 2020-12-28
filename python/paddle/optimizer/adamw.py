@@ -210,7 +210,6 @@ class AdamW(Adam):
     @framework.dygraph_only
     @imperative_base.no_grad
     def step(self):
-        self._dtype = None
         params_grads = []
         for param in self._parameter_list:
             if not param.trainable:
