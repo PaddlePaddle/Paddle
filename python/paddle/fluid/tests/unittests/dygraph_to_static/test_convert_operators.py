@@ -17,6 +17,39 @@ import paddle
 import unittest
 
 
+class CallNotExist(paddle.nn.Layer):
+    def __call__(self):
+        # call a non-exist API to trigger exception
+        return paddle.nn.not_exist_api
+
+
+class ForwardNotExist(paddle.nn.Layer):
+    def forward(self):
+        return 0
+
+
+net = ForwardNotExist()
+setattr(net, "forward", "A string so that convert forward will fail")
+
+
+class TestConvertCall(unittest.TestCase):
+    def test_class_exception(self):
+        @paddle.jit.to_static
+        def call_not_exist():
+            net = CallNotExist()
+            return net()
+
+        with self.assertRaises(AttributeError):
+            call_not_exist()
+
+        @paddle.jit.to_static
+        def forward_not_exist():
+            return net()
+
+        with self.assertRaises(TypeError):
+            forward_not_exist()
+
+
 class TestConvertShapeCompare(unittest.TestCase):
     def test_non_variable(self):
         self.assertEqual(

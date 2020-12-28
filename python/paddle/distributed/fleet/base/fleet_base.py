@@ -16,6 +16,7 @@ from __future__ import print_function
 import copy
 import warnings
 import paddle
+import os
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid import compiler
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
@@ -93,7 +94,7 @@ class Fleet(object):
             paddle.enable_static()
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
-            fleet.init(strategy)
+            fleet.init(strategy=strategy)
 
             optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             optimizer = fleet.distributed_optimizer(optimizer)
@@ -176,9 +177,12 @@ class Fleet(object):
 
                 import paddle.distributed.fleet as fleet
                 strategy = fleet.DistributedStrategy()
-                fleet.init(strategy)
+                fleet.init(strategy=strategy)
 
         """
+        if strategy is None:
+            strategy = DistributedStrategy()
+        self._user_defined_strategy = copy.deepcopy(strategy)
 
         if role_maker is None:
             if isinstance(is_collective, bool):
@@ -218,11 +222,16 @@ class Fleet(object):
                 warnings.warn(
                     "The dygraph parallel environment has been initialized.")
             else:
+                # FLAGS_nccl_nrings is used for dynamic graph multi-stream communication
+                if "FLAGS_nccl_nrings" in os.environ:
+                    warnings.warn(
+                        "You have set the environment variable FLAGS_nccl_nrings "
+                        "outside the program, so the nccl_comm_num in "
+                        "DistributedStrategy will not take effect here.")
+                else:
+                    os.environ["FLAGS_nccl_nrings"] = str(
+                        self._user_defined_strategy.nccl_comm_num)
                 paddle.distributed.init_parallel_env()
-
-        if strategy is None:
-            strategy = DistributedStrategy()
-        self._user_defined_strategy = copy.deepcopy(strategy)
 
     def is_first_worker(self):
         """
@@ -615,10 +624,10 @@ class Fleet(object):
 
         if strategy is not None:
             warnings.warn(
-                "It is recommended to pass in DistributedStrategy"
-                "in fleet.init. The strategy here is for compatibility."
-                "If the `strategy` in fleet.distributed_optimizer() is"
-                "not None, then it will overwrite the DistributedStrategy in fleet.init(),"
+                "It is recommended to use DistributedStrategy "
+                "in fleet.init(). The strategy here is only for compatibility. "
+                "If the strategy in fleet.distributed_optimizer() is "
+                "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
                 "which will take effect in distributed training.")
             self._user_defined_strategy = copy.deepcopy(strategy)
 

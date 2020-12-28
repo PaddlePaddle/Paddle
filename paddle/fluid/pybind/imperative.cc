@@ -527,6 +527,13 @@ void BindImperative(py::module *m_ptr) {
       m, "VarBase", R"DOC()DOC")
       .def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
       .def("__init__",
+           [](imperative::VarBase &self) {
+             std::string name =
+                 imperative::GetCurrentTracer()->GenerateUniqueName(
+                     "generated_tensor");
+             new (&self) imperative::VarBase(name);
+           })
+      .def("__init__",
            [](imperative::VarBase &self, framework::proto::VarType::Type dtype,
               const std::vector<int> &dims, const py::handle &name,
               framework::proto::VarType::Type type, bool persistable) {
@@ -696,6 +703,7 @@ void BindImperative(py::module *m_ptr) {
                  self.Var().IsInitialized(), true,
                  platform::errors::InvalidArgument(
                      "Tensor %s has not been initialized!", self.Name()));
+
              PADDLE_ENFORCE_EQ(
                  self.Var().IsType<framework::LoDTensor>() ||
                      self.Var().IsType<framework::SelectedRows>(),
@@ -703,11 +711,14 @@ void BindImperative(py::module *m_ptr) {
                  platform::errors::InvalidArgument(
                      "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
                      self.Name()));
+
              auto detach_var = std::make_shared<imperative::VarBase>(
                  true, "detach_" + self.Name());
+
              detach_var->SetPersistable(self.Persistable());
              detach_var->SetType(self.Type());
              detach_var->SetDataType(self.DataType());
+
              if (self.Var().IsType<framework::LoDTensor>()) {
                const auto &origin_tensor =
                    self.Var().Get<framework::LoDTensor>();
@@ -719,6 +730,11 @@ void BindImperative(py::module *m_ptr) {
                auto *detach_tensor =
                    detach_var->MutableVar()->GetMutable<framework::LoDTensor>();
                detach_tensor->ShareDataWith(origin_tensor);
+               // NOTE(liym27): Call ShareInplaceVersionCounterWith to share the
+               // same TensorInplaceVersion, which is used to check whether
+               // inplace
+               // operations are correct.
+               detach_tensor->ShareInplaceVersionCounterWith(origin_tensor);
              } else {
                const auto &origin_selected_rows =
                    self.Var().Get<framework::SelectedRows>();
@@ -734,6 +750,9 @@ void BindImperative(py::module *m_ptr) {
                detach_selected_rows->set_rows(origin_selected_rows.rows());
                detach_selected_rows->mutable_value()->ShareDataWith(
                    origin_selected_rows.value());
+               detach_selected_rows->mutable_value()
+                   ->ShareInplaceVersionCounterWith(
+                       origin_selected_rows.value());
              }
              VLOG(3) << "The detached Tensor(" << detach_var->Name()
                      << ") share data with " << self.Name();
@@ -1036,6 +1055,7 @@ void BindImperative(py::module *m_ptr) {
               y = x.cuda(1)
               print(y.place)        # CUDAPlace(1)
        )DOC")
+      .def("copy_", &imperative::VarBase::CopyFrom)
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CPUPlace &place,
               bool blocking) { return self.NewVarBase(place, blocking); },
@@ -1266,7 +1286,13 @@ void BindImperative(py::module *m_ptr) {
                       return self.current_endpoint_;
                     },
                     [](imperative::ParallelStrategy &self,
-                       const std::string &ep) { self.current_endpoint_ = ep; });
+                       const std::string &ep) { self.current_endpoint_ = ep; })
+      .def_property(
+          "nrings",
+          [](const imperative::ParallelStrategy &self) { return self.nrings_; },
+          [](imperative::ParallelStrategy &self, int nrings) {
+            self.nrings_ = nrings;
+          });
 
   m.def(
       "dygraph_partial_grad",
@@ -1302,9 +1328,11 @@ void BindImperative(py::module *m_ptr) {
           [](const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
              const std::vector<std::vector<size_t>> &group_indices,
              const std::vector<bool> &is_sparse_gradient,
-             std::shared_ptr<imperative::ParallelContext> parallel_ctx) {
+             std::shared_ptr<imperative::ParallelContext> parallel_ctx,
+             const std::vector<size_t> &group_size_limits) {
             return imperative::Reducer::SetInstance(
-                vars, group_indices, is_sparse_gradient, parallel_ctx);
+                vars, group_indices, is_sparse_gradient, parallel_ctx,
+                group_size_limits);
           }))
       .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
            py::call_guard<py::gil_scoped_release>());
@@ -1312,6 +1340,7 @@ void BindImperative(py::module *m_ptr) {
   m.def("assign_group_by_size", &imperative::AssignGroupBySize, py::arg("vars"),
         py::arg("is_sparse_gradient"),
         py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
+        py::arg("tensor_indices") = std::vector<int64_t>{},
         py::call_guard<py::gil_scoped_release>());
 #endif
 }

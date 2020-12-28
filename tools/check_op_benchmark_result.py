@@ -38,7 +38,10 @@ def parse_log_file(log_file):
             except ValueError:
                 pass  # do nothing
 
-    assert result != None, "Parse log file fail!"
+    if result is None:
+        logging.warning("Parse %s fail!" % log_file)
+
+    return result
 
 
 def load_benchmark_result_from_logs_dir(logs_dir):
@@ -52,10 +55,47 @@ def load_benchmark_result_from_logs_dir(logs_dir):
     return dict(map(result_lambda, os.listdir(logs_dir)))
 
 
-def compare_benchmark_result(develop_result, pr_result):
-    """Compare the differences between devlop and pr.
+def check_speed_result(case_name, develop_data, pr_data, pr_result):
+    """Check speed differences between develop and pr.
     """
-    status = True
+    pr_gpu_time = pr_data.get("gpu_time")
+    develop_gpu_time = develop_data.get("gpu_time")
+    gpu_time_diff = (pr_gpu_time - develop_gpu_time) / develop_gpu_time
+
+    pr_total_time = pr_data.get("total")
+    develop_total_time = develop_data.get("total")
+    total_time_diff = (pr_total_time - develop_total_time) / develop_total_time
+
+    logging.info("------ OP: %s ------" % case_name)
+    logging.info("GPU time change: %.5f%% (develop: %.7f -> PR: %.7f)" %
+                 (gpu_time_diff * 100, develop_gpu_time, pr_gpu_time))
+    logging.info("Total time change: %.5f%% (develop: %.7f -> PR: %.7f)" %
+                 (total_time_diff * 100, develop_total_time, pr_total_time))
+    logging.info("backward: %s" % pr_result.get("backward"))
+    logging.info("parameters:")
+    for line in pr_result.get("parameters").strip().split("\n"):
+        logging.info("\t%s" % line)
+
+    return gpu_time_diff > 0.05
+
+
+def check_accuracy_result(case_name, pr_result):
+    """Check accuracy result.
+    """
+    logging.info("------ OP: %s ------" % case_name)
+    logging.info("Accuracy diff: %s" % pr_result.get("diff"))
+    logging.info("backward: %s" % pr_result.get("backward"))
+    logging.info("parameters:")
+    for line in pr_result.get("parameters").strip().split("\n"):
+        logging.info("\t%s" % line)
+
+    return not pr_result.get("consistent")
+
+
+def compare_benchmark_result(case_name, develop_result, pr_result,
+                             check_results):
+    """Compare the differences between develop and pr.
+    """
     develop_speed = develop_result.get("speed")
     pr_speed = pr_result.get("speed")
 
@@ -63,33 +103,27 @@ def compare_benchmark_result(develop_result, pr_result):
         pr_speed), "The types of comparison results need to be consistent."
 
     if isinstance(develop_speed, dict) and isinstance(pr_speed, dict):
-        pr_gpu_time = pr_speed.get("gpu_time")
-        develop_gpu_time = develop_speed.get("gpu_time")
-        gpu_time_diff = (pr_gpu_time - develop_gpu_time) / develop_gpu_time
-
-        pr_total_time = pr_speed.get("total")
-        develop_total_time = develop_speed.get("total")
-        total_time_diff = (
-            pr_total_time - develop_total_time) / develop_total_time
-
-        if gpu_time_diff > 0.05:
-            status = False
-
-        # TODO(Avin0323): Print all info for making relu of alart.
-        logging.info("------ OP: %s ------" % pr_result.get("name"))
-        logging.info("GPU time change: %.5f%% (develop: %.7f -> PR: %.7f)" %
-                     (gpu_time_diff * 100, develop_gpu_time, pr_gpu_time))
-        logging.info("Total time change: %.5f%% (develop: %.7f -> PR: %.7f)" %
-                     (total_time_diff * 100, develop_total_time, pr_total_time))
-        logging.info("backward: %s" % pr_result.get("backward"))
-        logging.info("parameters:")
-        for line in pr_result.get("parameters").strip().split("\n"):
-            logging.info("\t%s" % line)
+        if check_speed_result(case_name, develop_speed, pr_speed, pr_result):
+            check_results["speed"].append(case_name)
     else:
-        # TODO(Avin0323): Accuracy need to add.
-        pass
+        if check_accuracy_result(case_name, pr_result):
+            check_results["accuracy"].append(case_name)
 
-    return status
+
+def summary_results(check_results):
+    """Summary results and return exit code.
+    """
+    for case_name in check_results["speed"]:
+        logging.error("Check speed result with case \"%s\" failed." % case_name)
+
+    for case_name in check_results["accuracy"]:
+        logging.error("Check accuracy result with case \"%s\" failed." %
+                      case_name)
+
+    if len(check_results["speed"]) or len(check_results["accuracy"]):
+        return 8
+    else:
+        return 0
 
 
 if __name__ == "__main__":
@@ -112,7 +146,7 @@ if __name__ == "__main__":
         help="Specify the benchmark result directory of PR branch.")
     args = parser.parse_args()
 
-    exit_code = 0
+    check_results = dict(accuracy=list(), speed=list())
 
     develop_result_dict = load_benchmark_result_from_logs_dir(
         args.develop_logs_dir)
@@ -123,7 +157,8 @@ if __name__ == "__main__":
         pr_result = parse_log_file(os.path.join(args.pr_logs_dir, log_file))
         if develop_result is None or pr_result is None:
             continue
-        if not compare_benchmark_result(develop_result, pr_result):
-            exit_code = 8
+        case_name = log_file.split("-")[0]
+        compare_benchmark_result(case_name, develop_result, pr_result,
+                                 check_results)
 
-    exit(exit_code)
+    exit(summary_results(check_results))

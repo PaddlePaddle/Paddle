@@ -14,16 +14,12 @@
 
 # TODO: define the common classes to build a neural network
 import paddle
-from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
-from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 
 __all__ = [
-    'BilinearTensorProduct',
-    'Pool2D',
     'Embedding',
     'Linear',
     'Upsample',
@@ -1216,7 +1212,7 @@ class Embedding(layers.Layer):
 
             x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
             y_data = np.arange(6, 12).reshape((3, 2)).astype(np.float32)
-            paddle.disable_static(paddle.CPUPlace())
+
             x = paddle.to_tensor(x_data, stop_gradient=False)
             y = paddle.to_tensor(y_data, stop_gradient=False)
 
