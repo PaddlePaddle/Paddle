@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_info.h"
@@ -1121,7 +1122,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
+    VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
+    usleep(1000);
     dev_ctx->Wait();
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
   }
 
   if (FLAGS_fast_check_nan_inf) {
