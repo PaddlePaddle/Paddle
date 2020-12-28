@@ -968,9 +968,6 @@ void ParallelExecutor::BCastParamsToDevices(
       continue;
     }
     auto &dims = main_tensor.dims();
-
-    VLOG(1) << "bcast var=" << var;
-
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #if defined(PADDLE_WITH_NCCL)
       std::vector<void *> buffers;
@@ -1013,6 +1010,11 @@ void ParallelExecutor::BCastParamsToDevices(
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
+      // TODO(liuyuhui): BKCL only support parameters using float type,
+      // other parameters need to be strongly converted to float before
+      // broadcasting,
+      // but broadcast is equivalent to no type of operation, does not affect
+      // correctness.
       BKCLDataType data_type = BKCL_FLOAT;
       // BKCLDataType data_type = platform::ToBKCLDataType(main_tensor.type());
       for (size_t i = 0; i < member_->places_.size(); ++i) {
