@@ -358,52 +358,65 @@ create_test_fp16_class(TestMatMuklOp16)
 create_test_fp16_class(TestMatMuklOp17)
 
 
-class TestMatMulV2API(unittest.TestCase):
+class TestComplexMatMulOp(OpTest):
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+        self.op_type = "matmul_v2"
+        self.init_base_dtype()
+        self.init_input_output()
+        self.init_grad_input_output()
 
-    def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = fluid.data(name="input_x", shape=[4, 3], dtype="float32")
-            input_y = fluid.data(name="input_y", shape=[3, 4], dtype="float32")
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+        }
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
 
-            result = paddle.matmul(input_x, input_y)
+    def init_base_dtype(self):
+        self.dtype = np.float64
 
-            x_np = np.random.random([4, 3]).astype("float32")
-            y_np = np.random.random([3, 4]).astype("float32")
+    def init_input_output(self):
+        self.x = np.random.random(
+            (10, 10)).astype(self.dtype) + 1J * np.random.random(
+                (10, 10)).astype(self.dtype)
+        self.y = np.random.random(
+            (10, 10)).astype(self.dtype) + 1J * np.random.random(
+                (10, 10)).astype(self.dtype)
+        self.out = np.dot(self.x, self.y)
 
-            exe = fluid.Executor(place)
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={"input_x": x_np,
-                                    "input_y": y_np},
-                              fetch_list=[result])
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((10, 10), self.dtype) + 1J * np.ones(
+            (10, 10), self.dtype)
+        self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T)
+        self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
 
-    def test_static(self):
-        for place in self.places:
-            self.check_static_result(place=place)
+    def test_check_output(self):
+        self.check_output()
 
-    def test_dygraph(self):
-        for place in self.places:
-            with fluid.dygraph.guard(place):
-                input_x = np.random.random([4, 3]).astype("float64")
-                input_y = np.random.random([3, 4]).astype("float64")
-                x = paddle.to_tensor(input_x)
-                y = paddle.to_tensor(input_y)
-                result = paddle.matmul(x, y)
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[self.grad_x, self.grad_y],
+            user_defined_grad_outputs=[self.grad_out])
 
-    def test_dygraph_fp16(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                with fluid.dygraph.guard(place):
-                    input_x = np.random.random([4, 3]).astype("float16")
-                    input_y = np.random.random([3, 4]).astype("float16")
-                    x = paddle.to_tensor(input_x)
-                    y = paddle.to_tensor(input_y)
-                    result = paddle.matmul(x, y)
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[self.grad_y],
+            user_defined_grad_outputs=[self.grad_out])
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out])
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/conj_op.h"
 #include "paddle/fluid/operators/dot_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
@@ -469,6 +470,61 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
 }
 
 template <typename DeviceContext, typename T>
+struct ConjHelper {
+  ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
+  HOSTDEVICE void operator()(framework::Tensor& src, framework::Tensor& dst) {
+    dst.Resize(src.dims());
+    dst.set_layout(src.layout());
+    dst.ShareDataWith(src);
+    return;
+  }
+
+  const framework::ExecutionContext& ctx_;
+};
+
+template <typename DeviceContext>
+struct ConjHelper<DeviceContext, paddle::platform::complex64> {
+  ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
+
+  HOSTDEVICE void operator()(framework::Tensor& src, framework::Tensor& dst) {
+    dst.Resize(src.dims());
+    auto* src_data = src.data<paddle::platform::complex64>();
+    auto* dst_data = dst.mutable_data<paddle::platform::complex64>(
+        ctx_.GetPlace(),
+        size_t(src.numel() * sizeof(paddle::platform::complex64)));
+
+    platform::ForRange<DeviceContext> for_range(
+        ctx_.template device_context<DeviceContext>(), src.numel());
+    ConjFunctor<paddle::platform::complex64> functor(src_data, src.numel(),
+                                                     dst_data);
+    for_range(functor);
+    return;
+  }
+  const framework::ExecutionContext& ctx_;
+};
+
+template <typename DeviceContext>
+struct ConjHelper<DeviceContext, paddle::platform::complex128> {
+  ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
+
+  HOSTDEVICE void operator()(framework::Tensor& src, framework::Tensor& dst) {
+    dst.Resize(src.dims());
+    auto* src_data = src.data<paddle::platform::complex128>();
+    auto* dst_data = dst.mutable_data<paddle::platform::complex128>(
+        ctx_.GetPlace(),
+        size_t(src.numel() * sizeof(paddle::platform::complex128)));
+
+    platform::ForRange<DeviceContext> for_range(
+        ctx_.template device_context<DeviceContext>(), src.numel());
+    ConjFunctor<paddle::platform::complex128> functor(src_data, src.numel(),
+                                                      dst_data);
+    for_range(functor);
+    return;
+  }
+  const framework::ExecutionContext& ctx_;
+};
+
+template <typename DeviceContext, typename T>
 class MatMulV2GradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext& context,
@@ -519,6 +575,8 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     auto x = *ctx.Input<framework::Tensor>("X");
     auto y = *ctx.Input<framework::Tensor>("Y");
     auto dout = *ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    framework::Tensor y_conj(y.type());
+    framework::Tensor x_conj(y.type());
 
     // get dims
     std::vector<std::int64_t> x_dims = vectorize(x.dims());
@@ -562,6 +620,10 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
         if (dx_dims != x.dims()) {
           dx->Resize(x.dims());
         }
+
+        // for complex
+        ConjHelper<DeviceContext, T> conj_helper(ctx);
+        conj_helper(y, y_conj);
       }
 
       framework::DDim dy_dims;
@@ -570,19 +632,23 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
         if (dy_dims != y.dims()) {
           dy->Resize(y.dims());
         }
+
+        // for complex
+        ConjHelper<DeviceContext, T> conj_helper(ctx);
+        conj_helper(x, x_conj);
       }
       if (transpose_x && transpose_y) {
-        CalcInputGrad(ctx, y, true, true, dout, true, false, dx);
-        CalcInputGrad(ctx, dout, true, true, x, true, false, dy);
+        CalcInputGrad(ctx, y_conj, true, true, dout, true, false, dx);
+        CalcInputGrad(ctx, dout, true, true, x_conj, true, false, dy);
       } else if (transpose_x) {
-        CalcInputGrad(ctx, y, false, false, dout, true, false, dx);
-        CalcInputGrad(ctx, x, false, false, dout, false, true, dy);
+        CalcInputGrad(ctx, y_conj, false, false, dout, true, false, dx);
+        CalcInputGrad(ctx, x_conj, false, false, dout, false, true, dy);
       } else if (transpose_y) {
-        CalcInputGrad(ctx, dout, false, false, y, false, true, dx);
-        CalcInputGrad(ctx, dout, true, true, x, false, true, dy);
+        CalcInputGrad(ctx, dout, false, false, y_conj, false, true, dx);
+        CalcInputGrad(ctx, dout, true, true, x_conj, false, true, dy);
       } else {
-        CalcInputGrad(ctx, dout, false, false, y, true, false, dx);
-        CalcInputGrad(ctx, x, true, true, dout, false, true, dy);
+        CalcInputGrad(ctx, dout, false, false, y_conj, true, false, dx);
+        CalcInputGrad(ctx, x_conj, true, true, dout, false, true, dy);
       }
 
       if (dx) {
