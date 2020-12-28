@@ -43,15 +43,14 @@ def parse_log_file(log_file):
         for line in f.read().strip().split('\n')[::-1]:
             try:
                 result = json.loads(line)
+                if result.get("disabled", False) == True:
+                    return None
                 return result
             except ValueError:
                 pass  # do nothing
 
     if result is None:
         logging.warning("Parse %s fail!" % log_file)
-
-    if result.get("disabled", False) == True:
-        return None
 
     return result
 
@@ -88,7 +87,6 @@ def check_speed_result(case_name, develop_data, pr_data, pr_result):
     for line in pr_result.get("parameters").strip().split("\n"):
         logging.info("\t%s" % line)
 
-    return True
     return gpu_time_diff > 0.05
 
 
