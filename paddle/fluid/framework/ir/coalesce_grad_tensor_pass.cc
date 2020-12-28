@@ -207,19 +207,15 @@ class CoalesceGradTensorPass : public ir::Pass {
     }
 
     auto type = GetTypeOfVar(vars_info, params_grads.front().second);
-    bool persistable = IsPersistableVar(vars_info, params_grads.front().second);
+
+    bool persistable = false;
     for (auto &p_g : params_grads) {
-      bool next_persistable = IsPersistableVar(vars_info, p_g.second);
-      // TODO(wangxi) Need support some grad to be persistable, some grad not
-      // persistable.
-      // Scenes that will set grad to be persistable:
-      // 1. GradientMerge will set all grad to be persistable.
-      PADDLE_ENFORCE_EQ(next_persistable, persistable,
-                        platform::errors::InvalidArgument(
-                            "All Grad must be persistable or not persistable "
-                            "at same time, but "
-                            "the persistable value of %s and %s is not equal.",
-                            p_g.second, params_grads.front().second));
+      if (IsPersistableVar(vars_info, p_g.second)) {
+        // NOTE. If one of the grads is persistable, then the fused_grad_var
+        // should be set to persistable.
+        persistable = true;
+        break;
+      }
     }
 
     // the fused_var_name should be unique, so it appends
@@ -528,10 +524,19 @@ class CoalesceGradTensorPass : public ir::Pass {
               DataTypeToString(next_dtype), DataTypeToString(dtype)));
     }
 
-    bool persistable = IsPersistableVar(vars_info, params_grads.front().second);
+    bool any_persistable = false;
+    bool all_persistable = true;
+    for (auto &p_g : params_grads) {
+      if (IsPersistableVar(vars_info, p_g.second)) {
+        any_persistable = true;
+      } else {
+        all_persistable = false;
+      }
+    }
 
-    if (persistable) {
-      // only executed once at the beginning
+    if (all_persistable) {
+      // All grads are persistable, only need to be executed once at the
+      // beginning.
       result->Get<details::ProgramDescs>(details::kStartupProgramDescs)
           .emplace_back();
       ProgramDesc &program_desc =
@@ -539,14 +544,18 @@ class CoalesceGradTensorPass : public ir::Pass {
               .back();
       auto *global_block = program_desc.MutableBlock(0);
       AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name, dtype,
-                                persistable, global_block);
+                                all_persistable, global_block);
     } else {
+      // NOTE. In scope_buffered_ssa_graph_executor, after each execution of
+      // DropScope(), non persistable vars will be Erase or Clear. So
+      // coalesce_tensor op needs to be executed again after the execution
+      // of DropScope().
       result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();
       ProgramDesc &program_desc =
           result->Get<details::ProgramDescs>(details::kProgramDescs).back();
       auto *global_block = program_desc.MutableBlock(0);
       AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name, dtype,
-                                persistable, global_block);
+                                any_persistable, global_block);
     }
   }
 
@@ -558,18 +567,12 @@ class CoalesceGradTensorPass : public ir::Pass {
                                  BlockDesc *global_block) const {
     auto op_desc = global_block->AppendOp();
     op_desc->SetType("coalesce_tensor");
+    op_desc->SetInput("Input", params_name);
     op_desc->SetOutput("Output", grads_name);
     op_desc->SetOutput("FusedOutput", {fused_var_name});
     op_desc->SetAttr("dtype", static_cast<int>(dtype));
 
-    if (persistable) {
-      // if persistable, need copy grad data to fused output.
-      op_desc->SetInput("Input", grads_name);
-      op_desc->SetAttr("copy_data", persistable);
-      op_desc->SetAttr("check_name", persistable);
-    } else {
-      op_desc->SetInput("Input", params_name);
-    }
+    op_desc->SetAttr("persist_output", persistable);
   }
 };
 }  // namespace ir

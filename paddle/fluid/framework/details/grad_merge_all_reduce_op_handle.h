@@ -50,6 +50,12 @@ class GradMergeAllReduceOpHandle : public AllReduceOpHandle {
                              const std::vector<platform::Place> &places,
                              const std::string &grad_merge_cond_name,
                              const platform::NCCLCommunicator *ctxs);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+  GradMergeAllReduceOpHandle(ir::Node *node,
+                             const std::vector<Scope *> &local_scopes,
+                             const std::vector<platform::Place> &places,
+                             const std::string &grad_merge_cond_name,
+                             const platform::BKCLCommunicator *ctxs);
 #else
   GradMergeAllReduceOpHandle(ir::Node *node,
                              const std::vector<Scope *> &local_scopes,
@@ -76,6 +82,13 @@ class FusedGradMergeAllReduceOpHandle : public FusedAllReduceOpHandle {
                                   const size_t num_of_all_reduce,
                                   const std::string &grad_merge_cond_name,
                                   const platform::NCCLCommunicator *ctxs);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+  FusedGradMergeAllReduceOpHandle(ir::Node *node,
+                                  const std::vector<Scope *> &local_scopes,
+                                  const std::vector<platform::Place> &places,
+                                  const size_t num_of_all_reduce,
+                                  const std::string &grad_merge_cond_name,
+                                  const platform::BKCLCommunicator *ctxs);
 #else
   FusedGradMergeAllReduceOpHandle(ir::Node *node,
                                   const std::vector<Scope *> &local_scopes,

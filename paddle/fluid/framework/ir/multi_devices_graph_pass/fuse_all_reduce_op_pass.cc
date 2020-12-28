@@ -258,7 +258,7 @@ class FuseAllReduceOpPass : public ir::Pass {
           local_scopes, places, num_of_all_reduce, grad_merge_cond_name,
           multi_nccl_ctxs);
 #elif defined(PADDLE_WITH_XPU_BKCL)
-      auto *op_handle = new details::GradMergeFusedAllReduceOpHandle(
+      op_handle = new details::FusedGradMergeAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
           local_scopes, places, num_of_all_reduce, grad_merge_cond_name,
