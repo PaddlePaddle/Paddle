@@ -76,6 +76,9 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
 
   result.Set(details::kFusedOptType, new details::FusedOptType);
   result.Get<details::FusedOptType>(details::kFusedOptType) = fuse_op_type;
+  if (!result.Has(details::kStartupProgramDescs)) {
+    result.Set(details::kStartupProgramDescs, new details::ProgramDescs);
+  }
   if (!result.Has(details::kProgramDescs)) {
     result.Set(details::kProgramDescs, new details::ProgramDescs);
   }
@@ -100,7 +103,11 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
         fused_var_set.count(fused_var_name), 0,
         platform::errors::AlreadyExists(
             "The fused variable(%s) already exists.", fused_var_name));
-    fused_var_set.insert(fused_var_name);
+    // FIXME(wangxi). update is_persistable
+    details::VariableInfo var_info = {.name_ = fused_var_name,
+                                      .type_ = proto::VarType::LOD_TENSOR,
+                                      .persistable_ = false};
+    fused_var_set.insert({fused_var_name, var_info});
     fused_vars_name.emplace(var_name, fused_var_name);
   }
 
@@ -151,8 +158,8 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
         return;
       }
       auto &fused_vars = result.Get<details::FusedVars>(details::kFusedVars);
-      auto iter =
-          std::find(fused_vars.begin(), fused_vars.end(), fused_grad.front());
+
+      auto iter = fused_vars.find(fused_grad.front());
       PADDLE_ENFORCE_EQ(
           iter != fused_vars.end(), true,
           platform::errors::NotFound("Not found the fused gradient variable."));
@@ -421,6 +428,13 @@ proto::VarType::Type FuseOptimizerOpPass::GetTypeOfVar(
     const std::string &name) const {
   auto var_desc = GetVarDescFromVarsInfo(vars_info, name);
   return var_desc->GetType();
+}
+
+bool FuseOptimizerOpPass::IsPersistableVar(
+    const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
+    const std::string &name) const {
+  auto var_desc = GetVarDescFromVarsInfo(vars_info, name);
+  return var_desc->Persistable();
 }
 
 void FuseOptimizerOpPass::FuseVarsToContinuousSpace(

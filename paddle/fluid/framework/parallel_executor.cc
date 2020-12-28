@@ -847,6 +847,17 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   }
 
+  if (graph->Has(details::kFusedVars)) {
+    auto &fused_vars = graph->Get<details::FusedVars>(details::kFusedVars);
+    for (auto &fused_var : fused_vars) {
+      var_infos.emplace_back();
+      var_infos.back() = fused_var.second;
+
+      member_->is_persistable_.emplace(fused_var.first,
+                                       fused_var.second.persistable_);
+    }
+  }
+
   std::unordered_map<Scope *, Scope *> scope_map;
   for (auto *scope : member_->local_scopes_) {
     auto &local_exec_scope = scope->NewScope();
