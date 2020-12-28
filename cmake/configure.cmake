@@ -31,6 +31,11 @@ elseif(SSE3_FOUND)
     set(SIMD_FLAG ${SSE3_FLAG})
 endif()
 
+if (SSE3_FOUND)
+    # TODO: Runtime detection should be used here.
+    add_definitions(-DPADDLE_WITH_SSE3)
+endif()
+
 if(WIN32)
   # windows header option for all targets.
   add_definitions(-D_XKEYCHECK_H)

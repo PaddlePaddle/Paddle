@@ -196,7 +196,7 @@ cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
 cc_library(variable_helper SRCS variable_helper.cc DEPS lod_tensor)
 
-cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
+cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry denormal device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
 
 cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
 if(WITH_DISTRIBUTE)

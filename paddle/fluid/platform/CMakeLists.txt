@@ -32,6 +32,7 @@ if (WITH_PYTHON)
 endif()
 
 cc_library(flags SRCS flags.cc DEPS gflags)
+cc_library(denormal SRCS denormal.cc DEPS)
 
 cc_library(errors SRCS errors.cc DEPS error_codes_proto)
 cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
