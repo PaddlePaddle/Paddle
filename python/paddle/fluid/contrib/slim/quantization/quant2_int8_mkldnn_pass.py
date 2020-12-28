@@ -299,15 +299,15 @@ class Quant2Int8MkldnnPass(object):
                 ])
 
     def _dequantize_weights(self, graph):
-        # For the dygraph quantized model, the weights are real fp32.
-        # Only dequantize the weights of quantized op in static quantized model,
-        # in which the quantized ops have `quantization_type` attr.
+        def _is_int8_weights(op_node, weight_name):
+            weight_var_name = op_node.input(weight_name)[0]
+            weight = self._load_param(self._scope, weight_var_name)
+            return np.all(np.abs(weight % 1) < 1e-6)
+
         for op in graph.all_op_nodes():
-            if op.name() in self._conv_ops \
-                and op.op().has_attr("quantization_type"):
+            if op.name() in self._conv_ops and _is_int8_weights(op, "Filter"):
                 self._dequantize_op_weights(graph, op, "Filter", "Output")
-            elif op.name() in self._mul_ops \
-                and op.op().has_attr("quantization_type"):
+            elif op.name() in self._mul_ops and _is_int8_weights(op, "Y"):
                 self._dequantize_op_weights(graph, op, "Y", "Out")
         return graph
 
