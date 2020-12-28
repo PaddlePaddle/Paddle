@@ -807,6 +807,12 @@ REGISTER_OP_CPU_KERNEL(
     fake_channel_wise_quantize_dequantize_abs_max,
     ops::FakeChannelWiseQuantizeDequantizeAbsMaxKernel<CPU, float>);
 
+REGISTER_OP_VERSION(fake_channel_wise_quantize_abs_max)
+    .AddCheckpoint(
+        R"ROC(add new attributes [quant_axis] for applying per-channel "
+        "quantization to conv2d_tranpose and mul ops.)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "quant_axis", "The axis for quantization.", 0));
 REGISTER_OP_VERSION(moving_average_abs_max_scale)
     .AddCheckpoint(
         R"ROC(Incompatible upgrade of output [Out])ROC",
