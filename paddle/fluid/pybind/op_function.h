@@ -156,10 +156,11 @@ static inline std::shared_ptr<imperative::VarBase> ConstructViewOutput(
                                         input_var->Name()));
   PADDLE_ENFORCE_EQ(input_var->Var().IsType<framework::LoDTensor>() ||
                         input_var->Var().IsType<framework::SelectedRows>(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
-                        input_var->Name()));
+                    true, platform::errors::InvalidArgument(
+                              "Type of Tensor[%s] must be LoDTensor or "
+                              "SelectedRows, but received %s!",
+                              input_var->Name(),
+                              framework::ToTypeName(input_var->Var().Type())));
 
   auto tracer = imperative::GetCurrentTracer();
   auto view_output_var = std::shared_ptr<imperative::VarBase>(
@@ -197,7 +198,7 @@ static inline std::shared_ptr<imperative::VarBase> ConstructViewOutput(
         input_selected_rows.value());
   }
 
-  VLOG(3) << "The output Var(" << view_output_var->Name()
+  VLOG(3) << "The Output Var(" << view_output_var->Name()
           << ") share allocation with Input Var(" << input_var->Name() << ").";
 
   return view_output_var;

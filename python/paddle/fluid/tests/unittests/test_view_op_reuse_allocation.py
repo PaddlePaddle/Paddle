@@ -27,24 +27,29 @@ import paddle
 # reuse the input varbase's allocation.
 # View APIs include: `squeeze`, `unsqueeze`, `reshape`, `flatten`, `detach`
 class TestDygraphViewReuseAllocation(unittest.TestCase):
+    def setUp(self):
+        self.init_shape()
+
+    def init_shape(self):
+        self.input_shape = [2, 3, 1]
+        self.output_shape = [2, 3]
+
     def view_api_processing(self, var):
         return paddle.squeeze(var)
 
-    def get_numpy_result(self, var_numpy):
-        return var_numpy.squeeze()
-
     def test_view_api(self):
-        var = paddle.rand([2, 3, 1])
+        var = paddle.rand(self.input_shape)
         view_var = self.view_api_processing(var)
         view_var[0] = 2.
-        self.assertNotEqual(var.shape, view_var.shape)
+        self.assertEqual(var.shape, self.input_shape)
+        self.assertEqual(view_var.shape, self.output_shape)
 
-        var_numpy = self.get_numpy_result(var.numpy())
+        var_numpy = var.numpy().reshape(self.output_shape)
         view_var_numpy = view_var.numpy()
         self.assertTrue(np.array_equal(var_numpy, view_var_numpy))
 
     def test_forward_version(self):
-        var = paddle.rand([2, 3, 1])
+        var = paddle.rand(self.input_shape)
         self.assertEqual(var.inplace_version, 0)
         view_var = self.view_api_processing(var)
         self.assertEqual(view_var.inplace_version, 0)
@@ -64,7 +69,7 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
         with paddle.fluid.dygraph.guard():
-            var_a = paddle.ones(shape=[2, 3, 1], dtype="float32")
+            var_a = paddle.ones(shape=self.input_shape, dtype="float32")
             var_a.stop_gradient = False
 
             var_b = var_a**2
@@ -83,27 +88,30 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
 
 
 class TestUnsqueezeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
+    def init_shape(self):
+        self.input_shape = [2, 3]
+        self.output_shape = [2, 3, 1]
+
     def view_api_processing(self, var):
         return paddle.unsqueeze(var, -1)
 
-    def get_numpy_result(self, var_numpy):
-        return var_numpy.reshape([2, 3, 1, 1])
-
 
 class TestReshapeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
-    def view_api_processing(self, var):
-        return paddle.reshape(var, [6, 1])
+    def init_shape(self):
+        self.input_shape = [3, 4]
+        self.output_shape = [2, 2, 3]
 
-    def get_numpy_result(self, var_numpy):
-        return var_numpy.reshape([6, 1])
+    def view_api_processing(self, var):
+        return paddle.reshape(var, [2, 2, 3])
 
 
 class TestFlattenDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
+    def init_shape(self):
+        self.input_shape = [3, 4]
+        self.output_shape = [12]
+
     def view_api_processing(self, var):
         return paddle.flatten(var)
-
-    def get_numpy_result(self, var_numpy):
-        return var_numpy.reshape([6])
 
 
 if __name__ == "__main__":
