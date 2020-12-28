@@ -109,7 +109,7 @@ struct PairForLayerNormAddFunctor {
 
 template <typename T>
 __inline__ __device__ T rsqrt(const T val) {
-  return ::rsqrt(val);
+  return static_cast<T>(1) / sqrt(val);
 }
 
 template <>
@@ -118,9 +118,16 @@ __inline__ __device__ float rsqrt(const float val) {
 }
 
 template <>
+__inline__ __device__ double rsqrt(const double val) {
+  return rsqrt(val);
+}
+
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+template <>
 __inline__ __device__ half rsqrt(const half val) {
   return hrsqrt(val);
 }
+#endif
 
 template <typename T, typename U, int BlockDim>
 __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
@@ -841,6 +848,7 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    using U = LayerNormParamType<T>;
     const float epsilon = ctx.Attr<float>("epsilon");
     auto *scale = ctx.Input<Tensor>("Scale");
     auto *bias = ctx.Input<Tensor>("Bias");
@@ -854,12 +862,10 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
     const auto x_dims = x->dims();
     auto *x_data = x->data<T>();
     auto *y_data = y->mutable_data<T>(ctx.GetPlace());
-    auto *mean_data = mean->mutable_data<LayerNormParamType<T>>(ctx.GetPlace());
-    auto *var_data = var->mutable_data<LayerNormParamType<T>>(ctx.GetPlace());
-    auto *scale_data =
-        (scale == nullptr ? nullptr : scale->data<LayerNormParamType<T>>());
-    auto *bias_data =
-        (bias == nullptr ? nullptr : bias->data<LayerNormParamType<T>>());
+    auto *mean_data = mean->mutable_data<U>(ctx.GetPlace());
+    auto *var_data = var->mutable_data<U>(ctx.GetPlace());
+    auto *scale_data = (scale == nullptr ? nullptr : scale->data<U>());
+    auto *bias_data = (bias == nullptr ? nullptr : bias->data<U>());
 
     auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
     int batch_size = static_cast<int>(matrix_dim[0]);
@@ -869,7 +875,7 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
 
     switch (GetDesiredBlockDim(feature_size)) {
       FIXED_BLOCK_DIM_CASE(
-          LayerNormForward<T, LayerNormParamType<T>,
+          LayerNormForward<T, U,
                            kBlockDim><<<batch_size, kBlockDim, 0, stream>>>(
               x_data, scale_data, bias_data, y_data, mean_data, var_data,
               epsilon, feature_size));
