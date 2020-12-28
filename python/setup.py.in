@@ -347,7 +347,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         # The dynamic library compiled under aarch64 is greater than 64M,
         # and an oversize error will be reported when using patchelf.
         # The sw_64 not suppot patchelf, so we just disable that.
-        if platform.machine() != 'aarch64' and platform.machine() != 'sw_64':
+        if platform.machine() != 'aarch64' and platform.machine() != 'sw_64' and platform.machine() != 'mips64':
           if os.system(command) != 0:
               raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
 

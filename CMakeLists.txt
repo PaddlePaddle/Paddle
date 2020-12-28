@@ -144,6 +144,7 @@ option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
 option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
+option(WITH_MIPS   "Compile PaddlePaddle with mips support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 
 # PY_VERSION
@@ -262,6 +263,11 @@ if (WITH_SW)
     set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_SW=ON" FORCE)
     set(WITH_MKL OFF CACHE STRING "Disable MKL when compiling WITH_SW=ON." FORCE)
     add_definitions(-DPADDLE_WITH_SW)
+endif()
+
+if (WITH_MIPS)
+    set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_MIPS=ON" FORCE)
+    add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
