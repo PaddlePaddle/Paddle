@@ -14,7 +14,7 @@
 
 __all__ = [
     'Optimizer', 'Adagrad', 'Adam', 'AdamW', 'Adamax', 'RMSProp', 'Adadelta',
-    'SGD', 'Momentum', 'Lamb', 'lr'
+    'SGD', 'Momentum', 'Lamb', 'lr', 'ModelAverage'
 ]
 
 from .optimizer import Optimizer
@@ -28,3 +28,4 @@ from .sgd import SGD
 from .momentum import Momentum
 from .lamb import Lamb
 from . import lr
+from .modelaverage import ModelAverage
