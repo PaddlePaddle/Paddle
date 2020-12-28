@@ -28,12 +28,7 @@ import sys
 from feed_data_reader import FeedDataReader
 
 __all__ = ['TestParallelExecutorBase']
-
-
-class DeviceType:
-    CPU = 1
-    GPU = 2
-    XPU = 3
+DeviceType = core.DeviceType
 
 
 class TestParallelExecutorBase(unittest.TestCase):
