@@ -1153,8 +1153,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
+#if defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
     VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
+#endif
   }
 
   if (FLAGS_fast_check_nan_inf) {
