@@ -58,15 +58,13 @@ class LinearNet(nn.Layer):
 
 
 class LayerWithLargeParameters(paddle.nn.Layer):
-    def __init__(self, num_outs):
+    def __init__(self):
         super(LayerWithLargeParameters, self).__init__()
-        for i in range(2):
-            setattr(self, "l_" + str(i), paddle.nn.Linear(num_outs, num_outs))
+        self._l = paddle.nn.Linear(10, 2**26)
 
     def forward(self, x):
-        for i in range(2):
-            x = getattr(self, "l_" + str(i))(x)
-        return x
+        y = self._l(x)
+        return y
 
 
 def train(layer, loader, loss_fn, opt):
@@ -81,14 +79,13 @@ def train(layer, loader, loss_fn, opt):
 
 class TestSaveLoadLargeParameters(unittest.TestCase):
     def setUp(self):
-        # number of inputs and outputs
-        self.num_outs = 2**15
+        pass
 
     def test_large_parameters_paddle_save(self):
         # enable dygraph mode
         paddle.disable_static()
         # create network
-        layer = LayerWithLargeParameters(self.num_outs)
+        layer = LayerWithLargeParameters()
         save_dict = layer.state_dict()
 
         path = "test_paddle_save_load_large_param_save/layer" + ".pdparams"
@@ -103,16 +100,14 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
         # enable static mode
         paddle.enable_static()
         # create network
-        x = paddle.static.data(
-            name="x", shape=[None, self.num_outs], dtype='float32')
-        y = paddle.static.nn.fc(x, self.num_outs)
-        z = paddle.static.nn.fc(y, 10)
+        x = paddle.static.data(name="x", shape=[None, 10], dtype='float32')
+        z = paddle.static.nn.fc(x, 2**26)
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
         prog = paddle.static.default_main_program()
 
-        inputs = np.random.randn(2, self.num_outs).astype("float32")
+        inputs = np.random.randn(1, 10).astype("float32")
         result_z = exe.run(program=prog,
                            feed={"x": inputs},
                            fetch_list=[z.name])
