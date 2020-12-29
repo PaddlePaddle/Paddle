@@ -214,13 +214,13 @@ class ValueBlock {
 
  public:
   std::unordered_map<uint64_t, std::shard_ptr<VALUE>> values_;
+  size_t value_length_ = 0;
 
  private:
   std::vector<std::string> value_names_;
   std::vector<int> value_dims_;
   std::vector<int> value_offsets_;
   std::unordered_map<std::string, int> value_idx_;
-  size_t value_length_ = 0;
 
   bool has_entry_ = false;
   std::function<bool(uint64_t)> entry_func_;

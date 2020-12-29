@@ -114,18 +114,18 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
 }
 
 int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
-                   const std::vector<std::string>& saved_names,
                    const int mode) {
   for (auto value : block->values_) {
-    std::vector<std::vector<float>*> vss = value.second->get(saved_names);
+    auto* vs = value.second->data_;
     std::stringstream ss;
     auto id = value.first;
     ss << id << "\t";
-    for (int i = 0; i < static_cast<int>(vss.size()); i++) {
-      auto& vs = vss[i];
-      ss << paddle::string::join_strings((*vs), ',');
-      ss << "\t";
+
+    for (int i = 0; i < block->value_length_; i++) {
+      ss << vs[i];
+      ss << ",";
     }
+
     ss << "\n";
 
     os->write(ss.str().c_str(), sizeof(char) * ss.str().size());
@@ -163,40 +163,6 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
   }
 
   return 0;
-}
-
-void SaveShard(std::shared_ptr<ValueBlock> block, const std::string& dirname,
-               const CommonAccessorParameter& common, const int mode,
-               const int pserver_id, const int shard_id) {
-  auto varname = common.table_name();
-  std::string var_store = string::Sprintf("%s/%s", dirname, varname);
-  VLOG(3) << "save " << varname << " in dir: " << var_store << " begin";
-  MkDirRecursively(var_store.c_str());
-
-  std::string shard_var_pre =
-      string::Sprintf("%s.block%d.%d", varname, pserver_id, shard_id);
-  std::string meta_ = string::Sprintf("%s/%s.meta", var_store, shard_var_pre);
-  std::string value_ = string::Sprintf("%s/%s.txt", var_store, shard_var_pre);
-
-  // save values
-  std::vector<std::string> params(common.params().begin(),
-                                  common.params().end());
-  std::unique_ptr<std::ofstream> value_out(new std::ofstream(value_));
-  SaveToText(value_out.get(), block, params, mode);
-  // save meta
-  std::stringstream stream;
-  stream << "param=" << common.table_name() << "\n";
-  stream << "server_id=" << pserver_id << "\n";
-  stream << "shard_id=" << shard_id << "\n";
-  stream << "row_names=" << paddle::string::join_strings(common.params(), ',')
-         << "\n";
-  stream << "row_dims=" << paddle::string::join_strings(common.dims(), ',')
-         << "\n";
-  stream << "count=" << block->values_.size() << "\n";
-  std::unique_ptr<std::ofstream> meta_out(new std::ofstream(meta_));
-  meta_out->write(stream.str().c_str(), sizeof(char) * stream.str().size());
-  meta_out->close();
-  VLOG(3) << "save " << varname << " in dir: " << var_store << " done";
 }
 
 void CommonSparseTable::create_initializer(const std::string& attr,
@@ -330,8 +296,7 @@ int32_t CommonSparseTable::save(const std::string& dirname,
   int64_t total_ins = 0;
   for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
     // save values
-    total_ins +=
-        SaveToText(value_out.get(), shard_values_[shard_id], params, mode);
+    total_ins += SaveToText(value_out.get(), shard_values_[shard_id], mode);
   }
   value_out->close();
 
@@ -417,10 +382,9 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values, const uint64_t* keys,
             auto offset = offsets[i];
             auto id = keys[offset];
             block->InitFromInitializer(id, value_names);
-            auto values = block->Get(id, {"Param"});
-            auto dim = values[0]->size();
-            std::copy(values[0]->begin(), values[0]->end(),
-                      pull_values + dim * offset);
+            auto* values = block->Get(id);
+            std::copy(values, values + param_dim_,
+                      pull_values + param_dim_ * offset);
           }
           return 0;
         });
@@ -518,9 +482,8 @@ int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
             auto offset = offsets[i];
             auto id = keys[offset];
             block->InitFromInitializer(id, value_names);
-            auto values_ = block->Get(id, {"Param"});
-            auto dim = values_[0]->size();
-            std::copy_n(values + dim * offset, dim, values_[0]->data());
+            auto values_ = block->Get(id);
+            std::copy_n(values + param_dim_ * offset, param_dim_, values_);
           }
           return 0;
         });
