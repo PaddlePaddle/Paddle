@@ -125,23 +125,15 @@ class ImperativeLenet(fluid.dygraph.Layer):
 
 
 class TestImperativeOutSclae(unittest.TestCase):
-    def fake_reader(self):
-        def reader():
-            for _ in range(5000):
-                fake_img = np.random.random((1, 28, 28)).astype("float32")
-                fake_label = np.random.random((1)).astype("int64")
-                yield fake_img, fake_label
-
-        return reader
-
     def test_out_scale_acc(self):
-        seed = 100
+        seed = 1000
         lr = 0.1
 
         imperative_out_scale = ImperativeQuantAware()
 
         np.random.seed(seed)
-        reader = paddle.batch(self.fake_reader(), batch_size=32, drop_last=True)
+        reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=512, drop_last=True)
         lenet = ImperativeLenet()
         fixed_state = {}
         for name, param in lenet.named_parameters():
@@ -176,6 +168,8 @@ class TestImperativeOutSclae(unittest.TestCase):
             adam.minimize(avg_loss)
             lenet.clear_gradients()
             dynamic_loss_rec.append(avg_loss.numpy()[0])
+            if batch_id % 100 == 0:
+                _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
 
         lenet.eval()
 
