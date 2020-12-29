@@ -94,7 +94,7 @@ void GetDownpourSparseTableProto(
       server_proto->mutable_downpour_server_param();
   ::paddle::distributed::ServerServiceParameter* server_service_proto =
       downpour_server_proto->mutable_service_param();
-  server_service_proto->set_service_class("PsService");
+  server_service_proto->set_service_class("BrpcPsService");
   server_service_proto->set_server_class("BrpcPsServer");
   server_service_proto->set_client_class("BrpcPsClient");
   server_service_proto->set_start_server_port(0);
@@ -124,7 +124,7 @@ void GetDownpourSparseTableProto(
       server_proto->mutable_downpour_server_param();
   ::paddle::distributed::ServerServiceParameter* server_service_proto =
       downpour_server_proto->mutable_service_param();
-  server_service_proto->set_service_class("PsService");
+  server_service_proto->set_service_class("BrpcPsService");
   server_service_proto->set_server_class("BrpcPsServer");
   server_service_proto->set_client_class("BrpcPsClient");
   server_service_proto->set_start_server_port(0);
@@ -222,7 +222,7 @@ void RunBrpcPushSparse() {
         int ret = 0;
         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
         for (size_t i = 0; i < 1; ++i) {
-          if (closure->check_response(i, paddle::PS_PUSH_SPARSE_PARAM) != 0) {
+          if (closure->check_response(i, paddle::distributed::PS_PUSH_SPARSE_PARAM) != 0) {
             ret = -1;
             break;
           }
@@ -249,7 +249,7 @@ void RunBrpcPushSparse() {
         int ret = 0;
         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
         for (size_t i = 0; i < 1; ++i) {
-          if (closure->check_response(i, paddle::PS_PUSH_SPARSE_TABLE) != 0) {
+          if (closure->check_response(i, paddle::distributed::PS_PUSH_SPARSE_TABLE) != 0) {
             ret = -1;
             break;
           }

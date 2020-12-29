@@ -32,8 +32,8 @@ namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace distributed = paddle::distributed;
 
-using MultiVarMsg = ::paddle::MultiVariableMessage;
-using VarMsg = ::paddle::VariableMessage;
+using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
+using VarMsg = ::paddle::distributed::VariableMessage;
 
 USE_OP(scale);
 

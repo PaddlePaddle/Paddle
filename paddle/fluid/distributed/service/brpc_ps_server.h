@@ -52,9 +52,9 @@ class BrpcPsServer : public PSServer {
   std::vector<std::shared_ptr<brpc::Channel>> _pserver_channels;
 };
 
-class PsService;
+class BrpcPsService;
 
-typedef int32_t (PsService::*serviceHandlerFunc)(
+typedef int32_t (BrpcPsService::*serviceHandlerFunc)(
     Table *table, const PsRequestMessage &request, PsResponseMessage &response,
     brpc::Controller *cntl);
 

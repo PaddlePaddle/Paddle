@@ -51,7 +51,7 @@ typedef std::function<void(void*)> HeterRpcCallbackFunc;
 typedef std::function<int(const MultiVarMsg*, MultiVarMsg*, brpc::Controller*)>
     HeterServiceHandler;
 
-class HeterService : public ::paddle::distributed::PsCoreService {
+class HeterService : public ::paddle::distributed::PsService {
  public:
   HeterService() {
     _service_handler_map[PS_STOP_SERVER] = &HeterService::stop_heter_worker;
