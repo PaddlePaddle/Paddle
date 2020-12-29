@@ -582,7 +582,17 @@ def split(x,
     Case 1: Parallel Embedding
         The weight of the embedding operation is a NxM matrix with N rows and M columns.
         With parallel embedding, the weight is split into num_partitions partitions, each
-        of which is a matrix with N/num_partitions rows and M column.
+        of which is a matrix with (N/num_partitions + 1) rows and M column where the last
+        row as the padding idx.
+        
+        Suppose we split the NxM weight into two partitons on device_0 and device_1
+        respectively. Then, one each device, the final weight has (N/2 + 1) rows with the
+        index range from 0 to N/2. On device_0, all values in the input within [0, N/2 -1]
+        keep unchanged and all other values are changed to N/2 which is the padding index and
+        are mapped to all zeros after embedding. In the same way, on device_1, the value V in the
+        input within [N/2, N-1] will be changed to (V - N/2), and all other values are changed
+        to N/2 and are mapped to all zeros after embedding. Finally, the results on the two
+        devices are sum-reduced.
 
     Case 2: Row Parallel Linear
         The weight of the linear operation is a NxM matrix with N rows and M columns.
@@ -675,6 +685,11 @@ def split(x,
                                                            num_partitions))
             per_part_size = size[0] // num_partitions
             linear_size = (per_part_size, size[1])
+            assert x.shape[-1] == per_part_size, (
+                "The width ({}) of the input "
+                "x must be equal to the height ({}) of the weight. Maybe you "
+                "should split the input x using paddle.split.".format(
+                    x.shape[-1], per_part_size))
 
         elif axis == 1:
             assert size[1] % num_partitions == 0, (
