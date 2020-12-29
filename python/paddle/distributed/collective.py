@@ -20,7 +20,6 @@ from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_t
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 from ..fluid.dygraph.parallel import prepare_context
-from ..fluid.dygraph import layers
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
