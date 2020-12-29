@@ -358,6 +358,7 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           ss << ":" << dtype;
           ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
           ss << "(" << GetLoDDebug(*scope, var_name) << ")";
+          ss << "(" << GetPlace(*scope, var_name) << ")";
         }
       }
       if (i != output.second.size() - 1) {
