@@ -209,7 +209,7 @@ if(WITH_DISTRIBUTE)
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell
     fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
-    lod_rank_table feed_fetch_method sendrecvop_rpc communicator collective_helper ${GLOB_DISTRIBUTE_DEPS}
+    lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor
     heter_service_proto pslib_brpc)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
