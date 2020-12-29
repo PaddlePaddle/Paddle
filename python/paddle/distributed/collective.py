@@ -489,6 +489,80 @@ def barrier(group=0):
         attrs={'ring_id': group})
 
 
+def _parallel_linear(x, num_rows, num_cols, axis, param_attr, bias_attr,
+                     gather_out, inner_rank, name):
+    """
+    Parallel Linear
+    """
+    if not name:
+        name = "fc_by_row_rank_%d" % inner_rank if axis == 0 else "fc_by_col_rank_%d" % inner_rank
+    else:
+        name = name + "_by_row_rank_%d" % inner_rank if axis == 0 else name + "_by_col_rank_%d" % inner_rank
+    linear = paddle.nn.Linear(
+        num_rows,
+        num_cols,
+        weight_attr=param_attr,
+        bias_attr=bias_attr,
+        name=name)
+
+    weight = linear.weight
+    weight.is_distributed = True
+    linear_out = linear(x)
+    startup_block = paddle.static.default_startup_program().global_block()
+    main_block = paddle.static.default_main_program().global_block()
+    startup_block.vars[weight.name].is_distributed = True
+    main_block.vars[weight.name].is_distributed = True
+
+    if gather_out:
+        if axis == 0:
+            paddle.distributed.all_reduce(linear_out, group=0)
+        else:
+            output = []
+            paddle.distributed.all_gather(output, linear_out, group=0)
+            linear_out = paddle.concat(output, axis=len(linear_out.shape) - 1)
+    return linear_out
+
+
+def _parallel_embedding(x, per_part_embeddings, embedding_dim, param_attr,
+                        inner_rank, num_partitions, name):
+    """
+    Parallel Embedding
+    """
+    if not name:
+        name = "emb_rank_%d" % inner_rank
+    else:
+        name = name + "_rank_%d" % inner_rank
+
+    origin_num_embeddings = (per_part_embeddings - 1) * num_partitions
+    embedding = paddle.nn.Embedding(
+        per_part_embeddings,
+        embedding_dim,
+        padding_idx=per_part_embeddings - 1,
+        sparse=False,
+        weight_attr=param_attr,
+        name=name)
+
+    origin_input_shape = x.shape
+    if len(origin_input_shape) == 2:
+        x = paddle.unsqueeze(x, axis=-1)
+    else:
+        assert origin_input_shape[-1] == 1, (
+            "The last dimension size of x must be 1.")
+    x_shard = paddle.shard_index(x, origin_num_embeddings, num_partitions,
+                                 inner_rank, per_part_embeddings - 1)
+    if len(origin_input_shape) == 2:
+        x_shard = paddle.squeeze(x_shard, axis=-1)
+
+    embedding.weight.is_distributed = True
+    emb_out = embedding(x_shard)
+    startup_block = paddle.static.default_startup_program().global_block()
+    main_block = paddle.static.default_main_program().global_block()
+    startup_block.vars[embedding.weight.name].is_distributed = True
+    main_block.vars[embedding.weight.name].is_distributed = True
+    paddle.distributed.all_reduce(emb_out, group=0)
+    return emb_out
+
+
 def split(x,
           size,
           operation,
@@ -585,41 +659,13 @@ def split(x,
         assert axis == 0, ("We only support to split the weight of embedding "
                            "along the first axis now.")
         assert size[0] % num_partitions == 0, (
-            "Number of rows ({}) of embedding must be divisible by "
+            "Number of rows ({}) of the embedding weight must be divisible by "
             "num_partitions ({})".format(size[0], num_partitions))
         per_part_size = size[0] // num_partitions
         per_part_size += 1  # make the last row as the padding index
 
-        if not name:
-            name = "emb_rank_%d" % inner_rank
-        else:
-            name = name + "_rank_%d" % inner_rank
-        embedding = paddle.nn.Embedding(
-            per_part_size,
-            size[1],
-            padding_idx=per_part_size - 1,
-            sparse=False,
-            weight_attr=param_attr,
-            name=name)
-
-        origin_input_shape = x.shape
-        if len(origin_input_shape) == 2:
-            x = paddle.unsqueeze(x, axis=-1)
-        else:
-            assert origin_input_shape[-1] == 1, (
-                "The last dimension size of x must be 1.")
-        x_shard = paddle.shard_index(x, size[0], num_partitions, inner_rank,
-                                     per_part_size - 1)
-        if len(origin_input_shape) == 2:
-            x_shard = paddle.squeeze(x_shard, axis=-1)
-
-        embedding.weight.is_distributed = True
-        emb_out = embedding(x_shard)
-        startup_block = paddle.static.default_startup_program().global_block()
-        main_block = paddle.static.default_main_program().global_block()
-        startup_block.vars[embedding.weight.name].is_distributed = True
-        main_block.vars[embedding.weight.name].is_distributed = True
-        paddle.distributed.all_reduce(emb_out, group=0)
+        emb_out = _parallel_embedding(x, per_part_size, size[1], param_attr,
+                                      inner_rank, num_partitions, name)
         return emb_out
     else:
         if axis == 0:
@@ -630,10 +676,6 @@ def split(x,
             per_part_size = size[0] // num_partitions
             linear_size = (per_part_size, size[1])
 
-            if not name:
-                name = "fc_by_row_rank_%d" % inner_rank
-            else:
-                name = name + "_by_row_rank_%d" % inner_rank
         elif axis == 1:
             assert size[1] % num_partitions == 0, (
                 "Number of column of the weight for linear ({}) must be"
@@ -641,36 +683,18 @@ def split(x,
                                                            num_partitions))
             per_part_size = size[1] // num_partitions
             linear_size = (size[0], per_part_size)
-
-            if not name:
-                name = "fc_by_col_rank_%d" % inner_rank
-            else:
-                name = name + "_by_col_rank_%d" % inner_rank
         else:
             raise ValueError("The value of axis must be 0 or 1, but the value "
                              "given is {}.".format(axis))
 
-        linear = paddle.nn.Linear(
+        linear_out = _parallel_linear(
+            x,
             linear_size[0],
             linear_size[1],
-            weight_attr=param_attr,
-            bias_attr=bias_attr,
+            axis,
+            param_attr,
+            bias_attr,
+            gather_out,
+            inner_rank,
             name=name)
-
-        weight = linear.weight
-        weight.is_distributed = True
-        linear_out = linear(x)
-        startup_block = paddle.static.default_startup_program().global_block()
-        main_block = paddle.static.default_main_program().global_block()
-        startup_block.vars[weight.name].is_distributed = True
-        main_block.vars[weight.name].is_distributed = True
-
-        if gather_out:
-            if axis == 0:
-                paddle.distributed.all_reduce(linear_out, group=0)
-            else:
-                output = []
-                paddle.distributed.all_gather(output, linear_out, group=0)
-                linear_out = paddle.concat(
-                    output, axis=len(linear_out.shape) - 1)
         return linear_out
