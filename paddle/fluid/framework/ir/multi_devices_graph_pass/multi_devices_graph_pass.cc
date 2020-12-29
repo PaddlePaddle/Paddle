@@ -538,10 +538,10 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
               result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
               scopes, places, multi_nccl_ctxs_));
 #elif defined(PADDLE_WITH_XPU_BKCL)
-    result->Get<GraphOps>(kGraphOps).emplace_back(
-        new details::AllReduceOpHandle(
-            result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-            scopes, places, multi_bkcl_ctxs_));
+      result->Get<GraphOps>(kGraphOps).emplace_back(
+          new details::AllReduceOpHandle(
+              result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+              scopes, places, multi_bkcl_ctxs_));
 #else
       result->Get<GraphOps>(kGraphOps).emplace_back(
           new details::AllReduceOpHandle(
