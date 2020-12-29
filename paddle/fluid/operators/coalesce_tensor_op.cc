@@ -15,6 +15,7 @@
 #include <sstream>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -277,3 +278,14 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, double>);
 #endif
+
+REGISTER_OP_VERSION(coalesce_tensor)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade coalesce_tensor: add a new attribute [use_align].)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_align",
+            "In order to optionally take memory alignment into account when "
+            "coalescing tensors. The default value is true to be compatible "
+            "with before.",
+            true));
