@@ -63,8 +63,8 @@ class BrpcPsService : public PsBaseService {
   virtual int32_t initialize() override;
 
   virtual void service(::google::protobuf::RpcController *controller,
-                       const ::paddle::PsRequestMessage *request,
-                       ::paddle::PsResponseMessage *response,
+                       const PsRequestMessage *request,
+                       PsResponseMessage *response,
                        ::google::protobuf::Closure *done) override;
 
  private:
