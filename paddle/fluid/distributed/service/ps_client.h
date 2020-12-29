@@ -28,6 +28,9 @@
 namespace paddle {
 namespace distributed {
 
+using paddle::distributed::PsRequestMessage;
+using paddle::distributed::PsResponseMessage;
+
 typedef std::function<void(void *)> PSClientCallBack;
 class PSClientClosure : public google::protobuf::Closure {
  public:
