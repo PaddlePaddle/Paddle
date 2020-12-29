@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_min_op.h"
 
-
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/fluid/operators/arg_min_max_op_base.cu.h"
 REGISTER_OP_CUDA_KERNEL(
     arg_min, paddle::operators::ArgMinMaxOpCUDAKernel<float, cub::ArgMin>,
