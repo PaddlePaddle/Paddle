@@ -21,6 +21,8 @@ import paddle
 import paddle.fluid as fluid
 import importlib
 from six.moves import cStringIO
+
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 import static_mode_white_list
 
 

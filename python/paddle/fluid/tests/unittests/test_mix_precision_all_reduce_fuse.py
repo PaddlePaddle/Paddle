@@ -84,7 +84,7 @@ class TestResnet(TestParallelExecutorBase):
 
     def test_model(self):
         if core.is_compiled_with_cuda():
-            self.check_model(DeviceType.GPU)
+            self.check_model(DeviceType.CUDA)
 
 
 if __name__ == '__main__':
