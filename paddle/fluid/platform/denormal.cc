@@ -27,7 +27,7 @@
 #define GCC_WITHOUT_INTRINSICS
 #endif
 
-#if !defined(GCC_WITHOUT_INTRINSICS)
+#if !defined(GCC_WITHOUT_INTRINSICS) && !defined(PADDLE_WITH_ARM)
 #define DENORM_USE_INTRINSICS
 #endif
 
