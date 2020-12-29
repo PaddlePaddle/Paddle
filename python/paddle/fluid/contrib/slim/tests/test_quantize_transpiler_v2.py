@@ -120,13 +120,11 @@ class TestQuantizeProgramPass(unittest.TestCase):
         build_strategy.fuse_all_reduce_ops = False
         binary = fluid.CompiledProgram(train_program).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy)
-        iters = 5
+        iters = 2
         batch_size = 8
 
         train_reader = paddle.batch(
-            paddle.reader.shuffle(
-                paddle.dataset.mnist.train(), buf_size=500),
-            batch_size=batch_size)
+            paddle.dataset.mnist.train(), batch_size=batch_size)
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
         with fluid.scope_guard(scope):
             for _ in range(iters):
