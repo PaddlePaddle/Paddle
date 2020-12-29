@@ -458,8 +458,6 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
 
-    # FIXME(seiriosX) will fix this
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_sparse_embedding_ctr")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
@@ -635,9 +633,6 @@ if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_multiprocess_dataloader_dataset PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_multiprocess_dataloader_static PROPERTIES TIMEOUT 120)
 endif()
-
-# setting timeout value for old unittests
-# set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
 
 if (NOT WIN32)
     set_tests_properties(test_multiprocess_reader_exception PROPERTIES TIMEOUT 120)
