@@ -18,12 +18,6 @@ namespace paddle {
 namespace framework {
 
 AsyncVariable::AsyncVariable()
-    : holder_{nullptr}, state_(EnumState::kNotAvailable) {}
-
-// TODO(Aurelius84): use virtual if use derive machanism?
-AsyncVariable::~AsyncVariable() {
-  // TODO(Aurelius84): an elegant way to deal with memory.
-  // Destroy();
-}
+    : inner_var_{nullptr}, state_(EnumState::kNotAvailable) {}
 }  // namespace framework
 }  // namespace paddle

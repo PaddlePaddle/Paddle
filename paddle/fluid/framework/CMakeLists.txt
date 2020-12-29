@@ -90,7 +90,7 @@ cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tenso
 cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)
 
 cc_library(async_variable SRCS async_variable.cc DEPS enforce)
-cc_test(async_variable_test SRCS async_variable_test.cc DEPS async_variable)
+cc_test(async_variable_test SRCS async_variable_test.cc DEPS async_variable tensor ddim var_type_traits)
 
 cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)

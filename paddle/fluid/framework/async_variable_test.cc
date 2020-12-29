@@ -12,44 +12,58 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/async_variable.h"
 #include <thread>  // NOLINT
 #include <utility>
 #include "gtest/gtest.h"
 
+#include "paddle/fluid/framework/async_variable.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/tensor.h"
+
 namespace paddle {
 namespace framework {
 
-TEST(AsyncVariableTest, EmplaceGetSameThread) {
-  AsyncVariable async_var;
-  int origin = 3;
-  async_var.Emplace<int>(std::forward<int>(origin));
-  // var is available after Emplace
-  EXPECT_TRUE(async_var.isAvailable());
+using Tensor = framework::Tensor;
+using DDim = framework::DDim;
 
-  int value = async_var.Get<int>();
-  EXPECT_EQ(value, 3);
-
-  int* mutable_value = async_var.GetMutable<int>();
-  EXPECT_EQ(*mutable_value, 3);
-
-  // modify inner value
-  *mutable_value = 5;
-  EXPECT_EQ(value, 3);  // TODO(Aurelius84)
-  EXPECT_EQ(async_var.Get<int>(), 5);
+void set_async_variable(AsyncVariable* async_var, float value) {
+  Tensor* t = async_var->GetMutable<Tensor>();
+  t->Resize({2, 4});
+  auto* data = t->mutable_data<float>(platform::CPUPlace());
+  for (int i = 0; i < t->numel(); ++i) {
+    data[i] = value;
+  }
 }
 
-void set_async_variable(AsyncVariable* async_var) {
-  async_var->Emplace<int64_t>(std::forward<int64_t>(57));
+TEST(AsyncVariableTest, EmplaceGetSameThread) {
+  AsyncVariable async_var;
+
+  async_var.Emplace<Tensor>();
+  // var is available after Emplace
+  EXPECT_TRUE(async_var.isAvailable());
+  float value = 57;
+  set_async_variable(&async_var, value);
+
+  Tensor t = async_var.Get<Tensor>();
+  auto* data = t.data<float>();
+  for (int i = 0; i < t.numel(); ++i) {
+    EXPECT_EQ(data[i], value);
+  }
 }
 
 TEST(AsyncVariableTest, ThreadJoin) {
   AsyncVariable async_var;
-  std::thread check_thread = std::thread(set_async_variable, &async_var);
+  async_var.Emplace<Tensor>();
+
+  float value = 42;
+  std::thread check_thread = std::thread(set_async_variable, &async_var, value);
   check_thread.join();
 
-  int64_t value = async_var.Get<int64_t>();
-  EXPECT_EQ(value, 57);
+  Tensor t = async_var.Get<Tensor>();
+  auto* data = t.data<float>();
+  for (int i = 0; i < t.numel(); ++i) {
+    EXPECT_EQ(data[i], value);
+  }
 }
 
 }  // namespace framework

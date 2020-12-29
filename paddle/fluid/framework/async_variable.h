@@ -41,8 +41,7 @@ class AsyncVariable {
 
   AsyncVariable();
 
-  // TODO(Aurelius84): use virtual if use derive machanism?
-  ~AsyncVariable();
+  ~AsyncVariable() {}
 
   bool isAvailable() const { return state_ == EnumState::kAvailable; }
 
@@ -50,31 +49,26 @@ class AsyncVariable {
   const T& Get() const {
     if (state_ != EnumState::kAvailable) {
       std::unique_lock<std::mutex> lock(mutex_);
-      // TODO(Aurelius84): it will block until data is ready. Shall we consider
-      // a lock-free
-      // solution?
       cv_.wait(lock, [this] { return state_ == EnumState::kAvailable; });
     }
     PADDLE_ENFORCE_NOT_NULL(
-        holder_, platform::errors::Unavailable(
-                     "holder_ should not be null while calling Get<T>()."));
-    return *static_cast<const T*>(holder_);
+        inner_var_,
+        platform::errors::Unavailable(
+            "inner_var_ should not be null while calling Get<T>()."));
+    return inner_var_->Get<T>();
   }
 
   template <typename T>
   T* GetMutable() {
     if (state_ != EnumState::kAvailable) {
       std::unique_lock<std::mutex> lock(mutex_);
-      // TODO(Aurelius84): it will block until data is ready. Shall we consider
-      // a lock-free
-      // solution?
       cv_.wait(lock, [this] { return state_ == EnumState::kAvailable; });
     }
     PADDLE_ENFORCE_NOT_NULL(
-        holder_,
+        inner_var_,
         platform::errors::Unavailable(
-            "holder_ should not be null while calling GetMutable<T>()."));
-    return static_cast<T*>(holder_);
+            "inner_var_ should not be null while calling GetMutable<T>()."));
+    return inner_var_->GetMutable<T>();
   }
 
   template <typename T, typename... Args>
@@ -86,30 +80,24 @@ class AsyncVariable {
 
     if (state_ == EnumState::kNotAvailable) {
       std::lock_guard<std::mutex> lock(mutex_);
-      holder_ = new T(std::forward<Args>(args)...);
+      inner_var_.reset(new framework::Variable());
+      // TODO(Aurelius84): T is truly available only after calling
+      // `tensor->mutable_data<T>(args)`.
       state_ = EnumState::kAvailable;
+      this->GetMutable<T>();
     }
+    // Once inner_var_ is available, we notify all thread.
     cv_.notify_all();
   }
 
-  // TODO(Aurelius84): use template ?
   template <typename WaiterT>
   void AndThen(WaiterT&& waiter);
 
  private:
   DISABLE_COPY_AND_ASSIGN(AsyncVariable);
 
-  // void Destroy() {
-  //     if(state_ == EnumState::kAvailable){
-  //         delete holder_;
-  //     }
-  // }
-  // TODO(Aurelius84): composited with pointer ?
-  // paddle::framework::Variable var_;
-  void* holder_;
-
+  std::shared_ptr<framework::Variable> inner_var_;
   EnumState state_;
-
   mutable std::condition_variable cv_;
   mutable std::mutex mutex_;
 };
