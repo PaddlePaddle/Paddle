@@ -20,8 +20,10 @@ from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_t
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 from ..fluid.dygraph.parallel import prepare_context
+from ..fluid.dygraph import layers
 import paddle
 import paddle.fluid as fluid
+import paddle.distributed.fleet as fleet
 import paddle.fluid.core as core
 
 __all__ = [
@@ -31,6 +33,7 @@ __all__ = [
     'all_gather',
     'scatter',
     'barrier',
+    'split',
     'ReduceOp',
 ]
 
@@ -485,3 +488,162 @@ def barrier(group=0):
         inputs={'X': [temp]},
         outputs={'Out': [temp]},
         attrs={'ring_id': group})
+
+
+def split(x,
+          size,
+          operation,
+          axis=0,
+          num_partitions=1,
+          gather_out=True,
+          param_attr=None,
+          bias_attr=None,
+          name=None):
+    """
+
+    Split the weight of the specified operation into multiple devices
+    and do the computation in parallel.
+
+    Args:
+        x (Tensor): Input tensor. It's data type should be float16, float32, float64, int32 or int64.
+        size (list|tuple): A list or tuple with two elements indicating the shape of the weight.
+        operation (str): The name of the operation. The supported operations are 'linear' and 'embedding'.
+        axis (int, Optional): Indicate along which axis to split the weight.
+        num_partitions (int, Optional): How many parts the weight is partitioned.
+        gather_out (bool, Optional): Whether to gather the output after computation.
+        param_attr (ParamAttr, Optional): The parameter attribute for the learnable
+            weights(Parameter) of the specified operation.
+        bias_attr (ParamAttr, Optional): The parameter attribute for the bias
+            of the specified operation.
+        name (str, Optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.distributed import init_parallel_env
+
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            init_parallel_env()
+            paddle.distributed.barrier()
+    """
+    assert fleet.fleet._role_maker, ("To use paddle.distributed.split, "
+                                     "you must call fleet.init() firstly.")
+    assert isinstance(size, (list, tuple)), (
+        "The type of size for "
+        "paddle.distributed.split must be list or tuple.")
+    assert len(size) == 2, ("Number of elements in size of "
+                            "paddle.distributed.split must be two.")
+    assert isinstance(operation, str), ("The type of operation for "
+                                        "paddle.distributed.split must be str.")
+    supported_operations = [
+        'linear',
+        'embedding',
+    ]
+    assert operation in supported_operations, (
+        "The operation for "
+        "paddle.distributed.split must be one of {}.".format(
+            supported_operations))
+
+    rank = fleet.worker_index()
+    nranks = fleet.worker_num()
+    # rank within a model parallel group
+    inner_rank = rank % num_partitions
+
+    if operation == "embedding":
+        assert axis == 0, ("We only support to split the weight of embedding "
+                           "along the first axis now.")
+        assert size[0] % num_partitions == 0, (
+            "Number of rows ({}) of embedding must be divisible by "
+            "num_partitions ({})".format(size[0], num_partitions))
+        per_part_size = size[0] // num_partitions
+        per_part_size += 1  # make the last row as the padding index
+
+        if not name:
+            name = "emb_rank_%d" % inner_rank
+        else:
+            name = name + "_rank_%d" % inner_rank
+        embedding = paddle.nn.Embedding(
+            per_part_size,
+            size[1],
+            padding_idx=per_part_size - 1,
+            sparse=False,
+            weight_attr=param_attr,
+            name=name)
+
+        origin_input_shape = x.shape
+        if len(origin_input_shape) == 2:
+            x = paddle.unsqueeze(x, axis=-1)
+        else:
+            assert origin_input_shape[-1] == 1, (
+                "The last dimension size of x must be 1.")
+        x_shard = paddle.shard_index(x, size[0], num_partitions, inner_rank,
+                                     per_part_size - 1)
+        if len(origin_input_shape) == 2:
+            x_shard = paddle.squeeze(x_shard, axis=-1)
+
+        embedding.weight.is_distributed = True
+        emb_out = embedding(x_shard)
+        startup_block = paddle.static.default_startup_program().global_block()
+        main_block = paddle.static.default_main_program().global_block()
+        startup_block.vars[embedding.weight.name].is_distributed = True
+        main_block.vars[embedding.weight.name].is_distributed = True
+        paddle.distributed.all_reduce(emb_out, group=0)
+        return emb_out
+    else:
+        if axis == 0:
+            assert size[0] % num_partitions == 0, (
+                "Number of rows of the weight for linear ({}) must be"
+                " divisible by num_partitions ({})".format(size[0],
+                                                           num_partitions))
+            per_part_size = size[0] // num_partitions
+            linear_size = (per_part_size, size[1])
+
+            if not name:
+                name = "fc_by_row_rank_%d" % inner_rank
+            else:
+                name = name + "_by_row_rank_%d" % inner_rank
+        elif axis == 1:
+            assert size[1] % num_partitions == 0, (
+                "Number of column of the weight for linear ({}) must be"
+                " divisible by num_partitions ({})".format(size[1],
+                                                           num_partitions))
+            per_part_size = size[1] // num_partitions
+            linear_size = (size[0], per_part_size)
+
+            if not name:
+                name = "fc_by_col_rank_%d" % inner_rank
+            else:
+                name = name + "_by_col_rank_%d" % inner_rank
+        else:
+            raise ValueError("The value of axis must be 0 or 1, but the value "
+                             "given is {}.".format(axis))
+
+        linear = paddle.nn.Linear(
+            linear_size[0],
+            linear_size[1],
+            weight_attr=param_attr,
+            bias_attr=bias_attr,
+            name=name)
+
+        weight = linear.weight
+        weight.is_distributed = True
+        linear_out = linear(x)
+        startup_block = paddle.static.default_startup_program().global_block()
+        main_block = paddle.static.default_main_program().global_block()
+        startup_block.vars[weight.name].is_distributed = True
+        main_block.vars[weight.name].is_distributed = True
+
+        if gather_out:
+            if axis == 0:
+                paddle.distributed.all_reduce(linear_out, group=0)
+            else:
+                output = []
+                paddle.distributed.all_gather(output, linear_out, group=0)
+                linear_out = paddle.concat(
+                    output, axis=len(linear_out.shape) - 1)
+        return linear_out

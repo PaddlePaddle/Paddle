@@ -16,6 +16,7 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding_over_height)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
+list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_gen_nccl_id_op)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
@@ -73,6 +74,9 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_sendrecv)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter_api)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_split_embedding)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_split_row_linear)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_split_col_linear)
     LIST(REMOVE_ITEM TEST_OPS test_collective_reduce_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_scatter_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_barrier_api)
@@ -107,14 +111,19 @@ if(NOT WITH_DISTRIBUTE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_ps)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_utils)
+    LIST(REMOVE_ITEM TEST_OPS test_lookup_sparse_table_split_op)
 
     # TODO: Fix these unittests failed on Windows
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
+    list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
+    list(REMOVE_ITEM TEST_OPS test_split_ids_op)
+    LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
 endif()
 
 if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
     LIST(REMOVE_ITEM TEST_OPS test_desc_clone_dist)
+    LIST(REMOVE_ITEM TEST_OPS test_program_code_dist)
 endif()
 
 if(WIN32)
@@ -131,7 +140,6 @@ LIST(REMOVE_ITEM TEST_OPS test_hdfs1)
 LIST(REMOVE_ITEM TEST_OPS test_hdfs2)
 LIST(REMOVE_ITEM TEST_OPS test_hdfs3)
 LIST(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
-
 if(APPLE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
@@ -201,7 +209,9 @@ if(WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
 endif()
 
-list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
+if(NOT WITH_DISTRIBUTE OR WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
+  list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
+endif()
 
 if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
@@ -219,12 +229,12 @@ function(py_test_modules TARGET_NAME)
     set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
+    if(WITH_COVERAGE)
         add_test(NAME ${TARGET_NAME}
-                COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-                COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-                ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+            ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
                 COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
@@ -325,7 +335,6 @@ function(parallel_bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
-list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
@@ -358,7 +367,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 # disable test_cumsum_op temporaily
-# list(REMOVE_ITEM TEST_OPS test_cumsum_op)
+list(REMOVE_ITEM TEST_OPS test_cumsum_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -539,12 +548,10 @@ if(WIN32)
     py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth CUDA_VISIBLE_DEVICES=0)
     py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass ENVS CUDA_VISIBLE_DEVICES=0)
     py_test_modules(test_feed_data_check_shape_type MODULES test_feed_data_check_shape_type ENVS CUDA_VISIBLE_DEVICES=0)
-    py_test_modules(test_fetch_lod_tensor_array MODULES test_fetch_lod_tensor_array ENVS CUDA_VISIBLE_DEVICES=0)
 else()
     py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
     py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass)
     py_test_modules(test_feed_data_check_shape_type MODULES test_feed_data_check_shape_type)
-    py_test_modules(test_fetch_lod_tensor_array MODULES test_fetch_lod_tensor_array)
 endif()
 
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
