@@ -100,14 +100,12 @@ class _ConvNd(layers.Layer):
         self._padding_mode = padding_mode
         self.output_padding = output_padding
         if dims != 1:
-            self._padding, self._padding_algorithm = _update_padding_nd(
+            self._updated_padding, self._padding_algorithm = _update_padding_nd(
                 padding, channel_last, dims)
 
         if transposed:
             filter_shape = [self._in_channels, out_channels // groups
                             ] + self._kernel_size
-            self._padding, self._padding_algorithm = _update_padding_nd(
-                padding, channel_last, dims)
         else:
             if in_channels % groups != 0:
                 raise ValueError("in_channels must be divisible by groups.")
@@ -118,7 +116,8 @@ class _ConvNd(layers.Layer):
                 self._reversed_padding_repeated_twice = _reverse_repeat_list(
                     _paired_padding, 2)
 
-                self._padding, _ = _update_padding_nd(0, channel_last, dims)
+                self._updated_padding, self._padding_algorithm = _update_padding_nd(
+                    0, channel_last, dims)
 
             filter_shape = [out_channels, in_channels // groups
                             ] + self._kernel_size
@@ -634,7 +633,7 @@ class Conv2D(_ConvNd):
             self.weight,
             bias=self.bias,
             stride=self._stride,
-            padding=self._padding,
+            padding=self._updated_padding,
             padding_algorithm=self._padding_algorithm,
             dilation=self._dilation,
             groups=self._groups,
@@ -951,7 +950,7 @@ class Conv3D(_ConvNd):
             self.weight,
             bias=self.bias,
             stride=self._stride,
-            padding=self._padding,
+            padding=self._updated_padding,
             padding_algorithm=self._padding_algorithm,
             dilation=self._dilation,
             groups=self._groups,
