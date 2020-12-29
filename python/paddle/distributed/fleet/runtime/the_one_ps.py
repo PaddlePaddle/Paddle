@@ -241,7 +241,7 @@ class Service:
     def __init__(self):
         self.server_class = "BrpcPsServer"
         self.client_class = "BrpcPsClient"
-        self.service_class = "PsService"
+        self.service_class = "BrpcPsService"
         self.start_server_port = 0
         self.server_thread_num = 12
 

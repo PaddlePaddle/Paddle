@@ -94,7 +94,7 @@ void GetDownpourDenseTableProto(
       server_proto->mutable_downpour_server_param();
   ::paddle::distributed::ServerServiceParameter* server_service_proto =
       downpour_server_proto->mutable_service_param();
-  server_service_proto->set_service_class("PsService");
+  server_service_proto->set_service_class("BrpcPsService");
   server_service_proto->set_server_class("BrpcPsServer");
   server_service_proto->set_client_class("BrpcPsClient");
   server_service_proto->set_start_server_port(0);
@@ -124,7 +124,7 @@ void GetDownpourDenseTableProto(
       server_proto->mutable_downpour_server_param();
   ::paddle::distributed::ServerServiceParameter* server_service_proto =
       downpour_server_proto->mutable_service_param();
-  server_service_proto->set_service_class("PsService");
+  server_service_proto->set_service_class("BrpcPsService");
   server_service_proto->set_server_class("BrpcPsServer");
   server_service_proto->set_client_class("BrpcPsClient");
   server_service_proto->set_start_server_port(0);
