@@ -716,7 +716,7 @@ REGISTER_PASS_CAPABILITY(multihead_matmul_fuse_pass_v2)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("mul", 0)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
