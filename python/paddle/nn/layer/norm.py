@@ -992,7 +992,7 @@ class SyncBatchNorm(_BatchNormBase):
           x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
           x = paddle.to_tensor(x)
 
-          if paddle.is_compiled_with_cude():
+          if paddle.is_compiled_with_cuda():
               sync_batch_norm = nn.SyncBatchNorm(2)
               hidden1 = sync_batch_norm(x)
               print(hidden1)
