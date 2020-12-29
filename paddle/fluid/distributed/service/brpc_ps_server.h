@@ -58,7 +58,7 @@ typedef int32_t (PsService::*serviceHandlerFunc)(
     Table *table, const PsRequestMessage &request, PsResponseMessage &response,
     brpc::Controller *cntl);
 
-class PsService : public PsBaseService {
+class BrpcPsService : public PsBaseService {
  public:
   virtual int32_t initialize() override;
 

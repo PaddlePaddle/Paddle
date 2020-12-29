@@ -21,7 +21,7 @@ namespace paddle {
 namespace distributed {
 
 REGISTER_CLASS(PSServer, BrpcPsServer);
-REGISTER_CLASS(PsBaseService, PsService);
+REGISTER_CLASS(PsBaseService, BrpcPsService);
 
 PSServer *PSServerFactory::create(const PSParameter &ps_config) {
   const auto &config = ps_config.server_param();
