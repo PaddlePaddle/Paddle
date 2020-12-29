@@ -389,7 +389,7 @@ REGISTER_PASS(squared_mat_sub_fuse_pass,
 REGISTER_PASS_CAPABILITY(squared_mat_sub_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .EQ("square", 0)
             .LE("elementwise_mul", 1)
