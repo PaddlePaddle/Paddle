@@ -507,13 +507,13 @@ def split(x,
 
     Case 1: Parallel Embedding
         The weight of the embedding operation is a NxM matrix with N rows and M columns.
-        With parallel embedding, the weight is split into num_paratitions partitions, each
-        of which is a matrix with N/num_paratitions rows and M column.
+        With parallel embedding, the weight is split into num_partitions partitions, each
+        of which is a matrix with N/num_partitions rows and M column.
 
     Case 2: Row Parallel Linear
         The weight of the linear operation is a NxM matrix with N rows and M columns.
-        With row parallel linear, the weight is split into num_paratitions partitions, each
-        of which is a matrix with N/num_paratitions rows and M column.
+        With row parallel linear, the weight is split into num_partitions partitions, each
+        of which is a matrix with N/num_partitions rows and M column.
 
     Case 3: Column Parallel Linear
         The weight of the linear operation is a NxM matrix with N rows and M columns.
