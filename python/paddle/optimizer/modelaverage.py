@@ -26,11 +26,10 @@ __all__ = ["ModelAverage"]
 
 class ModelAverage(Optimizer):
     r"""
-
-	The ModelAverage optimizer accumulates specific continuous historical parameters 
-    during training. The accumulated historical range can be controlled by the passed
-    ``average_window_rate`` argument. The averaged ``Parameter`` are used in the prediction,
-    which usually can improve the accuracy of the prediction.
+    The ModelAverage optimizer accumulates specific continuous historical
+    parameters during training. The accumulated historical range can be controlled
+    by the passed ``average_window_rate`` argument. The averaged ``Parameter`` are
+    used in the prediction, which usually can improve the accuracy of the prediction.
 
     Accumulate the average of the ``Parameter`` in the sliding window, the result will be saved
     in a temporary variable, can be applied to the current model's ``Parameter`` by calling
@@ -156,7 +155,8 @@ class ModelAverage(Optimizer):
 
         print("\nEvaluate With Restored Paramters")
         model_average.restore()
-        evaluate(layer, eval_loader, loss_fn)    
+        evaluate(layer, eval_loader, loss_fn)
+  
     """
 
     def __init__(self,
