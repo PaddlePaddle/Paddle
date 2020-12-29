@@ -471,7 +471,7 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
 
 template <typename DeviceContext, typename T>
 struct ConjHelper {
-  ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
+  explicit ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
   HOSTDEVICE void operator()(framework::Tensor& src, framework::Tensor& dst) {
     dst.Resize(src.dims());
     dst.set_layout(src.layout());
@@ -484,7 +484,7 @@ struct ConjHelper {
 
 template <typename DeviceContext>
 struct ConjHelper<DeviceContext, paddle::platform::complex64> {
-  ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
+  explicit ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
 
   HOSTDEVICE void operator()(framework::Tensor& src, framework::Tensor& dst) {
     dst.Resize(src.dims());
@@ -505,7 +505,7 @@ struct ConjHelper<DeviceContext, paddle::platform::complex64> {
 
 template <typename DeviceContext>
 struct ConjHelper<DeviceContext, paddle::platform::complex128> {
-  ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
+  explicit ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
 
   HOSTDEVICE void operator()(framework::Tensor& src, framework::Tensor& dst) {
     dst.Resize(src.dims());
@@ -668,40 +668,44 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
       VLOG(3) << "It need cost much time to reduce sum for the broadcast and "
                  "wastes the memory. So we should avoid the case in reality";
       Tensor dx_help, dy_help;
+
+      ConjHelper<DeviceContext, T> conj_helper(ctx);
+      conj_helper(x, x_conj);
+      conj_helper(y, y_conj);
       if (transpose_x) {
         if (transpose_y) {
           // X'Y': dA = Y'G', dB = G'X'
           if (dx)
-            MatMulFunction<DeviceContext, T>(&y, &dout, y_dims, dout_dims,
+            MatMulFunction<DeviceContext, T>(&y_conj, &dout, y_dims, dout_dims,
                                              &dx_help, true, true, ctx);
           if (dy)
-            MatMulFunction<DeviceContext, T>(&dout, &x, dout_dims, x_dims,
+            MatMulFunction<DeviceContext, T>(&dout, &x_conj, dout_dims, x_dims,
                                              &dy_help, true, true, ctx);
         } else {
           // X'Y: dX = YG', dY = XG
           if (dx)
-            MatMulFunction<DeviceContext, T>(&y, &dout, y_dims, dout_dims,
+            MatMulFunction<DeviceContext, T>(&y_conj, &dout, y_dims, dout_dims,
                                              &dx_help, false, true, ctx);
           if (dy)
-            MatMulFunction<DeviceContext, T>(&x, &dout, x_dims, dout_dims,
+            MatMulFunction<DeviceContext, T>(&x_conj, &dout, x_dims, dout_dims,
                                              &dy_help, false, false, ctx);
         }
       } else {
         if (transpose_y) {
           // XY': dX = GY, dY = G'X
           if (dx)
-            MatMulFunction<DeviceContext, T>(&dout, &y, dout_dims, y_dims,
+            MatMulFunction<DeviceContext, T>(&dout, &y_conj, dout_dims, y_dims,
                                              &dx_help, false, false, ctx);
           if (dy)
-            MatMulFunction<DeviceContext, T>(&dout, &x, dout_dims, x_dims,
+            MatMulFunction<DeviceContext, T>(&dout, &x_conj, dout_dims, x_dims,
                                              &dy_help, true, false, ctx);
         } else {
           // XY: dX = GY', dY = X'G
           if (dx)
-            MatMulFunction<DeviceContext, T>(&dout, &y, dout_dims, y_dims,
+            MatMulFunction<DeviceContext, T>(&dout, &y_conj, dout_dims, y_dims,
                                              &dx_help, false, true, ctx);
           if (dy)
-            MatMulFunction<DeviceContext, T>(&x, &dout, x_dims, dout_dims,
+            MatMulFunction<DeviceContext, T>(&x_conj, &dout, x_dims, dout_dims,
                                              &dy_help, true, false, ctx);
         }
       }
