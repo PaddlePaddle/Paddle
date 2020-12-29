@@ -26,7 +26,8 @@ __all__ = ["ModelAverage"]
 
 class ModelAverage(Optimizer):
     r"""
-	The ModelAverage optimizer accumulates specific continuous historical parameters
+
+	The ModelAverage optimizer accumulates specific continuous historical parameters 
     during training. The accumulated historical range can be controlled by the passed
     ``average_window_rate`` argument. The averaged ``Parameter`` are used in the prediction,
     which usually can improve the accuracy of the prediction.
@@ -56,14 +57,12 @@ class ModelAverage(Optimizer):
     update times, ``average_window_rate`` is a coefficient that calculates the length of the window.
 
     Args:
+        inner_optimizer (Optimizer): The optimizer that update parameters step by step during training. 
         average_window_rate (float): The calculate ratio of the window length relative to ``Parameter`` update times.
+        parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
+            The default value is inner_optimizer's parameter_list or all parameters.
         min_average_window (int, optional): the minimum size of average window length. The default value is 10000.
         max_average_window (int, optional): The maximum size of average window length. The default value is 10000.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -309,7 +308,7 @@ class ModelAverage(Optimizer):
                                                             min_average_window=2,
                                                             max_average_window=4)
                 loss.backward()
-                modelaverage.step()
+                modelaverage.minimize()
                 modelaverage.clear_grad()
         """
         assert isinstance(loss, Variable), "The loss should be an Tensor."
@@ -387,7 +386,7 @@ class ModelAverage(Optimizer):
         Apply the average of the cumulative ``Parameter`` to the parameters of the current model.
 
         Args:
-            executor(None|paddle.static.Executor): The network executor in static-graph mode.
+            executor(Executor): The network executor in static-graph mode. The default value is None in dygraph mode.
             need_restore(bool): Restore flag variable, if set to True, the network will restore
                 the parameters of the network to the default value, if set to False,
                 it will not be restored. The default value is True.
@@ -467,7 +466,7 @@ class ModelAverage(Optimizer):
         Restore ``Parameter`` values of current model.
         
         Args:
-            executor(None|paddle.static.Executor): The network executor in static-graph mode.
+            executor(Executor): The network executor in static-graph mode. The default value is None in dygraph mode
 
         Examples:
 
