@@ -621,7 +621,7 @@ if(WITH_GPU)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
-    set_tests_properties(trt_resnext_test PROPERTIES TIMEOUT 120)
+    set_tests_properties(trt_resnext_test PROPERTIES TIMEOUT 150)
     set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 120)
     set_tests_properties(trt_resnet50_test PROPERTIES TIMEOUT 120)
     set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 120)
