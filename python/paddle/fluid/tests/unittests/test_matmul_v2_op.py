@@ -486,13 +486,13 @@ class TestComplexMatMulOpBroadcast(OpTest):
             (10, 2, 5)).astype(self.dtype) + 1J * np.random.random(
                 (10, 2, 5)).astype(self.dtype)
         self.y = np.random.random(
-            (5, 2)).astype(self.dtype) + 1J * np.random.random(
-                (5, 2)).astype(self.dtype)
+            (5, 20)).astype(self.dtype) + 1J * np.random.random(
+                (5, 20)).astype(self.dtype)
         self.out = np.dot(self.x, self.y)
 
     def init_grad_input_output(self):
-        self.grad_out = np.ones((10, 2, 2), self.dtype) + 1J * np.ones(
-            (10, 2, 2), self.dtype)
+        self.grad_out = np.ones((10, 2, 20), self.dtype) + 1J * np.ones(
+            (10, 2, 20), self.dtype)
         self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T)
         self.grad_y = np.sum(np.matmul(
             np.conj(self.x).transpose(0, 2, 1), self.grad_out),

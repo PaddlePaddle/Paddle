@@ -20,9 +20,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/conj_op.h"
 #include "paddle/fluid/operators/dot_op.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
 #ifdef __NVCC__
@@ -495,8 +495,8 @@ struct ConjHelper<DeviceContext, paddle::platform::complex64> {
 
     platform::ForRange<DeviceContext> for_range(
         ctx_.template device_context<DeviceContext>(), src.numel());
-    ConjFunctor<paddle::platform::complex64> functor(src_data, src.numel(),
-                                                     dst_data);
+    math::ConjFunctor<paddle::platform::complex64> functor(
+        src_data, src.numel(), dst_data);
     for_range(functor);
     return;
   }
@@ -516,8 +516,8 @@ struct ConjHelper<DeviceContext, paddle::platform::complex128> {
 
     platform::ForRange<DeviceContext> for_range(
         ctx_.template device_context<DeviceContext>(), src.numel());
-    ConjFunctor<paddle::platform::complex128> functor(src_data, src.numel(),
-                                                      dst_data);
+    math::ConjFunctor<paddle::platform::complex128> functor(
+        src_data, src.numel(), dst_data);
     for_range(functor);
     return;
   }

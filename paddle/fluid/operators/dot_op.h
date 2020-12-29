@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/conj_op.h"
+#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
@@ -44,7 +44,7 @@ struct DotGradFunction {
 };
 
 template <typename DeviceContext, typename T>
-struct DotGradFunction<DeviceContext, T, EnableComplex<T>> {
+struct DotGradFunction<DeviceContext, T, math::EnableComplex<T>> {
   void operator()(const Tensor* tensor_x, const Tensor* tensor_y,
                   const Tensor* tensor_dout, Tensor* tensor_dx,
                   Tensor* tensor_dy,
@@ -61,8 +61,8 @@ struct DotGradFunction<DeviceContext, T, EnableComplex<T>> {
 
         paddle::platform::ForRange<DeviceContext> for_range(dev_raw,
                                                             tensor_y->numel());
-        ConjFunctor<T> functor(tensor_y->data<T>(), tensor_y->numel(),
-                               tensor_dx->data<T>());
+        math::ConjFunctor<T> functor(tensor_y->data<T>(), tensor_y->numel(),
+                                     tensor_dx->data<T>());
         for_range(functor);
         auto dx = framework::EigenVector<T>::Flatten(*tensor_dx);
 
@@ -77,8 +77,8 @@ struct DotGradFunction<DeviceContext, T, EnableComplex<T>> {
 
         paddle::platform::ForRange<DeviceContext> for_range(dev_raw,
                                                             tensor_y->numel());
-        ConjFunctor<T> functor(tensor_x->data<T>(), tensor_x->numel(),
-                               tensor_dy->data<T>());
+        math::ConjFunctor<T> functor(tensor_x->data<T>(), tensor_x->numel(),
+                                     tensor_dy->data<T>());
         for_range(functor);
         auto dy = framework::EigenVector<T>::Flatten(*tensor_dy);
 
@@ -96,8 +96,8 @@ struct DotGradFunction<DeviceContext, T, EnableComplex<T>> {
 
         paddle::platform::ForRange<DeviceContext> for_range(dev_raw,
                                                             tensor_y->numel());
-        ConjFunctor<T> functor(tensor_y->data<T>(), tensor_y->numel(),
-                               tensor_dx->data<T>());
+        math::ConjFunctor<T> functor(tensor_y->data<T>(), tensor_y->numel(),
+                                     tensor_dx->data<T>());
         for_range(functor);
         auto dx = EigenMatrix<T>::From(*tensor_dx);
 
@@ -113,8 +113,8 @@ struct DotGradFunction<DeviceContext, T, EnableComplex<T>> {
 
         paddle::platform::ForRange<DeviceContext> for_range(dev_raw,
                                                             tensor_x->numel());
-        ConjFunctor<T> functor(tensor_x->data<T>(), tensor_x->numel(),
-                               tensor_dy->data<T>());
+        math::ConjFunctor<T> functor(tensor_x->data<T>(), tensor_x->numel(),
+                                     tensor_dy->data<T>());
         for_range(functor);
 
         auto dy = EigenMatrix<T>::From(*tensor_dy);
@@ -159,7 +159,7 @@ struct DotGradFunction<DeviceContext, T, EnableComplex<T>> {
 };
 
 template <typename DeviceContext, typename T>
-struct DotGradFunction<DeviceContext, T, DisableComplex<T>> {
+struct DotGradFunction<DeviceContext, T, math::DisableComplex<T>> {
   void operator()(const Tensor* tensor_x, const Tensor* tensor_y,
                   const Tensor* tensor_dout, Tensor* tensor_dx,
                   Tensor* tensor_dy,

@@ -21,7 +21,6 @@ NEED_TO_FIX_OP_LIST = [
     'lstmp',
     'margin_rank_loss',
     'matmul',
-    'matmul_v2',
     'scatter',
     'soft_relu',
     'squared_l2_distance',
