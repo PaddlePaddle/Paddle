@@ -1307,6 +1307,7 @@ All parameter, weight, gradient are variables in Paddle.
        "The module will return special predefined variable name in Paddle")
       .def("empty", []() { return kEmptyVarName; })
       .def("temp", []() { return kTempVarName; });
+
   // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
       .def_static("create",
@@ -1492,7 +1493,9 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
       .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
-
+#ifdef PADDLE_WITH_XPU
+  m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
+#endif
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device.
     It represents a CPU device on which a tensor will be allocated and a model will run.
@@ -2072,6 +2075,11 @@ All parameter, weight, gradient are variables in Paddle.
                                               exec_strategy=exec_strategy)
         )DOC");
 
+  py::enum_<paddle::platform::DeviceType>(m, "DeviceType", py::arithmetic())
+      .value("CPU", paddle::platform::DeviceType::CPU)
+      .value("CUDA", paddle::platform::DeviceType::CUDA)
+      .value("XPU", paddle::platform::DeviceType::XPU);
+
   exec_strategy.def(py::init())
       .def_property(
           "num_threads",
@@ -2102,14 +2110,12 @@ All parameter, weight, gradient are variables in Paddle.
                     exec_strategy.num_threads = 4
             )DOC")
       .def_property(
-          "use_cuda",
-          [](const ExecutionStrategy &self) { return self.use_cuda_; },
-          [](ExecutionStrategy &self, bool use_cuda) {
-            self.use_cuda_ = use_cuda;
-          })  // FIXME(chengduo): Doesn't add doc for 'use_cuda', use_cuda may
-      // make user confuse, because ParallelExecutor has a parameter named
-      // 'use_cuda' too, in current implementation, ParallelExecutor's
-      // 'use_cuda' will rewrite ExecutionStrategy's 'use_cuda'.
+          "_use_device",
+          [](const ExecutionStrategy &self) { return self.use_device_; },
+          [](ExecutionStrategy &self, paddle::platform::DeviceType use_device) {
+            self.use_device_ = use_device;
+          })  // NOTE(liuyuhui): Doesn't add doc for 'use_device', because
+              // use_device isn‘t exposed to users.
       .def_property(
           "allow_op_delay",
           [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
