@@ -1601,13 +1601,13 @@ def dynamic_decode(decoder,
             attr:`False`, the data layout would be batch major with shape
             `[batch_size, seq_len, ...]`.  If attr:`True`, the data layout would
             be time major with shape `[seq_len, batch_size, ...]`. Default: `False`.
-        impute_finished(bool, optional): If `True`, then states get copied through
-            for batch entries which are marked as finished, which differs with the
-            unfinished using the new states returned by :code:`decoder.step()` and
-            ensures that the final states have the correct values. Otherwise, states
-            wouldn't be copied through when finished. If the returned `final_states`
-            is needed, it should be set as True, which causes some slowdown.
-            Default `False`.
+        impute_finished(bool, optional): If `True` and `decoder.tracks_own_finished`
+            is False, then states get copied through for batch entries which are
+            marked as finished, which differs with the unfinished using the new states
+            returned by :code:`decoder.step()` and ensures that the final states have
+            the correct values. Otherwise, states wouldn't be copied through when
+            finished. If the returned `final_states` is needed, it should be set as
+            True, which causes some slowdown. Default `False`.
         is_test(bool, optional): A flag indicating whether to use test mode. In
             test mode, it is more memory saving. Default `False`.
         return_length(bool, optional):  A flag indicating whether to return an
