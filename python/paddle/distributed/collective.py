@@ -23,7 +23,6 @@ from ..fluid.dygraph.parallel import prepare_context
 from ..fluid.dygraph import layers
 import paddle
 import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
 import paddle.fluid.core as core
 
 __all__ = [
@@ -504,6 +503,14 @@ def split(x,
     Split the weight of the specified operation into multiple devices
     and do the computation in parallel.
 
+    Now the following three cases are supported.
+
+    Case 1: Parallel Embedding
+
+    Case 2: Row Parallel Linear
+
+    Case 3: Colum Parallel Linear
+
     Args:
         x (Tensor): Input tensor. It's data type should be float16, float32, float64, int32 or int64.
         size (list|tuple): A list or tuple with two elements indicating the shape of the weight.
@@ -524,15 +531,20 @@ def split(x,
     Examples:
         .. code-block:: python
 
+            import numpy
             import paddle
             from paddle.distributed import init_parallel_env
 
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
-            paddle.distributed.barrier()
+            np_data = numpy.random.randint(0, 8, (10,4))
+            data = paddle.to_tensor(np_data)
+            emb_out = padle.distributed.split(
+                data,
+                (8, 8),
+                operation="embedding",
+                num_partitions=2)
     """
-    assert fleet.fleet._role_maker, ("To use paddle.distributed.split, "
-                                     "you must call fleet.init() firstly.")
     assert isinstance(size, (list, tuple)), (
         "The type of size for "
         "paddle.distributed.split must be list or tuple.")
