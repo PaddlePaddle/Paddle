@@ -107,6 +107,10 @@ class _InstanceNormBase(layers.Layer):
         return instance_norm(
             input, weight=self.scale, bias=self.bias, eps=self._epsilon)
 
+    def extra_repr(self):
+        return 'num_features={}, epsilon={}'.format(self.scale.shape[0],
+                                                    self._epsilon)
+
 
 class InstanceNorm1D(_InstanceNormBase):
     r"""
@@ -433,6 +437,10 @@ class GroupNorm(layers.Layer):
 
         return self._helper.append_activation(group_norm_out, None)
 
+    def extra_repr(self):
+        return 'num_groups={}, num_channels={}, epsilon={}'.format(
+            self._num_groups, self._num_channels, self._epsilon)
+
 
 class LayerNorm(layers.Layer):
     r"""
@@ -536,6 +544,10 @@ class LayerNorm(layers.Layer):
             weight=self.weight,
             bias=self.bias,
             epsilon=self._epsilon)
+
+    def extra_repr(self):
+        return 'normalized_shape={}, epsilon={}'.format(self._normalized_shape,
+                                                        self._epsilon)
 
 
 class _BatchNormBase(layers.Layer):
@@ -643,6 +655,15 @@ class _BatchNormBase(layers.Layer):
             momentum=self._momentum,
             epsilon=self._epsilon,
             data_format=self._data_format)
+
+    def extra_repr(self):
+        main_str = 'num_features={}, momentum={}, epsilon={}'.format(
+            self._num_features, self._momentum, self._epsilon)
+        if self._data_format is not 'NCHW':
+            main_str += ', data_format={}'.format(self._data_format)
+        if self._name is not None:
+            main_str += ', name={}'.format(self._name)
+        return main_str
 
 
 class BatchNorm1D(_BatchNormBase):
@@ -1180,3 +1201,12 @@ class LocalResponseNorm(layers.Layer):
         out = F.local_response_norm(input, self.size, self.alpha, self.beta,
                                     self.k, self.data_format, self.name)
         return out
+
+    def extra_repr(self):
+        main_str = 'size={}, alpha={}, beta={}, k={}'.format(
+            self.size, self.alpha, self.beta, self.k)
+        if self.data_format is not 'NCHW':
+            main_str += ', data_format={}'.format(self.data_format)
+        if self.name is not None:
+            main_str += ', name={}'.format(self.name)
+        return main_str
