@@ -23,7 +23,8 @@ import paddle.fluid.core as core
 import paddle.compat as cpt
 import numpy as np
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.framework import Program, program_guard, convert_np_dtype_to_dtype_
+import paddle
 
 
 class TestOptimizer(unittest.TestCase):
@@ -1040,6 +1041,38 @@ class TestGradientMergeOptimizer(unittest.TestCase):
         self.assertEqual(len(main_program.block(3).ops), 2)
         self.assertEqual([op.type for op in main_program.block(3).ops],
                          ['sgd', 'sgd'])
+
+
+class TestOptimizerDtype(unittest.TestCase):
+    '''
+    The dtype of optimizer should be inferred by parameters, and the learning rate
+    is cteated with the same dtype.
+    '''
+
+    def check_with_dtype(self, dtype):
+        class MyLayer(paddle.nn.Layer):
+            def __init__(self, dtype):
+                super(MyLayer, self).__init__()
+                self._w = self.create_parameter([2, 3], dtype=dtype)
+                self._b = self.create_parameter([2, 3], dtype=dtype)
+
+            def forward(self, x):
+                return x * self._w + self._b
+
+        with paddle.fluid.dygraph.guard():
+            model = MyLayer(dtype)
+            x = paddle.rand([10, 2, 3], dtype=dtype)
+            loss = model(x)
+            adam = paddle.optimizer.Adam(parameters=model.parameters())
+            loss.backward()
+            adam.step()
+            self.assertEqual(adam._dtype, convert_np_dtype_to_dtype_(dtype))
+
+    def test_float64(self):
+        self.check_with_dtype('float64')
+
+    def test_float32(self):
+        self.check_with_dtype('float32')
 
 
 if __name__ == '__main__':

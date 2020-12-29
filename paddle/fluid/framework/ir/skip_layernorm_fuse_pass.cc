@@ -193,5 +193,5 @@ REGISTER_PASS(skip_layernorm_fuse_pass,
 REGISTER_PASS_CAPABILITY(skip_layernorm_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("layer_norm", 0));

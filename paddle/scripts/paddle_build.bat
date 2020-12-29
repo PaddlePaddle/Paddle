@@ -98,10 +98,13 @@ git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 :mkbuild
 if not exist build (
     echo Windows build cache FALSE
+    set Windows_Build_Cache=FALSE
     mkdir build
 ) else (
     echo Windows build cache TRUE
+    set Windows_Build_Cache=TRUE
 )
+echo ipipe_log_param_Windows_Build_Cache: %Windows_Build_Cache%
 cd /d build
 dir .
 dir %cache_dir%
@@ -329,10 +332,12 @@ set /p libsize=< lib_size.txt
 for /F %%i in ("%libsize%") do (
     set /a libsize_m=%%i/1024
     echo "Windows Paddle_Inference Size: !libsize_m!M"
+    echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
 )
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
 set /p whlsize=< whl_size.txt
 for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
+for /F %%i in ("%whlsize%") do echo ipipe_log_param_Windows_PR_whl_Size: %%i
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 
@@ -485,6 +490,7 @@ echo spec_path=$(pwd)/UNITTEST_PR.spec>>  check_change_of_unittest.sh
 echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
 echo num=$(awk 'END{print NR}' ${spec_path})>> check_change_of_unittest.sh
 echo echo "Windows 1 card TestCases count is $num">> check_change_of_unittest.sh
+echo echo ipipe_log_param_Windows_1_Card_TestCases_Count: $num>> check_change_of_unittest.sh
 echo UPSTREAM_URL='https://github.com/PaddlePaddle/Paddle'>>  check_change_of_unittest.sh
 echo origin_upstream_url=`git remote -v ^| awk '{print $1, $2}' ^| uniq ^| grep upstream ^| awk '{print $2}'`>>  check_change_of_unittest.sh
 echo if [ "$origin_upstream_url" == "" ]; then>>  check_change_of_unittest.sh
@@ -575,6 +581,8 @@ set /a ss=100%ss%%%100
 set /a end_secs=dd*86400+hh*3600+nn*60+ss
 set /a cost_secs=end_secs-start_sec
 echo "Windows %~3 Time: %cost_secs%s"
+set tempTaskName=%~3
+echo ipipe_log_param_Windows_%tempTaskName: =_%_Time: %cost_secs%s
 goto:eof
 
 
@@ -582,9 +590,11 @@ goto:eof
 for /f "tokens=2,4" %%i in ('clcache.exe -s ^| findstr "entries hits"') do set %%i=%%j
 if %hits% EQU 0 (
     echo "clcache hit rate: 0%%"
+    echo ipipe_log_param_Clcache_Hit_Rate: 0%%
 ) else (
     set /a rate=%hits%*10000/%entries%
     echo "clcache hit rate: %rate:~0,-2%.%rate:~-2%%%"
+    echo ipipe_log_param_Clcache_Hit_Hate: %rate:~0,-2%.%rate:~-2%%%
 )
 goto:eof
 

@@ -53,14 +53,12 @@ diable_wingpu_test="^test_analysis_predictor$|\
 ^test_dataloader_unkeep_order$|\
 ^test_model$|\
 ^test_add_reader_dependency$|\
-^test_bilateral_slice_op$|\
 ^test_cholesky_op$|\
 ^test_dataloader_early_reset$|\
 ^test_decoupled_py_reader$|\
 ^test_decoupled_py_reader_data_check$|\
 ^test_eager_deletion_delete_vars$|\
 ^test_eager_deletion_while_op$|\
-^test_fetch_lod_tensor_array$|\
 ^test_fleet_base_single$|\
 ^test_fuse_elewise_add_act_pass$|\
 ^test_fuse_optimizer_pass$|\
@@ -83,7 +81,6 @@ diable_wingpu_test="^test_analysis_predictor$|\
 ^test_update_loss_scaling_op$|\
 ^test_imperative_se_resnext$|\
 ^test_imperative_static_runner_while$|\
-^test_optimizer_in_control_flow$|\
 ^test_fuse_bn_act_pass$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_gru_rnn_op$|\
@@ -102,7 +99,6 @@ diable_wingpu_test="^test_analysis_predictor$|\
 ^test_weight_decay$|\
 ^test_conv2d_int8_mkldnn_op$|\
 ^test_crypto$|\
-^test_callbacks$|\
 ^test_program_prune_backward$|\
 ^test_imperative_ocr_attention_model$|\
 ^test_sentiment$|\

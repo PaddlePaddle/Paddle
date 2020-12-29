@@ -59,9 +59,9 @@ class TestCallbacks(unittest.TestCase):
 
     def run_callback(self):
         epochs = 2
-        steps = 50
+        steps = 5
         freq = 2
-        eval_steps = 20
+        eval_steps = 2
 
         inputs = [InputSpec([None, 1, 28, 28], 'float32', 'image')]
         lenet = Model(LeNet(), inputs)
@@ -131,106 +131,6 @@ class TestCallbacks(unittest.TestCase):
     def test_callback_verbose_3(self):
         self.verbose = 3
         self.run_callback()
-
-    def test_visualdl_callback(self):
-        # visualdl not support python2
-        if sys.version_info < (3, ):
-            return
-
-        inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
-        labels = [InputSpec([None, 1], 'int64', 'label')]
-
-        transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
-        train_dataset = paddle.vision.datasets.MNIST(
-            mode='train', transform=transform)
-        eval_dataset = paddle.vision.datasets.MNIST(
-            mode='test', transform=transform)
-
-        net = paddle.vision.LeNet()
-        model = paddle.Model(net, inputs, labels)
-
-        optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
-        model.prepare(
-            optimizer=optim,
-            loss=paddle.nn.CrossEntropyLoss(),
-            metrics=paddle.metric.Accuracy())
-
-        callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
-        model.fit(train_dataset,
-                  eval_dataset,
-                  batch_size=64,
-                  callbacks=callback)
-
-    def test_earlystopping(self):
-        paddle.seed(2020)
-        for dynamic in [True, False]:
-            paddle.enable_static if not dynamic else None
-            device = paddle.set_device('cpu')
-            sample_num = 100
-            train_dataset = MnistDataset(mode='train', sample_num=sample_num)
-            val_dataset = MnistDataset(mode='test', sample_num=sample_num)
-
-            net = LeNet()
-            optim = paddle.optimizer.Adam(
-                learning_rate=0.001, parameters=net.parameters())
-
-            inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
-            labels = [InputSpec([None, 1], 'int64', 'label')]
-
-            model = Model(net, inputs=inputs, labels=labels)
-            model.prepare(
-                optim,
-                loss=CrossEntropyLoss(reduction="sum"),
-                metrics=[Accuracy()])
-            callbacks_0 = paddle.callbacks.EarlyStopping(
-                'loss',
-                mode='min',
-                patience=1,
-                verbose=1,
-                min_delta=0,
-                baseline=None,
-                save_best_model=True)
-            callbacks_1 = paddle.callbacks.EarlyStopping(
-                'acc',
-                mode='auto',
-                patience=1,
-                verbose=1,
-                min_delta=0,
-                baseline=0,
-                save_best_model=True)
-            callbacks_2 = paddle.callbacks.EarlyStopping(
-                'loss',
-                mode='auto_',
-                patience=1,
-                verbose=1,
-                min_delta=0,
-                baseline=None,
-                save_best_model=True)
-            callbacks_3 = paddle.callbacks.EarlyStopping(
-                'acc_',
-                mode='max',
-                patience=1,
-                verbose=1,
-                min_delta=0,
-                baseline=0,
-                save_best_model=True)
-            model.fit(
-                train_dataset,
-                val_dataset,
-                batch_size=64,
-                save_freq=10,
-                save_dir=self.save_dir,
-                epochs=10,
-                verbose=0,
-                callbacks=[callbacks_0, callbacks_1, callbacks_2, callbacks_3])
-            # Test for no val_loader
-            model.fit(train_dataset,
-                      batch_size=64,
-                      save_freq=10,
-                      save_dir=self.save_dir,
-                      epochs=10,
-                      verbose=0,
-                      callbacks=[callbacks_0])
 
 
 if __name__ == '__main__':
