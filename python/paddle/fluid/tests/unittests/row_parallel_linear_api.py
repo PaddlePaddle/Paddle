@@ -76,4 +76,4 @@ class TestRowParallelLinearAPI(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestRowParallelEmbeddingAPI, "row_parallel_linear")
+    runtime_main(TestRowParallelLinearAPI, "row_parallel_linear")
