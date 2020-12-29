@@ -46,6 +46,7 @@ class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
+            fleet.init(is_collective=True)
             np.random.seed(2020)
             np_array = np.random.rand(1000, 16)
 
