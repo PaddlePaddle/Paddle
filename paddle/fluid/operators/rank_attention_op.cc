@@ -176,3 +176,18 @@ REGISTER_OP_CPU_KERNEL(
     rank_attention,
     ops::RankAttentionKernel<paddle::platform::CPUDeviceContext, float>,
     ops::RankAttentionKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(rank_attention)
+    .AddCheckpoint(
+        R"ROC(
+        Upgrade rank_attention, add 1 outputs [InputHelp] and 1 attribute
+        [MaxSize].
+      )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewOutput("InputHelp",
+                       "Output tensor of rank_attention_Op operator "
+                       "in order to assist calculation in the reverse process.")
+            .NewAttr(
+                "MaxSize",
+                "Forward calculation to set the pre-applied video memory size",
+                0));
