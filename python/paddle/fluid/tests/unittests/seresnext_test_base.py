@@ -26,7 +26,7 @@ class TestResnetBase(TestParallelExecutorBase):
                                           use_device,
                                           delta2=1e-5,
                                           compare_seperately=True):
-        if use_device == DeviceType.GPU and not core.is_compiled_with_cuda():
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
         func_1_first_loss, func_1_last_loss = self.check_network_convergence(
