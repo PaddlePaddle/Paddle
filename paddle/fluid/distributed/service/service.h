@@ -28,6 +28,10 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
+using paddle::distributed::PsRequestMessage;
+using paddle::distributed::PsResponseMessage;
+using paddle::distributed::PsService;
+
 class PSCore {
  public:
   explicit PSCore() {}

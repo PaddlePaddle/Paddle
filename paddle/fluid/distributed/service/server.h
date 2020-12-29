@@ -32,6 +32,8 @@ namespace paddle {
 namespace distributed {
 
 class Table;
+using paddle::distributed::PsRequestMessage;
+using paddle::distributed::PsResponseMessage;
 
 class PSServer {
  public:
