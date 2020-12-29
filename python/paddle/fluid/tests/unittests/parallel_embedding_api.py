@@ -40,7 +40,7 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 paddle.enable_static()
 
 
-class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
+class TestParallelEmbeddingAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
@@ -73,4 +73,4 @@ class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveAllgatherAPI, "parallel_embedding")
+    runtime_main(TestParallelEmbeddingAPI, "parallel_embedding")

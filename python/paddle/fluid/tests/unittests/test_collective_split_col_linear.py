@@ -22,11 +22,11 @@ from test_collective_api_base import TestDistBase
 paddle.enable_static()
 
 
-class TestParallelEmbeddingAPI(TestDistBase):
+class TestColParallelLinearAPI(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_row_parallel_linear(self):
+    def test_col_parallel_linear(self):
         self.check_with_place("column_parallel_linear_api.py",
                               "column_parallel_linear", "nccl")
 

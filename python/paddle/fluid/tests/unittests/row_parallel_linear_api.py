@@ -40,7 +40,7 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 paddle.enable_static()
 
 
-class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
+class TestRowParallelLinearAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
@@ -76,4 +76,4 @@ class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveAllgatherAPI, "row_parallel_linear")
+    runtime_main(TestRowParallelEmbeddingAPI, "row_parallel_linear")

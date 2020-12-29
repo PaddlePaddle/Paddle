@@ -22,7 +22,7 @@ from test_collective_api_base import TestDistBase
 paddle.enable_static()
 
 
-class TestParallelEmbeddingAPI(TestDistBase):
+class TestRowParallelLinearAPI(TestDistBase):
     def _setup_config(self):
         pass
 
