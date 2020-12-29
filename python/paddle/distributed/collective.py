@@ -506,10 +506,19 @@ def split(x,
     Now the following three cases are supported.
 
     Case 1: Parallel Embedding
+        The weight of the embedding operation is a NxM matrix with N rows and M columns.
+        With parallel embedding, the weight is split into num_paratitions partitions, each
+        of which is a matrix with N/num_paratitions rows and M column.
 
     Case 2: Row Parallel Linear
+        The weight of the linear operation is a NxM matrix with N rows and M columns.
+        With row parallel linear, the weight is split into num_paratitions partitions, each
+        of which is a matrix with N/num_paratitions rows and M column.
 
-    Case 3: Colum Parallel Linear
+    Case 3: Column Parallel Linear
+        The weight of the linear operation is a NxM matrix with N rows and M columns.
+        With column parallel linear, the weight is split into num_paratitions partitions, each
+        of which is a matrix with N rows and M/num_partitions column.
 
     Args:
         x (Tensor): Input tensor. It's data type should be float16, float32, float64, int32 or int64.
