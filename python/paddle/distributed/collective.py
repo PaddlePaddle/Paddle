@@ -21,7 +21,7 @@ from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 from ..fluid.dygraph.parallel import prepare_context
 import paddle
-import paddle.distributed.fleet as fleet
+from .fleet import fleet
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
@@ -573,8 +573,8 @@ def split(x,
         rank = paddle.distributed.get_rank()
         nranks = paddle.distributed.get_world_size()
     else:
-        assert fleet.fleet._role_maker, ("To use paddle.distributed.split, "
-                                         "you must call fleet.init() firstly.")
+        assert fleet._role_maker, ("To use paddle.distributed.split, "
+                                   "you must call fleet.init() firstly.")
         rank = fleet.worker_index()
         nranks = fleet.worker_num()
 
