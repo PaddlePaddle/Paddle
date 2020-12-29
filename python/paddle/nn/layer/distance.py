@@ -24,7 +24,7 @@ from ...fluid.layer_helper import LayerHelper
 
 
 class PairwiseDistance(layers.Layer):
-    """
+    r"""
     This operator computes the pairwise distance between two vectors. The
     distance is calculated by p-oreder norm:
 

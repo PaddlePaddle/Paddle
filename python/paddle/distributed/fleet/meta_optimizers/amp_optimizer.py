@@ -53,6 +53,15 @@ class AMPOptimizer(MetaOptimizerBase):
             config['incr_ratio'], config['decr_ratio'],
             config['use_dynamic_loss_scaling'])
 
+        # if worker_num > 1, all cards will communication with each other,
+        # add is_distributed to optimize amp, overlap communication and
+        # computation by split the check_finite_and_unscale op.
+        is_distributed = self.role_maker._worker_num() > 1
+        if self.user_defined_strategy.sharding:
+            # FIXME(wangxi). sharding failed when split check_finite_and_unscale
+            is_distributed = False
+        self.wrapped_opt._set_distributed(is_distributed)
+
     def _can_apply(self):
         if not self.role_maker._is_collective:
             return False

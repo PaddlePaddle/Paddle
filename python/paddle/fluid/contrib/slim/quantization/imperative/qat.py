@@ -20,11 +20,13 @@ import paddle
 from paddle.fluid import dygraph, core, framework
 from paddle.fluid.executor import Executor
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.nn import Conv2D, Linear, BatchNorm, Pool2D, Conv2DTranspose
+from paddle.nn import Linear, Conv2D
+from paddle.fluid.dygraph.nn import BatchNorm, Pool2D, Conv2DTranspose
 from paddle.fluid.io import load_inference_model, save_inference_model
-from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU
+from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU, Swish
 from paddle.fluid.log_helper import get_logger
 from . import quant_nn
+from .. import quantization_pass
 
 __all__ = ['ImperativeQuantAware', 'ImperativeCalcOutScale']
 
@@ -44,6 +46,7 @@ _op_real_in_out_name = {
     "tanh": [["X"], ["Out"]],
     "batch_norm": [["X"], ["Y"]],
     "sigmoid": [["X"], ["Out"]],
+    "swish": [["X"], ["Out"]],
 }
 
 
@@ -64,7 +67,7 @@ class ImperativeQuantAware(object):
                  act_preprocess_layer=None,
                  weight_quantize_layer=None,
                  act_quantize_layer=None):
-        """
+        r"""
         The constructor for ImperativeQuantAware.
 
         Args:
@@ -108,7 +111,12 @@ class ImperativeQuantAware(object):
                 activation and returns dequantized activation. If None, will use
                 quantization op defined by 'activation_quantize_type'. Default is None.
 
-        Examples:
+        Note:
+            If user sets attribute 'skip_quant' to a Layer that support dynamic quantization and sets
+            it to true, the layer would not be quantized during training. If this attribute is not sets
+            or the attribute is false, the Layer would be qunatized in training.
+
+        Examples 1:
         .. code-block:: python
 
             import paddle
@@ -125,28 +133,75 @@ class ImperativeQuantAware(object):
             
             # Add the fake quant logical.
             # The original model will be rewrite.
+            # The outscale of outputs in supportted layers would be calculated.
             imperative_qat.quantize(model)
 
             # Fine-tune the quantized model
             # ...
             
             # Save quant model for the inference.
-            paddle.jit.save(
+            imperative_qat.save_quantized_model(
                 layer=model,
                 model_path="./resnet50_qat",
                 input_spec=[
                     paddle.static.InputSpec(
                     shape=[None, 3, 224, 224], dtype='float32')])
+
+        Examples 2:
+        .. code-block:: python
+
+            import paddle
+            from paddle.fluid.contrib.slim.quantization \
+                import ImperativeQuantAware
+
+            class ImperativeModel(paddle.nn.Layer):
+                def __init__(self):
+                    super(ImperativeModel, self).__init__()
+                    # self.linear_0 would skip the quantization.
+                    self.linear_0 = paddle.nn.Linear(784, 400)
+                    self.linear_0.skip_quant = True
+
+                    # self.linear_1 would not skip the quantization.
+                    self.linear_1 = paddle.nn.Linear(400, 10)
+                    self.linear_1.skip_quant = False
+
+                def forward(self, inputs):
+                    x = self.linear_0(inputs)
+                    x = self.linear_1(inputs)
+                    return x
+
+            model = ImperativeModel()
+            imperative_qat = ImperativeQuantAware(
+                weight_quantize_type='abs_max',
+                activation_quantize_type='moving_average_abs_max')
+
+            # Add the fake quant logical.
+            # The original model will be rewrite.
+            #
+            # There is only one Layer(self.linear1) would be added the
+            # fake quant logical.
+            imperative_qat.quantize(model)
+
+            # Fine-tune the quantized model
+            # ...
+
+            # Save quant model for the inference.
+            imperative_qat.save_quantized_model(
+                layer=model,
+                model_path="./imperative_model_qat")
         """
         super(ImperativeQuantAware, self).__init__()
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._moving_rate = moving_rate
+        self._activation_quantize_type = activation_quantize_type
+        self._weight_quantize_type = weight_quantize_type
 
         self._weight_pre_layer = weight_preprocess_layer
         self._act_pre_layer = act_preprocess_layer
         self._weight_quant_layer = weight_quantize_layer
         self._act_quant_layer = act_quantize_layer
+        self._out_scale = ImperativeCalcOutScale()
 
         t_check = lambda method: method is None or issubclass(method, dygraph.layers.Layer)
         assert t_check(
@@ -172,8 +227,6 @@ class ImperativeQuantAware(object):
                 "Unknown weight_quantize_type: '%s'. It can only be "
                 "'abs_max' or 'moving_average_abs_max' or 'channel_wise_abs_max' now."
                 % (str(weight_quantize_type)))
-        self._activation_quantize_type = activation_quantize_type
-        self._weight_quantize_type = weight_quantize_type
 
         self._quant_layers_map = {'Conv2D': Conv2D, 'Linear': Linear}
         self._quantizable_layer_type = tuple(
@@ -188,7 +241,7 @@ class ImperativeQuantAware(object):
         """
         According to weights' and activations' quantization types, the model will be added some fake
         quant ops, such as fake_quantize_dequantize_moving_average_abs_max, fake_quantize_dequantize_abs_max
-        and so on.
+        and so on. At the same time, the out_scale value of outputs would be calculated.
 
         Args:
             model(fluid.dygraph.Layer): the model to be quantized.
@@ -198,6 +251,9 @@ class ImperativeQuantAware(object):
         for name, layer in model.named_sublayers():
             if not isinstance(layer, self._quantizable_layer_type):
                 continue
+            if hasattr(layer, "skip_quant") and layer.skip_quant == True:
+                continue
+
             scopes = name.split('.')
             target = scopes[-1]
             obj = model
@@ -208,6 +264,8 @@ class ImperativeQuantAware(object):
 
             quant_layer = self._get_quantized_counterpart(layer)
             setattr(obj, target, quant_layer)
+
+        self._out_scale.calc_out_scale(model)
 
     def _get_quantized_counterpart(self, layer):
         quant_layers = tuple(self._quant_layers_map.values())
@@ -232,47 +290,24 @@ class ImperativeQuantAware(object):
             self._weight_quant_layer, self._act_quant_layer)
         return quantized_layer
 
+    def save_quantized_model(self, layer, path, input_spec=None, **config):
+        self._out_scale.save_quantized_model(layer, path, input_spec, **config)
+
 
 class ImperativeCalcOutScale(object):
-    def __init__(self,
-                 moving_rate=0.9,
-                 target_layer_types=[
-                     'BatchNorm', 'Conv2D', 'Conv2DTranspose', 'LeakyReLU',
-                     'Linear', 'PReLU', 'Pool2D', 'ReLU', 'ReLU6', 'Sigmoid',
-                     'Softmax', 'Tanh'
-                 ]):
+    def __init__(self, moving_rate=0.9):
         """
         Add the logic of calculating and setting output quantization scales of some layers.
         These output quantization scales may be used by tensorRT or some other inference engines.
 
         Args:
             moving_rate(float): The decay coefficient of moving average. The default value is 0.9.
-            quantizable_op_type(list[str]): List the type of layers that will be calculated out_scale. 
-                Default is ['Conv2D', 'ReLU', 'PReLU', 'LeakyReLU', 'Linear', 'Sigmoid', 'BatchNorm', 'ReLU6', 'Tanh', 'Softmax', 'Conv2DTranspose']
         """
         super(ImperativeCalcOutScale, self).__init__()
         self._moving_rate = moving_rate
-        self._out_scale_layers_map = {
-            'BatchNorm': BatchNorm,
-            'Conv2D': Conv2D,
-            'Conv2DTranspose': Conv2DTranspose,
-            'LeakyReLU': LeakyReLU,
-            'Linear': Linear,
-            'PReLU': PReLU,
-            'Pool2D': Pool2D,
-            'ReLU': ReLU,
-            'ReLU6': ReLU6,
-            'Sigmoid': Sigmoid,
-            'Softmax': Softmax,
-            'Tanh': Tanh
-        }
-        self._out_scale_layer_type = tuple(
-            self._out_scale_layers_map[layer]
-            if layer in self._out_scale_layers_map else layer
-            for layer in target_layer_types)
-        for layer in self._out_scale_layer_type:
-            assert not isinstance(
-                layer, str), "{} is unspported to be out_scaled.".format(layer)
+        self._out_scale_layer_type_list = (
+            BatchNorm, Conv2D, Conv2DTranspose, LeakyReLU, Linear, PReLU,
+            Pool2D, ReLU, ReLU6, Sigmoid, Softmax, Tanh, Swish)
         self._register_hook_handle_list = []
         self._out_scale_dict = {}
 
@@ -289,25 +324,11 @@ class ImperativeCalcOutScale(object):
         assert isinstance(
             model, dygraph.Layer), "model must be the instance of dygraph.Layer"
         for _, layer in model.named_sublayers():
-            if not isinstance(layer, self._out_scale_layer_type):
+            if not isinstance(layer, self._out_scale_layer_type_list):
                 continue
             forward_post_hook_handle = layer.register_forward_post_hook(
                 self._forward_post_hook)
             self._register_hook_handle_list.append(forward_post_hook_handle)
-
-    # Get the output var name of the op
-    def _get_op_output_names(self, op):
-        assert isinstance(
-            op, framework.Operator), "The input op should be Operator."
-        var_names = []
-        name_list = _op_real_in_out_name[op.type][1]
-        for name in name_list:
-            var_name = op.output(name)
-            if isinstance(var_name, list):
-                var_names.extend(var_name)
-            else:
-                var_names.append(var_name)
-        return var_names
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
         """
@@ -334,6 +355,7 @@ class ImperativeCalcOutScale(object):
 
         assert isinstance(
             layer, dygraph.Layer), "model must be the instance of dygraph.Layer"
+        is_dynamic_mode = False
         with dygraph.guard():
             layer.eval()
             for handle in self._register_hook_handle_list:
@@ -343,6 +365,10 @@ class ImperativeCalcOutScale(object):
                                                   .numpy())
 
         paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
+
+        if paddle.in_dynamic_mode():
+            is_dynamic_mode = True
+            paddle.enable_static()
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -368,7 +394,8 @@ class ImperativeCalcOutScale(object):
         for block in inference_program.blocks:
             for op in block.ops:
                 if op.type in _op_real_in_out_name:
-                    output_var_names = self._get_op_output_names(op)
+                    output_var_names = quantization_pass._get_op_output_var_names(
+                        op)
                     for output_var_name in output_var_names:
                         output_var_tensor = block.var(output_var_name)
                         if output_var_tensor.dtype not in [
@@ -385,6 +412,8 @@ class ImperativeCalcOutScale(object):
                         # to dygraph Layer by the name of output. And use dict to save
                         # the corresponding relationship between the dygraph Layer and the
                         # static graph op that needs to set the outscale attribute.
+                        if '.' not in output_var_name:
+                            continue
                         dynamic_layer_name, var_name_suffix = output_var_name.split(
                             ".")
                         if dynamic_layer_name in layer_var_dict:
@@ -419,9 +448,12 @@ class ImperativeCalcOutScale(object):
             model_filename=model_filename,
             params_filename=params_filename)
 
+        if is_dynamic_mode:
+            paddle.disable_static()
+
     def _forward_post_hook(self, layer, input, output):
         assert isinstance(
-            output, core.VarBase
+            output, (core.VarBase, framework.Variable)
         ), "Multiple outputs are not currently supported in ImperativeOutScale."
         if output.dtype not in [
                 core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP64

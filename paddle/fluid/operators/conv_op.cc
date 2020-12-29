@@ -155,8 +155,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+  if (library == framework::LibraryType::kPlain && this->CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
@@ -565,7 +564,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx)) {
     const std::string data_format = ctx.Attr<std::string>("data_format");
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
@@ -773,7 +772,10 @@ REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv2DGradMaker<paddle::framework::OpDesc>,
                   ops::Conv2DGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
+REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad,
+                  ops::Conv2DDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::Conv2DDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(depthwise_conv2d_grad_grad, ops::ConvOpDoubleGrad);
 
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
                   ops::ConvOpInferVarType,

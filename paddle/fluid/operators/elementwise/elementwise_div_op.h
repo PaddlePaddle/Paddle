@@ -73,10 +73,53 @@ struct DivGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout / y; }
 };
 
+template <>
+struct DivGradDX<paddle::platform::complex64> {
+  HOSTDEVICE paddle::platform::complex64 operator()(
+      paddle::platform::complex64 x, paddle::platform::complex64 y,
+      paddle::platform::complex64 out, paddle::platform::complex64 dout) const {
+    paddle::platform::complex64 y_conj(y.real, -y.imag);
+    return dout / y_conj;
+  }
+};
+
+template <>
+struct DivGradDX<paddle::platform::complex128> {
+  HOSTDEVICE paddle::platform::complex128 operator()(
+      paddle::platform::complex128 x, paddle::platform::complex128 y,
+      paddle::platform::complex128 out,
+      paddle::platform::complex128 dout) const {
+    paddle::platform::complex128 y_conj(y.real, -y.imag);
+    return dout / y_conj;
+  }
+};
+
 template <typename T>
 struct DivGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return -dout * out / y;
+  }
+};
+
+template <>
+struct DivGradDY<paddle::platform::complex64> {
+  HOSTDEVICE paddle::platform::complex64 operator()(
+      paddle::platform::complex64 x, paddle::platform::complex64 y,
+      paddle::platform::complex64 out, paddle::platform::complex64 dout) const {
+    paddle::platform::complex64 out_div_y_conj((out / y).real, -(out / y).imag);
+    return -dout * out_div_y_conj;
+  }
+};
+
+template <>
+struct DivGradDY<paddle::platform::complex128> {
+  HOSTDEVICE paddle::platform::complex128 operator()(
+      paddle::platform::complex128 x, paddle::platform::complex128 y,
+      paddle::platform::complex128 out,
+      paddle::platform::complex128 dout) const {
+    paddle::platform::complex128 out_div_y_conj((out / y).real,
+                                                -(out / y).imag);
+    return -dout * out_div_y_conj;
   }
 };
 
@@ -163,7 +206,7 @@ class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);

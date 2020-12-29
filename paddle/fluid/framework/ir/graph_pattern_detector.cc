@@ -1017,6 +1017,23 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
   return fc_out_var;
 }
 
+PDNode *patterns::FCActOneDNN::operator()(const std::string &act_type) {
+  auto *fc = pattern->NewNode(fc_repr())->assert_is_op("fc");
+  auto *fc_out = pattern->NewNode(fc_out_repr())
+                     ->assert_is_op_output("fc", "Out")
+                     ->assert_is_op_input(act_type);
+  auto *act =
+      pattern->NewNode(act_repr())->assert_is_op(act_type)->AsIntermediate();
+  auto *act_out = pattern->NewNode(act_out_repr())
+                      ->assert_is_op_output(act_type, "Out")
+                      ->AsOutput();
+
+  fc->LinksTo({fc_out});
+  act->LinksFrom({fc_out}).LinksTo({act_out});
+
+  return act_out;
+}
+
 PDNode *patterns::Embedding::operator()(PDNode *x) {
   x->assert_is_op_input("lookup_table", "Ids");
   auto *lookup_table_op =
@@ -1555,6 +1572,65 @@ PDNode *patterns::Reshape::operator()() {
 }
 
 PDNode *patterns::Matmul::operator()() {
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("matmul", "X");
+  auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("matmul", "Y");
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("matmul", "Out");
+
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  return matmul_out;
+}
+
+PDNode *patterns::Squeeze2Matmul::operator()() {
+  auto squeeze2_in_x = pattern->NewNode(squeeze2_in_x_repr())
+                           ->assert_is_op_input("squeeze2", "X")
+                           ->AsInput();
+  auto squeeze2_op =
+      pattern->NewNode(squeeze2_op_repr())->assert_is_op("squeeze2");
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->assert_is_op_output("squeeze2", "Out")
+                         ->assert_is_op_input("matmul", "X");
+  auto matmul_in_y =
+      pattern->NewNode(matmul_in_y_repr())->assert_is_op_input("matmul", "Y");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("matmul", "Out");
+
+  squeeze2_op->LinksFrom({squeeze2_in_x}).LinksTo({matmul_in_x});
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  return matmul_out;
+}
+
+PDNode *patterns::Reshape2Matmul::operator()() {
+  auto reshape2_in_x = pattern->NewNode(reshape2_in_x_repr())
+                           ->assert_is_op_input("reshape2", "X")
+                           ->AsInput();
+  auto reshape2_op =
+      pattern->NewNode(reshape2_op_repr())->assert_is_op("reshape2");
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->assert_is_op_output("reshape2", "Out")
+                         ->assert_is_op_input("matmul", "X");
+  auto matmul_in_y =
+      pattern->NewNode(matmul_in_y_repr())->assert_is_op_input("matmul", "Y");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("matmul", "Out");
+
+  reshape2_op->LinksFrom({reshape2_in_x}).LinksTo({matmul_in_x});
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  return matmul_out;
+}
+
+PDNode *patterns::MatmulWithInputOps::operator()() {
   auto prev_op_x = pattern->NewNode(prev_op_x_repr())->assert_is_op();
   auto prev_op_y = pattern->NewNode(prev_op_y_repr())->assert_is_op();
 
@@ -2103,8 +2179,8 @@ PDNode *patterns::Bfloat16Placement::operator()(
   std::unordered_set<std::string> supported_op_types =
       std::unordered_set<std::string>(
           {"concat", "conv2d", "elementwise_add", "elementwise_mul", "fc",
-           "fusion_gru", "gelu", "layer_norm", "matmul", "reshape2", "softmax",
-           "sum", "transpose2"});
+           "fusion_gru", "gelu", "layer_norm", "matmul", "pool2d", "reshape2",
+           "softmax", "sum", "transpose2"});
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }
@@ -2179,6 +2255,36 @@ PDNode *patterns::FirstBfloat16Ops::operator()() {
   prev_op->LinksTo({op_in});
   op->LinksFrom({op_in});
   return op;
+}
+
+PDNode *patterns::DuplicatedInputs::operator()() {
+  auto op = pattern->NewNode(op_repr())->assert_is_ops({"concat", "sum"});
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+  return op;
+}
+
+PDNode *patterns::UnnecessaryReorders::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+  prev_op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+
+  auto *quant_in = pattern->NewNode(quant_in_repr())
+                       ->assert_is_op_input("quantize", "Input");
+
+  auto *quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
+
+  auto *quant_out = pattern->NewNode(quant_out_repr())
+                        ->assert_is_op_output("quantize", "Output");
+
+  prev_op->LinksTo({quant_in});
+  quant_op->LinksFrom({quant_in}).LinksTo({quant_out});
+
+  return quant_out;
 }
 
 PDNode *patterns::MKLDNNInPlace::operator()() {
@@ -2511,6 +2617,57 @@ PDNode *patterns::FusionGru::operator()() {
   return out;
 }
 
+PDNode *patterns::TwoFusionGruConcat::operator()() {
+  auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
+      "fusion_gru", "X");
+  auto gru1 =
+      pattern->NewNode(gru1_repr())
+          ->assert_is_op("fusion_gru")
+          ->assert_more([&](Node *node) {
+            return node->Op()->GetAttrIfExists<bool>("is_reverse") == false;
+          });
+  auto gru2 =
+      pattern->NewNode(gru2_repr())
+          ->assert_is_op("fusion_gru")
+          ->assert_more([&](Node *node) {
+            return node->Op()->GetAttrIfExists<bool>("is_reverse") == true;
+          });
+  auto wh1 = pattern->NewNode(wh1_repr())
+                 ->AsInput()
+                 ->assert_is_op_input("fusion_gru", "WeightH");
+  auto wh2 = pattern->NewNode(wh2_repr())
+                 ->AsInput()
+                 ->assert_is_op_input("fusion_gru", "WeightH");
+  auto wx1 = pattern->NewNode(wx1_repr())
+                 ->AsInput()
+                 ->assert_is_op_input("fusion_gru", "WeightX");
+  auto wx2 = pattern->NewNode(wx2_repr())
+                 ->AsInput()
+                 ->assert_is_op_input("fusion_gru", "WeightX");
+  auto b1 = pattern->NewNode(b1_repr())->AsInput()->assert_is_op_input(
+      "fusion_gru", "Bias");
+  auto b2 = pattern->NewNode(b2_repr())->AsInput()->assert_is_op_input(
+      "fusion_gru", "Bias");
+  auto h1 = pattern->NewNode(h1_repr())
+                ->AsOutput()
+                ->assert_is_op_output("fusion_gru", "Hidden")
+                ->assert_is_op_input("concat")
+                ->AsIntermediate();
+  auto h2 = pattern->NewNode(h2_repr())
+                ->AsOutput()
+                ->assert_is_op_output("fusion_gru", "Hidden")
+                ->assert_is_op_input("concat")
+                ->AsIntermediate();
+  auto concat = pattern->NewNode(concat_repr())->assert_is_op("concat");
+  auto out = pattern->NewNode(out_repr())
+                 ->AsOutput()
+                 ->assert_is_op_output("concat", "Out");
+  gru1->LinksFrom({x, wh1, wx1, b1}).LinksTo({h1});
+  gru2->LinksFrom({x, wh2, wx2, b2}).LinksTo({h2});
+  concat->LinksFrom({h1, h2}).LinksTo({out});
+  return out;
+}
+
 PDNode *patterns::MultiGruSeq::operator()() {
   auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
       "multi_gru", "X");
@@ -2562,6 +2719,20 @@ PDNode *patterns::MultiGruSeq::operator()() {
   gru1->LinksFrom({x, wx11, wx12, wh11, wh12, b11, b12}).LinksTo({h1});
   gru2->LinksFrom({h1, wx21, wx22, wh21, wh22, b21, b22}).LinksTo({h2});
   return h2;
+}
+
+PDNode *patterns::MultiGru::operator()() {
+  auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
+      "multi_gru", "X");
+  auto gru = pattern->NewNode(gru_repr())->assert_is_op("multi_gru");
+  auto wx = pattern->NewNode(wx_repr())->AsInput()->assert_is_op_nth_input(
+      "multi_gru", "WeightX", 0);
+  auto wh = pattern->NewNode(wh_repr())->AsInput()->assert_is_op_nth_input(
+      "multi_gru", "WeightH", 0);
+  auto h = pattern->NewNode(h_repr())->AsOutput()->assert_is_op_output(
+      "multi_gru", "Hidden");
+  gru->LinksFrom({x, wx, wh}).LinksTo({h});
+  return h;
 }
 
 }  // namespace ir

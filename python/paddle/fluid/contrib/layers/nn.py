@@ -137,7 +137,7 @@ def var_conv_2d(input,
                 act=None,
                 dtype='float32',
                 name=None):
-    """
+    r"""
     The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
     and :attr:`col` are 1-level LodTensor. The convolution operation is same as conv2d layer with
@@ -477,7 +477,7 @@ def fused_embedding_seq_pool(input,
                              combiner='sum',
                              param_attr=None,
                              dtype='float32'):
-    """
+    r"""
     **Embedding Sequence pool**
 
     This layer is the fusion of lookup table and sequence_pool.
@@ -1442,7 +1442,7 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
 
 
 def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
-    """
+    r"""
     **Pull Box Extended Sparse Layer**
     This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
     BoxPS lookup table. The result of this lookup is the embedding of each ID in the
@@ -1640,7 +1640,7 @@ def fused_bn_add_act(x,
                      moving_variance_name=None,
                      act=None,
                      name=None):
-    """
+    r"""
     This Op performs batch norm on input x, and adds the result to input y. Then
     it performs activation on the sum. The data format of inputs must be NHWC
     `[batch, in_height, in_width, in_channels]`.

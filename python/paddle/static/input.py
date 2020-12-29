@@ -57,6 +57,7 @@ def data(name, shape, dtype=None, lod_level=0):
 
           import numpy as np
           import paddle
+          paddle.enable_static()
 
           # Creates a variable with fixed size [3, 2, 1]
           # User can only feed data of the same shape to x

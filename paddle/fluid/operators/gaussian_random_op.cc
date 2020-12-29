@@ -115,7 +115,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }

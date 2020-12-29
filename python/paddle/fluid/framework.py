@@ -23,6 +23,7 @@ import os
 import re
 import traceback
 import six
+import copy
 
 import numpy as np
 import subprocess
@@ -46,12 +47,12 @@ __all__ = [
     'name_scope',
     'cuda_places',
     'cpu_places',
+    'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
     'is_compiled_with_xpu',
     'Variable',
-    'ComplexVariable',
     'load_op_library',
     'require_version',
     'device_guard',
@@ -229,7 +230,7 @@ def _dygraph_only_(func):
 def _static_only_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
-        ), "We only support '%s()' in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
+        ), "In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '%s()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -241,7 +242,7 @@ def _static_only_(func):
 # in our implementation, there some APIs not supported, like numpy, because Variable contains the desc.
 # So, those APIs are listed under class Variable to generate docs only.
 # TODO(zhiqiu): We should make VarBase consistent with Variable in future, for example, by inheritting
-# same base class. 
+# same base class.
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
@@ -251,8 +252,8 @@ def _fake_interface_only_(func):
     return __impl__
 
 
-# NOTE(chenweihang): There is argument name typo (stat_dict, correct name is state_dict) 
-# in fluid api Layer.set_dict, Optimizer.load, in order to correct the argument without 
+# NOTE(chenweihang): There is argument name typo (stat_dict, correct name is state_dict)
+# in fluid api Layer.set_dict, Optimizer.load, in order to correct the argument without
 # introducing compatibility issues, add this decorator
 # NOTE(chenweihang): not using `wrap_decorator` here is because `wrap_decorator` will
 # move kwargs to args, which doesn't work in this decorate case
@@ -317,7 +318,7 @@ def _set_expected_place(place):
 def _var_base_to_np(var_base):
     """	
     convert VarBase tp numpy	
-    	
+
     Args:	
         var_base(VarBase) : the VarBase to convert	
     Returns (np.ndarray): the np.ndarray contain the value of VarBase	
@@ -351,6 +352,15 @@ def _cuda_ids():
         device_ids = [int(s) for s in gpus_env.split(",")]
     else:
         device_ids = six.moves.range(core.get_cuda_device_count())
+    return device_ids
+
+
+def _xpu_ids():
+    xpus_env = os.getenv("FLAGS_selected_xpus")
+    if xpus_env:
+        device_ids = [int(s) for s in xpus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_xpu_device_count())
     return device_ids
 
 
@@ -403,7 +413,7 @@ def cuda_places(device_ids=None):
     ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
     the returned list would be 
     [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
-    
+
     Parameters:
         device_ids (list or tuple of int, optional): list of GPU device ids.
 
@@ -415,7 +425,7 @@ def cuda_places(device_ids=None):
 
             import paddle
             import paddle.static as static
-            
+
             paddle.enable_static()
 
             cuda_places = static.cuda_places()
@@ -430,10 +440,48 @@ def cuda_places(device_ids=None):
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
 
 
+def xpu_places(device_ids=None):
+    """
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_xpus` environment variable to set the visible XPU device.
+    This function creates a list of :code:`paddle.XPUPlace` objects.
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_xpus` would be checked first. For example, if
+    :code:`FLAGS_selected_xpus=0,1,2`, the returned list would
+    be [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+    If :code:`FLAGS_selected_xpus` is not set, all visible
+    xpu places would be returned.
+    If :code:`device_ids` is not None, it should be the device
+    ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
+    the returned list would be 
+    [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+    
+    Parameters:
+        device_ids (list or tuple of int, optional): list of XPU device ids.
+    Returns:
+        list of paddle.XPUPlace: Created XPU place list.
+    Examples:
+        .. code-block:: python
+        
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+            xpu_places = static.xpu_places()
+    """
+    assert core.is_compiled_with_xpu(), \
+        "Not compiled with XPU"
+    if device_ids is None:
+        device_ids = _xpu_ids()
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.XPUPlace(dev_id) for dev_id in device_ids]
+
+
 def cpu_places(device_count=None):
     """
     This function creates a list of :code:`paddle.CPUPlace` objects, and returns the created list.
-    
+
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
     If :code:`CPU_NUM` is not set, the default value is 1,
@@ -452,7 +500,7 @@ def cpu_places(device_count=None):
 
             import paddle
             import paddle.static as static
-            
+
             paddle.enable_static()
 
             cpu_places = static.cpu_places()
@@ -643,6 +691,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.UINT8
     elif dtype == np.int8:
         return core.VarDesc.VarType.INT8
+    elif dtype == np.complex64:
+        return core.VarDesc.VarType.COMPLEX64
+    elif dtype == np.complex128:
+        return core.VarDesc.VarType.COMPLEX128
     else:
         raise ValueError("Not supported numpy dtype %s" % dtype)
 
@@ -1309,12 +1361,16 @@ class Variable(object):
                                                     dtype='float32')
                 print(new_variable._to_readable_code())
         """
+        # VarType.LOD_TENSOR -> LOD_TENSOR
+        type_str = str(self.type).split('.')[1]
         if self.type == core.VarDesc.VarType.SELECTED_ROWS or self.type == core.VarDesc.VarType.LOD_TENSOR:
-            var_str = "{name} : paddle.{type}.shape{shape}.astype({dtype})".\
-                format(i="{", e="}", name=self.name, type=self.type, shape=self.shape, dtype=self.dtype)
+            dtype_str = str(self.dtype).split('.')[1]
+            var_str = "{name} : {type}.shape{shape}.dtype({dtype}).stop_gradient({stop_gradient})".\
+                format(name=self.name, type=type_str, shape=self.shape,
+                       dtype=dtype_str, stop_gradient=self.stop_gradient)
         else:
-            var_str = "{name} : paddle.{type})".\
-                format(i="{", e="}", name=self.name, type=self.type)
+            var_str = "{name} : {type})".\
+                format(name=self.name, type=type_str)
 
         if type(self) == Parameter:
             if self.trainable:
@@ -1467,7 +1523,7 @@ class Variable(object):
         **Notes: This is a read-only property. It simply returns name of
           gradient Variable from a naming convention but doesn't guarantee
           the gradient exists.**
-       
+
         Examples:
           .. code-block:: python
 
@@ -1763,6 +1819,88 @@ class Variable(object):
     def __getitem__(self, item):
         return _getitem_impl_(self, item)
 
+    def __setitem__(self, item, value):
+        inputs = {'Input': self}
+
+        # 1. Parse item
+        if not isinstance(item, tuple):
+            item = [item]
+
+        axes = []
+        starts = []
+        ends = []
+        max_integer = sys.maxsize
+        for dim, slice_item in enumerate(item):
+            if isinstance(slice_item, slice):
+                start = slice_item.start
+                end = slice_item.stop
+                step = slice_item.step
+
+                if start is None and end is None and step is None:
+                    continue
+
+                start = 0 if start is None else start
+                step = 1 if step is None else step
+
+                # TODO: support cases when step != 1
+                if step != 1:
+                    raise ValueError(
+                        "When assign a value to a paddle.Tensor, only support step is 1, "
+                        "but received step is {}.".format(step))
+                end = max_integer if end is None else end
+            else:
+                start = slice_item
+                end = slice_item + 1 if slice_item != -1 else max_integer
+            axes.append(dim)
+            starts.append(start)
+            ends.append(end)
+
+        attrs = {'axes': axes, 'starts': starts, 'ends': ends}
+
+        # 2. Parse value
+        dtype = self.dtype
+        attrs['dtype'] = dtype
+
+        #  2.1 value is an integer of float
+        if isinstance(value, (int, float)):
+            value = np.array([value])
+
+        #  2.2 value is a np.ndarray
+        if isinstance(value, np.ndarray):
+            shape = list(value.shape)
+            if dtype == core.VarDesc.VarType.BOOL:
+                value_name = "bool_values"
+                values = [bool(v) for v in value.flat]
+            elif dtype == core.VarDesc.VarType.FP32:
+                value_name = "fp32_values"
+                values = [float(v) for v in value.flat]
+            elif dtype == core.VarDesc.VarType.INT32:
+                value_name = "int32_values"
+                values = [int(v) for v in value.flat]
+            elif dtype == core.VarDesc.VarType.INT64:
+                value_name = "int64_values"
+                values = [int(v) for v in value.flat]
+            else:
+                from .data_feeder import convert_dtype
+                raise TypeError(
+                    "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
+                    "the data type of the paddle.Tensor must be bool, float32, int32 or int64, but "
+                    "received %s." % convert_dtype(dtype))
+            attrs[value_name] = values
+            attrs["shape"] = shape
+
+        elif isinstance(value, Variable):
+            inputs["ValueTensor"] = value
+        else:
+            raise TypeError(
+                "Only support to assign an integer, float, numpy.ndarray or "
+                "paddle.Tensor to a paddle.Tensor, but received {}".format(
+                    type(value)))
+
+        self.block.append_op(
+            type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
+        return self
+
 
 def get_all_op_protos():
     """
@@ -1777,97 +1915,6 @@ def get_all_op_protos():
         op_proto = framework_pb2.OpProto.FromString(six.binary_type(pbstr))
         ret_values.append(op_proto)
     return ret_values
-
-
-class ComplexVariable(object):
-    """
-    The ComplexTensor defined on the complex number domain. It contains two common 
-    real number Tensor as its members, :attr:`real` and :attr:`imag` 
-    holding the real part and imaginary part of complex numbers respectively.
-    
-    **Notes**:
-        **The constructor of ComplexTensor should not be invoked directly.**
-
-    Args:
-        real (Tensor): The Tensor holding real-part data.
-        imag (Tensor): The Tensor holding imaginery-part data.
-    
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            x = paddle.to_tensor([1.0+2.0j, 0.2])
-            print(x.name, x.dtype, x.shape)
-            # ({'real': 'generated_tensor_0.real', 'imag': 'generated_tensor_0.imag'}, complex64, [2])
-            print(x)
-            # ComplexTensor[real](shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #                     [        1., 0.20000000])
-            # ComplexTensor[imag](shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #                     [2., 0.])
-            print(type(x))
-            # <class 'paddle.ComplexTensor'>
-    """
-
-    def __new__(cls, *arg, **kwargs):
-        cls.__module__ = "paddle"
-        cls.__name__ = "ComplexTensor"
-        return super(ComplexVariable, cls).__new__(cls)
-
-    def __init__(self, real, imag):
-        assert real.shape == imag.shape, "The real part and imaginary part " \
-            "of a ComplexVariable should have the same shape!"
-        assert real.dtype == imag.dtype, "The real part and imaginary part " \
-            "of a ComplexVariable should have the same data type!"
-
-        self.real = real
-        self.imag = imag
-        if self.real.dtype in [
-                core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32
-        ]:
-            self._dtype = "complex64"
-        else:
-            self._dtype = "complex128"
-        self._shape = self.real.shape
-
-    def __getitem__(self, idx):
-        return ComplexVariable(self.real[idx], self.imag[idx])
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def name(self):
-        return {"real": self.real.name, "imag": self.imag.name}
-
-    @name.setter
-    def name(self, name):
-        # rename
-        if isinstance(name, str):
-            self.real.name = name + ".real"
-            self.imag.name = name + ".imag"
-        elif (isinstance(name, tuple) or isinstance(name,
-                                                    list)) and len(name) == 2:
-            self.real.name, self.imag.name = name[0], name[1]
-        else:
-            raise ValueError(
-                "An invalid name assigned to the ComplexVariable, "
-                "which must be a string, or a tuple or a list with length 2!")
-
-    def numpy(self):
-        return self.real.numpy() + 1j * self.imag.numpy()
-
-    def __str__(self):
-        from paddle.tensor.to_string import to_string
-        return "ComplexTensor containing:\n{real}\n{imag}".format(
-            real=to_string(self.real, "[real part]Tensor"),
-            imag=to_string(self.imag, "[imag part]Tensor"))
-
-    __repr__ = __str__
 
 
 class OpProtoHolder(object):
@@ -1968,7 +2015,8 @@ class Operator(object):
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
         'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
-        'c_sync_comm_stream', 'queue_generator', 'dequeue', 'enqueue'
+        'c_sync_comm_stream', 'queue_generator', 'dequeue', 'enqueue',
+        'heter_listen_and_serv'
     }
 
     def __init__(self,
@@ -2239,7 +2287,8 @@ class Operator(object):
 
         if outputs_str != "{}":
             op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
-                format(outputs = outputs_str, op_type=self.type, inputs=inputs_str, attrs=attrs_str)
+                format(outputs=outputs_str, op_type=self.type,
+                       inputs=inputs_str, attrs=attrs_str)
         else:
             op_str = "{op_type}(inputs={inputs}, {attrs})".\
                 format(op_type=self.type, inputs=inputs_str, attrs=attrs_str)
@@ -2255,7 +2304,7 @@ class Operator(object):
         return self.desc.type()
 
     def input(self, name):
-        """
+        r"""
         Get the input arguments according to the input parameter name.
 
         Args:
@@ -2306,7 +2355,7 @@ class Operator(object):
         return self.desc.output_arg_names()
 
     def output(self, name):
-        """
+        r"""
         Get output arguments by the output parameter name.
 
         Args:
@@ -2874,7 +2923,7 @@ class Block(object):
                 for op in block.ops:
                     if var.name in op.output_arg_names:
                         # In startup_program, "c_broadcast" and "c_sync_comm_stream"
-                        # are treated as initialization ops that cause error. 
+                        # are treated as initialization ops that cause error.
                         # Think of "c_broadcast" and "c_sync_comm_stream" as a special case here.
                         if op.type in ["c_broadcast", "c_sync_comm_stream"]:
                             continue
@@ -3787,7 +3836,7 @@ class IrGraph(object):
             op_node(IrOpNode): the operator node that is needed to update input's link.
         """
         assert old_input_node.node in self.graph.nodes() and new_input_node.node in \
-               self.graph.nodes() and op_node.node in self.graph.nodes(), \
+            self.graph.nodes() and op_node.node in self.graph.nodes(), \
             'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
         old_input_node.remove_output(op_node)
         op_node.remove_input(old_input_node)
@@ -3805,7 +3854,7 @@ class IrGraph(object):
             op_node(IrOpNode): the operator node that is needed to update input's link.
         """
         assert old_output_node.node in self.graph.nodes() and new_output_node.node in \
-               self.graph.nodes() and op_node.node in self.graph.nodes(), \
+            self.graph.nodes() and op_node.node in self.graph.nodes(), \
             'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
         old_output_node.remove_input(op_node)
         op_node.remove_output(old_output_node)
@@ -3922,8 +3971,9 @@ class IrGraph(object):
 
         def _convert_to_pdf(dot_file_path):
             pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
-            exited_code = subprocess.call('dot -Tpdf ' + dot_file_path \
-                                          + ' -o ' + pdf_save_path, shell=True)
+            exited_code = subprocess.call(
+                'dot -Tpdf ' + dot_file_path + ' -o ' + pdf_save_path,
+                shell=True)
             if exited_code != 0:
                 print('The dot command is needed for creating pdf files.')
                 print('The {} is saved as the dot filetype.'.format(
@@ -4536,7 +4586,7 @@ class Program(object):
             The two code snippets above will generate and print same programs.
         """
 
-        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # NOTE(zhiqiu): we sync the original program first, since its program may diff with
         # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
         self._sync_with_cpp()
 
@@ -4566,7 +4616,7 @@ class Program(object):
             if hasattr(self, 'lr_sheduler'):
                 p.lr_sheduler = self.lr_sheduler
 
-            #NOTE(zhiqiu): we sync the cloned program, to update its program by
+            # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.
             p._sync_with_cpp()
 
@@ -4611,7 +4661,7 @@ class Program(object):
             Program:  A new, pruned program.
         """
 
-        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # NOTE(zhiqiu): we sync the original program first, since its program may diff with
         # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
         self._sync_with_cpp()
 
@@ -4654,7 +4704,7 @@ class Program(object):
                 for idx, op in enumerate(global_block.ops):
                     if name in op.output_arg_names:
                         # NOTE(zhiqiu): Find op that generate target name.
-                        # Skip optimize op except for optimize op in targets, 
+                        # Skip optimize op except for optimize op in targets,
                         # since optimize op generates parameters.
                         if op._is_optimize_op() and op not in targets:
                             continue
@@ -5103,7 +5153,7 @@ class Program(object):
                 label = static.data(name='label', shape=[None,1], dtype='int64')
                 for var in prog.list_vars():
                     print(var)
-                
+
                 # var img : paddle.VarType.LOD_TENSOR.shape(-1, 1, 28, 28).astype(VarType.FP32)
                 # var label : paddle.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)
         """
@@ -5359,6 +5409,36 @@ class ParamBase(core.VarBase):
         return "Parameter containing:\n{tensor}".format(
             tensor=super(ParamBase, self).__str__())
 
+    def __deepcopy__(self, memo):
+        """
+        Deep copy parameter, it will always performs Tensor copy.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import copy
+                linear = paddle.nn.Linear(1, 3)
+                linear_copy = copy.deepcopy(linear)
+
+                print(linear.weight)
+                # Parameter containing:
+                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
+                #     [[-0.30929261, -0.90929240, -1.07851017]])
+
+                print(linear_copy.weight)
+                # Parameter containing:
+                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
+                #     [[-0.30929261, -0.90929240, -1.07851017]])
+
+        """
+        state = copy.deepcopy(self.__dict__, memo)
+        state["name"] = self.name + unique_name.generate("_deepcopy")
+        new_param = ParamBase(self.shape, self.dtype, **state)
+        memo[id(self)] = new_param
+        new_param.copy_(self, True)
+        return new_param
+
     __repr__ = __str__
 
 
@@ -5373,7 +5453,7 @@ def default_startup_program():
 
     The :code:`paddle.nn` function will append the initialization operators into startup program.
     The :code:`startup_program` will initialize the parameters by the OPs. 
-  
+
     This method will return the default or the current startup program. Users can use
     :ref:`api_paddle_fluid_framework_program_guard`  to switch :ref:`api_paddle_fluid_framework_Program` .
 
@@ -5400,7 +5480,7 @@ def default_main_program():
     """
     This API can be used to get ``default main program`` which store the 
     descriptions of Ops and tensors.
-    
+
     For example ``z = paddle.add(x, y)`` will create a new ``add`` 
     Op and a new ``z`` tensor, and they will be recorded in ``default main program`` . 
 
@@ -5409,7 +5489,7 @@ def default_main_program():
     :code:`default_main_program` when the program is not specified.
 
     If you want to switch the ``default main program``, you can use :ref:`api_paddle_fluid_framework_program_guard` .
-    
+
     Returns:
         Program: A ``Program`` which holding the descriptions of OPs and tensors in the network.
 
@@ -5481,7 +5561,7 @@ def program_guard(main_program, startup_program=None):
 
     Examples:
        .. code-block:: python
-       
+
           import paddle
 
           paddle.enable_static()
@@ -5504,7 +5584,7 @@ def program_guard(main_program, startup_program=None):
           # does not care about startup program. Just pass a temporary value.
           with paddle.static.program_guard(main_program, paddle.static.Program()):
               data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-    
+
     """
     from .data_feeder import check_type
     check_type(main_program, 'main_program', Program,
@@ -5571,7 +5651,7 @@ def _dygraph_place_guard(place):
 def load_op_library(lib_filename):
     """
     :api_attr: Static Graph
-    
+
     Load a dynamic library, including custom operators and kernels.
     When library is loaded, ops and kernels registered in the library
     will be available in PaddlePaddle main process.

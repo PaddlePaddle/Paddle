@@ -240,7 +240,7 @@ class QuantizationTransformPass(object):
                  act_preprocess_func=None,
                  optimizer_func=None,
                  executor=None):
-        """
+        r"""
         Constructor.
 
         Args:

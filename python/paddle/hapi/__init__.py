@@ -19,7 +19,9 @@ from . import model_summary
 from . import model
 from .model import *
 from .model_summary import summary
+from .dynamic_flops import flops
 
 logger.setup_logger()
 
 __all__ = ['callbacks'] + model.__all__ + ['summary']
+__all__ = model.__all__ + ['flops']
