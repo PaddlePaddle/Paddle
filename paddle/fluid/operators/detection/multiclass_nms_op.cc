@@ -94,7 +94,11 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     // It will be rewritten in the computing kernel.
     int keep_top_k = ctx->Attrs().Get<int>("keep_top_k");
     if (score_size == 3) {
-      ctx->SetOutputDim("Out", {keep_top_k, box_dims[2] + 2});
+      if (keep_top_k > -1) {
+        ctx->SetOutputDim("Out", {keep_top_k, box_dims[2] + 2});
+      } else {
+        ctx->SetOutputDim("Out", {box_dims[1], box_dims[2] + 2});
+      }
     } else {
       ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
     }
