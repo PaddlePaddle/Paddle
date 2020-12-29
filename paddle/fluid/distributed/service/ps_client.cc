@@ -23,7 +23,7 @@
 
 namespace paddle {
 namespace distributed {
-REGISTER_CLASS(PSClient, BrpcPsClient);
+REGISTER_PSCORE_CLASS(PSClient, BrpcPsClient);
 
 int32_t PSClient::configure(
     const PSParameter &config,
@@ -43,7 +43,7 @@ int32_t PSClient::configure(
   const auto &work_param = _config.worker_param().downpour_worker_param();
 
   for (size_t i = 0; i < work_param.downpour_table_param_size(); ++i) {
-    auto *accessor = CREATE_CLASS(
+    auto *accessor = CREATE_PSCORE_CLASS(
         ValueAccessor,
         work_param.downpour_table_param(i).accessor().accessor_class());
     accessor->configure(work_param.downpour_table_param(i).accessor());
@@ -73,7 +73,7 @@ PSClient *PSClientFactory::create(const PSParameter &ps_config) {
   }
 
   const auto &service_param = config.downpour_server_param().service_param();
-  PSClient *client = CREATE_CLASS(PSClient, service_param.client_class());
+  PSClient *client = CREATE_PSCORE_CLASS(PSClient, service_param.client_class());
   if (client == NULL) {
     LOG(ERROR) << "client is not registered, server_name:"
                << service_param.client_class();

@@ -20,8 +20,8 @@
 namespace paddle {
 namespace distributed {
 
-REGISTER_CLASS(PSServer, BrpcPsServer);
-REGISTER_CLASS(PsBaseService, BrpcPsService);
+REGISTER_PSCORE_CLASS(PSServer, BrpcPsServer);
+REGISTER_PSCORE_CLASS(PsBaseService, BrpcPsService);
 
 PSServer *PSServerFactory::create(const PSParameter &ps_config) {
   const auto &config = ps_config.server_param();
@@ -43,7 +43,7 @@ PSServer *PSServerFactory::create(const PSParameter &ps_config) {
   }
 
   const auto &service_param = config.downpour_server_param().service_param();
-  PSServer *server = CREATE_CLASS(PSServer, service_param.server_class());
+  PSServer *server = CREATE_PSCORE_CLASS(PSServer, service_param.server_class());
   if (server == NULL) {
     LOG(ERROR) << "server is not registered, server_name:"
                << service_param.server_class();
@@ -67,7 +67,7 @@ int32_t PSServer::configure(const PSParameter &config, PSEnvironment &env,
   uint32_t barrier_table = UINT32_MAX;
 
   for (size_t i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
-    auto *table = CREATE_CLASS(
+    auto *table = CREATE_PSCORE_CLASS(
         Table, downpour_param.downpour_table_param(i).table_class());
 
     if (downpour_param.downpour_table_param(i).table_class() ==

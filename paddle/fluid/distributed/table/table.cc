@@ -26,12 +26,12 @@
 namespace paddle {
 namespace distributed {
 
-REGISTER_CLASS(Table, CommonDenseTable);
-REGISTER_CLASS(Table, CommonSparseTable);
-REGISTER_CLASS(Table, SparseGeoTable);
-REGISTER_CLASS(Table, BarrierTable);
+REGISTER_PSCORE_CLASS(Table, CommonDenseTable);
+REGISTER_PSCORE_CLASS(Table, CommonSparseTable);
+REGISTER_PSCORE_CLASS(Table, SparseGeoTable);
+REGISTER_PSCORE_CLASS(Table, BarrierTable);
 
-REGISTER_CLASS(ValueAccessor, CommMergeAccessor);
+REGISTER_PSCORE_CLASS(ValueAccessor, CommMergeAccessor);
 
 int32_t TableManager::initialize() {
   static bool initialized = false;
@@ -59,7 +59,7 @@ int32_t Table::initialize_accessor() {
     return -1;
   }
   auto *accessor =
-      CREATE_CLASS(ValueAccessor,
+      CREATE_PSCORE_CLASS(ValueAccessor,
                    _config.accessor().accessor_class()) if (accessor == NULL) {
     LOG(ERROR) << "accessor is unregisteg, table_id:" << _config.table_id()
                << ", accessor_name:" << _config.accessor().accessor_class();

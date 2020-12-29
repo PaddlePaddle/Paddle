@@ -107,7 +107,7 @@ class Table {
   TableParameter _config;
   std::shared_ptr<ValueAccessor> _value_accesor;
 };
-REGISTER_REGISTERER(Table);
+REGISTER_PSCORE_REGISTERER(Table);
 
 class TableManager {
  public:

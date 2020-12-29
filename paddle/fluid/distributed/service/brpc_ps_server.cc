@@ -30,7 +30,7 @@ int32_t BrpcPsServer::initialize() {
     LOG(ERROR) << "miss service_class in ServerServiceParameter";
     return -1;
   }
-  auto *service = CREATE_CLASS(PsBaseService, service_config.service_class());
+  auto *service = CREATE_PSCORE_CLASS(PsBaseService, service_config.service_class());
   if (service == NULL) {
     LOG(ERROR) << "service is unregistered, service_name:"
                << service_config.service_class();

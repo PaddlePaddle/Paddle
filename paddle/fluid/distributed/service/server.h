@@ -90,7 +90,7 @@ class PSServer {
   std::unordered_map<int32_t, MsgHandlerFunc> _msg_handler_map;
 };
 
-REGISTER_REGISTERER(PSServer);
+REGISTER_PSCORE_REGISTERER(PSServer);
 
 typedef std::function<void(void *)> PServerCallBack;
 
@@ -142,7 +142,7 @@ class PsBaseService : public PsService {
   PSServer *_server;
   const ServerParameter *_config;
 };
-REGISTER_REGISTERER(PsBaseService);
+REGISTER_PSCORE_REGISTERER(PsBaseService);
 
 class PSServerFactory {
  public:
