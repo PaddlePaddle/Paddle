@@ -171,20 +171,20 @@ model = SE_ResNeXt50Small
 
 
 def batch_size(use_device):
-    if use_device == DeviceType.GPU:
+    if use_device == DeviceType.CUDA:
         # Paddle uses 8GB P4 GPU for unittest so we decreased the batch size.
         return 8
     return 12
 
 
 def iter(use_device):
-    if use_device == DeviceType.GPU:
+    if use_device == DeviceType.CUDA:
         return 10
     return 1
 
 
 gpu_img, gpu_label = init_data(
-    batch_size=batch_size(use_device=DeviceType.GPU),
+    batch_size=batch_size(use_device=DeviceType.CUDA),
     img_shape=img_shape,
     label_range=999)
 cpu_img, cpu_label = init_data(
@@ -196,6 +196,6 @@ feed_dict_cpu = {"image": cpu_img, "label": cpu_label}
 
 
 def feed_dict(use_device):
-    if use_device == DeviceType.GPU:
+    if use_device == DeviceType.CUDA:
         return feed_dict_gpu
     return feed_dict_cpu
