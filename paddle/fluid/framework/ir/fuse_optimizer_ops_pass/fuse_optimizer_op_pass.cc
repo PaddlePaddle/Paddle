@@ -104,9 +104,11 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
         platform::errors::AlreadyExists(
             "The fused variable(%s) already exists.", fused_var_name));
     // FIXME(wangxi). update persistable
-    details::VariableInfo var_info = {.name_ = fused_var_name,
-                                      .type_ = proto::VarType::LOD_TENSOR,
-                                      .persistable_ = false};
+    details::VariableInfo var_info = {
+      name_ : fused_var_name,
+      type_ : proto::VarType::LOD_TENSOR,
+      persistable_ : false
+    };
     fused_var_set.insert({fused_var_name, var_info});
     fused_vars_name.emplace(var_name, fused_var_name);
   }
