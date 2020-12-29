@@ -69,20 +69,20 @@ class ObjectFactory {
 };
 
 typedef std::map<std::string, ObjectFactory *> FactoryMap;
-typedef std::map<std::string, FactoryMap> BaseClassMap;
+typedef std::map<std::string, FactoryMap> PsCoreClassMap;
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-inline BaseClassMap &global_factory_map() {
-  static BaseClassMap *base_class = new BaseClassMap();
+inline PsCoreClassMap &global_factory_map() {
+  static PsCoreClassMap *base_class = new PsCoreClassMap();
   return *base_class;
 }
 #ifdef __cplusplus
 }
 #endif
 
-inline BaseClassMap &global_factory_map_cpp() { return global_factory_map(); }
+inline PsCoreClassMap &global_factory_map_cpp() { return global_factory_map(); }
 
 // typedef pa::Any Any;
 // typedef ::FactoryMap FactoryMap;
