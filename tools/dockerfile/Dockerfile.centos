@@ -29,7 +29,7 @@ ENV LIBRARY_PATH=/usr/local/ssl/lib:$LIBRARY_PATH
 RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
   tar -xvf git-2.17.1.tar.gz && \
   cd git-2.17.1 && \
-  ./configure --with-openssl=/usr/local/ssl --prefix=/usr/local && \
+  ./configure --with-openssl --prefix=/usr/local && \
   make -j8 && make install 
 
 # for paddle
