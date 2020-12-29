@@ -654,7 +654,6 @@ EOF
         fi
         #mactest_error=$?
         ut_endTime_s=`date +%s`
-        echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
         # Recovery proxy to avoid failure in later steps
