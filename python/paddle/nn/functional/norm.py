@@ -123,7 +123,7 @@ def batch_norm(x,
                momentum=0.9,
                epsilon=1e-05,
                data_format="NCHW",
-               use_global_stats=False,
+               use_global_stats=None,
                name=None):
     """
     Applies Batch Normalization as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
@@ -140,7 +140,7 @@ def batch_norm(x,
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Defalut False.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Defalut "NCHW".
-        use_global_stats(bool, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics. Default: False.
+        use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
@@ -180,7 +180,12 @@ def batch_norm(x,
             "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format))
 
     data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
-    trainable_statistics = False if not training and use_global_stats else True
+
+    if use_global_stats == None:
+        use_global_stats = not training
+        trainable_statistics = training
+    else:
+        trainable_statistics = not use_global_stats
 
     if in_dygraph_mode():
         # for dygraph need tuple
