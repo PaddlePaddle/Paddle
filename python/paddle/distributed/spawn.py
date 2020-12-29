@@ -158,7 +158,7 @@ def _set_trainer_env(env_dict):
     # main process and set the FLAGS once, but the environment variable has 
     # not been set at this time, which leads to the FLAGS_selected_gpus 
     # is keep same with mainprocess(usually empty), so manually update the flags here
-    # set_flags({'FLAGS_selected_gpus': env_dict['FLAGS_selected_gpus']})
+    set_flags({'FLAGS_selected_gpus': env_dict['FLAGS_selected_gpus']})
     for var_name in env_dict:
         os.environ[var_name] = env_dict[var_name]
 
