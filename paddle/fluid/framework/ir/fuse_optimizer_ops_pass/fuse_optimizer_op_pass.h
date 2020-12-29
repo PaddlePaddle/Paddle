@@ -109,10 +109,6 @@ class FuseOptimizerOpPass : public ir::Pass {
       const std::unordered_map<std::string, std::vector<Node *>> &var_nodes,
       const std::string &name) const;
 
-  bool IsPersistableVar(
-      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
-      const std::string &name) const;
-
   const VarDesc *GetVarDescFromVarsInfo(
       const std::unordered_map<std::string, std::vector<Node *>> &vars_info,
       const std::string &var_name) const;

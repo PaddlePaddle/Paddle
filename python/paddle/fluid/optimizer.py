@@ -5237,6 +5237,7 @@ class GradientMergeOptimizer(object):
 
         new_params_grads = []
         # step2: create gradient_merge var and init with 0
+        # and update op_role_var
         for param, grad in params_grads:
             param_name = param.name
             param_var = main_block.var(param_name)
@@ -5294,6 +5295,13 @@ class GradientMergeOptimizer(object):
                             'bias_after_scale': False
                         })
 
+            for param, new_grad in new_params_grads:
+                # NOTE. regularization will append ops to grad.block,
+                # while new_grad's real block is global_block,
+                # but we want append regularization ops to cur_block,
+                # so we set new_grad.block = cur_block
+                new_grad.block = cur_block
+
             self._optimize_ops = self.inner_optimizer.apply_gradients(
                 new_params_grads)
 
@@ -5305,6 +5313,7 @@ class GradientMergeOptimizer(object):
                     value=0.0,
                     out=new_grad)
 
+        # step3. apply gradient
         layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)
 
         return self._optimize_ops

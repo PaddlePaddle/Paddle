@@ -20,7 +20,7 @@ from test_dist_base import TestDistBase
 flag_name = os.path.splitext(__file__)[0]
 
 
-class TestDistMnist2x2FP16AllReduce(TestDistBase):
+class TestDistMnistGradMerge(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -34,6 +34,23 @@ class TestDistMnist2x2FP16AllReduce(TestDistBase):
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)
+
+
+class TestDistMnistGradMergeNoFuse(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._use_reduce = False
+        self._nccl2_mode = True
+        self._fuse_all_reduce = False
+
+    def test_dist_train(self):
+        import paddle.fluid as fluid
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "dist_mnist_gradient_merge.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name + "_no_fuse")
 
 
 if __name__ == "__main__":
