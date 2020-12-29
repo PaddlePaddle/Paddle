@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/trace_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -88,13 +89,13 @@ class TraceOpMaker : public framework::OpProtoAndCheckerMaker {
         R"DOC((int, default 0), the first axis of the 2-D planes from which the diagonals should be taken. 
         Can be either positive or negative. Default: 0.
         )DOC")
-        .SetDefault(-2);
+        .SetDefault(0);
     AddAttr<int>(
         "axis2",
         R"DOC((int, default 1), the second axis of the 2-D planes from which the diagonals should be taken. 
         Can be either positive or negative. Default: 1.
         )DOC")
-        .SetDefault(-1);
+        .SetDefault(1);
     AddComment(R"DOC(
 Trace Operator.
 Return the sum along diagonals of the input tensor.
@@ -177,3 +178,11 @@ REGISTER_OP_CPU_KERNEL(
                          paddle::platform::complex64>,
     ops::TraceGradKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex128>);
+
+/* ==========================  register checkpoint ===========================*/
+REGISTER_OP_VERSION(trace)
+    .AddCheckpoint(
+        R"ROC(Upgrade trace add a new attribute [axis2])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "axis2", "The added attribute 'axis2' is not yet registered.",
+            {1.0f}));
