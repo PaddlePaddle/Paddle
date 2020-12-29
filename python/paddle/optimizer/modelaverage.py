@@ -308,7 +308,7 @@ class ModelAverage(Optimizer):
                                                             min_average_window=2,
                                                             max_average_window=4)
                 loss.backward()
-                modelaverage.minimize()
+                modelaverage.minimize(loss)
                 modelaverage.clear_grad()
         """
         assert isinstance(loss, Variable), "The loss should be an Tensor."
