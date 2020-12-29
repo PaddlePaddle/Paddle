@@ -125,7 +125,7 @@ if(WIN32)
 	list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
 	list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
 	list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
-	list(REMOVE_ITEM TEST_OPS test_quantize_program_pass)
+	list(REMOVE_ITEM TEST_OPS test_quantize_transpiler_v2)
 endif()
 
 if(LINUX AND WITH_MKLDNN)

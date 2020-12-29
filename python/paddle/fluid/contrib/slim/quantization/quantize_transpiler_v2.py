@@ -27,7 +27,7 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
-class QuantizeProgramPass(object):
+class QuantizeTranspilerV2(object):
     def __init__(self,
                  weight_bits=8,
                  activation_bits=8,
@@ -37,6 +37,8 @@ class QuantizeProgramPass(object):
                  skip_pattern=['skip_quant']):
         """
         Add quant_dequant op before the quantized op to quantize the fluid Program.
+        It is a patch for distributed quantization, we will support others module for
+        distributed quantization.
 
         Args:
             weight_bits(int): the bit of quantized weight.

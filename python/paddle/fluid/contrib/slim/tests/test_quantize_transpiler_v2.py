@@ -20,7 +20,7 @@ import six
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization.quantize_program_pass import QuantizeProgramPass
+from paddle.fluid.contrib.slim.quantization.quantize_transpiler_v2 import QuantizeTranspilerV2
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -93,14 +93,14 @@ class TestQuantizeProgramPass(unittest.TestCase):
             test_graph = IrGraph(core.Graph(test_program.desc), for_test=True)
             test_graph.draw('.', 'test_program_1')
 
-        qpp = QuantizeProgramPass(
+        qt = QuantizeTranspilerV2(
             activation_quantize_type=activation_quant_type,
             weight_quantize_type=weight_quant_type,
             quantizable_op_type=[
                 'conv2d', 'depthwise_conv2d', 'mul', 'pool2d'
             ])
-        qpp.apply(train_program, startup_program)
-        qpp.apply(test_program, startup_program)
+        qt.apply(train_program, startup_program)
+        qt.apply(test_program, startup_program)
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
