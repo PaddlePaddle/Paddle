@@ -20,6 +20,7 @@ limitations under the License. */
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 
+#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
@@ -322,6 +323,7 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
           std::string(Py_TYPE(r->start)->tp_name)));
     }
     if (*start < 0) *start += length;
+    *start = std::max(*start, static_cast<Py_ssize_t>(0));
   }
   if (r->stop == Py_None) {
     *stop = *step < 0 ? -1 : length;
@@ -335,6 +337,7 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
           std::string(Py_TYPE(r->stop)->tp_name)));
     }
     if (*stop < 0) *stop += length;
+    *stop = std::min(*stop, length);
   }
   if (*stop > length) return -1;
   if (*start >= length) return -1;
@@ -380,7 +383,7 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
       int start = static_cast<int>(PyLong_AsLong(slice_item));
       auto s_t = start;
       start = start < 0 ? start + dim_len : start;
-      if (start >= dim_len) {
+      if (start >= dim_len || start < 0) {
         std::string str_error_message =
             "The starting index " + std::to_string(s_t) +
             " of slice is out of bounds in tensor " + std::to_string(dim) +
