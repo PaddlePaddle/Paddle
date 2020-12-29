@@ -57,6 +57,18 @@ class LinearNet(nn.Layer):
         return self._linear(x)
 
 
+class LayerWithLargeParameters(paddle.nn.Layer):
+    def __init__(self, num_outs):
+        super(LayerWithLargeParameters, self).__init__()
+        for i in range(2):
+            setattr(self, "l_" + str(i), paddle.nn.Linear(num_outs, num_outs))
+
+    def forward(self, x):
+        for i in range(2):
+            x = getattr(self, "l_" + str(i))(x)
+        return x
+
+
 def train(layer, loader, loss_fn, opt):
     for epoch_id in range(EPOCH_NUM):
         for batch_id, (image, label) in enumerate(loader()):
@@ -65,6 +77,53 @@ def train(layer, loader, loss_fn, opt):
             loss.backward()
             opt.step()
             opt.clear_grad()
+
+
+class TestSaveLoadLargeParameters(unittest.TestCase):
+    def setUp(self):
+        # number of inputs and outputs
+        self.num_outs = 2**15
+
+    def test_large_parameters_paddle_save(self):
+        # enable dygraph mode
+        paddle.disable_static()
+        # create network
+        layer = LayerWithLargeParameters(self.num_outs)
+        save_dict = layer.state_dict()
+
+        path = "test_paddle_save_load_large_param_save/layer" + ".pdparams"
+        paddle.save(layer.state_dict(), path)
+        dict_load = paddle.load(path)
+        # compare results before and after saving
+        for key, value in save_dict.items():
+            self.assertTrue(
+                np.sum(np.abs(dict_load[key] - value.numpy())) < 1e-15)
+
+    def test_large_parameters_static_save(self):
+        # enable static mode
+        paddle.enable_static()
+        # create network
+        x = paddle.static.data(
+            name="x", shape=[None, self.num_outs], dtype='float32')
+        y = paddle.static.nn.fc(x, self.num_outs)
+        z = paddle.static.nn.fc(y, 10)
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        exe.run(paddle.static.default_startup_program())
+        prog = paddle.static.default_main_program()
+
+        inputs = np.random.randn(2, self.num_outs).astype("float32")
+        result_z = exe.run(program=prog,
+                           feed={"x": inputs},
+                           fetch_list=[z.name])
+        path = "test_paddle_save_load_large_param_save/static_save"
+        paddle.static.save(prog, path)
+        paddle.static.load(prog, path)
+        result_load = exe.run(program=prog,
+                              feed={"x": inputs},
+                              fetch_list=[z.name])
+        # compare results before and after saving
+        self.assertTrue(np.sum(np.abs(result_z[0] - result_load[0])) < 1e-15)
 
 
 class TestSaveLoad(unittest.TestCase):
