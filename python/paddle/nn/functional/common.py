@@ -23,7 +23,6 @@ from ...fluid import dygraph_utils
 # from ...fluid import one_hot  #DEFINE_ALIAS
 # from ...fluid.layers import pad2d  #DEFINE_ALIAS
 from ...fluid.layers import unfold  #DEFINE_ALIAS
-from ...fluid.layers import assign  #DEFINE_ALIAS
 from ...fluid.layers import squeeze  #DEFINE_ALIAS
 from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
 from ...tensor import clip
@@ -53,7 +52,6 @@ __all__ = [
     'pad',
     'unfold',
     #       'bilinear_tensor_product',
-    'assign',
     'interpolate',
     'upsample',
     'bilinear',
