@@ -165,22 +165,6 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
   return 0;
 }
 
-void CommonSparseTable::create_initializer(const std::string& attr,
-                                           const std::string& name) {
-  auto slices = string::split_string<std::string>(attr, "&");
-
-  if (slices[0] == "gaussian_random") {
-    initializers_[name] = new GaussianInitializer(slices);
-  } else if (slices[0] == "fill_constant") {
-    initializers_[name] = new FillConstantInitializer(slices);
-  } else if (slices[0] == "uniform_random") {
-    initializers_[name] = new UniformInitializer(slices);
-  } else {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("%s can not be supported", name));
-  }
-}
-
 int32_t CommonSparseTable::initialize() {
   _shards_task_pool.resize(task_pool_size_);
   for (int i = 0; i < _shards_task_pool.size(); ++i) {
@@ -189,6 +173,27 @@ int32_t CommonSparseTable::initialize() {
 
   sync = _config.common().sync();
   VLOG(1) << "table " << _config.common().table_name() << " is sync: " << sync;
+
+  auto common = _config.common();
+  int size = static_cast<int>(common.params().size());
+
+  size_t offset = 0;
+  for (int x = 0; x < size; ++x) {
+    auto& varname = common.params()[x];
+    auto& dim = common.dims()[x];
+
+    value_idx_[varname] = x;
+    value_names_.push_back(varname);
+    value_dims_.push_back(dim);
+    value_offsets_.push_back(offset);
+
+    if (varname == "Param") {
+      param_dim_ = dim;
+      param_offset_ = offset;
+    }
+
+    offset += dim;
+  }
 
   initialize_value();
   initialize_optimizer();
@@ -199,22 +204,13 @@ int32_t CommonSparseTable::initialize() {
 int32_t CommonSparseTable::initialize_recorder() { return 0; }
 
 int32_t CommonSparseTable::initialize_value() {
-  auto common = _config.common();
-  int size = static_cast<int>(common.params().size());
-
-  for (int x = 0; x < size; ++x) {
-    auto& varname = common.params()[x];
-    auto& dim = common.dims()[x];
-    if (varname == "Param") {
-      param_dim_ = dim;
-    }
-    auto& initializer = common.initializers()[x];
-    create_initializer(initializer, varname);
-  }
-
   shard_values_.reserve(task_pool_size_);
+
   for (int x = 0; x < task_pool_size_; ++x) {
-    auto shard = std::make_shared<ValueBlock>(common, &initializers_);
+    auto shard =
+        std::make_shared<ValueBlock>(value_names_, value_dims_, value_offsets_,
+                                     value_idx_, common.initializers(), "none");
+
     shard_values_.emplace_back(shard);
   }
 
@@ -356,10 +352,6 @@ int32_t CommonSparseTable::pour() {
 int32_t CommonSparseTable::pull_sparse(float* pull_values, const uint64_t* keys,
                                        size_t num) {
   rwlock_->RDLock();
-  std::vector<std::string> value_names;
-  for (auto name : _config.common().params()) {
-    value_names.push_back(name);
-  }
 
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
@@ -373,19 +365,18 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values, const uint64_t* keys,
 
   for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
-        [this, shard_id, &keys, &offset_bucket, &value_names,
-         &pull_values]() -> int {
+        [this, shard_id, &keys, &offset_bucket, &pull_values]() -> int {
           auto& block = shard_values_[shard_id];
           auto& offsets = offset_bucket[shard_id];
 
           for (int i = 0; i < offsets.size(); ++i) {
             auto offset = offsets[i];
             auto id = keys[offset];
-            block->InitFromInitializer(id, value_names);
-            auto* values = block->Get(id);
-            std::copy(values, values + param_dim_,
-                      pull_values + param_dim_ * offset);
+            auto* value = block->InitFromInitializer(id);
+            std::copy_n(value + param_offset_, param_dim_,
+                        pull_values + param_dim_ * offset);
           }
+
           return 0;
         });
   }
@@ -456,10 +447,6 @@ int32_t CommonSparseTable::push_sparse(const uint64_t* keys,
 int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
                                              const float* values, size_t num) {
   rwlock_->RDLock();
-  std::vector<std::string> value_names;
-  for (auto name : _config.common().params()) {
-    value_names.push_back(name);
-  }
 
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
@@ -473,17 +460,16 @@ int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
 
   for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
-        [this, shard_id, &keys, &offset_bucket, &value_names,
-         &values]() -> int {
+        [this, shard_id, &keys, &offset_bucket, &values]() -> int {
           auto& block = shard_values_[shard_id];
           auto& offsets = offset_bucket[shard_id];
 
           for (int i = 0; i < offsets.size(); ++i) {
             auto offset = offsets[i];
             auto id = keys[offset];
-            block->InitFromInitializer(id, value_names);
-            auto values_ = block->Get(id);
-            std::copy_n(values + param_dim_ * offset, param_dim_, values_);
+            auto* value = block->InitFromInitializer(id);
+            std::copy_n(values + param_dim_ * offset, param_dim_,
+                        value + param_offset_);
           }
           return 0;
         });

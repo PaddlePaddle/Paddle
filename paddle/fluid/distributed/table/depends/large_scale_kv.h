@@ -68,27 +68,16 @@ inline bool entry<float>(const int count, const float threshold) {
 
 struct VALUE {
   explicit VALUE(size_t length)
-      : data_(new float[length]),
-        length_(length),
+      : length_(length),
         count_(1),
         unseen_days_(0),
         seen_after_last_save_(true),
-        is_entry_(true) {}
-
-  ~VALUE() {
-    if (data_) {
-      delete[] static_cast<float *>(data_);
-      data_ = nullptr;
-      length_ = 0;
-      count_ = 0;
-      unseen_days_ = 0;
-      seen_after_last_save_ = true;
-      is_entry_ = true;
-    }
+        is_entry_(true) {
+    data_.resize(length);
   }
 
-  float *data_;
   size_t length_;
+  std::vector<float> data_;
   int count_;
   int unseen_days_;
   bool seen_after_last_save_;
@@ -97,32 +86,22 @@ struct VALUE {
 
 class ValueBlock {
  public:
-  explicit ValueBlock(
-      const CommonAccessorParameter &common,
-      std::unordered_map<std::string, Initializer *> *initializers) {
-    initializers_ = initializers;
-    int size = static_cast<int>(common.params().size());
-
-    value_length_ = 0;
-    for (int x = 0; x < size; ++x) {
-      auto varname = common.params()[x];
-      auto dim = common.dims()[x];
-
-      value_names_.push_back(varname);
-      value_dims_.push_back(dim);
-      value_offsets_.push_back(value_length_);
-      value_length_ += dim;
-      value_idx_[varname] = x;
-    }
-
-    for (auto &name : value_names_) {
-      initializer_list_.emplace_back(initializers_->at(name));
+  explicit ValueBlock(const std::vector<std::string> &value_names,
+                      const std::vector<int> &value_dims,
+                      const std::vector<int> &value_offsets,
+                      const std::unordered_map<std::string, int> &value_idx,
+                      const std::vector<std::string> &init_attrs,
+                      const std::string &entry_attr)
+      : value_names_(value_names),
+        value_dims_(value_dims),
+        value_offsets_(value_offsets),
+        value_idx_(value_idx) {
+    for (int x = 0; x < value_dims; ++x) {
+      value_length_ += x;
     }
 
     // for Entry
     {
-      // entry will add later
-      std::string entry_attr = "none";
       if (entry_attr == "none") {
         has_entry_ = false;
         entry_func_ =
@@ -140,22 +119,39 @@ class ValueBlock {
         }
       }
     }
+
+    // for Initializer
+    {
+      for (auto &attr : init_attrs) {
+        auto slices = string::split_string<std::string>(attr, "&");
+
+        if (slices[0] == "gaussian_random") {
+          initializers_.emplace_back(
+              std::make_shared<GaussianInitializer>(slices));
+        } else if (slices[0] == "fill_constant") {
+          initializers_.emplace_back(
+              std::make_shared<FillConstantInitializer>(slices));
+        } else if (slices[0] == "uniform_random") {
+          initializers_.emplace_back(
+              std::make_shared<UniformInitializer>(slices));
+        } else {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "%s can not be supported", attr));
+        }
+      }
+    }
   }
 
   ~ValueBlock() {}
 
-  void Init(const uint64_t &id) {
-    if (Has(id)) {
-      PADDLE_THROW(platform::errors::AlreadyExists("id already exist, error"));
-    }
-
+  float *Init(const uint64_t &id) {
     auto value = std::make_shared<VALUE>(value_length_);
-
     for (int x = 0; x < value_names_.size(); ++x) {
       initializer_list_[x]->GetValue(value->data_ + value_offsets_[x],
                                      value_dims_[x]);
     }
     values_[id] = value;
+    return value->data_.data();
   }
 
   std::vector<float *> Get(const uint64_t &id,
@@ -164,7 +160,7 @@ class ValueBlock {
     pts.reserve(value_names.size());
     auto &values = values_.at(id);
     for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
-      pts.push_back(values->data_ + value_idx_.at(value_names[i]));
+      pts.push_back(values->data_.data() + value_offsets_.at(value_names[i]));
     }
     return pts;
   }
@@ -173,18 +169,17 @@ class ValueBlock {
     auto pts = std::vector<std::vector<float> *>();
     auto &values = values_.at(id);
 
-    return values->data_;
+    return &values->data_;
   }
 
-  void InitFromInitializer(const uint64_t &id) {
+  float *InitFromInitializer(const uint64_t &id) {
     if (Has(id)) {
       if (has_entry) {
         Update(id);
       }
-      return;
+      return Get(id);
     }
-
-    Init(id);
+    return Init(id);
   }
 
   bool GetEntry(const uint64_t &id) {
@@ -217,16 +212,14 @@ class ValueBlock {
   size_t value_length_ = 0;
 
  private:
-  std::vector<std::string> value_names_;
-  std::vector<int> value_dims_;
-  std::vector<int> value_offsets_;
-  std::unordered_map<std::string, int> value_idx_;
+  const std::vector<std::string> &value_names_;
+  const std::vector<int> &value_dims_;
+  const std::vector<int> &value_offsets_;
+  const std::unordered_map<std::string, int> &value_idx_;
 
   bool has_entry_ = false;
   std::function<bool(uint64_t)> entry_func_;
-
-  std::unordered_map<std::string, Initializer *> *initializers_;
-  std::vector<Initializer *> initializer_list_;
+  std::vector<std::shared_ptr<Initializer>> initializers_;
 };
 
 }  // namespace distributed
