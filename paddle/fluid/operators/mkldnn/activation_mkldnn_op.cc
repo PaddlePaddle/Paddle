@@ -218,6 +218,10 @@ using SwishMKLDNNFunctor =
     MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_swish>;
 
 template <typename T>
+using HardSwishMKLDNNFunctor =
+    MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_hardswish>;
+
+template <typename T>
 using SigmoidMKLDNNFunctor =
     MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_logistic>;
 
@@ -244,6 +248,10 @@ using Relu6MKLDNNGradFunctor =
 template <typename T>
 using SwishMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, mkldnn::algorithm::eltwise_swish>;
+
+template <typename T>
+using HardSwishMKLDNNGradFunctor =
+    MKLDNNActivationGradFunc<T, mkldnn::algorithm::eltwise_hardswish>;
 
 template <typename T>
 using SigmoidMKLDNNGradFunctor =
@@ -287,6 +295,7 @@ namespace ops = paddle::operators;
   __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);       \
   __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);    \
   __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);       \
+  __macro(hardswish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor);\
   __macro(sigmoid, SigmoidMKLDNNFunctor, SigmoidMKLDNNGradFunctor); \
   __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);          \
   __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor);          \
