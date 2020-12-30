@@ -36,7 +36,8 @@ class LookAhead(Optimizer):
     .. math::
         
         slow\_param_t &= slow\_param_{t-1} + \\alpha * (fast\_param_{t-1} - slow\_param_{t-1})
-	    fast\_param_t &=  slow\_param_t
+	    
+        fast\_param_t &=  slow\_param_t
 
     Args:
         inner_optimizer (Optimizer): The optimizer that update fast params step by step. 
