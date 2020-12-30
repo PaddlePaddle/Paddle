@@ -92,3 +92,11 @@ REGISTER_OP_CPU_KERNEL(linspace, ops::CPULinspaceKernel<float>,
                        ops::CPULinspaceKernel<int32_t>,
                        ops::CPULinspaceKernel<int64_t>,
                        ops::CPULinspaceKernel<double>);
+
+REGISTER_OP_VERSION(linspace)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade linspace to add a new attribute [dtype].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "dtype", "In order to change output data type "));
