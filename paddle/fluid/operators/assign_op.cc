@@ -107,10 +107,27 @@ class AssignKernel {
         ctx.HasOutput("Out"), true,
         platform::errors::NotFound("Output(Out) of assign_op is not found."));
     auto *out = ctx.OutputVar("Out");
+    auto kind = ctx.Attr<int>("kind");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
 
-    framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
+    // framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
+
+    if (kind == 0) {
+      framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
+    } else if (kind == 1) {
+      auto &lod_tensor = x->Get<framework::LoDTensor>();
+      auto &out_tensor = *out->GetMutable<framework::LoDTensor>();
+      framework::TensorCopy(lod_tensor, out_tensor.place(), dev_ctx,
+                            &out_tensor);
+    } else if (kind == 2) {
+      auto &lod_tensor = x->Get<framework::LoDTensor>();
+      auto &out_tensor = *out->GetMutable<framework::LoDTensor>();
+      framework::TensorCopy(lod_tensor, ctx.GetPlace(), dev_ctx, &out_tensor);
+    } else {  // NOLINT
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "to_pinned_ =  %d is not supported.", kind));
+    }
   }
 };
 
@@ -124,6 +141,8 @@ class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(LoDTensor, SelectedRows or LoDTensorArray) The type of output "
               "is the same as input X.");
+    AddAttr<int>("kind", "0: normal, 1: to cudapinned, 2: from cudapinned")
+        .SetDefault(0);
     AddComment(R"DOC(Assign Operator
 
 Out = X,  when type in [LoDTensor/SelectedRows/LoDTensorArray]
