@@ -240,7 +240,13 @@ class OpVersionComparator {
       if (OpVersionRegistrar::GetInstance().Has(op_name_)) {                 \
         version_id = OpVersionRegistrar::GetInstance().version_id(op_name_); \
       }                                                                      \
-      return version_id cmp_math target_version_;                            \
+      bool check_ok = version_id cmp_math target_version_;                   \
+      if (!check_ok) {                                                       \
+        LOG(WARNING) <<  "Check op version in pass failed. op name:" <<      \
+        op_name_.c_str() << " op_version:"  <<                               \
+        version_id << "  target_version:" << target_version_;                \
+      }                                                                      \
+      return check_ok;                                                       \
     }                                                                        \
     virtual ~OpVersion##cmp_name##Comparator() {}                            \
                                                                              \
@@ -326,6 +332,12 @@ class PassVersionCheckerRegistrar {
     return instance;
   }
   PassVersionCheckers& Register(const std::string& pass_name) {
+    PADDLE_ENFORCE_EQ(
+        pass_version_checkers_map_.find(pass_name),
+        pass_version_checkers_map_.end(),
+        platform::errors::AlreadyExists(
+          "PassVersionCheckers(%s) has alredy been registered.",
+          pass_name.c_str()));
     return pass_version_checkers_map_[pass_name];
   }
   bool IsPassCompatible(const std::string& fuse_pass_name) const {
