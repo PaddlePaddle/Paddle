@@ -1057,7 +1057,8 @@ set -x
             fi
         fi
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
-            duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
+            #duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
+            duplicate_uts=$(awk BEGIN{RS=EOF}'{gsub(/\n/,"|");print}' $PADDLE_ROOT/duplicate_uts)
             if [[ "$duplicate_uts" != "" ]];then
                 echo "========================================"
                 echo "The new unit test has the same name as the existing unit test"
