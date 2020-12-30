@@ -281,8 +281,6 @@ class DownpourWorker : public HogwildWorker {
   // recall hit interval ins weight
   RecallInsWeightConfig recall_ins_weight_config_;
   std::vector<std::string> item_sampling_slots_;
-  float minibatch_sn_;
-  std::unordered_map<uint64_t, float> last_hit_minibatch_sn_;
   std::vector<float> item_freq_vec_;
   std::vector<float> hit_interval_new_;
   std::vector<int> need_hit_interval_;
