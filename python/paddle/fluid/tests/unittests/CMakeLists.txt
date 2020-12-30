@@ -823,6 +823,17 @@ if(WITH_GPU AND NOT WIN32)
     set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_split_embedding
+        test_collective_split_embedding_none_divisible
+        test_collective_split_row_linear
+        test_collective_split_col_linear
+        test_collective_scatter_api
+        test_collective_barrier_api
+        test_collective_reduce_api
+        test_collective_allreduce_api
+        test_collective_broadcast_api
+        test_collective_allgather_api
+        PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(WITH_GPU)
     set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT 120)
