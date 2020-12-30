@@ -20,10 +20,11 @@ import tempfile
 from test_dist_fleet_base import TestFleetBase
 
 
-class TestDistMnistAsync2x2(TestFleetBase):
+class TestDistMnistSync2x2(TestFleetBase):
     def _setup_config(self):
-        self._mode = "async"
+        self._mode = "sync"
         self._reader = "pyreader"
+        self._need_test = 1
 
     def check_with_place(self,
                          model_file,
@@ -52,10 +53,11 @@ class TestDistMnistAsync2x2(TestFleetBase):
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
 
 
-class TestDistCtrHalfAsync2x2(TestFleetBase):
+# @unittest.skip(reason="Skip unstable ut, reader need to be rewrite")
+class TestDistMnistAsyncDataset2x2(TestFleetBase):
     def _setup_config(self):
         self._mode = "async"
-        self._reader = "pyreader"
+        self._reader = "dataset"
 
     def check_with_place(self,
                          model_file,
@@ -66,12 +68,13 @@ class TestDistCtrHalfAsync2x2(TestFleetBase):
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
-            "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
+            "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
-            "FLAGS_communicator_send_queue_size": "2",
-            "FLAGS_communicator_max_merge_var_num": "2",
-            "CPU_NUM": "2",
-            "SAVE_MODEL": "0"
+            "SAVE_MODEL": "1",
+            "dump_param": "concat_0.tmp_0",
+            "dump_fields": "dnn-fc-3.tmp_0,dnn-fc-3.tmp_0@GRAD",
+            "dump_fields_path": tempfile.mkdtemp(),
+            "Debug": "1"
         }
 
         required_envs.update(need_envs)
