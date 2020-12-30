@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import sys
 from functools import partial, reduce
+import warnings
 
 import paddle
 from paddle.utils import deprecated
@@ -1387,6 +1388,9 @@ def _dynamic_decode_imperative(decoder,
                     lambda x, y: _maybe_copy(x, y, finished), states,
                     next_states)
         else:
+            warnings.warn(
+                "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
+            ) if not hasattr(next_states, "lengths") else None
             next_sequence_lengths = getattr(next_states, "lengths",
                                             sequence_lengths)
 
@@ -1515,6 +1519,9 @@ def _dynamic_decode_declarative(decoder,
                     states,
                     next_states, )
         else:
+            warnings.warn(
+                "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
+            ) if not hasattr(next_states, "lengths") else None
             next_sequence_lengths = getattr(next_states, "lengths",
                                             sequence_lengths)
 
