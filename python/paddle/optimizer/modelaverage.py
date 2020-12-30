@@ -278,6 +278,7 @@ class ModelAverage(Optimizer):
                  no_grad_set=None):
         """
         Add operations to minimize ``loss`` by updating ``parameters``.
+        
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
             startup_program (Program, optional): :ref:`api_fluid_Program` for
@@ -288,6 +289,7 @@ class ModelAverage(Optimizer):
                 will be updated.
             no_grad_set (set, optional): Set of ``Tensor``  or ``Tensor.name`` that don't need
                 to be updated. The default value is None.
+        
         Returns:
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) tensor pairs, param is
