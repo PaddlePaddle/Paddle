@@ -943,4 +943,4 @@ REGISTER_OP_VERSION(matmul)
             "In order to support the function of fused the input Y "
             " and input X into the input X when "
             "using the operator of matmul, and get raw shape of input Y.",
-            {}));
+            std::vector<int>{}));
