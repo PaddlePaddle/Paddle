@@ -569,7 +569,7 @@ def split(x,
           axis=0,
           num_partitions=1,
           gather_out=True,
-          param_attr=None,
+          weight_attr=None,
           bias_attr=None,
           name=None):
     """
@@ -608,15 +608,16 @@ def split(x,
         x (Tensor): Input tensor. It's data type should be float16, float32, float64, int32 or int64.
         size (list|tuple): A list or tuple with two elements indicating the shape of the weight.
         operation (str): The name of the operation. The supported operations are 'linear' and 'embedding'.
-        axis (int, Optional): Indicate along which axis to split the weight.
-        num_partitions (int, Optional): How many parts the weight is partitioned.
-        gather_out (bool, Optional): Whether to gather the output after computation.
-        param_attr (ParamAttr, Optional): The parameter attribute for the learnable
-            weights(Parameter) of the specified operation.
+        axis (int, Optional): Indicate along which axis to split the weight. Default: 0.
+        num_partitions (int, Optional): How many parts the weight is partitioned. Default: 1.
+        gather_out (bool, Optional): Whether to gather the output after computation. By default, the output
+            on each partitions will be gathered after computation. Default: True.
+        weight_attr (ParamAttr, Optional): The parameter attribute for the learnable
+            weights(Parameter) of the specified operation. Default: None.
         bias_attr (ParamAttr, Optional): The parameter attribute for the bias
-            of the specified operation.
+            of the specified operation. Default: None.
         name (str, Optional): The default value is None. Normally there is no need for user to set this
-            property. For more information, please refer to :ref:`api_guide_Name`.
+            property. Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor.
@@ -624,14 +625,12 @@ def split(x,
     Examples:
         .. code-block:: python
 
-            import numpy
             import paddle
             from paddle.distributed import init_parallel_env
 
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
-            np_data = numpy.random.randint(0, 8, (10,4))
-            data = paddle.to_tensor(np_data)
+            data = paddle.randint(0, 8, shape=[10,4])
             emb_out = padle.distributed.split(
                 data,
                 (8, 8),
@@ -673,7 +672,7 @@ def split(x,
         if inner_rank == num_partitions - 1: per_part_size = last_part_size
         per_part_size += 1  # make the last row as the padding index
 
-        emb_out = _parallel_embedding(x, per_part_size, size, param_attr,
+        emb_out = _parallel_embedding(x, per_part_size, size, weight_attr,
                                       inner_rank, num_partitions, name)
         return emb_out
     else:
@@ -706,7 +705,7 @@ def split(x,
             linear_size[0],
             linear_size[1],
             axis,
-            param_attr,
+            weight_attr,
             bias_attr,
             gather_out,
             inner_rank,
