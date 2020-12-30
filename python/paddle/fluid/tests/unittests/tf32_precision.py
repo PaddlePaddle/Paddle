@@ -12,10 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid.core as core
 import contextlib
 import functools
+import os
+import paddle
+import paddle.fluid.core as core
+import pycuda.driver as drv
+import re
+
+
+# Get compute capability of the current CUDA device
+def get_compute_capability(id):
+    drv.init()
+    gpu_device = drv.Device(id)
+    compute_capability = gpu_device.compute_capability()
+    return compute_capability[0] * 10 + compute_capability[1]
+
+
+# Get cuda runtime version from source file
+def get_cuda_runtime_version():
+    cuda_path = os.popen("whereis cuda").read()
+    cuda_path = cuda_path[6:-1]
+    cuda_path += '/include/cuda.h'
+    try:
+        cuda_version = os.popen("cat " + cuda_path +
+                                " | grep '\#define CUDA_VERSION\'").read()
+    except ValueError:
+        print("No such file or directory")
+    else:
+        cuda_version = cuda_version[:-1]
+        cuda_ver = re.split(' ', cuda_version)
+        return int(cuda_ver[-1])
 
 
 # Check if tf32 is supported on current hardware
@@ -25,9 +52,9 @@ def tf32_is_not_fp32():
         return False
     if core.get_cuda_device_count() == 0:
         return False
-    if core.get_cuda_compute_capability(0) < 80:
+    if get_compute_capability(0) < 80:
         return False
-    if core.get_cuda_runtime_version(0) < 11000:
+    if get_cuda_runtime_version() < 11000:
         return False
     return True
 
