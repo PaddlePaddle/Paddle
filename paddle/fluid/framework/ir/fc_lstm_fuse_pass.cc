@@ -202,7 +202,7 @@ REGISTER_PASS_CAPABILITY(fc_lstm_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("mul", 0)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("lstm", 0)
             .EQ("fusion_lstm", 0));
 REGISTER_PASS_CAPABILITY(mul_lstm_fuse_pass)

@@ -662,3 +662,36 @@ REGISTER_OP_VERSION(conv_transpose)
             "In order to add additional size to one side of each dimension "
             "in the output",
             {}));
+
+REGISTER_OP_VERSION(conv2d_transpose)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv2d transpose to add a new attribute [output_padding].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "output_padding",
+            "In order to add additional size to one side of each dimension "
+            "in the output",
+            {}));
+
+REGISTER_OP_VERSION(conv3d_transpose)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv3d transpose to add a new attribute [output_padding].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "output_padding",
+            "In order to add additional size to one side of each dimension "
+            "in the output",
+            {}));
+
+REGISTER_OP_VERSION(depthwise_conv2d_transpose)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade depthwise conv2d transpose to add a new attribute [output_padding].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "output_padding",
+            "In order to add additional size to one side of each dimension "
+            "in the output",
+            {}));

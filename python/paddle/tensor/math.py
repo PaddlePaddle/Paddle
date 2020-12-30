@@ -175,7 +175,8 @@ def pow(x, y, name=None):
             print(res) # [1 4 9]
             
             # example 2: y is a Tensor
-            y = paddle.full(shape=[1], fill_value=2, dtype='float32')
+            y = paddle.full(shape=[1], fill_value=2, dtype='int64')
+        
             res = paddle.pow(x, y)
             print(res) # [1 4 9]
 
