@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/placement_pass_base.h"
 #include <memory>
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
@@ -33,7 +34,7 @@ void PlacementPassBase::ApplyImpl(ir::Graph* graph) const {
       auto* op = n->Op();
       if ((op->HasAttr(attr_name) || op->HasProtoAttr(attr_name)) &&
           IsSupport(op->Type())) {
-        if (op_types_list.empty()) {
+        if (op_types_list.empty() && IsDefaultOpTypes(op->Type())) {
           op->SetAttr(attr_name, true);
         } else if (std::find(op_types_list.begin(), op_types_list.end(),
                              n->Name()) != op_types_list.end()) {
@@ -60,6 +61,24 @@ bool PlacementPassBase::IsSupport(const std::string& op_type) const {
     }
   } else if (GetAttrName() == "use_mkldnn") {
     return true;
+  }
+  return false;
+}
+
+bool PlacementPassBase::IsDefaultOpTypes(const std::string& op_type) const {
+  if (GetAttrName() == "use_cudnn") {
+    return true;
+  } else if (GetAttrName() == "use_mkldnn") {
+    // For interpolate ops, there's a little difference between Paddle and
+    // MKLDNN.
+    // If run MKLDNN interpolate ops, manual set AnalysisConfig and apply
+    // the corresponding pass.
+    std::vector<std::string> not_default_op_types = {
+        "bilinear_interp", "nearest_interp", "trilinear_interp",
+        "bicubic_interp", "linear_interp"};
+    auto iter = std::find(not_default_op_types.begin(),
+                          not_default_op_types.end(), op_type);
+    return iter == not_default_op_types.end();
   }
   return false;
 }
