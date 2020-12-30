@@ -523,7 +523,7 @@ def _parallel_linear(x, num_rows, num_cols, axis, param_attr, bias_attr,
     return linear_out
 
 
-def _parallel_embedding(x, per_part_embeddings, embedding_dim, param_attr,
+def _parallel_embedding(x, per_part_embeddings, origin_size, param_attr,
                         inner_rank, num_partitions, name):
     """
     Parallel Embedding
@@ -533,10 +533,10 @@ def _parallel_embedding(x, per_part_embeddings, embedding_dim, param_attr,
     else:
         name = name + "_rank_%d" % inner_rank
 
-    origin_num_embeddings = (per_part_embeddings - 1) * num_partitions
+    origin_num_embeddings = origin_size[0]
     embedding = paddle.nn.Embedding(
         per_part_embeddings,
-        embedding_dim,
+        origin_size[1],
         padding_idx=per_part_embeddings - 1,
         sparse=False,
         weight_attr=param_attr,
@@ -668,13 +668,12 @@ def split(x,
     if operation == "embedding":
         assert axis == 0, ("We only support to split the weight of embedding "
                            "along the first axis now.")
-        assert size[0] % num_partitions == 0, (
-            "Number of rows ({}) of the embedding weight must be divisible by "
-            "num_partitions ({})".format(size[0], num_partitions))
-        per_part_size = size[0] // num_partitions
+        per_part_size = (size[0] + num_partitions - 1) // num_partitions
+        last_part_size = size[0] - per_part_size * (num_partitions - 1)
+        if inner_rank == num_partitions - 1: per_part_size = last_part_size
         per_part_size += 1  # make the last row as the padding index
 
-        emb_out = _parallel_embedding(x, per_part_size, size[1], param_attr,
+        emb_out = _parallel_embedding(x, per_part_size, size, param_attr,
                                       inner_rank, num_partitions, name)
         return emb_out
     else:
