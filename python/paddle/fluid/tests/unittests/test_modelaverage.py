@@ -42,14 +42,10 @@ class TestModelAverage(unittest.TestCase):
                 optimizer = paddle.optimizer.Momentum(
                     learning_rate=0.2, momentum=0.1)
 
+                optimizer.minimize(loss)
                 # build ModelAverage optimizer
                 model_average = paddle.optimizer.ModelAverage(
-                    optimizer,
-                    0.15,
-                    min_average_window=2,
-                    max_average_window=10)
-
-                model_average.minimize(loss)
+                    0.15, min_average_window=2, max_average_window=10)
 
         exe.run(startup)
         for i in range(10):
@@ -91,13 +87,13 @@ class TestModelAverage(unittest.TestCase):
             outs, b = exe.run(program=test_program,
                               feed={'X': x},
                               fetch_list=[loss.name, 'fc_0.b_0'])
-            self.assertTrue(np.equal(average_b, b).all())
+            self.assertAlmostEqual(np.mean(average_b), np.mean(b))
 
         x = np.random.random(size=(10, 1)).astype('float32')
         outs, b = exe.run(program=test_program,
                           feed={'X': x},
                           fetch_list=[loss.name, 'fc_0.b_0'])
-        self.assertTrue(np.equal(latest_b, b).all())
+        self.assertAlmostEqual(np.mean(latest_b), np.mean(b))
 
     def test_model_average_dygraph(self):
         BATCH_SIZE = 16
@@ -131,24 +127,27 @@ class TestModelAverage(unittest.TestCase):
             def forward(self, x):
                 return self._linear(x)
 
-        def train(layer, loader, loss_fn, opt):
+        def train(layer, loader, loss_fn, opt, model_average):
             for epoch_id in range(EPOCH_NUM):
                 for batch_id, (image, label) in enumerate(loader()):
                     out = layer(image)
                     loss = loss_fn(out, label)
                     loss.backward()
                     opt.step()
+                    model_average.step()
                     opt.clear_grad()
+                    model_average.clear_grad()
                     # print("Train Epoch {} batch {}: loss = {}, bias = {}".format(
                     #     epoch_id, batch_id, np.mean(loss.numpy()), layer.bias.numpy()))
-            sum_1 = opt._get_accumulator('sum_1', layer.bias)
-            sum_2 = opt._get_accumulator('sum_2', layer.bias)
-            sum_3 = opt._get_accumulator('sum_3', layer.bias)
-            num_accumulates = opt._get_accumulator('num_accumulates',
-                                                   layer.bias)
-            old_num_accumulates = opt._get_accumulator('old_num_accumulates',
-                                                       layer.bias)
-            num_updates = opt._get_accumulator('num_updates', layer.bias)
+            sum_1 = model_average._get_accumulator('sum_1', layer.bias)
+            sum_2 = model_average._get_accumulator('sum_2', layer.bias)
+            sum_3 = model_average._get_accumulator('sum_3', layer.bias)
+            num_accumulates = model_average._get_accumulator('num_accumulates',
+                                                             layer.bias)
+            old_num_accumulates = model_average._get_accumulator(
+                'old_num_accumulates', layer.bias)
+            num_updates = model_average._get_accumulator('num_updates',
+                                                         layer.bias)
 
             return ((sum_1 + sum_2 + sum_3) /
                     (num_accumulates + old_num_accumulates)).numpy()
@@ -158,7 +157,10 @@ class TestModelAverage(unittest.TestCase):
                 out = layer(image)
                 loss = loss_fn(out, label)
                 loss.backward()
-                self.assertTrue(np.equal(layer.bias.numpy(), check_param).all())
+                self.assertAlmostEqual(
+                    np.mean(layer.bias.numpy()),
+                    np.mean(check_param),
+                    delta=5e-3)
                 # print("Evaluate batch {}: loss = {}, bias = {}".format(
                 #     batch_id, np.mean(loss.numpy()), layer.bias.numpy()))
 
@@ -170,7 +172,10 @@ class TestModelAverage(unittest.TestCase):
             learning_rate=0.2, momentum=0.1, parameters=layer.parameters())
         # build ModelAverage optimizer
         model_average = paddle.optimizer.ModelAverage(
-            optimizer, 0.15, min_average_window=2, max_average_window=10)
+            0.15,
+            parameters=layer.parameters(),
+            min_average_window=2,
+            max_average_window=10)
 
         # create data loader
         dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
@@ -187,7 +192,7 @@ class TestModelAverage(unittest.TestCase):
             drop_last=True,
             num_workers=1)
         # train
-        check_param = train(layer, loader, loss_fn, model_average)
+        check_param = train(layer, loader, loss_fn, optimizer, model_average)
         # print(check_param)
         with model_average.apply(need_restore=False):
             evaluate(layer, eval_loader, loss_fn, check_param)
