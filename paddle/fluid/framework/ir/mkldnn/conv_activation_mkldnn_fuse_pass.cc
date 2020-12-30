@@ -135,3 +135,11 @@ REGISTER_PASS_CAPABILITY(conv_swish_mkldnn_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
             .EQ("swish", 0));
+
+REGISTER_PASS(conv_hard_swish_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DHardSwishFusePass);
+REGISTER_PASS_CAPABILITY(conv_hard_swish_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("hard_swish", 0));

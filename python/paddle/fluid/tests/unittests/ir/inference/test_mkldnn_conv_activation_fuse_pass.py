@@ -93,13 +93,13 @@ class ConvActivationMkldnnFusePassTest_4(ConvActivationMkldnnFusePassTest):
         self.pass_name = 'conv_relu6_mkldnn_fuse_pass'
 
 
-class ConvActivationMkldnnFusePassTest_4(ConvActivationMkldnnFusePassTest):
+class ConvActivationMkldnnFusePassTest_5(ConvActivationMkldnnFusePassTest):
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
         self.conv_bias_attr = True
-        self.act = "swish"
-        self.pass_name = 'conv_swish_mkldnn_fuse_pass'
+        self.act = "hard_swish"
+        self.pass_name = 'conv_hard_swish_mkldnn_fuse_pass'
 
 
 if __name__ == "__main__":
