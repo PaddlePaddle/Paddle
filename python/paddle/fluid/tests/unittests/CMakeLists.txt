@@ -647,6 +647,7 @@ endif()
 if (WITH_DISTRIBUTE)
     set_tests_properties(test_communicator_half_async PROPERTIES TIMEOUT 120)
     set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 120)
 endif()
 
 if (WITH_DISTRIBUTE AND NOT APPLE)
