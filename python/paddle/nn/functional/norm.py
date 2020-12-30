@@ -183,7 +183,7 @@ def batch_norm(x,
 
     if use_global_stats == None:
         use_global_stats = not training
-        trainable_statistics = training
+        trainable_statistics = False
     else:
         trainable_statistics = not use_global_stats
 
