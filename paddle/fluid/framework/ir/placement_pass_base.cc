@@ -60,7 +60,11 @@ bool PlacementPassBase::IsSupport(const std::string& op_type) const {
       }
     }
   } else if (GetAttrName() == "use_mkldnn") {
-    return true;
+    // This ops have use_mkldnn attr, but not support for now.
+    const std::vector<std::string> op_types = {
+        "trilinear_interp", "bicubic_interp", "linear_interp"};
+    return std::find(op_types.begin(), op_types.end(), op_type) ==
+           op_types.end();
   }
   return false;
 }
@@ -73,12 +77,13 @@ bool PlacementPassBase::IsDefaultOpTypes(const std::string& op_type) const {
     // MKLDNN.
     // If run MKLDNN interpolate ops, manual set AnalysisConfig and apply
     // the corresponding pass.
-    std::vector<std::string> not_default_op_types = {
+    const std::vector<std::string> not_default_op_types = {
         "bilinear_interp", "nearest_interp", "trilinear_interp",
         "bicubic_interp", "linear_interp"};
-    auto iter = std::find(not_default_op_types.begin(),
-                          not_default_op_types.end(), op_type);
-    return iter == not_default_op_types.end();
+    bool is_interpolate_op =
+        std::find(not_default_op_types.begin(), not_default_op_types.end(),
+                  op_type) != not_default_op_types.end();
+    return !is_interpolate_op;
   }
   return false;
 }
