@@ -396,4 +396,4 @@ REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
             .EQ("gelu", 0)
             .EQ("layer_norm", 0)
             .EQ("scale", 0)
-            .EQ("matmul", 0));
+            .LE("matmul", 1));
