@@ -611,7 +611,7 @@ class Hardsigmoid(layers.Layer):
         self.name = name
 
     def forward(self, x):
-        return F.hardsigmoid(x, self.name)
+        return F.hardsigmoid(x, name=self.name)
 
 
 class Softplus(layers.Layer):
