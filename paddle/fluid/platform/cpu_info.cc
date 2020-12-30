@@ -141,7 +141,7 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
     return true;
   } else {
 #if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) && \
-    !defined(PADDLE_WITH_SW)
+    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS)
     int reg[4];
     cpuid(reg, 0);
     int nIds = reg[0];

@@ -203,11 +203,11 @@ REGISTER_PASS_CAPABILITY(mul_gru_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("mul", 0)
             .EQ("gru", 0)
-            .EQ("fusion_gru", 0));
+            .LE("fusion_gru", 1));
 REGISTER_PASS_CAPABILITY(fc_gru_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("mul", 0)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("gru", 0)
-            .EQ("fusion_gru", 0));
+            .LE("fusion_gru", 1));

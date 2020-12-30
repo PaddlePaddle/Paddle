@@ -325,6 +325,7 @@ function(parallel_bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
+list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
@@ -457,8 +458,6 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
 
-    # FIXME(seiriosX) will fix this
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_sparse_embedding_ctr")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
@@ -538,10 +537,12 @@ if(WIN32)
     py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth CUDA_VISIBLE_DEVICES=0)
     py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass ENVS CUDA_VISIBLE_DEVICES=0)
     py_test_modules(test_feed_data_check_shape_type MODULES test_feed_data_check_shape_type ENVS CUDA_VISIBLE_DEVICES=0)
+    py_test_modules(test_fetch_lod_tensor_array MODULES test_fetch_lod_tensor_array ENVS CUDA_VISIBLE_DEVICES=0)
 else()
     py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
     py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass)
     py_test_modules(test_feed_data_check_shape_type MODULES test_feed_data_check_shape_type)
+    py_test_modules(test_fetch_lod_tensor_array MODULES test_fetch_lod_tensor_array)
 endif()
 
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
@@ -633,9 +634,6 @@ if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_multiprocess_dataloader_static PROPERTIES TIMEOUT 120)
 endif()
 
-# setting timeout value for old unittests
-# set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
-
 if (NOT WIN32)
     set_tests_properties(test_multiprocess_reader_exception PROPERTIES TIMEOUT 120)
     set_tests_properties(test_layers PROPERTIES TIMEOUT 120)
@@ -648,6 +646,8 @@ endif()
 
 if (WITH_DISTRIBUTE)
     set_tests_properties(test_communicator_half_async PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 120)
 endif()
 
 if (WITH_DISTRIBUTE AND NOT APPLE)
