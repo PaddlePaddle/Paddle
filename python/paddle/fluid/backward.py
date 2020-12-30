@@ -1547,9 +1547,11 @@ def append_backward(loss,
 
         # TODO: support _append_backward_ops_with_checkpoints_ in
         #  sub-block (control flow)
+        is_recompute = False
         if checkpoints != None and \
                 isinstance(checkpoints, list) and \
                 len(checkpoints) > 0:
+            is_recompute = True
             program_stat, checkpoint_names, \
             vars_should_be_hold, \
             recompute_segments = \
@@ -1644,7 +1646,10 @@ def append_backward(loss,
             attr_val.extend(g.op.attr(op_role_var_attr_name))
         g.op._set_attr(op_role_var_attr_name, attr_val)
 
-    return params_and_grads
+    if is_recompute:
+        return params_and_grads, checkpoint_names
+    else:
+        return params_and_grads
 
 
 def _as_list(x):
