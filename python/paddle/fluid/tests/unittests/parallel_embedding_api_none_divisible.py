@@ -67,7 +67,7 @@ class TestParallelEmbeddingAPINoneDivisible(TestCollectiveAPIRunnerBase):
                 data_in, (7, 8),
                 operation="embedding",
                 num_partitions=2,
-                param_attr=param_attr)
+                weight_attr=param_attr)
 
             return [data_in, emb_out]
 

@@ -68,7 +68,7 @@ class TestColumnParallelLinearAPI(TestCollectiveAPIRunnerBase):
                 operation='linear',
                 axis=1,
                 num_partitions=2,
-                param_attr=param_attr,
+                weight_attr=param_attr,
                 bias_attr=False, )
 
             return [linear_out]
