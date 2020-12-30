@@ -227,7 +227,7 @@ REGISTER_PASS(map_matmul_to_mul_pass, paddle::framework::ir::MapMatmul2MulPass);
 REGISTER_PASS_CAPABILITY(map_matmul_to_mul_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("mul", 0));
 
 REGISTER_PASS(squeeze2_matmul_fuse_pass,
@@ -235,7 +235,7 @@ REGISTER_PASS(squeeze2_matmul_fuse_pass,
 REGISTER_PASS_CAPABILITY(squeeze2_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("squeeze2", 0)
             .EQ("mul", 0));
 
@@ -244,6 +244,6 @@ REGISTER_PASS(reshape2_matmul_fuse_pass,
 REGISTER_PASS_CAPABILITY(reshape2_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("reshape2", 0)
             .EQ("mul", 0));
