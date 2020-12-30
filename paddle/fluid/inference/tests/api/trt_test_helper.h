@@ -29,7 +29,7 @@ DEFINE_bool(use_tensorrt, true, "Test the performance of TensorRT engine.");
 DEFINE_string(prog_filename, "", "Name of model file.");
 DEFINE_string(param_filename, "", "Name of parameters file.");
 
-int DeleteFiles(std::string path) {
+int DeleteFiles(const std::string& path) {
   DIR* dir = opendir(path.c_str());
   if (dir == NULL) return 0;
   struct dirent* ptr;
