@@ -154,5 +154,5 @@ REGISTER_OP_VERSION(roll)
                      "It must have the same size with shifts.",
                      std::vector<int64_t>())
             .DeleteAttr("dims",
-                     "(std::vector<int64_t>) Dims along which to roll. "
-                     "It must have the same size with shifts.");
+                        "(std::vector<int64_t>) Dims along which to roll. "
+                        "It must have the same size with shifts."));
