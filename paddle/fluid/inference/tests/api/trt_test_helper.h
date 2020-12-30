@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
+#include <dirent.h>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,22 @@ namespace inference {
 DEFINE_bool(use_tensorrt, true, "Test the performance of TensorRT engine.");
 DEFINE_string(prog_filename, "", "Name of model file.");
 DEFINE_string(param_filename, "", "Name of parameters file.");
+
+int DeleteFiles(std::string path) {
+  DIR* dir = opendir(path.c_str());
+  if (dir == NULL) return 0;
+  struct dirent* ptr;
+  while ((ptr = readdir(dir)) != NULL) {
+    if (std::strcmp(ptr->d_name, ".") == 0 ||
+        std::strcmp(ptr->d_name, "..") == 0) {
+      continue;
+    } else if (ptr->d_type == 8) {
+      std::string file_rm = path + "/" + ptr->d_name;
+      return remove(file_rm.c_str());
+    }
+  }
+  return 0;
+}
 
 template <typename ConfigType>
 void SetConfig(ConfigType* config, std::string model_dir, bool use_gpu,
