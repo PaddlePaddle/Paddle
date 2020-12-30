@@ -48,6 +48,18 @@ struct select {
   using type = eval_if_t<Head::value, Head, select<Tail...>>;
 };
 
+template <typename T>
+struct select<T> {
+  using type = T;
+};
+
+template <bool B, typename T>
+struct select<cond<B, T>> {
+  // last one had better be true!
+  static_assert(B, "No match select type!");
+  using type = T;
+};
+
 template <typename Head, typename... Tail>
 using select_t = typename select<Head, Tail...>::type;
 

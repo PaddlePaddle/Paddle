@@ -16,7 +16,9 @@
 
 #include <stdint.h>
 
+#include <complex>
 #include <limits>
+
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
@@ -77,10 +79,6 @@ struct PADDLE_ALIGN(16) complex128 {
       : real(static_cast<double>(val)), imag(0) {}
   HOSTDEVICE complex128(const int64_t& val)
       : real(static_cast<double>(val)), imag(0) {}
-
-  HOSTDEVICE inline explicit operator std::complex<double>() {
-    return static_cast<std::complex<double>>(std::complex<double>(real, imag));
-  }
 
   template <class T>
   HOSTDEVICE inline explicit complex128(const T& val)
@@ -197,6 +195,10 @@ struct PADDLE_ALIGN(16) complex128 {
 
   HOSTDEVICE inline explicit operator double() const {
     return static_cast<double>(this->real);
+  }
+
+  HOSTDEVICE inline explicit operator std::complex<double>() {
+    return std::complex<double>(this->real, this->imag);
   }
 };
 
@@ -584,6 +586,16 @@ HOSTDEVICE inline complex128 pow(const complex128& a, const complex128& b) {
 template <>
 HOSTDEVICE inline double abs(const complex128& a) {
   return paddle::platform::abs(a);
+}
+
+template <>
+HOSTDEVICE inline double real(const complex128& a) {
+  return a.real;
+}
+
+template <>
+HOSTDEVICE inline double imag(const complex128& a) {
+  return a.imag;
 }
 
 }  // namespace numext

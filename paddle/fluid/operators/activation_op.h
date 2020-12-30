@@ -793,26 +793,6 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// abs(x) = |x|
-template <typename T>
-struct AbsFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.abs();
-  }
-};
-
-template <typename T>
-struct AbsGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * x.sign();
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
-};
-
 // reciprocal(x) = 1 / x
 template <typename T>
 struct ReciprocalFunctor : public BaseActivationFunctor<T> {
@@ -1503,27 +1483,6 @@ class ActivationDoubleGradKernel
     }
     functor(place, X, Out, ddX, ddOut, dOut, dX);
   }
-};
-
-template <typename T>
-struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device>
-  void operator()(const Device& dev, const framework::Tensor* X,
-                  const framework::Tensor* Out, const framework::Tensor* ddX,
-                  framework::Tensor* ddOut, framework::Tensor* dOut,
-                  framework::Tensor* dX) const {
-    auto* d = dev.eigen_device();
-    auto ddx = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(ddX, "Input", "DDX", "AbsGradGrad"));
-    auto x = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(X, "Input", "X", "AbsGradGrad"));
-    if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "AbsGradGrad"));
-      ddout.device(*d) = ddx * x.sign();
-    }
-  }
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
 template <typename T>
