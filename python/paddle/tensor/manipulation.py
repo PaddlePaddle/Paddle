@@ -284,6 +284,7 @@ def roll(x, shifts, axis=None, name=None):
 
     Examples:
         .. code-block:: python
+            
             import paddle
 
             x = paddle.to_tensor([[1.0, 2.0, 3.0],
