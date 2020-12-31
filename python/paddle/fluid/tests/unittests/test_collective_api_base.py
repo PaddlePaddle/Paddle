@@ -169,6 +169,7 @@ class TestDistBase(unittest.TestCase):
                          path_id="0",
                          check_error_log=False,
                          need_envs={}):
+        with_gloo = '0' if backend == "nccl" else '1'
         required_envs = {
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_eager_delete_tensor_gb": "0.0",
@@ -178,7 +179,7 @@ class TestDistBase(unittest.TestCase):
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "0",
             "NCCL_P2P_DISABLE": "1",
-            "PADDLE_WITH_GLOO": "1",
+            "PADDLE_WITH_GLOO": with_gloo,
             "BACKEND": backend,
             "PATH_ID": path_id
         }
