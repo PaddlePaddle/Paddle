@@ -30,7 +30,9 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_XPU
 #include "xpu/refactor/math.h"
+#endif
 
 namespace paddle {
 namespace imperative {
@@ -82,11 +84,13 @@ class TensorAddFunctor : public boost::static_visitor<> {
     blas.AXPY(numel_, 1., x_, y_);
   }
 
+#ifdef PADDLE_WITH_XPU
   void operator()(const platform::XPUPlace& place) {
     platform::XPUDeviceContext* ctx = dynamic_cast<platform::XPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
     xpu::add<T>(ctx->x_context(), x_, y_, y_, dynamic_cast<int>(numel_));
   }
+#endif
 
 #ifdef PADDLE_WITH_CUDA
   void operator()(const platform::CUDAPlace& place) {
