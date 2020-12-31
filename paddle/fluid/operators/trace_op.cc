@@ -186,10 +186,10 @@ REGISTER_OP_VERSION(trace)
         paddle::framework::compatible::OpVersionDesc()
             .NewAttr("axis1",
                      "The added attribute 'axis1' is not yet registered.",
-                     std::vector{0.0f})
+                     std::vector<float>{0.0f})
             .NewAttr("axis2",
                      "The added attribute 'axis2' is not yet registered.",
-                     std::vector{1.0f})
+                     std::vector<float>{1.0f})
             .DeleteAttr("dim1",
                         "The attribute 'dim1' is not recommend according to "
                         "the specification 2.0.")
