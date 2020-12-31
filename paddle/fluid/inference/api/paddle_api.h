@@ -39,6 +39,7 @@ enum PaddleDType {
   INT64,
   INT32,
   UINT8,
+  INT8,
   // TODO(Superjomn) support more data types if needed.
 };
 
