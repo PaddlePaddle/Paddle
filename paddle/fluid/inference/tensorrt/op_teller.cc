@@ -101,6 +101,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "layer_norm",
       "scale",
       "stack",
+      "nearest_interp",
   };
 };
 
