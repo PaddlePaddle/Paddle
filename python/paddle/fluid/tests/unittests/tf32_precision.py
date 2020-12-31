@@ -31,18 +31,14 @@ def get_compute_capability(id):
 
 # Get cuda runtime version from source file
 def get_cuda_runtime_version():
-    cuda_path = os.popen("whereis cuda").read()
-    cuda_path = cuda_path[6:-1]
-    cuda_path += '/include/cuda.h'
-    try:
-        cuda_version = os.popen("cat " + cuda_path +
-                                " | grep '\#define CUDA_VERSION\'").read()
-    except ValueError:
-        print("No such file or directory")
-    else:
-        cuda_version = cuda_version[:-1]
-        cuda_ver = re.split(' ', cuda_version)
-        return int(cuda_ver[-1])
+    command = os.popen("nvcc --version").read()
+    command = re.split(' ', command)
+    tag = 0
+    for _ in command:
+        tag += 1
+        if _ == 'release':
+            break
+    return int(float(command[tag].replace(',', '')) * 1000)
 
 
 # Check if tf32 is supported on current hardware
