@@ -69,9 +69,9 @@ class ScaleOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
 
     auto input_dim = input->getDimensions();
-    PADDLE_ENFORCE_GE(input_dim.nbDims, 3,
+    PADDLE_ENFORCE_GE(input_dim.nbDims, 2,
                       platform::errors::Fatal(
-                          "Paddle-TRT scale mode only support dimension >= 3"));
+                          "Paddle-TRT scale mode only support dimension >= 2"));
 
     nvinfer1::IShuffleLayer* expand_layer = nullptr;
     nvinfer1::IShuffleLayer* squeeze_layer = nullptr;
@@ -81,6 +81,15 @@ class ScaleOpConverter : public OpConverter {
       // explicit batch
       expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
       nvinfer1::Dims4 target_shape(0, 0, 0, 1);  // expand 1 dims
+      expand_layer->setReshapeDimensions(target_shape);
+      input = expand_layer->getOutput(0);
+    }
+
+    if (input_dim.nbDims == 2) {
+      // TensorRT scale layer is not supporting input dims < 4 when using
+      // explicit batch
+      expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+      nvinfer1::Dims4 target_shape(0, 0, 1, 1);  // expand 1 dims
       expand_layer->setReshapeDimensions(target_shape);
       input = expand_layer->getOutput(0);
     }
@@ -108,7 +117,17 @@ class ScaleOpConverter : public OpConverter {
       // explicit batch
       squeeze_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
-      nvinfer1::Dims3 target_shape(0, 0, 0);  // expand 1 dims
+      nvinfer1::Dims3 target_shape(0, 0, 0);  // squeeze 1 dims
+      squeeze_layer->setReshapeDimensions(target_shape);
+      layer = static_cast<nvinfer1::ILayer*>(squeeze_layer);
+    }
+
+    if (input_dim.nbDims == 2) {
+      // TensorRT scale layer is not supporting input dims < 4 when using
+      // explicit batch
+      squeeze_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
+      nvinfer1::Dims2 target_shape(0, 0);  // squeeze back to 2 dims
       squeeze_layer->setReshapeDimensions(target_shape);
       layer = static_cast<nvinfer1::ILayer*>(squeeze_layer);
     }
