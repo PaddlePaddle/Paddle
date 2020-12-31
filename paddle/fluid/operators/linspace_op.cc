@@ -99,4 +99,4 @@ REGISTER_OP_VERSION(linspace)
       Upgrade linspace to add a new attribute [dtype].
     )ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "dtype", "In order to change output data type ", 0));
+            "dtype", "In order to change output data type ", 5));
