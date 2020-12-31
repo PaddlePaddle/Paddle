@@ -29,6 +29,8 @@ import paddle.fluid as fluid
 import paddle.fluid.profiler as profiler
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
+import paddle.distributed.fleet as fleet
+from paddle.fluid.incubate.fleet.base import role_maker
 import unittest
 from multiprocessing import Process
 import paddle.fluid.layers as layers
@@ -38,25 +40,37 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 paddle.enable_static()
 
 
-class TestCollectiveScatterAPI(TestCollectiveAPIRunnerBase):
+class TestParallelEmbeddingAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(
-                name="tindata",
-                shape=[10, 1000],
-                dtype='float32',
-                append_batch_size=False)
-            toutdata = layers.fill_constant(
-                shape=[5, 1000], dtype='float32', value=1.0)
-            tensor_list = None
-            if rank == 1:
-                tensor_list = paddle.split(tindata, 2, axis=0)
-            paddle.distributed.scatter(toutdata, tensor_list, src=1)
-            return [toutdata]
+            fleet.init(is_collective=True)
+            np.random.seed(2020)
+            np_array = np.random.rand(10, 8)
+            paddle.seed(2020)
+            data_in = paddle.randint(0, 8, shape=(10, 4))
+
+            data = paddle.static.data(
+                name='tindata', shape=[10, 1000], dtype="float32")
+            if rank == 0:
+                param_attr = paddle.fluid.ParamAttr(
+                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
+                        np_array[0:5, :]), )
+            else:
+                param_attr = paddle.fluid.ParamAttr(
+                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
+                        np_array[5:10, :]), )
+
+            emb_out = paddle.distributed.split(
+                data_in, (8, 8),
+                operation="embedding",
+                num_partitions=2,
+                weight_attr=param_attr)
+
+            return [data_in, emb_out]
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveScatterAPI, "scatter")
+    runtime_main(TestParallelEmbeddingAPI, "parallel_embedding")
