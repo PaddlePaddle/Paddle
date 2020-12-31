@@ -171,7 +171,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Create eltwise_y (conv bias) variable
     VarDesc eltwise_y_in_desc(
-        patterns::PDNodeName(name_scope_, "eltwise_y_in"));
+        patterns::PDNodeName("fuse_conv_bn", conv_type() + "_eltwise_y_in"));
     eltwise_y_in_desc.SetShape(framework::vectorize(bn_bias_tensor->dims()));
     eltwise_y_in_desc.SetDataType(bn_bias_tensor->type());
     eltwise_y_in_desc.SetLoDLevel(bn_bias->Var()->GetLoDLevel());
@@ -389,5 +389,5 @@ REGISTER_PASS_CAPABILITY(conv_eltwiseadd_bn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("batch_norm", 0));

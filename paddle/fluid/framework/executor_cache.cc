@@ -79,7 +79,7 @@ std::shared_ptr<framework::ExecutorPrepareContext> GetExecutorInfoFromCache(
   auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
 
   auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
-  auto cache_key = framework::ExecutorInfoCache::KeyType(program, is_grad);
+  auto cache_key = framework::ExecutorInfoCache::KeyInfo(program, is_grad);
 
   if (!cached_exe_info.Has(cache_key)) {
     VLOG(1) << "create exe_info for program: " << program

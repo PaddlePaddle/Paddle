@@ -24,8 +24,8 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
-from paddle.fluid.dygraph import nn
 import warnings
+import paddle
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -114,6 +114,11 @@ class ParallelEnv(object):
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
+        self._nrings = int(os.getenv("FLAGS_nccl_nrings", "1"))
+        assert self._nrings > 0, \
+            "nccl_nrings must be an integer greater than 0."
+        assert self._nrings < 9, \
+            "nccl_nrings should be less than 9, which is enough in most scenarios."
 
     @property
     def rank(self):
@@ -210,6 +215,25 @@ class ParallelEnv(object):
             # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
         """
         return self._trainer_endpoints
+
+    @property
+    def nrings(self):
+        """
+        Nrings of current trainer.
+
+        Its value is equal to the value of the environment variable ``FLAGS_nccl_nrings`` . The default value is 1.
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export FLAGS_nccl_nrings=1
+            import paddle.distributed as dist
+            
+            env = dist.ParallelEnv()
+            print("The nrings is %d" % env.nrings)
+            # the number of ring is 1
+        """
+        return self._nrings
 
     # [aliases] Compatible with old method names
     local_rank = rank
@@ -397,8 +421,8 @@ class DataParallel(layers.Layer):
         else:
             warnings.warn("The program will return to single-card operation. "
                           "Please check 1, whether you use spawn or fleetrun "
-                          "to start the program. 2. Whether it is a multi-card "
-                          "program. 3. Is the current environment multi-card.")
+                          "to start the program. 2, Whether it is a multi-card "
+                          "program. 3, Is the current environment multi-card.")
 
     def init_reducer(self):
         layers_param = []
@@ -419,9 +443,13 @@ class DataParallel(layers.Layer):
         # NOTE(shenliang03): Here we can only use the attributes to judge whether
         # parameter is sparse(or SelectedRows). The reason is that the sparse message
         # can't be obtained when bp hasn't happened yet. So if layer supports sparse parameter,
-        # we should add the layer here like "nn.Embedding".
+        # we should add the layer here like "paddle.nn.layer.common.Embedding".
         def check_layer_sparse(sublayer):
-            if isinstance(sublayer, nn.Embedding):
+            if isinstance(sublayer, paddle.nn.layer.common.Embedding):
+                return sublayer._sparse
+            # NOTE(shenliang03):This is for compatibility. If paddle.fluid.dygraph.Embedding 
+            # is removed in the future, the check will also be removed here.
+            if isinstance(sublayer, paddle.fluid.dygraph.Embedding):
                 return sublayer._is_sparse
             return False
 
@@ -437,10 +465,11 @@ class DataParallel(layers.Layer):
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
-        self._reducer = core.Reducer(trainable_parameters,
-                                     list(reversed(self.group_indices)),
-                                     is_sparse_gradient,
-                                     parallel_helper.__parallel_ctx__clz__)
+        self._reducer = core.Reducer(
+            trainable_parameters,
+            list(reversed(self.group_indices)), is_sparse_gradient,
+            parallel_helper.__parallel_ctx__clz__,
+            [self.last_comm_buffer_size, self.comm_buffer_size])
 
     def forward(self, *inputs, **kwargs):
         if self._strategy.nranks > 1:

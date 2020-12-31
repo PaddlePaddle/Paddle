@@ -159,6 +159,7 @@ def for_enumerate_var_numpy_with_start_continue(x_array):
 def for_iter_var(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
+
     for x in x_array:
         z = z + x
     return z
@@ -219,6 +220,17 @@ def for_enumerate_var_with_nested_range(x_array):
         for idx in range(num):
             x = x + num
     return x
+
+
+# 16. for iter var[idx]
+@paddle.jit.to_static
+def for_iter_var_idx(x_array):
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    x_array = fluid.dygraph.to_variable(x_array)
+
+    for x in x_array[0:]:
+        z = z + x
+    return z
 
 
 class TestTransformBase(unittest.TestCase):
@@ -341,6 +353,11 @@ class TestForEnumerateVarNumpyWithStartAndBreak(TestForIterVarNumpy):
 class TestForIterVar(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = for_iter_var
+
+
+class TestForIterVarIdx(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = for_iter_var_idx
 
 
 class TestForEnumerateVar(TestForIterVarNumpy):
