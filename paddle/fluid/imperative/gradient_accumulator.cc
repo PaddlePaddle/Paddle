@@ -90,6 +90,13 @@ class TensorAddFunctor : public boost::static_visitor<> {
         platform::DeviceContextPool::Instance().Get(place));
     xpu::add<T>(ctx->x_context(), x_, y_, y_, dynamic_cast<int>(numel_));
   }
+#else
+  void operator()(const platform::XPUPlace& place) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
 #endif
 
 #ifdef PADDLE_WITH_CUDA
