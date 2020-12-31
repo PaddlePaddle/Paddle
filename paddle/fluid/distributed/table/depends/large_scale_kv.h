@@ -96,8 +96,8 @@ class ValueBlock {
         value_dims_(value_dims),
         value_offsets_(value_offsets),
         value_idx_(value_idx) {
-    for (int x = 0; x < value_dims; ++x) {
-      value_length_ += x;
+    for (int x = 0; x < value_dims.size(); ++x) {
+      value_length_ += value_dims[x];
     }
 
     // for Entry
@@ -147,8 +147,8 @@ class ValueBlock {
   float *Init(const uint64_t &id) {
     auto value = std::make_shared<VALUE>(value_length_);
     for (int x = 0; x < value_names_.size(); ++x) {
-      initializer_list_[x]->GetValue(value->data_ + value_offsets_[x],
-                                     value_dims_[x]);
+      initializers_[x]->GetValue(value->data_.data() + value_offsets_[x],
+                                 value_dims_[x]);
     }
     values_[id] = value;
     return value->data_.data();
@@ -160,7 +160,8 @@ class ValueBlock {
     pts.reserve(value_names.size());
     auto &values = values_.at(id);
     for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
-      pts.push_back(values->data_.data() + value_offsets_.at(value_names[i]));
+      pts.push_back(values->data_.data() +
+                    value_offsets_.at(value_idx_.at(value_names[i])));
     }
     return pts;
   }
@@ -169,12 +170,12 @@ class ValueBlock {
     auto pts = std::vector<std::vector<float> *>();
     auto &values = values_.at(id);
 
-    return &values->data_;
+    return values->data_.data();
   }
 
   float *InitFromInitializer(const uint64_t &id) {
     if (Has(id)) {
-      if (has_entry) {
+      if (has_entry_) {
         Update(id);
       }
       return Get(id);
@@ -189,7 +190,7 @@ class ValueBlock {
 
   void Update(const uint64_t id) {
     auto value = values_.at(id);
-    value->reset_unseen_days();
+    value->unseen_days_ = 0;
     auto count = ++value->count_;
 
     if (!value->is_entry_) {
@@ -208,7 +209,7 @@ class ValueBlock {
   }
 
  public:
-  std::unordered_map<uint64_t, std::shard_ptr<VALUE>> values_;
+  std::unordered_map<uint64_t, std::shared_ptr<VALUE>> values_;
   size_t value_length_ = 0;
 
  private:

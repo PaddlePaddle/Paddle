@@ -116,7 +116,7 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
 int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
                    const int mode) {
   for (auto value : block->values_) {
-    auto* vs = value.second->data_;
+    auto* vs = value.second->data_.data();
     std::stringstream ss;
     auto id = value.first;
     ss << id << "\t";
@@ -159,7 +159,8 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
 
     std::vector<std::vector<float>> kvalues;
     ProcessALine(values, meta, &kvalues);
-    block->Init(id, &kvalues, 1);
+    // warning: need fix
+    block->Init(id);
   }
 
   return 0;
@@ -186,6 +187,7 @@ int32_t CommonSparseTable::initialize() {
     value_names_.push_back(varname);
     value_dims_.push_back(dim);
     value_offsets_.push_back(offset);
+    initializer_attrs_.push_back(common.initializers()[x]);
 
     if (varname == "Param") {
       param_dim_ = dim;
@@ -209,7 +211,7 @@ int32_t CommonSparseTable::initialize_value() {
   for (int x = 0; x < task_pool_size_; ++x) {
     auto shard =
         std::make_shared<ValueBlock>(value_names_, value_dims_, value_offsets_,
-                                     value_idx_, common.initializers(), "none");
+                                     value_idx_, initializer_attrs_, "none");
 
     shard_values_.emplace_back(shard);
   }
@@ -243,14 +245,16 @@ int32_t CommonSparseTable::initialize_value() {
 int32_t CommonSparseTable::initialize_optimizer() {
   auto common = _config.common();
   auto name = common.name();
-  auto attrs = common.attributes();
 
   if (name == "sgd") {
-    optimizer_ = std::make_shared<SSGD>(common);
+    optimizer_ = std::make_shared<SSGD>(value_names_, value_dims_,
+                                        value_offsets_, value_idx_);
   } else if (name == "adam") {
-    optimizer_ = std::make_shared<SAdam>(common);
+    optimizer_ = std::make_shared<SAdam>(value_names_, value_dims_,
+                                         value_offsets_, value_idx_);
   } else if (name == "sum") {
-    optimizer_ = std::make_shared<SSUM>(common);
+    optimizer_ = std::make_shared<SSUM>(value_names_, value_dims_,
+                                        value_offsets_, value_idx_);
   } else {
     VLOG(0) << "init optimizer failed";
   }

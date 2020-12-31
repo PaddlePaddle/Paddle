@@ -31,7 +31,6 @@ namespace distributed {
 
 class SparseOptimizer {
  public:
-  SparseOptimizer() {}
   explicit SparseOptimizer(
       const std::vector<std::string>& value_names,
       const std::vector<int>& value_dims, const std::vector<int>& value_offsets,
@@ -56,7 +55,6 @@ class SparseOptimizer {
 // sum calc for sparse tensor
 class SSUM : public SparseOptimizer {
  public:
-  SSUM(){};
   explicit SSUM(const std::vector<std::string>& value_names,
                 const std::vector<int>& value_dims,
                 const std::vector<int>& value_offsets,
@@ -83,7 +81,6 @@ class SSUM : public SparseOptimizer {
 // sgd optimzer for sparse tensor
 class SSGD : public SparseOptimizer {
  public:
-  SSGD(){};
   explicit SSGD(const std::vector<std::string>& value_names,
                 const std::vector<int>& value_dims,
                 const std::vector<int>& value_offsets,
@@ -122,8 +119,11 @@ class SSGD : public SparseOptimizer {
 // adam optimzer for sparse tensor
 class SAdam : public SparseOptimizer {
  public:
-  SAdam() {}
-  explicit SAdam(const CommonAccessorParameter& common) {
+  explicit SAdam(const std::vector<std::string>& value_names,
+                 const std::vector<int>& value_dims,
+                 const std::vector<int>& value_offsets,
+                 const std::unordered_map<std::string, int>& value_idx)
+      : SparseOptimizer(value_names, value_dims, value_offsets, value_idx) {
     auto idx = value_idx.at("Param");
     param_offset = value_offsets.at(idx);
     update_numel = value_dims.at(idx);

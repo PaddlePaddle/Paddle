@@ -90,6 +90,7 @@ class CommonSparseTable : public SparseTable {
   std::vector<std::string> value_names_;
   std::vector<int> value_dims_;
   std::vector<int> value_offsets_;
+  std::vector<std::string> initializer_attrs_;
 
   std::shared_ptr<SparseOptimizer> optimizer_;
   std::vector<std::shared_ptr<ValueBlock>> shard_values_;
