@@ -183,6 +183,12 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_VERSION(trace)
     .AddCheckpoint(
         R"ROC(Upgrade trace add a new attribute [axis2])ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "axis2", "The added attribute 'axis2' is not yet registered.",
-            {1.0f}));
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("axis1",
+                     "The added attribute 'axis1' is not yet registered.",
+                     {0.0f})
+            .NewAttr("axis2",
+                     "The added attribute 'axis2' is not yet registered.",
+                     {1.0f})
+            .DeleteAttr("dim1", "The attribute 'dim1' is deleted.")
+            .DeleteAttr("dim2", "The attribute 'dim2' is deleted."));
