@@ -11,7 +11,8 @@ elseif(WITH_SUNWAY)
     SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/sunway/xpu_2020_1227.tar.gz" CACHE STRING "" FORCE)
 else()
     SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/xpu_2020_12_15.tar.gz" CACHE STRING "" FORCE)
-endif
+endif()
+
 SET(XPU_SOURCE_DIR              "${THIRD_PARTY_PATH}/xpu")
 SET(XPU_DOWNLOAD_DIR            "${XPU_SOURCE_DIR}/src/${XPU_PROJECT}")
 SET(XPU_INSTALL_DIR             "${THIRD_PARTY_PATH}/install/xpu")
