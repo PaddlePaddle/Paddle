@@ -5,7 +5,7 @@ nv_library(tensorrt_converter
                 pad_op.cc split_op.cc prelu_op.cc leaky_relu_op.cc gelu_op.cc layer_norm_op.cc multihead_matmul_op.cc
                 shuffle_channel_op.cc swish_op.cc instance_norm_op.cc stack_op.cc
                 emb_eltwise_layernorm.cc skip_layernorm.cc scale_op.cc slice_op.cc hard_sigmoid_op.cc hard_swish_op.cc clip_op.cc
-                nearest_interp.cc
+                nearest_interp.cc multiclass_nms.cc
            DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto op_registry)
 
 nv_test(test_op_converter SRCS test_op_converter.cc DEPS

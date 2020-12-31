@@ -102,6 +102,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "scale",
       "stack",
       "nearest_interp",
+      "multiclass_nms",
   };
 };
 
