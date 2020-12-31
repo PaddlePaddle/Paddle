@@ -41,35 +41,36 @@ class PipelineHelper(object):
                                inner_parallelism=None):
         self.startup_program = startup_program
 
-        endpoints = self.role_maker._get_trainer_endpoints()
-        current_endpoint = endpoints[self.role_maker._worker_index()]
-        node_num = _get_node_num(endpoints)
-        assert len(endpoints) % node_num == 0
         nranks = self.role_maker._worker_num()
         rank = self.role_maker._worker_index()
+        endpoints = self.role_maker._get_trainer_endpoints()
+        current_endpoint = endpoints[rank]
+        node_num = _get_node_num(endpoints)
+        assert nranks % node_num == 0
 
-        # Create ring 0 for all gpus in a pipeline
-        pipeline_endpoints = []
-        pipeline_rank = rank % inner_parallelism
-        pipeline_id = rank // inner_parallelism
-        for idx, ep in enumerate(endpoints):
-            if idx // inner_parallelism == pipeline_id:
-                pipeline_endpoints.append(ep)
-        self._init_communicator(self.startup_program, current_endpoint,
-                                pipeline_endpoints, pipeline_rank, 0,
-                                self.wait_port)
+        # Create ring 0 for all gpus in the same pipeline
+        if inner_parallelism > 1:
+            pipeline_rank = rank % inner_parallelism
+            pipeline_id = rank // inner_parallelism
+            start_index = pipeline_id * inner_parallelism
+            pipeline_endpoints = endpoints[start_index:start_index +
+                                           inner_parallelism]
+            self._init_communicator(self.startup_program, current_endpoint,
+                                    pipeline_endpoints, pipeline_rank, 0,
+                                    self.wait_port)
 
         pipeline_num = len(endpoints) // inner_parallelism
         if pipeline_num == 1: return
-        # Create rings for gpus with the same gpu id
+        # Create rings for gpus with the same pipeline id for data parallel
         eps = []
-        local_rank = self.role_maker._worker_index() % inner_parallelism
-        ring_id = local_rank + 1
+        pipeline_rank = rank % inner_parallelism
+        ring_id = pipeline_rank + 1
         for i in range(pipeline_num):
-            eps.append(endpoints[i * inner_parallelism + local_rank])
-        temp_rank = self.role_maker._worker_index() // inner_parallelism
+            eps.append(endpoints[i * inner_parallelism + pipeline_rank])
+        # rank in a ring of gpus with the same pipeline id for data parallel
+        dp_rank = rank // inner_parallelism
         self._init_communicator(self.startup_program, current_endpoint, eps,
-                                temp_rank, ring_id, self.wait_port)
+                                dp_rank, ring_id, self.wait_port)
         self._broadcast_params(ring_id)
 
     def _init_communicator(self, program, current_endpoint, endpoints, rank,
@@ -108,8 +109,10 @@ class PipelineHelper(object):
 
     def _broadcast_params(self, ring_id):
         block = self.startup_program.global_block()
-        for param in block.iter_parameters():
-            if param.is_distributed:
+        for var_name in block.vars:
+            if "nccl_id" in var_name: continue
+            param = block.var(var_name)
+            if not param.persistable:
                 continue
 
             block.append_op(
@@ -136,7 +139,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
-        self.meta_optimizers_black_list = []
+        self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
@@ -161,14 +164,6 @@ class PipelineOptimizer(MetaOptimizerBase):
         dist_strategy.pipeline = True
         dist_strategy.pipeline_configs = {"micro_batch": 1, }
 
-    def _get_local_rank(self, current_endpoint, endpoints):
-        cur_node_endpoints = []
-        cur_ip = current_endpoint.split(':')[0].strip()
-        for ep in endpoints:
-            if cur_ip == ep.split(':')[0].strip():
-                cur_node_endpoints.append(ep)
-        return cur_node_endpoints.index(current_endpoint)
-
     def minimize_impl(self,
                       loss,
                       startup_program=None,
@@ -176,56 +171,51 @@ class PipelineOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[self.role_maker._worker_index()]
-        self.local_rank = self._get_local_rank(current_endpoint, endpoints)
         self.wrapped_opt = PO(self.inner_opt,
-                              num_microbatches=self.num_microbatches,
-                              start_cpu_core_id=self.local_rank)
+                              num_microbatches=self.num_microbatches)
         node_num = _get_node_num(endpoints)
         gpus_per_node = len(endpoints) // node_num
         self.startup_program = startup_program
-        self.local_rank = self._get_local_rank(current_endpoint, endpoints)
         if startup_program is None:
             self.startup_program = fluid.default_startup_program()
 
-        loss.block.program._pipeline_opt = dict()
-        loss.block.program._pipeline_opt['local_rank'] = self.local_rank
-        optimize_ops, params_grads, prog_list = \
-            self.wrapped_opt.minimize(loss, startup_program,
-                                      parameter_list, no_grad_set)
+        self.rank = self.role_maker._worker_index()
+        self.nranks = self.role_maker._worker_num()
+        assert self.nranks % node_num == 0
 
+        loss.block.program._pipeline_opt = dict()
+        loss.block.program._pipeline_opt['local_rank'] = self.rank
+        optimize_ops, params_grads, prog_list = self.wrapped_opt.minimize(
+            loss, startup_program, parameter_list, no_grad_set)
         assert prog_list
+
         self.main_program_list = prog_list
         self.main_program = loss.block.program
         self.inner_parallelism = loss.block.program._pipeline_opt[
             'inner_parallelism']
-        nranks = len(endpoints)
-        self.nranks = nranks
-        self.nrings = len(self.main_program_list)
-
-        self.rank = self.role_maker._worker_index()
-        self.endpoints = endpoints
-        self.current_endpoint = current_endpoint
+        assert self.nranks % self.inner_parallelism == 0
 
         pipeline_helper = PipelineHelper(self.role_maker)
         pipeline_helper.update_startup_program(
             self.startup_program._pipeline_opt["startup_program"],
             self.inner_parallelism)
 
-        self._transpile_main_program(loss, node_num, gpus_per_node)
+        pipeline_num = self.nranks // self.inner_parallelism
+        self._transpile_main_program(loss, pipeline_num, self.inner_parallelism)
         return optimize_ops, params_grads
 
-    def _transpile_main_program(self, loss, node_num, gpus_per_node):
-        self._insert_loss_grad_ops(loss, gpus_per_node, node_num)
-        for ring_id in range(1, gpus_per_node + 1):
+    def _transpile_main_program(self, loss, pipeline_num, inner_parallelism):
+        if pipeline_num <= 1: return
+        self._insert_loss_grad_ops(loss, pipeline_num)
+        for ring_id in range(1, inner_parallelism + 1):
             self._insert_allreduce_ops(ring_id)
 
-    def _insert_loss_grad_ops(self, loss, gpus_per_node, node_num):
+    def _insert_loss_grad_ops(self, loss, pipeline_num):
         """
         In order to keep the learning rate consistent in different numbers of
         training workers, we scale the loss grad by the number of workers
         """
-        block = self.main_program_list[gpus_per_node - 1][
-            'program'].global_block()
+        block = self.main_program_list[-1]['program'].global_block()
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_loss_grad_op(op):
                 loss_grad_var = block.vars[op.output_arg_names[0]]
@@ -235,7 +225,7 @@ class PipelineOptimizer(MetaOptimizerBase):
                     inputs={'X': loss_grad_var},
                     outputs={'Out': loss_grad_var},
                     attrs={
-                        'scale': 1.0 / node_num,
+                        'scale': 1.0 / pipeline_num,
                         OP_ROLE_KEY: OpRole.Backward
                     })
 
@@ -269,7 +259,7 @@ class PipelineOptimizer(MetaOptimizerBase):
 
                     block._insert_op(
                         offset,
-                        type='c_sync_calc_stream',
+                        type='c_allreduce_sum',
                         inputs={'X': grad},
                         outputs={'Out': grad},
                         attrs={
@@ -283,7 +273,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         for idx, op in enumerate(block.ops):
             if is_optimizer_op(op):
                 block._insert_op(
-                    idx + ring_id,
+                    idx,
                     type='c_sync_comm_stream',
                     inputs={'X': grad},
                     outputs={'Out': grad},
