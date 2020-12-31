@@ -30,6 +30,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "xpu/refactor/math.h"
 
 namespace paddle {
 namespace imperative {
@@ -82,10 +83,9 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 
   void operator()(const platform::XPUPlace& place) {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Gradient accumulation on place (%s) "
-        "is not supported in imperative mode",
-        place));
+    platform::XPUDeviceContext* ctx = dynamic_cast<platform::XPUDeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    xpu::add<T>(ctx->x_context(), x_, y_, y_, dynamic_cast<int>(numel_));
   }
 
 #ifdef PADDLE_WITH_CUDA
@@ -162,11 +162,14 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
   }
 
   PADDLE_TENSOR_ADD(float);
+#ifndef PADDLE_WITH_XPU
+  // NOTE(phlrain): xpu only support float
   PADDLE_TENSOR_ADD(double);
   // NOTE(chenweihang): only support complex grad tensor accumulated,
   // support selected rows if needed in the future
   PADDLE_TENSOR_ADD(platform::complex64);
   PADDLE_TENSOR_ADD(platform::complex128);
+#endif
 
 #undef PADDLE_TENSOR_ADD
 
