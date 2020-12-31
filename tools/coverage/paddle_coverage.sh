@@ -28,7 +28,7 @@ make install
 
 cd /paddle/build
 
-python3.7 ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID}
+#python3.7 ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID}
 
 lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
@@ -108,7 +108,7 @@ function gen_diff_html_report() {
     genhtml -o coverage-diff -t 'Diff Coverage' --no-function-coverage --no-branch-coverage coverage-diff.info
 }
 
-gen_diff_html_report || true
+# gen_diff_html_report || true
 
 # python coverage
 
@@ -168,23 +168,7 @@ function gen_python_diff_html_report() {
         python-coverage-diff.info
 }
 
-gen_python_diff_html_report || true
+# gen_python_diff_html_report || true
 
 # assert coverage lines
 
-echo "Assert Diff Coverage"
-
-python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py coverage-diff.info 0.9 || COVERAGE_LINES_ASSERT=1
-
-echo "Assert Python Diff Coverage"
-
-if [ ${WITH_XPU:-OFF} == "ON" ]; then
-    echo "XPU has no python coverage!"
-else
-    python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
-fi
-
-if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1" ]; then
-    echo "exit 9" > /tmp/paddle_coverage.result
-    exit 9
-fi
