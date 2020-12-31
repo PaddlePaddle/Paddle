@@ -120,7 +120,9 @@ set -x
 
 coverage xml -i -o python-coverage.xml
 
-python3.7 ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info
+#python3.7 ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info
+curl -s https://paddle-ci.gz.bcebos.com/coverage%2Fscripts%2Fpython_coverage.py | \ 
+    python - > python-coverage.info
 
 # python full html report
 #
