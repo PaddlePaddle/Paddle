@@ -45,7 +45,11 @@ void HeterServer::StartHeterService() {
   }
   condition_ready_.notify_all();
 
-  server_.Join();
+  std::unique_lock<std::mutex> running_lock(mutex_);
+  cv_.wait(running_lock, [&] {
+    VLOG(1) << "Heter Server is Stop? " << stoped_;
+    return stoped_;
+  });
 }
 
 void HeterServer::SetEndPoint(std::string& endpoint) {
@@ -83,6 +87,7 @@ int32_t HeterService::stop_heter_worker(const PsRequestMessage& request,
   stop_cpu_worker_set_.insert(client_id);
   if (stop_cpu_worker_set_.size() == fan_in_) {
     is_exit_ = true;
+    VLOG(0) << "Stop heter Service done.";
   }
   return 0;
 }

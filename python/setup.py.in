@@ -322,6 +322,10 @@ if '${WITH_XPU}' == 'ON':
     package_data['paddle.libs']+=['${XPU_API_LIB_NAME}',
                                   '${XPU_RT_LIB_NAME}']
 
+if '${WITH_XPU_BKCL}' == 'ON':
+    shutil.copy('${XPU_BKCL_LIB}', libs_path)
+    package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
+
 # copy libfuild_framework.so to libs
 if os.name != 'nt' and sys.platform != 'darwin':
     paddle_framework_lib='${FLUID_FRAMEWORK_SHARED_LIB}'
@@ -348,7 +352,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         # The dynamic library compiled under aarch64 is greater than 64M,
         # and an oversize error will be reported when using patchelf.
         # The sw_64 not suppot patchelf, so we just disable that.
-        if platform.machine() != 'aarch64' and platform.machine() != 'sw_64':
+        if platform.machine() != 'aarch64' and platform.machine() != 'sw_64' and platform.machine() != 'mips64':
           if os.system(command) != 0:
               raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
 

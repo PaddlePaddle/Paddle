@@ -47,8 +47,6 @@ from ..fluid.layers import exp    #DEFINE_ALIAS
 from ..fluid.layers import floor    #DEFINE_ALIAS
 from ..fluid.layers import log    #DEFINE_ALIAS
 from ..fluid.layers import reciprocal    #DEFINE_ALIAS
-from ..fluid.layers import reduce_all    #DEFINE_ALIAS
-from ..fluid.layers import reduce_any    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_max    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_min    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
@@ -70,6 +68,8 @@ from ..fluid import layers
 __all__ = [
         'abs',
         'acos',
+        'all',
+        'any',
         'asin',
         'atan',
         'ceil',
@@ -125,7 +125,8 @@ __all__ = [
         'isfinite',
         'isinf',
         'isnan',
-        'broadcast_shape'
+        'broadcast_shape',
+        'conj'
 ]
 # yapf: enable.
 
@@ -174,7 +175,8 @@ def pow(x, y, name=None):
             print(res) # [1 4 9]
             
             # example 2: y is a Tensor
-            y = paddle.full(shape=[1], fill_value=2, dtype='float32')
+            y = paddle.full(shape=[1], fill_value=2, dtype='int64')
+        
             res = paddle.pow(x, y)
             print(res) # [1 4 9]
 
@@ -2026,16 +2028,14 @@ def all(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
             import numpy as np
             
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [True, True]]
-            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             print(x)
-            x = layers.cast(x, 'bool')
+            x = paddle.cast(x, 'bool')
             
             # out1 should be [False]
             out1 = paddle.all(x)  # [False]
@@ -2050,8 +2050,8 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out3)
             
             # keep_dim=True, out4 should be [[False], [True]], out.shape should be (2,1)
-            out4 = paddle.all(x, axis=1, keep_dim=True)
-            out4 = layers.cast(out4, 'int32')  # [[False], [True]]
+            out4 = paddle.all(x, axis=1, keepdim=True)
+            out4 = paddle.cast(out4, 'int32')  # [[False], [True]]
             print(out4)
             
     """
@@ -2122,16 +2122,14 @@ def any(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
             import numpy as np
             
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [False, False]]
-            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             print(x)
-            x = layers.cast(x, 'bool')
+            x = paddle.cast(x, 'bool')
             
             # out1 should be [True]
             out1 = paddle.any(x)  # [True]
@@ -2146,8 +2144,8 @@ def any(x, axis=None, keepdim=False, name=None):
             print(out3)
             
             # keep_dim=True, result should be [[True], [False]], out.shape should be (2,1)
-            out4 = paddle.any(x, axis=1, keep_dim=True)
-            out4 = layers.cast(out4, 'int32')  # [[True], [False]]
+            out4 = paddle.any(x, axis=1, keepdim=True)
+            out4 = paddle.cast(out4, 'int32')  # [[True], [False]]
             print(out4)
             
     """
@@ -2214,3 +2212,44 @@ def broadcast_shape(x_shape, y_shape):
     """
 
     return core.broadcast_shape(x_shape, y_shape)
+
+def conj(x, name=None):
+    r"""
+    This function computes the conjugate of the Tensor elementwisely.
+
+    Args:
+        x (Tensor): The input tensor which hold the complex numbers. 
+            Optional data types are: complex64, complex128, float32, float64, int32 or int64.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        out (Tensor): The conjugate of input. The shape and data type is the same with input.
+            If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          data=paddle.to_tensor([[1+1j, 2+2j, 3+3j], [4+4j, 5+5j, 6+6j]])
+          #Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+          #       [[(1+1j), (2+2j), (3+3j)],
+          #        [(4+4j), (5+5j), (6+6j)]])
+
+          conj_data=paddle.conj(data)
+          #Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+          #       [[(1-1j), (2-2j), (3-3j)],
+          #        [(4-4j), (5-5j), (6-6j)]])
+
+    """
+    if in_dygraph_mode():
+        return core.ops.conj(x)
+
+    check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'conj')
+
+    helper = LayerHelper('conj', **locals())
+    out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype())
+
+    helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
+    return out

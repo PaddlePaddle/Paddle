@@ -212,6 +212,7 @@ def remove_weight_norm(layer, name='weight'):
 
     Examples:
         .. code-block:: python
+          
           import paddle
           from paddle.nn import Conv2D
           from paddle.nn.utils import weight_norm, remove_weight_norm

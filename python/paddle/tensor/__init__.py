@@ -170,6 +170,7 @@ from .math import prod  #DEFINE_ALIAS
 from .math import all  #DEFINE_ALIAS
 from .math import any  #DEFINE_ALIAS
 from .math import broadcast_shape  #DEFINE_ALIAS
+from .math import conj  #DEFINE_ALIAS
 
 from .random import multinomial  #DEFINE_ALIAS
 from .random import standard_normal
@@ -202,3 +203,8 @@ from .stat import median  #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS
 from .to_string import set_printoptions  #DEFINE_ALIAS
+
+from .array import array_length  #DEFINE_ALIAS
+from .array import array_read  #DEFINE_ALIAS
+from .array import array_write  #DEFINE_ALIAS
+from .array import create_array  #DEFINE_ALIAS

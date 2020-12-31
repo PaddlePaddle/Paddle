@@ -85,6 +85,9 @@ message BuildStrategy {
   optional bool enable_inplace = 7 [ default = false ];
   optional bool enable_backward_optimizer_op_deps = 8 [ default = true ];
   optional bool cache_runtime_context = 9 [ default = false ];
+  optional bool fuse_bn_add_act_ops = 10 [ default = true ];
+  optional bool enable_auto_fusion = 11 [ default = false ];
+  optional bool enable_addto = 12 [ default = false ];
 }
 
 message ExecutionStrategy {
