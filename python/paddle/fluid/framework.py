@@ -1054,8 +1054,8 @@ class Variable(object):
         if is_new_var:
             self.desc.set_type(type)
         elif self.desc.type() != type:
-            raise ValueError("Variable {0} has been created before. The "
-                             "previous type is {1}; the new type is {2}. They"
+            raise ValueError("Variable '{0}' has been created before. The "
+                             "previous type is {1}, the new type is {2}. They"
                              " are not matched".format(self.name,
                                                        self.desc.type(), type))
 
@@ -1067,8 +1067,8 @@ class Variable(object):
                 shape = tuple(shape)
                 if shape != old_shape:
                     raise ValueError(
-                        "Variable {0} has been created before. the previous "
-                        "shape is {1}; the new shape is {2}. They are not "
+                        "Variable '{0}' has been created before. The previous "
+                        "shape is {1}, the new shape is {2}. They are not "
                         "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
             if is_new_var:
@@ -1076,8 +1076,8 @@ class Variable(object):
             else:
                 old_dtype = self.dtype
                 if dtype != old_dtype:
-                    raise ValueError("Variable {0} has been created before. "
-                                     "The previous data type is {1}; the new "
+                    raise ValueError("Variable '{0}' has been created before. "
+                                     "The previous data type is {1}, the new "
                                      "data type is {2}. They are not "
                                      "matched.".format(self.name, old_dtype,
                                                        dtype))
@@ -1087,8 +1087,8 @@ class Variable(object):
                 self.desc.set_lod_level(lod_level)
             else:
                 if lod_level != self.lod_level:
-                    raise ValueError("Variable {0} has been created before. "
-                                     "The previous lod_level is {1}; the new "
+                    raise ValueError("Variable '{0}' has been created before. "
+                                     "The previous lod_level is {1}, the new "
                                      "lod_level is {2}. They are not "
                                      "matched".format(self.name, self.lod_level,
                                                       lod_level))
@@ -1098,8 +1098,8 @@ class Variable(object):
             else:
                 if persistable != self.persistable:
                     raise ValueError(
-                        "Variable {0} has been created before."
-                        "The previous persistable is {1}; the new "
+                        "Variable '{0}' has been created before."
+                        "The previous persistable is {1}, the new "
                         "persistable is {2}. They are not matched".format(
                             self.name, self.persistable, persistable))
 
