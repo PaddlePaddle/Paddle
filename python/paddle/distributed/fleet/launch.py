@@ -117,6 +117,8 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--gpus=\"0,1,2,3\" will launch four training processes each bound to one gpu."
     )
 
+    base_group.add_argument("--selected_gpus", dest="gpus")
+
     base_group.add_argument(
         "training_script",
         type=str,
