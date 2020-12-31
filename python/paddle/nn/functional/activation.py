@@ -252,7 +252,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
     return out
 
 
-def hardsigmoid(x, name=None):
+def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
     r"""
     hardsigmoid activation.
 
@@ -266,12 +266,14 @@ def hardsigmoid(x, name=None):
             \\begin{aligned}
             &0, & & \\text{if } x \\leq -3 \\\\
             &1, & & \\text{if } x \\geq 3 \\\\
-            &x/6 + 1/2, & & \\text{otherwise}
+            &slope * x + offset, & & \\text{otherwise}
             \\end{aligned}
             \\right.
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+        slope (float, optional): The slope of hardsigmoid function. Default is 0.1666667.
+        offset (float, optional): The offset of hardsigmoid function. Default is 0.5.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -289,8 +291,7 @@ def hardsigmoid(x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.hard_sigmoid(x, 'slope', 0.1666666666666667, 'offset',
-                                     0.5)
+        return core.ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hardsigmoid')
@@ -301,8 +302,8 @@ def hardsigmoid(x, name=None):
         type='hard_sigmoid',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'slope': 0.1666666666666667,
-               'offset': 0.5})
+        attrs={'slope': slope,
+               'offset': offset})
     return out
 
 
