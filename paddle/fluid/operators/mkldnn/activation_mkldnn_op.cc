@@ -290,15 +290,15 @@ namespace ops = paddle::operators;
       act_type##_grad, MKLDNN, ::paddle::platform::CPUPlace,                  \
       ops::MKLDNNActivationGradKernel<ops::grad_functor<float>>);
 
-#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                     \
-  __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);          \
-  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);       \
-  __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);    \
-  __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);       \
-  __macro(hardswish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor);\
-  __macro(sigmoid, SigmoidMKLDNNFunctor, SigmoidMKLDNNGradFunctor); \
-  __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);          \
-  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor);          \
+#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                           \
+  __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);                \
+  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);             \
+  __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);          \
+  __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);             \
+  __macro(hardswish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor); \
+  __macro(sigmoid, SigmoidMKLDNNFunctor, SigmoidMKLDNNGradFunctor);       \
+  __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);                \
+  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor);                \
   __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);

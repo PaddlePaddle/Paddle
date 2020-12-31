@@ -284,8 +284,8 @@ class ConvMKLDNNHandlerT
                                      fuse_alpha, fuse_beta);
     } else if (fuse_activation == "hard_swish") {
       constexpr float scale = 1.0f;
-      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_hardswish,
-                                     fuse_alpha, fuse_beta);
+      post_operations.append_eltwise(
+          scale, mkldnn::algorithm::eltwise_hardswish, fuse_alpha, fuse_beta);
     }
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
