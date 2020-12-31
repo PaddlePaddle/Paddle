@@ -178,6 +178,7 @@ class TestDistBase(unittest.TestCase):
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "0",
             "NCCL_P2P_DISABLE": "1",
+            "PADDLE_WITH_GLOO": "1",
             "BACKEND": backend,
             "PATH_ID": path_id
         }
