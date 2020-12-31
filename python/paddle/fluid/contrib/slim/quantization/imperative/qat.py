@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import logging
 import numpy as np
 import sys
@@ -20,8 +21,8 @@ import paddle
 from paddle.fluid import dygraph, core, framework
 from paddle.fluid.executor import Executor
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.nn import Linear, Conv2D
-from paddle.fluid.dygraph.nn import BatchNorm, Pool2D, Conv2DTranspose
+from paddle.nn import Linear, Conv2D, Conv2DTranspose, MaxPool2D, MaxPool1D, BatchNorm1D, BatchNorm2D, BatchNorm3D
+from paddle.fluid.dygraph.nn import BatchNorm, Pool2D
 from paddle.fluid.io import load_inference_model, save_inference_model
 from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU, Swish
 from paddle.fluid.log_helper import get_logger
@@ -48,6 +49,11 @@ _op_real_in_out_name = {
     "sigmoid": [["X"], ["Out"]],
     "swish": [["X"], ["Out"]],
 }
+
+_support_ops = [
+    "elementwise_add", "pool2d", "softmax", "relu", "relu6", "leaky_relu",
+    "prelu", "tanh", "batch_norm", "sigmoid", "swish"
+]
 
 
 class ImperativeQuantAware(object):
@@ -263,6 +269,7 @@ class ImperativeQuantAware(object):
                 parent = obj
 
             quant_layer = self._get_quantized_counterpart(layer)
+            setattr(quant_layer, "layer_name", layer.full_name())
             setattr(obj, target, quant_layer)
 
         self._out_scale.calc_out_scale(model)
@@ -306,10 +313,11 @@ class ImperativeCalcOutScale(object):
         super(ImperativeCalcOutScale, self).__init__()
         self._moving_rate = moving_rate
         self._out_scale_layer_type_list = (
-            BatchNorm, Conv2D, Conv2DTranspose, LeakyReLU, Linear, PReLU,
-            Pool2D, ReLU, ReLU6, Sigmoid, Softmax, Tanh, Swish)
+            BatchNorm, BatchNorm1D, BatchNorm2D, BatchNorm3D, Conv2D,
+            Conv2DTranspose, LeakyReLU, Linear, PReLU, Pool2D, MaxPool1D,
+            MaxPool2D, ReLU, ReLU6, Sigmoid, Softmax, Tanh, Swish)
         self._register_hook_handle_list = []
-        self._out_scale_dict = {}
+        self._out_scale_dict = collections.OrderedDict()
 
     def calc_out_scale(self, model):
         """
@@ -325,7 +333,8 @@ class ImperativeCalcOutScale(object):
             model, dygraph.Layer), "model must be the instance of dygraph.Layer"
         for _, layer in model.named_sublayers():
             if not isinstance(layer, self._out_scale_layer_type_list):
-                continue
+                if 'quantized_' not in layer.full_name():
+                    continue
             forward_post_hook_handle = layer.register_forward_post_hook(
                 self._forward_post_hook)
             self._register_hook_handle_list.append(forward_post_hook_handle)
@@ -391,40 +400,54 @@ class ImperativeCalcOutScale(object):
         # Traverse all ops in the program and find out the op matching
         # the Layer in the dynamic graph.
         layer_var_dict = {}
+        ops_list = [key for key, _ in self._out_scale_dict.items()]
+        op_count = 0
         for block in inference_program.blocks:
             for op in block.ops:
                 if op.type in _op_real_in_out_name:
-                    output_var_names = quantization_pass._get_op_output_var_names(
-                        op)
-                    for output_var_name in output_var_names:
-                        output_var_tensor = block.var(output_var_name)
-                        if output_var_tensor.dtype not in [
-                                core.VarDesc.VarType.FP64,
-                                core.VarDesc.VarType.FP32
-                        ]:
+                    if op.type in ["batch_norm", "pool2d"]:
+                        if op.type == "pool2d" and op.attr(
+                                "pooling_type") != "max":
                             continue
-                        # Because the Layer in dygraph may correspond to multiple ops
-                        # in static program after being saved. To ensure correctness,
-                        # the outscale collected for output of dygraph Layer can only
-                        # be set to the last op in the corresponding ops in static program.
-                        #
-                        # We can judge the execution order of the ops which corresponding
-                        # to dygraph Layer by the name of output. And use dict to save
-                        # the corresponding relationship between the dygraph Layer and the
-                        # static graph op that needs to set the outscale attribute.
-                        if '.' not in output_var_name:
+                        op_count = self.op_match(op, ops_list, op_count)
+                        if op_count >= len(ops_list):
                             continue
-                        dynamic_layer_name, var_name_suffix = output_var_name.split(
-                            ".")
-                        if dynamic_layer_name in layer_var_dict:
-                            if layer_var_dict[dynamic_layer_name][
-                                    0] < var_name_suffix:
+                        op._set_attr('out_threshold',
+                                     self._out_scale_dict[ops_list[op_count]])
+                        op_count += 1
+                    else:
+                        output_var_names = quantization_pass._get_op_output_var_names(
+                            op)
+                        for output_var_name in output_var_names:
+                            output_var_tensor = block.var(output_var_name)
+                            if output_var_tensor.dtype not in [
+                                    core.VarDesc.VarType.FP64,
+                                    core.VarDesc.VarType.FP32
+                            ]:
+                                continue
+                            # Because the Layer in dygraph may correspond to multiple ops
+                            # in static program after being saved. To ensure correctness,
+                            # the outscale collected for output of dygraph Layer can only
+                            # be set to the last op in the corresponding ops in static program.
+                            #
+                            # We can judge the execution order of the ops which corresponding
+                            # to dygraph Layer by the name of output. And use dict to save
+                            # the corresponding relationship between the dygraph Layer and the
+                            # static graph op that needs to set the outscale attribute.
+                            if '.' not in output_var_name:
+                                continue
+                            dynamic_layer_name, var_name_suffix = output_var_name.split(
+                                ".")
+                            if dynamic_layer_name in layer_var_dict:
+                                if layer_var_dict[dynamic_layer_name][
+                                        0] < var_name_suffix:
+                                    layer_var_dict[dynamic_layer_name] = [
+                                        var_name_suffix, op
+                                    ]
+                            else:
                                 layer_var_dict[dynamic_layer_name] = [
                                     var_name_suffix, op
                                 ]
-                        else:
-                            layer_var_dict[
-                                dynamic_layer_name] = [var_name_suffix, op]
 
         # Because the naming styles of static and dynamic graph are different,
         # in order to avoid mistakes, we unify the name here.
@@ -451,6 +474,14 @@ class ImperativeCalcOutScale(object):
         if is_dynamic_mode:
             paddle.disable_static()
 
+    def op_match(self, op, ops_list, op_count):
+        while op_count < len(ops_list) and op.type not in ops_list[op_count]:
+            op_count += 1
+        while op_count < len(ops_list) and op.type is "pool2d" and op.attr(
+                "pooling_type") != "max":
+            op_count += 1
+        return op_count
+
     def _forward_post_hook(self, layer, input, output):
         assert isinstance(
             output, (core.VarBase, framework.Variable)
@@ -463,4 +494,8 @@ class ImperativeCalcOutScale(object):
             layer._out_scale = quant_nn.MovingAverageAbsMaxScale(
                 output.name, self._moving_rate, output.dtype)
         scale_out = layer._out_scale(output)
-        self._out_scale_dict[layer.full_name()] = scale_out
+        if hasattr(layer, 'layer_name'):
+            layer_name = layer.layer_name
+        else:
+            layer_name = layer.full_name()
+        self._out_scale_dict[layer_name] = scale_out
