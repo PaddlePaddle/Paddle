@@ -126,7 +126,7 @@ int32_t GlobalStepTable::_run_program(const int64_t *values,
   for (auto &trainer_counter : decay_counters_) {
     global_counter += trainer_counter.second;
   }
-  lr_lock.lock();
+  // lr_lock.lock();
   // hard code for increment op
   value[0] = global_counter - 1;
   VLOG(1) << "GlobalStepTable::_run_program global_counter " << value[0];
@@ -137,7 +137,7 @@ int32_t GlobalStepTable::_run_program(const int64_t *values,
   auto *lr_tensor = lr_var->GetMutable<framework::LoDTensor>();
   auto *lr_value = lr_tensor->mutable_data<float>(platform::CPUPlace());
   VLOG(1) << "GlobalStepTable::LR value: " << lr_value[0];
-  lr_lock.unlock();
+  // lr_lock.unlock();
   return 0;
 }
 

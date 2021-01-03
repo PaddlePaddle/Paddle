@@ -662,45 +662,47 @@ class TheOnePSRuntime(RuntimeBase):
                 table = Table()
                 table.id = ctx.table_id()
 
-                if not ctx.is_tensor_table():
-                    if ctx.is_sparse():
-                        if len(ctx.origin_varnames()) < 1:
-                            continue
-                        table.type = "PS_SPARSE_TABLE"
+                if ctx.is_tensor_table():
+                    continue
 
-                        if self.compiled_strategy.is_geo_mode():
-                            table.table_class = "SparseGeoTable"
-                        else:
-                            table.table_class = "CommonSparseTable"
-                        table.shard_num = 256
-                    elif ctx.is_tensor_table:
-                        if len(ctx.origin_varnames()) < 1:
-                            continue
-                        table.type = "PS_DENSE_TABLE"
-                        table.table_class = "CommonDenseTable"
-                        table.shard_num = 256
+                if ctx.is_sparse():
+                    if len(ctx.origin_varnames()) < 1:
+                        continue
+                    table.type = "PS_SPARSE_TABLE"
 
-                    common = CommonAccessor()
-                    if ctx.is_sparse():
-                        common.table_name = self.compiled_strategy.grad_name_to_param_name[
-                            ctx.origin_varnames()[0]]
+                    if self.compiled_strategy.is_geo_mode():
+                        table.table_class = "SparseGeoTable"
                     else:
-                        common.table_name = "MergedDense"
-                    common.parse_by_optimizer(ctx.origin_varnames()[0],
-                                              ctx.is_sparse(),
-                                              ctx.sections()[0],
-                                              self.compiled_strategy)
+                        table.table_class = "CommonSparseTable"
+                    table.shard_num = 256
+                else:
+                    if len(ctx.origin_varnames()) < 1:
+                        continue
+                    table.type = "PS_DENSE_TABLE"
+                    table.table_class = "CommonDenseTable"
+                    table.shard_num = 256
 
-                    if is_sync:
-                        common.sync = "true"
-                    else:
-                        common.sync = "false"
+                common = CommonAccessor()
+                if ctx.is_sparse():
+                    common.table_name = self.compiled_strategy.grad_name_to_param_name[
+                        ctx.origin_varnames()[0]]
+                else:
+                    common.table_name = "MergedDense"
+                common.parse_by_optimizer(ctx.origin_varnames()[0],
+                                          ctx.is_sparse(),
+                                          ctx.sections()[0],
+                                          self.compiled_strategy)
 
-                    table.common = common
+                if is_sync:
+                    common.sync = "true"
+                else:
+                    common.sync = "false"
 
-                    accessor = _build_merge_accessor(ctx)
-                    table.accessor = accessor
-                    tables.append(table)
+                table.common = common
+
+                accessor = _build_merge_accessor(ctx)
+                table.accessor = accessor
+                tables.append(table)
 
             tensor_table_dict = self.compiled_strategy.get_tensor_table_dict()
             if len(tensor_table_dict) > 0:
