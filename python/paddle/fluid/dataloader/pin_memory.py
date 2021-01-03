@@ -18,6 +18,7 @@ import paddle
 import numpy as np
 from .. import core
 from ..multiprocess_utils import MP_STATUS_CHECK_INTERVAL
+from ..framework import in_dygraph_mode
 
 # NOTE: queue has a different name in python2 and python3
 if six.PY2:
@@ -33,12 +34,21 @@ except:
 
 def pin_memory(data):
     if isinstance(data, np.ndarray):
-        return paddle.to_tensor(data, place=paddle.CUDAPinnedPlace())
+        if in_dygraph_mode():
+            return paddle.to_tensor(data, place=paddle.CUDAPinnedPlace())
+        else:
+            tensor = core.LoDTensor()
+            tensor.set(data, core.CUDAPinnedPlace())
+            return tensor
     if isinstance(data, paddle.Tensor):
         return paddle.to_tensor(data, place=paddle.CUDAPinnedPlace())
     if isinstance(data, paddle.fluid.LoDTensor):
-        # LoDTensor -> paddle.Tensor(VarBase)
-        return core.VarBase(data)
+        if in_dygraph_mode():
+            # LoDTensor -> paddle.Tensor(VarBase)
+            return paddle.to_tensor(
+                core.VarBase(data), place=paddle.CUDAPinnedPlace())
+        else:
+            return data.pin_memory()
     if isinstance(data, Sequence):
         return [pin_memory(d) for d in data]
     if isinstance(data, Mapping):

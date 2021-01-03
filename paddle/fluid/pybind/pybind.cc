@@ -954,6 +954,17 @@ PYBIND11_MODULE(core_noavx, m) {
              ostr << self;
              return ostr.str();
            })
+      .def("pin_memory",
+           [](const LoDTensor &self) {
+             if (!self.IsInitialized() || self.numel() <= 0) {
+               return self;
+             } else {
+               LoDTensor dst;
+               TensorCopySync(self, platform::CUDAPinnedPlace(), &dst);
+               dst.set_lod(self.lod());
+               return dst;
+             }
+           })
       .def("_copy", [](const LoDTensor &self, const platform::Place &place) {
         // follow fetch_op's inplementation
         LoDTensor dst;
