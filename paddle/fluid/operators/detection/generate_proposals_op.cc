@@ -305,6 +305,13 @@ REGISTER_OP_CPU_KERNEL(generate_proposals, ops::GenerateProposalsKernel<float>,
 REGISTER_OP_VERSION(generate_proposals)
     .AddCheckpoint(
         R"ROC(
+              Incompatible upgrade of output [RpnRoisLod])ROC",
+        paddle::framework::compatible::OpVersionDesc().DeleteOutput(
+            "RpnRoisLod",
+            "Delete RpnRoisLod due to incorrect output name and "
+            "it is not used in object detection models yet."))
+    .AddCheckpoint(
+        R"ROC(
               Upgrade generate_proposals add a new output [RpnRoisNum])ROC",
         paddle::framework::compatible::OpVersionDesc().NewOutput(
             "RpnRoisNum",

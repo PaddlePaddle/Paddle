@@ -90,6 +90,7 @@ class AvgPool1D(layers.Layer):
 
           import paddle
           import paddle.nn as nn
+          import numpy as np
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
@@ -185,7 +186,7 @@ class AvgPool2D(layers.Layer):
           input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
           AvgPool2D = nn.AvgPool2D(kernel_size=2,
                                 stride=2, padding=0)
-          output = AvgPoo2d(input)
+          output = AvgPool2D(input)
           # output.shape [1, 3, 16, 16]
 
     """
@@ -367,6 +368,7 @@ class MaxPool1D(layers.Layer):
 
           import paddle
           import paddle.nn as nn
+          import numpy as np
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
@@ -646,6 +648,7 @@ class AdaptiveAvgPool1D(layers.Layer):
           #
           import paddle
           import paddle.nn as nn
+          import numpy as np
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AdaptiveAvgPool1D = nn.AdaptiveAvgPool1D(output_size=16)
@@ -884,8 +887,9 @@ class AdaptiveMaxPool1D(layers.Layer):
           #         lend = ceil((i + 1) * L / m)
           #         output[:, :, i] = max(input[:, :, lstart: lend])
           #
-                    import paddle
+          import paddle
           import paddle.nn as nn
+          import numpy as np
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16)
