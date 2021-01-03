@@ -324,7 +324,11 @@ class DataLoader(object):
         self.collate_fn = collate_fn
         self.use_buffer_reader = use_buffer_reader
         self.worker_init_fn = worker_init_fn
+
         self.pin_memory = pin_memory
+        if self.pin_memory and not paddle.is_compiled_with_cuda():
+            warnings.warn("Disable pin_memory on CPU-only version")
+            self.pin_memory = False
 
         assert isinstance(dataset, Dataset), \
             "dataset should be subclass instance of paddle.io.Dataset"
