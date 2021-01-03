@@ -513,7 +513,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             label_data = np.random.rand(3,3).astype("float32")
             input = paddle.to_tensor(input_data)
             label = paddle.to_tensor(label_data)
-            output = paddle.nn.functioanl.smooth_l1_loss(input, label)
+            output = paddle.nn.functional.smooth_l1_loss(input, label)
             print(output)
     """
     fluid.data_feeder.check_variable_and_dtype(
@@ -1187,12 +1187,16 @@ def cross_entropy(input,
         .. code-block:: python
 
             import paddle
+            import numpy as np
+
             input_data = np.random.random([5, 100]).astype("float64")
             label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
             weight_data = np.random.random([100]).astype("float64")
+
             input =  paddle.to_tensor(input_data)
             label =  paddle.to_tensor(label_data)
             weight = paddle.to_tensor(weight_data)
+
             loss = paddle.nn.functional.cross_entropy(input=input, label=label, weight=weight)
             print(loss)
             # [4.28546723]
