@@ -257,8 +257,8 @@ class CompileTimeStrategy(object):
          self.tensor_table_dict[feed_var_name][
              "tensor_table_class"] = tensor_table_class
 
-     def get_tensor_table_dict(self):
-         return self.tensor_table_dict
+    def get_tensor_table_dict(self):
+        return self.tensor_table_dict
 
     def get_sparse_varname_on_ps(self, is_distributed, endpoint=None):
         if not endpoint:
