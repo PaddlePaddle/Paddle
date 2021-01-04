@@ -42,6 +42,8 @@ int32_t CommonDenseTable::initialize() {
 
   sync = _config.common().sync();
   VLOG(1) << "table " << _config.common().table_name() << " is sync: " << sync;
+  _global_lr = std::make_shared<float>();
+  *_global_lr = 1.0;
 
   initialize_value();
   initialize_optimizer();
@@ -81,8 +83,10 @@ int32_t CommonDenseTable::initialize_optimizer() {
 
   if (name == "sgd") {
     optimizer_ = std::make_shared<DSGD>(common, &values_);
+    optimizer_->set_global_lr(_global_lr);
   } else if (name == "adam") {
     optimizer_ = std::make_shared<DAdam>(common, &values_);
+    optimizer_->set_global_lr(_global_lr);
   } else if (name == "sum") {
     optimizer_ = std::make_shared<DSUM>(common, &values_);
   } else {

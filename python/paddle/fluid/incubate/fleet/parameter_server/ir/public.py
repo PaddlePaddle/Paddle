@@ -19,7 +19,7 @@ import collections
 import math
 import os
 import warnings
-
+import logging
 import six
 import paddle.fluid as fluid
 from paddle.fluid import core
@@ -243,19 +243,19 @@ class CompileTimeStrategy(object):
         return self.origin_ps_startup_program
 
     def add_tensor_table(self,
-                          feed_var_name,
-                          fetch_var_name="",
-                          startup_program=None,
-                          main_program=None,
-                          tensor_table_class=""):
-         self.tensor_table_dict[feed_var_name] = {}
-         self.tensor_table_dict[feed_var_name]["feed_var_name"] = feed_var_name
-         self.tensor_table_dict[feed_var_name]["fetch_var_name"] = fetch_var_name
-         self.tensor_table_dict[feed_var_name][
-             "startup_program"] = startup_program
-         self.tensor_table_dict[feed_var_name]["main_program"] = main_program
-         self.tensor_table_dict[feed_var_name][
-             "tensor_table_class"] = tensor_table_class
+                         feed_var_name,
+                         fetch_var_name="",
+                         startup_program=None,
+                         main_program=None,
+                         tensor_table_class=""):
+        self.tensor_table_dict[feed_var_name] = {}
+        self.tensor_table_dict[feed_var_name]["feed_var_name"] = feed_var_name
+        self.tensor_table_dict[feed_var_name]["fetch_var_name"] = fetch_var_name
+        self.tensor_table_dict[feed_var_name][
+            "startup_program"] = startup_program
+        self.tensor_table_dict[feed_var_name]["main_program"] = main_program
+        self.tensor_table_dict[feed_var_name][
+            "tensor_table_class"] = tensor_table_class
 
     def get_tensor_table_dict(self):
         return self.tensor_table_dict
@@ -554,8 +554,8 @@ class CompileTimeStrategy(object):
                     "GeoSGD require sparse parameters in your net.")
 
             if len(self.tensor_table_dict) > 0 and self.role_maker._is_worker():
-                 name, ctx = self._step_ctx(idx)
-                 send_ctx[name] = ctx
+                name, ctx = self._step_ctx(idx)
+                send_ctx[name] = ctx
 
             return send_ctx
         else:
@@ -645,9 +645,9 @@ class CompileTimeStrategy(object):
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
 
         if len(self.tensor_table_dict) > 0 and self.role_maker._is_worker():
-             name, ctx = self._step_ctx(idx)
-             send_ctx[name] = ctx
-             
+            name, ctx = self._step_ctx(idx)
+            send_ctx[name] = ctx
+
         return send_ctx
 
     def get_the_one_recv_context(self,
@@ -663,7 +663,7 @@ class CompileTimeStrategy(object):
                 if ctx.is_sparse():
                     continue
                 if ctx.is_tensor_table():
-                     continue
+                    continue
 
                 origin_grad_varnames = ctx.origin_varnames()
 
@@ -1148,11 +1148,12 @@ def _get_optimize_ops(_program):
             opt_ops.append(op)
     return opt_ops
 
+
 def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
     if hasattr(compiled_config.origin_main_program, 'lr_sheduler'):
         from paddle.optimizer.lr import LRScheduler
         assert isinstance(main_program.lr_sheduler,
-                        LRScheduler), "must be LRScheduler"
+                          LRScheduler), "must be LRScheduler"
         ops = _get_optimize_ops(compiled_config.origin_main_program)
         lr_param_dict = _get_lr_param_dict(ops)
         lr_decay_main_program, lr_decay_startup_program, lr_name = _get_lr_sheduler_program(
@@ -1161,6 +1162,7 @@ def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
         compiled_config.add_tensor_table(
             "@LR_DECAY_COUNTER@", lr_name, lr_decay_startup_program,
             lr_decay_main_program, "GlobalStepTable")
+
 
 def _get_lr_param_dict(opt_ops):
     lr_param_dict = {}
@@ -1171,6 +1173,7 @@ def _get_lr_param_dict(opt_ops):
             lr_param_dict[lr_name] = []
         lr_param_dict[lr_name].append(param_name)
     return lr_param_dict
+
 
 def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
     layer_decay = [
@@ -1195,8 +1198,8 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
         decay_main_program = fluid.framework.Program()
         decay_startup_program = fluid.framework.Program()
         with fluid.program_guard(decay_main_program, decay_startup_program):
-            lr = exponential_decay(lr_sheduler.base_lr, lr_decay_steps,
-                                lr_sheduler.gamma, True)
+            lr = exponential_decay(1.0, lr_decay_steps,
+                                   lr_sheduler.gamma, True)
             lr_name = lr.name
             logging.warn(
                 "ExponentialDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
@@ -1210,6 +1213,7 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
             format(layer_decay))
 
     return decay_main_program, decay_startup_program, lr_name
+
 
 def _get_varname_parts(varname):
     # returns origin, blockid, trainerid

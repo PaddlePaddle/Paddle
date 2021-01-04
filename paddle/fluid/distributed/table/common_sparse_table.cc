@@ -175,6 +175,9 @@ int32_t CommonSparseTable::initialize() {
   sync = _config.common().sync();
   VLOG(1) << "table " << _config.common().table_name() << " is sync: " << sync;
 
+  _global_lr = std::make_shared<float>();
+  *_global_lr = 1.0;
+
   auto common = _config.common();
   int size = static_cast<int>(common.params().size());
 
@@ -249,9 +252,11 @@ int32_t CommonSparseTable::initialize_optimizer() {
   if (name == "sgd") {
     optimizer_ = std::make_shared<SSGD>(value_names_, value_dims_,
                                         value_offsets_, value_idx_);
+    optimizer_->set_global_lr(_global_lr);
   } else if (name == "adam") {
     optimizer_ = std::make_shared<SAdam>(value_names_, value_dims_,
                                          value_offsets_, value_idx_);
+    optimizer_->set_global_lr(_global_lr);
   } else if (name == "sum") {
     optimizer_ = std::make_shared<SSUM>(value_names_, value_dims_,
                                         value_offsets_, value_idx_);

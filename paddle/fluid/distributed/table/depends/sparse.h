@@ -44,12 +44,19 @@ class SparseOptimizer {
                       size_t num, const std::vector<uint64_t>& offsets,
                       ValueBlock* block) = 0;
 
+  virtual void set_global_lr(const std::shared_ptr<float>& lr) {
+    global_learning_rate_ = &lr;
+  }
+
   const std::vector<std::string>& value_names_;
   const std::vector<int>& value_dims_;
   const std::vector<int>& value_offsets_;
   const std::unordered_map<std::string, int>& value_idx_;
   int param_offset = 0;
   int update_numel = 0;
+
+ protected:
+  const std::shared_ptr<float>* global_learning_rate_;
 };
 
 // sum calc for sparse tensor
@@ -102,13 +109,15 @@ class SSGD : public SparseOptimizer {
       auto id = keys[x];
       auto* value = block->Get(id);
 
-      float* learning_rate = value + lr_offset;
+      float learning_rate =
+          *(global_learning_rate_->get()) * (value + lr_offset)[0];
+      VLOG(3) << "SSGD LearningRate: " << learning_rate;
       float* param = value + param_offset;
 
       std::vector<float> grads;
       grads.resize(update_numel);
       blas.VCOPY(update_numel, update_values + x * update_numel, grads.data());
-      blas.SCAL(update_numel, learning_rate[0], grads.data());
+      blas.SCAL(update_numel, learning_rate, grads.data());
       blas.VSUB(update_numel, param, grads.data(), param);
     }
   }
@@ -156,7 +165,8 @@ class SAdam : public SparseOptimizer {
     for (auto x : offsets) {
       auto id = keys[x];
       auto* values = block->Get(id);
-      float* learning_rate = values + lr_offset;
+      float lr_ = *(global_learning_rate_->get()) * (values + lr_offset)[0];
+      VLOG(3) << "SAdam LearningRate: " << lr_;
       float* param = values + param_offset;
       float* moment1 = values + m1_offset;
       float* moment2 = values + m2_offset;
@@ -166,7 +176,6 @@ class SAdam : public SparseOptimizer {
       beta1_pow[0] = beta1_pow[0] * beta1;
       beta2_pow[0] = beta2_pow[0] * beta2;
 
-      float lr_ = learning_rate[0];
       lr_ *= sqrt(1 - beta2_pow[0]) / (1 - beta1_pow[0]);
 
       std::vector<float> grad, grad2, tmp;
