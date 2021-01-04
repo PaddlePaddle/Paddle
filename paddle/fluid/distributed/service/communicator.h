@@ -117,8 +117,9 @@ template <typename T>
 inline void MergeVars(const std::string &var_name,
                       const std::vector<std::shared_ptr<Variable>> &vars,
                       Scope *scope, bool merge_add = true) {
-  PADDLE_ENFORCE_NE(vars.empty(), true, platform::errors::InvalidArgument(
-                                            "vector vars are empty."));
+  PADDLE_ENFORCE_NE(
+      vars.empty(), true,
+      platform::errors::InvalidArgument("vector vars are empty."));
   auto cpu_place = platform::CPUPlace();
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);
@@ -223,6 +224,10 @@ class Communicator {
   // 6. recv sparse param
   virtual void RpcRecvSparse(const std::string &varname, int table_id,
                              Scope *scope);
+
+  // 7. send gloabl step
+  virtual void SendGlobalStep(const CommContext &ctx, int batches,
+                              Scope *send_scope);
 
   virtual ~Communicator() {}
   virtual void RpcProfilerControl();
@@ -376,8 +381,6 @@ class AsyncCommunicator : public Communicator {
 
   virtual void SendByCommunicator();
 
-  virtual void SendGlobalStep(int batches) {}
-
   virtual void RecvByCommunicator();
 
   virtual void RecvNoBarrier();
@@ -526,8 +529,6 @@ class GeoCommunicator : public AsyncCommunicator {
             const framework::Scope &scope) override;
 
   void SendByCommunicator() { return; }
-
-  void SendGlobalStep(int batches) override { return; }
 
   void RecvByCommunicator() override { return; }
 
