@@ -191,7 +191,7 @@ class DataLoader(object):
             to put data onto, :attr:`places` can be None, if 
             :attr:`places` is None, default place(CPUPlace or CUDAPlace(0))
             will be used. Default None. If ``places`` is list of string,
-            the string in the list can be ``cpu``, ``gpu:x`` and ``gpu_pinned:x``,
+            the string in the list can be ``cpu``, ``gpu:x`` and ``gpu_pinned``,
             where ``x`` is the index of the GPUs.
         return_list (bool): whether the return value on each device is 
             presented as a list. If :attr:`return_list=False`, the return

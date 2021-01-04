@@ -5819,27 +5819,28 @@ def _get_paddle_place(place):
         raise ValueError(
             "place only support string which is 'Place' and so on.")
 
-    if (place == "CPUPlace"):
+    place = place.lower()
+    if (place == "cpu"):
         return core.CPUPlace()
-    if (place == "Place"):
+    if (place == "device"):
         return core.Place()
 
-    avaliable_gpu_place = re.match(r'CUDAPlace:\d+', place)
-    if place == "CUDAPinnedPlace" or place == "CUDAPlace" or avaliable_gpu_place:
+    avaliable_gpu_place = re.match(r'gpu:\d+', place)
+    if place == "gpu_pinned" or place == "gpu" or avaliable_gpu_place:
         if not core.is_compiled_with_cuda():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is " \
                 "not compiled with CUDA".format(avaliable_gpu_place))
-        if place == "CUDAPinnedPlace":
+        if place == "gpu_pinned":
             return core.CUDAPinnedPlace()
-        elif place == "CUDAPlace":
+        elif place == "gpu":
             return core.CUDAPlace(0)
         else:
             place_info_list = place.split(':', 1)
             device_id = place_info_list[1]
             device_id = int(device_id)
             return core.CUDAPlace(device_id)
-    avaliable_xpu_place = re.match(r'XPUPlace:\d+', place)
+    avaliable_xpu_place = re.match(r'xpu:\d+', place)
     if avaliable_xpu_place:
         if not core.is_compiled_with_xpu():
             raise ValueError(
