@@ -6148,8 +6148,11 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
-            out, _ = core.ops.reshape2(x, 'shape', shape)
-            return dygraph_utils._append_activation_in_dygraph(out, act)
+            out, _ = core.ops.reshape2(x, None, 'shape', shape)
+        elif isinstance(shape, Variable):
+            out, _ = core.ops.reshape2(x, shape)
+
+        return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64',
