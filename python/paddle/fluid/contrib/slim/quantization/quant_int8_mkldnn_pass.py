@@ -41,7 +41,8 @@ class QuantInt8MkldnnPass(object):
         r"""
         Args:
             scope(fluid.Scope): scope is used to initialize the new parameters.
-            place(fluid.CPUPlace): place is used to initialize the new parameters.
+            place(fluid.CPUPlace|str): place is used to initialize the new parameters.
+            When it is string, it can be only 'cpu'.
 
 
         Examples:

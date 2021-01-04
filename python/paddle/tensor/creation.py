@@ -68,8 +68,9 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
             'complex64' , 'complex128'. Default: None, infers dtype from ``data`` 
             except for python float number which gets dtype from ``get_default_type`` .
-        place(CPUPlace|CUDAPinnedPlace|CUDAPlace, optional): The place to allocate Tensor. Can be  
-            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place.
+        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be  
+            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is 
+            string, It can be ``cpu``, ``gpu:x`` ``gpu_pinned:x``, where ``x`` is the index of the GPUs. 
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
 
     Returns:
@@ -79,7 +80,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         TypeError: If the data type of ``data`` is not scalar, list, tuple, numpy.ndarray, paddle.Tensor
         ValueError: If ``data`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]
         TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
-        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace
+        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace or specified pattern string. 
 
     Examples:
 

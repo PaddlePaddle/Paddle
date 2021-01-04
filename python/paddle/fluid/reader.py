@@ -187,10 +187,12 @@ class DataLoader(object):
             The Tensors should be created by :code:`paddle.static.data()`.
             :attr:`feed_list` must be set if :attr:`return_list` is
             False. Default None.
-        places(list(Place)|tuple(Place)|optional): a list of Place,
+        places(list(Place)|tuple(Place)|list(str)|optional): a list of Place,
             to put data onto, :attr:`places` can be None, if 
             :attr:`places` is None, default place(CPUPlace or CUDAPlace(0))
-            will be used. Default None.
+            will be used. Default None. If ``places`` is list of string,
+            the string in the list can be ``cpu``, ``gpu:x`` and ``gpu_pinned:x``,
+            where ``x`` is the index of the GPUs.
         return_list (bool): whether the return value on each device is 
             presented as a list. If :attr:`return_list=False`, the return
             value on each device would be a dict of str -> Tensor, where

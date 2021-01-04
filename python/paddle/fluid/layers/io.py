@@ -843,7 +843,8 @@ def double_buffer(reader, place=None, name=None):
 
     Args:
         reader (Variable): The Reader Variable need to be wrapped.
-        place (Place, optional): The place of target data, such as CPU, GPU, and if use GPU, it's necessary to point out which card is involved. Default is the sample place of executor perform.
+        place (Place|str, optional): The place of target data, such as CPU, GPU, and if use GPU, it's necessary to point out which card is involved. Default is the sample place of executor perform.
+            if ``place`` is string, It can be ``cpu``, ``gpu:x``, where ``x`` is the ndex of the GPUs. 
         name (str, optional): Variable name. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None. 
 
     Returns:

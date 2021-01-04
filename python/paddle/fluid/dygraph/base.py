@@ -129,8 +129,9 @@ def enable_dygraph(place=None):
     This API turn OFF static graph mode. You can turn ON static graph mode by `enable_static <./disable_dygraph_en.html>`_ .
 
     Parameters:
-        place(paddle.CPUPlace|paddle.CUDAPlace, optional): Place to run dynamic graph. Default: None. Which means that the running place will be 
-            determined according to the way of paddle compilation. 
+        place(paddle.CPUPlace|paddle.CUDAPlace|str, optional): Place to run dynamic graph. Default: None. Which means that the running place will be 
+            determined according to the way of paddle compilation. If ``place`` is string, It can be ``cpu``, and ``gpu:x``, where ``x`` is the
+            index of the GPUs.
 
     return:
         None
@@ -345,8 +346,10 @@ def guard(place=None):
     This context will create a dygraph context for dygraph to run, using python ``with`` statement.
 
     Parameters:
-        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph. 
-            If None, the running place will be determined according to the way of paddle compilation. Default: None
+        place(fluid.CPUPlace| fluid.CUDAPlace|str, optional): Place to execute dygraph. 
+            If None, the running place will be determined according to the way of paddle compilation.
+            If ``place`` is string, It can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
+            index of the GPUs or XPUs. Default: None
 
     return:
         None

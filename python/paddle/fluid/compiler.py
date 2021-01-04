@@ -202,7 +202,7 @@ class CompiledProgram(object):
                 Tensors to other devices when it is first executed, the CompiledProgram
                 specified by share_vars_from must be run before the current CompiledProgram.
                 The default is None.
-            places(list(CUDAPlace)|list(CPUPlace)|None): This parameter specifies the device
+            places(list(CUDAPlace)|list(CPUPlace)|list(str)|None): This parameter specifies the device
                 on which the model is running. If you want to run on GPU0 and GPU1, places are
                 [fluid.CUDAPlace(0), fluid.CUDAPlace(1)]; if you want to run with 2 CPUs, places are
                 [fluid.CPUPlace()] * 2. If the parameter is not set, i.e. the parameter is None,
@@ -213,7 +213,8 @@ class CompiledProgram(object):
                 CPU number is obtained from the environment variable CPU_NUM. For example,
                 export CPU_NUM=4, if the environment variable is not set, the executor will
                 add the variable to the environment variable and set its value to 1.
-                The default is None.
+                The default is None. If ``places`` is the list of string, the string in the list
+                can be ``cpu``, ``gpu:x``, where ``x`` is the index of the GPUs. 
 
         Returns:
             CompiledProgram

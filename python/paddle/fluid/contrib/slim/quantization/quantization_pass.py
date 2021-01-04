@@ -247,8 +247,9 @@ class QuantizationTransformPass(object):
             scope(fluid.Scope): When activation use 'range_abs_max' as the quantize
                 type, this pass will create some new parameters. The scope is used to
                 initialize these new parameters.
-            place(fluid.CPUPlace|fluid.CUDAPlace): place is used to initialize new
-                parameters described above.
+            place(fluid.CPUPlace|fluid.CUDAPlace|str): place is used to initialize new
+                parameters described above. If it's string, It can be ``cpu``, and ``gpu:x``,
+                where ``x`` is the index of the GPUs. 
             weight_bits(int): quantization bit number for weights,
                 the bias is not quantized.
             activation_bits(int): quantization bit number for activation.
@@ -1058,7 +1059,8 @@ class QuantizationFreezePass(object):
 
         Args:
             scope(fluid.Scope): scope is used to get the weight tensor values.
-            place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the weight tensors.
+            place(fluid.CPUPlace|fluid.CUDAPlace|str): place is used to restore the weight tensors.
+                If it's string, It can be ``cpu``, and ``gpu:x``, where ``x`` is the index of the GPUs.
             weight_bits(int): quantization bit number for weights.
             activation_bits(int): quantization bit number for activation.
             weight_quantize_type(str): quantization type for weights, support 'abs_max' and 
@@ -1072,7 +1074,7 @@ class QuantizationFreezePass(object):
         assert place is not None, \
             'The place cannot be set None.'
         self._scope = scope
-        self._place = place
+        self._place = _get_paddle_place(place)
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._weight_quantize_type = weight_quantize_type
@@ -1366,8 +1368,9 @@ class ConvertToInt8Pass(object):
 
         Args:
             scope(fluid.Scope): scope is used to get the weight tensor values.
-            place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the
-                8bits weight tensors.
+            place(fluid.CPUPlace|fluid.CUDAPlace|str): place is used to restore the
+                8bits weight tensors. If it's string, It can be ``cpu``, and ``gpu:x``,
+                where ``x`` is the index of the GPUs.
             quantizable_op_type(list[str]): This input param will be removed latter. The pass
                 will process all quantized op, so it is not necessary to set the input param.
         """
@@ -1376,7 +1379,7 @@ class ConvertToInt8Pass(object):
         assert place is not None, \
             'The place cannot be set None.'
         self._scope = scope
-        self._place = place
+        self._place = _get_paddle_place(place)
 
     def apply(self, graph):
         """
@@ -1496,7 +1499,9 @@ class OutScaleForTrainingPass(object):
 
         Args:
             scope(fluid.Scope): The scope is used to initialize these new parameters.
-            place(fluid.CPUPlace|fluid.CUDAPlace): The place is used to initialize new parameters.
+            place(fluid.CPUPlace|fluid.CUDAPlace|str): The place is used to initialize new parameters.
+                If it's string, It can be ``cpu``, and ``gpu:x``, where ``x`` is the
+                index of the GPUs or XPUs.
             moving_rate(float): The decay coefficient of moving average. The default value is 0.9.
         """
         self._scope = scope
@@ -1689,7 +1694,7 @@ class AddQuantDequantPass(object):
 
         Args:
             scope(fluid.Scope): The scope is used to initialize these new parameters.
-            place(fluid.CPUPlace|fluid.CUDAPlace): place is used to initialize new
+            place(fluid.CPUPlace|fluid.CUDAPlace|str): place is used to initialize new
                 parameters described above.
             moving_rate(float, optional): the param for 'quant_dequant_moving_average_abs_max' 
                 quantization. Default is 0.9.
@@ -1706,7 +1711,7 @@ class AddQuantDequantPass(object):
                 quantizable_op_type.
         """
         self._scope = scope
-        self._place = place
+        self._place = _get_paddle_place(place)
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
         self._is_test = None
