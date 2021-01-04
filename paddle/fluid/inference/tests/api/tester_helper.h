@@ -276,7 +276,8 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       COMPARE(PaddleDType::INT8, int8_t, EXPECT_EQ);
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Unsupport dtype: %d", static_cast<int>(out.dtype)));
+            "VarMessageToVarType: Unsupported dtype %d",
+            static_cast<int>(out.dtype)));
     }
 #undef COMPARE
   }
@@ -314,7 +315,8 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       COMPARE(PaddleDType::INT8, int8_t, EXPECT_EQ);
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Unsupport dtype: %d", static_cast<int>(out.dtype)));
+            "VarMessageToVarType: Unsupported dtype %d",
+            static_cast<int>(out.dtype)));
     }
 #undef COMPARE
   }
