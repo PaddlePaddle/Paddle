@@ -112,7 +112,8 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         place = fluid.CPUPlace()
         self.check(place, use_cuda=False)
 
-    @skip_if(os.name == "nt", "fusion_group is not enabled for Windows.")
+    @unittest.skipIf(os.name == "nt",
+                     "fusion_group is not enabled for Windows.")
     def test_fuse_bn_act_pass_cuda(self):
         if fluid.core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
