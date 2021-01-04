@@ -128,21 +128,6 @@ class Momentum(Optimizer):
             self.helper = LayerHelper(self.__class__.__name__)
             for p in parameters:
                 self._add_accumulator(self._velocity_acc_str, p)
-        else:
-            all_parameters = fluid.default_main_program().global_block(
-            ).all_parameters()
-            self.helper = LayerHelper(self.__class__.__name__)
-            for p in all_parameters:
-                if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
-                    master_p = self._create_master_weight(p)
-                    self._add_accumulator(self._velocity_acc_str, master_p)
-                    continue
-                if p.dtype == core.VarDesc.VarType.FP16 and not self._multi_precision:
-                    warnings.warn(
-                        "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
-                        "Consider using multi_precision=True option of the Momentum optimizer."
-                    )
-                self._add_accumulator(self._velocity_acc_str, p)
 
     def _create_master_weight(self, param):
         assert isinstance(self.helper, LayerHelper)
@@ -190,8 +175,21 @@ class Momentum(Optimizer):
         return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
+        if framework.in_dygraph_mode():
+            return
+
         assert isinstance(block, framework.Block)
-        # create accumulator in init func, so no implementation here
+        for p in parameters:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._velocity_acc_str, master_p)
+                continue
+            if p.dtype == core.VarDesc.VarType.FP16 and not self._multi_precision:
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Momentum optimizer."
+                )
+            self._add_accumulator(self._velocity_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)

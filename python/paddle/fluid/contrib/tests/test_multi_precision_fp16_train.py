@@ -86,18 +86,19 @@ def train(use_pure_fp16=True, use_nesterov=False, use_adam=False):
         images = fluid.layers.data(
             name='pixel', shape=data_shape, dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        net = resnet_cifar10(images)
+        with paddle.static.amp.fp16_guard():
+            net = resnet_cifar10(images)
+            logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
+            cost = fluid.layers.softmax_with_cross_entropy(
+                logits, label, return_softmax=False)
 
-        logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
-        cost = fluid.layers.softmax_with_cross_entropy(
-            logits, label, return_softmax=False)
         sum_cost = fluid.layers.reduce_sum(cost)
 
         # Test program
         test_program = train_program.clone(for_test=True)
 
         if use_adam:
-            optimizer = paddle.optimizer.AdamW(
+            optimizer = paddle.optimizer.Adam(
                 learning_rate=0.001,
                 epsilon=1e-8,
                 weight_decay=0.0,
@@ -133,7 +134,8 @@ def train(use_pure_fp16=True, use_nesterov=False, use_adam=False):
     def train_loop(main_program):
         exe.run(startup_prog)
         if use_pure_fp16:
-            optimizer.amp_init(place)
+            optimizer.amp_init(
+                place, test_program=test_program, use_fp16_test=True)
         loss = 0.0
         for pass_id in range(PASS_NUM):
             train_loss_list = []
