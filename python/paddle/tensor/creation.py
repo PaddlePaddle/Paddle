@@ -117,10 +117,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         #         [(3+2j), (4+0j)]])
     """
 
+    place = _get_paddle_place(place)
     if place is None:
         place = _current_expected_place()
-    place = _get_paddle_place(place)
-    if not isinstance(
+    elif not isinstance(
             place,
         (core.Place, core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
         raise ValueError(
