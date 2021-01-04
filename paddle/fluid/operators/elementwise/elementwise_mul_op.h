@@ -30,7 +30,8 @@ class ElementwiseMulOp : public ElementwiseOp {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx)) {
@@ -40,6 +41,19 @@ class ElementwiseMulOp : public ElementwiseOp {
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 
@@ -118,9 +132,51 @@ struct MulGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * y; }
 };
 
+template <>
+struct MulGradDX<paddle::platform::complex64> {
+  HOSTDEVICE paddle::platform::complex64 operator()(
+      paddle::platform::complex64 x, paddle::platform::complex64 y,
+      paddle::platform::complex64 out, paddle::platform::complex64 dout) const {
+    paddle::platform::complex64 y_conj(y.real, -y.imag);
+    return dout * y_conj;
+  }
+};
+
+template <>
+struct MulGradDX<paddle::platform::complex128> {
+  HOSTDEVICE paddle::platform::complex128 operator()(
+      paddle::platform::complex128 x, paddle::platform::complex128 y,
+      paddle::platform::complex128 out,
+      paddle::platform::complex128 dout) const {
+    paddle::platform::complex128 y_conj(y.real, -y.imag);
+    return dout * y_conj;
+  }
+};
+
 template <typename T>
 struct MulGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * x; }
+};
+
+template <>
+struct MulGradDY<paddle::platform::complex64> {
+  HOSTDEVICE paddle::platform::complex64 operator()(
+      paddle::platform::complex64 x, paddle::platform::complex64 y,
+      paddle::platform::complex64 out, paddle::platform::complex64 dout) const {
+    paddle::platform::complex64 x_conj(x.real, -x.imag);
+    return dout * x_conj;
+  }
+};
+
+template <>
+struct MulGradDY<paddle::platform::complex128> {
+  HOSTDEVICE paddle::platform::complex128 operator()(
+      paddle::platform::complex128 x, paddle::platform::complex128 y,
+      paddle::platform::complex128 out,
+      paddle::platform::complex128 dout) const {
+    paddle::platform::complex128 x_conj(x.real, -x.imag);
+    return dout * x_conj;
+  }
 };
 
 template <typename DeviceContext, typename T>

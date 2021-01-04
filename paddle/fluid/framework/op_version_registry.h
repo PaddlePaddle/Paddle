@@ -20,6 +20,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include <boost/none.hpp>
 #include <boost/variant.hpp>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_version_proto.h"
@@ -30,16 +31,17 @@ namespace framework {
 namespace compatible {
 
 using OpAttrVariantT =
-    boost::variant<bool,                    /* AttrType::BOOL */
-                   float,                   /* AttrType::FLOAT */
-                   int32_t,                 /* AttrType::INT */
-                   int64_t,                 /* AttrType::LONG*/
-                   std::string,             /* AttrType::STRING */
-                   std::vector<bool>,       /* AttrType::BOOLS */
-                   std::vector<float>,      /* AttrType::FLOATS */
-                   std::vector<int32_t>,    /* AttrType::INTS */
-                   std::vector<int64_t>,    /* AttrType::LONGS */
-                   std::vector<std::string> /* AttrType::STRINGS */
+    boost::variant<bool,                     /* AttrType::BOOL */
+                   float,                    /* AttrType::FLOAT */
+                   int32_t,                  /* AttrType::INT */
+                   int64_t,                  /* AttrType::LONG*/
+                   std::string,              /* AttrType::STRING */
+                   std::vector<bool>,        /* AttrType::BOOLS */
+                   std::vector<float>,       /* AttrType::FLOATS */
+                   std::vector<int32_t>,     /* AttrType::INTS */
+                   std::vector<int64_t>,     /* AttrType::LONGS */
+                   std::vector<std::string>, /* AttrType::STRINGS */
+                   boost::none_t             /* None */
                    >;
 
 struct OpUpdateInfo {
@@ -48,7 +50,7 @@ struct OpUpdateInfo {
 
 struct OpAttrInfo : OpUpdateInfo {
   OpAttrInfo(const std::string& name, const std::string& remark,
-             const OpAttrVariantT& default_value)
+             const OpAttrVariantT& default_value = boost::none)
       : name_{name}, default_value_{default_value}, remark_{remark} {}
 
   const std::string& name() const { return name_; }
@@ -83,11 +85,18 @@ struct OpBugfixInfo : OpUpdateInfo {
 
 enum class OpUpdateType {
   kInvalid = 0,
+  /* Compatibility upgrade */
   kModifyAttr,
   kNewAttr,
   kNewInput,
   kNewOutput,
   kBugfixWithBehaviorChanged,
+  /* Incompatible upgrade, only for existing registration. */
+  kDeleteAttr = 100,
+  kModifyInput,
+  kModifyOutput,
+  kDeleteInput,
+  kDeleteOutput,
 };
 
 class OpUpdateBase {
@@ -111,6 +120,7 @@ class OpUpdate : public OpUpdateBase {
 
 class OpVersionDesc {
  public:
+  /* Compatibility upgrade */
   OpVersionDesc&& ModifyAttr(const std::string& name, const std::string& remark,
                              const OpAttrVariantT& default_value);
   OpVersionDesc&& NewAttr(const std::string& name, const std::string& remark,
@@ -118,10 +128,23 @@ class OpVersionDesc {
   OpVersionDesc&& NewInput(const std::string& name, const std::string& remark);
   OpVersionDesc&& NewOutput(const std::string& name, const std::string& remark);
   OpVersionDesc&& BugfixWithBehaviorChanged(const std::string& remark);
+
+  /* Incompatible upgrade, only for existing registration. */
+  OpVersionDesc&& DeleteAttr(const std::string& name,
+                             const std::string& remark);
+  OpVersionDesc&& ModifyInput(const std::string& name,
+                              const std::string& remark);
+  OpVersionDesc&& ModifyOutput(const std::string& name,
+                               const std::string& remark);
+  OpVersionDesc&& DeleteInput(const std::string& name,
+                              const std::string& remark);
+  OpVersionDesc&& DeleteOutput(const std::string& name,
+                               const std::string& remark);
+
+ public:
   const std::vector<std::unique_ptr<OpUpdateBase>>& infos() const {
     return infos_;
   }
-
   OpVersionDesc() = default;
   OpVersionDesc(OpVersionDesc&&) = default;
   OpVersionDesc& operator=(OpVersionDesc&&) = default;
@@ -217,7 +240,13 @@ class OpVersionComparator {
       if (OpVersionRegistrar::GetInstance().Has(op_name_)) {                 \
         version_id = OpVersionRegistrar::GetInstance().version_id(op_name_); \
       }                                                                      \
-      return version_id cmp_math target_version_;                            \
+      bool check_ok = version_id cmp_math target_version_;                   \
+      if (!check_ok) {                                                       \
+        LOG(WARNING) << "Check op version in pass failed. op name:"          \
+                     << op_name_.c_str() << " op_version:" << version_id     \
+                     << "  target_version:" << target_version_;              \
+      }                                                                      \
+      return check_ok;                                                       \
     }                                                                        \
     virtual ~OpVersion##cmp_name##Comparator() {}                            \
                                                                              \
@@ -303,6 +332,11 @@ class PassVersionCheckerRegistrar {
     return instance;
   }
   PassVersionCheckers& Register(const std::string& pass_name) {
+    PADDLE_ENFORCE_EQ(pass_version_checkers_map_.find(pass_name),
+                      pass_version_checkers_map_.end(),
+                      platform::errors::AlreadyExists(
+                          "PassVersionCheckers(%s) has alredy been registered.",
+                          pass_name.c_str()));
     return pass_version_checkers_map_[pass_name];
   }
   bool IsPassCompatible(const std::string& fuse_pass_name) const {

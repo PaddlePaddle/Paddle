@@ -11,6 +11,7 @@ ARG WITH_AVX
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV DEBIAN_FRONTEND=noninteractive
+ENV LD_LIBRARY_PATH=/usr/local/cuda-11.0/targets/x86_64-linux/lib:LD_LIBRARY_PATH
 
 ENV HOME /root
 # Add bash enhancements
@@ -20,25 +21,27 @@ RUN apt-get update && \
   apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && \
   apt-get update && \
   apt-get install -y curl wget vim git unzip unrar tar xz-utils bzip2 gzip \ 
-    coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev
+    coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev \
+    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool module-init-tools
 
 # Downgrade gcc&&g++
 WORKDIR /usr/bin 
-      COPY tools/dockerfile/build_scripts /build_scripts 
-      RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
-      RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ 
-      RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc 
-      RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ 
-      RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc 
-      RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ 
-      ENV PATH=/usr/local/gcc-8.2/bin:$PATH 
+COPY tools/dockerfile/build_scripts /build_scripts 
+RUN bash /build_scripts/install_trt.sh
+RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
+RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ 
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc 
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ 
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc 
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ 
+ENV PATH=/usr/local/gcc-8.2/bin:$PATH 
 
 RUN apt-get update && \
   apt-get install -y python2.7 python2.7-dev \
   python3.5 python3.5-dev \
   python3.6 python3.6-dev \
   python3.7 python3.7-dev \
-  python3.8 python3.8-dev && \
+  python3.8 python3.8-dev python3.8-distutils && \
   curl https://bootstrap.pypa.io/ez_setup.py -o - | python2.7 && easy_install pip && \
   curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.5 && easy_install pip && \
   curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.6 && easy_install pip && \
@@ -110,7 +113,7 @@ RUN pip3 --no-cache-dir install -r /root/requirements.txt && \
 # Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
 # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
 # So install a newer version here.
-RUN wget -q http://mirrors.kernel.org/ubuntu/pool/universe/p/patchelf/patchelf_0.10-2_amd64.deb && \
+RUN wget -q https://paddle-ci.cdn.bcebos.com/patchelf_0.10-2_amd64.deb && \
     dpkg -i patchelf_0.10-2_amd64.deb
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
@@ -123,5 +126,10 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     ./configure -prefix=/usr/local/ccache-3.7.9 && \
     make -j8 && make install && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
+
+# clang-form 3.8.0
+RUN wget https://paddle-ci.cdn.bcebos.com/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && \ 
+    tar xf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && cd clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && \
+    cp -r * /usr/local && cd .. && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz 
 
 EXPOSE 22

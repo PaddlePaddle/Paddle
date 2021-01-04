@@ -24,8 +24,8 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
-from paddle.fluid.dygraph import nn
 import warnings
+import paddle
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -114,6 +114,11 @@ class ParallelEnv(object):
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
+        self._nrings = int(os.getenv("FLAGS_nccl_nrings", "1"))
+        assert self._nrings > 0, \
+            "nccl_nrings must be an integer greater than 0."
+        assert self._nrings < 9, \
+            "nccl_nrings should be less than 9, which is enough in most scenarios."
 
     @property
     def rank(self):
@@ -210,6 +215,25 @@ class ParallelEnv(object):
             # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
         """
         return self._trainer_endpoints
+
+    @property
+    def nrings(self):
+        """
+        Nrings of current trainer.
+
+        Its value is equal to the value of the environment variable ``FLAGS_nccl_nrings`` . The default value is 1.
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export FLAGS_nccl_nrings=1
+            import paddle.distributed as dist
+            
+            env = dist.ParallelEnv()
+            print("The nrings is %d" % env.nrings)
+            # the number of ring is 1
+        """
+        return self._nrings
 
     # [aliases] Compatible with old method names
     local_rank = rank
@@ -309,11 +333,11 @@ class DataParallel(layers.Layer):
         layers(Layer): The module that should be executed by data parallel.
         strategy(ParallelStrategy, optional): (deprecated) The strategy of data parallelism, 
             contains environment configuration related to parallel execution. Default: None.
-        group_size_limits(int, optional): It is up limited memory size(MB) of one group 
+        comm_buffer_size(int, optional):  It limits the memory size(MB) of one buffer  
                                           parameters' gradient which is the input of communication 
                                           calling(e.g NCCLAllReduce). Default: 25.
-        small_group_size(int, optional): It is up limited memory size(MB) of last group in communication
-                                         calling. Making the last group small is useful to 
+        last_comm_buffer_size(float, optional): It limits memory size(MB) of last buffer in communication
+                                         calling. Making the last communication buffer size small is useful to 
                                          improve performance. Default: 1.
             
     Returns:
@@ -369,8 +393,8 @@ class DataParallel(layers.Layer):
     def __init__(self,
                  layers,
                  strategy=None,
-                 group_size_limits=25,
-                 small_group_size=1):
+                 comm_buffer_size=25,
+                 last_comm_buffer_size=1):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
@@ -386,19 +410,19 @@ class DataParallel(layers.Layer):
             self._strategy = _build_default_parallel_strategy()
 
         if self._strategy.nranks > 1:
-            self.group_size_limits = int(group_size_limits * 1024 * 1024)
+            self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
             # NOTE(shenliang03): We can set environment variables to control 
             # the size of the group, Default: 1MB. The role of this small group is: 
             # when the last group allreduce, the overlap cannot work. Making the 
             # the last group small is useful to improve performance.
-            self.small_group_size = int(small_group_size * 1024 * 1024)
+            self.last_comm_buffer_size = int(last_comm_buffer_size * 1024 *
+                                             1024)
             self.init_reducer()
         else:
-            warnings.warn(
-                "nranks is less than 2, "
-                "maybe you need to check the current system environment."
-                " Need to use spawn or fleetrun to "
-                "start distributed programs.")
+            warnings.warn("The program will return to single-card operation. "
+                          "Please check 1, whether you use spawn or fleetrun "
+                          "to start the program. 2, Whether it is a multi-card "
+                          "program. 3, Is the current environment multi-card.")
 
     def init_reducer(self):
         layers_param = []
@@ -419,9 +443,13 @@ class DataParallel(layers.Layer):
         # NOTE(shenliang03): Here we can only use the attributes to judge whether
         # parameter is sparse(or SelectedRows). The reason is that the sparse message
         # can't be obtained when bp hasn't happened yet. So if layer supports sparse parameter,
-        # we should add the layer here like "nn.Embedding".
+        # we should add the layer here like "paddle.nn.layer.common.Embedding".
         def check_layer_sparse(sublayer):
-            if isinstance(sublayer, nn.Embedding):
+            if isinstance(sublayer, paddle.nn.layer.common.Embedding):
+                return sublayer._sparse
+            # NOTE(shenliang03):This is for compatibility. If paddle.fluid.dygraph.Embedding 
+            # is removed in the future, the check will also be removed here.
+            if isinstance(sublayer, paddle.fluid.dygraph.Embedding):
                 return sublayer._is_sparse
             return False
 
@@ -431,16 +459,17 @@ class DataParallel(layers.Layer):
 
         self.group_indices = core.assign_group_by_size(
             trainable_parameters, is_sparse_gradient,
-            [self.small_group_size, self.group_size_limits])
+            [self.last_comm_buffer_size, self.comm_buffer_size])
 
         assert parallel_helper.__parallel_ctx__clz__ is not None, \
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
-        self._reducer = core.Reducer(trainable_parameters,
-                                     list(reversed(self.group_indices)),
-                                     is_sparse_gradient,
-                                     parallel_helper.__parallel_ctx__clz__)
+        self._reducer = core.Reducer(
+            trainable_parameters,
+            list(reversed(self.group_indices)), is_sparse_gradient,
+            parallel_helper.__parallel_ctx__clz__,
+            [self.last_comm_buffer_size, self.comm_buffer_size])
 
     def forward(self, *inputs, **kwargs):
         if self._strategy.nranks > 1:

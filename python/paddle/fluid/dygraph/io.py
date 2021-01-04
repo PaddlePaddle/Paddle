@@ -1139,6 +1139,10 @@ class TranslatedLayer(layers.Layer):
 
         # 4. create TranslatedLayer's execution method
         for method_name, program_holder in programs.items():
+            if translated_layer._input_args_names is None:
+                translated_layer._input_args_names = [
+                    ins.name() for ins in program_holder.input_descs
+                ]
             setattr(TranslatedLayer, method_name,
                     TranslatedLayer._execution_method_creator(method_name,
                                                               program_holder))

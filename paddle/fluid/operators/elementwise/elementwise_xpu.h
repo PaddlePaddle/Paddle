@@ -65,7 +65,7 @@ static std::pair<std::vector<int>, std::vector<int>> XPUReducesAxisVector(
   }
   int yidx = 0;
   for (size_t i = 0; i < x_vector.size(); ++i) {
-    if (y[yidx] == 1) {
+    if (yidx >= y.size() || y[yidx] == 1) {
       axis_v.push_back(i);
       yidx++;
       continue;
@@ -134,10 +134,10 @@ void XPUElementwise(
     std::pair<std::vector<int>, std::vector<int>> bcast_v =
         XPUDimsToBroadcastVector(framework::make_ddim(x_dims_array), out_dim);
 
-    ret = xpu::broadcast<T>(
-        dev_ctx.x_context(), x_data,
-        x_broadcast_tensor.mutable_data<T>(ctx.GetPlace(), z->numel()),
-        bcast_v.first, bcast_v.second);
+    ret = xpu::broadcast<T>(dev_ctx.x_context(), x_data,
+                            x_broadcast_tensor.mutable_data<T>(
+                                ctx.GetPlace(), z->numel() * sizeof(T)),
+                            bcast_v.first, bcast_v.second);
     PADDLE_ENFORCE_EQ(
         ret, xpu::SUCCESS,
         platform::errors::External(
@@ -153,10 +153,10 @@ void XPUElementwise(
     std::vector<int> bcast_y_v;
     std::pair<std::vector<int>, std::vector<int>> bcast_v =
         XPUDimsToBroadcastVector(framework::make_ddim(y_dims_array), out_dim);
-    ret = xpu::broadcast<T>(
-        dev_ctx.x_context(), y_data,
-        y_broadcast_tensor.mutable_data<T>(ctx.GetPlace(), z->numel()),
-        bcast_v.first, bcast_v.second);
+    ret = xpu::broadcast<T>(dev_ctx.x_context(), y_data,
+                            y_broadcast_tensor.mutable_data<T>(
+                                ctx.GetPlace(), z->numel() * sizeof(T)),
+                            bcast_v.first, bcast_v.second);
     PADDLE_ENFORCE_EQ(
         ret, xpu::SUCCESS,
         platform::errors::External(
@@ -231,13 +231,15 @@ void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
   bool dx_need_reduce = (dx != nullptr) && (dx->numel() != len);
   bool dy_need_reduce = (dy != nullptr) && (dy->numel() != len);
 
-  T* dx_data = ((dx == nullptr) || dx_need_reduce)
-                   ? (dx_local_tensor.mutable_data<T>(ctx.GetPlace(), len))
-                   : (dx->mutable_data<T>(ctx.GetPlace()));
+  T* dx_data =
+      ((dx == nullptr) || dx_need_reduce)
+          ? (dx_local_tensor.mutable_data<T>(ctx.GetPlace(), len * sizeof(T)))
+          : (dx->mutable_data<T>(ctx.GetPlace()));
 
-  T* dy_data = ((dy == nullptr) || dy_need_reduce)
-                   ? (dy_local_tensor.mutable_data<T>(ctx.GetPlace(), len))
-                   : (dy->mutable_data<T>(ctx.GetPlace()));
+  T* dy_data =
+      ((dy == nullptr) || dy_need_reduce)
+          ? (dy_local_tensor.mutable_data<T>(ctx.GetPlace(), len * sizeof(T)))
+          : (dy->mutable_data<T>(ctx.GetPlace()));
 
   int ret = xpu::SUCCESS;
   auto& dev_ctx =
@@ -250,8 +252,8 @@ void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
         XPUDimsToBroadcastVector(framework::make_ddim(x_dims_array), out_dim);
     ret = xpu::broadcast<T>(
         dev_ctx.x_context(), x_data,
-        x_broadcast_tensor.mutable_data<T>(ctx.GetPlace(), len), bcast_v.first,
-        bcast_v.second);
+        x_broadcast_tensor.mutable_data<T>(ctx.GetPlace(), len * sizeof(T)),
+        bcast_v.first, bcast_v.second);
     PADDLE_ENFORCE_EQ(ret, xpu::SUCCESS,
                       platform::errors::External(
                           "XPU kernel broadcast error occur! %d", ret));
@@ -267,8 +269,8 @@ void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
         XPUDimsToBroadcastVector(framework::make_ddim(y_dims_array), out_dim);
     ret = xpu::broadcast<T>(
         dev_ctx.x_context(), y_data,
-        y_broadcast_tensor.mutable_data<T>(ctx.GetPlace(), len), bcast_v.first,
-        bcast_v.second);
+        y_broadcast_tensor.mutable_data<T>(ctx.GetPlace(), len * sizeof(T)),
+        bcast_v.first, bcast_v.second);
     PADDLE_ENFORCE_EQ(ret, xpu::SUCCESS,
                       platform::errors::External(
                           "XPU kernel broadcast error occur! %d", ret));
@@ -287,9 +289,9 @@ void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
     const framework::DDim& dx_dims = dx->dims();
     std::pair<std::vector<int>, std::vector<int>> reduce_v =
         XPUReducesAxisVector(out_dim, dx_dims);
-    ret = xpu::reduce_sum(dev_ctx.x_context(), dx_data,
-                          dx->mutable_data<T>(ctx.GetPlace()), reduce_v.first,
-                          reduce_v.second);
+    ret = xpu::reduce_sum<T>(dev_ctx.x_context(), dx_data,
+                             dx->mutable_data<T>(ctx.GetPlace()),
+                             reduce_v.first, reduce_v.second);
     PADDLE_ENFORCE_EQ(
         ret, xpu::SUCCESS,
         platform::errors::External("XPU kernel reduce_sum occur error in "
@@ -302,9 +304,9 @@ void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
     const framework::DDim& dy_dims = dy->dims();
     std::pair<std::vector<int>, std::vector<int>> reduce_v =
         XPUReducesAxisVector(out_dim, dy_dims);
-    ret = xpu::reduce_sum(dev_ctx.x_context(), dy_data,
-                          dy->mutable_data<T>(ctx.GetPlace()), reduce_v.first,
-                          reduce_v.second);
+    ret = xpu::reduce_sum<T>(dev_ctx.x_context(), dy_data,
+                             dy->mutable_data<T>(ctx.GetPlace()),
+                             reduce_v.first, reduce_v.second);
     PADDLE_ENFORCE_EQ(
         ret, xpu::SUCCESS,
         platform::errors::External("XPU kernel reduce_sum occur error in "

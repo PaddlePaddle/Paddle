@@ -772,7 +772,10 @@ REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv2DGradMaker<paddle::framework::OpDesc>,
                   ops::Conv2DGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
+REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad,
+                  ops::Conv2DDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::Conv2DDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(depthwise_conv2d_grad_grad, ops::ConvOpDoubleGrad);
 
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
                   ops::ConvOpInferVarType,

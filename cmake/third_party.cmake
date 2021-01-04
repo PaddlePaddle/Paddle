@@ -209,11 +209,6 @@ include(external/warpctc)   # download, build, install warpctc
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
 list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
 
-if(WITH_AMD_GPU)
-    include(external/rocprim)   # download, build, install rocprim
-    list(APPEND third_party_deps extern_rocprim)
-endif()
-
 include(cblas)              	# find first, then download, build, install openblas
 if(${CBLAS_PROVIDER} STREQUAL MKLML)
     list(APPEND third_party_deps extern_mklml)
@@ -238,7 +233,7 @@ if(WITH_PYTHON)
     list(APPEND third_party_deps extern_pybind)
 endif()
 
-IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
+IF(WITH_TESTING OR WITH_DISTRIBUTE)
     include(external/gtest)     # download, build, install gtest
     list(APPEND third_party_deps extern_gtest)
 ENDIF()
@@ -280,14 +275,18 @@ if(WITH_BOX_PS)
     list(APPEND third_party_deps extern_box_ps)
 endif(WITH_BOX_PS)
 
-if(WITH_DISTRIBUTE)
+if (WITH_DISTRIBUTE)
+    include(external/snappy)
+    list(APPEND third_party_deps extern_snappy)
 
-    if(WITH_GRPC)
-        list(APPEND third_party_deps extern_grpc)
-    else()
-        list(APPEND third_party_deps extern_leveldb)
-        list(APPEND third_party_deps extern_brpc)
-    endif()
+    include(external/leveldb)
+    list(APPEND third_party_deps extern_leveldb)
+        
+    include(external/brpc)
+    list(APPEND third_party_deps extern_brpc)
+
+    include(external/libmct)     # download, build, install libmct
+    list(APPEND third_party_deps extern_libmct)
 endif()
 
 if(WITH_XBYAK)

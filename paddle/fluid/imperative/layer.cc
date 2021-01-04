@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <queue>
 #include <utility>
+
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -215,6 +216,10 @@ void VarBase::ClearGradient() {
 #endif
       }
     }
+    // TODO(zhouwei): It's better to free memory of grad by grad_t->claer.
+    // But will have some bug on mac CPU of yolov3 model, why?
+    // After fix this bug, function SetIsEmpty() isn't need
+    grad_var_->SharedVar()->SetIsEmpty(true);
   }
 }
 
@@ -278,6 +283,45 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
   }
 }
 
+void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
+  if (SharedVar()->IsEmpty()) {
+    VLOG(3) << "deep copy Variable from " << src.Name() << " to " << Name();
+    SetPersistable(src.Persistable());
+    SetDataType(src.DataType());
+    SetType(src.Type());
+    SetOverridedStopGradient(src.OverridedStopGradient());
+    if (!src.SharedVar()->IsEmpty()) {
+      const platform::Place& place = src.Place();
+      if (src.Var().IsType<framework::LoDTensor>()) {
+        auto& src_tensor = src.Var().Get<framework::LoDTensor>();
+        auto* dst_tensor = MutableVar()->GetMutable<framework::LoDTensor>();
+        dst_tensor->set_lod(src_tensor.lod());
+        framework::TensorCopy(src_tensor, place, dst_tensor);
+      } else if (src.Var().IsType<framework::SelectedRows>()) {
+        auto& src_selected_rows = src.Var().Get<framework::SelectedRows>();
+        auto* dst_selected_rows =
+            MutableVar()->GetMutable<framework::SelectedRows>();
+        dst_selected_rows->set_height(src_selected_rows.height());
+        dst_selected_rows->set_rows(src_selected_rows.rows());
+        framework::TensorCopy(src_selected_rows.value(), place,
+                              dst_selected_rows->mutable_value());
+      }
+      if (blocking) {
+        platform::DeviceContextPool::Instance().Get(place)->Wait();
+      }
+    }
+  }
+}
+
+void VarBase::BumpInplaceVersion() {
+  PADDLE_ENFORCE_EQ(
+      Var().IsInitialized(), true,
+      platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized, please check if it has no data.",
+          Name()));
+  MutableVar()->BumpInplaceVersion();
+}
+
 void OpBase::SetType(const std::string& type) {
   op_ = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
 }
@@ -313,9 +357,31 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   }
 
   VLOG(5) << LayerDebugString(op.Type(), ins, outs);
-  auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs);
 
-  prepared_op.Run(ins, outs, attrs);
+  /**
+   * [ Why need temporary inputs here? ]
+   *
+   * PrepareData should not change original input tensor inplace.
+   * Suppose the user defines a tensor(int), enters an op to execute,
+   * and then this op rewrites GetExpectedKernelForVar, and converts
+   * this tensor to float type during execution. After the dynamic
+   * graph is executed, the user-defined variable will be lost, and
+   * the user cannot get the originally defined int tensor, because
+   * it has been converted to float, this should be regarded as a bug
+   * in certain usage scenarios
+   *
+   * In static graph mode, when op is executed, a temporary scope
+   * `transfer_scope` is created before PrepareData, the data after
+   * transform is stored in the temporary scope, and then discarded
+   * after the execution of op, but the original input is directly
+   * overwritten in the previous dynamic graph implemention.
+   */
+  auto expected_kernel_key =
+      GetExpectedKernelKey<VarType>(ins, outs, *op_kernel, place, attrs);
+  auto prepared_op = PreparedOp::Prepare(*op_kernel, expected_kernel_key);
+  auto tmp_ins = PrepareData<VarType>(*op_kernel, ins, expected_kernel_key);
+
+  prepared_op.Run(tmp_ins, outs, attrs);
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
 }

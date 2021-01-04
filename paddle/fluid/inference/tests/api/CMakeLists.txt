@@ -54,6 +54,12 @@ function(inference_analysis_api_test target install_dir filename)
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt --refer_result=${install_dir}/result.txt)
 endfunction()
 
+function(inference_multiple_models_analysis_api_test target install_dir filename)
+    inference_analysis_test(${target} SRCS ${filename}
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${install_dir}/mobilenet_v2_models/1 --infer_model2=${install_dir}/mobilenet_v2_models/xx --infer_model3=${install_dir}/mobilenet_v2_models/3)
+endfunction()
+
 function(inference_analysis_api_test_build TARGET_NAME filename)
 	inference_analysis_test_build(${TARGET_NAME} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS})
@@ -375,6 +381,15 @@ if(WITH_MKLDNN)
 
   # resnet50 bfloat16
   inference_analysis_api_bfloat16_test_run(test_analyzer_bfloat16_resnet50 ${BF16_IMG_CLASS_TEST_APP} ${INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  
+  # googlenet bfloat16
+  inference_analysis_api_bfloat16_test_run(test_analyzer_bfloat16_googlenet ${BF16_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH})
+
+  # mobilenetv1 bfloat16
+  inference_analysis_api_bfloat16_test_run(test_analyzer_bfloat16_mobilenetv1 ${BF16_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV1_MODEL_DIR} ${IMAGENET_DATA_PATH})
+
+  # mobilenetv2 bfloat16
+  inference_analysis_api_bfloat16_test_run(test_analyzer_bfloat16_mobilenetv2 ${BF16_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
   ### Object detection models
   set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_300.bin")
@@ -452,6 +467,11 @@ endif()
 set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
 download_model_and_data(${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
+
+# multiple models prediction
+set(MMP_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_model_prediction")
+download_data(${MMP_INSTALL_DIR} PaddleInference/mobilenet_v2_models.tar.gz) 
+inference_multiple_models_analysis_api_test(test_analyzer_multi_model_prediction ${MMP_INSTALL_DIR} analyzer_mmp_tester.cc)
 
 if(WITH_GPU AND TENSORRT_FOUND)
     set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt_models")
@@ -601,13 +621,13 @@ if(WITH_GPU)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
-    set_tests_properties(trt_resnext_test PROPERTIES TIMEOUT 120)
-    set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 120)
+    set_tests_properties(trt_resnext_test PROPERTIES TIMEOUT 150)
+    set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 150)
     set_tests_properties(trt_resnet50_test PROPERTIES TIMEOUT 120)
-    set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_trt_dynamic_shape_ernie PROPERTIES TIMEOUT 120)
+    set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 150)
+    set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser PROPERTIES TIMEOUT 150)
+    set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser PROPERTIES TIMEOUT 150)
+    set_tests_properties(test_trt_dynamic_shape_ernie PROPERTIES TIMEOUT 150)
 endif()
 
 if(WITH_MKLDNN)
@@ -630,7 +650,9 @@ set_tests_properties(test_analyzer_bert PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_mobilenet_depthwise_conv PROPERTIES TIMEOUT 120)
 if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT 120)
+    if(WITH_MKLDNN)
+        set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT 120)
+    endif()
 endif()
 if(ON_INFER OR WITH_GPU)
     set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT 120)

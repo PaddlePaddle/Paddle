@@ -271,9 +271,7 @@ def layer_norm(x,
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          layer_norm = paddle.nn.functional.layer_norm(x, x.shape[1:])
-          layer_norm_out = layer_norm(x)
-
+          layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
           print(layer_norm_out)
     """
     input_shape = list(x.shape)
@@ -293,7 +291,8 @@ def layer_norm(x,
                                             'begin_norm_axis', begin_norm_axis)
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
-    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'LayerNorm')
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
+                             'LayerNorm')
 
     inputs = dict()
     inputs['X'] = [x]
@@ -305,11 +304,13 @@ def layer_norm(x,
 
     # create output
     helper = LayerHelper('layer_norm', **locals())
+
+    dtype = x.dtype
     mean_out = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
+        dtype=dtype, stop_gradient=True)
     variance_out = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
-    layer_norm_out = helper.create_variable_for_type_inference(x.dtype)
+        dtype=dtype, stop_gradient=True)
+    layer_norm_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type="layer_norm",
@@ -363,7 +364,7 @@ def instance_norm(x,
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          instance_norm_out = paddle.nn.functional.instancenorm(x)
+          instance_norm_out = paddle.nn.functional.instance_norm(x)
 
           print(instance_norm_out)
 
