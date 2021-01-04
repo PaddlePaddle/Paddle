@@ -70,7 +70,6 @@ diable_wingpu_test="^test_analysis_predictor$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
 ^test_parallel_executor_drop_scope$|\
 ^test_parallel_executor_dry_run$|\
-^test_partial_eager_deletion_transformer$|\
 ^test_rnn_nets$|\
 ^test_prune$|\
 ^test_py_reader_combination$|\
@@ -81,8 +80,6 @@ diable_wingpu_test="^test_analysis_predictor$|\
 ^test_update_loss_scaling_op$|\
 ^test_imperative_se_resnext$|\
 ^test_imperative_static_runner_while$|\
-^test_fuse_bn_act_pass$|\
-^test_fuse_bn_add_act_pass$|\
 ^test_gru_rnn_op$|\
 ^test_rnn_op$|\
 ^test_simple_rnn_op$|\
