@@ -275,7 +275,8 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       COMPARE(PaddleDType::UINT8, uint8_t, EXPECT_EQ);
       COMPARE(PaddleDType::INT8, int8_t, EXPECT_EQ);
       default:
-        LOG(FATAL) << "Unsupport dtype: " << static_cast<int>(out.dtype);
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unsupport dtype: %d", static_cast<int>(out.dtype)));
     }
 #undef COMPARE
   }
@@ -312,7 +313,8 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       COMPARE(PaddleDType::UINT8, uint8_t, EXPECT_EQ);
       COMPARE(PaddleDType::INT8, int8_t, EXPECT_EQ);
       default:
-        LOG(FATAL) << "Unsupport dtype: " << static_cast<int>(out.dtype);
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unsupport dtype: %d", static_cast<int>(out.dtype)));
     }
 #undef COMPARE
   }
