@@ -171,7 +171,8 @@ void PSGPUWorker::TrainFiles() {
     thread_scope_->DropKids();
   }
   timeline.Pause();
-  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << timeline.ElapsedSec() << " seconds, ins_num: " << total_ins_num;
+  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost "
+          << timeline.ElapsedSec() << " seconds, ins_num: " << total_ins_num;
   return;
 }
 

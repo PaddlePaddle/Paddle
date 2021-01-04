@@ -37,7 +37,6 @@ GPUResource::GPUResource(std::vector<int>& dev_ids, int index) {
 
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaStreamCreateWithFlags(&remote_stream_, cudaStreamNonBlocking));
-  
 }
 
 GPUResource::~GPUResource() {

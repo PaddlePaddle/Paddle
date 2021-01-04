@@ -69,14 +69,10 @@ class HeterComm {
 
   int log2i(int x);
   bool need_transfer(int send_id, int receive_id) {
-    return ((send_id / 4 != receive_id / 4) &&
-            (send_id + 4) % 8 != receive_id);
+    return ((send_id / 4 != receive_id / 4) && (send_id + 4) % 8 != receive_id);
   }
 
-  int get_transfer_devid(int send_id) {
-    return (send_id + 4) % 8;
-  }
-
+  int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
 
   struct Node {
     cudaStream_t in_stream;
@@ -94,9 +90,12 @@ class HeterComm {
   };
 
   void init_path();
-  void create_storage(int start_index, int end_index, int keylen, int vallen, std::vector<std::shared_ptr<memory::Allocation>>& local_strorage);
+  void create_storage(
+      int start_index, int end_index, int keylen, int vallen,
+      std::vector<std::shared_ptr<memory::Allocation>>& local_strorage);
   void walk_to_src(int start_index, int end_index, char* src_val);
-  void walk_to_dest(int start_index, int end_index, char* src_key, char* src_val);
+  void walk_to_dest(int start_index, int end_index, char* src_key,
+                    char* src_val);
 
  private:
   using Table = HashTable<KeyType, ValType>;
