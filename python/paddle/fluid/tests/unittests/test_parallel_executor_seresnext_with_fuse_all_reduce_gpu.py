@@ -32,7 +32,7 @@ class TestResnetWithFuseAllReduceGPU(TestResnetBase):
             optimizer=seresnext_net.optimizer,
             fuse_all_reduce_ops=True)
         self._compare_result_with_origin_model(
-            check_func, use_device=DeviceType.GPU, delta2=1e-2)
+            check_func, use_device=DeviceType.CUDA, delta2=1e-2)
 
 
 if __name__ == '__main__':

@@ -41,7 +41,6 @@ class Optimization_ex1(paddle.nn.Layer):
             np.random.random((4, 4)).astype(dtype) + np.random.random(
                 (4, 4)).astype(dtype) * 1j,
             stop_gradient=False)
-        print(self.A)
 
     def forward(self, mode=1):
         jj = paddle.to_tensor(np.array([1j]).astype(np.complex64))
@@ -70,31 +69,55 @@ class TestComplexGradAccumulated(unittest.TestCase):
         self.devices = ['cpu']
         if core.is_compiled_with_cuda():
             self.devices.append('gpu')
+        self.iter = 3
+        self.learning_rate = 0.5
         self.dtypes = ['float32', 'float64']
         self.theta_size = [4, 4]
 
-    def run_backward(self, device, dtype, mode):
+    def train(self, device, dtype, mode):
         paddle.set_device(device)
 
         myLayer = Optimization_ex1(self.theta_size, dtype)
+        optimizer = paddle.optimizer.SGD(learning_rate=self.learning_rate,
+                                         parameters=myLayer.parameters())
 
-        loss = myLayer(mode)
-        loss.backward()
+        for iter in range(self.iter):
+            loss = myLayer(mode)
+            loss.backward()
+
+            optimizer.step()
+            optimizer.clear_grad()
+
+    def train_no_clear_grad(self, device, dtype, mode):
+        paddle.set_device(device)
+
+        myLayer = Optimization_ex1(self.theta_size, dtype)
+        optimizer = paddle.optimizer.SGD(learning_rate=self.learning_rate,
+                                         parameters=myLayer.parameters())
+
+        for iter in range(self.iter):
+            loss = myLayer(mode)
+            loss.backward()
+
+            optimizer.step()
 
     def test_case_one_step(self):
         for dev in self.devices:
             for dtype in self.dtypes:
-                self.run_backward(dev, dtype, 1)
+                self.train(dev, dtype, 1)
+                self.train_no_clear_grad(dev, dtype, 1)
 
     def test_case_two_step(self):
         for dev in self.devices:
             for dtype in self.dtypes:
-                self.run_backward(dev, dtype, 2)
+                self.train(dev, dtype, 2)
+                self.train_no_clear_grad(dev, dtype, 2)
 
     def test_case_non_param(self):
         for dev in self.devices:
             for dtype in self.dtypes:
-                self.run_backward(dev, dtype, 3)
+                self.train(dev, dtype, 3)
+                self.train_no_clear_grad(dev, dtype, 3)
 
 
 if __name__ == '__main__':

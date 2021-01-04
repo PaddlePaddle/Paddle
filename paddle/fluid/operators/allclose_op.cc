@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/allclose_op.h"
 #include <cmath>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -153,3 +154,28 @@ REGISTER_OPERATOR(
     ops::AllcloseOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(allclose, ops::AllcloseKernel<CPU, float>,
                        ops::AllcloseKernel<CPU, double>);
+
+/* ==========================  register checkpoint ===========================*/
+REGISTER_OP_VERSION(allclose)
+    .AddCheckpoint(
+        R"ROC(Upgrade allclose, add two new inputs [Rtol] and [Atol].)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput("Rtol",
+                      "The added input 'Rtol' is not"
+                      "dispensable.")
+            .NewInput("Atol",
+                      "The added input 'Atol' is not"
+                      "dispensable."))
+    .AddCheckpoint(
+        R"ROC(Delete two attributes [rtol] and [atol])ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .DeleteAttr("rtol",
+                        "The attribute 'rtol' is deleted."
+                        "The reason why it is deleted is that"
+                        "attributes do not support a float64 value"
+                        "and it is changed to a tensor.")
+            .DeleteAttr("atol",
+                        "The attribute 'atol' is deleted."
+                        "The reason why it is deleted is that"
+                        "attributes do not support a float64 value"
+                        "and it is changed to a tensor."));

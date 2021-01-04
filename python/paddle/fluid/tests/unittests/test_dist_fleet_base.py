@@ -32,6 +32,8 @@ import tempfile
 import unittest
 
 import paddle
+paddle.enable_static()
+
 import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet

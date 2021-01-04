@@ -191,11 +191,11 @@ class TestTransformer(TestParallelExecutorBase):
         if core.is_compiled_with_cuda():
             self.check_network_convergence(
                 transformer,
-                use_device=DeviceType.GPU,
+                use_device=DeviceType.CUDA,
                 feed_data_reader=get_feed_data_reader())
             self.check_network_convergence(
                 transformer,
-                use_device=DeviceType.GPU,
+                use_device=DeviceType.CUDA,
                 enable_sequential_execution=True,
                 feed_data_reader=get_feed_data_reader())
         self.check_network_convergence(
