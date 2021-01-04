@@ -28,20 +28,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-/*
- * ConcatOp
- */
-
-void show_dims(nvinfer1::ITensor* tensor, const std::string& name) {
-  auto dims = tensor->getDimensions();
-  std::cerr << name << ": ";
-  std::cerr << dims.nbDims << ", ";
-  for (int i = 0; i < dims.nbDims; ++i) {
-    std::cerr << dims.d[i] << " ";
-  }
-  std::cerr << std::endl;
-}
-
 class MultiClassNMSOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -56,6 +42,22 @@ class MultiClassNMSOpConverter : public OpConverter {
 
     auto* bboxes_tensor = engine_->GetITensor(bboxes);
     auto* scores_tensor = engine_->GetITensor(scores);
+
+    auto CheckParams = [](const framework::OpDesc& op_desc,
+                          const char* params) {
+      PADDLE_ENFORCE_EQ(
+          op_desc.HasAttr(params), true,
+          platform::errors::Fatal(
+              "Inference multiclass_nms with TensorRT should also "
+              "set parameters %s.",
+              params));
+    };
+    CheckParams(op_desc, "background_label");
+    CheckParams(op_desc, "score_threshold");
+    CheckParams(op_desc, "nms_top_k");
+    CheckParams(op_desc, "nms_threshold");
+    CheckParams(op_desc, "keep_top_k");
+    CheckParams(op_desc, "normalized");
 
     int background_label =
         BOOST_GET_CONST(int, op_desc.GetAttr("background_label"));

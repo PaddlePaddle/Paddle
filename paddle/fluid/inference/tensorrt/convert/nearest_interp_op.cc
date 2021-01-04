@@ -28,9 +28,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-/*
- * ConcatOp
- */
 class NearestInterpolateOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
