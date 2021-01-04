@@ -72,7 +72,7 @@ class ScaleOpConverter : public OpConverter {
     PADDLE_ENFORCE_GE(
         input_dim.nbDims, 2,
         platform::errors::Unimplemented(
-            "Paddle-TRT scale mode only support input dimension >= 2."));
+            "Paddle-TRT scale mode only supports input dimension >= %d.", 2));
 
     nvinfer1::IShuffleLayer* expand_layer = nullptr;
     nvinfer1::IShuffleLayer* squeeze_layer = nullptr;
