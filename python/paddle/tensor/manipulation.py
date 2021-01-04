@@ -1409,8 +1409,8 @@ def reshape(x, shape, name=None):
     """
     This operator changes the shape of ``x`` without changing its data.
 
-    Note that if ``shape`` is list or tuple, the output Tensor will share data
-    with origin Tensor and doesn't have a Tensor copy in ``dygraph`` mode. 
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode. 
     If you want to use the Tensor copy version, please use `Tensor.clone` like 
     ``reshape_clone_x = x.reshape([-1]).clone()``.
 
@@ -1466,10 +1466,6 @@ def reshape(x, shape, name=None):
             out = paddle.reshape(x, [-1, 0, 3, 2])
             print(out)
             # the shape is [2,4,3,2].
-            # out shares data with x in dygraph mode
-            x[0, 0, 0] = 10.
-            print(out[0, 0])
-            # the value is [10.]
 
             out = paddle.reshape(x, shape=[positive_four, 12])
             print(out)
@@ -1479,7 +1475,10 @@ def reshape(x, shape, name=None):
             out = paddle.reshape(x, shape=shape_tensor)
             print(out)
             # the shape is [8, 6].
-            # if shape is a Tensor, out doesn't share data with x
+            # out shares data with x in dygraph mode
+            x[0, 0, 0] = 10.
+            print(out[0, 0])
+            # the value is [10.]
 
     """
     return paddle.fluid.layers.reshape(x=x, shape=shape, name=name)

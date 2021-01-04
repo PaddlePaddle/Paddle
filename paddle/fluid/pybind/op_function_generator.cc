@@ -55,6 +55,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
+    {"reshape2", {"X", "Shape", "ShapeTensor"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
