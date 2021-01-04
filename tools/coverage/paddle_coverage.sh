@@ -112,15 +112,15 @@ function gen_diff_html_report() {
 
 # python coverage
 
-export COVERAGE_FILE=/paddle/build/python-coverage.data
+#export COVERAGE_FILE=/paddle/build/python-coverage.data
 
-set +x
-coverage combine `ls python-coverage.data.*`
-set -x
+#set +x
+#coverage combine `ls python-coverage.data.*`
+#set -x
 
-coverage xml -i -o python-coverage.xml
+#coverage xml -i -o python-coverage.xml
 
-python3.7 ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info
+#python3.7 ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info
 #curl -s https://paddle-ci.gz.bcebos.com/coverage%2Fscripts%2Fpython_coverage.py | \ 
 #    python - > python-coverage.info
 
@@ -142,7 +142,7 @@ function gen_python_full_html_report() {
     mv -f python-coverage-full.tmp python-coverage-full.info
 }
 
-gen_python_full_html_report || true
+#gen_python_full_html_report || true
 
 # python diff html report
 
