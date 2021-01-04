@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 
+#include <cstdlib>
 #include <deque>
 #include <memory>
 #include <string>
@@ -20,6 +21,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/async_variable.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
@@ -95,11 +97,17 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     traced_ops_.clear();
     remaining_ = 0;
     auto complete_q = std::make_shared<BlockingQueue<size_t>>();
-    for (auto op : bootstrap_ops_) {
-      RunOpAsync(op_deps.get(), op, complete_q);
-    }
-    for (auto op : ready_fetch_ops) {
-      RunOpAsync(op_deps.get(), op, complete_q);
+    // If run op with AsyncVariable
+    if (IsEnableAsync()) {
+      RunOpWithAsyncVariable(op_deps.get(), bootstrap_ops_, complete_q);
+      RunOpWithAsyncVariable(op_deps.get(), ready_fetch_ops, complete_q);
+    } else {  // original logic
+      for (auto op : bootstrap_ops_) {
+        RunOpAsync(op_deps.get(), op, complete_q);
+      }
+      for (auto op : ready_fetch_ops) {
+        RunOpAsync(op_deps.get(), op, complete_q);
+      }
     }
 
     size_t num_complete = 0;
@@ -214,6 +222,87 @@ bool FastThreadedSSAGraphExecutor::RunOp(
     --remaining_;
     complete_q->Push(-1UL);
     return false;
+  }
+}
+
+void FastThreadedSSAGraphExecutor::RunOpWithAsyncVariable(
+    std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
+    const std::vector<OpHandleBase *> &ready_ops,
+    const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
+  std::deque<OpHandleBase *> op_queue;
+  for (auto *ready_op : ready_ops) {
+    VLOG(3) << "Set op : " << ready_op->Name() << " all Inputs async state";
+    UpdateAsyncVariableState(ready_op->Inputs());
+    op_queue.push_back(ready_op);
+  }
+
+  while (!op_queue.empty()) {
+    OpHandleBase *op_to_run = op_queue.front();
+    op_queue.pop_front();
+
+    // TODO(Aurelius84): Consider special case in MultiDeviceTransfer
+    if (op_to_run->IsMultiDeviceTransfer()) {
+      VLOG(3) << "Found MultiDeviceTranser op: " << op_to_run->Name()
+              << ", skip it now.";
+    }
+
+    ++remaining_;  // indicate the current running thread nums
+
+    // Note(Aurelius84): Run op async.
+    this->pool_.enqueue([=] {
+      size_t complete = 0;
+
+      if (!RunOp(op_to_run, complete_q, &complete)) {
+        VLOG(3) << "Run op " << op_to_run->Name() << " failed.";
+        return;
+      }
+      // TODO(Aurelius84): mark all outputs as available and notify all other
+      // thread.
+      VLOG(3) << "Set op : " << op_to_run->Name() << " all Outputs async state";
+      UpdateAsyncVariableState(op_to_run->Outputs());
+
+      --remaining_;
+      complete_q->Push(complete);
+    });
+
+    // step 4: while lanuching each op, register a callback into each output
+    // AsyncVariable
+    auto &outputs = op_to_run->Outputs();
+    // TODO(Aurelius84): We should not update out_vars into available, because
+    // op_to_run is put
+    // into a separate thread to run. Use callback or hook in `RunImpl` to
+    // NotifyAvailable.
+    // UpdateAsyncVariableState(op->Outputs());
+
+    // deal with its downstream op
+    for (auto &output : outputs) {
+      for (auto &pending_op : output->PendingOps()) {
+        std::atomic<int> &op_dep = op_deps->at(pending_op);
+        if (op_dep.fetch_sub(1) != 1) continue;
+
+        // TODO(Aurelius84): Consider to avoid thread switch by launch one op
+        // in current thread.
+        op_queue.push_back(pending_op);
+      }
+    }
+  }
+}
+
+void FastThreadedSSAGraphExecutor::UpdateAsyncVariableState(
+    const std::vector<VarHandleBase *> vars) {
+  // TODO(Aurelius84): we should only update Available state for ready_op's
+  // input vars once, and use callback
+  // and hook to deal with other op's outputs.
+  for (auto &var_handle_base : vars) {
+    PADDLE_ENFORCE_NOT_NULL(var_handle_base,
+                            platform::errors::PreconditionNotMet(
+                                "var_handle_base should not be nullptr."));
+    auto *var_handle = static_cast<VarHandle *>(var_handle_base);
+    auto &scope = local_exec_scopes_.at(var_handle->scope_idx());
+    auto *var = scope->FindVar(var_handle->Name());
+    VLOG(3) << "Set var: " << var_handle->Name()
+            << " with AsyncState::kAvailable";
+    var->NotifyAvailable();
   }
 }
 

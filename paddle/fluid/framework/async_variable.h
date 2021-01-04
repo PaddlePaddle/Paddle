@@ -14,6 +14,7 @@
 
 #pragma once
 #include <condition_variable>  // NOLINT
+#include <cstdlib>
 #include <memory>
 #include <mutex>  //NOLINT
 #include <utility>
@@ -24,6 +25,10 @@
 
 namespace paddle {
 namespace framework {
+
+static const char kEnableAsync[] = "FLAGS_enable_async";
+
+static bool IsEnableAsync() { return std::getenv(kEnableAsync) != nullptr; }
 
 /*
  * AsyncVariable is a future type containding a Variable value.
@@ -40,6 +45,9 @@ class AsyncVariable {
   };
 
   AsyncVariable();
+
+  explicit AsyncVariable(
+      framework::Variable* var_ptr);  // when and how to notify all?
 
   ~AsyncVariable() {}
 

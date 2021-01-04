@@ -98,7 +98,7 @@ cc_library(scope_buffered_ssa_graph_executor SRCS scope_buffered_ssa_graph_execu
 #cc_test(reduce_op_handle_test SRCS reduce_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
 #        device_context reduce_op_handle )
 cc_library(fast_threaded_ssa_graph_executor SRCS fast_threaded_ssa_graph_executor.cc
-        DEPS fetch_async_op_handle ssa_graph_executor scope simple_threadpool device_context)
+        DEPS fetch_async_op_handle ssa_graph_executor scope simple_threadpool device_context async_variable)
 cc_test(fused_broadcast_op_test SRCS fused_broadcast_op_handle_test.cc DEPS fused_broadcast_op_handle)
 
 cc_test(exception_holder_test SRCS exception_holder_test.cc )
