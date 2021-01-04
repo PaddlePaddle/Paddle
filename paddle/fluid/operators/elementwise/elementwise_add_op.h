@@ -179,6 +179,7 @@ __global__ void MatrixColReduce(const T *__restrict__ in, T *__restrict__ out,
   }
 }
 
+#ifdef CUDA_VERSION >= 10000
 template <int SIZE>
 __global__ void VecFP16MatrixColReduce(const __half2 *__restrict__ in,
                                        __half2 *__restrict__ out, size_t width,
@@ -199,6 +200,7 @@ __global__ void VecFP16MatrixColReduce(const __half2 *__restrict__ in,
   }
 #endif
 }
+#endif
 
 template <typename T>
 __global__ void MatrixReduceLongWidth(const T *__restrict__ in, T *out,
