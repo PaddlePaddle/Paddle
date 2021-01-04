@@ -265,22 +265,14 @@ void FastThreadedSSAGraphExecutor::RunOpWithAsyncVariable(
       complete_q->Push(complete);
     });
 
-    // step 4: while lanuching each op, register a callback into each output
-    // AsyncVariable
+    // step 4: deal with its downstream op
     auto &outputs = op_to_run->Outputs();
-    // TODO(Aurelius84): We should not update out_vars into available, because
-    // op_to_run is put
-    // into a separate thread to run. Use callback or hook in `RunImpl` to
-    // NotifyAvailable.
-    // UpdateAsyncVariableState(op->Outputs());
-
-    // deal with its downstream op
     for (auto &output : outputs) {
       for (auto &pending_op : output->PendingOps()) {
         std::atomic<int> &op_dep = op_deps->at(pending_op);
         if (op_dep.fetch_sub(1) != 1) continue;
 
-        // TODO(Aurelius84): Consider to avoid thread switch by launch one op
+        // TODO(Aurelius84): Consider to avoid thread switch by launching one op
         // in current thread.
         op_queue.push_back(pending_op);
       }
