@@ -387,17 +387,18 @@ def cast_model_to_fp16(program,
                     out_var = block.vars.get(out_var_name)
                     if out_var is None or out_var.type not in _valid_types:
                         continue
-                    out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
-                    post_ops = find_true_post_op(ops, op, out_var_name)
-                    for post_op in post_ops:
-                        if post_op in keep_fp32_ops:
-                            continue
-                        post_cast_num = _insert_cast_post_op(
-                            block, op, idx + pre_cast_num + 1,
-                            core.VarDesc.VarType.FP32,
-                            core.VarDesc.VarType.FP16, out_var_name,
-                            op_var_rename_map)
-                        num_cast_ops += post_cast_num
+                    if out_var.dtype == core.VarDesc.VarType.FP16:
+                        out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
+                        post_ops = find_true_post_op(ops, op, out_var_name)
+                        for post_op in post_ops:
+                            if post_op in keep_fp32_ops:
+                                continue
+                            post_cast_num = _insert_cast_post_op(
+                                block, op, idx + pre_cast_num + 1,
+                                core.VarDesc.VarType.FP32,
+                                core.VarDesc.VarType.FP16, out_var_name,
+                                op_var_rename_map)
+                            num_cast_ops += post_cast_num
             idx += num_cast_ops + 1
 
     _rename_op_input(program, op_var_rename_map, origin_ops, keep_fp32_ops)
