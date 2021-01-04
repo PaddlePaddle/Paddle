@@ -206,6 +206,28 @@ class CommonAccessor:
             conv_indent(indent), attrs, conv_indent(indent))
 
 
+class Tensor:
+    def __init__(self):
+        self.main_program_id = None
+        self.startup_program_id = None
+        self.feed_var_name = None
+        self.fetch_var_name = None
+        self.tensor_table_class = False
+
+    def to_string(self, indent):
+        program_str = "{}tensor {{{}\n{}}}"
+        attrs = ""
+        attrs += "feed_var_name: \"{}\" ".format(str(self.feed_var_name))
+        attrs += "fetch_var_name: \"{}\" ".format(str(self.fetch_var_name))
+        attrs += "startup_program_id: {} ".format(str(self.startup_program_id))
+        attrs += "main_program_id: {} ".format(str(self.main_program_id))
+        attrs += "tensor_table_class: \"{}\" ".format(
+            str(self.tensor_table_class))
+        attrs += "\n"
+        return program_str.format(
+            conv_indent(indent), attrs, conv_indent(indent))
+
+
 class Table:
     def __init__(self):
         self.id = -1
@@ -214,6 +236,7 @@ class Table:
         self.type = None
         self.accessor = None
         self.common = None
+        self.tensor = None
 
     def to_string(self, indent):
         table_str = "{}downpour_table_param {{{}\n{}}}"
@@ -228,6 +251,10 @@ class Table:
 
         if self.accessor is not None:
             attrs += self.accessor.to_string(indent)
+            attrs += "\n"
+
+        if self.tensor is not None:
+            attrs += self.tensor.to_string(indent)
             attrs += "\n"
 
         if self.common is not None:
@@ -356,6 +383,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()
         self._heter_client = None
+        self._server_sub_program = []
 
     def _set_basic_info(self, context):
         self.context = context
@@ -495,7 +523,8 @@ class TheOnePSRuntime(RuntimeBase):
             # for ps-heter mode, wait heter worker ready
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
             ):
-                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
+                wait_server_ready(
+                    self.role_maker._get_heter_worker_endpoints())
 
                 self._heter_client = HeterClient(
                     self.role_maker._get_heter_worker_endpoints(),
@@ -666,13 +695,18 @@ class TheOnePSRuntime(RuntimeBase):
             pshost = fluid.core.PSHost(host, int(port), idx)
             string_hosts.append(pshost.serialize_to_string())
 
+        empty_porgram = Program()
+        self._server_sub_program.append(empty_porgram.desc)
+
         self._server = fluid.core.DistFleetWrapper()
-        self._server.init_server(proto_txt, string_hosts, role_id)
+        self._server.init_server(
+            proto_txt, string_hosts, role_id, self._server_sub_program)
 
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 
         dist_varnames = get_sparse_tablenames(self.origin_main_program, True)
-        sparse_varnames = get_sparse_tablenames(self.origin_main_program, False)
+        sparse_varnames = get_sparse_tablenames(
+            self.origin_main_program, False)
 
         distributed_varnames = dist_varnames + sparse_varnames
 
