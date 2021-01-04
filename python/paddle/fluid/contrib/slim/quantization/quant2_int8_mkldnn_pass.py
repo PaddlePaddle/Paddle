@@ -300,7 +300,7 @@ class Quant2Int8MkldnnPass(object):
         def _is_int8_weights(op_node, weight_name):
             weight_var_name = op_node.input(weight_name)[0]
             weight = self._load_param(self._scope, weight_var_name)
-            return np.all(np.abs(weight % 1) < 1e-6)
+            return np.all(np.mod(weight, 1) == 0)
 
         for op in graph.all_op_nodes():
             if op.name() in self._conv_ops and _is_int8_weights(op, "Filter"):
