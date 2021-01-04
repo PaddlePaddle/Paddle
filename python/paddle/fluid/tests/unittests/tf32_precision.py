@@ -19,14 +19,13 @@ import paddle
 import paddle.fluid.core as core
 import re
 
-
 # Get compute capability of the current CUDA device
-def get_compute_capability(id):
-    import pycuda.driver as drv
-    drv.init()
-    gpu_device = drv.Device(id)
-    compute_capability = gpu_device.compute_capability()
-    return compute_capability[0] * 10 + compute_capability[1]
+#def get_compute_capability(id):
+#    import pycuda.driver as drv
+#    drv.init()
+#    gpu_device = drv.Device(id)
+#    compute_capability = gpu_device.compute_capability()
+#    return compute_capability[0] * 10 + compute_capability[1]
 
 
 # Get cuda runtime version from source file
@@ -48,8 +47,8 @@ def tf32_is_not_fp32():
         return False
     if core.get_cuda_device_count() == 0:
         return False
-    if get_compute_capability(0) < 80:
-        return False
+#    if get_compute_capability(0) < 80:
+#        return False
     if get_cuda_runtime_version() < 11000:
         return False
     return True
