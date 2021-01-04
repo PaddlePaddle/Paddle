@@ -45,6 +45,7 @@ def _convert_camel_to_snake(name):
     s1 = _first_cap_re.sub(r'\1_\2', name)
     return _all_cap_re.sub(r'\1_\2', s1).lower()
 
+
 def _addindent(string, indent):
     s1 = string.split('\n')
     if len(s1) == 1:
@@ -54,6 +55,7 @@ def _addindent(string, indent):
         if idx > 0:
             s2.append(str((indent * ' ') + line))
     return s1[0] + '\n' + '\n'.join(s2)
+
 
 class HookRemoveHelper(object):
     """ A HookRemoveHelper that can be used to remove hook. """
@@ -1174,7 +1176,7 @@ class Layer(core.Layer):
         keys = method + attrs + parameters + sublayers + buffers
 
         return keys
-    
+
     def extra_repr(self):
         """
         Extra representation of this layer, you can have custom implementation
