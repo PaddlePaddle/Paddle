@@ -34,7 +34,6 @@ from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
 STEP_COUNTER = "@PS_STEP_COUNTER@"
-
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
@@ -464,7 +463,8 @@ def create_heter_program(program, config, heter_program, heter_ops,
             block_append_op(heter_program, program, heter_block, op)
 
         entrance_vars = block_var_detail[index]["entrance"]
-        add_vars_by_var_list(entrance_vars, program, heter_program, heter_block)
+        add_vars_by_var_list(entrance_vars, program,
+                             heter_program, heter_block)
         exit_vars = block_var_detail[index]["exit"]
         add_vars_by_var_list(exit_vars, program, heter_program, heter_block)
 

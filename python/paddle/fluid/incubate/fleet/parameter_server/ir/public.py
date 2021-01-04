@@ -1152,7 +1152,7 @@ def _get_optimize_ops(_program):
 def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
     if hasattr(compiled_config.origin_main_program, 'lr_sheduler'):
         from paddle.optimizer.lr import LRScheduler
-        assert isinstance(main_program.lr_sheduler,
+        assert isinstance(compiled_config.origin_main_program.lr_sheduler,
                           LRScheduler), "must be LRScheduler"
         ops = _get_optimize_ops(compiled_config.origin_main_program)
         lr_param_dict = _get_lr_param_dict(ops)
@@ -1162,6 +1162,15 @@ def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
         compiled_config.add_tensor_table(
             "@LR_DECAY_COUNTER@", lr_name, lr_decay_startup_program,
             lr_decay_main_program, "GlobalStepTable")
+        # hard code for pe
+        lr_var = compiled_config.origin_main_program.global_block().vars["learning_rate_0"]
+        main_program.global_block().create_var(
+            name=lr_var.name,
+            shape=lr_var.shape,
+            dtype=lr_var.dtype,
+            type=lr_var.type,
+            lod_level=lr_var.lod_level,
+            persistable=True)
 
 
 def _get_lr_param_dict(opt_ops):
