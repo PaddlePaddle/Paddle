@@ -106,6 +106,7 @@ class Variable {
   void NotifyAvailable() const {
     std::lock_guard<std::mutex> lock(mutex_);
     state_ = AsyncState::kAvailable;
+    cv_.notify_all();
   }
 
  private:

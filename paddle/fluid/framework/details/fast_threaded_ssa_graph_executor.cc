@@ -45,6 +45,7 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       pool_(strategy.num_threads_),
       // add one more thread for generate op_deps
       prepare_pool_(1) {
+  VLOG(3) << "threads number is " << strategy.num_threads_;
   for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
     op_deps_.emplace(op, dep);
@@ -266,14 +267,18 @@ void FastThreadedSSAGraphExecutor::RunOpWithAsyncVariable(
     });
 
     // step 4: deal with its downstream op
+    VLOG(3) << "start to deal with downstream op from " << op_to_run->Name();
     auto &outputs = op_to_run->Outputs();
     for (auto &output : outputs) {
       for (auto &pending_op : output->PendingOps()) {
         std::atomic<int> &op_dep = op_deps->at(pending_op);
+        VLOG(3) << pending_op->Name()
+                << " dep value(before -1): " << op_dep.load();
         if (op_dep.fetch_sub(1) != 1) continue;
 
         // TODO(Aurelius84): Consider to avoid thread switch by launching one op
         // in current thread.
+        VLOG(3) << "put downstream op into queue." << pending_op->Name();
         op_queue.push_back(pending_op);
       }
     }
@@ -292,9 +297,14 @@ void FastThreadedSSAGraphExecutor::UpdateAsyncVariableState(
     auto *var_handle = static_cast<VarHandle *>(var_handle_base);
     auto &scope = local_exec_scopes_.at(var_handle->scope_idx());
     auto *var = scope->FindVar(var_handle->Name());
-    VLOG(3) << "Set var: " << var_handle->Name()
-            << " with AsyncState::kAvailable";
-    var->NotifyAvailable();
+    if (var == nullptr) {
+      // control_var
+      VLOG(3) << var_handle->Name() << " is not found in scope.";
+    } else {
+      VLOG(3) << "Set var: " << var_handle->Name()
+              << " with AsyncState::kAvailable";
+      var->NotifyAvailable();
+    }
   }
 }
 
@@ -415,7 +425,10 @@ bool FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
     return true;
-  } catch (...) {
+  } catch (std::exception &e) {
+    // FIXME(Aurelius84): FIXME just for debug log.
+    VLOG(2) << op->Name() << " " << e.what();
+
     exception_.Catch(std::current_exception());
     return false;
   }
