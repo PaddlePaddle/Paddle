@@ -753,7 +753,7 @@ class Optimizer(object):
         optimize_ops = self._create_optimization_pass(params_grads)
         return optimize_ops
 
-    def _apply_optimize(self, loss, startup_program, params_grads):
+    def apply_optimize(self, loss, startup_program, params_grads):
         """
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
@@ -878,7 +878,7 @@ class Optimizer(object):
             parameters=parameter_list,
             no_grad_set=no_grad_set)
 
-        optimize_ops = self._apply_optimize(
+        optimize_ops = self.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
 
         return optimize_ops, params_grads
@@ -917,5 +917,5 @@ class Optimizer(object):
                 grad_var = param._grad_ivar()
                 params_grads.append((param, grad_var))
 
-        self._apply_optimize(
+        self.apply_optimize(
             loss=None, startup_program=None, params_grads=params_grads)
