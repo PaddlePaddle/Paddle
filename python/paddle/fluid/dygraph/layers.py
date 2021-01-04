@@ -1274,6 +1274,10 @@ class Layer(core.Layer):
                     place = core.CPUPlace()
                 elif p.is_cuda_pinned_place():
                     place = core.CUDAPinnedPlace()
+                elif p.is_xpu_place():
+                    p = core.Place()
+                    p.set_place(t._place())
+                    place = core.XPUPlace(p.xpu_device_id())
                 else:
                     p = core.Place()
                     p.set_place(t._place())
