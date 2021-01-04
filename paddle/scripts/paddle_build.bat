@@ -181,8 +181,6 @@ rem ------initialize cmake variable for openblas------
 set WITH_MKL=ON
 set WITH_GPU=ON
 set MSVC_STATIC_CRT=OFF
-rem Temporarily turn off WITH_INFERENCE_API_TEST on GPU due to compile hang
-set WITH_INFERENCE_API_TEST=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
