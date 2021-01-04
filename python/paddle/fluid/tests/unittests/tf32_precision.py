@@ -17,12 +17,12 @@ import functools
 import os
 import paddle
 import paddle.fluid.core as core
-import pycuda.driver as drv
 import re
 
 
 # Get compute capability of the current CUDA device
 def get_compute_capability(id):
+    import pycuda.driver as drv
     drv.init()
     gpu_device = drv.Device(id)
     compute_capability = gpu_device.compute_capability()
