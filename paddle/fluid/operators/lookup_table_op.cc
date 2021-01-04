@@ -231,7 +231,7 @@ REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>,
 REGISTER_OP_VERSION(lookup_table)
     .AddCheckpoint(
         R"ROC(
-      Upgrade lookup_table add 1 attribute [axis], delete 1 attribute[dims].
+      Upgrade lookup_table add 1 attribute [entry_config].
     )ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "entry_config",
