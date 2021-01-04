@@ -336,6 +336,7 @@ class Upsample(layers.Layer):
 
     Examples:
         .. code-block:: python
+            
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -434,7 +435,7 @@ class UpsamplingNearest2D(layers.Layer):
             import paddle
             import paddle.nn as nn
 
-            input_data = paddle.rand(shape=[2, 3, 6, 10], dtype="float32")
+            input_data = paddle.rand(shape=(2,3,6,10)).astype("float32")
             upsample_out  = paddle.nn.UpsamplingNearest2D(size=[12,12])
             input = paddle.to_tensor(input_data)
             output = upsample_out(x=input)
@@ -520,7 +521,7 @@ class UpsamplingBilinear2D(layers.Layer):
             import paddle
             import paddle.nn as nn
 
-            input_data = paddle.rand(shape=[2, 3, 6, 10], dtype="float32")
+            input_data = paddle.rand(shape=(2,3,6,10)).astype("float32")
             upsample_out  = paddle.nn.UpsamplingBilinear2D(size=[12,12])
             input = paddle.to_tensor(input_data)
             output = upsample_out(x=input)

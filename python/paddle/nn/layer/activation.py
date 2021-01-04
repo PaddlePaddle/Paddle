@@ -557,6 +557,7 @@ class LeakyReLU(layers.Layer):
         .. code-block:: python
 
             import paddle
+            import numpy as np
 
             m = paddle.nn.LeakyReLU()
             x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
@@ -660,7 +661,7 @@ class Hardsigmoid(layers.Layer):
         self.name = name
 
     def forward(self, x):
-        return F.hardsigmoid(x, self.name)
+        return F.hardsigmoid(x, name=self.name)
 
     def extra_repr(self):
         name_str = 'name={}'.format(self.name) if self.name else ''

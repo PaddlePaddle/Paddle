@@ -50,8 +50,6 @@ class CommonSparseTable : public SparseTable {
 
   virtual int32_t initialize();
   virtual int32_t initialize_shard() { return 0; }
-  virtual void create_initializer(const std::string& attr,
-                                  const std::string& name);
   virtual int32_t initialize_value();
   virtual int32_t initialize_optimizer();
   virtual int32_t initialize_recorder();
@@ -86,8 +84,15 @@ class CommonSparseTable : public SparseTable {
 
   bool sync = false;
   int param_dim_ = 0;
+  int param_offset_ = 0;
+
+  std::unordered_map<std::string, int> value_idx_;
+  std::vector<std::string> value_names_;
+  std::vector<int> value_dims_;
+  std::vector<int> value_offsets_;
+  std::vector<std::string> initializer_attrs_;
+
   std::shared_ptr<SparseOptimizer> optimizer_;
-  std::unordered_map<std::string, Initializer*> initializers_;
   std::vector<std::shared_ptr<ValueBlock>> shard_values_;
   std::unordered_map<uint64_t, ReservoirValue<float>> pull_reservoir_;
   std::unique_ptr<framework::RWLock> rwlock_{nullptr};
