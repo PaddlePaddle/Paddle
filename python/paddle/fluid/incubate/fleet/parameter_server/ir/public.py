@@ -1163,7 +1163,8 @@ def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
             "@LR_DECAY_COUNTER@", lr_name, lr_decay_startup_program,
             lr_decay_main_program, "GlobalStepTable")
         # hard code for pe
-        lr_var = compiled_config.origin_main_program.global_block().vars["learning_rate_0"]
+        lr_var = compiled_config.origin_main_program.global_block(
+        ).vars["learning_rate_0"]
         main_program.global_block().create_var(
             name=lr_var.name,
             shape=lr_var.shape,
@@ -1196,8 +1197,8 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
         'ReduceOnPlateau', 'CosineAnnealingDecay'
     ]
 
-    from paddle.optimizer.lr import *
-    from paddle.fluid.layers.learning_rate_scheduler import *
+    from paddle.optimizer.lr import LRScheduler, ExponentialDecay
+    from paddle.fluid.layers.learning_rate_scheduler import exponential_decay
 
     decay_main_program = fluid.framework.Program()
     decay_startup_program = fluid.framework.Program()
