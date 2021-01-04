@@ -365,6 +365,7 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
       int max_blocks = std::max(max_physical_threads / (block_x * block_y), 1);
       int theory_block = (width + blocks.x - 1) / blocks.x;
       dim3 grids(std::min(theory_block, max_blocks));
+#ifdef CUDA_VERSION >= 10000
       if (std::is_same<T, paddle::platform::float16>::value && width < 2048 &&
           width % 2 == 0 && height % 64 == 0) {
         auto &dev_ctx =
@@ -382,6 +383,7 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
                                                                  width, height);
         return;
       }
+#endif
 
       if (width / height < 32) {
         MatrixColReduce<T, block_x, block_y><<<grids, blocks, 0, stream>>>(
