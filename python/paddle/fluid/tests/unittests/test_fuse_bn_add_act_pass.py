@@ -218,6 +218,8 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         place = fluid.CUDAPlace(0)
         self.check(place, use_cuda=True)
 
+    @unittest.skipIf(os.name == "nt",
+                     "fusion_group is not enabled for Windows.")
     def test_fuse_bn_add_act_API(self):
         # build_fused_program: use fused_bn_add_act python API
         main_program = fluid.Program()
