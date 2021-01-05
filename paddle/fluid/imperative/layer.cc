@@ -25,6 +25,7 @@
 #include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -231,9 +232,9 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
       true, platform::errors::InvalidArgument(
                 "Variable is not initialized or Variable's type is not "
                 "LoDTensor or SelectedRows when getting numpy tensor"));
+
   if (Var().IsType<framework::LoDTensor>()) {
     auto& src_tensor = Var().Get<framework::LoDTensor>();
-
     // TODO(Jiabin): change this after move unique_name generator to CXX
     auto new_var = std::make_shared<VarBase>(
         true, Name() + std::to_string(copied_counter_++));
@@ -244,7 +245,7 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     new_var->SetPersistable(Persistable());
     new_var->SetDataType(DataType());
     new_var->SetType(Type());
-    framework::TensorCopySync(src_tensor, dst_place, dst_tensor);
+    framework::TensorCopy(src_tensor, dst_place, dst_tensor);
     if (blocking) {
       platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
       auto src_place = src_tensor.place();
@@ -252,7 +253,6 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
         platform::DeviceContextPool::Instance().Get(src_place)->Wait();
       }
     }
-
     if (platform::is_gpu_place(dst_place)) {
       VLOG(3) << "copy tensor " << Name() << " from gpu";
     }
@@ -265,8 +265,8 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     auto* dst_selected_rows =
         new_var->MutableVar()->GetMutable<framework::SelectedRows>();
 
-    framework::TensorCopySync(src_selected_rows.value(), dst_place,
-                              dst_selected_rows->mutable_value());
+    framework::TensorCopy(src_selected_rows.value(), dst_place,
+                          dst_selected_rows->mutable_value());
     if (blocking) {
       platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
       auto src_place = src_selected_rows.place();
@@ -458,6 +458,25 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   } else {
     return nullptr;
   }
+}
+
+void IncreaseVarbaseReferenceCountUntilCopyComplete(
+    const std::shared_ptr<imperative::VarBase>& var,
+    const platform::Place& place) {
+  // Note(zhiqiu): Follow the logic of TensorCopy to determine the place that we
+  // need to add callback, see tensor_utils.cc:245
+  auto place_ = platform::is_gpu_place(place) ? place : var->Place();
+
+  auto tracer = imperative::GetCurrentTracer();
+  auto gc = tracer->MutableGarbageCollectorIfNotExists(place_);
+
+  // Note(zhiqiu): This is an empty callback, the only way is to "reference"
+  // var,
+  // so it will not be destructed until the kernels launched at current stream
+  // of given place is finished.
+  auto callback = [var]() { ; };
+
+  gc->DirectClearCallback(callback);
 }
 
 }  // namespace imperative
