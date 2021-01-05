@@ -13,9 +13,8 @@
 # limitations under the License.
 
 from . import optimizer
+from ..fluid.contrib import reader
 
 __all__ = []
 __all__ += ["reader"]
 __all__ += optimizer.__all__
-
-from ..fluid.contrib import reader

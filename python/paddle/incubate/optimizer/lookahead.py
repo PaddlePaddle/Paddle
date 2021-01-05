@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
-from ..fluid import core, framework, layers, unique_name
-from ..fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
-from ..fluid.layer_helper import LayerHelper
+from paddle.optimizer import Optimizer
+from paddle.fluid import core, framework, layers, unique_name
+from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+from paddle.fluid.layer_helper import LayerHelper
 import paddle
 import numpy as np
-from ..fluid.dygraph import base as imperative_base
+from paddle.fluid.dygraph import base as imperative_base
 
 __all__ = ["LookAhead"]
 

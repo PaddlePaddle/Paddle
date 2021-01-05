@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['LookAhead', 'ModelAverage']
-
 from .lookahead import LookAhead
 from .modelaverage import ModelAverage
+
+__all__ = ['LookAhead', 'ModelAverage']
