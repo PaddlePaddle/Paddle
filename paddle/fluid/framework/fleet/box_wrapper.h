@@ -216,12 +216,16 @@ class AfsManager {
     if (read) {
       PADDLE_ENFORCE_EQ(
           pipe(fd_read), 0,
-          platform::errors::External("Create read pipe failed in AfsManager."));
+          platform::errors::External("Create read pipe failed in AfsManager. "
+                                     "Maybe system resource is exhausted, "
+                                     "please check and retry"));
     }
     if (write) {
-      PADDLE_ENFORCE_EQ(pipe(fd_write), 0,
-                        platform::errors::External(
-                            "Create write pipe failed in AfsManager."));
+      PADDLE_ENFORCE_EQ(
+          pipe(fd_write), 0,
+          platform::errors::External("Create write pipe failed in AfsManager. "
+                                     "Maybe system resource is exhausted, "
+                                     "please check and retry"));
     }
     pid = vfork();
     PADDLE_ENFORCE_GE(
