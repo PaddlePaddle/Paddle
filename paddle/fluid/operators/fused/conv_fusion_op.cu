@@ -239,6 +239,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
               handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
               cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
               workspace_size_limit, &algo));
+
 #endif
       VLOG(3) << "cuDNN forward algo: " << algo;
     } else {
