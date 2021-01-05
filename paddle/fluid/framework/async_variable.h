@@ -1,10 +1,10 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//  Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//    http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,46 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include <condition_variable>  // NOLINT
-#include <cstdlib>
 #include <memory>
-#include <mutex>  //NOLINT
+#include <mutex>   // NOLINT
+#include <thread>  // NOLINT
 #include <utility>
 
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
+
+#pragma once
 
 namespace paddle {
 namespace framework {
 
-static const char kEnableAsync[] = "FLAGS_enable_async";
-
-static bool IsEnableAsync() { return std::getenv(kEnableAsync) != nullptr; }
-
-/*
- * AsyncVariable is a future type containding a Variable value.
- *
- * Note: Should we design a Base class, and use derive mechanism?
- *
- */
 class AsyncVariable {
  public:
-  enum EnumState {
-    kUnknown = 0,
-    kNotAvailable = 1,
-    kAvailable = 2,
-  };
-
   AsyncVariable();
+  AsyncVariable(const AsyncVariable&) = delete;
+  AsyncVariable& operator=(const AsyncVariable&) = delete;
 
-  explicit AsyncVariable(
-      framework::Variable* var_ptr);  // when and how to notify all?
-
-  ~AsyncVariable() {}
-
-  bool isAvailable() const { return state_ == EnumState::kAvailable; }
+  bool IsAvailable() const { return state_ == EnumState::kAvailable; }
 
   template <typename T>
   const T& Get() const {
@@ -59,11 +39,7 @@ class AsyncVariable {
       std::unique_lock<std::mutex> lock(mutex_);
       cv_.wait(lock, [this] { return state_ == EnumState::kAvailable; });
     }
-    PADDLE_ENFORCE_NOT_NULL(
-        inner_var_,
-        platform::errors::Unavailable(
-            "inner_var_ should not be null while calling Get<T>()."));
-    return inner_var_->Get<T>();
+    return *static_cast<const T*>(holder_);
   }
 
   template <typename T>
@@ -72,11 +48,7 @@ class AsyncVariable {
       std::unique_lock<std::mutex> lock(mutex_);
       cv_.wait(lock, [this] { return state_ == EnumState::kAvailable; });
     }
-    PADDLE_ENFORCE_NOT_NULL(
-        inner_var_,
-        platform::errors::Unavailable(
-            "inner_var_ should not be null while calling GetMutable<T>()."));
-    return inner_var_->GetMutable<T>();
+    return static_cast<T*>(holder_);
   }
 
   template <typename T, typename... Args>
@@ -85,29 +57,45 @@ class AsyncVariable {
         state_, EnumState::kAvailable,
         platform::errors::Unimplemented("Emplace AsyncVariable for multiple "
                                         "times is not implemented now."));
-
     if (state_ == EnumState::kNotAvailable) {
-      std::lock_guard<std::mutex> lock(mutex_);
-      inner_var_.reset(new framework::Variable());
-      // TODO(Aurelius84): T is truly available only after calling
-      // `tensor->mutable_data<T>(args)`.
-      state_ = EnumState::kAvailable;
-      this->GetMutable<T>();
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        state_ = EnumState::kAvailable;
+        holder_ = new T(std::forward<Args>(args)...);
+      }
+      cv_.notify_all();
+      return;
     }
-    // Once inner_var_ is available, we notify all thread.
-    cv_.notify_all();
+    holder_ = new T(std::forward<Args>(args)...);
   }
 
   template <typename WaiterT>
-  void AndThen(WaiterT&& waiter);
+  void AndThen(WaiterT&& waiter) {
+    // TODO(zhhsplendid): Implement it.
+  }
+
+  ~AsyncVariable();
+
+  // Enum representing the states for AsyncVaraible
+  enum EnumState {
+    // Reserve
+    kUknown = 0,
+    // Data is not available
+    kNotAvailable = 1,
+    // Data is available
+    kAvailable = 2,
+  };
 
  private:
-  DISABLE_COPY_AND_ASSIGN(AsyncVariable);
-
-  std::shared_ptr<framework::Variable> inner_var_;
+  // Holder for data member
+  void* holder_;
+  // Enum state of the current AsyncVariable
   EnumState state_;
+  // Condition variable used for wait-notify
   mutable std::condition_variable cv_;
+  // Mutex used for wait-notify
   mutable std::mutex mutex_;
 };
+
 }  // namespace framework
 }  // namespace paddle
