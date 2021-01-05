@@ -15,6 +15,7 @@
 from __future__ import print_function
 import time
 
+import ast
 import unittest
 import os
 import sys
@@ -373,6 +374,10 @@ class TestDistRunnerBase(object):
         build_stra.enable_inplace = False
         build_stra.memory_optimize = False
 
+        if args.fuse_all_reduce is not None:
+            sys.stderr.write('fuse_all_reduce={}'.format(args.fuse_all_reduce))
+            build_stra.fuse_all_reduce_ops = args.fuse_all_reduce
+
         if args.hogwild:
             build_stra.async_mode = True
 
@@ -620,6 +625,11 @@ def runtime_main(test_class):
         type=bool,
         default=False)
     parser.add_argument('--sync_batch_norm', action='store_true')
+    parser.add_argument(
+        '--fuse_all_reduce',
+        required=False,
+        type=ast.literal_eval,
+        default=None)
 
     args = parser.parse_args()
 
@@ -688,6 +698,7 @@ class TestDistBase(unittest.TestCase):
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
         self._save_model = False
+        self._fuse_all_reduce = None
         self._setup_config()
 
         global DIST_UT_PORT
@@ -945,7 +956,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_cuda"
             env.update({
                 "FLAGS_selected_gpus": "{}".format(0),
-                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id % 2),
+                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
@@ -960,7 +971,7 @@ class TestDistBase(unittest.TestCase):
         if self._pipeline_mode:
             tr_cmd += " --use_pipeline"
         if self._mp_mode:
-            env = {"FLAGS_selected_gpus": "{}".format(trainer_id % 2)}
+            env = {"FLAGS_selected_gpus": "{}".format(trainer_id)}
 
         if self._nccl_comm_num > 1:
             tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
@@ -970,6 +981,9 @@ class TestDistBase(unittest.TestCase):
 
         if self._enable_backward_deps:
             tr_cmd += " --enable_backward_deps"
+
+        if self._fuse_all_reduce is not None:
+            tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
 
         if self._gpu_fleet_api:
             tr_cmd += " --gpu_fleet_api"
@@ -992,6 +1006,7 @@ class TestDistBase(unittest.TestCase):
 
             global DIST_UT_PORT
             if DIST_UT_PORT == 0:
+                # NOTE(wangxi). hallreduce test must use 4cards after nccl>=2.7
                 for i in range(0, 4):
                     self._ps_endpoints += "127.0.0.1:%s," % (
                         self._find_free_port())
@@ -1110,7 +1125,8 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_vmodule"] = \
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
-                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,nccl_helper=10,grpc_client=10,grpc_server=10,request_handler_impl=10"
+                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10," \
+                "grpc_server=10,request_handler_impl=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         required_envs.update(need_envs)

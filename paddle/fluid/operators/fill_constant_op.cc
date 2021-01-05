@@ -116,11 +116,15 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                   "memory. Otherwise, fill output variable to the running "
                   "device")
         .SetDefault(false);
-    AddAttr<bool>(
-        "pinned",
-        "(bool, default false) If the tensor is placed in CUDAPinnedPlace "
-        "host memory ")
-        .SetDefault(false);
+    AddAttr<int>("place_type",
+                 "(int, default 0) allow mamually setting place where the "
+                 "variable should be hold. "
+                 "0: not set manually, determine the place by executor. "
+                 "1: CPUPlace. "
+                 "2: CUDAPlace. "
+                 "3: CUDAPinnedPlace. "
+                 "4: XPUPlace. ")
+        .SetDefault(0);
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "
               "with the specified value");
@@ -148,7 +152,9 @@ REGISTER_OP_CPU_KERNEL(fill_constant, ops::FillConstantKernel<float>,
                        ops::FillConstantKernel<int64_t>,
                        ops::FillConstantKernel<int>,
                        ops::FillConstantKernel<bool>,
-                       ops::FillConstantKernel<paddle::platform::float16>);
+                       ops::FillConstantKernel<paddle::platform::float16>,
+                       ops::FillConstantKernel<paddle::platform::complex64>,
+                       ops::FillConstantKernel<paddle::platform::complex128>);
 
 REGISTER_OP_VERSION(fill_constant)
     .AddCheckpoint(

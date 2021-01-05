@@ -18,7 +18,7 @@
 #include "paddle/fluid/platform/profiler.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/operators/distributed/communicator.h"
+#include "paddle/fluid/distributed/service/communicator.h"
 #endif
 
 namespace paddle {
@@ -348,7 +348,7 @@ bool ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
   try {
     VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
     if (LIKELY(!strategy_.dry_run_)) {
-      op->Run(strategy_.use_cuda_);
+      op->Run(strategy_.use_device_);
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
     return true;
@@ -362,14 +362,11 @@ void ThreadedSSAGraphExecutor::ExecutionFinal(
     std::vector<OpHandleBase *> *fetch_ops) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   if (strategy_.thread_barrier_) {
-    operators::distributed::Communicator::GetInstance()
-        ->BarrierTriggerDecrement();
+    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
   }
 #endif
-
   VLOG(3) << "caught exception " << exception_holder_.Type() << ", rethrow it";
   ClearFetchOp(graph_, fetch_ops);
-
   exception_holder_.ReThrow();
 }
 

@@ -162,10 +162,10 @@ class TestFleetRecomputeMetaOptimizer(TestFleetMetaOptimizer):
         ops = [op.type for op in avg_cost.block.ops]
         outs = [
             op.output('Out')[0] for op in avg_cost.block.ops
-            if op.type == 'assign'
+            if op.type == 'pinned_memcpy'
         ]
 
-        self.assertIn('assign', ops)
+        self.assertIn('pinned_memcpy', ops)
         self.assertIn('@Pinned', ''.join(outs))
         self.assertIn('@Fetch', ''.join(outs))
 

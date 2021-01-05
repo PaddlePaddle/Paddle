@@ -459,6 +459,36 @@ class FCPrimitiveFactory {
       constexpr float placeholder = 1.0f;  // beta
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                      negative_slope, placeholder);
+    } else if (ctx.Attr<std::string>("activation_type") == "gelu") {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_gelu,
+                                     alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "gelu_tanh") {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(
+          scale, mkldnn::algorithm::eltwise_gelu_tanh, alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "gelu_erf") {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_gelu_erf,
+                                     alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "tanh") {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_tanh,
+                                     alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "sigmoid") {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_logistic,
+                                     alpha, beta);
     }
 
     attributes.set_post_ops(post_operations);
@@ -572,6 +602,7 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(ctx.GetPlace()), true,
         platform::errors::PreconditionNotMet("FC MKL-DNN must use CPUPlace."));
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     auto input = ctx.Input<LoDTensor>("Input");
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");

@@ -19,8 +19,8 @@ import paddle.fluid as fluid
 import contextlib
 import unittest
 import numpy as np
-from paddle.fluid.contrib.mixed_precision.fp16_utils import cast_model_to_fp16
-from paddle.fluid.contrib.mixed_precision.fp16_utils import cast_parameters_to_fp16
+from paddle.static.amp import cast_model_to_fp16
+from paddle.static.amp import cast_parameters_to_fp16
 
 paddle.enable_static()
 
@@ -122,11 +122,11 @@ def train(use_pure_fp16=True, use_nesterov=False):
         # Test program
         test_program = train_program.clone(for_test=True)
 
-        optimizer = fluid.contrib.optimizer.Momentum(
+        optimizer = paddle.optimizer.Momentum(
             learning_rate=0.001,
             momentum=0.9,
             use_nesterov=use_nesterov,
-            regularization=fluid.regularizer.L2Decay(1e-4),
+            weight_decay=fluid.regularizer.L2Decay(1e-4),
             multi_precision=use_pure_fp16,
             rescale_grad=1.0 / BATCH_SIZE)
 
@@ -155,9 +155,10 @@ def train(use_pure_fp16=True, use_nesterov=False):
                 loss, = exe.run(compiled_program,
                                 feed=feeder.feed(data),
                                 fetch_list=[sum_cost])
+                loss_v = loss[0] if isinstance(loss, np.ndarray) else loss
                 print('PassID {0:1}, Train Batch ID {1:04}, train loss {2:2.4}'.
-                      format(pass_id, batch_id + 1, float(loss)))
-                train_loss_list.append(float(loss))
+                      format(pass_id, batch_id + 1, float(loss_v)))
+                train_loss_list.append(float(loss_v))
 
                 if batch_id >= 4:  # For speeding up CI
                     test_loss_list = []
