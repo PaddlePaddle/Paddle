@@ -220,6 +220,10 @@ class TracedGradOp {
       for (auto& var : vars) {
         if (var && !var->OverridedStopGradient()) {
           var->SetGraphIsFreed(false);
+          auto dirty_grad_node = var->GradNode();
+          if (dirty_grad_node) {
+            map_dirty_grad_node_[var] = dirty_grad_node;
+          }
           var->SetGradNode(node_);
         }
       }
@@ -246,7 +250,11 @@ class TracedGradOp {
       } else {
         for (auto& var : vars) {
           if (var && !var->OverridedStopGradient() && var->GradNode()) {
-            node_->InsertGradPendingNode(var->GradNode());
+            if (map_dirty_grad_node_.find(var) != map_dirty_grad_node_.end()) {
+              node_->InsertGradPendingNode(map_dirty_grad_node_[var]);
+            } else {
+              node_->InsertGradPendingNode(var->GradNode());
+            }
           }
         }
       }
@@ -329,6 +337,8 @@ class TracedGradOp {
  private:
   const std::shared_ptr<GradOpNode>& node_;
   OpBase* op_;
+  std::unordered_map<std::shared_ptr<VarBase>, std::shared_ptr<GradOpNode>>
+      map_dirty_grad_node_;
 };
 
 }  // namespace imperative

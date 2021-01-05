@@ -39,15 +39,23 @@ class BasicEngine : public Engine {
 
   void CheckBackwardInputs(const OpBase& op);
 
-  void PrepareGradAccumulators(const OpBase& op);
+  void PrepareGradAccumulators(
+      const OpBase& op,
+      const std::vector<std::shared_ptr<GradOpNode>> grad_pending_nodes);
 
   void Clear();
 
  private:
   std::shared_ptr<GradOpNode> init_node_;
   std::unordered_map<GradOpNode*, size_t> node_deps_;
-  std::unordered_map<VariableWrapper*, std::unique_ptr<GradientAccumulator>>
+  std::unordered_map<std::shared_ptr<GradOpNode>,
+                     std::unordered_map<VariableWrapper*,
+                                        std::unique_ptr<GradientAccumulator>>>
       accumulators_;
+  // leaf var doesn't have grad_node, that is, last grad_node doesn't have
+  // grad_pending_node
+  std::unordered_map<VariableWrapper*, std::unique_ptr<GradientAccumulator>>
+      leaf_basic_accumulators_;
   std::vector<std::pair<GradientAccumulator*, std::shared_ptr<VariableWrapper>>>
       need_accu_var_list_;
   // leaf_accumulators_ is only for leaf tensor(hooks/accumulate grad)

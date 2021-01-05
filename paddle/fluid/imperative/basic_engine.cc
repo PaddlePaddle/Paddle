@@ -108,7 +108,9 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
   }
 }
 
-void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
+void BasicEngine::PrepareGradAccumulators(
+    const OpBase& op,
+    const std::vector<std::shared_ptr<GradOpNode>> grad_pending_nodes) {
   for (const auto& pair : op.GetOutsMap()) {
     if (!pair.second.IsGrad()) {
       continue;
@@ -117,29 +119,101 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
     for (const auto& var : pair.second) {
       if (!var) continue;
 
-      auto& accumulator = accumulators_[var.get()];
-      if (!accumulator) {
-        if (FLAGS_sort_sum_gradient) {
-          accumulator.reset(new SortedGradientAccumulator(var.get()));
-        } else {
-          accumulator.reset(new EagerGradientAccumulator(var.get()));
+      VLOG(10) << "PrepareGradAccumulators " << var->Name();
+
+      if (!var->HasGradNode()) {
+        VLOG(10) << "PrepareGradAccumulators Leaf " << var->Name();
+        auto& accumulator = leaf_basic_accumulators_[var.get()];
+        if (!accumulator) {
+          if (FLAGS_sort_sum_gradient) {
+            accumulator.reset(new SortedGradientAccumulator(var.get()));
+          } else {
+            accumulator.reset(new EagerGradientAccumulator(var.get()));
+          }
         }
-      }
 
-      accumulator->IncreaseRefCnt();
+        accumulator->IncreaseRefCnt();
 
-      VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
-              << var.get() << ")  with reference count "
-              << accumulator->RefCnt();
+        VLOG(3) << "Prepare to acccumulate Leaf variable grad " << var->Name()
+                << "(" << var.get() << ")  with reference count "
+                << accumulator->RefCnt();
 
-      if (var->HasLeafHooks()) {
-        VLOG(3) << "Grad variable wrapper (" << var->Name()
-                << ") has leaf grad hooks.";
-        PADDLE_ENFORCE_NE(var->HasGradNode(), true,
-                          platform::errors::PermissionDenied(
-                              "Only leaf Tensor's gradient can append hook to "
-                              "Gradientaccumulator."));
-        accumulator->SetPostHooks(var->GetLeafHooks());
+        if (var->HasLeafHooks()) {
+          VLOG(3) << "Grad variable wrapper (" << var->Name()
+                  << ") has leaf grad hooks.";
+          PADDLE_ENFORCE_NE(
+              var->HasGradNode(), true,
+              platform::errors::PermissionDenied(
+                  "Only leaf Tensor's gradient can append hook to "
+                  "Gradientaccumulator."));
+          accumulator->SetPostHooks(var->GetLeafHooks());
+        }
+      } else {
+        VLOG(10) << "PrepareGradAccumulators no-leaf " << var->Name();
+        for (auto& grad_pending_node : grad_pending_nodes) {
+          PADDLE_ENFORCE_NOT_NULL(grad_pending_node,
+                                  platform::errors::NotFound(
+                                      "Grad pending node should not be null"));
+          VLOG(10) << "grad_pending_node " << var->Name();
+
+          // whether var is grad_pending_node's input var
+          bool flag_vars_grad_op = false;
+          for (auto& grad_pending_op : *grad_pending_node) {
+            VLOG(10) << "grad_pending_op " << var->Name();
+            grad_pending_op.EnforceHasInOut();
+            for (const auto& pending_in_pair : grad_pending_op.GetInsMap()) {
+              if (!pending_in_pair.second.IsGrad()) {
+                continue;
+              }
+              VLOG(10) << "pending_in_pair " << var->Name();
+              for (const auto& pending_in_var : pending_in_pair.second) {
+                VLOG(10) << "pending_in_var " << pending_in_var->Name();
+                if (var == pending_in_var) {
+                  VLOG(10) << "var == pending_in_var var " << var->Name();
+                  VLOG(10) << "var == pending_in_var pending_in_var "
+                           << pending_in_var->Name();
+                  flag_vars_grad_op = true;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (!flag_vars_grad_op) {
+            VLOG(10) << "continue " << var->Name();
+            continue;
+          }
+
+          // grad_pending_node should be var.grad_node_, but it's changed in
+          // inplace op
+          auto& accumulator = accumulators_[grad_pending_node][var.get()];
+
+          if (!accumulator) {
+            if (FLAGS_sort_sum_gradient) {
+              accumulator.reset(new SortedGradientAccumulator(var.get()));
+            } else {
+              accumulator.reset(new EagerGradientAccumulator(var.get()));
+            }
+          }
+
+          accumulator->IncreaseRefCnt();
+
+          VLOG(3) << "Prepare to acccumulate no-leaf variable grad "
+                  << var->Name() << "(" << var.get()
+                  << ")  with reference count " << accumulator->RefCnt();
+
+          if (var->HasLeafHooks()) {
+            VLOG(3) << "Grad variable wrapper (" << var->Name()
+                    << ") has leaf grad hooks.";
+            PADDLE_ENFORCE_NE(
+                var->HasGradNode(), true,
+                platform::errors::PermissionDenied(
+                    "Only leaf Tensor's gradient can append hook to "
+                    "Gradientaccumulator."));
+            accumulator->SetPostHooks(var->GetLeafHooks());
+          }
+          break;
+        }
       }
     }
   }
@@ -163,12 +237,13 @@ void BasicEngine::PrepareDeps() {
     auto* cur_node = q.front();
     q.pop();
 
+    const auto& grad_pending_nodes = cur_node->GradPendingNodes();
+
     for (auto& cur_op : *cur_node) {
       cur_op.EnforceHasInOut();
-      PrepareGradAccumulators(cur_op);
+      PrepareGradAccumulators(cur_op, grad_pending_nodes);
     }
 
-    const auto& grad_pending_nodes = cur_node->GradPendingNodes();
     for (auto& grad_pending_node : grad_pending_nodes) {
       PADDLE_ENFORCE_NOT_NULL(
           grad_pending_node,
@@ -222,11 +297,48 @@ void BasicEngine::Execute() {
             continue;
           }
 
-          auto iter = accumulators_.find(var.get());
-          PADDLE_ENFORCE_EQ(
-              iter != accumulators_.end(), true,
-              platform::errors::NotFound("Cannot find gradient of variable %s",
-                                         var->Name()));
+          VLOG(10) << "Checkpoint v1 " << var->Name();
+
+          std::unordered_map<VariableWrapper*,
+                             std::unique_ptr<GradientAccumulator>>::iterator
+              iter;
+          // std::unordered_map<std::shared_ptr<GradOpNode>,
+          // std::unordered_map<VariableWrapper*,
+          // std::unique_ptr<GradientAccumulator>>>::iterator iter_node;
+          bool flag_find_grad = false;
+          if (!var->HasGradNode()) {
+            VLOG(10) << "Checkpoint leaf v1.1 " << var->Name();
+            iter = leaf_basic_accumulators_.find(var.get());
+            PADDLE_ENFORCE_EQ(
+                iter != leaf_basic_accumulators_.end(), true,
+                platform::errors::NotFound(
+                    "Cannot find gradient of variable %s", var->Name()));
+            VLOG(10) << "Checkpoint leaf v1.2 " << var->Name();
+          } else {
+            VLOG(10) << "Checkpoint v1.1 " << var->Name();
+            for (auto& grad_pending_node :
+                 shared_cur_node->GradPendingNodes()) {
+              VLOG(10) << "Checkpoint v1.2 " << var->Name();
+              const auto& iter_node = accumulators_.find(grad_pending_node);
+              VLOG(10) << "Checkpoint v1.3 " << var->Name();
+              if (iter_node != accumulators_.end()) {
+                VLOG(10) << "Checkpoint v1.4 " << var->Name();
+                iter = iter_node->second.find(var.get());
+                VLOG(10) << "Checkpoint v1.5 " << var->Name();
+                if (iter != iter_node->second.end()) {
+                  flag_find_grad = true;
+                  break;
+                }
+                // break;
+              }
+            }
+            PADDLE_ENFORCE_EQ(
+                flag_find_grad, true,
+                platform::errors::NotFound(
+                    "Cannot find gradient of variable %s", var->Name()));
+          }
+
+          VLOG(10) << "Checkpoint v2 " << var->Name();
 
           // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor
           if (var->IsLeafGrad()) {
@@ -334,6 +446,7 @@ void BasicEngine::Clear() {
   init_node_.reset();
   node_deps_.clear();
   accumulators_.clear();
+  leaf_basic_accumulators_.clear();
   need_accu_var_list_.clear();
   leaf_accumulators_.clear();
 }

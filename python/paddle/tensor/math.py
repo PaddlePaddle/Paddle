@@ -99,6 +99,7 @@ __all__ = [
         'stanh',
         'sum',
         'tanh',
+        'tanh_',
         'add_n',
         'max',
         'maximum',
@@ -1961,6 +1962,34 @@ def tanh(x, name=None):
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
     return out
+
+def tanh_(x, name=None):
+    r"""
+    Tanh Activation Operator.
+
+    .. math::
+        out = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
+
+    Args:
+        x (Tensor): Input of Tanh operator, an N-D Tensor, with data type float32, float64 or float16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Output of Tanh operator, a Tensor with same data type and shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = paddle.tanh(x)
+            print(out)
+            # [-0.37994896 -0.19737532  0.09966799  0.29131261]
+    """
+    if in_dygraph_mode():
+        return core.ops.tanh_(x)
 
 def increment(x, value=1.0, name=None):
     """
