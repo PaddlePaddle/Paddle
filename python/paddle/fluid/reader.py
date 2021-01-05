@@ -759,8 +759,9 @@ class DataLoader(object):
 
         Args:
             dataset (InMemoryDataset|QueueDataset): the dataset object.
-            places (list(CUDAPlace)|list(CPUPlace)): places where the result 
-                data should be converted.   
+            places (list(CUDAPlace)|list(CPUPlace)|list(str)): places where the result 
+                data should be converted. If places is list of string, the string in the list 
+                can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where x is the index of the GPUs.   
             drop_last (bool): whether to drop the last batch whose sample 
                 number is less than batch size. If drop_last = True, they
                 would be dropped. If drop_last = False, they would be kept. 
