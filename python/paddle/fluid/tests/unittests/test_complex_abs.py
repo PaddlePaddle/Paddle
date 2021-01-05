@@ -23,6 +23,7 @@ from op_test import OpTest
 
 class TestComplexAbsOp(OpTest):
     def setUp(self):
+        paddle.enable_static()
         self.op_type = "abs"
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
@@ -53,5 +54,4 @@ class TestComplexAbsOp(OpTest):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

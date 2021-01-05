@@ -817,7 +817,7 @@ class AbsGradOp : public framework::OperatorWithKernel {
   }
 };
 
-template <ActBwdOpFwdDeps kDepValue, typename T>
+template <typename T>
 class AbsGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -829,19 +829,6 @@ class AbsGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-
-    if ((static_cast<int>(kDepValue) &
-         static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
-        FLAGS_use_mkldnn ||
-        (op->HasAttr("use_mkldnn") &&
-         BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
-      op->SetInput("X", this->Input("X"));
-    }
-
-    if (static_cast<int>(kDepValue) &
-        static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
-      op->SetInput("Out", this->Output("Out"));
-    }
   }
 };
 
@@ -1417,14 +1404,10 @@ REGISTER_OP_CPU_KERNEL(
 /* ========================================================================== */
 
 /* ==========================   abs register  ============================ */
-REGISTER_OPERATOR(
-    abs, ops::ActivationOp, ops::AbsOpMaker, ops::ActivationOpInferVarType,
-    ops::AbsGradOpMaker<ops::AbsGradFunctor<float>::FwdDeps(),
-                        paddle::framework::OpDesc>,
-    ops::AbsGradOpMaker<ops::AbsGradFunctor<float>::FwdDeps(),
-                        paddle::imperative::OpBase>,
-    std::conditional<ops::CanInplaceAct<ops::AbsGradFunctor<float>>(),
-                     ops::ActFwdInplaceInferer, void>::type);
+REGISTER_OPERATOR(abs, ops::ActivationOp, ops::AbsOpMaker,
+                  ops::ActivationOpInferVarType,
+                  ops::AbsGradOpMaker<paddle::framework::OpDesc>,
+                  ops::AbsGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(abs_grad, ops::AbsGradOp, ops::ActivationGradOpInplaceInferer,
                   ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
