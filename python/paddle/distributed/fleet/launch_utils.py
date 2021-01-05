@@ -473,7 +473,7 @@ def start_local_trainers(cluster,
                                                          "Value"))))
             logger.info(
                 "details abouts PADDLE_TRAINER_ENDPOINTS can be found in {}/endpoints.log, and detail running logs maybe found in {}/workerlog.0".
-                format(log_dir))
+                format(log_dir, log_dir))
         fn = None
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))
