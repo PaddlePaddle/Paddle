@@ -113,7 +113,9 @@ __all__ = [
         'floor_mod',
         'multiply',
         'add',
+        'add_',
         'subtract',
+        'subtract_',
         'atan',
         'logsumexp',
         'inverse',
@@ -284,6 +286,26 @@ def add(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+def add_(x, y, name=None):
+    """
+    Examples:
+
+    ..  code-block:: python
+
+        import paddle
+        x = paddle.to_tensor([2, 3, 4], 'float64')
+        y = paddle.to_tensor([1, 5, 2], 'float64')
+        z = paddle.add(x, y)
+        print(z)  # [3., 8., 6. ]
+
+    """
+    op_type = 'elementwise_add_'
+    axis = -1
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, op_name=op_type)
+
+
 def subtract(x, y, name=None):
     """
     Substract two tensors element-wise. The equation is:
@@ -343,6 +365,66 @@ def subtract(x, y, name=None):
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def subtract_(x, y, name=None):
+    """
+    Substract two tensors element-wise. The equation is:
+
+    .. math::
+        out = x - y
+
+    **Note**:
+    ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = paddle.to_tensor([[1, 2], [7, 8]])
+            y = paddle.to_tensor([[5, 6], [3, 4]])
+            res = paddle.subtract(x, y)
+            print(res)
+            #       [[-4, -4],
+            #        [4, 4]]
+
+            x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            y = paddle.to_tensor([1, 0, 4])
+            res = paddle.subtract(x, y)
+            print(res)
+            #       [[[ 0,  2, -1],
+            #         [ 0,  2, -1]]]
+
+            x = paddle.to_tensor([2, np.nan, 5], dtype='float32')
+            y = paddle.to_tensor([1, 4, np.nan], dtype='float32')
+            res = paddle.subtract(x, y)
+            print(res)
+            #       [ 1., nan, nan]
+
+            x = paddle.to_tensor([5, np.inf, -np.inf], dtype='float64')
+            y = paddle.to_tensor([1, 4, 5], dtype='float64')
+            res = paddle.subtract(x, y)
+            print(res)
+            #       [   4.,  inf., -inf.]
+
+    """
+    op_type = 'elementwise_sub_'
+    axis = -1
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
 
 
 def divide(x, y, name=None):
