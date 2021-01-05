@@ -88,7 +88,6 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .extension import multiclass_nms  #DEFINE_ALIAS
 # from .extension import polygon_box_transform  #DEFINE_ALIAS
 # from .extension import random_crop  #DEFINE_ALIAS
-# from .extension import row_conv  #DEFINE_ALIAS
 # from .extension import rpn_target_assign  #DEFINE_ALIAS
 # from .extension import similarity_focus  #DEFINE_ALIAS
 # from .extension import target_assign  #DEFINE_ALIAS
@@ -128,10 +127,10 @@ from .loss import binary_cross_entropy  #DEFINE_ALIAS
 from .loss import binary_cross_entropy_with_logits  #DEFINE_ALIAS
 # from .loss import bpr_loss  #DEFINE_ALIAS
 # from .loss import center_loss  #DEFINE_ALIAS
+#from .loss import cross_entropy  #DEFINE_ALIAS
 from .loss import cross_entropy  #DEFINE_ALIAS
 from .loss import dice_loss  #DEFINE_ALIAS
 from .loss import hsigmoid_loss  #DEFINE_ALIAS
-from .loss import iou_similarity  #DEFINE_ALIAS
 from .loss import kl_div  #DEFINE_ALIAS
 from .loss import l1_loss  #DEFINE_ALIAS
 from .loss import log_loss  #DEFINE_ALIAS
@@ -145,7 +144,6 @@ from .loss import sigmoid_focal_loss  #DEFINE_ALIAS
 from .loss import smooth_l1_loss  #DEFINE_ALIAS
 from .loss import softmax_with_cross_entropy  #DEFINE_ALIAS
 from .loss import square_error_cost  #DEFINE_ALIAS
-from .loss import ssd_loss  #DEFINE_ALIAS
 # from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 from .loss import ctc_loss  #DEFINE_ALIAS
 # from .norm import data_norm        #DEFINE_ALIAS
@@ -217,3 +215,4 @@ from .vision import pixel_shuffle  #DEFINE_ALIAS
 from .input import one_hot  #DEFINE_ALIAS
 from .input import embedding  #DEFINE_ALIAS
 from ...fluid.layers import gather_tree
+from ...fluid.layers import temporal_shift

@@ -214,13 +214,23 @@ class TestDygraphDoubleGrad(TestCase):
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
         loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-        loss.backward()
+        loss.backward(retain_graph=True)
 
         x_grad_actual = x.gradient()
         x_grad_expected = (2.0 / float(numel) *
                            (x_np + dx_expected *
                             (x_np > 0) * 2 / float(numel))).astype('float32')
         self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+
+        for i in range(5):
+            loss.backward(retain_graph=True)
+            x_grad_actual = x.gradient()
+            x_grad_expected = (i + 2) * (2.0 / float(numel) * (
+                x_np + dx_expected *
+                (x_np > 0) * 2 / float(numel))).astype('float32')
+            print(x_grad_actual)
+            print(x_grad_expected)
+            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
 
     @dygraph_guard
     def test_example_with_gradient_accumulation_and_no_grad_vars(self):

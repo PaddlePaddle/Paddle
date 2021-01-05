@@ -57,7 +57,7 @@ void OpTester::Init(const OpTesterConfig &config) {
     place_ = paddle::platform::CPUPlace();
   }
 
-  framework::InitDevices(false);
+  framework::InitDevices();
   scope_.reset(new paddle::framework::Scope());
 
   op_ = framework::OpRegistry::CreateOp(op_desc_);

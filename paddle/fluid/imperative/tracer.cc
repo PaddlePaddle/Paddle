@@ -38,11 +38,20 @@ void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer) {
 }
 
 static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
-  for (const auto& name_pair : outs) {
-    for (const auto& vb : name_pair.second) {
-      VLOG(6) << "Set output: " << vb->Name() << "'s OverridedStopGradient as "
+  for (const auto& pair : outs) {
+    for (const auto& var : pair.second) {
+      // NOTE(zhiqiu): this happends when None output are passed from python
+      // side. For example, fake_quantize_dequantize_moving_average_abs_max may
+      // pass None OutAccum in eval mode.
+      // It can be refined by generate several different pybind interface for
+      // one operator with different function signature.
+      if (var == nullptr) {
+        VLOG(4) << pair.first << " is NULL";
+        continue;
+      }
+      VLOG(6) << "Set output: " << var->Name() << "'s OverridedStopGradient as "
               << generate_grad;
-      vb->InnerSetOverridedStopGradient(generate_grad);
+      var->InnerSetOverridedStopGradient(generate_grad);
     }
   }
 }

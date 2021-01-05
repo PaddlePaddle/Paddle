@@ -174,7 +174,7 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices(false);
+    paddle::framework::InitDevices();
     scope_.reset(new paddle::framework::Scope(), [](framework::Scope *scope) {
       delete scope;
 #ifdef PADDLE_WITH_CUDA
@@ -1100,6 +1100,7 @@ USE_TRT_CONVERTER(skip_layernorm);
 USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
 USE_TRT_CONVERTER(stack);
+USE_TRT_CONVERTER(clip);
 #endif
 
 namespace paddle_infer {

@@ -23,4 +23,6 @@ using CUDAReduceSumGradKernel =
 REGISTER_OP_CUDA_KERNEL(reduce_sum_grad, CUDAReduceSumGradKernel<float>,
                         CUDAReduceSumGradKernel<double>,
                         CUDAReduceSumGradKernel<int>,
-                        CUDAReduceSumGradKernel<int64_t>);
+                        CUDAReduceSumGradKernel<int64_t>,
+                        CUDAReduceSumGradKernel<paddle::platform::complex64>,
+                        CUDAReduceSumGradKernel<paddle::platform::complex128>);

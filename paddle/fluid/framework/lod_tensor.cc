@@ -281,7 +281,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     PADDLE_ENFORCE_EQ(
         version, 0U,
         platform::errors::InvalidArgument(
-            "Tensor version %u is not supported, only version 0 is supported.",
+            "Deserialize to tensor failed, maybe the loaded file is "
+            "not a paddle model(expected file format: 0, but %u found).",
             version));
   }
   {
@@ -307,7 +308,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     PADDLE_ENFORCE_EQ(
         version, 0U,
         platform::errors::InvalidArgument(
-            "Tensor version %u is not supported, only version 0 is supported.",
+            "Deserialize to tensor failed, maybe the loaded file is "
+            "not a paddle model(expected file format: 0, but %u found).",
             version));
   }
   {

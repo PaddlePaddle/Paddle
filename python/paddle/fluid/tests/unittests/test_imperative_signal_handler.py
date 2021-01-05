@@ -41,7 +41,7 @@ class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
     def test_child_process_exit_with_error(self):
         def __test_process__():
             core._set_process_signal_handler()
-            sys.exit(1)
+            os._exit(os.EX_DATAERR)
 
         exception = None
         try:

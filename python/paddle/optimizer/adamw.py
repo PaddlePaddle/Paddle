@@ -17,13 +17,12 @@ from .adam import Adam
 from ..fluid import framework
 from ..fluid.dygraph import base as imperative_base
 import paddle
-from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 __all__ = ['AdamW']
 
 
 class AdamW(Adam):
-    """
+    r"""
     The AdamW optimizer is implemented based on the AdamW Optimization
     in paper `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
     it can resolves the problem of L2 regularization failure in the Adam optimizer.
@@ -80,6 +79,7 @@ class AdamW(Adam):
 
     Examples:
         .. code-block:: python
+            
             import paddle
 
             linear = paddle.nn.Linear(10, 10)
@@ -211,10 +211,6 @@ class AdamW(Adam):
     @framework.dygraph_only
     @imperative_base.no_grad
     def step(self):
-        if paddle.distributed.get_world_size() > 1:
-            apply_collective_grads(self._parameter_list)
-
-        self._dtype = None
         params_grads = []
         for param in self._parameter_list:
             if not param.trainable:

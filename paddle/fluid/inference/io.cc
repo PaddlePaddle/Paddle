@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind.h"
 
 DEFINE_string(devices, "", "The devices to be used which is joined by comma.");
-DEFINE_bool(init_p2p, false, "Whether to init p2p.");
 DEFINE_int32(math_num_threads, 1,
              "Number of threads used to run math functions.");
 
@@ -42,7 +41,7 @@ void Init(const std::vector<std::string> argv) {
   while (std::getline(tokenStream, token, ',')) {
     devices.push_back(std::stoi(token));
   }
-  framework::InitDevices(FLAGS_init_p2p, devices);
+  framework::InitDevices(devices);
 }
 
 void ReadBinaryFile(const std::string& filename, std::string* contents) {

@@ -552,6 +552,27 @@ struct FCMKLDNN : public PatternBase {
   PATTERN_DECL_NODE(output);
 };
 
+//
+// \brief   Pattern looking for fc and a directly following activation
+// operator.
+//
+// \note    Currently only gelu and tanh are supported as an activation
+// function.
+//          Formula: act(fc(x))
+//          Op: fc + act
+struct FCActOneDNN : public PatternBase {
+  FCActOneDNN(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fc_act_onednn") {}
+
+  PDNode* operator()(const std::string& act_type);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(fc);
+  PATTERN_DECL_NODE(act);
+  PATTERN_DECL_NODE(fc_out);
+  PATTERN_DECL_NODE(act_out);
+};
+
 // Embedding
 struct Embedding : public PatternBase {
   Embedding(PDPattern* pattern, const std::string& name_scope)
@@ -940,10 +961,52 @@ struct Reshape : public PatternBase {
 
 // Matmul op
 // Forward pass for matmul.
-// matmul_out is a result of the operator.
 struct Matmul : public PatternBase {
   Matmul(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "reshape2") {}
+      : PatternBase(pattern, name_scope, "matmul") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(matmul_in_x);
+  PATTERN_DECL_NODE(matmul_in_y);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+};
+
+// Squeeze2 + Matmul
+// Forward pass.
+struct Squeeze2Matmul : public PatternBase {
+  Squeeze2Matmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "squeeze2_matmul") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(squeeze2_in_x);
+  PATTERN_DECL_NODE(squeeze2_op);
+  PATTERN_DECL_NODE(matmul_in_x);
+  PATTERN_DECL_NODE(matmul_in_y);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+};
+
+// Reshape2 + Matmul
+// Forward pass.
+struct Reshape2Matmul : public PatternBase {
+  Reshape2Matmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "reshape2_matmul") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(reshape2_in_x);
+  PATTERN_DECL_NODE(reshape2_op);
+  PATTERN_DECL_NODE(matmul_in_x);
+  PATTERN_DECL_NODE(matmul_in_y);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+};
+
+// Forward pass for two input ops and matmul op.
+// matmul_out is a result of the operator.
+struct MatmulWithInputOps : public PatternBase {
+  MatmulWithInputOps(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_with_input_ops") {}
 
   PDNode* operator()();
   PATTERN_DECL_NODE(prev_op_x);
@@ -1273,6 +1336,26 @@ struct FirstBfloat16Ops : public PatternBase {
   PATTERN_DECL_NODE(op);
 };
 
+struct DuplicatedInputs : public PatternBase {
+  DuplicatedInputs(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "many_inputs_op") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(op);
+};
+
+struct UnnecessaryReorders : public PatternBase {
+  UnnecessaryReorders(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "unnecessary_reorders") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(quant_in);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(quant_out);
+};
+
 // Pattern used for enforcing inplace computation for in-place computation
 // supporting DNNL ops. softmax, batch_norm and layer_norm
 struct MKLDNNInPlace : public PatternBase {
@@ -1418,6 +1501,71 @@ struct FusionGru : public PatternBase {
   PATTERN_DECL_NODE(weight_h);
   PATTERN_DECL_NODE(weight_x);
   PATTERN_DECL_NODE(out);
+};
+
+// two concatenated fusion_gru ops
+// Forward pass for fusion of two concatenated fusion_gru ops.
+// concat_out is a result of the operator().
+struct TwoFusionGruConcat : public PatternBase {
+  TwoFusionGruConcat(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bi_fusion_gru") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(gru1);
+  PATTERN_DECL_NODE(gru2);
+  PATTERN_DECL_NODE(wh1);
+  PATTERN_DECL_NODE(wh2);
+  PATTERN_DECL_NODE(wx1);
+  PATTERN_DECL_NODE(wx2);
+  PATTERN_DECL_NODE(b1);
+  PATTERN_DECL_NODE(b2);
+  PATTERN_DECL_NODE(h1);
+  PATTERN_DECL_NODE(h2);
+  PATTERN_DECL_NODE(concat);
+  PATTERN_DECL_NODE(out);
+};
+
+// two subsequent bi_fusion_gru ops
+// Forward pass for fusion of two subsequent fusion_gru ops.
+// Hidden of the last fusion_gru op is a result of the operator().
+struct MultiGruSeq : public PatternBase {
+  MultiGruSeq(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multi_gru_seq") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(gru1);
+  PATTERN_DECL_NODE(wx11);
+  PATTERN_DECL_NODE(wx12);
+  PATTERN_DECL_NODE(wh11);
+  PATTERN_DECL_NODE(wh12);
+  PATTERN_DECL_NODE(b11);
+  PATTERN_DECL_NODE(b12);
+  PATTERN_DECL_NODE(h1);
+  PATTERN_DECL_NODE(gru2);
+  PATTERN_DECL_NODE(wx21);
+  PATTERN_DECL_NODE(wx22);
+  PATTERN_DECL_NODE(wh21);
+  PATTERN_DECL_NODE(wh22);
+  PATTERN_DECL_NODE(b21);
+  PATTERN_DECL_NODE(b22);
+  PATTERN_DECL_NODE(h2);
+};
+
+// multi_gru op
+// Quantization pass for multi_gru op.
+// Hidden of the multi_gru op is a result of the operator().
+struct MultiGru : public PatternBase {
+  MultiGru(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multi_gru") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(gru);
+  PATTERN_DECL_NODE(wx);
+  PATTERN_DECL_NODE(wh);
+  PATTERN_DECL_NODE(h);
 };
 
 }  // namespace patterns

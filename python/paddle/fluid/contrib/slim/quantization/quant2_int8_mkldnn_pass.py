@@ -49,10 +49,13 @@ class Quant2Int8MkldnnPass(object):
         self._fake_quantize_types = [
             'fake_quantize_moving_average_abs_max',
             'fake_quantize_range_abs_max',
-            'fake_quantize_dequantize_moving_average_abs_max'
         ]
         self._fake_dequantize_types = [
             'fake_dequantize_max_abs', 'fake_channel_wise_dequantize_max_abs'
+        ]
+        self._fake_quantize_dequantize_types = [
+            'fake_quantize_dequantize_abs_max',
+            'fake_quantize_dequantize_moving_average_abs_max'
         ]
         self._ops_to_quantize = _ops_to_quantize
         self._op_ids_to_skip = _op_ids_to_skip if _op_ids_to_skip is not None else set(
@@ -66,7 +69,7 @@ class Quant2Int8MkldnnPass(object):
         self._fc_ops = ['fc']
         self._relu_ops = ['relu', 'relu6']
         self._matmul_ops = ['matmul']
-        self._gru_ops = ['fusion_gru']
+        self._gru_ops = ['fusion_gru', 'multi_gru']
         self._weight_scales = {}
         # Collect the Input and Output sclaes from Fake quant models
         self._var_quant_scales = {}
@@ -137,8 +140,12 @@ class Quant2Int8MkldnnPass(object):
             for var_name in var_names:
                 scales[var_name] = (use_unsigned_int, lod_tensor)
 
+        # fake_quantize_dequantize_abs_max doesn't have scale value
+        fake_ops = ['fake_quantize_dequantize_moving_average_abs_max']
+        fake_ops.extend(self._fake_quantize_types)
+
         for op in graph.all_op_nodes():
-            if op.name() in self._fake_quantize_types:
+            if op.name() in fake_ops:
                 bit_length = op.op().attr("bit_length")
                 assert bit_length == 8, 'Unsupported number quantization bits ({}). Only 8 is supported now.'.format(
                     bit_length)
@@ -146,9 +153,10 @@ class Quant2Int8MkldnnPass(object):
                 input_name = op.input("X")[0]
                 scale_name = op.input("InScale")[0]
                 output_name = op.output("Out")[0]
-                # Gather new weights scale after folding batchnorm in convolution
+                # Gather new weight scales after folding batchnorm in convolution
                 scale = np.array(1.0 / self._load_param(
                     self._scope, scale_name)[0]).astype(np.float64)
+                scale[scale == np.Inf] = 0.0
                 lod_tensor = self._convert_scale2tensor(scale)
                 use_unsigned_int = False
                 _add_scale_for_vars([input_name, output_name], use_unsigned_int,
@@ -163,13 +171,14 @@ class Quant2Int8MkldnnPass(object):
                 if op.op().has_attr("max_range"):
                     _max_range = np.array(op.op().attr("max_range")).astype(
                         np.float64)
-                    self._weight_scales[input_name] = _max_range
+                    self._weight_scales[input_name] = np.array(
+                        self._s8_max * self._s8_max /
+                        _max_range).astype(np.float64)
                 else:
                     scale_name = op.input("Scales")[0]
-                    scale = np.array(
-                        self._s8_max * self._s8_max / self._load_param(
-                            self._scope, scale_name)).astype(np.float64)
-                    self._weight_scales[input_name] = scale
+                    self._weight_scales[input_name] = np.array(
+                        self._load_param(self._scope, scale_name)).astype(
+                            np.float64)
 
         return graph
 
@@ -179,6 +188,7 @@ class Quant2Int8MkldnnPass(object):
                 attr_scale = op.op().attr("out_threshold")
                 if attr_scale == 0.0: continue
                 scale = np.array(1.0 / attr_scale).astype(np.float64)
+                scale[scale == np.Inf] = 0.0
                 scale_lod_tensor = self._convert_scale2tensor(scale)
                 use_unsigned_int = False
                 for output_name in op.op().outputs():
@@ -240,9 +250,9 @@ class Quant2Int8MkldnnPass(object):
         for op in graph.all_op_nodes():
             if op.name() in self._fake_quantize_types:
                 self._remove_fake_quantize(graph, op)
-
-        for op in graph.all_op_nodes():
-            if op.name() in self._fake_dequantize_types:
+            elif op.name() in self._fake_dequantize_types:
+                self._remove_fake_dequantize(graph, op)
+            elif op.name() in self._fake_quantize_dequantize_types:
                 self._remove_fake_dequantize(graph, op)
 
         return graph
@@ -287,10 +297,15 @@ class Quant2Int8MkldnnPass(object):
                 ])
 
     def _dequantize_weights(self, graph):
+        def _is_int8_weights(op_node, weight_name):
+            weight_var_name = op_node.input(weight_name)[0]
+            weight = self._load_param(self._scope, weight_var_name)
+            return np.all(np.mod(weight, 1) == 0)
+
         for op in graph.all_op_nodes():
-            if op.name() in self._conv_ops:
+            if op.name() in self._conv_ops and _is_int8_weights(op, "Filter"):
                 self._dequantize_op_weights(graph, op, "Filter", "Output")
-            elif op.name() in self._mul_ops:
+            elif op.name() in self._mul_ops and _is_int8_weights(op, "Y"):
                 self._dequantize_op_weights(graph, op, "Y", "Out")
         return graph
 
@@ -301,9 +316,9 @@ class Quant2Int8MkldnnPass(object):
         scales = self._weight_scales[output_var_name]
         weight = self._load_param(self._scope, weight_var_name)
         if scales.size == 1 or scales.size == weight.shape[0]:
-            w_fp32 = np.divide(np.multiply(weight, self._s8_max).T, scales.T).T
+            w_fp32 = np.multiply(np.divide(weight, self._s8_max).T, scales.T).T
         elif len(weight.shape) > 1 and scales.size == weight.shape[1]:
-            w_fp32 = np.divide(np.multiply(weight, self._s8_max), scales)
+            w_fp32 = np.multiply(np.divide(weight, self._s8_max), scales)
         else:
             raise ValueError(
                 "The size of weight scales vector ({}) does not match the dimensions ({}) of the weights tensor {}."
@@ -352,6 +367,8 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'mul_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'fc_gru_fuse_pass')
         graph = self._apply_pass(graph, 'mul_gru_fuse_pass')
+        graph = self._apply_pass(graph, 'multi_gru_fuse_pass')
+        graph = self._apply_pass(graph, 'multi_gru_seq_fuse_pass')
         graph = self._apply_pass(graph, 'seq_concat_fc_fuse_pass')
         graph = self._apply_pass(graph, 'squared_mat_sub_fuse_pass')
         graph = self._apply_pass(graph, 'is_test_pass')
@@ -450,38 +467,46 @@ class Quant2Int8MkldnnPass(object):
                     self._var_quant_scales[weight_var_name] = (use_unsigned_int,
                                                                lod_tensor)
 
+        def _compute_single_gru_weight_scales(wx_var_name, wh_var_name):
+            wx = np.array(self._load_param(self._scope, wx_var_name))
+            wh = np.array(self._load_param(self._scope, wh_var_name))
+            OC = wh.shape[0]
+            scale_ur = 1.0 / np.max(np.abs(
+                np.concatenate(
+                    [
+                        wx[:, :2 * OC], wh.flatten()[:2 * OC * OC].reshape(OC, 2
+                                                                           * OC)
+                    ],
+                    axis=0)),
+                                    axis=0)
+            scale_o = 1.0 / np.max(np.abs(
+                np.concatenate(
+                    [
+                        wx[:, 2 * OC:], wh.flatten()[2 * OC * OC:].reshape(OC,
+                                                                           OC)
+                    ],
+                    axis=0)),
+                                   axis=0)
+
+            gru_weights_scale = np.concatenate([scale_ur,
+                                                scale_o]).astype('float')
+
+            return self._convert_scale2tensor(gru_weights_scale)
+
         def _compute_gru_weight_scales(wx_name, wh_name):
             for op in graph.all_op_nodes():
                 if op.op().type() in self._gru_ops:
-                    wx_var_name = op.input(wx_name)[0]
-                    wh_var_name = op.input(wh_name)[0]
-                    wx = np.array(self._load_param(self._scope, wx_var_name))
-                    wh = np.array(self._load_param(self._scope, wh_var_name))
-                    OC = wh.shape[0]
-                    scale_ur = 1.0 / np.max(np.abs(
-                        np.concatenate(
-                            [
-                                wx[:, :2 * OC], wh.flatten()[:2 * OC * OC]
-                                .reshape(OC, 2 * OC)
-                            ],
-                            axis=0)),
-                                            axis=0)
-                    scale_o = 1.0 / np.max(np.abs(
-                        np.concatenate(
-                            [
-                                wx[:, 2 * OC:], wh.flatten()[2 * OC * OC:]
-                                .reshape(OC, OC)
-                            ],
-                            axis=0)),
-                                           axis=0)
-
-                    gru_weights_scale = np.concatenate(
-                        [scale_ur, scale_o]).astype('float')
-
-                    lod_tensor = self._convert_scale2tensor(gru_weights_scale)
-                    use_unsigned_int = False
-                    self._var_quant_scales[wx_var_name] = (use_unsigned_int,
-                                                           lod_tensor)
+                    assert len(op.input(wx_name)) == len(
+                        op.input(wh_name)
+                    ), 'Mismatch in number of weights inputs ({} for WeightX vs. {} for WeightH).'.format(
+                        len(op.input(wx_name)), len(op.input(wh_name)))
+                    for i, wx_var_name in enumerate(op.input(wx_name)):
+                        wh_var_name = op.input(wh_name)[i]
+                        use_unsigned_int = False
+                        lod_tensor = _compute_single_gru_weight_scales(
+                            wx_var_name, wh_var_name)
+                        self._var_quant_scales[wx_var_name] = (use_unsigned_int,
+                                                               lod_tensor)
 
         _compute_var_scales(self._conv_ops, "Filter", axis=1)
         _compute_var_scales(self._fc_ops, "W", axis=0)

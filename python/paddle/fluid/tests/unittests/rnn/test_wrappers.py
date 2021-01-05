@@ -89,7 +89,8 @@ class TestRNNWrapper(unittest.TestCase):
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, h2 = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
-        y2 = paddle.multiply(y2, mask, axis=0)
+        mask = paddle.unsqueeze(mask, -1)
+        y2 = paddle.multiply(y2, mask)
 
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
@@ -169,7 +170,8 @@ class TestBiRNNWrapper(unittest.TestCase):
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, (fw_h2, bw_h2) = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
-        y2 = paddle.multiply(y2, mask, axis=0)
+        mask = paddle.unsqueeze(mask, -1)
+        y2 = paddle.multiply(y2, mask)
 
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(fw_h1, fw_h2.numpy(), atol=1e-8, rtol=1e-5)

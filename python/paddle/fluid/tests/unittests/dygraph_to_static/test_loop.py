@@ -86,11 +86,37 @@ def for_loop_dyfunc(max_len):
 
 def for_loop_dyfunc2(max_len):
     # Test case: a variable is used and created in loop, but used before created
+    x = fluid.layers.fill_constant(shape=[1, 2], dtype="int32", value=1)
+
     for i in range(max_len):
         if i > 1:
             s = a
         a = 1
-    ret = fluid.layers.fill_constant(shape=[1], dtype="int32", value=s)
+        q, _ = x.shape  # test var x.shape only used but not created in loop
+
+    ret = fluid.layers.fill_constant(shape=[1], dtype="int32", value=s + q)
+    return ret
+
+
+def for_loop_dyfunc3(max_len):
+    ret = fluid.layers.zeros(shape=[1], dtype='float32')
+    for i in range(1, 10, 2):
+        fluid.layers.increment(ret, value=2.0, in_place=True)
+    return ret
+
+
+def for_loop_dyfunc4(max_len):
+    ret = fluid.layers.zeros(shape=[1], dtype='float32')
+    for i in range(10, 1, -2):
+        fluid.layers.increment(ret, value=2.0, in_place=True)
+    return ret
+
+
+def for_loop_dyfunc_not_support(max_len):
+    ret = fluid.layers.zeros(shape=[1], dtype='float32')
+    a = -2
+    for i in range(10, 1, a):
+        fluid.layers.increment(ret, value=2.0, in_place=True)
     return ret
 
 
@@ -161,7 +187,7 @@ def nested_for_loop_dyfunc():
     three = fluid.layers.fill_constant(shape=[1], value=3, dtype="int32")
     for j in range(two):
         for i in range(10):
-            a = 2
+            a = 2 + j
 
     for i in range(three):
         b = fluid.layers.zeros(shape=[1], dtype='float32')
@@ -216,16 +242,25 @@ class TestNameVisitor(unittest.TestCase):
         self.loop_var_names = [
             set(["j", "two"]),
             set(["i", "three", "b"]),
-            set(["i"]),
+            set(["i", "j"]),
         ]
         self.create_var_names = [set(), set(["b"]), set()]
+
         i = 0
         for node in gast.walk(gast_root):
             if isinstance(node, (gast.While, gast.For)):
                 loop_var_names, create_var_names = name_visitor.get_loop_var_names(
                     node)
-                self.assertEqual(loop_var_names, self.loop_var_names[i])
-                self.assertEqual(create_var_names, self.create_var_names[i])
+                self.assertEqual(
+                    loop_var_names,
+                    self.loop_var_names[i],
+                    msg="loop_var_names : {}, \nexpected loop_var_names : {}".
+                    format(loop_var_names, self.loop_var_names[i]))
+                self.assertEqual(
+                    create_var_names,
+                    self.create_var_names[i],
+                    msg="i = {}\ncreate_var_names : {}, \nexpected create_var_names : {}".
+                    format(i, create_var_names, self.create_var_names[i]))
                 i += 1
 
 
@@ -324,6 +359,16 @@ class TestTransformForLoop2(TestTransformForLoop):
         self.dyfunc = for_loop_dyfunc2
 
 
+class TestTransformForLoop3(TestTransformForLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = for_loop_dyfunc3
+
+
+class TestTransformForLoop4(TestTransformForLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = for_loop_dyfunc4
+
+
 class TestClassVarInForLoop(TestTransformForLoop):
     def _init_dyfunc(self):
         self.dyfunc = for_loop_class_var
@@ -332,6 +377,18 @@ class TestClassVarInForLoop(TestTransformForLoop):
 class TestVarCreateInForLoop(TestTransformForLoop):
     def _init_dyfunc(self):
         self.dyfunc = var_create_in_for_loop
+
+
+class TestErrorInForLoop(TestTransformForLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = for_loop_dyfunc_not_support
+
+    def test_ast_to_func(self):
+        with self.assertRaisesRegexp(
+                NotImplementedError,
+                "Dynamic-to-Static only supports the step value is a constant or negative constant "
+        ):
+            self._run_static()
 
 
 if __name__ == '__main__':

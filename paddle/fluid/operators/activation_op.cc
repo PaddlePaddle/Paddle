@@ -106,7 +106,7 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
 #ifdef PADDLE_WITH_MKLDNN
   auto it = oper.Attrs().find("use_mkldnn");
   if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      oper.CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
@@ -203,7 +203,7 @@ $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
-.. math:: out=\\sqrt{x}=x^{1/2}
+$$out=\\sqrt{x}=x^{1/2}$$
 
 **Note**:
   input value must be greater than or equal to zero.
@@ -229,14 +229,14 @@ $$out = |x|$$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Operator. Computes ceil of x element-wise.
 
-$$out = \\left \\lceil x \\right \\rceil$$
+$$out = \\lceil x \\rceil$$
 
 )DOC";
 
 UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator. Computes floor of x element-wise.
 
-$$out = \\left \\lfloor x \\right \\rfloor$$
+$$out = \\lfloor x \\rfloor$$
 
 )DOC";
 
@@ -246,6 +246,15 @@ Cosine Operator. Computes cosine of x element-wise.
 Input range is `(-inf, inf)` and output range is `[-1,1]`.
 
 $$out = cos(x)$$
+
+)DOC";
+
+UNUSED constexpr char TanDoc[] = R"DOC(
+Tangent Operator. Computes tangent of x element-wise.
+
+Input range is `(k*pi-pi/2, k*pi+pi/2)` and output range is `(-inf, inf)`.
+
+$$out = tan(x)$$
 
 )DOC";
 
@@ -273,7 +282,7 @@ $$out = cosh(x)$$
 UNUSED constexpr char RoundDoc[] = R"DOC(
 The OP rounds the values in the input to the nearest integer value.
 
-.. code-block:: python
+.. code-block:: text
 
   input:
     x.shape = [4]
@@ -307,6 +316,15 @@ Log2 Activation Operator.
 $$out = \log_2x$$
 
 logarithm of x base to 2.
+
+)DOC";
+
+UNUSED constexpr char Log10Doc[] = R"DOC(
+Log10 Activation Operator.
+
+$$out = \log_10_x$$
+
+logarithm of x base to 10.
 
 )DOC";
 
@@ -583,7 +601,7 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "Input of STanh operator."
-             " A LoDTensor or Tensor with type float32, float64.");
+             " A Tensor with type float32, float64.");
     AddOutput("Out", "Output of STanh operator. A Tensor with type float32.");
     AddAttr<float>("scale_a", "The scale parameter of a for the input. ")
         .SetDefault(0.67f);
@@ -700,6 +718,7 @@ REGISTER_ACTIVATION_OP_MAKER(Abs, AbsDoc);
 REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cos, CosDoc);
+REGISTER_ACTIVATION_OP_MAKER(Tan, TanDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sinh, SinhDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cosh, CoshDoc);
@@ -707,6 +726,7 @@ REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log2, Log2Doc);
+REGISTER_ACTIVATION_OP_MAKER(Log10, Log10Doc);
 REGISTER_ACTIVATION_OP_MAKER(Log1p, Log1pDoc);
 REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
@@ -867,6 +887,25 @@ class SqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("sqrt_grad_grad");
+    op->SetInput("Out", this->Input("Out"));
+    op->SetInput("DX", this->Output(framework::GradVarName("X")));
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput("DOut", this->InputGrad("Out"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
+// rsqrt Grad: dx = -0.5 * dy * y * y * y
+// rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = (3/y) * ddx
+template <typename T>
+class RsqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("rsqrt_grad_grad");
     op->SetInput("Out", this->Input("Out"));
     op->SetInput("DX", this->Output(framework::GradVarName("X")));
     op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
@@ -1145,6 +1184,35 @@ REGISTER_OP_CPU_KERNEL(
                               ops::SqrtGradGradFunctor<double>>,
     ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
                               ops::SqrtGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
+/* ===========================   rsqrt register  =============================
+ */
+REGISTER_OPERATOR(
+    rsqrt, ops::ActivationOp, ops::RsqrtOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<ops::RsqrtGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::RsqrtGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(rsqrt_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInferer,
+                  ops::RsqrtDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::RsqrtDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    rsqrt_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::RsqrtGradGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInferer);
+
+REGISTER_ACTIVATION_CPU_KERNEL(rsqrt, Rsqrt, RsqrtFunctor, RsqrtGradFunctor);
+REGISTER_OP_CPU_KERNEL(
+    rsqrt_grad_grad,
+    ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
+                               ops::RsqrtGradGradFunctor<float>>,
+    ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
+                               ops::RsqrtGradGradFunctor<double>>,
+    ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
+                               ops::RsqrtGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ==========================   square register  ============================ */

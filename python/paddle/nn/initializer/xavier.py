@@ -18,7 +18,7 @@ __all__ = ['XavierNormal', 'XavierUniform']
 
 
 class XavierNormal(XavierInitializer):
-    """
+    r"""
     This class implements the Xavier weight initializer from the paper
     `Understanding the difficulty of training deep feedforward neural
     networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_
@@ -71,7 +71,7 @@ class XavierNormal(XavierInitializer):
 
 
 class XavierUniform(XavierInitializer):
-    """
+    r"""
     This class implements the Xavier weight initializer from the paper
     `Understanding the difficulty of training deep feedforward neural
     networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_

@@ -18,6 +18,10 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
+#ifdef PADDLE_WITH_CUDA
+DECLARE_uint64(initial_gpu_memory_in_mb);
+#endif
+
 namespace paddle {
 struct MkldnnQuantizerConfig;
 
@@ -68,6 +72,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
 #ifdef PADDLE_WITH_CUDA
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
+  FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
   device_id_ = device_id;
 #else
   LOG(ERROR) << "Please compile with gpu to EnableGpu()";
@@ -175,12 +180,24 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
 #undef CP_MEMBER
 
-  // Update();
-  // Update() will reset all the passes, when some tensorRT pass is deleted in
-  // other.pass_builder(), it will set again, so just copy the passes.
-  pass_builder_->ClearPasses();
-  for (const std::string &pass : other.pass_builder()->AllPasses()) {
-    pass_builder_->AppendPass(pass);
+  Update();
+  if (use_tensorrt_) {
+    // Update() will reset all the passes, when some tensorRT pass is deleted in
+    // other.pass_builder(), it will set again, so we just remove the
+    // deleted_pass.
+    auto all_passes = kTRTSubgraphPasses;
+    auto other_passes = other.pass_builder()->AllPasses();
+    // We should sort them, because the user may call the SwitchIrDebug
+    // interface, which will change the pass.
+    std::sort(all_passes.begin(), all_passes.end());
+    std::sort(other_passes.begin(), other_passes.end());
+    std::vector<std::string> deleted_passes;
+    std::set_difference(all_passes.begin(), all_passes.end(),
+                        other_passes.begin(), other_passes.end(),
+                        std::inserter(deleted_passes, deleted_passes.begin()));
+    for (auto ps : deleted_passes) {
+      pass_builder_->DeletePass(ps);
+    }
   }
 }
 
@@ -470,12 +487,16 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
 #ifdef PADDLE_WITH_CUDA
   // Get the GPU memory details and calculate the fraction of memory for the
   // GPU memory pool.
-  size_t gpu_used, gpu_available;
+  size_t gpu_total, gpu_available;
   platform::SetDeviceId(device_id_);
-  platform::GpuMemoryUsage(&gpu_used, &gpu_available);
-  double total_gpu_memory = (gpu_used + gpu_available) / 1024. / 1024.;
+  platform::GpuMemoryUsage(&gpu_available, &gpu_total);
+  double total_gpu_memory = gpu_total / 1024. / 1024.;
   float fraction_of_gpu_memory =
       static_cast<double>(memory_pool_init_size_mb()) / total_gpu_memory;
+  VLOG(3) << "total_gpu_memory is " << total_gpu_memory
+          << "M, gpu_available is " << gpu_available / 1024. / 1024.
+          << "M, memory_pool_init_size is " << memory_pool_init_size_mb()
+          << "M.";
   return fraction_of_gpu_memory;
 #else
   return 0.;

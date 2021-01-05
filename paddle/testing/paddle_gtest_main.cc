@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
   int internal_argc = internal_argv.size();
   char** arr = internal_argv.data();
   paddle::platform::ParseCommandLineFlags(internal_argc, arr, true);
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
 
   int ret = RUN_ALL_TESTS();
 

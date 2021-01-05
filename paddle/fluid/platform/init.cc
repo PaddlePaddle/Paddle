@@ -39,6 +39,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
 
+#ifdef WITH_WIN_DUMP_DBG
+#include <stdio.h>
+#include <time.h>
+#include <windows.h>
+#include "DbgHelp.h"
+#endif
+
 DECLARE_int32(paddle_num_threads);
 DEFINE_int32(multiple_of_cupti_buffer_size, 1,
              "Multiple of the CUPTI device buffer size. If the timestamps have "
@@ -63,7 +70,6 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
-std::once_flag p2p_init_flag;
 
 bool InitGflags(std::vector<std::string> args) {
   bool successed = false;
@@ -95,29 +101,6 @@ bool InitGflags(std::vector<std::string> args) {
   return successed;
 }
 
-void InitP2P(std::vector<int> devices) {
-#ifdef PADDLE_WITH_CUDA
-  std::call_once(p2p_init_flag, [&]() {
-    int count = devices.size();
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0; j < count; ++j) {
-        if (devices[i] == devices[j]) continue;
-        int can_acess = -1;
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]));
-        if (can_acess != 1) {
-          VLOG(2) << "Cannot enable P2P access from " << devices[i] << " to "
-                  << devices[j];
-        } else {
-          platform::CUDADeviceGuard guard(devices[i]);
-          cudaDeviceEnablePeerAccess(devices[j], 0);
-        }
-      }
-    }
-  });
-#endif
-}
-
 void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
@@ -144,7 +127,7 @@ void InitCupti() {
 #endif
 }
 
-void InitDevices(bool init_p2p) {
+void InitDevices() {
   // CUPTI attribute should be set before any CUDA context is created (see CUPTI
   // documentation about CUpti_ActivityAttribute).
   InitCupti();
@@ -166,10 +149,10 @@ void InitDevices(bool init_p2p) {
     LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
   }
 #endif
-  InitDevices(init_p2p, devices);
+  InitDevices(devices);
 }
 
-void InitDevices(bool init_p2p, const std::vector<int> devices) {
+void InitDevices(const std::vector<int> devices) {
   std::vector<platform::Place> places;
 
   for (size_t i = 0; i < devices.size(); ++i) {
@@ -186,9 +169,6 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #ifdef PADDLE_WITH_XPU
     places.emplace_back(platform::XPUPlace(devices[i]));
 #endif
-  }
-  if (init_p2p) {
-    InitP2P(devices);
   }
   places.emplace_back(platform::CPUPlace());
 #ifdef PADDLE_WITH_CUDA
@@ -317,10 +297,53 @@ void SignalHandle(const char *data, int size) {
 }
 #endif
 
+#ifdef WITH_WIN_DUMP_DBG
+typedef BOOL(WINAPI *MINIDUMP_WRITE_DUMP)(
+    IN HANDLE hProcess, IN DWORD ProcessId, IN HANDLE hFile,
+    IN MINIDUMP_TYPE DumpType,
+    IN CONST PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam,
+    OPTIONAL IN PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam,
+    OPTIONAL IN PMINIDUMP_CALLBACK_INFORMATION CallbackParam OPTIONAL);
+void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
+                    EXCEPTION_POINTERS *pException) {
+  HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName, GENERIC_WRITE, 0, NULL,
+                                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
+  dumpInfo.ExceptionPointers = pException;
+  dumpInfo.ThreadId = GetCurrentThreadId();
+  dumpInfo.ClientPointers = TRUE;
+  MINIDUMP_WRITE_DUMP MiniDumpWriteDump_;
+  HMODULE hDbgHelp = LoadLibrary("DBGHELP.DLL");
+  MiniDumpWriteDump_ =
+      (MINIDUMP_WRITE_DUMP)GetProcAddress(hDbgHelp, "MiniDumpWriteDump");
+  MiniDumpWriteDump_(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile,
+                     MiniDumpWithPrivateReadWriteMemory, &dumpInfo, NULL, NULL);
+  CloseHandle(hDumpFile);
+}
+
+LONG ApplicationCrashHandler(EXCEPTION_POINTERS *pException) {
+  time_t time_seconds = time(0);
+  struct tm now_time;
+  localtime_s(&now_time, &time_seconds);
+
+  char buf[1024];
+  sprintf_s(buf, "C:\\Paddle%04d%02d%02d-%02d%02d%02d.dmp",
+            1900 + now_time.tm_year, 1 + now_time.tm_mon, now_time.tm_mday,
+            now_time.tm_hour, now_time.tm_min, now_time.tm_sec);
+
+  CreateDumpFile(buf, pException);
+  return EXCEPTION_EXECUTE_HANDLER;
+}
+#endif
+
 void InitGLOG(const std::string &prog_name) {
   std::call_once(glog_init_flag, [&]() {
-    // glog will not hold the ARGV[0] inside.
-    // Use strdup to alloc a new string.
+// glog will not hold the ARGV[0] inside.
+// Use strdup to alloc a new string.
+#ifdef WITH_WIN_DUMP_DBG
+    SetUnhandledExceptionFilter(
+        (LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);
+#endif
     google::InitGoogleLogging(strdup(prog_name.c_str()));
 #ifndef _WIN32
     google::InstallFailureSignalHandler();

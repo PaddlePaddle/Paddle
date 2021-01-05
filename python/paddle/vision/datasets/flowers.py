@@ -18,11 +18,11 @@ import os
 import io
 import tarfile
 import numpy as np
-import scipy.io as scio
 from PIL import Image
 
 import paddle
 from paddle.io import Dataset
+from paddle.utils import try_import
 from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ["Flowers"]
@@ -126,6 +126,8 @@ class Flowers(Dataset):
         self.data_tar = tarfile.open(self.data_file)
         for ele in self.data_tar.getmembers():
             self.name2mem[ele.name] = ele
+
+        scio = try_import('scipy.io')
 
         self.labels = scio.loadmat(self.label_file)['labels'][0]
         self.indexes = scio.loadmat(self.setid_file)[self.flag][0]

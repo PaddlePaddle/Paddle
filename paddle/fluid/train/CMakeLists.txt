@@ -10,16 +10,18 @@ function(train_test TARGET_NAME)
                 DEPS paddle_fluid_shared
                 ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
     else()
-        cc_test(test_train_${TARGET_NAME}${arg}
+        cc_test(test_train_${TARGET_NAME}
                 SRCS test_train_${TARGET_NAME}.cc
                 DEPS paddle_fluid_api
                 ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
     endif()
-    set_tests_properties(test_train_${TARGET_NAME}
-            PROPERTIES FIXTURES_REQUIRED test_${TARGET_NAME}_infer_model)
-    if(NOT WIN32 AND NOT APPLE)
+    if(TEST test_train_${TARGET_NAME})
         set_tests_properties(test_train_${TARGET_NAME}
-                PROPERTIES TIMEOUT 150)
+                PROPERTIES FIXTURES_REQUIRED test_${TARGET_NAME}_infer_model)
+        if(NOT WIN32 AND NOT APPLE)
+            set_tests_properties(test_train_${TARGET_NAME}
+                    PROPERTIES TIMEOUT 150)
+        endif()
     endif()
 endfunction(train_test)
 
