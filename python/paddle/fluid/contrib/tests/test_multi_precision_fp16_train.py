@@ -64,9 +64,10 @@ def resnet_cifar10(input, depth=32):
     n = (depth - 2) // 6
     conv1 = conv_bn_layer(
         input=input, ch_out=16, filter_size=3, stride=1, padding=1)
-    res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
-    res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
-    res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
+    with paddle.static.amp.fp16_guard():
+        res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
+        res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
+        res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
     pool = fluid.layers.pool2d(
         input=res3, pool_size=8, pool_type='avg', pool_stride=1)
     return pool
@@ -86,12 +87,10 @@ def train(use_pure_fp16=True, use_nesterov=False, use_adam=False):
         images = fluid.layers.data(
             name='pixel', shape=data_shape, dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        with paddle.static.amp.fp16_guard():
-            net = resnet_cifar10(images)
-            logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
-            cost = fluid.layers.softmax_with_cross_entropy(
-                logits, label, return_softmax=False)
-
+        net = resnet_cifar10(images)
+        logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
+        cost = fluid.layers.softmax_with_cross_entropy(
+            logits, label, return_softmax=False)
         sum_cost = fluid.layers.reduce_sum(cost)
 
         # Test program

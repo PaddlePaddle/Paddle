@@ -64,8 +64,8 @@ class OptimizerWithMixedPrecision(object):
 
     def __init__(self, optimizer, amp_lists, init_loss_scaling,
                  use_dynamic_loss_scaling, incr_every_n_steps,
-                 decr_every_n_nan_or_inf, incr_ratio, decr_ratio, use_pure_fp16,
-                 use_fp16_guard):
+                 decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
+                 use_pure_fp16, use_fp16_guard):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
         self._param_grads = None
@@ -186,9 +186,6 @@ class OptimizerWithMixedPrecision(object):
             params_grads = self._optimizer.backward(
                 self._scaled_loss, startup_program, parameter_list, no_grad_set,
                 callbacks)
-            # Change the op_role_var attr for some ops, so that gradients
-            # transferred across GPUs can be FP16.
-            update_role_var_grad(self._train_program, params_grads)
         return params_grads
 
     def amp_init(self,
@@ -231,6 +228,11 @@ class OptimizerWithMixedPrecision(object):
         Returns:
             A list of optimize operators.
         """
+
+        # Change the op_role_var attr for some ops, so that gradients
+        # transferred across GPUs can be FP16.
+        update_role_var_grad(self._train_program, params_grads)
+
         # When not using dynamic loss scaling and the init loss scaling value is equal to 1.0,
         # the model can be optimized.
         if not self._use_dynamic_loss_scaling and self._init_loss_scaling == 1.0:
