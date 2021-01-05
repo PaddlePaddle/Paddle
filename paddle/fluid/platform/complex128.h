@@ -80,6 +80,10 @@ struct PADDLE_ALIGN(16) complex128 {
   HOSTDEVICE complex128(const int64_t& val)
       : real(static_cast<double>(val)), imag(0) {}
 
+  HOSTDEVICE inline explicit operator std::complex<double>() {
+    return std::complex<double>(real, imag);
+  }
+
   template <class T>
   HOSTDEVICE inline explicit complex128(const T& val)
       : real(complex128(static_cast<double>(val)).real) {}
@@ -195,10 +199,6 @@ struct PADDLE_ALIGN(16) complex128 {
 
   HOSTDEVICE inline explicit operator double() const {
     return static_cast<double>(this->real);
-  }
-
-  HOSTDEVICE inline explicit operator std::complex<double>() {
-    return std::complex<double>(this->real, this->imag);
   }
 };
 
