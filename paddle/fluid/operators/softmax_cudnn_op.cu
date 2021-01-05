@@ -63,9 +63,7 @@ __device__ __forceinline__ void warp_reduce_sum(T* sum) {
   for (int offset = WARP_SIZE_SOFTMAX / 2; offset > 0; offset /= 2) {
 #pragma unroll
     for (int i = 0; i < WARP_BATCH; ++i) {
-      // T sum_val = platform::CudaShuffleXorSyncOff(0xFFFFFFFF, sum[i], offset,
       T sum_val = platform::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
-      //  WARP_SIZE_SOFTMAX);
       sum[i] = sum[i] + sum_val;
     }
   }
@@ -77,11 +75,8 @@ __device__ __forceinline__ void warp_reduce_max(T* sum) {
   for (int offset = WARP_SIZE_SOFTMAX / 2; offset > 0; offset /= 2) {
 #pragma unroll
     for (int i = 0; i < WARP_BATCH; ++i) {
-      // T max_val = platform::CudaShuffleXorSyncOff(0xFFFFFFFF, sum[i], offset,
       T max_val = platform::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
-      // WARP_SIZE_SOFTMAX);
-      sum[i] = static_cast<T>(
-          max(static_cast<float>(sum[i]), static_cast<float>(max_val)));
+      sum[i] = max(sum[i], max_val);
     }
   }
 }
@@ -114,7 +109,7 @@ __global__ void VecSoftmaxForward(T* dst, const T* src, const int batch_size,
   reinterpret_cast<VECT*>(&dst[offset + idx])[0] = buf;
 }
 
-template <typename T, int log2_elements>
+template <typename T, typename acc_t, int log2_elements>
 __global__ void WarpSoftmaxForward(T* dst, const T* src, const int batch_size,
                                    const int stride, const int element_count) {
   constexpr int next_power_of_two = 1 << log2_elements;
@@ -137,21 +132,22 @@ __global__ void WarpSoftmaxForward(T* dst, const T* src, const int batch_size,
   dst += first_batch * stride + local_idx;
 
   // load data from global memory
-  T elements[WARP_BATCH_SOFTMAX][WARP_ITERATIONS_SOFTMAX];
+  acc_t elements[WARP_BATCH_SOFTMAX][WARP_ITERATIONS_SOFTMAX];
   for (int i = 0; i < WARP_BATCH_SOFTMAX; ++i) {
     int batch_element_count = (i >= local_batches) ? 0 : element_count;
     for (int it = 0; it < WARP_ITERATIONS_SOFTMAX; ++it) {
       int element_index = local_idx + it * WARP_SIZE_SOFTMAX;
       if (element_index < batch_element_count) {
-        elements[i][it] = src[i * element_count + it * WARP_SIZE_SOFTMAX];
+        elements[i][it] =
+            static_cast<float>(src[i * element_count + it * WARP_SIZE_SOFTMAX]);
       } else {
-        elements[i][it] = -std::numeric_limits<T>::infinity();
+        elements[i][it] = -std::numeric_limits<acc_t>::infinity();
       }
     }
   }
 
   // compute max_value
-  T max_value[WARP_BATCH_SOFTMAX];
+  acc_t max_value[WARP_BATCH_SOFTMAX];
 #pragma unroll
   for (int i = 0; i < WARP_BATCH_SOFTMAX; ++i) {
     max_value[i] = elements[i][0];
@@ -161,19 +157,20 @@ __global__ void WarpSoftmaxForward(T* dst, const T* src, const int batch_size,
           (max_value[i] > elements[i][it]) ? max_value[i] : elements[i][it];
     }
   }
-  warp_reduce_max<T, WARP_BATCH_SOFTMAX, WARP_SIZE_SOFTMAX>(max_value);
+  warp_reduce_max<acc_t, WARP_BATCH_SOFTMAX, WARP_SIZE_SOFTMAX>(max_value);
 
-  T sum[WARP_BATCH_SOFTMAX]{static_cast<T>(0.0f)};
+  acc_t sum[WARP_BATCH_SOFTMAX]{0.0f};
 #pragma unroll
   for (int i = 0; i < WARP_BATCH_SOFTMAX; ++i) {
 #pragma unroll
     for (int it = 0; it < WARP_ITERATIONS_SOFTMAX; ++it) {
-      elements[i][it] = static_cast<T>(
-          std::exp(static_cast<float>(elements[i][it] - max_value[i])));
+      // elements[i][it] = static_cast<T>(
+      //     std::exp(static_cast<float>(elements[i][it] - max_value[i])));
+      elements[i][it] = (std::exp((elements[i][it] - max_value[i])));
       sum[i] += elements[i][it];
     }
   }
-  warp_reduce_sum<T, WARP_BATCH_SOFTMAX, WARP_SIZE_SOFTMAX>(sum);
+  warp_reduce_sum<acc_t, WARP_BATCH_SOFTMAX, WARP_SIZE_SOFTMAX>(sum);
 
 // store result
 #pragma unroll
@@ -339,11 +336,12 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
         dim3 threads(warp_size, warps_per_block, 1);
 
         switch (log2_elements) {
-#define LAUNCH_SOFTMAX_WARP_FORWARD(L2E)                                     \
-  case L2E:                                                                  \
-    WarpSoftmaxForward<                                                      \
-        T, L2E><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>( \
-        out_data, x->data<T>(), N, dim, dim);                                \
+#define LAUNCH_SOFTMAX_WARP_FORWARD(L2E)                                  \
+  case L2E:                                                               \
+    WarpSoftmaxForward<                                                   \
+        T, float,                                                         \
+        L2E><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>( \
+        out_data, x->data<T>(), N, dim, dim);                             \
     break;
 
           LAUNCH_SOFTMAX_WARP_FORWARD(0);  // 1
