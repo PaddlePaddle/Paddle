@@ -315,8 +315,9 @@ struct PD_INFER_DECL AnalysisConfig {
 
   ///
   /// \brief Prevent ops running in Paddle-TRT
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
   ///
-  void DisableTensorRtOPs(const std::vector<std::string>& ops);
+  void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
 
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(

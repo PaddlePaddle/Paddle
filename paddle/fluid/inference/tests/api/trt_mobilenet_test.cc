@@ -57,7 +57,7 @@ TEST(PredictorPool, use_gpu) {
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir);
   config.EnableTensorRtEngine();
-  config.DisableTensorRtOPs({"fc"});
+  config.Exp_DisableTensorRtOPs({"fc"});
   services::PredictorPool pred_pool(config, 1);
 
   auto predictor = pred_pool.Retrive(0);

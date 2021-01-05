@@ -305,7 +305,8 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
 
-void AnalysisConfig::DisableTensorRtOPs(const std::vector<std::string> &ops) {
+void AnalysisConfig::Exp_DisableTensorRtOPs(
+    const std::vector<std::string> &ops) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
