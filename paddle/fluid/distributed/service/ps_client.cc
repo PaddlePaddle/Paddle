@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/ps_client.h"
-
 #include <map>
-
 #include "brpc/server.h"
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
@@ -73,7 +71,8 @@ PSClient *PSClientFactory::create(const PSParameter &ps_config) {
   }
 
   const auto &service_param = config.downpour_server_param().service_param();
-  PSClient *client = CREATE_PSCORE_CLASS(PSClient, service_param.client_class());
+  PSClient *client =
+      CREATE_PSCORE_CLASS(PSClient, service_param.client_class());
   if (client == NULL) {
     LOG(ERROR) << "client is not registered, server_name:"
                << service_param.client_class();

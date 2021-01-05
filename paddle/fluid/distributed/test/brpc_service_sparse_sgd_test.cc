@@ -18,6 +18,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "google/protobuf/text_format.h"
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -222,7 +223,8 @@ void RunBrpcPushSparse() {
         int ret = 0;
         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
         for (size_t i = 0; i < 1; ++i) {
-          if (closure->check_response(i, paddle::distributed::PS_PUSH_SPARSE_PARAM) != 0) {
+          if (closure->check_response(
+                  i, paddle::distributed::PS_PUSH_SPARSE_PARAM) != 0) {
             ret = -1;
             break;
           }
@@ -249,7 +251,8 @@ void RunBrpcPushSparse() {
         int ret = 0;
         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
         for (size_t i = 0; i < 1; ++i) {
-          if (closure->check_response(i, paddle::distributed::PS_PUSH_SPARSE_TABLE) != 0) {
+          if (closure->check_response(
+                  i, paddle::distributed::PS_PUSH_SPARSE_TABLE) != 0) {
             ret = -1;
             break;
           }

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <unistd.h>
+
 #include <condition_variable>  // NOLINT
 #include <string>
 #include <thread>  // NOLINT
@@ -241,7 +242,8 @@ void RunBrpcPushDense() {
         int ret = 0;
         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
         for (size_t i = 0; i < 1; ++i) {
-          if (closure->check_response(i, paddle::distributed::PS_PUSH_DENSE_TABLE) != 0) {
+          if (closure->check_response(
+                  i, paddle::distributed::PS_PUSH_DENSE_TABLE) != 0) {
             ret = -1;
             break;
           }

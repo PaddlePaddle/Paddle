@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/server.h"
+
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/table/table.h"
@@ -43,7 +44,8 @@ PSServer *PSServerFactory::create(const PSParameter &ps_config) {
   }
 
   const auto &service_param = config.downpour_server_param().service_param();
-  PSServer *server = CREATE_PSCORE_CLASS(PSServer, service_param.server_class());
+  PSServer *server =
+      CREATE_PSCORE_CLASS(PSServer, service_param.server_class());
   if (server == NULL) {
     LOG(ERROR) << "server is not registered, server_name:"
                << service_param.server_class();
