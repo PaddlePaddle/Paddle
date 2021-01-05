@@ -1059,7 +1059,7 @@ void BindImperative(py::module *m_ptr) {
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
               const platform::CPUPlace &place, bool blocking) {
-             auto new_var = self.NewVarBase(place, blocking);
+             auto new_var = self->NewVarBase(place, blocking);
              // Note(zhiqiu): Since NewVarBase may use GpuCopyAsync to
              // copy data from the tensor of self to the tensor of new varbase,
              // we need to ensure that the varbase self is not destructed until
@@ -1077,7 +1077,7 @@ void BindImperative(py::module *m_ptr) {
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
               const platform::CUDAPinnedPlace &place, bool blocking) {
-             auto new_var = self.NewVarBase(place, blocking);
+             auto new_var = self->NewVarBase(place, blocking);
              if (!blocking) {
                IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
              }
@@ -1087,7 +1087,7 @@ void BindImperative(py::module *m_ptr) {
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
               const platform::XPUPlace &place, bool blocking) {
-             auto new_var = self.NewVarBase(place, blocking);
+             auto new_var = self->NewVarBase(place, blocking);
              if (!blocking) {
                IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
              }
@@ -1097,7 +1097,7 @@ void BindImperative(py::module *m_ptr) {
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
               const platform::CUDAPlace &place, bool blocking) {
-             auto new_var = self.NewVarBase(place, blocking);
+             auto new_var = self->NewVarBase(place, blocking);
              if (!blocking) {
                IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
              }

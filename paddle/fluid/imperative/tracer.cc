@@ -55,6 +55,27 @@ static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
     }
   }
 }
+
+void IncreaseVarbaseReferenceCountUntilCopyComplete(
+    const std::shared_ptr<imperative::VarBase>& var,
+    const platform::Place& place) {
+  // Note(zhiqiu): Follow the logic of TensorCopy to determine the place that we
+  // need to add callback, see tensor_utils.cc:245
+  auto place_ = platform::is_gpu_place(place) ? place : var->Place();
+
+  auto tracer = imperative::GetCurrentTracer();
+  auto gc = tracer->MutableGarbageCollectorIfNotExists(place_);
+
+  // Note(zhiqiu): This is an empty callback, the only way is to "reference"
+  // var, so it will not be destructed until the kernels launched at current
+  // stream of given place is finished.
+  auto callback = [var, place_]() {
+    VLOG(4) << "Run callback of var:" << var->Name() << " at place " << place_;
+  };
+
+  gc->DirectClearCallback(callback);
+}
+
 paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
     const platform::Place& place) {
   // if not exists, create a new GarbageCollector at given place
@@ -62,7 +83,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
     std::unique_ptr<framework::GarbageCollector> gc;
     if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
-      gc.reset(new framework::StreamGarbageCollector(
+      gc.reset(new framework::DefaultStreamGarbageCollector(
           BOOST_GET_CONST(platform::CUDAPlace, place), 0));
 
       VLOG(10) << "Created GarbageCollector at " << place;

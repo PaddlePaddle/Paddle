@@ -125,6 +125,9 @@ class Tracer {
 // To access static variable current_tracer
 const std::shared_ptr<Tracer>& GetCurrentTracer();
 void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
+void IncreaseVarbaseReferenceCountUntilCopyComplete(
+    const std::shared_ptr<imperative::VarBase>& var,
+    const platform::Place& place);
 
 }  // namespace imperative
 }  // namespace paddle

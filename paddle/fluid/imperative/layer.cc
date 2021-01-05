@@ -253,9 +253,8 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
         platform::DeviceContextPool::Instance().Get(src_place)->Wait();
       }
     }
-    if (platform::is_gpu_place(dst_place)) {
-      VLOG(3) << "copy tensor " << Name() << " from gpu";
-    }
+    VLOG(4) << "copy tensor " << Name() << " from " << Place() << " to "
+            << dst_place;
     return new_var;
   } else {
     auto& src_selected_rows = Var().Get<framework::SelectedRows>();
@@ -276,9 +275,8 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     }
     dst_selected_rows->set_height(src_selected_rows.height());
     dst_selected_rows->set_rows(src_selected_rows.rows());
-    if (platform::is_gpu_place(dst_place)) {
-      VLOG(3) << "copy selected rows " << Name() << " from gpu";
-    }
+    VLOG(4) << "copy tensor " << Name() << " from " << Place() << " to "
+            << dst_place;
     return new_var;
   }
 }
@@ -458,25 +456,6 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   } else {
     return nullptr;
   }
-}
-
-void IncreaseVarbaseReferenceCountUntilCopyComplete(
-    const std::shared_ptr<imperative::VarBase>& var,
-    const platform::Place& place) {
-  // Note(zhiqiu): Follow the logic of TensorCopy to determine the place that we
-  // need to add callback, see tensor_utils.cc:245
-  auto place_ = platform::is_gpu_place(place) ? place : var->Place();
-
-  auto tracer = imperative::GetCurrentTracer();
-  auto gc = tracer->MutableGarbageCollectorIfNotExists(place_);
-
-  // Note(zhiqiu): This is an empty callback, the only way is to "reference"
-  // var,
-  // so it will not be destructed until the kernels launched at current stream
-  // of given place is finished.
-  auto callback = [var]() { ; };
-
-  gc->DirectClearCallback(callback);
 }
 
 }  // namespace imperative
