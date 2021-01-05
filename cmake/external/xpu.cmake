@@ -6,7 +6,7 @@ INCLUDE(ExternalProject)
 SET(XPU_PROJECT                 "extern_xpu")
 
 if (WITH_AARCH64)
-    SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/aarch64/xpu_2020_1229.tar.gz" CACHE STRING "" FORCE)
+    SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/aarch64/xpu_2021_0105.tar.gz" CACHE STRING "" FORCE)
 elseif(WITH_SUNWAY)
     SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/sunway/xpu_2020_1227.tar.gz" CACHE STRING "" FORCE)
 else()
