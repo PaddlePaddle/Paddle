@@ -107,6 +107,7 @@ class AssignKernel {
         ctx.HasOutput("Out"), true,
         platform::errors::NotFound("Output(Out) of assign_op is not found."));
     auto *out = ctx.OutputVar("Out");
+    auto kind = ctx.Attr<int>("kind");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
     auto kind = ctx.Attr<int>("kind");
