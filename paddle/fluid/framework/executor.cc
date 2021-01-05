@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_MKLDNN
@@ -90,13 +91,13 @@ Executor::~Executor() {
 }
 
 void Executor::Close() {
-  // #ifdef PADDLE_WITH_DISTRIBUTE
-  //   // TODO(typhoonzero): complete message will need to use real trainer_id,
-  //   // except 0.
-  //   auto client =
-  //       paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
-  //   client->SendComplete();
-  // #endif
+#ifdef PADDLE_WITH_DISTRIBUTE
+  // TODO(typhoonzero): complete message will need to use real trainer_id,
+  // except 0.
+  auto client =
+      paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
+  client->SendComplete();
+#endif
 }
 
 void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,

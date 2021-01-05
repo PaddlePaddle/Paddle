@@ -1,4 +1,6 @@
-return()
+if(NOT WITH_DISTRIBUTE)
+    return()
+endif()
 
 if(WITH_GRPC)
     set(cc_generic_services "false")

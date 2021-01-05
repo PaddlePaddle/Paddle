@@ -216,18 +216,18 @@ if(WITH_DISTRIBUTE)
     set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   else()
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
-            dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-            heterxpu_trainer.cc
-            data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-            heterbox_worker.cc heterbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
-            pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
-            device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
-            lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
-            graph_to_program_pass variable_helper timer monitor heter_service_proto fleet)
+    dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+    heterxpu_trainer.cc
+    data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
+    heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+    pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+    device_context scope framework_proto trainer_desc_proto glog fs shell
+    fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
+    lod_rank_table feed_fetch_method sendrecvop_rpc communicator collective_helper ${GLOB_DISTRIBUTE_DEPS}
+    graph_to_program_pass variable_helper data_feed_proto timer monitor
+    heter_service_proto)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
     set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    set_source_files_properties(multi_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    set_source_files_properties(hogwild_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   endif()
 elseif(WITH_PSLIB)
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
@@ -239,7 +239,11 @@ elseif(WITH_PSLIB)
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor pslib_brpc )
-
+  # TODO: Fix these unittest failed on Windows
+  # This unittest will always failed, now no CI will run this unittest
+  if(NOT WITH_MUSL AND NOT WIN32)
+    cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
+  endif()
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
@@ -250,6 +254,11 @@ else()
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor)
+  # TODO: Fix these unittest failed on Windows
+  # This unittest will always failed, now no CI will run this unittest
+  if(NOT WITH_MUSL AND NOT WIN32)
+    cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
+  endif()
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_helper conditional_block_op_helper)

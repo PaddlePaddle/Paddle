@@ -68,7 +68,7 @@ inline bool entry<float>(const int count, const float threshold) {
 
 struct VALUE {
   explicit VALUE(const std::vector<std::string> &names)
-      : names_(names), count_(1), unseen_days_(0), seen_after_last_save_(true) {
+      : names_(names), count_(0), unseen_days_(0) {
     values_.resize(names.size());
     for (int i = 0; i < static_cast<int>(names.size()); i++) {
       places[names[i]] = i;
@@ -77,14 +77,6 @@ struct VALUE {
 
   void set(std::vector<std::vector<float>> *values) {
     values_ = std::move(*values);
-  }
-
-  void set(const std::vector<Initializer *> &inits, std::vector<int> numels) {
-    for (int x = 0; x < numels.size(); ++x) {
-      auto &value = values_[x];
-      value.resize(numels[x]);
-      inits[x]->GetValue(value.data(), numels[x]);
-    }
   }
 
   void set(const std::vector<std::string> &names,
@@ -125,8 +117,8 @@ struct VALUE {
 
   std::vector<std::string> names_;
   int count_;
-  int unseen_days_;
   bool seen_after_last_save_;
+  int unseen_days_;
   bool is_entry_;
   std::vector<std::vector<float>> values_;
   std::unordered_map<std::string, int> places;
@@ -147,20 +139,15 @@ class ValueBlock {
       value_dims_.push_back(dim);
     }
 
-    for (auto &name : value_names_) {
-      initializer_list_.emplace_back(initializers_->at(name));
-    }
-
     // for Entry
     {
       // entry will add later
       std::string entry_attr = "none";
+
       if (entry_attr == "none") {
-        has_entry = false;
         entry_func_ =
             std::bind(entry<std::string>, std::placeholders::_1, "none");
       } else {
-        has_entry = true;
         auto slices = string::split_string<std::string>(entry_attr, "&");
         if (slices[0] == "count_filter") {
           int threshold = std::stoi(slices[1]);
@@ -194,22 +181,6 @@ class ValueBlock {
     values_[id] = value;
   }
 
-  void Init(const uint64_t &id, const std::vector<Initializer *> &inits,
-            int count) {
-    if (Has(id)) {
-      PADDLE_THROW(platform::errors::AlreadyExists("id already exist, error"));
-    }
-
-    if (inits.size() != value_names_.size()) {
-      PADDLE_THROW(
-          platform::errors::AlreadyExists("values can not match, error"));
-    }
-
-    auto value = new VALUE(value_names_);
-    value->set(inits, value_dims_);
-    values_[id] = value;
-  }
-
   std::vector<std::vector<float> *> Get(
       const uint64_t &id, const std::vector<std::string> &value_names) {
     auto ret_values = values_.at(id)->get(value_names);
@@ -224,12 +195,27 @@ class ValueBlock {
   void InitFromInitializer(const uint64_t &id,
                            const std::vector<std::string> &value_names) {
     if (Has(id)) {
-      if (has_entry) {
-        Update(id);
-      }
+      Update(id);
       return;
     }
-    Init(id, initializer_list_, 1);
+
+    auto rets = std::vector<std::vector<float>>();
+    rets.resize(value_names_.size());
+
+    for (int i = 0; i < static_cast<int>(value_names_.size()); i++) {
+      auto name = value_names_[i];
+      auto *init = initializers_->at(name);
+
+      auto dim = value_dims_[i];
+      rets[i].resize(dim);
+
+      for (int j = 0; j < static_cast<int>(dim); j++) {
+        rets[i][j] = init->GetValue();
+      }
+    }
+
+    Init(id, &rets, 0);
+    Update(id);
   }
 
   bool GetEntry(const uint64_t &id) {
@@ -268,12 +254,10 @@ class ValueBlock {
   std::unordered_map<uint64_t, VALUE *> values_;
 
  private:
-  bool has_entry = false;
   std::vector<std::string> value_names_;
   std::vector<int> value_dims_;
   std::function<bool(uint64_t)> entry_func_;
   std::unordered_map<std::string, Initializer *> *initializers_;
-  std::vector<Initializer *> initializer_list_;
 };
 
 }  // namespace distributed

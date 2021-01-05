@@ -42,7 +42,7 @@ add_subdirectory(api)
 # Create static inference library if needed
 # All static libs in inference/api
 set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor
-     zero_copy_tensor reset_tensor_array
+     zero_copy_tensor reset_tensor_array 
         analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
 #TODO(wilber, T8T9): Do we still need to support windows gpu static library?
 if(WIN32 AND WITH_GPU)
@@ -77,13 +77,8 @@ set(SHARED_INFERENCE_SRCS
     ${mkldnn_quantizer_src_file})
 
 # Create shared inference library defaultly
-if(NOT WITH_DISTRIBUTE)
-  cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
+cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
       DEPS ${fluid_modules} analysis_predictor)
-else()
-  cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-      DEPS ${fluid_modules} analysis_predictor fleet ps_service)
-endif()
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_fluid_shared ${os_dependency_modules})

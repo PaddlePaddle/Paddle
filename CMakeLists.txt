@@ -255,6 +255,17 @@ endif()
 
 include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
 
+if(WITH_DISTRIBUTE)
+    if(WITH_GRPC)
+        message(STATUS "Use grpc framework.")
+        include(external/grpc)
+    else()
+        message(STATUS "Use brpc framework.")
+        include(external/leveldb)
+        include(external/brpc)
+    endif()
+endif()
+
 include(flags)              # set paddle compile flags
 
 if(WITH_PROFILER)

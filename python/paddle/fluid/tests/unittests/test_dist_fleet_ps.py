@@ -14,15 +14,14 @@
 
 from __future__ import print_function
 
-import os
 import unittest
-
-import paddle
-paddle.enable_static()
-
 import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.distributed.fleet as fleet
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle
+
+paddle.enable_static()
 
 # For Net
 base_lr = 0.2
@@ -160,7 +159,7 @@ class TestPSPassWithBow(unittest.TestCase):
             "127.0.0.1:36007"
         ]
 
-        role = fleet.UserDefinedRoleMaker(
+        role = role_maker.UserDefinedRoleMaker(
             current_id=0,
             role=role_maker.Role.SERVER,
             worker_num=2,
@@ -169,10 +168,7 @@ class TestPSPassWithBow(unittest.TestCase):
         fleet.init(role)
         loss, acc, _ = self.net()
         optimizer = fluid.optimizer.SGD(base_lr)
-
-        strategy = paddle.distributed.fleet.DistributedStrategy()
-        strategy.a_sync = True
-
+        strategy = StrategyFactory.create_sync_strategy()
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)
 

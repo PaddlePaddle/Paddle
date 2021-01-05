@@ -120,7 +120,7 @@ TEST(CommonDenseTable, Adam) {
     beta2_pow[0] *= beta2;
   }
   for (int j = 0; j < fea_dim; j++) {
-    ASSERT_TRUE(abs(param[j] - pull_values[j]) < 1e-5);
+    ASSERT_TRUE(abs(param[j] - pull_values[j]) < 1e-6);
   }
 }
 

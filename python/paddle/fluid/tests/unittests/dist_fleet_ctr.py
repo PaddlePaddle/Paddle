@@ -28,8 +28,6 @@ import numpy as np
 
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
-from paddle.distributed.fleet.utils.ps_util import Distributed
-import paddle.distributed.fleet as fleet
 
 paddle.enable_static()
 
@@ -54,7 +52,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
     For test CTR model, using Fleet api
     """
 
-    def net(self, args, is_train=True, batch_size=4, lr=0.01):
+    def net(self, args, batch_size=4, lr=0.01):
         """
         network definition
 
@@ -88,20 +86,13 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         datas = [dnn_data, lr_data, label]
 
         if args.reader == "pyreader":
-            if is_train:
-                self.reader = fluid.io.PyReader(
-                    feed_list=datas,
-                    capacity=64,
-                    iterable=False,
-                    use_double_buffer=False)
-            else:
-                self.test_reader = fluid.io.PyReader(
-                    feed_list=datas,
-                    capacity=64,
-                    iterable=False,
-                    use_double_buffer=False)
+            self.reader = fluid.io.PyReader(
+                feed_list=datas,
+                capacity=64,
+                iterable=False,
+                use_double_buffer=False)
 
-# build dnn model
+        # build dnn model
         dnn_layer_dims = [128, 128, 64, 32, 1]
         dnn_embedding = fluid.layers.embedding(
             is_distributed=False,
@@ -165,42 +156,6 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         with open(os.path.join(dirname, "__model__.proto"), "w") as wn:
             wn.write(str(program))
 
-    def do_distributed_testing(self, args, test_main_program,
-                               test_startup_program):
-        """
-        do distributed
-        """
-        device_env = os.getenv("DEVICE", 'cpu')
-        if device_env == 'cpu':
-            device = fluid.CPUPlace()
-        elif device_env == 'gpu':
-            device = fluid.CUDAPlace(0)
-        exe = fluid.Executor(device)
-
-        batch_size = 4
-        test_reader = paddle.batch(fake_ctr_reader(), batch_size=batch_size)
-        self.test_reader.decorate_sample_list_generator(test_reader)
-
-        pass_start = time.time()
-        batch_idx = 0
-
-        self.test_reader.start()
-        try:
-            while True:
-                batch_idx += 1
-                loss_val = exe.run(program=test_main_program,
-                                   fetch_list=[self.avg_cost.name])
-                loss_val = np.mean(loss_val)
-                message = "TEST ---> batch_idx: {} loss: {}\n".format(batch_idx,
-                                                                      loss_val)
-                fleet.util.print_on_rank(message, 0)
-        except fluid.core.EOFException:
-            self.test_reader.reset()
-
-        pass_time = time.time() - pass_start
-        message = "Distributed Test Succeed, Using Time {}\n".format(pass_time)
-        fleet.util.print_on_rank(message, 0)
-
     def do_pyreader_training(self, fleet):
         """
         do training using dataset, using fetch handler to catch variable
@@ -213,6 +168,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         elif device_env == 'gpu':
             device = fluid.CUDAPlace(0)
         exe = fluid.Executor(device)
+
         exe.run(fluid.default_startup_program())
         fleet.init_worker()
 
@@ -246,6 +202,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
         self.check_model_right(model_dir)
         shutil.rmtree(model_dir)
+        fleet.stop_worker()
 
     def do_dataset_training(self, fleet):
         train_file_list = ctr_dataset_reader.prepare_fake_data()
@@ -295,6 +252,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                                        self.avg_cost)
             self.check_model_right(model_dir)
             shutil.rmtree(model_dir)
+
+        fleet.stop_worker()
+
 
 if __name__ == "__main__":
     runtime_main(TestDistCTR2x2)

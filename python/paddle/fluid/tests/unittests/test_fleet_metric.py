@@ -19,12 +19,8 @@ import paddle
 import paddle.fluid as fluid
 import os
 import unittest
-import numpy as np
 import paddle.distributed.fleet.metrics.metric as metric
-import paddle.distributed.fleet as fleet
-from paddle.distributed.fleet.base.util_factory import UtilBase
-
-paddle.enable_static()
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 
 
 class TestFleetMetric(unittest.TestCase):
@@ -32,23 +28,6 @@ class TestFleetMetric(unittest.TestCase):
 
     def setUp(self):
         """Set up, set envs."""
-
-        class FakeUtil(UtilBase):
-            def __init__(self, fake_fleet):
-                super(UtilBase, self).__init__()
-                self.fleet = fake_fleet
-
-            def all_reduce(self, input, mode="sum", comm_world="worker"):
-                input = np.array(input)
-                input_shape = input.shape
-                input_list = input.reshape(-1).tolist()
-
-                self.fleet._barrier(comm_world)
-
-                ans = self.fleet._all_reduce(input_list, mode)
-
-                output = np.array(ans).reshape(input_shape)
-                return output
 
         class FakeFleet:
             """Fake fleet only for test."""
@@ -63,16 +42,19 @@ class TestFleetMetric(unittest.TestCase):
                 self.gloo.set_hdfs_store("./tmp_test_metric", "", "")
                 self.gloo.init()
 
-            def _all_reduce(self, input, mode="sum"):
+            def _all_reduce(self, input, output, mode="sum"):
                 """All reduce using gloo."""
-                ans = self.gloo.all_reduce(input, mode)
-                return ans
+                input_list = [i for i in input]
+                ans = self.gloo.all_reduce(input_list, mode)
+                for i in range(len(ans)):
+                    output[i] = 1
 
-            def _barrier(self, comm_world="worker"):
-                """Fake barrier, do nothing."""
+            def _barrier_worker(self):
+                """Fake barrier worker, do nothing."""
                 pass
 
-        self.util = FakeUtil(FakeFleet())
+        self.fleet = FakeFleet()
+        fleet._role_maker = self.fleet
 
     def test_metric_1(self):
         """Test cases for metrics."""
@@ -96,34 +78,34 @@ class TestFleetMetric(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup)
-            metric.sum(t, scope, self.util)
-            metric.max(t, scope, self.util)
-            metric.min(t, scope, self.util)
-            metric.auc(t, t1, scope, self.util)
-            metric.mae(t1, 3, scope, self.util)
-            metric.rmse(t1, 3, scope, self.util)
-            metric.mse(t1, 3, scope, self.util)
-            metric.acc(t, t1, scope, self.util)
-            metric.sum(str(t.name), scope, self.util)
-            metric.max(str(t.name), scope, self.util)
-            metric.min(str(t.name), scope, self.util)
-            metric.auc(str(t1.name), str(t.name), scope, self.util)
-            metric.mae(str(t1.name), 3, scope, self.util)
-            metric.rmse(str(t1.name), 3, scope, self.util)
-            metric.mse(str(t1.name), 3, scope, self.util)
-            metric.acc(str(t.name), str(t1.name), scope, self.util)
+            metric.sum(t, scope)
+            metric.max(t, scope)
+            metric.min(t, scope)
+            metric.auc(t, t1, scope)
+            metric.mae(t1, 3, scope)
+            metric.rmse(t1, 3, scope)
+            metric.mse(t1, 3, scope)
+            metric.acc(t, t1, scope)
+            metric.sum(str(t.name), scope)
+            metric.max(str(t.name), scope)
+            metric.min(str(t.name), scope)
+            metric.auc(str(t1.name), str(t.name), scope)
+            metric.mae(str(t1.name), 3, scope)
+            metric.rmse(str(t1.name), 3, scope)
+            metric.mse(str(t1.name), 3, scope)
+            metric.acc(str(t.name), str(t1.name), scope)
         arr = np.array([1, 2, 3, 4])
-        metric.sum(arr, util=self.util)
-        metric.max(arr, util=self.util)
-        metric.min(arr, util=self.util)
+        metric.sum(arr)
+        metric.max(arr)
+        metric.min(arr)
         arr1 = np.array([[1, 2, 3, 4]])
         arr2 = np.array([[1, 2, 3, 4]])
         arr3 = np.array([1, 2, 3, 4])
-        metric.auc(arr1, arr2, util=self.util)
-        metric.mae(arr, 3, util=self.util)
-        metric.rmse(arr, 3, util=self.util)
-        metric.mse(arr, 3, util=self.util)
-        metric.acc(arr, arr3, util=self.util)
+        metric.auc(arr1, arr2)
+        metric.mae(arr, 3)
+        metric.rmse(arr, 3)
+        metric.mse(arr, 3)
+        metric.acc(arr, arr3)
 
 
 if __name__ == "__main__":

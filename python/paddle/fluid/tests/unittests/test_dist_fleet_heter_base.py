@@ -81,10 +81,7 @@ class FleetDistHeterRunnerBase(object):
     def build_strategy(self, args):
         self.strategy = paddle.distributed.fleet.DistributedStrategy()
         self.strategy.a_sync = True
-        self.strategy.a_sync_configs = {
-            "launch_barrier": True,
-            "heter_worker_device_guard": 'gpu'
-        }
+        self.strategy.a_sync_configs = {"launch_barrier": True}
         return self.strategy
 
     def build_optimizer(self, avg_cost, strategy):
@@ -369,4 +366,3 @@ def runtime_main(test_class):
             model.run_dataset_trainer(args)
         else:
             model.run_pyreader_trainer(args)
-        fleet.stop_worker()

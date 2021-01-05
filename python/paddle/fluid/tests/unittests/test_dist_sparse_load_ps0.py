@@ -70,7 +70,6 @@ class SparseLoadOp(unittest.TestCase):
         return model_path
 
 
-@unittest.skip(reason="Skip unstable ut, need rewrite with new implement")
 class TestSparseLoadOpCase1(SparseLoadOp):
     def test_2ps_0_load(self):
         # init No.0 server env

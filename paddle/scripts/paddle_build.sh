@@ -212,7 +212,7 @@ function cmake_base() {
     fi
 
     if [ "$SYSTEM" == "Darwin" ]; then
-        WITH_DISTRIBUTE="OFF"
+        WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
         WITH_AVX=${WITH_AVX:-ON}
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
     else
@@ -220,8 +220,13 @@ function cmake_base() {
     fi
 
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
-    grpc_flag="OFF"
-    gloo_flag=${distibuted_flag}
+    grpc_flag=${WITH_GRPC:-${distibuted_flag}}
+
+    if [ "$SYSTEM" == "Darwin" ]; then
+        gloo_flag="OFF"
+    else
+        gloo_flag=${distibuted_flag}
+    fi
 
     cat <<EOF
     ========================================

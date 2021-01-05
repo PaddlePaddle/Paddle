@@ -15,10 +15,10 @@ cc_library(multi_devices_helper SRCS multi_devices_helper.cc DEPS graph graph_he
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
 
 if(WITH_DISTRIBUTE)
-    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
-    set_source_files_properties(reduce_op_handle.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    set_source_files_properties(threaded_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    set_source_files_properties(async_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    if(NOT WITH_GRPC)
+        set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+        set_source_files_properties(reduce_op_handle.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    endif()
 endif()
 
 
@@ -36,7 +36,7 @@ if(WITH_GPU)
 
     if(WITH_DISTRIBUTE)
         nv_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
-                ddim dynload_cuda selected_rows_functor)
+            ddim dynload_cuda selected_rows_functor sendrecvop_rpc)
     else()
         nv_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
             ddim dynload_cuda selected_rows_functor)
@@ -52,7 +52,7 @@ else()
             variable_visitor place device_memory_aligment)
     if(WITH_DISTRIBUTE)
         cc_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
-                ddim selected_rows_functor)
+            ddim selected_rows_functor sendrecvop_rpc)
     else()
         cc_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
             ddim selected_rows_functor)
@@ -85,7 +85,9 @@ cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS 
 cc_library(parallel_ssa_graph_executor SRCS parallel_ssa_graph_executor.cc DEPS threaded_ssa_graph_executor)
 
 set(ASYNC_SSA_GRAPH_EXECUTOR_DEPS threaded_ssa_graph_executor)
-
+if(WITH_DISTRIBUTE)
+    list(APPEND ASYNC_SSA_GRAPH_EXECUTOR_DEPS communicator)
+endif()
 cc_library(async_ssa_graph_executor SRCS async_ssa_graph_executor.cc DEPS ${ASYNC_SSA_GRAPH_EXECUTOR_DEPS})
 
 cc_test(broadcast_op_test SRCS broadcast_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory

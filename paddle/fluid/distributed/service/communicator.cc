@@ -839,7 +839,7 @@ void GeoCommunicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
 
   for (auto &iter : send_varname_to_ctx_) {
     auto &ctx = iter.second;
-    if (!ctx.is_sparse) continue;
+    if (!ctx.is_sparse) return;
     auto &varname = ctx.origin_varnames[0];
     auto &table_id = ctx.table_id;
     auto param = varname.substr(0, varname.size() - 5);
@@ -853,12 +853,12 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
   if (trainer_id_ == 0) {
     RpcSendDenseParam(varnames, table_id, *recv_scope_);
     BarrierWithTable(1);
-    VLOG(1) << "push dense param to table " << table_id
+    VLOG(0) << "push dense param to table " << table_id
             << " from 0' trainer done";
   } else {
     BarrierWithTable(1);
     RpcRecvDense(varnames, table_id, recv_scope_);
-    VLOG(1) << "pull dense param to table " << table_id
+    VLOG(0) << "push dense param to table " << table_id
             << " from 0' trainer done";
   }
 
@@ -952,20 +952,20 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
 }
 
 void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
-  VLOG(1) << "Init Sparse " << var_name << " : table " << table_id << " begin.";
+  VLOG(0) << "Init Sparse " << var_name << " : table " << table_id << " begin.";
   if (trainer_id_ == 0) {
     RpcSendSparseParam(var_name, table_id, *recv_scope_);
     BarrierWithTable(1);
-    VLOG(1) << "push sparse param to table " << table_id
+    VLOG(0) << "push sparse param to table " << table_id
             << " from 0' trainer done";
   } else {
     BarrierWithTable(1);
     RpcRecvSparse(var_name, table_id, recv_scope_);
-    VLOG(1) << "pull sparse param to table " << table_id
+    VLOG(0) << "push dense param to table " << table_id
             << " from 0' trainer done";
   }
 
-  VLOG(1) << "Init Sparse " << var_name << " : table " << table_id << " done.";
+  VLOG(0) << "Init Sparse " << var_name << " : table " << table_id << " done.";
   auto *global_var = recv_scope_->FindVar(var_name);
   auto *var = old_scope_->Var(var_name);
   framework::CopyVariable(*global_var, var);

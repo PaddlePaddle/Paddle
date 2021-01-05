@@ -94,6 +94,7 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
         if fleet.is_first_worker():
             fleet.save_persistables(executor=exe, dirname=model_dir)
         shutil.rmtree(model_dir)
+        fleet.stop_worker()
 
     def do_dataset_training(self, fleet):
         dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
@@ -143,6 +144,8 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
             if fleet.is_first_worker():
                 fleet.save_persistables(executor=exe, dirname=model_dir)
             shutil.rmtree(model_dir)
+
+        fleet.stop_worker()
 
 
 if __name__ == "__main__":

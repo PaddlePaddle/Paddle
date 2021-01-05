@@ -62,7 +62,7 @@ TEST(SparseGeoTable, SSUM) {
   std::vector<float> pull_values(init_values.size());
   table->pull_sparse(pull_values.data(), init_keys.data(), init_keys.size());
   for (size_t i = 0; i < init_keys.size() * emb_dim; i++) {
-    ASSERT_TRUE(abs(pull_values[i] - init_values[i]) < 1e-5);
+    ASSERT_TRUE(abs(pull_values[i] - init_values[i]) < 1e-6);
   }
 
   std::vector<std::vector<uint64_t>> trainer_keys;

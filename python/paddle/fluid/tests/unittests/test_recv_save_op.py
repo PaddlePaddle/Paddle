@@ -65,7 +65,6 @@ def run_pserver(pserver_id):
             exe.run(program)
 
 
-@unittest.skip("do not need currently")
 class TestListenAndServOp(unittest.TestCase):
     def setUp(self):
         self.ps_timeout = 5

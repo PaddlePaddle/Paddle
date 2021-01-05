@@ -16,12 +16,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
-
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/distributed/service/communicator.h"
-#endif
 
 namespace paddle {
 namespace framework {
@@ -188,7 +185,8 @@ void HogwildWorker::TrainFilesWithProfiler() {
 
 #ifdef PADDLE_WITH_DISTRIBUTE
   if (thread_barrier_) {
-    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
+    operators::distributed::Communicator::GetInstance()
+        ->BarrierTriggerDecrement();
   }
 #endif
 }
@@ -218,7 +216,8 @@ void HogwildWorker::TrainFiles() {
   }
 #ifdef PADDLE_WITH_DISTRIBUTE
   if (thread_barrier_) {
-    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
+    operators::distributed::Communicator::GetInstance()
+        ->BarrierTriggerDecrement();
   }
 #endif
 }

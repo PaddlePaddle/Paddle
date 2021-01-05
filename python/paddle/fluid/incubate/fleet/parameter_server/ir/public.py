@@ -138,13 +138,6 @@ class CompileTimeStrategy(object):
 
         self.strategy = strategy
         self.role_maker = role_maker
-        try:
-            self.is_heter_ps_mode = role_maker._is_heter_parameter_server_mode
-        except:
-            warnings.warn(
-                "Using paddle.distributed.fleet instead of paddle.fluid.incubate.fleet"
-            )
-            self.is_heter_ps_mode = False
 
         self.origin_sparse_pairs = []
         self.origin_dense_pairs = []
@@ -261,7 +254,7 @@ class CompileTimeStrategy(object):
         for op in self.get_origin_main_program().global_block().ops:
             # check all optimizer op
             if int(op.all_attrs()["op_role"]) == 2:
-                # check param name
+                # check param name 
                 if op.input("Param")[0] != origin_param_name:
                     continue
                 # check all input
@@ -278,7 +271,7 @@ class CompileTimeStrategy(object):
 
     def _get_optimizer_param_related_var_name(self, op, op_type, varkey):
         """
-        Returns the names for optimizer inputs that need to be load
+        Returns the names for optimizer inputs that need to be load 
         """
         related_var_names = []
         if op_type == "adam":
@@ -476,7 +469,7 @@ class CompileTimeStrategy(object):
                 continue
 
             ctx = self.build_ctx(params, self.param_var_mapping, False, False,
-                                 False, False)
+                                 False)
             dense_recv_ctx[ctx.var_name()] = ctx
 
         for pairs in self.origin_sparse_pairs:
@@ -504,157 +497,6 @@ class CompileTimeStrategy(object):
         assert ValueError(
             "recv_type can only be 1/2/3/4, 1 : DENSE 2. SPARSE 3. DISTRIBUTED 4. ALL"
         )
-
-    def get_the_one_trainer_send_context(self, split_dense_table):
-        if self.is_geo_mode():
-            send_ctx = {}
-            trainer_id = self.get_role_id()
-            idx = 0
-
-            distibuted_varnames = get_sparse_tablenames(
-                self.origin_main_program, True)
-            for merged in self.merged_sparse_pairs:
-                param, grad = merged
-                grad_name = grad.merged_var.name
-                param_name = param.merged_var.name
-                is_distributed = True if param_name in distibuted_varnames else False
-
-                var = self.origin_main_program.global_block().vars[
-                    grad.merged_var.name]
-                var_numel = reduce(lambda x, y: x * y, var.shape[1:])
-
-                sparse_ctx = CommContext(
-                    grad_name, [grad_name], ["127.0.0.1:6071"], [var_numel],
-                    [grad_name], trainer_id, True, True, is_distributed, idx)
-                idx += 1
-                send_ctx[sparse_ctx.var_name()] = sparse_ctx
-
-            if len(send_ctx) == 0:
-                raise ValueError(
-                    "GeoSGD require sparse parameters in your net.")
-
-            return send_ctx
-        else:
-            return self.get_the_one_send_context(split_dense_table)
-
-    def get_dense_send_context(self,
-                               send_ctx,
-                               idx,
-                               merged_dense_pairs,
-                               trainer_id,
-                               split_dense_table=False):
-        if len(merged_dense_pairs) < 1:
-            return idx
-        if not split_dense_table:
-            origin_varnames = []
-            var_numel = 0
-            for merged in merged_dense_pairs:
-                grad = merged[1]
-                origin_varnames.append(grad.merged_var.name)
-                var = self.origin_main_program.global_block().vars[
-                    grad.merged_var.name]
-                var_numel += reduce(lambda x, y: x * y, var.shape)
-            grad_name = "Dense@Grad"
-            trainer_id = self.get_role_id()
-            aggregate = True
-            dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
-                                    [var_numel], origin_varnames, trainer_id,
-                                    aggregate, False, False, idx)
-            send_ctx[grad_name] = dense_ctx
-            idx += 1
-        else:
-            for merged in merged_dense_pairs:
-                grad = merged[1]
-                origin_varname = grad.merged_var.name
-                var = self.origin_main_program.global_block().vars[
-                    origin_varname]
-                var_numel = reduce(lambda x, y: x * y, var.shape)
-                grad_name = origin_varname
-                aggregate = True
-                dense_ctx = CommContext(
-                    grad_name, [grad_name], ["127.0.0.1:6071"], [var_numel],
-                    [origin_varname], trainer_id, aggregate, False, False, idx)
-                send_ctx[grad_name] = dense_ctx
-                idx += 1
-        return idx
-
-    def get_the_one_send_context(self,
-                                 split_dense_table=False,
-                                 use_origin_program=False,
-                                 ep_list=None):
-        if ep_list is None:
-            ep_list = ["127.0.0.1:6071"]
-        send_ctx = {}
-        trainer_id = self.get_role_id()
-        idx = 0
-
-        merged_dense_pairs = self.origin_merged_dense_pairs if use_origin_program else self.merged_dense_pairs
-        merged_sparse_pairs = self.origin_merged_sparse_pairs if use_origin_program else self.merged_sparse_pairs
-
-        idx += self.get_dense_send_context(send_ctx, idx, merged_dense_pairs,
-                                           trainer_id, split_dense_table)
-
-        distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
-                                                    True)
-        for merged in merged_sparse_pairs:
-            param, grad = merged
-            grad_name = grad.merged_var.name
-            param_name = param.merged_var.name
-            splited_varname = []
-
-            for i in range(len(ep_list)):
-                splited_varname.append("{}.block{}".format(param_name, i))
-
-            is_distributed = True if param_name in distibuted_varnames else False
-
-            var = self.origin_main_program.global_block().vars[
-                grad.merged_var.name]
-
-            shape = list(var.shape)
-            shape[0] = 0 if is_distributed else shape[0]
-
-            sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
-                                     [grad_name], trainer_id, True, True,
-                                     is_distributed, idx)
-
-            idx += 1
-            send_ctx[sparse_ctx.var_name()] = sparse_ctx
-        return send_ctx
-
-    def get_the_one_recv_context(self,
-                                 is_dense=True,
-                                 split_dense_table=False,
-                                 use_origin_program=False):
-        recv_id_maps = {}
-        if is_dense:
-            send_ctx = self.get_the_one_send_context(
-                split_dense_table=split_dense_table,
-                use_origin_program=use_origin_program)
-            for idx, (name, ctx) in enumerate(send_ctx.items()):
-                if ctx.is_sparse():
-                    continue
-
-                origin_grad_varnames = ctx.origin_varnames()
-
-                param_names = []
-                for grad_varname in origin_grad_varnames:
-                    param_name = self.grad_name_to_param_name[grad_varname]
-                    param_names.append(param_name)
-                recv_id_maps[ctx.table_id()] = param_names
-        else:
-            send_ctx = self.get_the_one_send_context()
-            for idx, (name, ctx) in enumerate(send_ctx.items()):
-                if not ctx.is_sparse():
-                    continue
-
-                origin_grad_varnames = ctx.origin_varnames()
-
-                param_names = []
-                for grad_varname in origin_grad_varnames:
-                    param_name = self.grad_name_to_param_name[grad_varname]
-                    param_names.append(param_name)
-                recv_id_maps[ctx.table_id()] = param_names
-        return recv_id_maps
 
     def get_server_runtime_config(self):
         return self.strategy.get_server_runtime_config()

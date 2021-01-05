@@ -24,7 +24,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skip("do not need currently")
 class TestLookupTableFuseOp(unittest.TestCase):
     def test_fuse(self):
         places = [core.CPUPlace()]

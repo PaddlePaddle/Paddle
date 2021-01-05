@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/variable_helper.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/operators/distributed/communicator.h"
 #endif
 
 namespace paddle {
@@ -43,7 +43,40 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
 }
 
 // get CommContext and remote send and recv op
-void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) { return; }
+void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+
+  bool need_communicator = false;
+
+  for (auto &node : graphs[0]->Nodes()) {
+    VLOG(3) << "node name " << node->Name();
+    if (node && node->IsOp()) {
+      if (node->Name() == "send") {
+        auto send_varnames =
+            BOOST_GET_CONST(std::vector<std::string>,
+                            node->Op()->GetNullableAttr("send_varnames"));
+
+        if (send_varnames.size() > 0) {
+          need_communicator = true;
+          break;
+        }
+      }
+    }
+  }
+
+  if (need_communicator) {
+    // init communicator here
+    auto *instance = operators::distributed::Communicator::GetInstance();
+    auto initialized = instance ? true : false;
+    PADDLE_ENFORCE_EQ(initialized, true,
+                      platform::errors::InvalidArgument(
+                          "Communicator is not Initialized, you may use "
+                          "FleetAPI(https://github.com/PaddlePaddle/Fleet/tree/"
+                          "develop/markdown_doc/transpiler)"));
+  }
+
+#endif
+}
 
 AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
@@ -138,12 +171,12 @@ FetchResultType AsyncSSAGraphExecutor::Run(
                         "results to be fetched!"));
   // init once
   if (run_futures_.size() == 0 && places_.size() > 1) {
-#ifdef PADDLE_WITH_DISTRIBUTE
     if (strategy_.thread_barrier_) {
-      paddle::distributed::Communicator::GetInstance()->BarrierTriggerReset(
+#ifdef PADDLE_WITH_DISTRIBUTE
+      operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
           places_.size());
-    }
 #endif
+    }
     exception_holder_.Clear();
     StartOffPythonTrainLoop(return_merged);
   }

@@ -741,7 +741,7 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
       request_call_num, [shard_sorted_kvs, value_size](void *done) {
         int ret = 0;
         auto *closure = (DownpourBrpcClosure *)done;
-        for (size_t i = 0; i < shard_sorted_kvs->size(); ++i) {
+        for (size_t i = 0; i < ids.size(); ++i) {
           if (closure->check_response(i, PS_PULL_SPARSE_TABLE) != 0) {
             ret = -1;
             break;

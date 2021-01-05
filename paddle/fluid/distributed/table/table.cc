@@ -22,12 +22,14 @@
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
 #include "paddle/fluid/distributed/table/sparse_geo_table.h"
 #include "paddle/fluid/distributed/table/tensor_accessor.h"
+#include "paddle/fluid/distributed/table/tensor_table.h"
 
 namespace paddle {
 namespace distributed {
 
 REGISTER_CLASS(Table, CommonDenseTable);
 REGISTER_CLASS(Table, CommonSparseTable);
+REGISTER_CLASS(Table, DenseTensorTable);
 REGISTER_CLASS(Table, SparseGeoTable);
 REGISTER_CLASS(Table, BarrierTable);
 

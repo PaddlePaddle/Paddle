@@ -36,7 +36,6 @@ import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
-from paddle.distributed.fleet.utils.ps_util import Distributed
 
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
 
@@ -155,10 +154,6 @@ class FleetDistRunnerBase(object):
         raise NotImplementedError(
             "do_pyreader_training should be implemented by child classes.")
 
-    def do_distributed_testing(self, fleet):
-        raise NotImplementedError(
-            "do_distributed_testing should be implemented by child classes.")
-
 
 class TestFleetBase(unittest.TestCase):
     """
@@ -180,7 +175,6 @@ class TestFleetBase(unittest.TestCase):
         self._reader = "pyreader"
         self._trainers = 2
         self._pservers = 2
-        self._need_test = 0
         self._port_set = set()
 
         global DIST_UT_PORT
@@ -268,15 +262,15 @@ class TestFleetBase(unittest.TestCase):
             python_path += " -m coverage run --branch -p"
         env.update(envs)
 
-        tr_cmd = "{0} {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
+        tr_cmd = "{0} {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8}".format(
             python_path, model, self._ps_endpoints, self._tr_endpoints,
             self._trainers, self._mode, self._geo_sgd_need_push_nums,
-            self._reader, gloo_path, self._need_test)
+            self._reader, gloo_path)
 
-        ps_cmd = "{0} {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
+        ps_cmd = "{0} {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8}".format(
             python_path, model, self._ps_endpoints, self._tr_endpoints,
             self._trainers, self._mode, self._geo_sgd_need_push_nums,
-            self._reader, gloo_path, self._need_test)
+            self._reader, gloo_path)
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)
@@ -368,7 +362,6 @@ def runtime_main(test_class):
     parser.add_argument(
         '--geo_sgd_need_push_nums', type=int, required=False, default=2)
     parser.add_argument('--reader', type=str, required=False, default='dataset')
-    parser.add_argument('--test', type=int, required=False, default=0)
     args = parser.parse_args()
 
     model = test_class()
@@ -384,28 +377,3 @@ def runtime_main(test_class):
             model.run_dataset_trainer(args)
         else:
             model.run_pyreader_trainer(args)
-
-        if args.test:
-            test_origin_program = fluid.Program()
-            test_startup_program = fluid.Program()
-            with fluid.program_guard(
-                    main_program=test_origin_program,
-                    startup_program=test_startup_program):
-                with fluid.unique_name.guard():
-                    avg_cost = model.net(args, is_train=False)
-            send_ctx = fleet.fleet._runtime_handle._communicator.send_ctx_
-            varname2tables = {}
-            for gradname, ctx in send_ctx.items():
-                if ctx.is_sparse:
-                    param = gradname.strip("@GRAD")
-                    varname2tables[param] = ctx.table_id()
-                else:
-                    continue
-            ps_util = Distributed()
-            test_main_program = ps_util.estimate(test_origin_program,
-                                                 varname2tables)
-            print(str(test_main_program))
-            print(str(test_startup_program))
-            model.do_distributed_testing(args, test_main_program,
-                                         test_startup_program)
-        fleet.stop_worker()

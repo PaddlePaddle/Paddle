@@ -20,7 +20,6 @@ limitations under the License. */
 #include <random>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 #include "brpc/channel.h"
 #include "brpc/controller.h"
@@ -35,7 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/profiler.h"
 
-DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
@@ -84,7 +82,7 @@ class HeterService : public ::paddle::PsService {
       response->set_err_code(service_ret);
       response->set_err_msg("server internal error");
     }
-  }
+  };
 
   void SendAndRecvVariable(::google::protobuf::RpcController* controller,
                            const MultiVarMsg* request, MultiVarMsg* response,
@@ -136,10 +134,6 @@ class HeterServer {
   virtual ~HeterServer() {}
 
   void Stop() {
-    VLOG(0) << "HeterServer Stop()";
-    std::unique_lock<std::mutex> lock(mutex_);
-    stoped_ = true;
-    cv_.notify_all();
     server_.Stop(1000);
     server_.Join();
   }
@@ -168,10 +162,6 @@ class HeterServer {
 
  private:
   static std::shared_ptr<HeterServer> s_instance_;
-  mutable std::mutex mutex_;
-  std::condition_variable cv_;
-  std::condition_variable condition_ready_;
-  bool stoped_ = false;
   std::string endpoint_;
 
  protected:
@@ -179,7 +169,7 @@ class HeterServer {
   HeterService service_;
   DISABLE_COPY_AND_ASSIGN(HeterServer);
   std::mutex mutex_ready_;
-
+  std::condition_variable condition_ready_;
   int ready_;
 };
 
@@ -225,7 +215,6 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   int Handle(const MultiVarMsg* request, MultiVarMsg* response,
              brpc::Controller* cntl) override {
     platform::RecordEvent record_event("RequestSendAndRecvHandler->Handle");
-    FLAGS_eager_delete_tensor_gb = -1;
     auto& local_scope = scope_->NewScope();
     auto message_name = request->message_name();
     auto& request_io_buffer = cntl->request_attachment();

@@ -42,7 +42,7 @@ typedef std::function<void(void*)> HeterRpcCallbackFunc;
 
 class OnHeterRpcDone : public google::protobuf::Closure {
  public:
-  explicit OnHeterRpcDone(HeterRpcCallbackFunc func) : handler_(func) {}
+  OnHeterRpcDone(HeterRpcCallbackFunc func) : handler_(func) {}
   virtual ~OnHeterRpcDone() {}
   void Run() {
     std::unique_ptr<OnHeterRpcDone> self_guard(this);
@@ -79,6 +79,7 @@ class HeterClient {
     if (NULL == s_instance_) {
       is_initialized_ = true;
       s_instance_.reset(new paddle::distributed::HeterClient());
+      std::vector<std::string> xpu_list = {endpoint};
       s_instance_->SetXpuList(endpoint);
       s_instance_->SetTrainerID(trainer_id);
       s_instance_->CreateClient2XpuConnection();
@@ -88,8 +89,6 @@ class HeterClient {
 
   void Stop();
 
-  void FinalizeWorker();
-
   void MainThread();
 
   void RpcProfilerControl();
@@ -98,7 +97,6 @@ class HeterClient {
                                const std::vector<std::string>& params);
 
   std::future<int32_t> StartProfiler();
-
   std::future<int32_t> StopProfiler();
   std::future<int32_t> StopHeterWorker();
 
@@ -106,16 +104,17 @@ class HeterClient {
 
   void SetXpuList(const std::vector<std::string>& xpu_list) {
     xpu_list_ = xpu_list;
-  }
+  };
 
   void SetTrainerID(const int& trainer_id) { trainer_id_ = trainer_id; }
 
  private:
   static std::shared_ptr<HeterClient> s_instance_;
+
+ protected:
   static bool is_initialized_;
   std::unique_ptr<std::thread> main_thread_{nullptr};
   std::vector<std::shared_ptr<brpc::Channel>> xpu_channels_;
-
   DISABLE_COPY_AND_ASSIGN(HeterClient);
   std::vector<std::string> xpu_list_;
 

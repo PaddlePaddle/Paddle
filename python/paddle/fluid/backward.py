@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-from .proto import framework_pb2
 
 from paddle.fluid import framework as framework
 from . import core
@@ -46,7 +45,7 @@ class ProgramStats(object):
         input_names = []
         for name in self.var_op_deps:
             if len(self.var_op_deps[name]["var_as_output_ops"]) == 0 and \
-                    len(self.var_op_deps[name]["var_as_input_ops"]) > 0:
+                len(self.var_op_deps[name]["var_as_input_ops"]) > 0:
                 if self.block.var(name).persistable:
                     continue
                 input_names.append(name)
@@ -192,7 +191,7 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
         return []
     result_descs = []
     op_role_attr_name = \
-        core.op_proto_and_checker_maker.kOpRoleAttrName()
+            core.op_proto_and_checker_maker.kOpRoleAttrName()
     backward = core.op_proto_and_checker_maker.OpRole.Backward
     for desc in descs:
         if isinstance(desc, framework.Operator):
@@ -377,29 +376,21 @@ def _append_grad_suffix_(name):
     return cpt.to_text(name) + core.grad_var_suffix()
 
 
-def _accumulate_gradients_by_sum_op_(var_name,
-                                     renamed_vars,
-                                     pending_sum_ops,
-                                     op_idx,
-                                     op_device=""):
+def _accumulate_gradients_by_sum_op_(var_name, renamed_vars, pending_sum_ops,
+                                     op_idx):
     """
     Use sum op to accumulate_gradients, the gradients are stored in renamed_vars.
     """
     if op_idx not in pending_sum_ops.keys():
         pending_sum_ops[op_idx] = []
     pending_sum_ops[op_idx].append(
-        _create_op_desc_("sum", {"X": renamed_vars[var_name]}, {
-            "Out": [var_name]
-        }, {"use_mkldnn": False,
-            "op_device": op_device}))
+        _create_op_desc_("sum", {"X": renamed_vars[var_name]},
+                         {"Out": [var_name]}, {"use_mkldnn": False}))
     renamed_vars[var_name] = [var_name]
 
 
-def _accumulate_gradients_by_add_ops_(var_name,
-                                      renamed_vars,
-                                      pending_sum_ops,
-                                      op_idx,
-                                      op_device=""):
+def _accumulate_gradients_by_add_ops_(var_name, renamed_vars, pending_sum_ops,
+                                      op_idx):
     """
     Use several inplace add op to accumulate_gradients, the gradients are stored in renamed_vars.
     """
@@ -416,8 +407,7 @@ def _accumulate_gradients_by_add_ops_(var_name,
         pending_sum_ops[op_idx].append(
             _create_op_desc_("grad_add", {"X": [x_name],
                                           "Y": [y_name]}, {"Out": [out_name]},
-                             {"use_mkldnn": False,
-                              "op_device": op_device}))
+                             {"use_mkldnn": False}))
     renamed_vars[var_name] = [var_name]
 
 
@@ -435,28 +425,23 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     renamed_vars = collections.defaultdict(list)
     renamed_var_start_idx = collections.defaultdict(list)
     for idx, op_desc in enumerate(op_descs):
-        op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
-        )
-        op_device = ""
-        if op_desc.has_attr(op_device_attr_name):
-            op_device = op_desc.attr(op_device_attr_name)
         for var_name in op_desc.input_arg_names():
             if "@GRAD" not in var_name:
                 continue
             if len(renamed_vars[var_name]) > 1:
                 if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
-                    _accumulate_gradients_by_sum_op_(
-                        var_name, renamed_vars, pending_sum_ops, idx, op_device)
+                    _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
+                                                     pending_sum_ops, idx)
                 else:
-                    _accumulate_gradients_by_add_ops_(
-                        var_name, renamed_vars, pending_sum_ops, idx, op_device)
+                    _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
+                                                      pending_sum_ops, idx)
 
         for param_idx, param_name in enumerate(op_desc.output_names()):
             arg_names = op_desc.output(param_name)
             for arg_idx, var_name in enumerate(arg_names):
                 if "@GRAD" not in var_name:
                     continue
-                # if "@RENAME@" in var_name:
+                #if "@RENAME@" in var_name:
                 #    continue
                 if var_name == core.empty_var_name(
                 ) or var_name in op_desc.input_arg_names():
@@ -495,7 +480,7 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                         ] + arg_names[arg_idx:]
 
                     new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
-                        str(var_rename_count[var_name])
+                               str(var_rename_count[var_name])
                     var_rename_count[var_name] += 1
                     arg_names[arg_idx] = new_name
                     op_desc.set_output(param_name, arg_names)
@@ -690,6 +675,9 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
     if grad_op_descs_set == not_need_op_descs_set:
         return set()
     return not_need_op_descs_set
+
+
+from .proto import framework_pb2
 
 
 def serialize_op_decs(op_desc):
@@ -1484,8 +1472,8 @@ def append_backward(loss,
                 isinstance(checkpoints, list) and \
                 len(checkpoints) > 0:
             program_stat, checkpoint_names, \
-                vars_should_be_hold, \
-                recompute_segments = \
+            vars_should_be_hold, \
+            recompute_segments = \
                 _append_backward_ops_with_checkpoints_(
                     root_block,
                     op_path,
@@ -1722,7 +1710,7 @@ def _find_op_path_(block,
         # TODO(liym27): Consider special types of ops.
         for i, op in reversed(list(enumerate(block.ops))):
             if relevant_op_flags[i] == False \
-                    and _some_in_set_(op.desc.output_arg_names(), output_names):
+                    and _some_in_set_(op.desc.output_arg_names(),output_names):
                 relevant_op_flags[i] = True
 
     op_path = [
@@ -1878,7 +1866,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     """
     :api_attr: Static Graph
-
+    
     Backpropagate the gradients of targets to inputs.
 
     Args:

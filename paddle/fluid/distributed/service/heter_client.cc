@@ -24,10 +24,10 @@
 #include "paddle/fluid/platform/timer.h"
 
 DECLARE_int32(rpc_deadline);
-DECLARE_int32(pserver_timeout_ms);
-
 namespace paddle {
 namespace distributed {
+
+DEFINE_int32(pserver_timeout_ms, 10800000, "pserver request server timeout_ms");
 
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = NULL;
 bool HeterClient::is_initialized_ = false;
@@ -53,23 +53,6 @@ void HeterClient::Stop() {
   }
 }
 
-void HeterClient::FinalizeWorker() {
-  running_ = false;
-  if (!is_initialized_) {
-    VLOG(0) << "HeterClient is not inited, do nothing";
-  } else {
-    if (main_thread_) {
-      main_thread_->join();
-      main_thread_.reset(nullptr);
-    }
-    VLOG(1) << "HeterClient Stop Done";
-  }
-}
-
-std::future<int32_t> HeterClient::StopHeterWorker() {
-  return SendCmd(-1, PS_STOP_SERVER, {});
-}
-
 void HeterClient::RpcProfilerControl() {
   if (trainer_id_ == 0) {
     if (!do_server_profiler_ && platform::IsProfileEnabled()) {
@@ -90,7 +73,7 @@ void HeterClient::CreateClient2XpuConnection() {
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
   options.connection_type = "single";
-  options.timeout_ms = FLAGS_pserver_timeout_ms;
+  options.timeout_ms = pserver_timeout_ms;
 
   xpu_channels_.resize(xpu_list_.size());
   for (size_t i = 0; i < xpu_list_.size(); ++i) {
@@ -119,7 +102,7 @@ void HeterClient::SendAndRecvAsync(
   int num = trainer_id_ % xpu_channels_.size();
 
   brpc::Controller cntl;
-  cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
+  cntl.set_timeout_ms(pserver_timeout_ms);
   distributed::MultiVarMsg request, response;
   auto& request_io_buffer = cntl.request_attachment();
   ::paddle::PsService_Stub stub(xpu_channels_[num].get());
@@ -166,7 +149,7 @@ std::future<int32_t> HeterClient::SendCmd(
     }
     ::paddle::PsService_Stub rpc_stub(xpu_channels_[i].get());
     closure->cntl(i)->set_timeout_ms(
-        FLAGS_pserver_timeout_ms);  // cmd msg don't limit timeout for save/load
+        pserver_timeout_ms);  // cmd msg don't limit timeout for save/load
     rpc_stub.service(closure->cntl(i), closure->request(i),
                      closure->response(i), closure);
   }

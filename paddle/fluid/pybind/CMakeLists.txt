@@ -20,6 +20,10 @@ if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)
 endif()
 
+if (WITH_DISTRIBUTE)
+  list(APPEND PYBIND_DEPS communicator)
+endif()
+
 set(PYBIND_SRCS
   pybind.cc
   exception.cc
@@ -50,10 +54,7 @@ if (WITH_CRYPTO)
 endif (WITH_CRYPTO)
 
 if (WITH_DISTRIBUTE)
-  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
-  set_source_files_properties(fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  list(APPEND PYBIND_DEPS fleet communicator)
-  list(APPEND PYBIND_SRCS fleet_py.cc)
+  list(APPEND PYBIND_SRCS communicator_py.cc)
 endif()
 
 if (WITH_NCCL)
