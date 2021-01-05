@@ -57,9 +57,10 @@ class NLLLossOp : public framework::OperatorWithKernel {
             x_dims[1], w_dims[0],
             platform::errors::InvalidArgument(
                 "Expected input tensor Weight's size should equal "
-                "to the the total number of classes. But received Weight's "
-                "size is %d, the total number of classes is %d",
-                x_dims[1], w_dims[0]));
+                "to the first dimension of the input tensor X. But received "
+                "Weight's "
+                "size is %d, the first dimension of input X is %d",
+                w_dims[0], x_dims[1]));
       }
     }
     if (x_dims.size() == 2) {
