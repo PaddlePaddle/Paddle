@@ -229,14 +229,14 @@ class OptimizerWithMixedPrecision(object):
             A list of optimize operators.
         """
 
-        # Change the op_role_var attr for some ops, so that gradients
-        # transferred across GPUs can be FP16.
-        update_role_var_grad(self._train_program, params_grads)
-
         # When not using dynamic loss scaling and the init loss scaling value is equal to 1.0,
         # the model can be optimized.
         if not self._use_dynamic_loss_scaling and self._init_loss_scaling == 1.0:
             return self._optimizer.apply_gradients(params_grads)
+
+        # Change the op_role_var attr for some ops, so that gradients
+        # transferred across GPUs can be FP16.
+        update_role_var_grad(self._train_program, params_grads)
 
         grads = [g for _, g in params_grads]
         fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
