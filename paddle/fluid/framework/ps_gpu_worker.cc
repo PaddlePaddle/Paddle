@@ -143,16 +143,17 @@ void PSGPUWorker::SetNeedDump(bool need_dump_field) {
 void PSGPUWorker::DumpParam() {}
 
 void PSGPUWorker::TrainFiles() {
-  VLOG(3) << "train file A";
   platform::SetNumThreads(1);
+  platform::Timer timeline;
+  timeline.Start();
 
-  VLOG(3) << "train file B";
+  int total_ins_num = 0;
+
   // how to accumulate fetched values here
   device_reader_->Start();
-  VLOG(3) << "train file C";
   int cur_batch;
   while ((cur_batch = device_reader_->Next()) > 0) {
-    VLOG(3) << "train file D";
+    total_ins_num += cur_batch;
     for (auto& op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -169,6 +170,9 @@ void PSGPUWorker::TrainFiles() {
     PrintFetchVars();
     thread_scope_->DropKids();
   }
+  timeline.Pause();
+  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost "
+          << timeline.ElapsedSec() << " seconds, ins_num: " << total_ins_num;
   return;
 }
 
