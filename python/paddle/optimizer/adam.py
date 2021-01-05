@@ -270,7 +270,6 @@ class Adam(Optimizer):
                 adam.step()
                 adam.clear_grad()
         """
-        self._dtype = None
         params_grads = []
         for param in self._parameter_list:
             if not param.trainable:

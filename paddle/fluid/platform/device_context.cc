@@ -581,6 +581,16 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   return;
 }
 
+unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) {
+  unsigned int num_entries = 0;
+  for (auto const& l3 : *p_blobmap_) {
+    for (auto const& l2 : *(l3.second)) {
+      num_entries += (l2.second)->size();
+    }
+  }
+  return num_entries;
+}
+
 MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {
   BlobMap* pMap = p_blobmap_.get();
