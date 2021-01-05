@@ -43,9 +43,13 @@ inline std::string GetValueName(framework::proto::VarType::Type data_type) {
     case framework::proto::VarType::FP32:
       value_name = "fp32_values";
       break;
+    case framework::proto::VarType::FP64:
+      value_name = "fp64_values";
+      break;
     case framework::proto::VarType::BOOL:
       value_name = "bool_values";
       break;
+
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported data type(code %d) for SetValue operator, only "
