@@ -244,7 +244,7 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     new_var->SetPersistable(Persistable());
     new_var->SetDataType(DataType());
     new_var->SetType(Type());
-    framework::TensorCopy(src_tensor, dst_place, dst_tensor);
+    framework::TensorCopySync(src_tensor, dst_place, dst_tensor);
     if (blocking) {
       platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
       auto src_place = src_tensor.place();
