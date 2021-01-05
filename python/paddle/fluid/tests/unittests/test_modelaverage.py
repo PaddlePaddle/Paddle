@@ -44,7 +44,7 @@ class TestModelAverage(unittest.TestCase):
 
                 optimizer.minimize(loss)
                 # build ModelAverage optimizer
-                model_average = paddle.optimizer.ModelAverage(
+                model_average = paddle.incubate.optimizer.ModelAverage(
                     0.15, min_average_window=2, max_average_window=10)
 
         exe.run(startup)
@@ -171,7 +171,7 @@ class TestModelAverage(unittest.TestCase):
         optimizer = paddle.optimizer.Momentum(
             learning_rate=0.2, momentum=0.1, parameters=layer.parameters())
         # build ModelAverage optimizer
-        model_average = paddle.optimizer.ModelAverage(
+        model_average = paddle.incubate.optimizer.ModelAverage(
             0.15,
             parameters=layer.parameters(),
             min_average_window=2,

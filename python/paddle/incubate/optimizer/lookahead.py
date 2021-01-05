@@ -99,7 +99,7 @@ class LookAhead(Optimizer):
             layer = LinearNet()
             loss_fn = nn.CrossEntropyLoss()
             optimizer = paddle.optimizer.SGD(learning_rate=0.1, parameters=layer.parameters())
-            lookahead = paddle.optimizer.LookAhead(optimizer, alpha=0.2, k=5)
+            lookahead = paddle.incubate.optimizer.LookAhead(optimizer, alpha=0.2, k=5)
 
             # create data loader
             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
@@ -163,7 +163,7 @@ class LookAhead(Optimizer):
                 out = linear(inp)
                 loss = paddle.mean(out)
                 sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
-                lookahead = paddle.optimizer.LookAhead(sgd, alpha=0.2, k=5)
+                lookahead = paddle.incubate.optimizer.LookAhead(sgd, alpha=0.2, k=5)
                 loss.backward()
                 lookahead.step()
                 lookahead.clear_grad()
@@ -272,7 +272,7 @@ class LookAhead(Optimizer):
                 out = linear(inp)
                 loss = paddle.mean(out)
                 sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
-                lookahead = paddle.optimizer.LookAhead(sgd, alpha=0.2, k=5)
+                lookahead = paddle.incubate.optimizer.LookAhead(sgd, alpha=0.2, k=5)
                 loss.backward()
                 lookahead.minimize(loss)
                 lookahead.clear_grad()

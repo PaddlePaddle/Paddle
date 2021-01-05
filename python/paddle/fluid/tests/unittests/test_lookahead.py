@@ -43,7 +43,7 @@ class TestLookAhead(unittest.TestCase):
                 loss = fluid.layers.mean(hidden)
 
                 optimizer = paddle.optimizer.SGD(learning_rate=SGD_LR)
-                lookahead = paddle.optimizer.LookAhead(
+                lookahead = paddle.incubate.optimizer.LookAhead(
                     optimizer, alpha=LOOKAHEAD_ALPHA, k=LOOKAHEAD_K)
                 lookahead.minimize(loss)
 
@@ -127,7 +127,7 @@ class TestLookAhead(unittest.TestCase):
         loss_fn = nn.CrossEntropyLoss()
         optimizer = paddle.optimizer.SGD(learning_rate=SGD_LR,
                                          parameters=layer.parameters())
-        lookahead = paddle.optimizer.LookAhead(
+        lookahead = paddle.incubate.optimizer.LookAhead(
             optimizer, alpha=LOOKAHEAD_ALPHA, k=LOOKAHEAD_K)
 
         # create data loader
