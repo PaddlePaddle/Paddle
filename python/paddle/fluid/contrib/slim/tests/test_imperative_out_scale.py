@@ -272,8 +272,8 @@ class TestImperativeOutSclae(unittest.TestCase):
         startup = fluid.Program()
         static_img, static_label, static_loss = _build_static_lenet(
             main, startup, False, seed)
-        infer_img, infer_label, infer_pre = _build_static_lenet(infer, startup,
-                                                                True, seed)
+        infer_img, _, infer_pre = _build_static_lenet(infer, startup, True,
+                                                      seed)
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
                 opt = AdamOptimizer(learning_rate=lr)

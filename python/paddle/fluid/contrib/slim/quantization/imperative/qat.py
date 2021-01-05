@@ -50,11 +50,6 @@ _op_real_in_out_name = {
     "swish": [["X"], ["Out"]],
 }
 
-_support_ops = [
-    "elementwise_add", "pool2d", "softmax", "relu", "relu6", "leaky_relu",
-    "prelu", "tanh", "batch_norm", "sigmoid", "swish"
-]
-
 
 class ImperativeQuantAware(object):
     """
