@@ -194,14 +194,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
         handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 
     mkldnn::stream astream(cpu_engine);
-<<<<<<< HEAD
-    #ifdef PADDLE_WITH_MKLDNN
-    platform::RecordEvent record_reorder("ext_reorder", platform::EventRole::kUniqueOp);
-    #endif
-=======
     platform::RecordEvent record_reorder("ext_reorder",
                                          platform::EventRole::kUniqueOp);
->>>>>>> 587b67ef62a2fb44365c436cf065fc93ab4bbf1e
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
   } else {
