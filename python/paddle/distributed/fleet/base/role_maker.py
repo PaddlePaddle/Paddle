@@ -220,15 +220,8 @@ class Gloo(object):
             rank, nodes = self._get_rank_nodes(Role.WORKER)
             gloo = init(rank, nodes, "WORKER")
             self._worker_comm = gloo
-        else:
-            rank, nodes = self._get_rank_nodes(Role.SERVER)
-            gloo = init(rank, nodes, "SERVER")
-            self._server_comm = gloo
+        # TODO (sandyhouse): initialize gloo for server and all
 
-        if self._need_init_all:
-            rank, nodes = self._get_rank_nodes(Role.ALL)
-            gloo = init(rank, nodes, "ALL")
-            self._nodes_comm = gloo
         if start_http_server:
             http_server_d["running"] = False
             http_server.join()

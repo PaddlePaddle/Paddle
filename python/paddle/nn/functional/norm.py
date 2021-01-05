@@ -271,9 +271,7 @@ def layer_norm(x,
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          layer_norm = paddle.nn.functional.layer_norm(x, x.shape[1:])
-          layer_norm_out = layer_norm(x)
-
+          layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
           print(layer_norm_out)
     """
     input_shape = list(x.shape)
@@ -366,7 +364,7 @@ def instance_norm(x,
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          instance_norm_out = paddle.nn.functional.instancenorm(x)
+          instance_norm_out = paddle.nn.functional.instance_norm(x)
 
           print(instance_norm_out)
 

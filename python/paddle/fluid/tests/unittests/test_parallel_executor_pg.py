@@ -32,7 +32,7 @@ class TestMNIST(TestParallelExecutorBase):
 
     # simple_fc
     def check_simple_fc_convergence(self, use_device, use_reduce=False):
-        if use_device == DeviceType.GPU and not core.is_compiled_with_cuda():
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
         img, label = init_data()
@@ -73,7 +73,7 @@ class TestMNIST(TestParallelExecutorBase):
             np.mean(parallel_last_loss), single_last_loss, delta=1e-6)
 
     def test_simple_fc_parallel_accuracy(self):
-        self.check_simple_fc_parallel_accuracy(DeviceType.GPU)
+        self.check_simple_fc_parallel_accuracy(DeviceType.CUDA)
 
 
 if __name__ == '__main__':

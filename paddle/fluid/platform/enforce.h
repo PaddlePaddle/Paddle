@@ -932,7 +932,7 @@ inline void retry_sleep(unsigned millisecond) {
 #ifdef _WIN32
   Sleep(millisecond);
 #else
-  sleep(millisecond);
+  usleep(millisecond * 1000);
 #endif
 }
 

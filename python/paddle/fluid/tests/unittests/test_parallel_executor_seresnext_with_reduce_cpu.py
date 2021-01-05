@@ -21,7 +21,7 @@ import paddle.fluid.core as core
 
 class TestResnetWithReduceBase(TestParallelExecutorBase):
     def _compare_reduce_and_allreduce(self, use_device, delta2=1e-5):
-        if use_device == DeviceType.GPU and not core.is_compiled_with_cuda():
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
         all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
