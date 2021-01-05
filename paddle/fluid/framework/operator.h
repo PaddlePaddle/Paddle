@@ -545,6 +545,9 @@ class OperatorWithKernel : public OperatorBase {
   void ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
                     const platform::Place& place) const;
 
+  void HandleComplexGradToRealGrad(const Scope& scope,
+                                   RuntimeContext* ctx) const;
+
   /* Inner assist methods */
   // indicate kernel DataType by input data.
   // By default all input data must be same.

@@ -27,7 +27,7 @@ from paddle.device import get_device
 
 # deprecated module import
 from paddle.fluid import core
-from paddle.fluid.framework import _cpu_num
+from paddle.fluid.framework import _cpu_num, set_flags
 
 
 class ParallelEnvArgs(object):
@@ -153,6 +153,12 @@ def _remove_risky_env():
 
 
 def _set_trainer_env(env_dict):
+    # NOTE(chenweihang): [ Why need set FLAGS_selected_gpus here? ]
+    # When the child process starts, it will inherit the configuration of the 
+    # main process and set the FLAGS once, but the environment variable has 
+    # not been set at this time, which leads to the FLAGS_selected_gpus 
+    # is keep same with mainprocess(usually empty), so manually update the flags here
+    set_flags({'FLAGS_selected_gpus': env_dict['FLAGS_selected_gpus']})
     for var_name in env_dict:
         os.environ[var_name] = env_dict[var_name]
 

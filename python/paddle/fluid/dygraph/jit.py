@@ -677,7 +677,8 @@ def save(layer, path, input_spec=None, **configs):
     for attr_func in dir(inner_layer):
         static_func = getattr(inner_layer, attr_func, None)
         if isinstance(static_func, StaticFunction):
-            concrete_program = static_func.concrete_program
+            concrete_program = static_func.concrete_program_specify_input_spec(
+                inner_input_spec)
         elif 'forward' == attr_func:
             # transform in jit.save, if input_spec is incomplete, declarative will throw error
             static_forward = declarative(
