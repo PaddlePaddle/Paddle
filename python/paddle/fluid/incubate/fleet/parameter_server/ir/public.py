@@ -543,9 +543,10 @@ class CompileTimeStrategy(object):
                     grad.merged_var.name]
                 var_numel = reduce(lambda x, y: x * y, var.shape[1:])
 
-                sparse_ctx = CommContext(
-                    grad_name, [grad_name], ["127.0.0.1:6071"], [var_numel],
-                    [grad_name], trainer_id, True, True, is_distributed, idx, False)
+                sparse_ctx = CommContext(grad_name, [grad_name],
+                                         ["127.0.0.1:6071"], [var_numel],
+                                         [grad_name], trainer_id, True, True,
+                                         is_distributed, idx, False)
                 idx += 1
                 send_ctx[sparse_ctx.var_name()] = sparse_ctx
 
@@ -595,9 +596,10 @@ class CompileTimeStrategy(object):
                 var_numel = reduce(lambda x, y: x * y, var.shape)
                 grad_name = origin_varname
                 aggregate = True
-                dense_ctx = CommContext(
-                    grad_name, [grad_name], ["127.0.0.1:6071"], [var_numel],
-                    [origin_varname], trainer_id, aggregate, False, False, idx, False)
+                dense_ctx = CommContext(grad_name, [grad_name],
+                                        ["127.0.0.1:6071"], [var_numel],
+                                        [origin_varname], trainer_id, aggregate,
+                                        False, False, idx, False)
                 send_ctx[grad_name] = dense_ctx
                 idx += 1
         return idx
@@ -1163,8 +1165,8 @@ def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
             "@LR_DECAY_COUNTER@", lr_name, lr_decay_startup_program,
             lr_decay_main_program, "GlobalStepTable")
         # hard code for pe
-        lr_var = compiled_config.origin_main_program.global_block(
-        ).vars["learning_rate_0"]
+        lr_var = compiled_config.origin_main_program.global_block().vars[
+            "learning_rate_0"]
         main_program.global_block().create_var(
             name=lr_var.name,
             shape=lr_var.shape,
@@ -1186,41 +1188,66 @@ def _get_lr_param_dict(opt_ops):
 
 
 def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
-    layer_decay = [
-        'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
-        'polynomial_decay', 'piecewise_decay', 'noam_decay', 'cosine_decay'
-    ]
     schedler_decay = [
-        'LRScheduler', 'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay',
-        'InverseTimeDecay', 'PolynomialDecay', 'LinearWarmup',
-        'ExponentialDecay', 'MultiStepDecay', 'StepDecay', 'LambdaDecay',
-        'ReduceOnPlateau', 'CosineAnnealingDecay'
+        'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'InverseTimeDecay',
+        'ExponentialDecay'
     ]
 
-    from paddle.optimizer.lr import LRScheduler, ExponentialDecay
-    from paddle.fluid.layers.learning_rate_scheduler import exponential_decay
+    from paddle.optimizer.lr import ExponentialDecay, NoamDecay, PiecewiseDecay, NaturalExpDecay, InverseTimeDecay
+    from paddle.fluid.layers.learning_rate_scheduler import exponential_decay, noam_decay, piecewise_decay, natural_exp_decay, inverse_time_decay
 
     decay_main_program = fluid.framework.Program()
     decay_startup_program = fluid.framework.Program()
     lr_name = ""
 
     if isinstance(lr_sheduler, ExponentialDecay):
-        decay_main_program = fluid.framework.Program()
-        decay_startup_program = fluid.framework.Program()
         with fluid.program_guard(decay_main_program, decay_startup_program):
-            lr = exponential_decay(1.0, lr_decay_steps,
-                                   lr_sheduler.gamma, True)
+            lr = exponential_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
             lr_name = lr.name
             logging.warn(
                 "ExponentialDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
-                "\t \t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
-                "\t \t strategy.a_sync = True \n"
-                "\t \t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
+                "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
+                "\t strategy.a_sync = True \n"
+                "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
+                % lr_decay_steps)
+    elif isinstance(lr_sheduler, NoamDecay):
+        with fluid.program_guard(decay_main_program, decay_startup_program):
+            lr = noam_decay(lr_sheduler.d_model, lr_sheduler.warmup_steps, 1.0)
+            lr_name = lr.name
+            logging.warn("NoamDecay is set, warmup steps is [ %d ]" %
+                         lr_sheduler.warmup_steps)
+    elif isinstance(lr_sheduler, PiecewiseDecay):
+        with fluid.program_guard(decay_main_program, decay_startup_program):
+            lr = piecewise_decay(lr_sheduler.boundaries, lr_sheduler.values)
+            lr_name = lr.name
+            logging.warn(
+                "PiecewiseDecay is set, boundaries is {}, values is {}".format(
+                    lr_sheduler.boundaries, lr_sheduler.values))
+    elif isinstance(lr_sheduler, NaturalExpDecay):
+        with fluid.program_guard(decay_main_program, decay_startup_program):
+            lr = natural_exp_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
+            lr_name = lr.name
+            logging.warn(
+                "NaturalExpDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
+                "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
+                "\t strategy.a_sync = True \n"
+                "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
+                % lr_decay_steps)
+    elif isinstance(lr_sheduler, InverseTimeDecay):
+        with fluid.program_guard(decay_main_program, decay_startup_program):
+            lr = inverse_time_decay(1.0, lr_decay_steps, lr_sheduler.gamma,
+                                    True)
+            lr_name = lr.name
+            logging.warn(
+                "InverseTimeDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
+                "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
+                "\t strategy.a_sync = True \n"
+                "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
                 % lr_decay_steps)
     else:
         raise ValueError(
-            "Not supported lr lr_sheduler, please use follow decay strategy: {}".
-            format(layer_decay))
+            "Not supported current LearningRate strategy, please use follow decay strategy: {}".
+            format(schedler_decay))
 
     return decay_main_program, decay_startup_program, lr_name
 

@@ -532,7 +532,6 @@ int32_t PsService::push_global_step(Table *table,
                                     PsResponseMessage &response,
                                     brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response);
-  // Todo: hard code for decay step
   auto req_buffer_size = request.data().size();
   if (req_buffer_size < 1) {
     set_response_code(response, 0, "run_program data is empty");

@@ -49,8 +49,8 @@ void BindDistFleetWrapper(py::module* m) {
       .def("load_sparse", &FleetWrapper::LoadSparseOnServer)
       .def("init_server", &FleetWrapper::InitServer)
       .def("run_server",
-           (uint64_t(FleetWrapper::*)(void)) & FleetWrapper::RunServer)
-      .def("run_server", (uint64_t(FleetWrapper::*)(           // NOLINT
+           (uint64_t (FleetWrapper::*)(void)) & FleetWrapper::RunServer)
+      .def("run_server", (uint64_t (FleetWrapper::*)(          // NOLINT
                              const std::string&, uint32_t)) &  // NOLINT
                              FleetWrapper::RunServer)
       .def("init_worker", &FleetWrapper::InitWorker)
@@ -62,7 +62,7 @@ void BindDistFleetWrapper(py::module* m) {
       .def("stop_server", &FleetWrapper::StopServer)
       .def("stop_worker", &FleetWrapper::FinalizeWorker)
       .def("barrier", &FleetWrapper::BarrierWithTable);
-}  // end BindDistFleetWrapper
+}
 
 void BindPSHost(py::module* m) {
   py::class_<distributed::PSHost>(*m, "PSHost")

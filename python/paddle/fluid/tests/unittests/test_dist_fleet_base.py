@@ -39,7 +39,6 @@ import unittest
 import paddle
 paddle.enable_static()
 
-
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
 
 RUN_STEP = 5
@@ -134,7 +133,7 @@ class FleetDistRunnerBase(object):
                     learning_rate=LEARNING_RATE,
                     decay_steps=500,
                     decay_rate=0.969,
-                    staircase=True))
+                    staircase=True)) 
             """
         else:
             optimizer = fluid.optimizer.SGD(LEARNING_RATE)
@@ -175,8 +174,7 @@ class TestFleetBase(unittest.TestCase):
     """
 
     def _setup_config(self):
-        raise NotImplementedError(
-            "tests should have _setup_config implemented")
+        raise NotImplementedError("tests should have _setup_config implemented")
 
     def tearDown(self):
         t = time.time() - self.startTime
@@ -376,8 +374,7 @@ def runtime_main(test_class):
     parser.add_argument('--mode', type=str, required=False, default='geo')
     parser.add_argument(
         '--geo_sgd_need_push_nums', type=int, required=False, default=2)
-    parser.add_argument('--reader', type=str,
-                        required=False, default='dataset')
+    parser.add_argument('--reader', type=str, required=False, default='dataset')
     parser.add_argument('--test', type=int, required=False, default=0)
     args = parser.parse_args()
 

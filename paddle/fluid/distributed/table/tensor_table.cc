@@ -29,14 +29,9 @@ int32_t TensorTable::set_program_env(
     framework::Scope *scope, platform::Place place,
     const std::vector<framework::ProgramDesc> *sub_program) {
   scope_ = scope;
-  VLOG(1) << "Get new scope_";
   place_ = place;
-
   executor_ = new framework::Executor(place_);
-  VLOG(1) << "Get new executor_";
-
   sub_program_ = sub_program;
-  VLOG(1) << "Get new sub_program_";
   return 0;
 }
 
@@ -47,19 +42,15 @@ int32_t GlobalStepTable::initialize() {
   // Get Config
   if (_program_config.has_startup_program_id()) {
     startup_program_id_ = _program_config.startup_program_id();
-    VLOG(1) << "Get startup_program_id_: " << startup_program_id_;
   }
   if (_program_config.has_main_program_id()) {
     main_program_id_ = _program_config.main_program_id();
-    VLOG(1) << "Get main_program_id_: " << main_program_id_;
   }
   if (_program_config.has_feed_var_name()) {
     feed_var_name_ = _program_config.feed_var_name();
-    VLOG(1) << "Get feed_var_name: " << feed_var_name_;
   }
   if (_program_config.has_fetch_var_name()) {
     fetch_var_name_ = _program_config.fetch_var_name();
-    VLOG(1) << "Get fetch_var_name: " << fetch_var_name_;
   }
 
   // Run startup program
@@ -67,20 +58,16 @@ int32_t GlobalStepTable::initialize() {
     std::map<std::string, const framework::LoDTensor *> fake_feed;
     std::map<std::string, framework::FetchType *> fake_fetch;
     auto startup_program_desc = sub_program_->at(startup_program_id_);
-    VLOG(1) << "Get startup_program_desc";
     auto ctx = executor_->Prepare(startup_program_desc, 0);
     executor_->RunPreparedContext(ctx.get(), scope_, false);
-    VLOG(1) << "Run startup_program_desc";
   }
 
   if (main_program_id_ != -1) {
     // Run main porgram, if program is used for learning decay
     auto main_program_desc = sub_program_->at(main_program_id_);
-    VLOG(1) << "Get main_program_desc";
     auto main_ctx = executor_->Prepare(main_program_desc, 0);
     exec_context_ = std::move(main_ctx);
     executor_->RunPreparedContext(exec_context_.get(), scope_, false);
-    VLOG(1) << "Run main_program_desc";
     // init decay_counters
     decay_counters_.reserve(trainers_);
     for (int32_t i = 0; i < trainers_; ++i) {
@@ -96,7 +83,7 @@ int32_t GlobalStepTable::set_table_map(
   auto *lr_var = scope_->FindVar(fetch_var_name_);
   auto *lr_tensor = lr_var->GetMutable<framework::LoDTensor>();
   auto *lr_value = lr_tensor->mutable_data<float>(platform::CPUPlace());
-  VLOG(1) << "GlobalStepTable::set_table_map set global lr: " << lr_value;
+  VLOG(3) << "GlobalStepTable::set_table_map set global lr: " << lr_value;
   for (auto iter = table_map->begin(); iter != table_map->end(); iter++) {
     auto table_id = iter->first;
     if (table_id == _config.table_id()) {
@@ -126,18 +113,16 @@ int32_t GlobalStepTable::_run_program(const int64_t *values,
   for (auto &trainer_counter : decay_counters_) {
     global_counter += trainer_counter.second;
   }
-  // lr_lock.lock();
-  // hard code for increment op
+
+  // Todo: hard code for increment op
   value[0] = global_counter - 1;
-  VLOG(1) << "GlobalStepTable::_run_program global_counter " << value[0];
+  VLOG(3) << "GlobalStepTable::_run_program global_counter " << value[0];
 
   executor_->RunPreparedContext(exec_context_.get(), scope_, false, false);
-  VLOG(1) << "Run main_program_desc";
   auto *lr_var = scope_->FindVar(fetch_var_name_);
   auto *lr_tensor = lr_var->GetMutable<framework::LoDTensor>();
   auto *lr_value = lr_tensor->mutable_data<float>(platform::CPUPlace());
-  VLOG(1) << "GlobalStepTable::LR value: " << lr_value[0];
-  // lr_lock.unlock();
+  VLOG(3) << "GlobalStepTable::LR value: " << lr_value[0];
   return 0;
 }
 

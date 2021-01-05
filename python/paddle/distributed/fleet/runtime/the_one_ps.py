@@ -382,8 +382,8 @@ class TheOnePSRuntime(RuntimeBase):
         self._communicator = None
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()
-        self._heter_client = None
         self._server_sub_program = []
+        self._heter_client = None
 
     def _set_basic_info(self, context):
         self.context = context
@@ -523,8 +523,7 @@ class TheOnePSRuntime(RuntimeBase):
             # for ps-heter mode, wait heter worker ready
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
             ):
-                wait_server_ready(
-                    self.role_maker._get_heter_worker_endpoints())
+                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
                 self._heter_client = HeterClient(
                     self.role_maker._get_heter_worker_endpoints(),
@@ -759,14 +758,13 @@ class TheOnePSRuntime(RuntimeBase):
             string_hosts.append(pshost.serialize_to_string())
 
         self._server = fluid.core.DistFleetWrapper()
-        self._server.init_server(
-            proto_txt, string_hosts, role_id, self._server_sub_program)
+        self._server.init_server(proto_txt, string_hosts, role_id,
+                                 self._server_sub_program)
 
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 
         dist_varnames = get_sparse_tablenames(self.origin_main_program, True)
-        sparse_varnames = get_sparse_tablenames(
-            self.origin_main_program, False)
+        sparse_varnames = get_sparse_tablenames(self.origin_main_program, False)
 
         distributed_varnames = dist_varnames + sparse_varnames
 

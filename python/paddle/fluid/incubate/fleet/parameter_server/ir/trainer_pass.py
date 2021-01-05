@@ -42,7 +42,6 @@ OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
-
 DEVICE_LIST = ["cpu", "gpu", "xpu"]
 COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
 DEFAULT_DEVICE = 'cpu'
@@ -463,8 +462,7 @@ def create_heter_program(program, config, heter_program, heter_ops,
             block_append_op(heter_program, program, heter_block, op)
 
         entrance_vars = block_var_detail[index]["entrance"]
-        add_vars_by_var_list(entrance_vars, program,
-                             heter_program, heter_block)
+        add_vars_by_var_list(entrance_vars, program, heter_program, heter_block)
         exit_vars = block_var_detail[index]["exit"]
         add_vars_by_var_list(exit_vars, program, heter_program, heter_block)
 

@@ -173,9 +173,8 @@ int32_t BrpcPsClient::initialize() {
 
 int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id
-               << " failed, "
-                  "err:"
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
+                                                  "err:"
                << _cntls[request_idx]->ErrorText();
     return -1;
   }
@@ -192,9 +191,8 @@ int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
 int DownpourBrpcClosure::check_save_response(size_t request_idx, int cmd_id) {
   uint32_t feasign_size = 0;
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id
-               << " failed, "
-                  "err:"
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
+                                                  "err:"
                << _cntls[request_idx]->ErrorText();
     return -1;
   }
@@ -741,12 +739,10 @@ std::future<int32_t> BrpcPsClient::push_global_step(int table_id,
     memcpy(push_data_ptr, &num_per_shard, sizeof(uint32_t));
     memcpy(push_data_ptr + sizeof(uint32_t), total_send_data,
            num_per_shard * sizeof(int64_t));
-    VLOG(1) << "push_global_step finish memcpy";
+
     PsService_Stub rpc_stub(get_dense_channel(i));
-    VLOG(1) << "push_global_step get_dense_channel " << i;
     rpc_stub.service(closure->cntl(i), closure->request(i),
                      closure->response(i), closure);
-    VLOG(1) << "push_dense_raw_gradient async service " << i;
   }
   return fut;
 }
@@ -793,8 +789,9 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
             } else {
               last_key = kv_pair->first;
               last_value_data = kv_pair->second;
-              if (value_size != io_buffer_itr.copy_and_forward(
-                                    (void *)(last_value_data), value_size)) {
+              if (value_size !=
+                  io_buffer_itr.copy_and_forward((void *)(last_value_data),
+                                                 value_size)) {
                 LOG(WARNING) << "res data is lack or not in format";
                 ret = -1;
                 break;
