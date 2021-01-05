@@ -16,6 +16,8 @@ from .optimizer import Optimizer
 from .adam import Adam
 from ..fluid import framework
 from ..fluid.dygraph import base as imperative_base
+from ..fluid.framework import program_guard
+from ..fluid.regularizer import append_regularization_ops
 import paddle
 
 __all__ = ['AdamW']
@@ -139,30 +141,30 @@ class AdamW(Adam):
             name=name,
             lazy_mode=lazy_mode)
 
-    def _scale_parameters(self, params_and_grads):
+    def _decoupled_weight_decay(self, params_grads):
         """
-        Adds weight decay ops.
-            scaled_parameter = parameter * coeff
+        Adds decoupled weight decay ops.
+            parameter = parameter - parameter * coeff * lr
 
         Args:
-            params_and_grads: A list of (parameters, gradients) pairs,
+            params_grads: A list of (parameters, gradients) pairs,
                 the parameters need to decay.
         Raises:
             Exception: The type of coeff and parameter is not consistent.
         """
 
-        scaled_params = []
-        for param, grad in params_and_grads:
+        for param, grad in params_grads:
             # If no gradient then we don't need to do anything
             if grad is None:
                 continue
+
             if self._apply_decay_param_fun is not None \
                     and not self._apply_decay_param_fun(param.name):
                 continue
 
             if isinstance(self._coeff, float):
-                assert param.dtype is not paddle.fluid.core.VarDesc.VarType.FP32, \
-                    "the type of coeff(float) and parameter(%s) is not consistent."%(self._coeff.dtype)
+                assert param.dtype == paddle.fluid.core.VarDesc.VarType.FP32, \
+                    "the type of coeff(float) and parameter(%s) is not consistent."%(param.dtype)
             else:
                 assert self._coeff.dtype == param.dtype, \
                     "the type of coeff(%s) and parameter(%s) is not consistent."%(self._coeff.dtype, param.dtype)
@@ -170,65 +172,71 @@ class AdamW(Adam):
                 learning_rate = self._learning_rate
             else:
                 learning_rate = self._learning_rate()
+
             with param.block.program._optimized_guard(
                 [param, grad]), framework.name_scope('weight decay'):
-                scaled_params.append(
-                    (param, grad, param * self._coeff * learning_rate))
-                if param.name not in self._params_name:
-                    self._params_name.add(param.name)
-                    param = param * self._coeff
-        return scaled_params
+                decay_coeff = 1.0 - self._coeff * learning_rate
+                scaled_param = param * decay_coeff
+                paddle.fluid.layers.assign(input=scaled_param, output=param)
 
-    @imperative_base.no_grad
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameters=None,
-                 no_grad_set=None):
-        parameters = parameters if parameters \
-            else self._parameter_list
+    def apply_gradients(self, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
 
-        params_grads = self.backward(
-            loss=loss,
-            startup_program=startup_program,
-            parameters=parameters,
-            no_grad_set=no_grad_set)
-        scaled_params = self._scale_parameters(params_grads)
-        for p_grad_sgrad in scaled_params:
-            param, grad, scaled_param = p_grad_sgrad
-            with param.block.program._optimized_guard(
-                [param, grad]), framework.name_scope('weight decay'):
-                updated_param = paddle.fluid.layers.elementwise_sub(
-                    x=param, y=scaled_param)
-                paddle.fluid.layers.assign(input=updated_param, output=param)
+        Args:
+            params_grads (list): list of (param, grad) pair to do optimization.
 
-        optimize_ops = self._apply_optimize(
-            loss=loss,
-            params_grads=params_grads,
-            startup_program=startup_program)
-        return optimize_ops, params_grads
+        Returns:
+            list: A list of operators appended to the current program.
 
-    @framework.dygraph_only
-    @imperative_base.no_grad
-    def step(self):
-        params_grads = []
-        for param in self._parameter_list:
-            if not param.trainable:
-                continue
-            if param._grad_ivar() is not None:
-                grad_var = param._grad_ivar()
-                params_grads.append((param, grad_var))
+        Examples:
+            .. code-block:: python
 
-        scaled_params = self._scale_parameters(params_grads)
-        for p_grad_sgrad in scaled_params:
-            param, grad, scaled_param = p_grad_sgrad
-            with param.block.program._optimized_guard(
-                [param, grad]), framework.name_scope('weight decay'):
-                updated_param = paddle.fluid.layers.elementwise_sub(
-                    x=param, y=scaled_param)
-                paddle.fluid.layers.assign(input=updated_param, output=param)
-        self._apply_optimize(
-            loss=None, startup_program=None, params_grads=params_grads)
+                import paddle
+                import numpy as np
+
+                inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+                linear = paddle.nn.Linear(10, 10)
+                inp = paddle.to_tensor(inp)
+                out = linear(inp)
+                loss = paddle.mean(out)
+                optimizer = paddle.optimizer.Adam(learning_rate=0.1,
+                        parameters=linear.parameters())
+                params_grads = optimizer.backward(loss)
+                optimizer.apply_gradients(params_grads)
+
+        """
+        self._decoupled_weight_decay(params_grads)
+        return super(AdamW, self).apply_gradients(params_grads)
+
+    def _apply_optimize(self, loss, startup_program, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+        Args:
+            loss (Tensor): loss tensor to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameters`.
+            params_grads (list): list of (param, grad) pair to do optimization.
+        Returns:
+            list: A list of operators appended to the current program.
+        """
+        if framework.in_dygraph_mode():
+            with program_guard(framework.default_main_program(),
+                               framework.default_startup_program()):
+                self._decoupled_weight_decay(params_grads)
+
+                if self._grad_clip is not None:
+                    params_grads = self._grad_clip(params_grads)
+                params_grads = append_regularization_ops(params_grads,
+                                                         self.regularization)
+                optimize_ops = self._create_optimization_pass(params_grads)
+        else:
+            program = loss.block.program
+            with program_guard(program, startup_program):
+                optimize_ops = self.apply_gradients(params_grads)
+        return optimize_ops
 
     def __str__(self):
         return " ".join(["Weight Decay, params:", ",".join(self._params_name)])
