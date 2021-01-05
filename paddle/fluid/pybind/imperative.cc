@@ -838,7 +838,19 @@ void BindImperative(py::module *m_ptr) {
               print(clone_x.grad)          # [3.0], support gradient propagation
               print(x.stop_gradient) # True
               print(x.grad)          # None
-       )DOC")
+       )DOC") def("register_hook",
+                  [](imperative::VarBase &self, const py::handle &hook) {
+                    PADDLE_ENFORCE_EQ(self.HasGradVar(), true,
+                                      platform::errors::PermissionDenied(
+                                          "Cannot register a hook on a tensor "
+                                          "that stop gradient."));
+                    // 1. add hook to VariableWrapper
+
+                    // 2. add hook to OpBase
+                  },
+                  R"DOC(
+
+          )DOC")
       .def("_run_backward",
            [](imperative::VarBase &self, const imperative::Tracer &tracer,
               bool retain_graph) {

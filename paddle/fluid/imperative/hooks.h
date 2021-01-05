@@ -58,6 +58,15 @@ class OpBasePreHook {
       const VariableWrapperList& grad_inputs) = 0;
 };
 
+class Hook {
+ public:
+  virtual ~Hook() = default;
+  // general hook function
+  virtual VariableWrapper operator()(const VariableWrapper& var) = 0;
+  // inplace hook function
+  virtual void operator()(VariableWrapper* var) = 0;
+};
+
 /**
  * @brief GradAccumulatorPostHook is the Hook that operates on the current
  *        gradientafter the GradientAccumulator has accumulated the gradient.
