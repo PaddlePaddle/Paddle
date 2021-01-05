@@ -75,6 +75,16 @@ using Complex = typename std::enable_if<!std::is_same<T, RealT>::value>::type;
 template <typename T, typename RealT>
 using NoComplex = typename std::enable_if<std::is_same<T, RealT>::value>::type;
 
+template <typename T>
+using EnableComplex =
+    typename std::enable_if<std::is_same<T, platform::complex64>::value ||
+                            std::is_same<T, platform::complex128>::value>::type;
+
+template <typename T>
+using DisableComplex = typename std::enable_if<
+    !std::is_same<T, platform::complex64>::value &&
+    !std::is_same<T, platform::complex128>::value>::type;
+
 template <typename T, typename Enable = void>
 struct RealFunctor;
 

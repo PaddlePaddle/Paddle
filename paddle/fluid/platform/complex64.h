@@ -366,7 +366,7 @@ HOSTDEVICE inline float(abs)(const complex64& a) {
 #if defined(__CUDA_ARCH__)
   return thrust::abs(thrust::complex<float>(a.real, a.imag));
 #else
-  return std::abs(std::complex<float>(a));
+  return std::abs(std::complex<float>(a.real, a.imag));
 #endif
 }
 
