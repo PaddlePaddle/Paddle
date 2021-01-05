@@ -84,8 +84,8 @@ class ElementwiseAddXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
     int ret = xpu::SUCCESS;
-    ret = xpu::broadcast_add(dev_ctx.x_context(), x_data, y_data, z_data,
-                             x_dims_vec, y_dims_vec);
+    ret = xpu::broadcast_add<T>(dev_ctx.x_context(), x_data, y_data, z_data,
+                                x_dims_vec, y_dims_vec);
     PADDLE_ENFORCE_EQ(
         ret, xpu::SUCCESS,
         platform::errors::External(
@@ -152,9 +152,9 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
 
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
-    int ret = xpu::broadcast_add_grad(dev_ctx.x_context(), dx_data, dx_data,
-                                      dx_data, dz->data<T>(), dy_data, dx_data,
-                                      x_dims_vec, y_dims_vec);
+    int ret = xpu::broadcast_add_grad<T>(dev_ctx.x_context(), dx_data, dx_data,
+                                         dx_data, dz->data<T>(), dy_data,
+                                         dx_data, x_dims_vec, y_dims_vec);
     PADDLE_ENFORCE_EQ(
         ret, xpu::SUCCESS,
         platform::errors::External(
