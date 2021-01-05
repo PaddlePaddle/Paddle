@@ -70,7 +70,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             except for python float number which gets dtype from ``get_default_type`` .
         place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be  
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is 
-            string, It can be ``cpu``, ``gpu:x`` ``gpu_pinned``, where ``x`` is the index of the GPUs. 
+            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs. 
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
 
     Returns:
