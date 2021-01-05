@@ -111,7 +111,7 @@ class SSGD : public SparseOptimizer {
 
       float learning_rate =
           *(global_learning_rate_->get()) * (value + lr_offset)[0];
-      VLOG(3) << "SSGD LearningRate: " << learning_rate;
+      VLOG(4) << "SSGD LearningRate: " << learning_rate;
       float* param = value + param_offset;
 
       std::vector<float> grads;
@@ -166,7 +166,7 @@ class SAdam : public SparseOptimizer {
       auto id = keys[x];
       auto* values = block->Get(id);
       float lr_ = *(global_learning_rate_->get()) * (values + lr_offset)[0];
-      VLOG(3) << "SAdam LearningRate: " << lr_;
+      VLOG(4) << "SAdam LearningRate: " << lr_;
       float* param = values + param_offset;
       float* moment1 = values + m1_offset;
       float* moment2 = values + m2_offset;

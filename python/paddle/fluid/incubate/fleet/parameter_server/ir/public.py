@@ -1164,16 +1164,6 @@ def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
         compiled_config.add_tensor_table(
             "@LR_DECAY_COUNTER@", lr_name, lr_decay_startup_program,
             lr_decay_main_program, "GlobalStepTable")
-        # hard code for pe
-        lr_var = compiled_config.origin_main_program.global_block().vars[
-            "learning_rate_0"]
-        main_program.global_block().create_var(
-            name=lr_var.name,
-            shape=lr_var.shape,
-            dtype=lr_var.dtype,
-            type=lr_var.type,
-            lod_level=lr_var.lod_level,
-            persistable=True)
 
 
 def _get_lr_param_dict(opt_ops):
@@ -1189,8 +1179,7 @@ def _get_lr_param_dict(opt_ops):
 
 def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
     schedler_decay = [
-        'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'InverseTimeDecay',
-        'ExponentialDecay'
+        'NoamDecay', 'NaturalExpDecay', 'InverseTimeDecay', 'ExponentialDecay'
     ]
 
     from paddle.optimizer.lr import ExponentialDecay, NoamDecay, PiecewiseDecay, NaturalExpDecay, InverseTimeDecay
@@ -1202,8 +1191,7 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
 
     if isinstance(lr_sheduler, ExponentialDecay):
         with fluid.program_guard(decay_main_program, decay_startup_program):
-            lr = exponential_decay(1.0, lr_decay_steps,
-                                   lr_sheduler.gamma, True)
+            lr = exponential_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
             lr_name = lr.name
             logging.warn(
                 "ExponentialDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
@@ -1217,17 +1205,9 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
             lr_name = lr.name
             logging.warn("NoamDecay is set, warmup steps is [ %d ]" %
                          lr_sheduler.warmup_steps)
-    elif isinstance(lr_sheduler, PiecewiseDecay):
-        with fluid.program_guard(decay_main_program, decay_startup_program):
-            lr = piecewise_decay(lr_sheduler.boundaries, lr_sheduler.values)
-            lr_name = lr.name
-            logging.warn(
-                "PiecewiseDecay is set, boundaries is {}, values is {}".format(
-                    lr_sheduler.boundaries, lr_sheduler.values))
     elif isinstance(lr_sheduler, NaturalExpDecay):
         with fluid.program_guard(decay_main_program, decay_startup_program):
-            lr = natural_exp_decay(1.0, lr_decay_steps,
-                                   lr_sheduler.gamma, True)
+            lr = natural_exp_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
             lr_name = lr.name
             logging.warn(
                 "NaturalExpDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"

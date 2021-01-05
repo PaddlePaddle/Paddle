@@ -393,7 +393,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
   auto *out_t = out_var->GetMutable<framework::LoDTensor>();
   auto *data = out_t->mutable_data<int64_t>({1}, platform::CPUPlace());
   data[0] = static_cast<int64_t>(batches);
-
+  VLOG(3) << "Communicator::SendGlobalStep send: " << batches;
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [this, request_call_num](void *done) {
         int ret = 0;

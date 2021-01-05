@@ -91,7 +91,7 @@ class DSGD : public DenseOptimizer {
 
     auto blas = GetBlas<float>();
     float lr = *(global_learning_rate_->get()) * (*learning_rate);
-    VLOG(3) << "DSGD LearningRate: " << lr;
+    VLOG(4) << "DSGD LearningRate: " << lr;
     blas.VCOPY(update_numel, update_values + begin, grads.data());
     blas.SCAL(update_numel, lr, grads.data());
     blas.VSUB(update_numel, param + begin, grads.data(), param + begin);
@@ -159,7 +159,7 @@ class DAdam : public DenseOptimizer {
     beta2_pow[0] = beta2_pow[0] * beta2;
 
     float lr_ = *(global_learning_rate_->get()) * learning_rate[0];
-    VLOG(3) << "DAdam LearningRate: " << lr_;
+    VLOG(4) << "DAdam LearningRate: " << lr_;
     lr_ *= sqrt(1 - beta2_pow[0]) / (1 - beta1_pow[0]);
 
     float* tmp_ = tmp.data();

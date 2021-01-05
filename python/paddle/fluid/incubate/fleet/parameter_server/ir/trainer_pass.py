@@ -70,10 +70,25 @@ def delete_optimizer_pass(program, config):
             if _program.global_block().has_var(var):
                 _program.global_block()._remove_var(var)
 
+    def _add_lr_var(main_program, compiled_config):
+        # Todo: hard code for pe
+        lr_var = compiled_config.origin_main_program.global_block().vars[
+            "learning_rate_0"]
+        main_program.global_block().create_var(
+            name=lr_var.name,
+            shape=lr_var.shape,
+            dtype=lr_var.dtype,
+            type=lr_var.type,
+            lod_level=lr_var.lod_level,
+            persistable=True)
+
     optimizer_ops = _get_optimize_ops(program)
     lr_ops = _get_lr_ops(program)
     optimizer_ops.extend(lr_ops)
     _delete_optimizer_op_and_vars(program, optimizer_ops)
+
+    if hasattr(config.origin_main_program, 'lr_sheduler'):
+        _add_lr_var(program, config)
 
     return program
 

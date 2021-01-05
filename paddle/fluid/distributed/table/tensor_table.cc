@@ -83,7 +83,7 @@ int32_t GlobalStepTable::set_table_map(
   auto *lr_var = scope_->FindVar(fetch_var_name_);
   auto *lr_tensor = lr_var->GetMutable<framework::LoDTensor>();
   auto *lr_value = lr_tensor->mutable_data<float>(platform::CPUPlace());
-  VLOG(3) << "GlobalStepTable::set_table_map set global lr: " << lr_value;
+  VLOG(3) << "GlobalStepTable::set_table_map set global lr: " << *lr_value;
   for (auto iter = table_map->begin(); iter != table_map->end(); iter++) {
     auto table_id = iter->first;
     if (table_id == _config.table_id()) {

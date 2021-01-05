@@ -64,6 +64,11 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         _main = compiled_config.origin_main_program.clone()
         _startup = compiled_config.origin_startup_program.clone()
 
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _add_lr_decay_table_pass
+        _add_lr_decay_table_pass(
+            _main, compiled_config,
+            self.user_defined_strategy.a_sync_configs["lr_decay_steps"])
+
         if not compiled_config.is_geo_mode():
             # for main program
             _main = worker.delete_optimizer_pass(_main, compiled_config)
@@ -96,11 +101,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             _startup = _startup
             compiled_config.set_origin_ps_main_program(_main)
             compiled_config.set_origin_ps_startup_program(_startup)
-
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _add_lr_decay_table_pass
-        _add_lr_decay_table_pass(
-            _main, compiled_config,
-            self.user_defined_strategy.a_sync_configs["lr_decay_steps"])
 
         launch_barrier = self.user_defined_strategy.a_sync_configs[
             "launch_barrier"]
