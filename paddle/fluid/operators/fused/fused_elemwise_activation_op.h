@@ -43,6 +43,8 @@ bool HasInPlaceUnary(const std::vector<std::string> &functor_list);
  */
 bool InputXCanBeAbsent(const std::vector<std::string> &functor_list);
 
+bool IsSupportedCompound(const std::vector<std::string> &functors);
+
 template <typename DeviceContext, typename T, typename BinaryFunctor,
           typename UnaryFunctor>
 static void RunBinaryCompoundFunctor(
@@ -208,10 +210,9 @@ static void RunUnaryCompoundGradFunctors(
 }
 
 template <typename DeviceContext, typename T>
-static void RunFunctors(const framework::ExecutionContext &ctx,
-                        const framework::Tensor &in_x,
-                        const framework::Tensor &in_y,
-                        std::vector<framework::Tensor *> *outputs) {
+void RunFunctors(const framework::ExecutionContext &ctx,
+                 const framework::Tensor &in_x, const framework::Tensor &in_y,
+                 std::vector<framework::Tensor *> *outputs) {
   auto &functors = ctx.Attr<std::vector<std::string>>("functor_list");
 
   // TODO(zcd): The following code can be refined.
@@ -282,12 +283,14 @@ static void RunFunctors(const framework::ExecutionContext &ctx,
 }
 
 template <typename DeviceContext, typename T, bool InPlace>
-static void RunGradFunctors(
-    const framework::ExecutionContext &ctx, const framework::Tensor *in_x,
-    const framework::Tensor *in_y, const framework::Tensor *in_out,
-    const framework::Tensor *in_intermediate_out,
-    const framework::Tensor *in_out_grad, framework::Tensor *x_grad,
-    framework::Tensor *y_grad, framework::Tensor *d_intermediate_out) {
+void RunGradFunctors(const framework::ExecutionContext &ctx,
+                     const framework::Tensor *in_x,
+                     const framework::Tensor *in_y,
+                     const framework::Tensor *in_out,
+                     const framework::Tensor *in_intermediate_out,
+                     const framework::Tensor *in_out_grad,
+                     framework::Tensor *x_grad, framework::Tensor *y_grad,
+                     framework::Tensor *d_intermediate_out) {
   auto &functors = ctx.Attr<std::vector<std::string>>("functor_list");
   auto funcs_str = functors[0] + "," + functors[1];
 

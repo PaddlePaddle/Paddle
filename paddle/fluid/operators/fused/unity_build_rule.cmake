@@ -6,6 +6,7 @@
 # in combination rule, you can remove the source file from the following rules.
 register_unity_group(cc
     fused_elemwise_activation_op.cc
+    fused_elemwise_add_activation_op.cc
     fused_embedding_fc_lstm_op.cc
     fused_embedding_seq_pool_op.cc
     fusion_lstm_op.cc

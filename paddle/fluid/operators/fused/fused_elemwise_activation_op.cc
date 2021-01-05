@@ -61,7 +61,7 @@ bool InputXCanBeAbsent(const std::vector<std::string> &functor_list) {
  * For Unary(Binary(X, Y)), the intermediate_out's shape is the same the final
  * out.
  */
-static bool IsSupportedCompound(const std::vector<std::string> &functors) {
+bool IsSupportedCompound(const std::vector<std::string> &functors) {
   PADDLE_ENFORCE_EQ(
       functors.size(), 2UL,
       platform::errors::InvalidArgument(
