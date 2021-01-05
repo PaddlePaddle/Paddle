@@ -265,8 +265,8 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     auto* dst_selected_rows =
         new_var->MutableVar()->GetMutable<framework::SelectedRows>();
 
-    framework::TensorCopy(src_selected_rows.value(), dst_place,
-                          dst_selected_rows->mutable_value());
+    framework::TensorCopySync(src_selected_rows.value(), dst_place,
+                              dst_selected_rows->mutable_value());
     if (blocking) {
       platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
       auto src_place = src_selected_rows.place();
