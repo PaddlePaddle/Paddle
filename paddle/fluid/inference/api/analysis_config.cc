@@ -305,7 +305,7 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
 
-void AnalysisConfig::DisableTRTOPs(const std::vector<std::string> &ops) {
+void AnalysisConfig::DisableTensorRtOPs(const std::vector<std::string> &ops) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
@@ -448,7 +448,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_max_batchsize_;
   ss << tensorrt_min_subgraph_size_;
 
-  for (auto &op: trt_disabled_ops_) ss << op.c_str();
+  for (auto &op : trt_disabled_ops_) ss << op.c_str();
   ss << ";";
 
   ss << enable_memory_optim_;

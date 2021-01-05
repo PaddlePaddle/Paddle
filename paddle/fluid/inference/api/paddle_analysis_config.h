@@ -316,12 +316,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Prevent ops running in Paddle-TRT
   ///
-  void DisableTRTOPs(const std::vector<std::string> &ops);
+  void DisableTensorRtOPs(const std::vector<std::string>& ops);
 
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
-  /// https://github.com/NVIDIA/TensorRT), with which some models's inference may 
-  /// be more high-performance. Libnvinfer_plugin.so greater than V7.2.1 is needed.
+  /// https://github.com/NVIDIA/TensorRT), with which some models's inference
+  /// may be more high-performance. Libnvinfer_plugin.so greater than
+  /// V7.2.1 is needed.
   ///
   void EnableTensorRtOSS();
   ///
