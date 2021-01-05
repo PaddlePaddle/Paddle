@@ -859,7 +859,6 @@ def _append_backward_ops_with_checkpoints_(
             grad_to_var.update(op_grad_to_var)
 
     for i, segment in enumerate(recompute_segments[::-1]):
-
         gap_ops = ops[segment[1]:max_calculated_op_position]
         max_calculated_op_position = segment[0]
         for op in reversed(gap_ops):
@@ -896,6 +895,10 @@ def _append_backward_ops_with_checkpoints_(
                 if name not in var_name_dict:
                     var_name_dict[name] = name + var_suffix
         # 3.a. add ops in current recompute_segment as forward recomputation ops
+        # use a temp buffer block to get op_descs list
+        # op input/output vars have not rename yet
+        # buffer_descs/buffer_block: filter output need op: true recompute ops
+        # added_descs/local_block: all op: use to generate BW ops
         buffer_descs = _add_needed_descs_to_block(ff_ops, buffer_block, block,
                                                   vars_in_memory)
         added_descs = _add_descs_to_block(ff_ops, local_block)

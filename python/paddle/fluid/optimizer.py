@@ -4768,7 +4768,7 @@ class RecomputeOptimizer(Optimizer):
         assert len(self.un_fetch_checkpoint_names
                    ) > 0, "Could NOT found checkpoint to fetch"
         checkpoint_name = self.un_fetch_checkpoint_names.pop(-1)
-        print("Record fetch [{}]".format(checkpoint_name))
+        logging.debug("Record fetch [{}]".format(checkpoint_name))
         self.idx2insertions[idx] = ("fetch", checkpoint_name)
 
         return checkpoint_name
@@ -4777,14 +4777,14 @@ class RecomputeOptimizer(Optimizer):
         expected_checkpoint_name = self.un_offload_checkpoint_names.pop(0)
         assert checkpoint_name == expected_checkpoint_name, "expected to offload [{}] but got [{}]".format(
             expected_checkpoint_name, checkpoint_name)
-        print("Record offload [{}]".format(checkpoint_name))
+        logging.debug("Record offload [{}]".format(checkpoint_name))
         self.idx2insertions[idx] = ("offload", checkpoint_name)
 
     def _record_sync_op(self, idx, checkpoint_name):
         assert checkpoint_name not in self.synced_checkpoints, "Try to sync the checkpoint [{}] twice".format(
             checkpoint_name)
         self.synced_checkpoints.add(checkpoint_name)
-        print("Record offload sync [{}]".format(checkpoint_name))
+        logging.debug("Record offload sync [{}]".format(checkpoint_name))
         self.idx2insertions[idx] = ("sync", checkpoint_name)
 
     def _parse_backward(self):
@@ -4855,11 +4855,12 @@ class RecomputeOptimizer(Optimizer):
                 operation, checkpoint_name = self.idx2insertions[op_idx]
                 if operation == "fetch":
                     self._insert_fetch_op(op_idx, checkpoint_name)
-                    print("Insert [{}] fetch op.".format(checkpoint_name))
+                    logging.debug("Insert [{}] fetch op.".format(
+                        checkpoint_name))
                     del self.idx2insertions[op_idx]
                 elif operation == "sync":
                     self._insert_sync_op(op_idx, checkpoint_name)
-                    print("Sync [{}] fetch op.".format(checkpoint_name))
+                    logging.debug("Sync [{}] fetch op.".format(checkpoint_name))
         self.block._sync_with_cpp()
         assert len(
             self.idx2insertions) == 0, "{} checkpoints left un-Fecthed".format(
@@ -4977,11 +4978,12 @@ class RecomputeOptimizer(Optimizer):
                 operation, checkpoint_name = self.idx2insertions[op_idx]
                 if operation == "offload":
                     self._insert_offload_op(op_idx, checkpoint_name)
-                    print("Insert [{}] offload op.".format(checkpoint_name))
+                    logging.debug("Insert [{}] offload op.".format(
+                        checkpoint_name))
                     del self.idx2insertions[op_idx]
                 elif operation == "sync":
                     self._insert_sync_op(op_idx, checkpoint_name)
-                    print("Insert [{}] offload_sync op.".format(
+                    logging.debug("Insert [{}] offload_sync op.".format(
                         checkpoint_name))
                     del self.idx2insertions[op_idx]
 

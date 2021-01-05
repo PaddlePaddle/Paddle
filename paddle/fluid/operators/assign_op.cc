@@ -110,7 +110,6 @@ class AssignKernel {
     auto kind = ctx.Attr<int>("kind");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
-    auto kind = ctx.Attr<int>("kind");
 
     framework::VisitVarType(*x, AssignFunctor(out, dev_ctx, kind));
   }
@@ -131,8 +130,8 @@ class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "Larger than 0 only when assign operation between CUDAPinnedPlace and "
         "CUDAPlace. "
         "kind == 0: normal assignment between CUDAPlaces or CPUPlaces. "
-        "kind == 1: assignment from CUDAPlace or CUDAPinnedPlace. "
-        "kind == 2: assignment from CUDAPinnedPlace or CUDAPlace. ")
+        "kind == 1: assignment from CUDAPlace to CUDAPinnedPlace. "
+        "kind == 2: assignment from CUDAPinnedPlace to CUDAPlace. ")
         .SetDefault(0);
     AddComment(R"DOC(Assign Operator
 

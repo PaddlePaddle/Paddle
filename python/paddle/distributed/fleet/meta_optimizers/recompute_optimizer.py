@@ -34,12 +34,6 @@ class RecomputeOptimizer(MetaOptimizerBase):
         super(RecomputeOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
 
-        # by now offload not support GraphExecutionOptimizer 
-        # should be update in future
-        if user_defined_strategy.recompute_configs["enable_offload"]:
-            self.meta_optimizers_black_list = ["GraphExecutionOptimizer"]
-            self.meta_optimizers_white_list.remove("GraphExecutionOptimizer")
-
     def _init_wrapped_opt(self):
         if self.wrapped_opt is not None:
             return
