@@ -13,6 +13,11 @@
 # limitations under the License.
 
 from __future__ import print_function
+from paddle.distributed.fleet.utils.ps_util import Distributed
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 """
     high level unit test for distribute fleet.
 """
@@ -34,11 +39,6 @@ import unittest
 import paddle
 paddle.enable_static()
 
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.distributed.fleet as fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
-from paddle.distributed.fleet.utils.ps_util import Distributed
 
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
 
@@ -124,12 +124,18 @@ class FleetDistRunnerBase(object):
 
         use_decay = int(os.getenv("DECAY", "0"))
         if use_decay:
+            scheduler = paddle.optimizer.lr.ExponentialDecay(
+                learning_rate=LEARNING_RATE, gamma=0.999, verbose=True)
+            optimizer = fluid.optimizer.SGD(scheduler)
+            """
+            # learning rate decay method before 2.0
             optimizer = fluid.optimizer.SGD(
                 learning_rate=fluid.layers.exponential_decay(
                     learning_rate=LEARNING_RATE,
                     decay_steps=500,
                     decay_rate=0.969,
                     staircase=True))
+            """
         else:
             optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
@@ -169,7 +175,8 @@ class TestFleetBase(unittest.TestCase):
     """
 
     def _setup_config(self):
-        raise NotImplementedError("tests should have _setup_config implemented")
+        raise NotImplementedError(
+            "tests should have _setup_config implemented")
 
     def tearDown(self):
         t = time.time() - self.startTime
@@ -369,7 +376,8 @@ def runtime_main(test_class):
     parser.add_argument('--mode', type=str, required=False, default='geo')
     parser.add_argument(
         '--geo_sgd_need_push_nums', type=int, required=False, default=2)
-    parser.add_argument('--reader', type=str, required=False, default='dataset')
+    parser.add_argument('--reader', type=str,
+                        required=False, default='dataset')
     parser.add_argument('--test', type=int, required=False, default=0)
     args = parser.parse_args()
 
