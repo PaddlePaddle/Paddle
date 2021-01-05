@@ -1501,7 +1501,7 @@ class OutScaleForTrainingPass(object):
             scope(fluid.Scope): The scope is used to initialize these new parameters.
             place(fluid.CPUPlace|fluid.CUDAPlace|str): The place is used to initialize new parameters.
                 If it's string, It can be ``cpu``, and ``gpu:x``, where ``x`` is the
-                index of the GPUs or XPUs.
+                index of the GPUs.
             moving_rate(float): The decay coefficient of moving average. The default value is 0.9.
         """
         self._scope = scope
@@ -1695,7 +1695,8 @@ class AddQuantDequantPass(object):
         Args:
             scope(fluid.Scope): The scope is used to initialize these new parameters.
             place(fluid.CPUPlace|fluid.CUDAPlace|str): place is used to initialize new
-                parameters described above.
+                parameters described above. If ``place`` is string, it can be It can be ``cpu``
+                or ``gpu:x``, where ``x`` is the index of the GPUs.
             moving_rate(float, optional): the param for 'quant_dequant_moving_average_abs_max' 
                 quantization. Default is 0.9.
             quant_bits(int, optional): quantization bit number for activation. Default is 8.
