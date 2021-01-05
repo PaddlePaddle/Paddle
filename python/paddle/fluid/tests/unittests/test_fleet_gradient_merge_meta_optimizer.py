@@ -46,6 +46,19 @@ class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('@GradientMerge', ''.join(vars))
         self.assertIn('subprog', ''.join(vars))
 
+    def test_gm_amp_optimizer(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.net(train_prog, startup_prog)
+        self.set_strategy(strategy, 'gradient_merge')
+        self.set_strategy(strategy, 'amp')
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        print(train_prog)
+
+        vars = [x.name for x in train_prog.list_vars()]
+        self.assertIn('@GradientMerge', ''.join(vars))
+        self.assertIn('cast', ''.join(vars))
+
 
 if __name__ == "__main__":
     unittest.main()
