@@ -1202,7 +1202,8 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
 
     if isinstance(lr_sheduler, ExponentialDecay):
         with fluid.program_guard(decay_main_program, decay_startup_program):
-            lr = exponential_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
+            lr = exponential_decay(1.0, lr_decay_steps,
+                                   lr_sheduler.gamma, True)
             lr_name = lr.name
             logging.warn(
                 "ExponentialDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
@@ -1225,7 +1226,8 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
                     lr_sheduler.boundaries, lr_sheduler.values))
     elif isinstance(lr_sheduler, NaturalExpDecay):
         with fluid.program_guard(decay_main_program, decay_startup_program):
-            lr = natural_exp_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
+            lr = natural_exp_decay(1.0, lr_decay_steps,
+                                   lr_sheduler.gamma, True)
             lr_name = lr.name
             logging.warn(
                 "NaturalExpDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"

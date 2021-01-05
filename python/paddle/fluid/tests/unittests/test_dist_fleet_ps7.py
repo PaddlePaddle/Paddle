@@ -32,7 +32,7 @@ sample_rate = 1
 batch_size = 4
 
 
-class TestPSPassWithBow(unittest.TestCase):
+class TestExponentialDecay(unittest.TestCase):
     def net(self):
         def get_acc(cos_q_nt, cos_q_pt, batch_size):
             cond = fluid.layers.less_than(cos_q_nt, cos_q_pt)
@@ -160,6 +160,132 @@ class TestPSPassWithBow(unittest.TestCase):
         fleet.init(role)
         loss, acc, _ = self.net()
         scheduler = paddle.optimizer.lr.ExponentialDecay(
+            learning_rate=base_lr, gamma=0.999, verbose=True)
+        optimizer = fluid.optimizer.Adam(scheduler)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(loss)
+
+
+class TestTrExponentialDecay(TestExponentialDecay):
+    def test(self):
+        endpoints = [
+            "127.0.0.1:36004", "127.0.0.1:36005", "127.0.0.1:36006",
+            "127.0.0.1:36007"
+        ]
+
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.WORKER,
+            worker_num=2,
+            server_endpoints=endpoints)
+
+        fleet.init(role)
+        loss, acc, _ = self.net()
+        scheduler = paddle.optimizer.lr.NoamDecay(
+            d_model=0.01, warmup_steps=100, verbose=True)
+        optimizer = fluid.optimizer.Adam(scheduler)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"launch_barrier": 0}
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(loss)
+
+
+class TestNoamDecay(TestExponentialDecay):
+    def test(self):
+        endpoints = [
+            "127.0.0.1:36004", "127.0.0.1:36005", "127.0.0.1:36006",
+            "127.0.0.1:36007"
+        ]
+
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.SERVER,
+            worker_num=2,
+            server_endpoints=endpoints)
+
+        fleet.init(role)
+        loss, acc, _ = self.net()
+        scheduler = paddle.optimizer.lr.NoamDecay(
+            d_model=0.01, warmup_steps=100, verbose=True)
+        optimizer = fluid.optimizer.Adam(scheduler)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(loss)
+
+
+class TestPiecewiseDecay(TestExponentialDecay):
+    def test(self):
+        endpoints = [
+            "127.0.0.1:36004", "127.0.0.1:36005", "127.0.0.1:36006",
+            "127.0.0.1:36007"
+        ]
+
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.SERVER,
+            worker_num=2,
+            server_endpoints=endpoints)
+
+        fleet.init(role)
+        loss, acc, _ = self.net()
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
+        optimizer = fluid.optimizer.Adam(scheduler)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(loss)
+
+
+class TestNaturalExpDecay(TestExponentialDecay):
+    def test(self):
+        endpoints = [
+            "127.0.0.1:36004", "127.0.0.1:36005", "127.0.0.1:36006",
+            "127.0.0.1:36007"
+        ]
+
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.SERVER,
+            worker_num=2,
+            server_endpoints=endpoints)
+
+        fleet.init(role)
+        loss, acc, _ = self.net()
+        scheduler = paddle.optimizer.lr.NaturalExpDecay(
+            learning_rate=base_lr, gamma=0.999, verbose=True)
+        optimizer = fluid.optimizer.Adam(scheduler)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(loss)
+
+
+class TestInverseTimeDecay(TestExponentialDecay):
+    def test(self):
+        endpoints = [
+            "127.0.0.1:36004", "127.0.0.1:36005", "127.0.0.1:36006",
+            "127.0.0.1:36007"
+        ]
+
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.SERVER,
+            worker_num=2,
+            server_endpoints=endpoints)
+
+        fleet.init(role)
+        loss, acc, _ = self.net()
+        scheduler = paddle.optimizer.lr.InverseTimeDecay(
             learning_rate=base_lr, gamma=0.999, verbose=True)
         optimizer = fluid.optimizer.Adam(scheduler)
 
