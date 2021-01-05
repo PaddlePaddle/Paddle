@@ -3661,7 +3661,7 @@ class TestBook(LayerTest):
             shapes=[(-1, 1, 28, 28), (-1, 1)],
             dtypes=['float32', 'int64'],
             use_double_buffer=False)
-        reader = fluid.layers.double_buffer(reader, place="gpu:0")
+        reader = fluid.layers.double_buffer(reader, place="cpu")
         image, label = fluid.layers.read_file(reader)
 
 
