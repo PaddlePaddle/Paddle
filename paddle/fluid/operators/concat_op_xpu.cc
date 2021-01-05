@@ -45,7 +45,7 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
                           "concat: axis should be less than ins[0]->dims()!"
                           "But received axis is %d, while ins[0]->dims()"
                           "size is %d.",
-                          axis, out_grad->dims().size()));
+                          axis, ins[0]->dims().size()));
 
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);

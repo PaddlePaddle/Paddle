@@ -104,9 +104,9 @@ class AssignKernel {
     if (x == nullptr) {
       return;
     }
-    PADDLE_ENFORCE_EQ(ctx.HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of assign_op should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx.HasOutput("Out"), true,
+        platform::errors::NotFound("Output(Out) of assign_op is not found."));
     auto *out = ctx.OutputVar("Out");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
