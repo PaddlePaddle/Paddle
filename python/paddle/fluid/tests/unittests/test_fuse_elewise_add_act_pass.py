@@ -26,7 +26,7 @@ class TestMNIST(TestParallelExecutorBase):
         os.environ['CPU_NUM'] = str(4)
 
     def _compare_fuse_elewise_add_act_ops(self, model, use_device):
-        if use_device == DeviceType.GPU and not core.is_compiled_with_cuda():
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
         img, label = init_data()
 
@@ -66,12 +66,12 @@ class TestMNIST(TestParallelExecutorBase):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
 
     def test_simple_fc_with_fuse_op(self):
-        self._compare_fuse_elewise_add_act_ops(simple_fc_net, DeviceType.GPU)
+        self._compare_fuse_elewise_add_act_ops(simple_fc_net, DeviceType.CUDA)
         self._compare_fuse_elewise_add_act_ops(simple_fc_net, DeviceType.CPU)
 
     def test_batchnorm_fc_with_fuse_op(self):
         self._compare_fuse_elewise_add_act_ops(fc_with_batchnorm,
-                                               DeviceType.GPU)
+                                               DeviceType.CUDA)
         self._compare_fuse_elewise_add_act_ops(fc_with_batchnorm,
                                                DeviceType.CPU)
 

@@ -327,9 +327,8 @@ void QuantDequantFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(quant_conv2d_dequant_fuse_pass,
               paddle::framework::ir::QuantDequantFusePass);
-REGISTER_PASS_CAPABILITY(quant_conv2d_dequant_fuse_pass);
 
-REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
+REGISTER_PASS_CAPABILITY(quant_conv2d_dequant_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
@@ -338,5 +337,5 @@ REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
             .EQ("fake_quantize_abs_max", 0)
             .EQ("fake_quantize_range_abs_max", 0)
             .EQ("fake_quantize_moving_average_abs_max", 0)
-            .EQ("fake_channel_wise_quantize_abs_max", 0)
+            .LE("fake_channel_wise_quantize_abs_max", 1)
             .EQ("fake_dequantize_max_abs", 0));
