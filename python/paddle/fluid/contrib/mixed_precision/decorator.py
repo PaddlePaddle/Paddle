@@ -59,6 +59,8 @@ class OptimizerWithMixedPrecision(object):
                            scaling.
         decr_ratio(float): The less-than-one-multiplier to use when decreasing 
                            the loss scaling.
+        use_pure_fp16(bool): Whether to use the pure fp16 training.
+        use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
 
     """
 
@@ -229,14 +231,14 @@ class OptimizerWithMixedPrecision(object):
             A list of optimize operators.
         """
 
+        # Change the op_role_var attr for some ops, so that gradients
+        # transferred across GPUs can be FP16.
+        update_role_var_grad(self._train_program, params_grads)
+
         # When not using dynamic loss scaling and the init loss scaling value is equal to 1.0,
         # the model can be optimized.
         if not self._use_dynamic_loss_scaling and self._init_loss_scaling == 1.0:
             return self._optimizer.apply_gradients(params_grads)
-
-        # Change the op_role_var attr for some ops, so that gradients
-        # transferred across GPUs can be FP16.
-        update_role_var_grad(self._train_program, params_grads)
 
         grads = [g for _, g in params_grads]
         fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
@@ -259,14 +261,14 @@ class OptimizerWithMixedPrecision(object):
                     _, fp32_found_inf = check_finite_and_unscale(
                         fp32_grads,
                         self._loss_scaling,
-                        name="find_infinite_scale")
+                        name="find_infinite_scale_fp32")
                 found_infs.append(fp32_found_inf)
             if fp16_grads:
                 with self._train_program._optimized_guard(fp16_grads):
                     _, fp16_found_inf = check_finite_and_unscale(
                         fp16_grads,
                         self._loss_scaling,
-                        name="find_infinite_scale")
+                        name="find_infinite_scale_fp16")
                 found_infs.append(fp16_found_inf)
         else:
             with self._train_program._optimized_guard(grads):
@@ -294,7 +296,7 @@ class OptimizerWithMixedPrecision(object):
                             self._incr_ratio,
                             self._decr_ratio,
                             stop_update=stop_update,
-                            name="update_loss_scaling")
+                            name="update_loss_scaling_fp32")
                         stop_update = True
                     if fp16_grads:
                         update_loss_scaling(
@@ -308,8 +310,7 @@ class OptimizerWithMixedPrecision(object):
                             self._incr_ratio,
                             self._decr_ratio,
                             stop_update=stop_update,
-                            name="update_loss_scaling")
-                        stop_update = True
+                            name="update_loss_scaling_fp16")
             else:
                 with self._train_program._optimized_guard([]):
                     update_loss_scaling(
