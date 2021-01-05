@@ -68,6 +68,34 @@ class HeterComm {
                    Sgd& sgd);
 
   int log2i(int x);
+  bool need_transfer(int send_id, int receive_id) {
+    return ((send_id / 4 != receive_id / 4) && (send_id + 4) % 8 != receive_id);
+  }
+
+  int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
+
+  struct Node {
+    cudaStream_t in_stream;
+    cudaStream_t out_stream;
+    char* key_storage;
+    char* val_storage;
+    int sync;
+    int key_bytes_len;
+    int val_bytes_len;
+    int gpu_num;
+  };
+
+  struct Path {
+    std::vector<Node> nodes_;
+  };
+
+  void init_path();
+  void create_storage(
+      int start_index, int end_index, int keylen, int vallen,
+      std::vector<std::shared_ptr<memory::Allocation>>& local_strorage);
+  void walk_to_src(int start_index, int end_index, char* src_val);
+  void walk_to_dest(int start_index, int end_index, char* src_key,
+                    char* src_val);
 
  private:
   using Table = HashTable<KeyType, ValType>;
@@ -76,6 +104,8 @@ class HeterComm {
   std::vector<Table*> tables_;
   std::shared_ptr<HeterPsResource> resource_;
   CustomGradMerger merger_;
+  int topo_aware_{1};
+  std::vector<std::vector<Path>> path_;
 };
 
 }  // end namespace framework
