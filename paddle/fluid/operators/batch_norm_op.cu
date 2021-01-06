@@ -234,7 +234,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 
         bool called = false;
 #if CUDNN_VERSION_MIN(7, 4, 1)
-        if (compute_format == DataLayout::kNHWC) {
+        if (compute_format == DataLayout::kNHWC ||
+            data_layout == DataLayout::kNCHW) {
           called = true;
           size_t workspace_size = 0;
           size_t reserve_space_size = 0;
