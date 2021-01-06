@@ -81,7 +81,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
         value_node = node.value
         slice_node = node.slice
         if isinstance(value_node, gast.Name):
-            if value_node.id in self.name_to_var_shape and self._used_by_paddle_api(
+            if self._is_var_shape(value_node) and self._used_by_paddle_api(
                     value_node):
                 var_shape_node = self.name_to_var_shape[value_node.id]
                 return create_convert_shape_node(var_shape_node, slice_node)
@@ -100,7 +100,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
         return node
 
     def visit_Name(self, node):
-        if node.id in self.name_to_var_shape:
+        if self._is_var_shape(node):
             if self._used_by_paddle_api(node):
                 var_shape_node = self.name_to_var_shape[node.id]
                 return create_convert_shape_node(var_shape_node)
@@ -147,7 +147,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
             return False
         args = node.iter.args
         for idx, arg in enumerate(args):
-            if isinstance(arg, gast.Name) and arg.id in self.name_to_var_shape:
+            if isinstance(arg, gast.Name) and self._is_var_shape(arg):
                 args[idx] = create_convert_shape_node(self.name_to_var_shape[
                     arg.id])
 
@@ -157,15 +157,12 @@ class TensorShapeTransformer(gast.NodeTransformer):
         need_transformed = False
         for child_node in gast.walk(cond):
             var_shape_node = None
-            if isinstance(child_node, (gast.Attribute)):
+            if isinstance(child_node, (gast.Attribute, gast.Subscript)):
                 if self._is_var_shape(child_node):
                     var_shape_node = child_node
             elif isinstance(child_node, (gast.Name)):
-                if child_node.id in self.name_to_var_shape:
-                    var_shape_node = self.name_to_var_shape[child_node.id]
-            elif isinstance(child_node, gast.Subscript):
                 if self._is_var_shape(child_node):
-                    var_shape_node = child_node
+                    var_shape_node = self.name_to_var_shape[child_node.id]
 
             if var_shape_node:
                 need_transformed = True
@@ -269,7 +266,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
             target_id = ast_to_source_code(target_node).strip()
 
             if isinstance(value_node, gast.Name):
-                if value_node.id in self.name_to_var_shape:
+                if self._is_var_shape(value_node):
                     self.name_to_var_shape[target_id] = self.name_to_var_shape[
                         value_node.id]
                     return True

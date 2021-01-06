@@ -274,7 +274,7 @@ def convert_var_shape(x, idx=None, in_control_flow=False):
         num_negetive = sum([1 if i < 0 else 0 for i in list_shape])
         return num_negetive > 0
 
-    # 1. When `x` is Variable, call nn.shape(x) in following cases:
+    # When `x` is Variable, call nn.shape(x) in following cases:
     #  (1) The shape of `x` is used in control flow condition.
     #      ```
     #      if x.shape[0] == 1:
