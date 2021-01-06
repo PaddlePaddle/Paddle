@@ -272,7 +272,7 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
           }
         }
       }
-    } else if (cur_node->Name() == "fused_elemwise_activation_grad") {
+    } else if (cur_node->Name() == "fused_elemwise_add_activation_grad") {
       auto intermediate_out_grad_args =
           cur_node->Op()->Output(GradVarName("IntermediateOut"));
       PADDLE_ENFORCE_EQ(
