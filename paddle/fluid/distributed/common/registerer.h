@@ -15,7 +15,6 @@
 #pragma once
 
 #include <glog/logging.h>
-
 #include <iostream>
 #include <map>
 #include <string>
@@ -87,7 +86,7 @@ inline PsCoreClassMap &global_factory_map_cpp() { return global_factory_map(); }
 
 // typedef pa::Any Any;
 // typedef ::FactoryMap FactoryMap;
-#define REGISTER_PSCORE_REGISTERER(base_class)                                  \
+#define REGISTER_PSCORE_REGISTERER(base_class)                           \
   class base_class##Registerer {                                         \
    public:                                                               \
     static base_class *CreateInstanceByName(const ::std::string &name) { \
@@ -108,7 +107,7 @@ inline PsCoreClassMap &global_factory_map_cpp() { return global_factory_map(); }
     }                                                                    \
   };
 
-#define REGISTER_PSCORE_CLASS(clazz, name)                     \
+#define REGISTER_PSCORE_CLASS(clazz, name)              \
   class ObjectFactory##name : public ObjectFactory {    \
    public:                                              \
     Any NewInstance() { return Any(new name()); }       \
