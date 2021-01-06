@@ -115,8 +115,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_XPU
   if (kernel_iter == kernels.end() &&
-      is_xpu_place(expected_kernel_key->place_)) {
-    expected_kernel_key->place_ = platform::CPUPlace();
+      is_xpu_place(expected_kernel_key.place_)) {
+    expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
   if (expected_kernel_key.place_ != place) {
