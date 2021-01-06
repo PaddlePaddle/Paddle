@@ -90,12 +90,10 @@ TEST(test_prepare_op, test_prepare_op) {
       CreateVarNameMap(info, "split", outs, false);
   auto op = framework::OpRegistry::CreateOp("split", var_in_map, var_out_map,
                                             split_attr_map);
-  auto expected_kernel_key = GetExpectedKernelKey<imperative::VarBase>(
-      ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), place,
-      split_attr_map);
   ASSERT_NO_FATAL_FAILURE(PreparedOp preparedOp = PreparedOp::Prepare(
+                              ins, outs,
                               dynamic_cast<framework::OperatorWithKernel&>(*op),
-                              expected_kernel_key));
+                              place, split_attr_map));
 }
 
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
@@ -107,6 +105,7 @@ TEST(test_prepare_op, test_get_tensor_from_var) {
   auto* ts = GetTensorFromVar(*vout_error->MutableVar());
   ASSERT_TRUE(ts != nullptr);
 }
+
 #if defined(PADDLE_WITH_CUDA)
 TEST(test_prepare_op, test_prepare_data) {
   std::shared_ptr<imperative::VarBase> vin(
@@ -143,12 +142,12 @@ TEST(test_prepare_op, test_prepare_data) {
                                             attr_map);
 
   // test if it can be transformed to GPU place
-  auto expected_kernel_key = GetExpectedKernelKey<imperative::VarBase>(
+  auto prepared_op = PreparedOp::Prepare(
       ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), gpu_place,
       attr_map);
   imperative::NameVarBaseMap tmp_ins = PrepareData<imperative::VarBase>(
       dynamic_cast<framework::OperatorWithKernel&>(*op), ins,
-      expected_kernel_key);
+      prepared_op.kernel_type());
   for (const auto& name_pair : tmp_ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
@@ -192,12 +191,12 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
                                             attr_map);
 
   // test if it never transferred on GPU place
-  auto expected_kernel_key = GetExpectedKernelKey<imperative::VarBase>(
+  auto prepared_op = PreparedOp::Prepare(
       ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), cpu_place,
       attr_map);
   imperative::NameVarBaseMap tmp_ins = PrepareData<imperative::VarBase>(
       dynamic_cast<framework::OperatorWithKernel&>(*op), ins,
-      expected_kernel_key);
+      prepared_op.kernel_type());
   for (const auto& name_pair : tmp_ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
