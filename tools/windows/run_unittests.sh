@@ -45,11 +45,8 @@ diable_wingpu_test="^test_analysis_predictor$|\
 ^test_model$|\
 ^test_decoupled_py_reader$|\
 ^test_generator_dataloader$|\
-^test_ir_memory_optimize_pass$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
-^test_parallel_executor_pg$|\
 ^test_py_reader_using_executor$|\
-^test_weight_decay$|\
 ^test_parallel_executor_feed_persistable_var$|\
 ^test_parallel_executor_fetch_isolated_var$|\
 ^test_parallel_executor_inference_feed_partial_data$|\
