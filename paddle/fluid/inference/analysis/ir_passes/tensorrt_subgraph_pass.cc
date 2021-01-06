@@ -39,11 +39,11 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
-  auto disabled_ops = Get<std::vector<std::string>>("disabled_ops");
+  auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
-    if (find(disabled_ops.begin(), disabled_ops.end(), node->Op()->Type()) !=
-        disabled_ops.end()) {
+    if (find(trt_disabled_ops.begin(), trt_disabled_ops.end(),
+             node->Op()->Type()) != trt_disabled_ops.end()) {
       VLOG(3) << node->Op()->Type().c_str()
               << " is diabled by config in TensorRT";
       return false;
