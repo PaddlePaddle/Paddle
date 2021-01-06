@@ -152,8 +152,12 @@ def _get_subprocess_env_list(nprocs, options):
                                  (card_id, ",".join(env_devices_list)))
 
     # set other inner args
-    args.node_ip = _get_node_ip(args.cluster_node_ips)
+    args.node_ip = options.get('node_ip', None)
+    if args.node_ip is None:
+        args.node_ip = _get_node_ip(args.cluster_node_ips)
+
     args.started_port = options.get('started_port', None)
+
     args.use_paddlecloud = options.get('use_paddlecloud', None)
     if args.use_paddlecloud is None:
         args.use_paddlecloud = use_paddlecloud()
@@ -303,7 +307,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             (2) gpus (string): The training process will run on the 
             selected gpus, such as "0,1,2,3". Default: None; 
             (3) ips (string): Paddle cluster nodes ips, such as 
-            "192.168.0.16,192.168.0.17". Default: "127.0.0.1"; 
+            "192.168.0.16,192.168.0.17". Default: "127.0.0.1" . 
 
     Returns:
         ``MultiprocessContext`` object, it hold the spawned processes.
