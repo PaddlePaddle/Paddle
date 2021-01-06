@@ -42,7 +42,8 @@ class TraceOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         x_dims.size(), 2,
         platform::errors::OutOfRange(
-            "trace requires an tensor of at least two dimensions"));
+            "Input's dim is out of range (expected at least 2, but got %ld).",
+            x_dims.size()));
     PADDLE_ENFORCE_LT(
         dim1_, x_dims.size(),
         platform::errors::OutOfRange(
