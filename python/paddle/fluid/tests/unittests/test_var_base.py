@@ -166,6 +166,11 @@ class TestVarBase(unittest.TestCase):
                 a = paddle.to_tensor(a)
                 self.assertEqual(a.place.__repr__(), "CUDAPlace(0)")
 
+            with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
+                a = paddle.to_tensor(a_np, place=paddle.CPUPlace())
+                a = paddle.to_tensor(a, place=paddle.CUDAPinnedPlace())
+                self.assertEqual(a.place.__repr__(), "CUDAPinnedPlace")
+
     def test_to_variable(self):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array, name="abc")
