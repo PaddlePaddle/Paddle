@@ -299,86 +299,87 @@ void Reducer::PrepareForBackward(
   });
 
   // find unused vars
-  /*
-    // reset unused var accounting
-    has_marked_unused_vars = false;
 
-    std::queue<std::shared_ptr<GradOpNode>> q;
-    std::unordered_set<VariableWrapper* > var_visited;
-    std::unordered_set<GradOpNode* > init_nodes;
+  // reset unused var accounting
+  has_marked_unused_vars = false;
 
-    for(const auto& output: outputs){
-      const auto& grad_node = output->GradVarBase()->GradNode();
-      if(grad_node == nullptr || output->OverridedStopGradient()){
-        VLOG(0) << "Skip auto grad since there is no grad op for output is "
-                   "stop_gradient=True: "
-                << output->Name();
-        continue;
-      }else{
-        init_nodes.insert(grad_node.get());
-        var_visited.insert(output->SharedVar().get());
-        q.push(grad_node);
-      }
+  std::queue<std::shared_ptr<GradOpNode>> q;
+  std::unordered_set<VariableWrapper *> var_visited;
+  std::unordered_set<GradOpNode *> init_nodes;
+
+  for (const auto &output : outputs) {
+    const auto &grad_node = output->GradVarBase()->GradNode();
+    if (grad_node == nullptr || output->OverridedStopGradient()) {
+      VLOG(0) << "Skip auto grad since there is no grad op for output is "
+                 "stop_gradient=True: "
+              << output->Name();
+      continue;
+    } else {
+      init_nodes.insert(grad_node.get());
+      var_visited.insert(output->SharedVar().get());
+      q.push(grad_node);
     }
+  }
 
-    PrepareDeps(init_nodes);
-    // Traverse the autograd graph starting at the specified output
-    while (!q.empty()) {
-      auto cur_node = q.front();
-      q.pop();
+  PrepareDeps(init_nodes);
+  // Traverse the autograd graph starting at the specified output
+  while (!q.empty()) {
+    auto cur_node = q.front();
+    q.pop();
 
-      for (const auto& cur_op : *cur_node) {
-        cur_op.EnforceHasInOut();
-        auto& bwd_outs = cur_op.GetOutsMap();
-        for (const auto& pair : bwd_outs) {
-          if (!pair.second.IsGrad()) {
-            continue;
-          }
-          for (auto& var : pair.second) {
-            if (!var || var->OverridedStopGradient()){
-              continue;
-            }else{
-              var_visited.insert(var.get());
-            }
-          }
-        }
-      }
-      for (const auto& grad_pending_node : cur_node->GradPendingNodes()) {
-        PADDLE_ENFORCE_NOT_NULL(grad_pending_node,
-                                platform::errors::NotFound(
-                                    "Grad pending node should not be nullptr"));
-        auto iter = node_deps_.find(grad_pending_node.get());
-        if (iter == node_deps_.end()) {
+    for (const auto &cur_op : *cur_node) {
+      cur_op.EnforceHasInOut();
+      auto &bwd_outs = cur_op.GetOutsMap();
+      for (const auto &pair : bwd_outs) {
+        if (!pair.second.IsGrad()) {
           continue;
         }
-
-        if (--(iter->second) == 0) {
-          q.push(grad_pending_node);
+        for (auto &var : pair.second) {
+          if (!var || var->OverridedStopGradient()) {
+            continue;
+          } else {
+            var_visited.insert(var.get());
+          }
         }
       }
     }
-  */
+    for (const auto &grad_pending_node : cur_node->GradPendingNodes()) {
+      PADDLE_ENFORCE_NOT_NULL(grad_pending_node,
+                              platform::errors::NotFound(
+                                  "Grad pending node should not be nullptr"));
+      auto iter = node_deps_.find(grad_pending_node.get());
+      if (iter == node_deps_.end()) {
+        continue;
+      }
 
-  // VLOG(0) << "select vars is :";
-  // for (auto pos = var_visited.begin(); pos!=var_visited.end(); pos++) {
-  //   const auto& tmp = *pos;
-  //   VLOG(0) << tmp->Name();
-  // }
-  // VLOG(0) << "starting select unused var...";
-  // for (const auto& it : VarToIndexMap_) {
-  //   VLOG(0) << it.first->Name();
-  //   if (var_visited.count(it.first) == 0) {
-  //     auto unused_index = it.second;
-  //     const auto &var_locator = variable_locators_[unused_index];
-  //     auto group_index = var_locator.group_index;
-  //     auto &group = groups_[group_index];
-  //     group.pending_ = group.pending_ - 1;
-  //     VLOG(0) << "The var [" << it.first->Name() <<"] is no used, reset the
-  //     pending of"
-  //             " group[" << group_index << "]";
-  //   }
-  // }
-  // node_deps_.clear();
+      if (--(iter->second) == 0) {
+        q.push(grad_pending_node);
+      }
+    }
+  }
+
+  VLOG(0) << "select vars is :";
+  for (auto pos = var_visited.begin(); pos != var_visited.end(); pos++) {
+    const auto &tmp = *pos;
+    VLOG(0) << tmp->Name();
+  }
+  VLOG(0) << "starting select unused var...";
+  for (const auto &it : VarToIndexMap_) {
+    VLOG(0) << it.first->Name();
+    if (var_visited.count(it.first) == 0) {
+      auto unused_index = it.second;
+      const auto &var_locator = variable_locators_[unused_index];
+      auto group_index = var_locator.group_index;
+      auto &group = groups_[group_index];
+      group.pending_ = group.pending_ - 1;
+      VLOG(0) << "The var [" << it.first->Name()
+              << "] is no used, reset the pending of"
+                 " group["
+              << group_index << "]";
+    }
+  }
+
+  node_deps_.clear();
 }
 
 // Add hook function to each leaf node. When the gradient of a leaf node is
@@ -391,42 +392,22 @@ void Reducer::PrepareForBackward(
 // concat + allreduce + split is emitted in turn according to next_group_.
 // 3, FinalizeBackward: after the end, synchronize each stream.
 void Reducer::AddDistHook(size_t var_index) {
-  // const auto &var_locator = variable_locators_[var_index];
-  // auto group_index = var_locator.group_index;
-  // auto &group = groups_[group_index];
-
   if (!has_rebuilt_group_) {
     rebuild_vars_.push_back(vars_[var_index]);
     rebuild_var_indices_.push_back(var_index);
   }
-
   MarkVarReady(var_index);
-  // if (!group.is_sparse_) {
-  //   // Only dense_contents_ need memory copy
-  //   MarkDenseVarReady(var_index);
-  // } else {
-  //   MarkSparseVarReady(var_index);
-  // }
-
-  // if (--group.pending_ == 0) {
-  //   // can start allreduce
-  //   MarkGroupReady(group_index);
-  // }
-
-  // if (next_group_ == groups_.size()) {
-  //   FinalizeBackward();
-  // }
 }
 
 void Reducer::MarkVarReady(size_t var_index) {
   auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
   const auto &var_locator = variable_locators_[var_index];
   auto group_index = var_locator.group_index;
-  auto inside_group_index = var_locator.inside_group_index;
   auto &group = groups_[group_index];
-  auto length = group.length_[inside_group_index];
   if (!group.is_sparse_) {
     // Only dense_contents_ need memory copy
+    auto inside_group_index = var_locator.inside_group_index;
+    auto length = group.length_[inside_group_index];
     auto tensor = var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
     group.dense_tensors_[inside_group_index].ShareDataWith(*tensor).Resize(
         {static_cast<int64_t>(length)});
