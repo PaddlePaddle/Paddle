@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-
+#include "paddle/fluid/framework/variable_helper.h"
 namespace paddle {
 namespace operators {
 
@@ -59,7 +59,8 @@ void RunPyFunc(py::object *py_function,
     imperative::VarBase temp_varbase(false, name);
 
     if (!temp_varbase.MutableVar()->IsInitialized()) {
-      temp_varbase.MutableVar()->SharePlaceholderWith(*in_var);
+      // temp_varbase.MutableVar()->SharePlaceholderWith(*in_var);
+      framework::CopyVariable(*in_var, temp_varbase.MutableVar());
     }
     inputs[i] = py::cast(temp_varbase);
   }
@@ -72,12 +73,14 @@ void RunPyFunc(py::object *py_function,
       // !!! :Commented out the copy constructor of
       // `paddle::imperative::VarBase`
       auto result_var = result_tuple[i].cast<imperative::VarBase *>();
-      (*outs)[i]->SharePlaceholderWith(*(result_var->MutableVar()));
+      // (*outs)[i]->SharePlaceholderWith(*(result_var->MutableVar()));
+      framework::CopyVariable(*(result_var->MutableVar()), (*outs)[i]);
     }
   } else {
     try {
       auto result_var = py_result.cast<imperative::VarBase *>();
-      (*outs)[0]->SharePlaceholderWith(*(result_var->MutableVar()));
+      // (*outs)[0]->SharePlaceholderWith(*(result_var->MutableVar()));
+      framework::CopyVariable(*(result_var->MutableVar()), (*outs)[0]);
     } catch (py::cast_error &) {
     }
   }
