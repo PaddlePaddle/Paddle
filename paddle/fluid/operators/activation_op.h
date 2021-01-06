@@ -28,6 +28,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -794,25 +796,38 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-template <typename T, typename Enable = void>
-struct AbsFunctor;
-
-// abs(x) = |x|
 template <typename T>
-struct AbsFunctor<T, math::DisableComplex<T>>
-    : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.abs();
+struct Abs {
+  HOSTDEVICE T operator()(const T& val) const { return abs(val); }
+};
+
+template <>
+struct Abs<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(abs(static_cast<float>(val)));
   }
 };
 
-// complex: abs(x) = (x*x)^-1
+template <>
+struct Abs<platform::complex64> {
+  HOSTDEVICE float operator()(const platform::complex64& val) const {
+    return platform::abs(val);
+  }
+};
+
+template <>
+struct Abs<platform::complex128> {
+  HOSTDEVICE double operator()(const platform::complex128& val) const {
+    return platform::abs(val);
+  }
+};
+
+// abs(x) = |x|
 template <typename T>
-struct AbsFunctor<T, math::EnableComplex<T>> : public BaseActivationFunctor<T> {
+struct AbsFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.abs().real();
+    out.device(d) = x.unaryExpr(Abs<T>());
   }
 };
 
