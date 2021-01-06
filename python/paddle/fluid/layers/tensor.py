@@ -1669,7 +1669,7 @@ def eye(num_rows,
         expand_times = batch_shape + [1, 1]
         if in_dygraph_mode():
             out = core.ops.reshape(out, 'shape', re_shape)
-            return core.ops.expand(out, 'expand_times', expand_times)
+            return core.ops.expand(out, None, 'expand_times', expand_times)
 
         if not isinstance(batch_shape, list):
             raise TypeError("batch_shape should be a list")
