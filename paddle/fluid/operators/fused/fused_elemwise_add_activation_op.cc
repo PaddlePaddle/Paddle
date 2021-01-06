@@ -141,10 +141,10 @@ class FusedElemwiseAddActivationMaker
         });
 
     AddComment(R"DOC(
-FusedElemwiseActivation Operator.
+FusedElemwiseAddActivation Operator.
 
-At present, FusedElemwiseActivation only supports Two kinds of compound
-operators (elementwise_op and activation_op):
+At present, FusedElemwiseAddActivation only supports Two kinds of compound
+operators (elementwise_add_op and activation_op):
 
     Z = Binary(X, Unary(Y))
     Z = Unary(Binary(X, Y))
