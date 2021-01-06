@@ -16,11 +16,13 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <sstream>
 
 #include "Eigen/Dense"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
+#include "paddle/fluid/string/string_helper.h"
 
 const static int max_port = 65535;
 
@@ -350,33 +352,30 @@ std::future<int32_t> BrpcPsClient::save(const std::string &epoch,
 std::future<int32_t> BrpcPsClient::save(uint32_t table_id,
                                         const std::string &epoch,
                                         const std::string &mode) {
-  if (mode == "4") {
-    return local_save_sparse_param(table_id, epoch);
-  } else if (mode == "5") {
-    return local_save_sparse_tensor(table_id, epoch);
-  }
+  local_save_sparse_param(table_id, epoch);
   return send_save_cmd(table_id, PS_SAVE_ONE_TABLE, {epoch, mode});
 }
 
-std::future<int32_t> BrpcPsClient::local_save_sparse_param(
+void BrpcPsClient::local_save_sparse_param(
     uint32_t table_id, const std::string &path) {
+  // get var information
   std::string var_name = "";
   uint32_t var_num = 0;
-  uint32_t var_shape = 0
+  uint32_t var_shape = 0;
   const auto& worker_param = _config.worker_param().downpour_worker_param();
   for(size_t i =0; i< worker_param.downpour_table_param_size(); ++i){
-    if (work_param.downpour_table_param(i).table_id() == table_id){
-      var_name = work_param.downpour_table_param(i).common().table_name()
-      var_num = work_param.downpour_table_param(i).accessor().fea_dim();
-      var_shape = work_param.downpour_table_param(i).accessor().embedx_dim();
+    if (worker_param.downpour_table_param(i).table_id() == table_id){
+      var_name = worker_param.downpour_table_param(i).common().table_name();
+      var_num = worker_param.downpour_table_param(i).accessor().fea_dim();
+      var_shape = worker_param.downpour_table_param(i).accessor().embedx_dim();
       break;
     }
   }
-  // assert var_name != ""
 
-  std::string var_store = string::Sprintf("%s/%s", dirname, varname);
+  // assert var_name != ""
+  std::string var_store = string::Sprintf("%s", path);
   MkDirRecursively(var_store.c_str());
-  VLOG(3) << "save sparse table " << varname << " in dir: " << var_store << " begin";
+  VLOG(3) << "save sparse table " << var_name << " in dir: " << var_store << " begin";
 
   std::vector<float> save_huge_vec(var_num * var_shape);
   std::vector<uint64_t> save_key(var_num);
@@ -389,24 +388,20 @@ std::future<int32_t> BrpcPsClient::local_save_sparse_param(
   auto status = pull_sparse((float **)save_vec.data(), table_id, save_key.data(), save_key.size());
   status.wait();
 
-  std::string shard_var_pre =
-    string::Sprintf("%s.block%d", var_name, server_id);
-  std::string value_ = string::Sprintf("%s/%s.txt", var_store, shard_var_pre);
+  std::string value_ = string::Sprintf("%s/%s.txt", var_store, var_name);
   std::unique_ptr<std::ofstream> value_out(new std::ofstream(value_));
 
   SaveToText(value_out.get(), &save_key, &save_vec, var_shape);
-  return 0;
 }
 
-void SaveToText(std::ostream* os, const std::vector<uint64_t>* keys, const std::vector<float*>* values, const uint32_t& var_shape){
+void BrpcPsClient::SaveToText(std::ostream* os, const std::vector<uint64_t>* keys, const std::vector<float*>* values, const uint32_t& var_shape){
   for (size_t ids=0; ids < keys->size() ; ++ids) {
     uint64_t key = keys->at(ids);
     float* value = values->at(ids);
     std::stringstream ss;
     ss << key << "\t";
     for (int i = 0; i < static_cast<int>(var_shape); i++) {
-      auto& vs = value[i];
-      ss << paddle::string::join_strings((*vs), ',');
+      ss << value[i];
       ss << "\t";
     }
     ss << "\n";

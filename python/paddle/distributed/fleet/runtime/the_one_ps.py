@@ -788,15 +788,9 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             use_origin_program=True)
 
-        if mode == 4:
-            self._local_save_sparse_params(
-                executor, dirname, sparses, main_program)
-        elif mode == 5:
-            self._local_save_sparse_tensor(
-                executor, dirname, sparses, main_program)
-        else:
-            recv_sparse_varnames = self._remote_save_sparse_params(executor, dirname,
-                                                                   sparses, main_program)
+        
+        recv_sparse_varnames = self._remote_save_sparse_params(executor, dirname,
+                                                                sparses, main_program)
 
         recv_dense_varnames = []
         for id, names in denses.items():
