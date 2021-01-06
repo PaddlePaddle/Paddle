@@ -158,13 +158,6 @@ class AdamW(Adam):
                 and not self._apply_decay_param_fun(param.name):
             return
 
-        if isinstance(self._coeff, float):
-            assert param.dtype == paddle.fluid.core.VarDesc.VarType.FP32, \
-                "the type of coeff(float) and parameter(%s) is not consistent."%(param.dtype)
-        else:
-            assert self._coeff.dtype == param.dtype, \
-                "the type of coeff(%s) and parameter(%s) is not consistent."%(self._coeff.dtype, param.dtype)
-
         if isinstance(self._learning_rate, float):
             learning_rate = self._learning_rate
         else:
@@ -180,7 +173,7 @@ class AdamW(Adam):
             # If it has been calculated, the result will be reused
             decay_coeff = self._lr_to_coeff.get(learning_rate, None)
             if decay_coeff is None:
-                decay_coeff = 1.0 - self._coeff * learning_rate
+                decay_coeff = 1.0 - learning_rate * self._coeff
                 self._lr_to_coeff[learning_rate] = decay_coeff
 
             scaled_param = param * decay_coeff
