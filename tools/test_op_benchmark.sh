@@ -210,16 +210,17 @@ function run_op_benchmark_test {
 
 # check benchmark result
 function check_op_benchmark_result {
-  local check_status_code
+  local api_info_file check_status_code
   # default 3 times
   [ -z "${RETRY_TIMES}" ] && RETRY_TIMES=3
+  api_info_file=$(pwd)/api_info.txt
   for retry_time in $(seq ${RETRY_TIMES})
   do
     # check current result and update the file to benchmark test
     python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
         --develop_logs_dir $(pwd)/logs-develop \
         --pr_logs_dir $(pwd)/logs-test_pr \
-        --api_info_file $(pwd)/api_info.txt
+        --api_info_file ${api_info_file}
     check_status_code=$?
     # TODO(Avin0323): retry only if the performance check fails
     [ $check_status_code -eq 0 ] && break
@@ -232,7 +233,7 @@ function check_op_benchmark_result {
                                 $VISIBLE_DEVICES \
                                 "gpu" \
                                 "speed" \
-                                $(pwd)/api_info.txt \
+                                ${api_info_file} \
                                 "paddle"
     popd > /dev/null
   done
