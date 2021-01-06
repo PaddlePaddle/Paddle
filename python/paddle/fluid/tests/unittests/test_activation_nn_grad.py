@@ -78,7 +78,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
 class TestELUDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        shape = [2, 3, 4, 4]
+        shape = [2, 4, 4, 4]
         eps = 1e-6
         alpha = 0.2
         dtype = np.float64
