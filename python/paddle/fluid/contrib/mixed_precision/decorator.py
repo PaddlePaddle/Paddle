@@ -61,7 +61,7 @@ class OptimizerWithMixedPrecision(object):
                            the loss scaling.
         use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
         use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
-                           Default None, which means that its value equals to `use_pure_fp16`.
+                           Default None, which means that its value is equal to `use_pure_fp16`.
 
     """
 
@@ -201,9 +201,9 @@ class OptimizerWithMixedPrecision(object):
   
         Args:
             place(CPUPlace|CUDAPlace): place is used to initialize 
-                fp32 parameters with fp16 values.
+                fp16 parameters with fp32 values.
             scope(Scope): The scope is used to find fp32 parameters.
-            test_program(Program): The testing program.
+            test_program(Program): The program is used for testing.
             use_fp16_test(bool): Whether to use fp16 testing.
 
         """
