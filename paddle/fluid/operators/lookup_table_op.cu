@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/lookup_table_op.h"
@@ -21,13 +22,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, int BlockDimX, int BlockDimY, int GridDimX,
-          bool PaddingFlag>
+template <typename T>
 __global__ void LookupTable(T *output, const T *table, const int64_t *ids,
                             const int64_t N, const int64_t K, const int64_t D,
-                            const int64_t padding_idx) {
+                            const int64_t padding_idx, bool PaddingFlag) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * GridDimX;
+  int idy = blockIdx.x + threadIdx.y * gridDim.x;
 
   while (idy < K) {
     int64_t id = ids[idy];
@@ -43,7 +43,7 @@ __global__ void LookupTable(T *output, const T *table, const int64_t *ids,
         N, id);
     T *out = output + idy * D;
     const T *tab = table + id * D;
-    for (int i = idx; i < D; i += BlockDimX) {
+    for (int i = idx; i < D; i += blockDim.x) {
       if (PaddingFlag) {
         if (id == padding_idx)
           out[i] = static_cast<T>(0);
@@ -53,16 +53,16 @@ __global__ void LookupTable(T *output, const T *table, const int64_t *ids,
         out[i] = tab[i];
       }
     }
-    idy += BlockDimY * GridDimX;
+    idy += blockDim.y * gridDim.x;
   }
 }
 
-template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
+template <typename T>
 __global__ void LookupTableGrad(T *table, const T *output, const int64_t *ids,
                                 const int64_t N, const int64_t K,
                                 const int64_t D) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * GridDimX;
+  int idy = blockIdx.x + threadIdx.y * gridDim.x;
 
   while (idy < K) {
     int64_t id = ids[idy];
@@ -78,10 +78,10 @@ __global__ void LookupTableGrad(T *table, const T *output, const int64_t *ids,
         N, id);
     const T *out = output + idy * D;
     T *tab = table + id * D;
-    for (int i = idx; i < D; i += BlockDimX) {
+    for (int i = idx; i < D; i += blockDim.x) {
       paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
     }
-    idy += BlockDimY * GridDimX;
+    idy += blockDim.y * gridDim.x;
   }
 }
 
@@ -89,6 +89,8 @@ template <typename T>
 class LookupTableCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+    auto &dev_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
     auto *table_t = context.Input<LoDTensor>("W");
     auto *ids_t = context.Input<LoDTensor>("Ids");
     auto *output_t = context.Output<LoDTensor>("Out");
@@ -105,19 +107,20 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
     auto *table = table_t->data<T>();
     auto *output = output_t->mutable_data<T>(context.GetPlace());
 
-    dim3 threads(128, 8);
-    dim3 grids(8, 1);
+    dim3 blocks(256, 4);
+    int block_size = blocks.x * blocks.y * blocks.z;
+    int max_pyhsical_threads = dev_ctx.GetMaxPhysicalThreadCount();
+    int sm = dev_ctx.GetSMCount();
+    int grid_x =
+        std::min((max_pyhsical_threads + block_size - 1) / block_size, sm);
+    dim3 grids(grid_x, 1);
 
     if (padding_idx == -1)
-      LookupTable<
-          T, 128, 8, 8,
-          false><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          output, table, ids, N, K, D, padding_idx);
+      LookupTable<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
+          output, table, ids, N, K, D, padding_idx, false);
     else
-      LookupTable<
-          T, 128, 8, 8,
-          true><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          output, table, ids, N, K, D, padding_idx);
+      LookupTable<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
+          output, table, ids, N, K, D, padding_idx, true);
   }
 };
 
@@ -185,9 +188,14 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto t = framework::EigenVector<T>::Flatten(*d_table_t);
       t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
-      dim3 threads(128, 8);
-      dim3 grids(8, 1);
-      LookupTableGrad<T, 128, 8, 8><<<grids, threads, 0, dev_ctx.stream()>>>(
+      dim3 blocks(128, 8);
+      int block_size = blocks.x * blocks.y * blocks.z;
+      int max_pyhsical_threads = dev_ctx.GetMaxPhysicalThreadCount();
+      int sm = dev_ctx.GetSMCount();
+      int grid_x =
+          std::min((max_pyhsical_threads + block_size - 1) / block_size, sm);
+      dim3 grids(grid_x, 1);
+      LookupTableGrad<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
           d_table, d_output, ids, N, K, D);
     }
   }

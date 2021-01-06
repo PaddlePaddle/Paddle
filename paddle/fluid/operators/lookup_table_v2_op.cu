@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/lookup_table_v2_op.h"
@@ -21,19 +22,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, int BlockDimX, int BlockDimY, int GridDimX,
-          bool PaddingFlag>
+template <typename T>
 __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
                               const int64_t N, const int64_t K, const int64_t D,
-                              const int64_t padding_idx) {
+                              const int64_t padding_idx, bool PaddingFlag) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * GridDimX;
+  int idy = blockIdx.x + threadIdx.y * gridDim.x;
 
   while (idy < K) {
     int64_t id = ids[idy];
     T *out = output + idy * D;
     const T *tab = table + id * D;
-    for (int i = idx; i < D; i += BlockDimX) {
+    for (int i = idx; i < D; i += blockDim.x) {
       if (PaddingFlag) {
         if (id == padding_idx)
           out[i] = static_cast<T>(0);
@@ -43,25 +43,25 @@ __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
         out[i] = tab[i];
       }
     }
-    idy += BlockDimY * GridDimX;
+    idy += blockDim.y * gridDim.x;
   }
 }
 
-template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
+template <typename T>
 __global__ void LookupTableV2Grad(T *table, const T *output, const int64_t *ids,
                                   const int64_t N, const int64_t K,
                                   const int64_t D) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * GridDimX;
+  int idy = blockIdx.x + threadIdx.y * gridDim.x;
 
   while (idy < K) {
     int64_t id = ids[idy];
     const T *out = output + idy * D;
     T *tab = table + id * D;
-    for (int i = idx; i < D; i += BlockDimX) {
+    for (int i = idx; i < D; i += blockDim.x) {
       paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
     }
-    idy += BlockDimY * GridDimX;
+    idy += blockDim.y * gridDim.x;
   }
 }
 
@@ -77,6 +77,8 @@ template <typename T>
 class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+    auto &dev_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
     auto *table_t = context.Input<LoDTensor>("W");
     auto *ids_t = context.Input<LoDTensor>("Ids");
     auto *output_t = context.Output<LoDTensor>("Out");
@@ -89,8 +91,13 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
     size_t D = table_t->dims()[1];
     size_t K = ids_t->numel();
 
-    dim3 threads(256, 4);
-    dim3 grids(80, 1);
+    dim3 blocks(256, 4);
+    int block_size = blocks.x * blocks.y * blocks.z;
+    int max_pyhsical_threads = dev_ctx.GetMaxPhysicalThreadCount();
+    int sm = dev_ctx.GetSMCount();
+    int grid_x =
+        std::min((max_pyhsical_threads + block_size - 1) / block_size, sm);
+    dim3 grids(grid_x, 1);
 
     // copy GPU memory to CPU pinned memory
     framework::Vector<int64_t> ids;
@@ -100,7 +107,7 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
 
     if (ids_t->type() == framework::proto::VarType::INT32) {
       InputTypeCovert<
-          int><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+          int><<<grids, blocks, 0, context.cuda_device_context().stream()>>>(
           ids_t->data<int>(), K, ids.MutableData(context.GetPlace()));
       ids_p = ids.MutableData(context.GetPlace());
     } else {
@@ -126,15 +133,11 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
     auto *output = output_t->mutable_data<T>(context.GetPlace());
 
     if (padding_idx == -1)
-      LookupTableV2<
-          T, 256, 4, 80,
-          false><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          output, table, ids_p, N, K, D, padding_idx);
+      LookupTableV2<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
+          output, table, ids_p, N, K, D, padding_idx, false);
     else
-      LookupTableV2<
-          T, 256, 4, 80,
-          true><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          output, table, ids_p, N, K, D, padding_idx);
+      LookupTableV2<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
+          output, table, ids_p, N, K, D, padding_idx, true);
   }
 };
 
@@ -146,6 +149,13 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
         context.template device_context<platform::CUDADeviceContext>();
     bool is_sparse = context.Attr<bool>("is_sparse");
 
+    dim3 blocks(128, 8);
+    int block_size = blocks.x * blocks.y * blocks.z;
+    int max_pyhsical_threads = dev_ctx.GetMaxPhysicalThreadCount();
+    int sm = dev_ctx.GetSMCount();
+    int grid_x =
+        std::min((max_pyhsical_threads + block_size - 1) / block_size, sm);
+    dim3 grids(grid_x, 1);
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
@@ -156,8 +166,6 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
 
       auto *ids_data = ids->data<int64_t>();
       int64_t ids_num = ids->numel();
-      dim3 threads(128, 8);
-      dim3 grids(8, 1);
       auto stream = dev_ctx.stream();
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> new_rows;
@@ -166,7 +174,7 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
 
       if (ids->type() == framework::proto::VarType::INT32) {
         InputTypeCovert<
-            int><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+            int><<<grids, blocks, 0, context.cuda_device_context().stream()>>>(
             ids->data<int>(), ids_num,
             new_rows.MutableData(context.GetPlace()));
       } else {
@@ -204,8 +212,6 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       int D = d_table_t->dims()[1];
       int K = ids_t->numel();
 
-      dim3 threads(128, 8);
-      dim3 grids(8, 1);
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> ids;
       ids.resize(K);
@@ -214,7 +220,7 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
 
       if (ids_t->type() == framework::proto::VarType::INT32) {
         InputTypeCovert<
-            int><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+            int><<<grids, blocks, 0, context.cuda_device_context().stream()>>>(
             ids_t->data<int>(), K, ids.MutableData(context.GetPlace()));
         ids_p = ids.MutableData(context.GetPlace());
       } else {
@@ -227,7 +233,7 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       auto t = framework::EigenVector<T>::Flatten(*d_table_t);
       t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
-      LookupTableV2Grad<T, 128, 8, 8><<<grids, threads, 0, dev_ctx.stream()>>>(
+      LookupTableV2Grad<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
           d_table, d_output, ids_p, N, K, D);
     }
   }
