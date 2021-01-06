@@ -148,20 +148,23 @@ class TestVarBase(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     paddle.to_tensor([[1], [2, 3]], place=1)
 
-            if core.is_compiled_with_cuda():
-                a_np = np.random.rand(1024, 1024)
-                a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
-                with paddle.fluid.device_guard(core.CPUPlace()):
-                    a1 = paddle.to_tensor(a)
-                    self.assertEqual(a1.place.__repr__(), "CPUPlace")
-                with paddle.fluid.device_guard(core.CUDAPlace(0)):
-                    a2 = paddle.to_tensor(a)
-                    self.assertEqual(a2.place.__repr__(), "CUDAPlace(0)")
-
         _test_place(core.CPUPlace())
         if core.is_compiled_with_cuda():
             _test_place(core.CUDAPinnedPlace())
             _test_place(core.CUDAPlace(0))
+
+    def test_to_tensor_change_place(self):
+        if core.is_compiled_with_cuda():
+            a_np = np.random.rand(1024, 1024)
+            with paddle.fluid.dygraph.guard(core.CPUPlace()):
+                a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
+                a = paddle.to_tensor(a)
+                self.assertEqual(a.place.__repr__(), "CPUPlace")
+
+            with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
+                a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
+                a = paddle.to_tensor(a)
+                self.assertEqual(a.place.__repr__(), "CUDAPlace(0)")
 
     def test_to_variable(self):
         with fluid.dygraph.guard():

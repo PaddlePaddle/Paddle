@@ -92,6 +92,18 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Paddle can't use CUDA device since it's not compiled with CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
+    } else if (platform::is_cuda_pinned_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+      gc.reset(new framework::CUDAPinnedGarbageCollector(
+          BOOST_GET_CONST(platform::CUDAPinnedPlace, place), 0));
+
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use CUDAPinned device since it's not compiled with "
+          "CUDA,"
+          "Please recompile or reinstall Paddle with GPU support."));
+#endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
       gc.reset(new framework::XPUGarbageCollector(

@@ -107,6 +107,15 @@ void StreamGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
   callback_manager_->AddCallback(callback);
 }
+
+CUDAPinnedGarbageCollector::CUDAPinnedGarbageCollector(
+    const platform::CUDAPinnedPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void CUDAPinnedGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback();
+}
 #endif
 
 int64_t GetEagerDeletionThreshold() {
