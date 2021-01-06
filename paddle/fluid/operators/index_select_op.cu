@@ -24,9 +24,9 @@ using platform::PADDLE_CUDA_NUM_THREADS;
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-template <typename T>
+template <typename T, typename IndexT>
 __global__ void index_select_cuda_kernel(const T* input, T* output,
-                                         const int64_t* index, int64_t N,
+                                         const IndexT* index, int64_t N,
                                          int64_t stride, int64_t size,
                                          int64_t delta) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -36,53 +36,17 @@ __global__ void index_select_cuda_kernel(const T* input, T* output,
 
   int64_t pre_idx = idx / (stride * size);
   int64_t dim_idx = idx % (stride * size) / stride;
-  int64_t src_dim_idx = index[dim_idx];
+  IndexT src_dim_idx = index[dim_idx];
   int64_t input_idx = idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
   output[idx] = input[input_idx];
 }
 
-template <typename T>
-__global__ void index_select_grad_cuda_kernel(
-    const T* output_grad, T* input_grad, const int64_t* index, int64_t nums,
-    int64_t N, int64_t stride, int64_t size, int64_t delta) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= N) {
-    return;
-  }
-
-  int64_t pre_idx = idx / (stride * size);
-  int64_t dim_idx = idx % (stride * size) / stride;
-  int64_t begin_idx = idx + (delta * pre_idx - dim_idx) * stride;
-
-  input_grad[idx] = 0.0;
-  for (int64_t i = 0; i < nums; i++) {
-    if (index[i] == dim_idx) {
-      input_grad[idx] += output_grad[begin_idx + i * stride];
-    }
-  }
-}
-
-template <typename T>
-__global__ void index_select_cuda_kernel_int(const T* input, T* output,
-                                             const int* index, int64_t N,
-                                             int64_t stride, int64_t size,
-                                             int64_t delta) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= N) {
-    return;
-  }
-
-  int64_t pre_idx = idx / (stride * size);
-  int64_t dim_idx = idx % (stride * size) / stride;
-  int src_dim_idx = index[dim_idx];
-  int64_t input_idx = idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-  output[idx] = input[input_idx];
-}
-
-template <typename T>
-__global__ void index_select_grad_cuda_kernel_int(
-    const T* output_grad, T* input_grad, const int* index, int64_t nums,
-    int64_t N, int64_t stride, int64_t size, int64_t delta) {
+template <typename T, typename IndexT>
+__global__ void index_select_grad_cuda_kernel(const T* output_grad,
+                                              T* input_grad,
+                                              const IndexT* index, int64_t nums,
+                                              int64_t N, int64_t stride,
+                                              int64_t size, int64_t delta) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
@@ -138,16 +102,16 @@ class IndexSelectCUDAKernel : public framework::OpKernel<T> {
 
     if (index_type == framework::proto::VarType::INT64) {
       const int64_t* index_data = index->data<int64_t>();
-      index_select_cuda_kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                                     PADDLE_CUDA_NUM_THREADS,
-                                 PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-          in_data, out_data, index_data, numel, stride, size, delta);
+      index_select_cuda_kernel<T, int64_t><<<
+          (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_data, out_data, index_data,
+                                                numel, stride, size, delta);
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
     } else {
       const int* index_data = index->data<int>();
-      index_select_cuda_kernel_int<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                                         PADDLE_CUDA_NUM_THREADS,
-                                     PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+      index_select_cuda_kernel<T, int><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
+                                             PADDLE_CUDA_NUM_THREADS,
+                                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
           in_data, out_data, index_data, numel, stride, size, delta);
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
     }
@@ -195,15 +159,15 @@ class IndexSelectGradCUDAKernel : public framework::OpKernel<T> {
 
     if (index_type == framework::proto::VarType::INT64) {
       const int64_t* index_data = index->data<int64_t>();
-      index_select_grad_cuda_kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                                          PADDLE_CUDA_NUM_THREADS,
-                                      PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-          output_grad_data, in_grad_data, index_data, index_nums, numel, stride,
-          size, delta);
+      index_select_grad_cuda_kernel<T, int64_t><<<
+          (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(output_grad_data, in_grad_data,
+                                                index_data, index_nums, numel,
+                                                stride, size, delta);
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
     } else {
       const int* index_data = index->data<int>();
-      index_select_grad_cuda_kernel_int<<<
+      index_select_grad_cuda_kernel<T, int><<<
           (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(output_grad_data, in_grad_data,
                                                 index_data, index_nums, numel,
