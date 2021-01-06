@@ -119,7 +119,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
-  if (expected_kernel_key.place_ != place) {
+  if (!(expected_kernel_key.place_ == place)) {
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 #endif
