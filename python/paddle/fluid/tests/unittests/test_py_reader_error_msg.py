@@ -39,13 +39,15 @@ class TestPyReaderErrorMsg(unittest.TestCase):
 class TestDoubleBufferAPI(unittest.TestCase):
     def test_double_buffer(self):
         paddle.enable_static()
-        reader = fluid.layers.py_reader(
-            capacity=64,
-            shapes=[(-1, 1, 28, 28), (-1, 1)],
-            dtypes=['float32', 'int64'],
-            use_double_buffer=False)
-        reader = fluid.layers.double_buffer(reader, place="cpu")
-        image, label = fluid.layers.read_file(reader)
+        if fluid.core.is_compiled_with_cuda():
+            reader = fluid.layers.py_reader(
+                capacity=64,
+                shapes=[(-1, 1, 28, 28), (-1, 1)],
+                dtypes=['float32', 'int64'],
+                use_double_buffer=False)
+            reader = fluid.layers.double_buffer(
+                reader, place=fluid.core.CUDAPlace(0))
+            image, label = fluid.layers.read_file(reader)
 
 
 if __name__ == '__main__':
