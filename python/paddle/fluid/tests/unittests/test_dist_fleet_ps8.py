@@ -159,8 +159,8 @@ class TestExponentialDecay(unittest.TestCase):
 
         fleet.init(role)
         loss, acc, _ = self.net()
-        scheduler = paddle.optimizer.lr.NaturalExpDecay(
-            learning_rate=base_lr, gamma=0.999, verbose=True)
+        scheduler = paddle.optimizer.lr.NoamDecay(
+            d_model=0.01, warmup_steps=100, verbose=True)
         optimizer = fluid.optimizer.Adam(scheduler)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
