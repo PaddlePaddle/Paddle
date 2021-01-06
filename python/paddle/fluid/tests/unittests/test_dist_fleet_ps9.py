@@ -77,4 +77,6 @@ class TestExponentialDecay(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    os.environ["GLOG_v"] = "4"
+    os.environ["GLOG_logtostderr"] = "1"
     unittest.main()

@@ -13,13 +13,16 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
-import os
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet as fleet
 import unittest
 import paddle
+
+import os
+
 paddle.enable_static()
+
 
 # For Net
 base_lr = 0.2
@@ -77,4 +80,6 @@ class TestExponentialDecay(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    os.environ["GLOG_v"] = "4"
+    os.environ["GLOG_logtostderr"] = "1"
     unittest.main()
