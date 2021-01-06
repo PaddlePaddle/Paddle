@@ -102,14 +102,12 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
         auto* dev_ctx = platform::DeviceContextPool::Instance().Get(op.place());
         // NOTE(zhiqiu): since grad variable is ungenerated, so the dtype is not
         // correct. var->DataType() returns the default dtype, which is float32.
-        // Here, we use the type of the corresponding forward variable (if
-        // exists) as the true dtype of grad variable.
+        // Here, we use the type of the corresponding forward datatype.
 
-        auto forward_var = var->GetForwardVar();
-        auto dtype = forward_var ? forward_var->DataType() : var->DataType();
+        tensor->mutable_data(op.place(), var->ForwardDataType());
         VLOG(6) << "Set ungenerated Grad: " << var->Name()
-                << " as zero with dtype " << framework::DataTypeToString(dtype);
-        tensor->mutable_data(op.place(), dtype);
+                << " as zero with dtype "
+                << framework::DataTypeToString(var->ForwardDataType());
         operators::math::set_constant(*dev_ctx, tensor, 0.0);
       }
     }

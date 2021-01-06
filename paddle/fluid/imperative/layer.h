@@ -73,7 +73,6 @@ class VarBase {
       : var_(std::make_shared<VariableWrapper>(name)),
         grad_var_(has_grad ? new VarBase(false, GradVarName()) : nullptr) {
     if (has_grad) {
-      grad_var_->var_->SetForwardVar(var_);
       var_->SetGradVar(grad_var_->var_);
     }
 

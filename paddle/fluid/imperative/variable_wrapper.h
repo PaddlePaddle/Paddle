@@ -126,10 +126,6 @@ class VariableWrapper {
     return grad_var_.lock();
   }
 
-  std::shared_ptr<VariableWrapper> GetForwardVar() const {
-    return forward_var_.lock();
-  }
-
   const std::weak_ptr<VariableWrapper>& GetWeakGradVar() const {
     return grad_var_;
   }
@@ -253,17 +249,6 @@ class VariableWrapper {
     }
   }
 
-  void SetForwardVar(const std::shared_ptr<VariableWrapper>& var) {
-    auto shared_var = forward_var_.lock();
-    if (shared_var != var) {
-      PADDLE_ENFORCE_EQ(
-          shared_var, nullptr,
-          platform::errors::PermissionDenied(
-              "Cannot set forward variable wrapper twice for %s", name_));
-      forward_var_ = var;
-    }
-  }
-
   void SetGradNode(const std::shared_ptr<GradOpNode>& grad_node) {
     if (!grad_node) {
       grad_node_.reset();
@@ -338,7 +323,6 @@ class VariableWrapper {
       static_cast<framework::proto::VarType::Type>(-1)};
 
   std::weak_ptr<VariableWrapper> grad_var_;
-  std::weak_ptr<VariableWrapper> forward_var_;
   std::weak_ptr<GradOpNode> grad_node_;
 
   // TODO(zhouwei): fix bug of Tensor.clear_gradient(), function SetIsEmpty()
