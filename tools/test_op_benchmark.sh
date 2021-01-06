@@ -208,15 +208,44 @@ function run_op_benchmark_test {
   done
 }
 
+# check benchmark result
+function check_op_benchmark_result {
+  local check_status_code
+  # default 3 times
+  [ -z "${RETRY_TIMES}" ] && RETRY_TIMES=3
+  for retry_time in $(seq ${RETRY_TIMES})
+  do
+    # check current result and update the file to benchmark test
+    python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
+        --develop_logs_dir $(pwd)/logs-develop \
+        --pr_logs_dir $(pwd)/logs-test_pr \
+        --api_info_file $(pwd)/api_info.txt
+    check_status_code=$?
+    # TODO(Avin0323): retry only if the performance check fails
+    [ $check_status_code -eq 0 ] && break
+    # run op benchmark speed test
+    # there is no need to recompile and install paddle
+    pushd benchmark/api > /dev/null
+    bash deploy/main_control.sh tests_v2 \
+                                tests_v2/configs \
+                                $(pwd)/logs-test_pr \
+                                $VISIBLE_DEVICES \
+                                "gpu" \
+                                "speed" \
+                                $(pwd)/api_info.txt \
+                                "paddle"
+    popd > /dev/null
+  done
+  return $check_status_code
+}
+
 # diff benchmakr result and miss op
 function summary_problems {
   local op_name exit_code
   exit_code=0
   if [ ${#BENCHMARK_OP_MAP[*]} -ne 0 ]
   then
-    python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
-        --develop_logs_dir $(pwd)/logs-develop \
-        --pr_logs_dir $(pwd)/logs-test_pr
+    check_op_benchmark_result
     exit_code=$?
   fi
   for op_name in ${!CHANGE_OP_MAP[@]}
