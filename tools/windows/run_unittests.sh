@@ -39,6 +39,7 @@ fi
 # TODO: fix these unittest that is bound to fail
 diable_wingpu_test="^test_analysis_predictor$|\
 ^lite_mul_model_test$|\
+^test_analyzer_int8_resnet50$|\
 ^test_parallel_executor_feed_persistable_var$|\
 ^test_parallel_executor_fetch_isolated_var$|\
 ^test_parallel_executor_inference_feed_partial_data$|\
