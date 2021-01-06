@@ -20,6 +20,7 @@ limitations under the License. */
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 
+#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
@@ -36,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/partial_grad_engine.h"
 #include "paddle/fluid/imperative/profiler.h"
+#include "paddle/fluid/imperative/reducer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
@@ -321,6 +323,7 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
           std::string(Py_TYPE(r->start)->tp_name)));
     }
     if (*start < 0) *start += length;
+    *start = std::max(*start, static_cast<Py_ssize_t>(0));
   }
   if (r->stop == Py_None) {
     *stop = *step < 0 ? -1 : length;
@@ -334,6 +337,7 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
           std::string(Py_TYPE(r->stop)->tp_name)));
     }
     if (*stop < 0) *stop += length;
+    *stop = std::min(*stop, length);
   }
   if (*stop > length) return -1;
   if (*start >= length) return -1;
@@ -379,7 +383,7 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
       int start = static_cast<int>(PyLong_AsLong(slice_item));
       auto s_t = start;
       start = start < 0 ? start + dim_len : start;
-      if (start >= dim_len) {
+      if (start >= dim_len || start < 0) {
         std::string str_error_message =
             "The starting index " + std::to_string(s_t) +
             " of slice is out of bounds in tensor " + std::to_string(dim) +
@@ -526,6 +530,13 @@ void BindImperative(py::module *m_ptr) {
       m, "VarBase", R"DOC()DOC")
       .def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
       .def("__init__",
+           [](imperative::VarBase &self) {
+             std::string name =
+                 imperative::GetCurrentTracer()->GenerateUniqueName(
+                     "generated_tensor");
+             new (&self) imperative::VarBase(name);
+           })
+      .def("__init__",
            [](imperative::VarBase &self, framework::proto::VarType::Type dtype,
               const std::vector<int> &dims, const py::handle &name,
               framework::proto::VarType::Type type, bool persistable) {
@@ -592,6 +603,10 @@ void BindImperative(py::module *m_ptr) {
                SetTensorFromPyArray(self_tensor, self_numpy,
                                     self_tensor->place(), true);
              }
+             // NOTE(liym27):
+             // Increase the version of VarBase self because __setitem__ is an
+             // inplace operator for the VarBase self.
+             self->BumpInplaceVersion();
            })
       .def("__getitem__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
@@ -631,6 +646,28 @@ void BindImperative(py::module *m_ptr) {
                return out;
              }
            })
+      .def("_inplace_version",
+           [](imperative::VarBase &self) -> uint32_t {
+             const auto &var = self.MutableVar();
+             PADDLE_ENFORCE_EQ(
+                 var->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor of %s is Empty, please check if it has no data.",
+                     self.Name()));
+             return var->CurrentInplaceVersion();
+           })
+      .def("_bump_inplace_version",
+           [](std::shared_ptr<imperative::VarBase> &self) {
+             // NOTE(liym27): _bump_inplace_version is only used for inplace
+             // operation
+             self->BumpInplaceVersion();
+           },
+           R"DOC(
+        **Notes**:
+            **This API is ONLY available in Dygraph mode.**
+            **This is a very low level API. Users should not use it directly. **
+         Bump the version whenever the Tensor is modified through an inplace operation.
+            )DOC")
       .def("numpy",
            [](imperative::VarBase &self) -> py::array {
              const auto &tensor =
@@ -643,7 +680,6 @@ void BindImperative(py::module *m_ptr) {
              return TensorToPyArray(tensor, true);
            },
            R"DOC(
-
         Returns a numpy array shows the value of current Tensor.
         
         Returns:
@@ -662,7 +698,6 @@ void BindImperative(py::module *m_ptr) {
                 data = paddle.to_tensor(data)
                 x = linear(data)
                 print(x.numpy())
-
        )DOC")
       .def("detach",
            [](const imperative::VarBase
@@ -671,6 +706,7 @@ void BindImperative(py::module *m_ptr) {
                  self.Var().IsInitialized(), true,
                  platform::errors::InvalidArgument(
                      "Tensor %s has not been initialized!", self.Name()));
+
              PADDLE_ENFORCE_EQ(
                  self.Var().IsType<framework::LoDTensor>() ||
                      self.Var().IsType<framework::SelectedRows>(),
@@ -678,11 +714,14 @@ void BindImperative(py::module *m_ptr) {
                  platform::errors::InvalidArgument(
                      "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
                      self.Name()));
+
              auto detach_var = std::make_shared<imperative::VarBase>(
                  true, "detach_" + self.Name());
+
              detach_var->SetPersistable(self.Persistable());
              detach_var->SetType(self.Type());
              detach_var->SetDataType(self.DataType());
+
              if (self.Var().IsType<framework::LoDTensor>()) {
                const auto &origin_tensor =
                    self.Var().Get<framework::LoDTensor>();
@@ -694,6 +733,11 @@ void BindImperative(py::module *m_ptr) {
                auto *detach_tensor =
                    detach_var->MutableVar()->GetMutable<framework::LoDTensor>();
                detach_tensor->ShareDataWith(origin_tensor);
+               // NOTE(liym27): Call ShareInplaceVersionCounterWith to share the
+               // same TensorInplaceVersion, which is used to check whether
+               // inplace
+               // operations are correct.
+               detach_tensor->ShareInplaceVersionCounterWith(origin_tensor);
              } else {
                const auto &origin_selected_rows =
                    self.Var().Get<framework::SelectedRows>();
@@ -709,6 +753,9 @@ void BindImperative(py::module *m_ptr) {
                detach_selected_rows->set_rows(origin_selected_rows.rows());
                detach_selected_rows->mutable_value()->ShareDataWith(
                    origin_selected_rows.value());
+               detach_selected_rows->mutable_value()
+                   ->ShareInplaceVersionCounterWith(
+                       origin_selected_rows.value());
              }
              VLOG(3) << "The detached Tensor(" << detach_var->Name()
                      << ") share data with " << self.Name();
@@ -1011,6 +1058,7 @@ void BindImperative(py::module *m_ptr) {
               y = x.cuda(1)
               print(y.place)        # CUDAPlace(1)
        )DOC")
+      .def("copy_", &imperative::VarBase::CopyFrom)
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CPUPlace &place,
               bool blocking) { return self.NewVarBase(place, blocking); },
@@ -1053,6 +1101,35 @@ void BindImperative(py::module *m_ptr) {
               return std::vector<int>();
             }
           })
+      .def_property_readonly("is_leaf", &imperative::VarBase::IsLeaf,
+                             R"DOC(
+      Whether a Tensor is leaf Tensor.
+
+      For the Tensor whose stop_gradient is ``True`` , it will be leaf Tensor. 
+      
+      For the Tensor whose stop_gradient is ``False`` , it will be leaf Tensor too if it is created by user.
+
+      Returns:
+          bool: Whether a Tensor is leaf Tensor.
+
+      Examples:
+          .. code-block:: python
+
+              import paddle
+
+              x = paddle.to_tensor(1.)
+              print(x.is_leaf) # True
+
+              x = paddle.to_tensor(1., stop_gradient=True)
+              y = x + 1
+              print(x.is_leaf) # True
+              print(y.is_leaf) # True
+
+              x = paddle.to_tensor(1., stop_gradient=False)
+              y = x + 1
+              print(x.is_leaf) # True
+              print(y.is_leaf) # False
+       )DOC")
       .def_property_readonly(
           "place", [](imperative::VarBase &self) { return self.Place(); },
           py::return_value_policy::copy)
@@ -1212,7 +1289,13 @@ void BindImperative(py::module *m_ptr) {
                       return self.current_endpoint_;
                     },
                     [](imperative::ParallelStrategy &self,
-                       const std::string &ep) { self.current_endpoint_ = ep; });
+                       const std::string &ep) { self.current_endpoint_ = ep; })
+      .def_property(
+          "nrings",
+          [](const imperative::ParallelStrategy &self) { return self.nrings_; },
+          [](imperative::ParallelStrategy &self, int nrings) {
+            self.nrings_ = nrings;
+          });
 
   m.def(
       "dygraph_partial_grad",
@@ -1232,13 +1315,36 @@ void BindImperative(py::module *m_ptr) {
       py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_NCCL)
-  py::class_<imperative::NCCLParallelContext> nccl_ctx(m,
-                                                       "NCCLParallelContext");
-
-  nccl_ctx
+  py::class_<imperative::ParallelContext,
+             std::shared_ptr<imperative::ParallelContext>>(m,
+                                                           "ParallelContext");
+  py::class_<imperative::NCCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::NCCLParallelContext>>(
+      m, "NCCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
                     const platform::CUDAPlace &>())
       .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
+
+  py::class_<imperative::Reducer, std::shared_ptr<imperative::Reducer>>(
+      m, "Reducer", R"DOC()DOC")
+      .def(py::init(
+          [](const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
+             const std::vector<std::vector<size_t>> &group_indices,
+             const std::vector<bool> &is_sparse_gradient,
+             std::shared_ptr<imperative::ParallelContext> parallel_ctx,
+             const std::vector<size_t> &group_size_limits) {
+            return imperative::Reducer::SetInstance(
+                vars, group_indices, is_sparse_gradient, parallel_ctx,
+                group_size_limits);
+          }))
+      .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
+           py::call_guard<py::gil_scoped_release>());
+
+  m.def("assign_group_by_size", &imperative::AssignGroupBySize, py::arg("vars"),
+        py::arg("is_sparse_gradient"),
+        py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
+        py::arg("tensor_indices") = std::vector<int64_t>{},
+        py::call_guard<py::gil_scoped_release>());
 #endif
 }
 

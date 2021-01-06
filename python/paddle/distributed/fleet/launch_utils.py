@@ -27,7 +27,6 @@ from contextlib import closing
 import socket
 import warnings
 import six
-from enum import IntEnum
 
 import paddle
 import paddle.fluid as fluid
@@ -35,7 +34,7 @@ logger = logging.getLogger("root")
 logger.propagate = False
 
 
-class DistributeMode(IntEnum):
+class DistributeMode():
     """
     There are various mode for fleetrun, each of them is designed for different model.
     """
@@ -44,7 +43,7 @@ class DistributeMode(IntEnum):
     PS_HETER = 2
 
 
-class DeviceMode(IntEnum):
+class DeviceMode():
     """
     Training devices type
     """
@@ -472,8 +471,8 @@ def start_local_trainers(cluster,
                             pretty_print_envs(proc_env, ("Distributed Envs",
                                                          "Value"))))
             logger.info(
-                "details abouts PADDLE_TRAINER_ENDPOINTS can be found in {}/endpoints.log.".
-                format(log_dir))
+                "details abouts PADDLE_TRAINER_ENDPOINTS can be found in {}/endpoints.log, and detail running logs maybe found in {}/workerlog.0".
+                format(log_dir, log_dir))
         fn = None
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))
@@ -955,7 +954,7 @@ class ParameterServerLauncher(object):
                 "TRAINING_ROLE": "PSERVER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "POD_IP": cur_server.endpoint.split(":")[0],
-                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "1")),
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
@@ -1019,7 +1018,7 @@ class ParameterServerLauncher(object):
                 self.heter_worker_endpoints,
                 "TRAINING_ROLE": "TRAINER",
                 "PADDLE_TRAINER_ID": str(cur_worker.rank),
-                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "1")),
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "FLAGS_selected_gpus": "0",
@@ -1089,7 +1088,7 @@ class ParameterServerLauncher(object):
                 "TRAINING_ROLE": "HETER_TRAINER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "POD_IP": cur_heter_worker.endpoint.split(":")[0],
-                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "1")),
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "FLAGS_selected_gpus": "0",

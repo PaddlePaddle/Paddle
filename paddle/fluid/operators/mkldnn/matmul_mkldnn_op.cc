@@ -336,9 +336,8 @@ static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
   const auto& out_name = ctx.OutputName("Out");
   const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   const auto batch_size = ctx.Input<Tensor>("X")->dims()[0];
-
-  const std::string key = platform::CreateKey(
-      platform::ThreadIDasStr(), dev_ctx.GetKeySuffix(), batch_size, out_name);
+  std::string key = platform::CreateKey(dev_ctx, batch_size, out_name);
+  key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
   auto factory =
       std::static_pointer_cast<MatMulFactory<XT, YT, OT>>(dev_ctx.GetBlob(key));
@@ -379,6 +378,7 @@ class DNNLMatMulKernel : public framework::OpKernel<T> {
                         platform::errors::Unimplemented(
                             "DNNL matmul doesn't support multiple heads."));
     }
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     ExecuteMatMul<T, T>(ctx);
   }
 };

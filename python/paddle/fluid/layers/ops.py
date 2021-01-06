@@ -43,6 +43,7 @@ __unary_func__ = [
     'ceil',
     'floor',
     'cos',
+    'tan',
     'acos',
     'sin',
     'sinh',
@@ -160,7 +161,9 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
+        out = F.tanhshrink(x) 
+        print(out)
+        # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
 
 """)
 
@@ -185,6 +188,7 @@ Examples:
 
         x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
         out = paddle.rsqrt(x)
+        print(out)
         # [3.16227766 2.23606798 1.82574186 1.58113883]
 
 """)
@@ -238,6 +242,19 @@ Examples:
         out = paddle.cos(x)
         print(out)
         # [0.92106099 0.98006658 0.99500417 0.95533649]
+
+""")
+
+add_sample_code(globals()["tan"], r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.tan(x)
+        print(out)
+        # [-0.42279324, -0.20271005, 0.10033467, 0.30933627]
 
 """)
 
@@ -353,7 +370,9 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
+        out = F.softplus(x) 
+        print(out)
+        # [0.513015, 0.598139, 0.744397, 0.854355]
 
 """)
 
@@ -365,7 +384,9 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
+        out = F.softsign(x) 
+        print(out)
+        # [-0.285714, -0.166667, 0.0909091, 0.230769]
 
 """)
 

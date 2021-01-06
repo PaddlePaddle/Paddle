@@ -20,8 +20,9 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void GpuInverse(const T* s, T* o) {
+__global__ void InverseAndMemset(const T* s, T* o, bool* found_inf) {
   *o = Inverse<T>(*s);
+  *found_inf = false;
 }
 
 template <typename T>
@@ -30,10 +31,11 @@ __global__ void CheckFiniteAndUnscale(const T* in, const T* scale, int num,
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (idx < num) {
-    if (!isfinite(in[idx])) {
+    T val = in[idx] * (*scale);
+    out[idx] = val;
+    if (!isfinite(val)) {
       *found_inf = true;
     }
-    out[idx] = *found_inf ? in[idx] : in[idx] * (*scale);
   }
 }
 
@@ -49,13 +51,13 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
 
     const T* scale_data = scale->data<T>();
     bool* found_inf_data = found_inf->mutable_data<bool>(dev_ctx.GetPlace());
-    cudaMemset(found_inf_data, false, found_inf->numel() * sizeof(bool));
 
     framework::Tensor inverse_scale =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({1}, dev_ctx);
     T* inverse_scale_v = inverse_scale.template data<T>();
 
-    GpuInverse<T><<<1, 1, 0, dev_ctx.stream()>>>(scale_data, inverse_scale_v);
+    InverseAndMemset<T><<<1, 1, 0, dev_ctx.stream()>>>(
+        scale_data, inverse_scale_v, found_inf_data);
 
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];

@@ -14,16 +14,12 @@
 
 # TODO: define the common classes to build a neural network
 import paddle
-from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
-from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 
 __all__ = [
-    'BilinearTensorProduct',
-    'Pool2D',
     'Embedding',
     'Linear',
     'Upsample',
@@ -123,7 +119,6 @@ class Linear(layers.Layer):
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
-        self.name = name
         self.weight = self.create_parameter(
             shape=[in_features, out_features],
             attr=self._weight_attr,
@@ -140,6 +135,11 @@ class Linear(layers.Layer):
         out = F.linear(
             x=input, weight=self.weight, bias=self.bias, name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'in_features={}, out_features={}, dtype={}{}'.format(
+            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str)
 
 
 class Upsample(layers.Layer):
@@ -336,6 +336,7 @@ class Upsample(layers.Layer):
 
     Examples:
         .. code-block:: python
+            
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -379,6 +380,16 @@ class Upsample(layers.Layer):
             name=self.name)
 
         return out
+
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            main_str = 'scale_factor={}'.format(self.scale_factor)
+        else:
+            main_str = 'size={}'.format(self.size)
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return '{}, mode={}, align_corners={}, align_mode={}, data_format={}{}'.format(
+            main_str, self.mode, self.align_corners, self.align_mode,
+            self.data_format, name_str)
 
 
 class UpsamplingNearest2D(layers.Layer):
@@ -424,7 +435,7 @@ class UpsamplingNearest2D(layers.Layer):
             import paddle
             import paddle.nn as nn
 
-            input_data = paddle.rand(2,3,6,10).astype("float32")
+            input_data = paddle.rand(shape=(2,3,6,10)).astype("float32")
             upsample_out  = paddle.nn.UpsamplingNearest2D(size=[12,12])
             input = paddle.to_tensor(input_data)
             output = upsample_out(x=input)
@@ -455,6 +466,15 @@ class UpsamplingNearest2D(layers.Layer):
             name=self.name)
 
         return out
+
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            main_str = 'scale_factor={}'.format(self.scale_factor)
+        else:
+            main_str = 'size={}'.format(self.size)
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return '{}, data_format={}{}'.format(main_str, self.data_format,
+                                             name_str)
 
 
 class UpsamplingBilinear2D(layers.Layer):
@@ -501,7 +521,7 @@ class UpsamplingBilinear2D(layers.Layer):
             import paddle
             import paddle.nn as nn
 
-            input_data = paddle.rand(2,3,6,10).astype("float32")
+            input_data = paddle.rand(shape=(2,3,6,10)).astype("float32")
             upsample_out  = paddle.nn.UpsamplingBilinear2D(size=[12,12])
             input = paddle.to_tensor(input_data)
             output = upsample_out(x=input)
@@ -532,6 +552,15 @@ class UpsamplingBilinear2D(layers.Layer):
             name=self.name)
 
         return out
+
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            main_str = 'scale_factor={}'.format(self.scale_factor)
+        else:
+            main_str = 'size={}'.format(self.size)
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return '{}, data_format={}{}'.format(main_str, self.data_format,
+                                             name_str)
 
 
 class Bilinear(layers.Layer):
@@ -622,6 +651,12 @@ class Bilinear(layers.Layer):
     def forward(self, x1, x2):
         return F.bilinear(x1, x2, self.weight, self.bias, self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'in1_features={}, in2_features={}, out_features={}, dtype={}{}'.format(
+            self._in1_features, self._in2_features, self._out_features,
+            self._dtype, name_str)
+
 
 class Dropout(layers.Layer):
     """
@@ -655,21 +690,22 @@ class Dropout(layers.Layer):
         - input: N-D tensor.
         - output: N-D tensor, the same shape as input.
 
+
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.array([[1,2,3], [4,5,6]]).astype('float32')
             x = paddle.to_tensor(x)
             m = paddle.nn.Dropout(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x.numpy())
-            print(y_train.numpy())
-            print(y_test.numpy())
+            print(x)
+            print(y_train)
+            print(y_test)
    """
 
     def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
@@ -690,6 +726,11 @@ class Dropout(layers.Layer):
             name=self.name)
         return out
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}, axis={}, mode={}{}'.format(self.p, self.axis, self.mode,
+                                                 name_str)
+
 
 class Dropout2D(layers.Layer):
     """
@@ -705,31 +746,29 @@ class Dropout2D(layers.Layer):
 
     Parameters:
         p (float, optional): Probability of setting units to zero. Default: 0.5
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-                                     will be consistent with that of the input. An optional string from:
-                                    `NCHW`, `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is
-                                     stored in the order of: [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: 4-D tensor.
         - output: 4-D tensor, the same shape as input.
 
+
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
             x = paddle.to_tensor(x)
             m = paddle.nn.Dropout2D(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x.numpy())
-            print(y_train.numpy())
-            print(y_test.numpy())
+            print(x)
+            print(y_train)
+            print(y_test)
    """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
@@ -748,6 +787,11 @@ class Dropout2D(layers.Layer):
             name=self.name)
         return out
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}, data_format={}{}'.format(self.p, self.data_format,
+                                               name_str)
+
 
 class Dropout3D(layers.Layer):
     """
@@ -763,31 +807,29 @@ class Dropout3D(layers.Layer):
 
     Parameters:
         p (float | int): Probability of setting units to zero. Default: 0.5
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-                                     will be consistent with that of the input. An optional string from:
-                                    `NCDHW`, `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is
-                                     stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCDHW` or `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: 5-D tensor.
         - output: 5-D tensor, the same shape as input.
 
+
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
             x = paddle.to_tensor(x)
             m = paddle.nn.Dropout3D(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x.numpy())
-            print(y_train.numpy())
-            print(y_test.numpy())
+            print(x)
+            print(y_train)
+            print(y_test)
    """
 
     def __init__(self, p=0.5, data_format='NCDHW', name=None):
@@ -805,6 +847,11 @@ class Dropout3D(layers.Layer):
             data_format=self.data_format,
             name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}, data_format={}{}'.format(self.p, self.data_format,
+                                               name_str)
 
 
 class AlphaDropout(layers.Layer):
@@ -829,20 +876,20 @@ class AlphaDropout(layers.Layer):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.array([[-1, 1], [-1, 1]]).astype('float32')
             x = paddle.to_tensor(x)
             m = paddle.nn.AlphaDropout(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x.numpy())
-            print(y_train.numpy())
+            print(x)
+            print(y_train)
             # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
-            print(y_test.numpy())
+            print(y_test)
    """
 
     def __init__(self, p=0.5, name=None):
@@ -854,6 +901,10 @@ class AlphaDropout(layers.Layer):
         out = F.alpha_dropout(
             input, p=self.p, training=self.training, name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}{}'.format(self.p, name_str)
 
 
 class Pad1D(layers.Layer):
@@ -929,6 +980,11 @@ class Pad1D(layers.Layer):
                      value=self._value,
                      data_format=self._data_format,
                      name=self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
+            self._pad, self._mode, self._value, self._data_format, name_str)
 
 
 class Pad2D(layers.Layer):
@@ -1008,6 +1064,11 @@ class Pad2D(layers.Layer):
                      data_format=self._data_format,
                      name=self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
+            self._pad, self._mode, self._value, self._data_format, name_str)
+
 
 class Pad3D(layers.Layer):
     """
@@ -1086,6 +1147,11 @@ class Pad3D(layers.Layer):
                      data_format=self._data_format,
                      name=self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
+            self._pad, self._mode, self._value, self._data_format, name_str)
+
 
 class CosineSimilarity(layers.Layer):
     """
@@ -1139,6 +1205,9 @@ class CosineSimilarity(layers.Layer):
 
     def forward(self, x1, x2):
         return F.cosine_similarity(x1, x2, axis=self._axis, eps=self._eps)
+
+    def extra_repr(self):
+        return 'axis={_axis}, eps={_eps}'.format(**self.__dict__)
 
 
 class Embedding(layers.Layer):
@@ -1219,7 +1288,7 @@ class Embedding(layers.Layer):
 
             x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
             y_data = np.arange(6, 12).reshape((3, 2)).astype(np.float32)
-            paddle.disable_static(paddle.CPUPlace())
+
             x = paddle.to_tensor(x_data, stop_gradient=False)
             y = paddle.to_tensor(y_data, stop_gradient=False)
 
@@ -1290,3 +1359,12 @@ class Embedding(layers.Layer):
             padding_idx=self._padding_idx,
             sparse=self._sparse,
             name=self._name)
+
+    def extra_repr(self):
+        main_str = '{_num_embeddings}, {_embedding_dim}'
+        if self._padding_idx is not None:
+            main_str += ', padding_idx={_padding_idx}'
+        main_str += ', sparse={_sparse}'
+        if self._name is not None:
+            main_str += ', name={_name}'
+        return main_str.format(**self.__dict__)

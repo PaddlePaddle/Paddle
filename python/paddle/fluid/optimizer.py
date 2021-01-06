@@ -16,13 +16,13 @@ from __future__ import print_function
 
 import numpy as np
 import six
+import os
 import logging
 from collections import defaultdict
 
 import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
-from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 from . import framework
 from . import layers
@@ -40,6 +40,7 @@ from .dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpo
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
+from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 
@@ -107,8 +108,12 @@ class Optimizer(object):
         self.regularization = regularization
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
-        # the learning rate type should be inferenced from loss
+
         self._dtype = None
+        # Infer the dtype form parameter
+        if self._parameter_list:
+            self._dtype = self._parameter_list[0].dtype
+
         # each program should have a independent learning rate
         # program -> Variable(learning_rate)
         self._learning_rate_map = dict()
@@ -767,13 +772,13 @@ class Optimizer(object):
         else:
             act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
 
-        self._dtype = loss.dtype
+        # Infer dtype by loss if None
+        if self._dtype is None:
+            self._dtype = loss.dtype
+
         if framework.in_dygraph_mode():
             parameter_list = parameter_list if parameter_list \
                 else self._parameter_list
-
-            if paddle.distributed.get_world_size() > 1:
-                apply_collective_grads(parameter_list)
 
             params_grads = []
             for param in parameter_list:
@@ -878,6 +883,8 @@ class Optimizer(object):
     def clear_gradients(self):
         """
         Clear the gradients of all optimized parameters for model.
+
+        If not, new gradient will accumulat on previous gradient.
         
         Returns:
             None
@@ -3753,7 +3760,9 @@ class PipelineOptimizer(object):
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
         if not isinstance(optimizer, Optimizer) and not isinstance(
-                optimizer, paddle.optimizer.Optimizer):
+                optimizer, paddle.optimizer.Optimizer) and not isinstance(
+                    optimizer, paddle.fluid.contrib.mixed_precision.decorator.
+                    OptimizerWithMixedPrecision):
             raise ValueError("The 'optimizer' parameter for "
                              "PipelineOptimizer must be an instance of "
                              "Optimizer, but the given type is {}.".format(
@@ -3773,7 +3782,7 @@ class PipelineOptimizer(object):
         self._op_device_key = op_maker.kOpDeviceAttrName()
         self._param_device_map = None
 
-    def _create_vars(self, block, main_program):
+    def _create_vars(self, block, ori_block):
         # Create vars for block, copied from main_program's global block
         used_var_set = set()
         for op_idx in range(block.desc.op_size()):
@@ -3785,7 +3794,8 @@ class PipelineOptimizer(object):
                 if var in used_var_set or "_blocking_queue" in var:
                     continue
                 used_var_set.add(var)
-                source_var = main_program.block(0).var(str(var))
+                if block._find_var_recursive(str(var)): continue
+                source_var = ori_block._var_recursive(str(var))
                 if source_var.type == core.VarDesc.VarType.READER:
                     block.create_var(
                         name=var,
@@ -3840,45 +3850,65 @@ class PipelineOptimizer(object):
                     op_desc = op.desc
                     ap_op = program["program"].block(0).desc.append_op()
                     ap_op.copy_from(op_desc)
-                    ap_op._set_attr(self._op_device_key, "")
-            elif op.type == "create_py_reader" or op.type == "read":
+                    # ap_op._set_attr(self._op_device_key, "")
+            elif op.type == "create_py_reader" or op.type == "read" or op.type == "create_double_buffer_reader":
                 # Copy read related ops to all section to make them exit after each epoch.
                 for device in device_program_map.keys():
                     program = device_program_map[device]
                     op_desc = op.desc
                     ap_op = program["program"].block(0).desc.append_op()
                     ap_op.copy_from(op_desc)
-                    ap_op._set_attr(self._op_device_key, "")
             else:
                 program = device_program_map[device]
                 op_desc = op.desc
                 ap_op = program["program"].block(0).desc.append_op()
                 ap_op.copy_from(op_desc)
-                ap_op._set_attr(self._op_device_key, "")
 
-        for key in sorted(device_program_map.keys()):
+        for key in devices:
             program = device_program_map[key]
             program['program']._sync_with_cpp()
             programs.append(program)
 
         return programs
 
+    def _get_op_device_for_startup_program(self, var_name):
+        """
+        For adam optimizer, it will add accumulators and initialize them
+        with fill_constant, and force the op device to cpu. Hence, we should
+        get the real op_device attribute of the fill_constant as the device
+        where the corresponding parameters on.
+        """
+        assert "beta1_pow_acc" in var_name or "beta2_pow_acc" in var_name
+        param_name = var_name[0:var_name.index('_beta')]
+        device = self._param_device_map[param_name]
+        return device
+
     def _split_startup_program(self, startup_program, local_rank):
         block = startup_program.block(0)
         new_startup_program = Program()
         for op in block.ops:
             device = op.attr(self._op_device_key)
+            if device == "cpu":
+                assert op.type == "fill_constant", (
+                    "For ops in startup "
+                    "program that with the op_device attribute of cpu, "
+                    "they must be fill_constant.")
+                output_var = op.output_arg_names[0]
+                device = self._get_op_device_for_startup_program(output_var)
+
             if device:
-                device_index = int(device.split(":")[1])
+                device_index = int(device.split(':')[1])
             else:
-                device_index = None
-            if device_index is not None and device_index != local_rank: continue
+                # LR related ops
+                device = None
+            if device and device_index != local_rank: continue
             op_desc = op.desc
             ap_op = new_startup_program.block(0).desc.append_op()
             ap_op.copy_from(op_desc)
             ap_op._set_attr(self._op_device_key, "")
         new_startup_program._sync_with_cpp()
-        self._create_vars(new_startup_program.block(0), startup_program)
+        self._create_vars(
+            new_startup_program.block(0), startup_program.global_block())
         return new_startup_program
 
     def _find_post_op(self, ops, cur_op, var_name):
@@ -4093,6 +4123,8 @@ class PipelineOptimizer(object):
                 first_device = op.attr(self._op_device_key)
                 break
         assert first_device
+        first_device_type = first_device.split(":")[0]
+        assert first_device_type == "gpu"
 
         # set op_device attr for lr-related ops
         lrsched_role = int(self._op_role.LRSched)
@@ -4136,10 +4168,11 @@ class PipelineOptimizer(object):
             dev_spec = op.attr(self._op_device_key)
             assert dev_spec, ("op_device attribute for op "
                               "{} has not been set.".format(op.type))
+            dev_type = dev_spec.split(':')[0]
+            assert dev_type == "gpu", ("Now only gpu devices are supported "
+                                       "for pipeline parallelism.")
             if not dev_spec in device_specs:
                 device_specs.append(dev_spec)
-        sorted_device_specs = sorted(device_specs)
-        assert sorted_device_specs == device_specs
         return device_specs
 
     def _insert_sendrecv_ops_for_boundaries(self, block):
@@ -4216,6 +4249,7 @@ class PipelineOptimizer(object):
             device = self._param_device_map[param_name]
             if device != dev_spec: continue
             grad_name = self._append_grad_suffix(param_name)
+            if not main_block.has_var(grad_name): continue
             grad_var = main_block.vars[grad_name]
             main_block._insert_op(
                 index=0,
@@ -4297,6 +4331,7 @@ class PipelineOptimizer(object):
                     ap_op = new_sub_block.desc.append_op()
                     ap_op.copy_from(op_desc)
                 new_sub_block._sync_with_cpp()
+                self._create_vars(new_sub_block, origin_sub_block)
                 op._set_attr('sub_block:', new_sub_block)
 
     def _get_device_info(self, block):
@@ -4318,6 +4353,7 @@ class PipelineOptimizer(object):
             prog = prog_info['program']
             block = prog.block(0)
             for var_name in block.vars:
+                if var_name == "double_buffer_0": continue
                 var = block.var(var_name)
                 if not var.persistable: continue
                 if not var_name in var_info:
@@ -4413,30 +4449,33 @@ class PipelineOptimizer(object):
         self._add_default_opdevice_attr(main_block)
 
         device_specs = self._check_validation(main_block)
-        assert len(device_specs) > 1
+
+        def device_cmp(device1, device2):
+            dev1_id = int(device1.split(':')[1])
+            dev2_id = int(device2.split(':')[1])
+            if dev1_id < dev2_id:
+                return -1
+            elif dev1_id > dev2_id:
+                return 1
+            else:
+                return 0
+
+        sorted_device_spec = sorted(device_specs, key=cmp_to_key(device_cmp))
+        assert sorted_device_spec == device_specs, (
+            "With pipeline "
+            "parallelism, you must use gpu devices one after another "
+            "in the order of their ids.")
 
         # Step3: add send and recv ops between section boundaries
         self._insert_sendrecv_ops_for_boundaries(main_block)
-
-        place_list = []
-        place_id_list = []
-        for dev_spec in device_specs:
-            if dev_spec == "cpu":
-                place_list.append(core.CPUPlace())
-                place_id_list.append(-1)
-            elif "gpu" in dev_spec and ":" in dev_spec:
-                dev_index = dev_spec.split(":")[1]
-                place_list.append(core.CUDAPlace(int(dev_index)))
-                place_id_list.append(int(dev_index))
-            else:
-                raise ValueError("Unknown device type: %s", dev_spec)
 
         # Step4: split program into sections and add pairs of
         # send and recv ops for data var.
         main_program = main_block.program
         program_list = self._split_program(main_program, device_specs)
         for p in program_list:
-            self._create_vars(p["program"].block(0), main_program)
+            self._create_vars(p["program"].block(0),
+                              main_program.global_block())
         self._insert_sendrecv_for_data_var(main_block, program_list,
                                            startup_program, device_specs)
 
@@ -4452,7 +4491,13 @@ class PipelineOptimizer(object):
                 isinstance(main_program._pipeline_opt, dict) and
                 'local_rank' in main_program._pipeline_opt), \
                 "You must use pipeline with fleet"
-        local_rank = main_program._pipeline_opt['local_rank']
+        local_rank = main_program._pipeline_opt['local_rank'] % len(
+            device_specs)
+
+        place_list = []
+        for dev_spec in device_specs:
+            dev_index = dev_spec.split(":")[1]
+            place_list.append(core.CUDAPlace(local_rank))
 
         # Step7: Split startup program
         new_startup_program = self._split_startup_program(startup_program,
@@ -4466,21 +4511,18 @@ class PipelineOptimizer(object):
         self._accumulate_gradients(program_list[local_rank]['program']
                                    .global_block())
 
-        with open("startup_prog_%d" % local_rank, 'w') as f:
-            f.writelines(str(new_startup_program))
-        with open("main_prog_%d" % local_rank, 'w') as f:
-            f.writelines(str(program_list[local_rank]['program']))
-
         startup_program._pipeline_opt = {
             "startup_program": new_startup_program,
         }
+
+        place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
             "inner_parallelism": len(device_specs),
             "section_program": program_list[local_rank],
             "place": place_list[local_rank],
-            "place_id": place_id_list[local_rank],
+            "place_id": place_id,
             "sync_steps": -1,
             "num_microbatches": self._num_microbatches,
             "start_cpu_core_id": self._start_cpu_core_id,
@@ -5021,6 +5063,8 @@ class GradientMergeOptimizer(object):
             print("step=%d, cost=%f" % (i, cost_val[0]))
     """
 
+    GRAD_MERGE_COND_NAME = "grad_merge_cond_name"
+
     def __init__(self, inner_optimizer, k_steps=1, avg=True):
         if framework.in_dygraph_mode():
             raise Exception(
@@ -5036,6 +5080,7 @@ class GradientMergeOptimizer(object):
         self.k_steps = k_steps
         self.type = "gradient_merge"
         self.avg = avg
+        self._optimize_ops = None
 
     def _set_k_steps(self, k_steps):
         self.k_steps = k_steps
@@ -5043,12 +5088,12 @@ class GradientMergeOptimizer(object):
     def _set_avg(self, avg):
         self.avg = avg
 
-    def minimize(self,
+    def backward(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None):
-
+                 no_grad_set=None,
+                 callbacks=None):
         assert isinstance(loss, Variable), "The loss should be an Variable."
         assert (
             parameter_list is None
@@ -5059,26 +5104,142 @@ class GradientMergeOptimizer(object):
 
         params_grads = self.inner_optimizer.backward(
             loss, startup_program=startup_program)
+        return params_grads
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        program = loss.block.program
+        with program_guard(program, startup_program):
+            optimize_ops = self.apply_gradients(params_grads)
+        return optimize_ops
+
+    def _is_the_backward_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        if op_maker.kOpRoleVarAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(backward):
+            return True
+        return False
+
+    def _remove_op_role_var(self, param, grad):
+        op_maker = core.op_proto_and_checker_maker
+        op = grad.op
+        assert self._is_the_backward_op(op), \
+            'grad.op={} is not the backward op which produces the grad={}' \
+            .format(op, grad.name)
+
+        block = grad.block
+        var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
+        assert param.name in var_attr, \
+            'when using GradientMergeOptimizer, param={} must be in var_attr={}' \
+            .format(param.name, var_attr)
+        assert grad.name in var_attr, \
+            'when using GradientMergeOptimizer, grad={} must be in var_attr={}' \
+            .format(param.name, var_attr)
+
+        # remove (param, grad) from op_role_var
+        var_attr.remove(param.name)
+        var_attr.remove(grad.name)
+        if len(var_attr) > 1:
+            op._set_attr(op_maker.kOpRoleVarAttrName(), var_attr)
+        else:
+            op._remove_attr(op_maker.kOpRoleVarAttrName())
+
+    def _add_gm_op_role_var(self, op, param, grad, cond):
+        grad.op = op
+        op_maker = core.op_proto_and_checker_maker
+        backward = op_maker.OpRole.Backward
+
+        # NOTE(wangxi). When distributed, we will insert grad_merge_all_reduce_op_handle
+        # in multi_devices_graph_pass, which will allreduce(grad) if cond is True, else
+        # do nothing.
+        # In this way, the gradient can be merged first, and then communicate when the
+        # condition is met, reducing the number of communications to increase the
+        # speed.
+        op._set_attr(self.GRAD_MERGE_COND_NAME, cond.name)
+        op._set_attr(op_maker.kOpRoleAttrName(), backward)
+        op._set_attr(op_maker.kOpRoleVarAttrName(), [param.name, grad.name])
+
+    def _get_gm_cond_var(self, main_block):
+        # Add const var
+        k_step_var = layers.create_global_var(
+            name="gradient_merge_k",
+            shape=[1],
+            value=int(self.k_steps),
+            dtype='int32',
+            persistable=True,
+            force_cpu=True)
+
+        zero_var = layers.create_global_var(
+            name="gradient_merge_zero",
+            shape=[1],
+            value=int(0),
+            dtype='int32',
+            persistable=True,
+            force_cpu=True)
+
+        # Add step var & cond var
+        step_var = layers.create_global_var(
+            name="gradient_merge_step",
+            shape=[1],
+            value=int(0),
+            dtype='int32',
+            persistable=True,
+            force_cpu=True)
+
+        cond_var = layers.create_global_var(
+            name="gradient_merge_cond",
+            shape=[1],
+            value=bool(0),
+            dtype='bool',
+            persistable=True,
+            force_cpu=True)
+
+        with device_guard("cpu"):
+            # step_var = (step_var + 1) % k_step
+            layers.increment(x=step_var, value=1.0, in_place=True)
+            main_block.append_op(
+                type='elementwise_mod',
+                inputs={'X': step_var,
+                        'Y': k_step_var},
+                outputs={'Out': step_var},
+                attrs={'axis': -1,
+                       'use_mkldnn': False})
+
+            # cond_var = (step_var == 0)
+            main_block.append_op(
+                type='equal',
+                inputs={'X': step_var,
+                        'Y': zero_var},
+                outputs={'Out': cond_var})
+
+        return cond_var
+
+    def apply_gradients(self, params_grads):
+        main_program = default_main_program()
+        startup_program = default_startup_program()
+        main_block = main_program.global_block()
+        startup_block = startup_program.global_block()
+
+        cond = self._get_gm_cond_var(main_block)
 
         #TODO(mapingshuo) support sparse embedding
-        for k, v in params_grads:
+        # step1: remove grad.op's op_role_var
+        for param, grad in params_grads:
             assert (
-                v.type != core.VarDesc.VarType.SELECTED_ROWS
+                param.type != core.VarDesc.VarType.SELECTED_ROWS
             ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
 
+            self._remove_op_role_var(param, grad)
+
         param_to_grad = {k.name: v for (k, v) in params_grads}
-
-        # Get startup_program and main_program
-        if startup_program is None:
-            startup_program = default_startup_program()
-        main_block = loss.block
-
-        # add some vars to the main_program and startup_program
-        startup_block = startup_program.global_block()
         param_names = param_to_grad.keys()
         param_to_gradient_merge = {}
 
-        for param_name in param_names:
+        new_params_grads = []
+        # step2: create gradient_merge var and init with 0
+        # and update op_role_var
+        for param, grad in params_grads:
+            param_name = param.name
             param_var = main_block.var(param_name)
             assert (param_var is not None)
             gradient_merge_var = main_block.create_var(
@@ -5087,6 +5248,7 @@ class GradientMergeOptimizer(object):
                 dtype=param_var.dtype,
                 persistable=True)
             param_to_gradient_merge[param_name] = gradient_merge_var
+
             startup_gradient_merge_var = startup_block.create_var(
                 name=param_name + "@GRAD@GradientMerge",
                 shape=param_var.shape,
@@ -5101,92 +5263,75 @@ class GradientMergeOptimizer(object):
                     "value": float(0),
                 })
 
-        with framework.program_guard(main_block.program, startup_program):
-            # Add Var k to main prog and startup prog
-            gradient_merge_k = layers.create_global_var(
-                name="gradient_merge_k",
-                shape=[1],
-                value=int(self.k_steps),
-                dtype='int32',
-                persistable=True)
+            # grad_merge += grad
+            new_grad_op = main_block.append_op(
+                type="elementwise_add",
+                inputs={'X': grad,
+                        'Y': gradient_merge_var},
+                outputs={'Out': gradient_merge_var},
+                attrs={'axis': -1,
+                       'use_mkldnn': False})
+            self._add_gm_op_role_var(new_grad_op, param, gradient_merge_var,
+                                     cond)
+            new_params_grads.append([param, gradient_merge_var])
 
-            # Add Var step
-            gradient_merge_step = layers.create_global_var(
-                name="gradient_merge_step",
-                shape=[1],
-                value=int(0),
-                dtype='int32',
-                persistable=True)
-            layers.increment(x=gradient_merge_step, value=1.0, in_place=True)
+        def true_apply_gradient():
+            cur_block_idx = main_program.current_block_idx
+            cur_block = main_program.current_block()
 
-            # gradient merge
-            zero_var = layers.fill_constant(
-                shape=[1], dtype='float32', value=0.0)
-            one_var = layers.fill_constant(
-                shape=[1], dtype='float32', value=1.0)
+            # cur_block's forward_block & backward_block is itself
+            cur_block._set_forward_block_idx(cur_block_idx)
 
-            mod = layers.elementwise_mod(gradient_merge_step, gradient_merge_k)
-            with layers.control_flow.Switch() as switch:
-                with switch.case(mod != zero_var):
-                    # 1. update the gradient_merge_vars
-                    #  gradient_merge_vars += gradient_vars
-                    cur_block = main_block.program.current_block()
-                    for param_name in param_names:
-                        grad = param_to_grad[param_name]
-                        grad_merge = param_to_gradient_merge[param_name]
-                        cur_block.append_op(
-                            type="elementwise_add",
-                            inputs={'X': grad,
-                                    'Y': grad_merge},
-                            outputs={'Out': grad_merge},
-                            attrs={'axis': -1,
-                                   'use_mkldnn': False})
+            if self.avg:
+                for param, new_grad in new_params_grads:
+                    # grad /= k_steps
+                    cur_block.append_op(
+                        type='scale',
+                        inputs={'X': new_grad},
+                        outputs={'Out': new_grad},
+                        attrs={
+                            'scale': 1.0 / self.k_steps,
+                            'bias': 0.0,
+                            'bias_after_scale': False
+                        })
 
-                with switch.default():
-                    # 1. update the graient_vars
-                    #     gradient_vars += gradient_merge_vars
-                    cur_block_idx = main_block.program.current_block_idx
-                    cur_block = main_block.program.current_block()
-                    for param_name in param_names:
-                        grad = param_to_grad[param_name]
-                        grad_merge = param_to_gradient_merge[param_name]
-                        if self.avg:
-                            tmp_var = layers.elementwise_add(grad, grad_merge)
-                            cur_block.append_op(
-                                type='scale',
-                                inputs={'X': tmp_var},
-                                outputs={'Out': grad},
-                                attrs={
-                                    'scale': 1.0 / self.k_steps,
-                                    'bias': 0.0,
-                                    'bias_after_scale': False
-                                })
-                        else:
-                            cur_block.append_op(
-                                type="elementwise_add",
-                                inputs={'X': grad,
-                                        'Y': grad_merge},
-                                outputs={'Out': grad},
-                                attrs={'axis': -1,
-                                       'use_mkldnn': False})
+            for param, new_grad in new_params_grads:
+                # NOTE. regularization will append ops to grad.block,
+                # while new_grad's real block is global_block,
+                # but we want append regularization ops to cur_block,
+                # so we set new_grad.block = cur_block
+                new_grad.block = cur_block
 
-                    # 2. apply_optimize
-                    target_grad_block = main_block.program._create_block(
-                        parent_idx=cur_block.parent_idx)
-                    target_grad_block._set_forward_block_idx(cur_block_idx)
-                    main_block.program.current_block_idx = cur_block_idx
+            self._optimize_ops = self.inner_optimizer.apply_gradients(
+                new_params_grads)
 
-                    optimize_ops = self.inner_optimizer.apply_optimize(
-                        loss,
-                        startup_program=startup_program,
-                        params_grads=params_grads)
+            # clear gradient_merge_vars
+            for param, new_grad in new_params_grads:
+                layers.fill_constant(
+                    shape=new_grad.shape,
+                    dtype=new_grad.dtype,
+                    value=0.0,
+                    out=new_grad)
 
-                    # 3. clear gradient_merge_vars
-                    for param_name in param_names:
-                        grad_merge = param_to_gradient_merge[param_name]
-                        layers.fill_constant(
-                            shape=grad_merge.shape,
-                            dtype=grad_merge.dtype,
-                            value=0.0,
-                            out=grad_merge)
+        # step3. apply gradient
+        layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)
+
+        return self._optimize_ops
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        assert isinstance(loss, Variable), "The loss should be an Variable."
+
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
         return optimize_ops, params_grads

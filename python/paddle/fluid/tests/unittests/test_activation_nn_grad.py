@@ -125,6 +125,30 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestRsqrtDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 0.0001
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+
+        y = layers.rsqrt(x)
+        x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places = [fluid.CUDAPlace(0)]
+        for p in places:
+            self.func(p)
+
+
 class TestSquareDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
@@ -161,6 +185,10 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
         x.persistable = True
         y = layers.abs(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        # Because we set delta = 0.005 in calculating numeric gradient,
+        # if x is too small, the numeric gradient is inaccurate.
+        # we should avoid this
+        x_arr[np.abs(x_arr) < 0.005] = 0.02
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)

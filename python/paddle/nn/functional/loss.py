@@ -31,7 +31,6 @@ from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
 
 from ...fluid.layers import edit_distance  #DEFINE_ALIAS
-from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import huber_loss
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode
@@ -514,7 +513,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             label_data = np.random.rand(3,3).astype("float32")
             input = paddle.to_tensor(input_data)
             label = paddle.to_tensor(label_data)
-            output = paddle.nn.functioanl.smooth_l1_loss(input, label)
+            output = paddle.nn.functional.smooth_l1_loss(input, label)
             print(output)
     """
     fluid.data_feeder.check_variable_and_dtype(
@@ -768,23 +767,20 @@ def nll_loss(input,
 
     Examples:
         .. code-block:: python
+
                 import paddle
-                import numpy as np
                 from paddle.nn.functional import nll_loss
                 log_softmax = paddle.nn.LogSoftmax(axis=1)
 
-                input_np = np.array([[0.88103855, 0.9908683 , 0.6226845 ],
-                                     [0.53331435, 0.07999352, 0.8549948 ],
-                                     [0.25879037, 0.39530203, 0.698465  ],
-                                     [0.73427284, 0.63575995, 0.18827209],
-                                     [0.05689114, 0.0862954 , 0.6325046 ]]).astype(np.float32)
-                label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
-
-                input = paddle.to_tensor(input_np)
+                input = paddle.to_tensor([[0.88103855, 0.9908683 , 0.6226845 ],
+                          [0.53331435, 0.07999352, 0.8549948 ],
+                          [0.25879037, 0.39530203, 0.698465  ],
+                          [0.73427284, 0.63575995, 0.18827209],
+                          [0.05689114, 0.0862954 , 0.6325046 ]], "float32")
                 log_out = log_softmax(input)
-                label = paddle.to_tensor(label_np)
+                label = paddle.to_tensor([0, 2, 1, 1, 0], "int64")
                 result = nll_loss(log_out, label)
-                print(result) # [1.0720209]
+                print(result) # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True, [1.07202101])
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -1124,7 +1120,7 @@ def cross_entropy(input,
                   soft_label=False,
                   axis=-1,
                   name=None):
-    """
+    r"""
     This operator implements the cross entropy loss function with softmax. This function 
     combines the calculation of the softmax operation and the cross entropy loss function 
     to provide a more numerically stable gradient.
@@ -1184,23 +1180,26 @@ def cross_entropy(input,
 
 
     Returns:
-        The tensor variable storing the cross_entropy_loss of input and label.
+        Tensor.The tensor storing the cross_entropy_loss of input and label.
 
-    Return type: Variable.
 
     Examples:
         .. code-block:: python
+
             import paddle
-            import paddle.nn.functional as F
             import numpy as np
-            input_np = np.random.random([2, 4]).astype(np.float64)
-            label_np = np.random.randint(0, 4, size=(2)).astype(np.int64)
-            weight_np = np.random.random([4]).astype(np.float64) #shape:C
-            output = F.softmax_cross_entropy(
-                paddle.to_tensor(input_np),
-                paddle.to_tensor(label_np),
-                weight=paddle.to_tensor(weight_np))
-            print(output.numpy()) #[1.30719427]
+
+            input_data = np.random.random([5, 100]).astype("float64")
+            label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
+            weight_data = np.random.random([100]).astype("float64")
+
+            input =  paddle.to_tensor(input_data)
+            label =  paddle.to_tensor(label_data)
+            weight = paddle.to_tensor(weight_data)
+
+            loss = paddle.nn.functional.cross_entropy(input=input, label=label, weight=weight)
+            print(loss)
+            # [4.28546723]
     """
 
     if reduction not in ['sum', 'mean', 'none']:
@@ -1241,6 +1240,8 @@ def cross_entropy(input,
             else:
                 return core.ops.mean(out)
         else:
+            if input_dims - 1 == label_dims:
+                out = paddle.squeeze(out, axis=axis)
             return out
 
     fluid.data_feeder.check_variable_and_dtype(
@@ -1272,6 +1273,9 @@ def cross_entropy(input,
         else:
             return paddle.mean(out, name=name)
     else:
+        if input_dims - 1 == label_dims:
+            out = paddle.squeeze(out, axis=axis)
+
         return out
 
 

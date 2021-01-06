@@ -21,6 +21,7 @@ class GradientMergeOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.wrapped_opt = None
         self.meta_optimizers_white_list = [
+            "AMPOptimizer",
             "LarsOptimizer",
             "LambOptimizer",
             "GraphExecutionOptimizer",

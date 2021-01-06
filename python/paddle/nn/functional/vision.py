@@ -341,15 +341,14 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
         ValueError: If the square of upscale_factor cannot divide the channels of input.
     Examples:
         .. code-block:: python
+
             import paddle
             import paddle.nn.functional as F
             import numpy as np
             x = np.random.randn(2, 9, 4, 4).astype(np.float32)
-            paddle.disable_static()
             x_var = paddle.to_tensor(x)
             out_var = F.pixel_shuffle(x_var, 3)
             out = out_var.numpy()
-            print(out.shape) 
             # (2, 1, 12, 12)
     """
     if not in_dygraph_mode():
