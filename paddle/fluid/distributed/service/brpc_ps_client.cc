@@ -173,8 +173,9 @@ int32_t BrpcPsClient::initialize() {
 
 int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
-                                                  "err:"
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+               << " failed, "
+                  "err:"
                << _cntls[request_idx]->ErrorText();
     return -1;
   }
@@ -191,8 +192,9 @@ int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
 int DownpourBrpcClosure::check_save_response(size_t request_idx, int cmd_id) {
   uint32_t feasign_size = 0;
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
-                                                  "err:"
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+               << " failed, "
+                  "err:"
                << _cntls[request_idx]->ErrorText();
     return -1;
   }
@@ -348,8 +350,71 @@ std::future<int32_t> BrpcPsClient::save(const std::string &epoch,
 std::future<int32_t> BrpcPsClient::save(uint32_t table_id,
                                         const std::string &epoch,
                                         const std::string &mode) {
+  if (mode == "4") {
+    return local_save_sparse_param(table_id, epoch);
+  } else if (mode == "5") {
+    return local_save_sparse_tensor(table_id, epoch);
+  }
   return send_save_cmd(table_id, PS_SAVE_ONE_TABLE, {epoch, mode});
 }
+
+std::future<int32_t> BrpcPsClient::local_save_sparse_param(
+    uint32_t table_id, const std::string &path) {
+  std::string var_name = "";
+  uint32_t var_num = 0;
+  uint32_t var_shape = 0
+  const auto& worker_param = _config.worker_param().downpour_worker_param();
+  for(size_t i =0; i< worker_param.downpour_table_param_size(); ++i){
+    if (work_param.downpour_table_param(i).table_id() == table_id){
+      var_name = work_param.downpour_table_param(i).common().table_name()
+      var_num = work_param.downpour_table_param(i).accessor().fea_dim();
+      var_shape = work_param.downpour_table_param(i).accessor().embedx_dim();
+      break;
+    }
+  }
+  // assert var_name != ""
+
+  std::string var_store = string::Sprintf("%s/%s", dirname, varname);
+  MkDirRecursively(var_store.c_str());
+  VLOG(3) << "save sparse table " << varname << " in dir: " << var_store << " begin";
+
+  std::vector<float> save_huge_vec(var_num * var_shape);
+  std::vector<uint64_t> save_key(var_num);
+  std::vector<float*> save_vec;
+  for(size_t i=0; i<save_key.size(); ++i){
+    save_key[i] = i;
+    save_vec.push_back(save_huge_vec.data() + i*var_shape);
+  }
+
+  auto status = pull_sparse((float **)save_vec.data(), table_id, save_key.data(), save_key.size());
+  status.wait();
+
+  std::string shard_var_pre =
+    string::Sprintf("%s.block%d", var_name, server_id);
+  std::string value_ = string::Sprintf("%s/%s.txt", var_store, shard_var_pre);
+  std::unique_ptr<std::ofstream> value_out(new std::ofstream(value_));
+
+  SaveToText(value_out.get(), &save_key, &save_vec, var_shape);
+  return 0;
+}
+
+void SaveToText(std::ostream* os, const std::vector<uint64_t>* keys, const std::vector<float*>* values, const uint32_t& var_shape){
+  for (size_t ids=0; ids < keys->size() ; ++ids) {
+    uint64_t key = keys->at(ids);
+    float* value = values->at(ids);
+    std::stringstream ss;
+    ss << key << "\t";
+    for (int i = 0; i < static_cast<int>(var_shape); i++) {
+      auto& vs = value[i];
+      ss << paddle::string::join_strings((*vs), ',');
+      ss << "\t";
+    }
+    ss << "\n";
+
+    os->write(ss.str().c_str(), sizeof(char) * ss.str().size());
+  }
+}
+
 
 std::future<int32_t> BrpcPsClient::clear() {
   return send_cmd(-1, PS_CLEAR_ALL_TABLE, {});
@@ -761,9 +826,8 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
             } else {
               last_key = kv_pair->first;
               last_value_data = kv_pair->second;
-              if (value_size !=
-                  io_buffer_itr.copy_and_forward((void *)(last_value_data),
-                                                 value_size)) {
+              if (value_size != io_buffer_itr.copy_and_forward(
+                                    (void *)(last_value_data), value_size)) {
                 LOG(WARNING) << "res data is lack or not in format";
                 ret = -1;
                 break;

@@ -160,6 +160,11 @@ class BrpcPsClient : public PSClient {
   std::future<int32_t> send_save_cmd(uint32_t table_id, int cmd_id,
                                      const std::vector<std::string> &param);
 
+  std::future<int32_t> recv_sparse_table(uint32_t table_id, int cmd_id,
+                                         std::vector<float> *values,
+                                         std::vector<uint64_t> *keys,
+                                         int pserver_idx);
+
   inline brpc::Channel *get_sparse_channel(size_t server_id) {
     return _server_channels[server_id][0].get();
   }

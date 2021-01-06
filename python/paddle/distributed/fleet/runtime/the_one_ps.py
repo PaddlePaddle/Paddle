@@ -495,7 +495,8 @@ class TheOnePSRuntime(RuntimeBase):
             # for ps-heter mode, wait heter worker ready
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
             ):
-                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
+                wait_server_ready(
+                    self.role_maker._get_heter_worker_endpoints())
 
                 self._heter_client = HeterClient(
                     self.role_maker._get_heter_worker_endpoints(),
@@ -672,7 +673,8 @@ class TheOnePSRuntime(RuntimeBase):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 
         dist_varnames = get_sparse_tablenames(self.origin_main_program, True)
-        sparse_varnames = get_sparse_tablenames(self.origin_main_program, False)
+        sparse_varnames = get_sparse_tablenames(
+            self.origin_main_program, False)
 
         distributed_varnames = dist_varnames + sparse_varnames
 
@@ -759,12 +761,20 @@ class TheOnePSRuntime(RuntimeBase):
 
         return is_valid
 
-    def _save_sparse_params(self, executor, dirname, context, main_program):
+    def _remote_save_sparse_params(self, executor, dirname, context, main_program):
         values = []
         for id, names in context.items():
             values.extend(names)
             self._worker.save_one_model(id, dirname, 0)
         return values
+
+    def _local_save_sparse_params(self, executor, dirname, context, main_program):
+        for id, names in context.items():
+            self._worker.recv_save_model(id, dirname)
+        pass
+
+    def _local_save_sparse_tensor(self, executor, dirname, context, main_program):
+        pass
 
     def _save_distributed_persistables(self, executor, dirname, main_program,
                                        mode):
@@ -778,8 +788,15 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             use_origin_program=True)
 
-        recv_sparse_varnames = self._save_sparse_params(executor, dirname,
-                                                        sparses, main_program)
+        if mode == 4:
+            self._local_save_sparse_params(
+                executor, dirname, sparses, main_program)
+        elif mode == 5:
+            self._local_save_sparse_tensor(
+                executor, dirname, sparses, main_program)
+        else:
+            recv_sparse_varnames = self._remote_save_sparse_params(executor, dirname,
+                                                                   sparses, main_program)
 
         recv_dense_varnames = []
         for id, names in denses.items():
