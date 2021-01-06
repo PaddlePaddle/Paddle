@@ -83,7 +83,11 @@ template <typename DeviceContext, typename T>
 class SetValueKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    const int rank = ctx.Output<framework::LoDTensor>("Out")->dims().size();
+    const int rank = ctx.Input<framework::LoDTensor>("Input")->dims().size();
+    PADDLE_ENFORCE_LT(
+        rank, 7,
+        platform::errors::InvalidArgument(
+            "The rank of input should be less than 7, but received %d.", rank));
 
     // TODO(liym27): A more elegent code to do this. C++ has to make template
     //  integer as constant, but we had better have alternative writing in the
