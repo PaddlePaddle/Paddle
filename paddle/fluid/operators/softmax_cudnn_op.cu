@@ -32,6 +32,12 @@ using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using DataLayout = platform::DataLayout;
 using Tensor = framework::Tensor;
 
+int log2_ceil(int value) {
+  int log2_value = 0;
+  while ((1 << log2_value) < value) ++log2_value;
+  return log2_value;
+}
+
 static inline int SizeOutAxis(const int axis, DDim dims) {
   int size = 1;
   for (int i = axis + 1; i < dims.size(); i++) {
@@ -210,8 +216,13 @@ __global__ void SoftmaxForward(T* dst, const T* src, const int batch_size,
   extern __shared__ float sum_data[];
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int tid = threadIdx.x;
-  max_data[tid] = static_cast<float>(src[i]);
+  if (tid >= softmax_ele) {
+    max_data[tid] = -std::numeric_limits<float>::infinity();
+  } else {
+    max_data[tid] = static_cast<float>(src[i]);
+  }
   __syncthreads();
+  // printf("a");
 
   for (unsigned int s = blockDim.x / 2; s > 16; s >>= 1) {
     if (tid < s) {
@@ -219,6 +230,7 @@ __global__ void SoftmaxForward(T* dst, const T* src, const int batch_size,
     }
     __syncthreads();
   }
+  // printf("b");
 
   float max_value;
   if (tid < 32) {
@@ -226,9 +238,14 @@ __global__ void SoftmaxForward(T* dst, const T* src, const int batch_size,
     max_value = math::warpReduceMax<float>(max_value, 0xffffffff);
   }
 
-  sum_data[tid] = __expf(static_cast<float>(src[i]) - max_value);
+  if (tid >= softmax_ele) {
+    sum_data[tid] = 0;
+  } else {
+    sum_data[tid] = __expf(static_cast<float>(src[i]) - max_value);
+  }
   __syncthreads();
 
+  // printf("c");
   for (unsigned int s = blockDim.x / 2; s > 16; s >>= 1) {
     if (tid < s) {
       sum_data[tid] += sum_data[tid + s];
@@ -242,8 +259,10 @@ __global__ void SoftmaxForward(T* dst, const T* src, const int batch_size,
     sum_value = math::warpReduceSum<float>(sum_value, 0xffffffff);
   }
 
-  dst[i] = static_cast<T>(__expf(static_cast<float>(src[i]) - max_value) /
-                          (sum_value + 1e-6f));
+  if (tid < softmax_ele) {
+    dst[i] = static_cast<T>(__expf(static_cast<float>(src[i]) - max_value) /
+                            (sum_value + 1e-6f));
+  }
 }
 
 template <typename T, int VPT, int WARP_PER_BLOCK>
@@ -296,7 +315,9 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
     constexpr int max_grid_threads = 1024;
     bool optimize = false;
     constexpr int warps_per_block = 4;
-    if (D == 1 && dim <= max_grid_threads && sizeof(T) <= 4 && dim % 2 == 0) {
+    // if (D == 1 && dim <= max_grid_threads && sizeof(T) <= 4 && dim % 2 == 0)
+    // {
+    if (D == 1 && dim <= max_grid_threads && sizeof(T) <= 4) {
       if (dim == 128 && N % warps_per_block == 0) {
         // a warp for a batch, 4 elements for a thread, only support the softmax
         // dim size = 128 currently
@@ -315,16 +336,14 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
           assert(false && "not support");
         }
       } else if (dim < 32) {
+        // LOG(INFO) << "N: " << N << "dim: " << dim;
         optimize = true;
-        int log2_elements = static_cast<int>(std::log2(dim));
+        int log2_elements = static_cast<int>(log2_ceil(dim));
+        // LOG(INFO)<<"log2_elements: "<< log2_elements;
         const int next_power_of_two = 1 << log2_elements;
 
-        // This value must match the WARP_SIZE constexpr value computed inside
-        // softmax_warp_forward.
         int warp_size = (next_power_of_two < 32) ? next_power_of_two : 32;
 
-        // This value must match the WARP_BATCH constexpr value computed inside
-        // softmax_warp_forward.
         int batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
 
         // use 128 threads per block to maximimize gpu utilization
@@ -353,15 +372,19 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
           default:
             break;
         }
+      } else if (dim >= 32 && (dim % 32 == 0)) {
+        optimize = true;
+        BlockSoftmaxForward<
+            T><<<N, dim, 0, ctx.cuda_device_context().stream()>>>(out_data,
+                                                                  x->data<T>());
       } else if (dim >= 32 && dim <= 512) {
         optimize = true;
-        int block = dim % 2 == 0 ? dim : (dim + 1);
-        BlockSoftmaxForward<
-            T><<<N, block, 0, ctx.cuda_device_context().stream()>>>(
-            out_data, x->data<T>());
-      } else if (dim > 512) {
-        optimize = true;
-        int block = dim % 2 == 0 ? dim : (dim + 1);
+        // int warp_per_block = (dim + 32 - 1) / 32;
+        // int block = warp_per_block * 32;
+        // int grid = (N*dim + block - 1) / block;
+        // LOG(INFO) << "N: " << N << "dim: " << dim;
+        // LOG(INFO) << "block: " << block<<"grid: "<<grid;
+        int block = dim;
         SoftmaxForward<T><<<N, block, block * sizeof(float),
                             ctx.cuda_device_context().stream()>>>(
             out_data, x->data<T>(), N, dim);
