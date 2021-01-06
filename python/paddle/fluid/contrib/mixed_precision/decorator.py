@@ -59,15 +59,16 @@ class OptimizerWithMixedPrecision(object):
                            scaling.
         decr_ratio(float): The less-than-one-multiplier to use when decreasing 
                            the loss scaling.
-        use_pure_fp16(bool): Whether to use the pure fp16 training.
+        use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
         use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
+                           Default None, which means that its value equals to `use_pure_fp16`.
 
     """
 
     def __init__(self, optimizer, amp_lists, init_loss_scaling,
                  use_dynamic_loss_scaling, incr_every_n_steps,
-                 decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
-                 use_pure_fp16, use_fp16_guard):
+                 decr_every_n_nan_or_inf, incr_ratio, decr_ratio, use_pure_fp16,
+                 use_fp16_guard):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
         self._param_grads = None
@@ -399,8 +400,9 @@ def decorate(optimizer,
         decr_ratio(float): The less-than-one-multiplier to use when decreasing 
                            the loss scaling.
         use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling.
-        use_pure_fp16(bool): Whether to use the pure fp16 training.
+        use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
         use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
+                           Default None, which means that its value equals to `use_pure_fp16`.
 
     Returns:
         An optimizer acting like a normal one but with mixed-precision training 
