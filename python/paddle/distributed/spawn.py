@@ -379,7 +379,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             if __name__ == '__main__':
                 dist.spawn(train, args=(True,), nprocs=2)
 
-            # Usage 4: pass function, arguments, nprocs and selected_gpus.
+            # Usage 4: pass function, arguments, nprocs and gpus.
             # If your training method need some arguments, and 
             # only use part of visible devices for parallel training,
             # but you can't set your machine's environment variable 
