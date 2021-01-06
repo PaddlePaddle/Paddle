@@ -132,8 +132,12 @@ class Optimizer(object):
             self.regularization = weight_decay
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
-        # the learning rate type should be inferenced from loss
+
         self._dtype = None
+        # Infer the dtype form parameter
+        if self._parameter_list:
+            self._dtype = self._parameter_list[0].dtype
+
         # each program should have a independent learning rate
         # program -> tensor(learning_rate)
         self._learning_rate_map = dict()
@@ -675,7 +679,10 @@ class Optimizer(object):
         else:
             act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
 
-        self._dtype = loss.dtype
+        # Infer dtype by loss if None
+        if self._dtype is None:
+            self._dtype = loss.dtype
+
         if framework.in_dygraph_mode():
             parameter_list = parameters if parameters \
                 else self._parameter_list
@@ -885,6 +892,7 @@ class Optimizer(object):
 
         return optimize_ops, params_grads
 
+    @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
         """
@@ -910,7 +918,6 @@ class Optimizer(object):
                 adam.step()
                 adam.clear_grad()
         """
-        self._dtype = None
         params_grads = []
         for param in self._parameter_list:
             if not param.trainable:

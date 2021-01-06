@@ -1017,6 +1017,23 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
   return fc_out_var;
 }
 
+PDNode *patterns::FCActOneDNN::operator()(const std::string &act_type) {
+  auto *fc = pattern->NewNode(fc_repr())->assert_is_op("fc");
+  auto *fc_out = pattern->NewNode(fc_out_repr())
+                     ->assert_is_op_output("fc", "Out")
+                     ->assert_is_op_input(act_type);
+  auto *act =
+      pattern->NewNode(act_repr())->assert_is_op(act_type)->AsIntermediate();
+  auto *act_out = pattern->NewNode(act_out_repr())
+                      ->assert_is_op_output(act_type, "Out")
+                      ->AsOutput();
+
+  fc->LinksTo({fc_out});
+  act->LinksFrom({fc_out}).LinksTo({act_out});
+
+  return act_out;
+}
+
 PDNode *patterns::Embedding::operator()(PDNode *x) {
   x->assert_is_op_input("lookup_table", "Ids");
   auto *lookup_table_op =
@@ -1555,6 +1572,65 @@ PDNode *patterns::Reshape::operator()() {
 }
 
 PDNode *patterns::Matmul::operator()() {
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("matmul", "X");
+  auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("matmul", "Y");
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("matmul", "Out");
+
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  return matmul_out;
+}
+
+PDNode *patterns::Squeeze2Matmul::operator()() {
+  auto squeeze2_in_x = pattern->NewNode(squeeze2_in_x_repr())
+                           ->assert_is_op_input("squeeze2", "X")
+                           ->AsInput();
+  auto squeeze2_op =
+      pattern->NewNode(squeeze2_op_repr())->assert_is_op("squeeze2");
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->assert_is_op_output("squeeze2", "Out")
+                         ->assert_is_op_input("matmul", "X");
+  auto matmul_in_y =
+      pattern->NewNode(matmul_in_y_repr())->assert_is_op_input("matmul", "Y");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("matmul", "Out");
+
+  squeeze2_op->LinksFrom({squeeze2_in_x}).LinksTo({matmul_in_x});
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  return matmul_out;
+}
+
+PDNode *patterns::Reshape2Matmul::operator()() {
+  auto reshape2_in_x = pattern->NewNode(reshape2_in_x_repr())
+                           ->assert_is_op_input("reshape2", "X")
+                           ->AsInput();
+  auto reshape2_op =
+      pattern->NewNode(reshape2_op_repr())->assert_is_op("reshape2");
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->assert_is_op_output("reshape2", "Out")
+                         ->assert_is_op_input("matmul", "X");
+  auto matmul_in_y =
+      pattern->NewNode(matmul_in_y_repr())->assert_is_op_input("matmul", "Y");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("matmul", "Out");
+
+  reshape2_op->LinksFrom({reshape2_in_x}).LinksTo({matmul_in_x});
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  return matmul_out;
+}
+
+PDNode *patterns::MatmulWithInputOps::operator()() {
   auto prev_op_x = pattern->NewNode(prev_op_x_repr())->assert_is_op();
   auto prev_op_y = pattern->NewNode(prev_op_y_repr())->assert_is_op();
 
