@@ -228,7 +228,7 @@ __global__ void LayerNormBackwardPartGradGammaBeta(
   // -> blockDim.x
   // template for compile time optimizations
 
-  constexpr int row_stride = BDIMX + 1;
+  constexpr int row_stride = BDIMX;
   const int thr_load_col_off = (threadIdx.x * VPTX) & (BDIMX - 1);
   const int thr_load_row_off =
       (threadIdx.x * VPTX) / BDIMX + threadIdx.y * BDIMY;
@@ -800,7 +800,7 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
       constexpr int BDIMX3 = 32;
       constexpr int BDIMY3 = 8;
       dim3 threads3(BDIMX3, BDIMY3, 1);
-      const dim3 blocks3((feature_size + BDIMX2 - 1) / BDIMX2, 1, 1);
+      const dim3 blocks3((feature_size + BDIMX3 - 1) / BDIMX3, 1, 1);
       LayerNormBackwardSumGradGammaBeta<
           T, U, BDIMX3, BDIMY3><<<blocks3, threads3, 0, stream>>>(
           part_grad_gamma, part_grad_beta, part_size, batch_size, feature_size,
