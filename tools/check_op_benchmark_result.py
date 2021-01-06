@@ -30,7 +30,7 @@ def parse_case_name(log_file_name):
     case_id, case_info = log_file_name.split("-")
     direction = case_info.split(".")[0].split("_")[-1]
 
-    return "%s (%s)" % (case_id, direction)
+    return "%s(%s)" % (case_id, direction)
 
 
 def parse_log_file(log_file):
@@ -127,7 +127,7 @@ def update_api_info_file(fail_case_list, api_info_file):
     check_path_exists(api_info_file)
 
     # set of case names for performance check failures
-    fail_case_set = set(map(lambda x: x.split()[0], fail_case_list))
+    fail_case_set = set(map(lambda x: x.split('_')[0], fail_case_list))
 
     # list of api infos for performance check failures
     api_info_list = list()
@@ -187,7 +187,7 @@ if __name__ == "__main__":
         help="Specify the api info to run benchmark test.")
     args = parser.parse_args()
 
-    check_results = dict(accuracy=list(), speed=["argmin"])
+    check_results = dict(accuracy=list(), speed=list())
 
     develop_result_dict = load_benchmark_result_from_logs_dir(
         args.develop_logs_dir)
