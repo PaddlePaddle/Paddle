@@ -16,6 +16,7 @@
 import paddle
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
+from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 
@@ -1276,6 +1277,9 @@ class Embedding(layers.Layer):
             shape=self._size,
             dtype=self._dtype,
             is_bias=False)
+
+        if in_dygraph_mode() and padding_idx != -1:
+            self.weight[padding_idx] = 0.0
 
     def forward(self, x):
         return F.embedding(
