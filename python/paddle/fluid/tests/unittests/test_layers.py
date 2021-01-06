@@ -3655,15 +3655,6 @@ class TestBook(LayerTest):
                         bidirectional=bidirectional,
                         batch_first=batch_first)
 
-    def test_double_buffer(self):
-        reader = fluid.layers.py_reader(
-            capacity=64,
-            shapes=[(-1, 1, 28, 28), (-1, 1)],
-            dtypes=['float32', 'int64'],
-            use_double_buffer=False)
-        reader = fluid.layers.double_buffer(reader, place="cpu")
-        image, label = fluid.layers.read_file(reader)
-
 
 class TestMetricsDetectionMap(unittest.TestCase):
     def test_detection_map(self):
