@@ -273,6 +273,8 @@ void BasicEngine::Execute() {
     auto shared_cur_node = std::move(q.front());
     q.pop();
 
+    auto& inplace_grad_name_map = shared_cur_node->InplaceGradNameMap();
+
     for (auto& cur_op : *shared_cur_node) {
       ++op_num;
 
@@ -358,6 +360,18 @@ void BasicEngine::Execute() {
             VLOG(10) << "create temporary var of " << var->Name()
                      << " for sum gradient within this graph!";
           }
+
+          if (!inplace_grad_name_map.empty() &&
+              inplace_grad_name_map.count(pair.first)) {
+            // if (bwd_ins[inplace_grad_name_map[pair.first]] == var {
+            {
+              auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
+              tmp_var->SetType(var->Type());
+              tmp_var->SetForwardDataType(var->ForwardDataType());
+              inplace_var_list_.emplace_back(var, tmp_var);
+              var = tmp_var;
+            }
+          }
         }
       }
 
@@ -390,6 +404,10 @@ void BasicEngine::Execute() {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
         OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
                     cur_op.place());
+      }
+
+      for (auto& pair : inplace_var_list_) {
+        *(pair.first->MutableVar()) = std::move(*pair.second->MutableVar());
       }
 
       // Step 2: Sum Gradient of This graph

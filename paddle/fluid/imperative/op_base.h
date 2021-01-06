@@ -15,6 +15,7 @@
 #pragma once
 
 #include <atomic>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -176,6 +177,8 @@ class OpBase {
   platform::Place place_;
   size_t id_{-1UL};
 
+  std::map<std::string, std::string> inplace_mapping_;
+
   std::weak_ptr<InteriorVarHookPipeline> pre_hooks_;
 };
 
@@ -227,6 +230,18 @@ class GradOpNode {
     }
   }
 
+  void SetInplaceGradNameMap(
+      const std::map<std::string, std::string>& inplace_input_map) {
+    for (auto& pair : inplace_grad_name_map_) {
+      inplace_grad_name_map_[framework::GradVarName(pair.second)] =
+          framework::GradVarName(pair.first);
+    }
+  }
+
+  const std::map<std::string, std::string>& InplaceGradNameMap() const {
+    return inplace_grad_name_map_;
+  }
+
   const std::vector<std::shared_ptr<GradOpNode>>& GradPendingNodes() const {
     return grad_pending_nodes_;
   }
@@ -237,6 +252,7 @@ class GradOpNode {
  private:
   std::vector<OpBase> ops_;
   std::vector<std::shared_ptr<GradOpNode>> grad_pending_nodes_;
+  std::map<std::string, std::string> inplace_grad_name_map_;
 };
 
 }  // namespace imperative

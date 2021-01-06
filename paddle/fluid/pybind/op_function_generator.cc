@@ -228,6 +228,8 @@ R"(
     VLOG(3) << "Var(" << %s->Name() << ") uses Inplace Strategy.";
 )";
 
+const char* INPLACE_MAPPING_TEMPLATE = R"({"%s", "%s"})";
+
 const char* OP_FUNCTION_TEMPLATE =
 R"(
 %s %s(%s)
@@ -242,7 +244,7 @@ R"(
     imperative::NameVarBaseMap outs = %s;
     imperative::NameVarBaseMap ins = %s;
     %s
-    tracer->TraceOp("%s", ins, outs, attrs);
+    tracer->TraceOp("%s", ins, outs, attrs, {%s});
     return %s; 
   }   
 })";
@@ -374,6 +376,7 @@ std::string GenerateOpFunctionsBody(
   std::string outs_initializer = "{";
   std::string outs_initializer_with_null = "";
   std::string return_type = "";
+  std::string inplace_mapping_str = "";
   std::string return_str = "";
 
   int outs_num = 0;
@@ -428,6 +431,9 @@ std::string GenerateOpFunctionsBody(
       outs_initializer +=
           paddle::string::Sprintf(out_template, out_name, inplace_input_name);
       outs_initializer += ",";
+
+      inplace_mapping_str += paddle::string::Sprintf(
+          INPLACE_MAPPING_TEMPLATE, inplace_input_name, out_name);
     } else {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the
@@ -486,7 +492,7 @@ std::string GenerateOpFunctionsBody(
       OP_FUNCTION_TEMPLATE, return_type, func_name, function_args, ins_cast_str,
       op_type, input_args_num, view_or_inplace_strategy_str, outs_initializer,
       ins_initializer, ins_initializer_with_null + outs_initializer_with_null,
-      op_type, return_str);
+      op_type, inplace_mapping_str, return_str);
 
   return op_function_str;
 }

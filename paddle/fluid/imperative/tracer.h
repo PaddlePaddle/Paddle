@@ -16,11 +16,11 @@
 
 #include <atomic>
 #include <future>  // NOLINT
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 #include "ThreadPool.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
@@ -57,7 +57,16 @@ class Tracer {
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const platform::Place& place, bool trace_bacward,
+               const std::map<std::string, std::string>& inplace);
+
+  void TraceOp(const std::string& type, const NameVarBaseMap& ins,
+               const NameVarBaseMap& outs, framework::AttributeMap attrs,
                const platform::Place& place, bool trace_bacward);
+
+  void TraceOp(const std::string& type, const NameVarBaseMap& ins,
+               const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const std::map<std::string, std::string>& inplace);
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs);

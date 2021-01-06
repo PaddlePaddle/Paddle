@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/imperative/tracer.h"
+#include <map>
 #include <set>
 #include <unordered_set>
 #include <utility>
@@ -58,7 +59,8 @@ static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
 
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
-                     const platform::Place& place, bool trace_backward) {
+                     const platform::Place& place, bool trace_backward,
+                     const std::map<std::string, std::string>& inplace) {
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for
@@ -110,7 +112,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, new_ins, outs, attrs, place);
+    CreateGradOpNode(*op, new_ins, outs, attrs, place, inplace);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }
@@ -119,7 +121,20 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs,
                      framework::AttributeMap attrs) {
-  TraceOp(type, ins, outs, std::move(attrs), expected_place_, has_grad_);
+  TraceOp(type, ins, outs, std::move(attrs), expected_place_, has_grad_, {});
+}
+
+void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
+                     const NameVarBaseMap& outs, framework::AttributeMap attrs,
+                     const std::map<std::string, std::string>& inplace) {
+  TraceOp(type, ins, outs, std::move(attrs), expected_place_, has_grad_,
+          inplace);
+}
+
+void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
+                     const NameVarBaseMap& outs, framework::AttributeMap attrs,
+                     const platform::Place& place, bool trace_backward) {
+  TraceOp(type, ins, outs, std::move(attrs), place, trace_backward, {});
 }
 
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,

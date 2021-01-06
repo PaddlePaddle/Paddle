@@ -58,6 +58,9 @@ class BasicEngine : public Engine {
       leaf_basic_accumulators_;
   std::vector<std::pair<GradientAccumulator*, std::shared_ptr<VariableWrapper>>>
       need_accu_var_list_;
+  std::vector<std::pair<std::shared_ptr<VariableWrapper>,
+                        std::shared_ptr<VariableWrapper>>>
+      inplace_var_list_;
   // leaf_accumulators_ is only for leaf tensor(hooks/accumulate grad)
   std::unordered_set<GradientAccumulator*> leaf_accumulators_;
 
