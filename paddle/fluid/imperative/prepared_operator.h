@@ -68,7 +68,7 @@ template <typename VarType>
 NameVarMap<VarType> PrepareData(
     const framework::OperatorWithKernel& op, const NameVarMap<VarType>& ins,
     const framework::OpKernelType& expected_kernel_key) {
-  bool transformed = false;
+  bool inplace_transform = true;
   NameVarMap<VarType> tmp_ins;
   for (auto& name_pair : ins) {
     for (size_t i = 0; i < name_pair.second.size(); ++i) {
@@ -83,25 +83,30 @@ NameVarMap<VarType> PrepareData(
         } else {
           VLOG(3) << "Transform Variable " << var_base->Name() << " from "
                   << kernel_type_for_var << " to " << expected_kernel_key;
-          // To avoid NameVarMap copy construction overhead in general
-          // scenarios,
-          // if no transformed, return original input directly
-          transformed = true;
-          if (tmp_ins.empty()) {
-            tmp_ins = ins;
-          }
           framework::Tensor out;
-          auto tmp_var = std::make_shared<VarType>(var_base->Name());
-          tmp_var->SetType(var_base->Type());
           TransformData(expected_kernel_key, kernel_type_for_var, *tensor,
                         &out);
-          SetTensorToVariable(var_base->Var(), out, tmp_var->MutableVar());
-          tmp_ins[name_pair.first][i] = tmp_var;
+          if (NeedTransformDataType(kernel_type_for_var, expected_kernel_key)) {
+            // To avoid NameVarMap copy construction overhead in general
+            // scenarios, if inplace transformed, return original input directly
+            inplace_transform = false;
+            if (tmp_ins.empty()) {
+              tmp_ins = ins;
+            }
+            auto tmp_var = std::make_shared<VarType>(var_base->Name());
+            tmp_var->SetType(var_base->Type());
+            SetTensorToVariable(var_base->Var(), out, tmp_var->MutableVar());
+            tmp_ins[name_pair.first][i] = tmp_var;
+          } else {
+            // if dtype is same, transform inplace will not change the original
+            // value
+            SetTensorToVariable(var_base->Var(), out, var_base->MutableVar());
+          }
         }
       }
     }
   }
-  if (!transformed) {
+  if (inplace_transform) {
     return ins;
   }
   return tmp_ins;
