@@ -213,7 +213,6 @@ class FusedElemwiseAddActivationGradMaker
     grad_op->SetAttr("functor_list", functor_names);
 
     if (BOOST_GET_CONST(bool, grad_op->GetAttr("save_intermediate_out"))) {
-      // PADDLE_ENFORCE_NE(Output("IntermediateOut").size(), 0);
       grad_op->SetInput("IntermediateOut", this->Output("IntermediateOut"));
       grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
                          this->OutputGrad("IntermediateOut"));
