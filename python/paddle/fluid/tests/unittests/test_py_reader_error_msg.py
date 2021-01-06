@@ -15,6 +15,7 @@
 import paddle.fluid as fluid
 import unittest
 import numpy as np
+import paddle
 
 
 class TestPyReaderErrorMsg(unittest.TestCase):
@@ -37,6 +38,7 @@ class TestPyReaderErrorMsg(unittest.TestCase):
 
 class TestDoubleBufferAPI(unittest.TestCase):
     def test_double_buffer(self):
+        paddle.enable_static()
         reader = fluid.layers.py_reader(
             capacity=64,
             shapes=[(-1, 1, 28, 28), (-1, 1)],
