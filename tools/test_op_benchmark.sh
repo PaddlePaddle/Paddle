@@ -214,8 +214,23 @@ function check_op_benchmark_result {
   # default 3 times
   [ -z "${RETRY_TIMES}" ] && RETRY_TIMES=3
   api_info_file=$(pwd)/api_info.txt
-  for retry_time in $(seq ${RETRY_TIMES})
+  for retry_time in $(seq 0 ${RETRY_TIMES})
   do
+    if [ $retry_time -gt 0 ]; then
+      # run op benchmark speed test
+      # there is no need to recompile and install paddle
+      LOG "[INFO] retry ${retry_time} times ..."
+      pushd benchmark/api > /dev/null
+      bash deploy/main_control.sh tests_v2 \
+                                  tests_v2/configs \
+                                  $(pwd)/logs-test_pr \
+                                  $VISIBLE_DEVICES \
+                                  "gpu" \
+                                  "speed" \
+                                  ${api_info_file} \
+                                  "paddle"
+      popd > /dev/null
+    fi
     # check current result and update the file to benchmark test
     python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
         --develop_logs_dir $(pwd)/logs-develop \
@@ -224,18 +239,6 @@ function check_op_benchmark_result {
     check_status_code=$?
     # TODO(Avin0323): retry only if the performance check fails
     [ $check_status_code -eq 0 ] && break
-    # run op benchmark speed test
-    # there is no need to recompile and install paddle
-    pushd benchmark/api > /dev/null
-    bash deploy/main_control.sh tests_v2 \
-                                tests_v2/configs \
-                                $(pwd)/logs-test_pr \
-                                $VISIBLE_DEVICES \
-                                "gpu" \
-                                "speed" \
-                                ${api_info_file} \
-                                "paddle"
-    popd > /dev/null
   done
   return $check_status_code
 }
