@@ -146,6 +146,7 @@ endif()
 cc_library(tensor_formatter SRCS tensor_formatter.cc DEPS ${OP_HEADER_DEPS})
 if (WITH_PYTHON)
   cc_library(py_func_op SRCS py_func_op.cc DEPS op_registry python pybind)
+  cc_library(cus_py_func_op SRCS cus_py_func_op.cc DEPS op_registry python pybind)
 endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
