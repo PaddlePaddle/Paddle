@@ -652,7 +652,7 @@ class BatchNorm1D(_BatchNormBase):
     r"""
     Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When track_running_stats = False, the :math:`\\mu_{\\beta}`
+    When use_global_stats = False, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
@@ -663,7 +663,7 @@ class BatchNorm1D(_BatchNormBase):
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
         \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
 
-    When track_running_stats = True, the :math:`\\mu_{\\beta}`
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
@@ -743,7 +743,7 @@ class BatchNorm2D(_BatchNormBase):
     r"""
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When track_running_stats = False, the :math:`\\mu_{\\beta}`
+    When use_global_stats = False, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
@@ -754,7 +754,7 @@ class BatchNorm2D(_BatchNormBase):
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
         \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
 
-    When track_running_stats = True, the :math:`\\mu_{\\beta}`
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
@@ -832,7 +832,7 @@ class BatchNorm3D(_BatchNormBase):
     r"""
     Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When track_running_stats = False, the :math:`\\mu_{\\beta}`
+    When use_global_stats = False, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
@@ -843,7 +843,7 @@ class BatchNorm3D(_BatchNormBase):
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
         \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
 
-    When track_running_stats = True, the :math:`\\mu_{\\beta}`
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
