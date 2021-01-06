@@ -128,7 +128,11 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
   PADDLE_ENFORCE_EQ(
       index.dims().size() == 1 ||
           (index.dims().size() == 2 && index.dims()[1] == 1),
-      true, platform::errors::InvalidArgument("index's shape is error."));
+      true, platform::errors::InvalidArgument(
+                "index's shape is error, "
+                "expect index'dims shape is 1 or 2 and index.dims[1] is 1"
+                "but got index'dims shape is %d",
+                index.dims().size()));
   int index_size = index.dims()[0];
 
   auto src_dims = src.dims();
