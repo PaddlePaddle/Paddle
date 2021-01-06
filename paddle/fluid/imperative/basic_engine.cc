@@ -359,17 +359,21 @@ void BasicEngine::Execute() {
             need_accu_var_list_.emplace_back(iter->second.get(), var);
             VLOG(10) << "create temporary var of " << var->Name()
                      << " for sum gradient within this graph!";
-          }
-
-          if (!inplace_grad_name_map.empty() &&
-              inplace_grad_name_map.count(pair.first)) {
-            // if (bwd_ins[inplace_grad_name_map[pair.first]] == var {
-            {
-              auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
-              tmp_var->SetType(var->Type());
-              tmp_var->SetForwardDataType(var->ForwardDataType());
-              inplace_var_list_.emplace_back(var, tmp_var);
-              var = tmp_var;
+          } else if (!inplace_grad_name_map.empty() &&
+                     inplace_grad_name_map.count(pair.first)) {
+            // When calculate Inplace grad op, create a new output var.
+            // If a tmp var has been created, don't need to create repeatly.
+            for (auto& in_var :
+                 bwd_ins.at(inplace_grad_name_map.at(pair.first))) {
+              if (in_var == var) {
+                VLOG(3) << "Inplace Mapping " << pair.first;
+                auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
+                tmp_var->SetType(var->Type());
+                tmp_var->SetForwardDataType(var->ForwardDataType());
+                inplace_var_list_.emplace_back(var, tmp_var);
+                var = tmp_var;
+                // break;
+              }
             }
           }
         }
@@ -407,7 +411,7 @@ void BasicEngine::Execute() {
       }
 
       for (auto& pair : inplace_var_list_) {
-        *(pair.first->MutableVar()) = std::move(*pair.second->MutableVar());
+        *pair.first = std::move(*pair.second);
       }
 
       // Step 2: Sum Gradient of This graph

@@ -232,9 +232,11 @@ class GradOpNode {
 
   void SetInplaceGradNameMap(
       const std::map<std::string, std::string>& inplace_input_map) {
-    for (auto& pair : inplace_grad_name_map_) {
-      inplace_grad_name_map_[framework::GradVarName(pair.second)] =
-          framework::GradVarName(pair.first);
+    for (auto& pair : inplace_input_map) {
+      VLOG(3) << "Inplace testv2 " << framework::GradVarName(pair.first)
+              << " Mapping " << framework::GradVarName(pair.second);
+      inplace_grad_name_map_[framework::GradVarName(pair.first)] =
+          framework::GradVarName(pair.second);
     }
   }
 

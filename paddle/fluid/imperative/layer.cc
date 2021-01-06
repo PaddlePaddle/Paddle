@@ -456,6 +456,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
       ClearNoNeedBufferInputs(&grad_op);
     }
     if (!inplace.empty()) {
+      VLOG(3) << "Inplace testv1 " << op.Type();
       grad_node->SetInplaceGradNameMap(inplace);
     }
     return grad_node;
