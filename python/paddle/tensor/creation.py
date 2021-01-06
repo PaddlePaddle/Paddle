@@ -1097,6 +1097,7 @@ def assign(x, output=None, index=None):
             type='assign_value',
             outputs={'Out': [output]},
             attrs={'dtype': dtype,
+                   'index': index,
                    'shape': list(x.shape),
                    value_name: values})
 

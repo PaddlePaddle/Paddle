@@ -71,6 +71,7 @@ class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
                  framework::proto::VarType::INT32,
                  framework::proto::VarType::FP32,
                  framework::proto::VarType::INT64});
+    AddAttr<int>("index", "index of input").SetDefault({});
     AddAttr<std::vector<int>>("bool_values", "store the bool values")
         .SetDefault({});
     AddAttr<std::vector<float>>("fp32_values", "store the float32 values")

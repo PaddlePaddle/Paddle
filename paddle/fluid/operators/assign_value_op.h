@@ -62,6 +62,8 @@ class AssignValueKernel : public framework::OpKernel<T> {
     auto shape = ctx.Attr<std::vector<int>>("shape");
     auto* out = ctx.Output<framework::Tensor>("Out");
     int dtype = ctx.Attr<int>("dtype");
+    int index = ctx.Attr<int>("index");
+    VLOG(0) << "index of input:"<<index;
     const char* value_name = nullptr;
     switch (dtype) {
       case framework::proto::VarType::BOOL:
