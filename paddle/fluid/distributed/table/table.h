@@ -82,7 +82,7 @@ class Table {
   }
 
   virtual int32_t set_global_lr(float *lr) {
-    _global_lr.reset(lr);
+    _global_lr = lr;
     return 0;
   }
 
@@ -124,7 +124,7 @@ class Table {
   size_t _shard_idx;  // table 分片编号
   size_t _shard_num;  // table 分片总数
   TableParameter _config;
-  std::shared_ptr<float> _global_lr = nullptr;
+  float *_global_lr = nullptr;
   std::shared_ptr<ValueAccessor> _value_accesor;
 };
 REGISTER_REGISTERER(Table);

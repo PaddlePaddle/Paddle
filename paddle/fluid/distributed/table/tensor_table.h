@@ -194,7 +194,6 @@ class GlobalStepTable : public DenseTensorTable {
  private:
   std::unordered_map<int, int64_t> decay_counters_;
   int32_t trainers_;
-  std::shared_ptr<float> global_learning_rate_ = nullptr;
 };
 
 }  // namespace distributed

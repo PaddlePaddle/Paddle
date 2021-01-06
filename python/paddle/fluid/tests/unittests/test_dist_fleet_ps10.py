@@ -32,7 +32,7 @@ sample_rate = 1
 batch_size = 4
 
 
-class TestNaturalExpDecay(unittest.TestCase):
+class TestExponentialDecay(unittest.TestCase):
     def net(self):
         input_data = paddle.static.data(
             name="sparse_input", shape=[None, 1], dtype="int64")
@@ -65,7 +65,7 @@ class TestNaturalExpDecay(unittest.TestCase):
 
         fleet.init(role)
         loss = self.net()
-        scheduler = paddle.optimizer.lr.NaturalExpDecay(
+        scheduler = paddle.optimizer.lr.InverseTimeDecay(
             learning_rate=base_lr, gamma=0.999, verbose=True)
         optimizer = fluid.optimizer.Adam(scheduler)
 

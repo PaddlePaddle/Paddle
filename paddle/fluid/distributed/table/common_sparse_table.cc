@@ -175,8 +175,7 @@ int32_t CommonSparseTable::initialize() {
   sync = _config.common().sync();
   VLOG(1) << "table " << _config.common().table_name() << " is sync: " << sync;
 
-  _global_lr = std::make_shared<float>();
-  *_global_lr = 1.0;
+  _global_lr = new float(1.0);
 
   auto common = _config.common();
   int size = static_cast<int>(common.params().size());
@@ -265,6 +264,12 @@ int32_t CommonSparseTable::initialize_optimizer() {
   }
 
   VLOG(0) << "init optimizer " << name << " done";
+  return 0;
+}
+
+int32_t CommonSparseTable::set_global_lr(float* lr) {
+  _global_lr = lr;
+  optimizer_->set_global_lr(_global_lr);
   return 0;
 }
 

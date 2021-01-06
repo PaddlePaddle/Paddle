@@ -32,10 +32,10 @@ sample_rate = 1
 batch_size = 4
 
 
-class TestExponentialDecay(unittest.TestCase):
+class TestNoamDecay(unittest.TestCase):
     def net(self):
-        input_data = paddle.static.data(name="sparse_input", shape=[
-            None, 1], dtype="int64")
+        input_data = paddle.static.data(
+            name="sparse_input", shape=[None, 1], dtype="int64")
         input_label = paddle.static.data(
             name="label", shape=[None, 1], dtype="int64")
         label = paddle.cast(input_label, dtype="float32")
@@ -73,6 +73,7 @@ class TestExponentialDecay(unittest.TestCase):
         strategy.a_sync = True
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)
+        fleet.init_server()
 
 
 if __name__ == '__main__':

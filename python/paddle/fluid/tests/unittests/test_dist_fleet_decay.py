@@ -32,7 +32,7 @@ sample_rate = 1
 batch_size = 4
 
 
-class TestNaturalExpDecay(unittest.TestCase):
+class TestNoamDecay(unittest.TestCase):
     def net(self):
         input_data = paddle.static.data(
             name="sparse_input", shape=[None, 1], dtype="int64")
@@ -59,21 +59,21 @@ class TestNaturalExpDecay(unittest.TestCase):
 
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
-            role=role_maker.Role.SERVER,
+            role=role_maker.Role.WORKER,
             worker_num=2,
             server_endpoints=endpoints)
 
         fleet.init(role)
         loss = self.net()
-        scheduler = paddle.optimizer.lr.NaturalExpDecay(
-            learning_rate=base_lr, gamma=0.999, verbose=True)
+        scheduler = paddle.optimizer.lr.NoamDecay(
+            d_model=0.01, warmup_steps=100, verbose=True)
         optimizer = fluid.optimizer.Adam(scheduler)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
+        strategy.a_sync_configs = {"launch_barrier": False}
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)
-        fleet.init_server()
 
 
 if __name__ == '__main__':

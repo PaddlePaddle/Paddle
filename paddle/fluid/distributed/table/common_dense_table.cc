@@ -42,8 +42,7 @@ int32_t CommonDenseTable::initialize() {
 
   sync = _config.common().sync();
   VLOG(1) << "table " << _config.common().table_name() << " is sync: " << sync;
-  _global_lr = std::make_shared<float>();
-  *_global_lr = 1.0;
+  _global_lr = new float(1.0);
 
   initialize_value();
   initialize_optimizer();
@@ -93,6 +92,12 @@ int32_t CommonDenseTable::initialize_optimizer() {
     VLOG(0) << "init optimizer failed";
   }
   VLOG(0) << "init optimizer " << name << " done";
+  return 0;
+}
+
+int32_t CommonDenseTable::set_global_lr(float* lr) {
+  _global_lr = lr;
+  optimizer_->set_global_lr(_global_lr);
   return 0;
 }
 

@@ -44,9 +44,7 @@ class SparseOptimizer {
                       size_t num, const std::vector<uint64_t>& offsets,
                       ValueBlock* block) = 0;
 
-  virtual void set_global_lr(const std::shared_ptr<float>& lr) {
-    global_learning_rate_ = &lr;
-  }
+  virtual void set_global_lr(float* lr) { global_learning_rate_ = lr; }
 
   const std::vector<std::string>& value_names_;
   const std::vector<int>& value_dims_;
@@ -56,7 +54,7 @@ class SparseOptimizer {
   int update_numel = 0;
 
  protected:
-  const std::shared_ptr<float>* global_learning_rate_;
+  float* global_learning_rate_;
 };
 
 // sum calc for sparse tensor
@@ -109,8 +107,7 @@ class SSGD : public SparseOptimizer {
       auto id = keys[x];
       auto* value = block->Get(id);
 
-      float learning_rate =
-          *(global_learning_rate_->get()) * (value + lr_offset)[0];
+      float learning_rate = *(global_learning_rate_) * (value + lr_offset)[0];
       VLOG(4) << "SSGD LearningRate: " << learning_rate;
       float* param = value + param_offset;
 
@@ -165,7 +162,7 @@ class SAdam : public SparseOptimizer {
     for (auto x : offsets) {
       auto id = keys[x];
       auto* values = block->Get(id);
-      float lr_ = *(global_learning_rate_->get()) * (values + lr_offset)[0];
+      float lr_ = *(global_learning_rate_) * (values + lr_offset)[0];
       VLOG(4) << "SAdam LearningRate: " << lr_;
       float* param = values + param_offset;
       float* moment1 = values + m1_offset;
