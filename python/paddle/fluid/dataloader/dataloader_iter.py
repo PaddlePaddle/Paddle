@@ -36,57 +36,10 @@ from ..framework import in_dygraph_mode
 from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL
 from .worker import ParentWatchDog, get_worker_info, _worker_loop, _DatasetKind, _IterableDatasetStopIteration
 from .pin_memory import pin_memory, _pin_memory_loop
+from .collate import default_collate_fn, default_convert_fn
 from .batch_sampler import _InfiniteIterableSampler
 
 __all__ = ['get_worker_info']
-
-
-def default_collate_fn(batch):
-    """
-    Default batch collating function for :code:`fluid.io.DataLoader`,
-    batch should be a list of samples, and each sample should be a list
-    of fields as follows:
-    
-    [[filed1, filed2, ...], [filed1, filed2, ...], ...]
-    
-    This default collate function zipped each filed together and stack
-    each filed as the batch field as follows:
-
-    [batch_filed1, batch_filed2, ...]
-
-    Args:  
-        batch(list of list of numpy array): the batch data, each fields
-              should be a numpy array, each sample should be a list of
-              fileds, and batch should be a list of sample.
-    
-    Returns:
-        a list of numpy array: collated batch
-    """
-    sample = batch[0]
-    # dataset has only 1 field
-    if isinstance(sample, np.ndarray):
-        return [np.stack(batch, axis=0)]
-
-    # batch each field
-    slots = []
-    for items in batch:
-        for i, item in enumerate(items):
-            if len(slots) < len(items):
-                slots.append([item])
-            else:
-                slots[i].append(item)
-
-    outputs = []
-    for slot in slots:
-        if isinstance(slot[0], (np.ndarray, np.bool, numbers.Number)):
-            tmp = np.stack(slot, axis=0)
-            outputs.append(tmp)
-        elif isinstance(slot[0], paddle.Tensor):
-            tmp = layers.stack(slot, axis=0)
-            outputs.append(tmp)
-        else:
-            raise RuntimeError("Unknown data type {}".format(type(slot[0])))
-    return outputs
 
 
 class _DataLoaderIterBase(object):
@@ -122,7 +75,7 @@ class _DataLoaderIterBase(object):
             else:
                 self._sampler_iter = iter(
                     _InfiniteIterableSampler(self._dataset, 1))
-            self._collate_fn = loader.collate_fn
+            self._collate_fn = loader.collate_fn or default_convert_fn
 
         # LoDTensorBlockingQueue instance for create_py_reader and a thread
         # to put mini-batch data to self._blocking_queue, mini-batch data

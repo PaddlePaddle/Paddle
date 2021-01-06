@@ -102,10 +102,8 @@ class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
                 worker_init_fn=worker_spliter)
 
             rets = []
-            for data in dataloader:
-                d = data[0].numpy() if isinstance(data[0],
-                                                  paddle.Tensor) else data[0]
-                rets.append(d[0][0])
+            for d in dataloader:
+                rets.append(d[0].numpy()[0][0])
 
             assert tuple(sorted(rets)) == tuple(range(0, 10))
 
