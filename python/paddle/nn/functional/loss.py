@@ -1239,7 +1239,7 @@ def cross_entropy(input,
             #1. if weight==none, 
             #    numerator: reduce_sum all loss directly is ok causeof softmax_with_cross_entropy's inner logic
             #    denominator: count sample num with class_index!=ignore_index
-            #2. if weight!=none
+            #2. else
             #    numerator: loss's weighted sum 
             #    denominator: cal the sum of weight where the sample's class_index!=ignore_index
             out_sum = core.ops.reduce_sum(out, 'reduce_all', True)
