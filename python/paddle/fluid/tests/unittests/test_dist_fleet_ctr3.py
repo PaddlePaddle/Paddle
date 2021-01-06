@@ -23,12 +23,12 @@ from test_dist_fleet_base import TestFleetBase
 class TestDistMnistAsync2x2(TestFleetBase):
     def _setup_config(self):
         self._mode = "async"
-        self._reader = "pyreader"
+        self._reader = "dataset"
 
     def check_with_place(self,
                          model_file,
                          delta=1e-3,
-                         check_error_log=False,
+                         check_error_log=True,
                          need_envs={}):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
@@ -36,14 +36,15 @@ class TestDistMnistAsync2x2(TestFleetBase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
-            "CPU_NUM": "2"
+            "CPU_NUM": "1",
+            "USE_DECAY": "1"
         }
 
         required_envs.update(need_envs)
 
-        if check_error_log:
-            required_envs["GLOG_v"] = "3"
-            required_envs["GLOG_logtostderr"] = "1"
+        
+        required_envs["GLOG_v"] = "3"
+        required_envs["GLOG_logtostderr"] = "1"
 
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 

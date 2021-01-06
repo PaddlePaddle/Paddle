@@ -121,7 +121,7 @@ class FleetDistRunnerBase(object):
                 fluid.clip.set_gradient_clip(
                     clip=fluid.clip.GradientClipByGlobalNorm(2.0))
 
-        use_decay = int(os.getenv("DECAY", "0"))
+        use_decay = int(os.getenv("USE_DECAY", "0"))
         if use_decay:
             scheduler = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=LEARNING_RATE, gamma=0.999, verbose=True)
