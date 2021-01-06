@@ -118,13 +118,44 @@ class OpUpdate : public OpUpdateBase {
   OpUpdateType type_;
 };
 
+template <OpUpdateType type__, typename InfoType>
+OpUpdate<InfoType, type__>* new_update(InfoType&& info) {
+  return new OpUpdate<InfoType, type__>(info);
+}
+
+template <typename T>
+OpAttrVariantT op_attr_wrapper(const T& val) {
+  return OpAttrVariantT{val};
+}
+
+template <int N>
+OpAttrVariantT op_attr_wrapper(const char (&val)[N]) {
+  PADDLE_ENFORCE_EQ(
+      val[N - 1], 0,
+      platform::errors::InvalidArgument(
+          "The argument of operator register %c is illegal.", val[N - 1]));
+  return OpAttrVariantT{std::string{val}};
+}
+
 class OpVersionDesc {
  public:
   /* Compatibility upgrade */
+  template <typename T>
   OpVersionDesc&& ModifyAttr(const std::string& name, const std::string& remark,
-                             const OpAttrVariantT& default_value);
+                             const T& default_value) {
+    infos_.emplace_back(new_update<OpUpdateType::kModifyAttr>(
+        OpAttrInfo(name, remark, op_attr_wrapper(default_value))));
+    return std::move(*this);
+  }
+
+  template <typename T>
   OpVersionDesc&& NewAttr(const std::string& name, const std::string& remark,
-                          const OpAttrVariantT& default_value);
+                          const T& default_value) {
+    infos_.emplace_back(new_update<OpUpdateType::kNewAttr>(
+        OpAttrInfo(name, remark, op_attr_wrapper(default_value))));
+    return std::move(*this);
+  }
+
   OpVersionDesc&& NewInput(const std::string& name, const std::string& remark);
   OpVersionDesc&& NewOutput(const std::string& name, const std::string& remark);
   OpVersionDesc&& BugfixWithBehaviorChanged(const std::string& remark);
