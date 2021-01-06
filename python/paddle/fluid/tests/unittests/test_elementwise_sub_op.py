@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 import numpy as np
+import paddle
 from op_test import OpTest, skip_check_grad_ci
 
 
@@ -164,5 +165,78 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
         }
 
 
+class TestComplexElementwiseSubOp(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.float64
+        self.shape = (2, 3, 4, 5)
+        self.init_input_output()
+        self.init_grad_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+        }
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_base_dtype(self):
+        self.dtype = np.float64
+
+    def init_input_output(self):
+        self.x = np.random.random(self.shape).astype(
+            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+        self.y = np.random.random(self.shape).astype(
+            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+        self.out = self.x - self.y
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
+            self.shape, self.dtype)
+        self.grad_x = self.grad_out
+        self.grad_y = -self.grad_out
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[self.grad_x, self.grad_y],
+            user_defined_grad_outputs=[self.grad_out])
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[self.grad_y],
+            user_defined_grad_outputs=[self.grad_out])
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out])
+
+
+class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
+    def init_input_output(self):
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        self.y = np.random.random(self.shape).astype(
+            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+        self.out = self.x - self.y
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
+            self.shape, self.dtype)
+        self.grad_x = np.real(self.grad_out)
+        self.grad_y = -self.grad_out
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
