@@ -1335,7 +1335,7 @@ void BindImperative(py::module *m_ptr) {
                 group_size_limits);
           }))
       .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
-           py::call_guard<py::gil_scoped_release>());
+           py::arg("vars"), py::call_guard<py::gil_scoped_release>());
 
   m.def("assign_group_by_size", &imperative::AssignGroupBySize, py::arg("vars"),
         py::arg("is_sparse_gradient"),

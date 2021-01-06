@@ -26,6 +26,7 @@ from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 import warnings
 import paddle
+import itertools
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -471,11 +472,22 @@ class DataParallel(layers.Layer):
             parallel_helper.__parallel_ctx__clz__,
             [self.last_comm_buffer_size, self.comm_buffer_size])
 
-    def forward(self, *inputs, **kwargs):
-        if self._strategy.nranks > 1:
-            self._reducer.prepare_for_backward()
+    def _find_varbase(self, obj):
+        if isinstance(obj, core.VarBase):
+            return [obj]
+        if isinstance(obj, (list, tuple)):
+            return itertools.chain(*map(self._find_varbase, obj))
+        if isinstance(obj, dict):
+            return itertools.chain(*map(self._find_varbase, obj.values()))
+        return []
 
-        return self._layers(*inputs, **kwargs)
+    def forward(self, *inputs, **kwargs):
+        outputs = self._layers(*inputs, **kwargs)
+        if self._strategy.nranks > 1:
+            self._reducer.prepare_for_backward(
+                list(self._find_varbase(outputs)))
+
+        return outputs
 
     @deprecated(
         since="2.0.0", reason="This method does not need to be called anymore.")

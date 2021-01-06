@@ -100,11 +100,13 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
   InitializeGroups(group_indices);
   for (size_t global_var_index = 0; global_var_index < vars_.size();
        ++global_var_index) {
-    vars_[global_var_index]->SharedVar()->AddGradVarLeafBackwardHook(
+    auto var = vars_[global_var_index];
+    var->SharedVar()->AddGradVarLeafBackwardHook(
         std::unique_ptr<LambdaGradAccumulatorPostHook>(
             new LambdaGradAccumulatorPostHook([=](VariableWrapper *grad) {
-              this->AddDistHook(grad, global_var_index);
+              this->AddDistHook(global_var_index);
             })));
+    VarToIndexMap_[var->GradVarBase()->SharedVar().get()] = global_var_index;
   }
   // create streams
   compute_stream_ = static_cast<platform::CUDADeviceContext *>(
@@ -251,14 +253,132 @@ void Reducer::InitializeGroups(
   }
 }
 
+void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
+  PADDLE_ENFORCE_EQ(
+      node_deps_.empty(), true,
+      platform::errors::AlreadyExists("Op deps must be initialized here"));
+
+  std::queue<GradOpNode *> q;
+  std::unordered_set<GradOpNode *> visited;
+
+  for (auto pos = init_nodes.begin(); pos != init_nodes.end(); pos++) {
+    q.push(*pos);
+    visited.insert(*pos);
+  }
+
+  while (!q.empty()) {
+    auto *cur_node = q.front();
+    q.pop();
+
+    for (auto &cur_op : *cur_node) {
+      cur_op.EnforceHasInOut();
+    }
+
+    const auto &grad_pending_nodes = cur_node->GradPendingNodes();
+    for (auto &grad_pending_node : grad_pending_nodes) {
+      PADDLE_ENFORCE_NOT_NULL(
+          grad_pending_node,
+          platform::errors::NotFound("Grad pending node should not be null"));
+      ++node_deps_[grad_pending_node.get()];
+      if (visited.count(grad_pending_node.get()) == 0) {
+        visited.insert(grad_pending_node.get());
+        q.push(grad_pending_node.get());
+      }
+    }
+  }
+}
+
 // After each batch is calculated, the counter of each group(group.pending_)
 // and allreudce sequence counter(next_group_) will be cleaned up again.
-void Reducer::PrepareForBackward() {
+void Reducer::PrepareForBackward(
+    const std::vector<std::shared_ptr<imperative::VarBase>> &outputs) {
   VLOG(3) << "start reseting count..";
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
     group.pending_ = group.variable_indices_.size();
   });
+
+  // find unused vars
+  /*
+    // reset unused var accounting
+    has_marked_unused_vars = false;
+
+    std::queue<std::shared_ptr<GradOpNode>> q;
+    std::unordered_set<VariableWrapper* > var_visited;
+    std::unordered_set<GradOpNode* > init_nodes;
+
+    for(const auto& output: outputs){
+      const auto& grad_node = output->GradVarBase()->GradNode();
+      if(grad_node == nullptr || output->OverridedStopGradient()){
+        VLOG(0) << "Skip auto grad since there is no grad op for output is "
+                   "stop_gradient=True: "
+                << output->Name();
+        continue;
+      }else{
+        init_nodes.insert(grad_node.get());
+        var_visited.insert(output->SharedVar().get());
+        q.push(grad_node);
+      }
+    }
+
+    PrepareDeps(init_nodes);
+    // Traverse the autograd graph starting at the specified output
+    while (!q.empty()) {
+      auto cur_node = q.front();
+      q.pop();
+
+      for (const auto& cur_op : *cur_node) {
+        cur_op.EnforceHasInOut();
+        auto& bwd_outs = cur_op.GetOutsMap();
+        for (const auto& pair : bwd_outs) {
+          if (!pair.second.IsGrad()) {
+            continue;
+          }
+          for (auto& var : pair.second) {
+            if (!var || var->OverridedStopGradient()){
+              continue;
+            }else{
+              var_visited.insert(var.get());
+            }
+          }
+        }
+      }
+      for (const auto& grad_pending_node : cur_node->GradPendingNodes()) {
+        PADDLE_ENFORCE_NOT_NULL(grad_pending_node,
+                                platform::errors::NotFound(
+                                    "Grad pending node should not be nullptr"));
+        auto iter = node_deps_.find(grad_pending_node.get());
+        if (iter == node_deps_.end()) {
+          continue;
+        }
+
+        if (--(iter->second) == 0) {
+          q.push(grad_pending_node);
+        }
+      }
+    }
+  */
+
+  // VLOG(0) << "select vars is :";
+  // for (auto pos = var_visited.begin(); pos!=var_visited.end(); pos++) {
+  //   const auto& tmp = *pos;
+  //   VLOG(0) << tmp->Name();
+  // }
+  // VLOG(0) << "starting select unused var...";
+  // for (const auto& it : VarToIndexMap_) {
+  //   VLOG(0) << it.first->Name();
+  //   if (var_visited.count(it.first) == 0) {
+  //     auto unused_index = it.second;
+  //     const auto &var_locator = variable_locators_[unused_index];
+  //     auto group_index = var_locator.group_index;
+  //     auto &group = groups_[group_index];
+  //     group.pending_ = group.pending_ - 1;
+  //     VLOG(0) << "The var [" << it.first->Name() <<"] is no used, reset the
+  //     pending of"
+  //             " group[" << group_index << "]";
+  //   }
+  // }
+  // node_deps_.clear();
 }
 
 // Add hook function to each leaf node. When the gradient of a leaf node is
@@ -270,21 +390,48 @@ void Reducer::PrepareForBackward() {
 // counter is 0, it means that allreduce can be emitted, and
 // concat + allreduce + split is emitted in turn according to next_group_.
 // 3, FinalizeBackward: after the end, synchronize each stream.
-void Reducer::AddDistHook(VariableWrapper *var_warpper, size_t var_index) {
-  const auto &var_locator = variable_locators_[var_index];
-  auto group_index = var_locator.group_index;
-  auto &group = groups_[group_index];
+void Reducer::AddDistHook(size_t var_index) {
+  // const auto &var_locator = variable_locators_[var_index];
+  // auto group_index = var_locator.group_index;
+  // auto &group = groups_[group_index];
 
   if (!has_rebuilt_group_) {
     rebuild_vars_.push_back(vars_[var_index]);
     rebuild_var_indices_.push_back(var_index);
   }
 
+  MarkVarReady(var_index);
+  // if (!group.is_sparse_) {
+  //   // Only dense_contents_ need memory copy
+  //   MarkDenseVarReady(var_index);
+  // } else {
+  //   MarkSparseVarReady(var_index);
+  // }
+
+  // if (--group.pending_ == 0) {
+  //   // can start allreduce
+  //   MarkGroupReady(group_index);
+  // }
+
+  // if (next_group_ == groups_.size()) {
+  //   FinalizeBackward();
+  // }
+}
+
+void Reducer::MarkVarReady(size_t var_index) {
+  auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
+  const auto &var_locator = variable_locators_[var_index];
+  auto group_index = var_locator.group_index;
+  auto inside_group_index = var_locator.inside_group_index;
+  auto &group = groups_[group_index];
+  auto length = group.length_[inside_group_index];
   if (!group.is_sparse_) {
     // Only dense_contents_ need memory copy
-    MarkDenseVarReady(var_index, var_warpper);
+    auto tensor = var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
+    group.dense_tensors_[inside_group_index].ShareDataWith(*tensor).Resize(
+        {static_cast<int64_t>(length)});
   } else {
-    MarkSparseVarReady(var_index, var_warpper);
+    group.sparse_contents_ = var_warpper->MutableVar();
   }
 
   if (--group.pending_ == 0) {
@@ -297,26 +444,27 @@ void Reducer::AddDistHook(VariableWrapper *var_warpper, size_t var_index) {
   }
 }
 
-void Reducer::MarkDenseVarReady(size_t var_index,
-                                VariableWrapper *var_warpper) {
-  const auto &var_locator = variable_locators_[var_index];
-  auto group_index = var_locator.group_index;
-  auto inside_group_index = var_locator.inside_group_index;
-  auto &group = groups_[group_index];
-  auto length = group.length_[inside_group_index];
+// void Reducer::MarkDenseVarReady(size_t var_index) {
+//   auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
+//   const auto &var_locator = variable_locators_[var_index];
+//   auto group_index = var_locator.group_index;
+//   auto inside_group_index = var_locator.inside_group_index;
+//   auto &group = groups_[group_index];
+//   auto length = group.length_[inside_group_index];
 
-  auto tensor = var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
-  group.dense_tensors_[inside_group_index].ShareDataWith(*tensor).Resize(
-      {static_cast<int64_t>(length)});
-}
+//   auto tensor =
+//   var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
+//   group.dense_tensors_[inside_group_index].ShareDataWith(*tensor).Resize(
+//       {static_cast<int64_t>(length)});
+// }
 
-void Reducer::MarkSparseVarReady(size_t var_index,
-                                 VariableWrapper *var_warpper) {
-  const auto &var_locator = variable_locators_[var_index];
-  auto group_index = var_locator.group_index;
-  auto &group = groups_[group_index];
-  group.sparse_contents_ = var_warpper->MutableVar();
-}
+// void Reducer::MarkSparseVarReady(size_t var_index) {
+//   auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
+//   const auto &var_locator = variable_locators_[var_index];
+//   auto group_index = var_locator.group_index;
+//   auto &group = groups_[group_index];
+//   group.sparse_contents_ = var_warpper->MutableVar();
+// }
 
 void Reducer::MarkGroupReady(size_t group_index) {
   if (group_index > next_group_) {

@@ -18,12 +18,15 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <queue>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/memory/memory.h"
 
@@ -130,13 +133,18 @@ class Reducer {
   void InitializeDenseGroups(const std::vector<size_t>& variable_indices_,
                              Group* p_group);
 
-  void PrepareForBackward();
+  void PrepareDeps(const std::unordered_set<GradOpNode*>& init_nodes);
 
-  void AddDistHook(VariableWrapper* var_warpper, size_t var_index);
+  void PrepareForBackward(
+      const std::vector<std::shared_ptr<imperative::VarBase>>& outputs);
 
-  void MarkDenseVarReady(size_t var_index, VariableWrapper* var_warpper);
+  void AddDistHook(size_t var_index);
 
-  void MarkSparseVarReady(size_t var_index, VariableWrapper* var_warpper);
+  // void MarkDenseVarReady(size_t var_index);
+
+  // void MarkSparseVarReady(size_t var_index);
+
+  void MarkVarReady(size_t var_index);
 
   void MarkGroupReady(size_t group_index);
 
@@ -194,6 +202,11 @@ class Reducer {
   std::vector<std::shared_ptr<imperative::VarBase>> rebuild_vars_;
   std::vector<int64_t> rebuild_var_indices_;
   const std::vector<size_t> group_size_limits_;
+
+  // Following variables are to help unused vars
+  std::unordered_map<GradOpNode*, size_t> node_deps_;
+  std::unordered_map<VariableWrapper*, size_t> VarToIndexMap_;
+  bool has_marked_unused_vars{false};
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
