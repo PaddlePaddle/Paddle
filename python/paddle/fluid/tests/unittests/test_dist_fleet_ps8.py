@@ -168,6 +168,8 @@ class TestExponentialDecay(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)
 
+        fleet.init_server()
+
 
 if __name__ == '__main__':
     unittest.main()
