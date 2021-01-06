@@ -38,16 +38,31 @@ TEST(AsyncVariableTest, EmplaceGetSameThread) {
   EXPECT_EQ(async_variable.Get<int>(), 5);
 }
 
-void set_async_variable(AsyncVariable* async_variable) {
-  async_variable->Emplace<int64_t>(std::forward<int64_t>(57));
+void emplace_async_variable(AsyncVariable* async_variable) {
+  async_variable->Emplace<float>(std::forward<float>(57.0f));
 }
 
-TEST(AsyncVariableTest, ThreadJoin) {
+TEST(AsyncVariableTest, ThreadJoinEmplace) {
   AsyncVariable async_variable;
-  std::thread check_thread = std::thread(set_async_variable, &async_variable);
+  std::thread check_thread =
+      std::thread(emplace_async_variable, &async_variable);
   check_thread.join();
-  int64_t value = async_variable.Get<int64_t>();
-  EXPECT_EQ(value, 57);
+  float value = async_variable.Get<float>();
+  EXPECT_EQ(value, 57.0f);
+}
+
+void mutable_async_variable(AsyncVariable* async_variable) {
+  int* mutable_value = async_variable->GetMutable<int>();
+  *mutable_value = 14;
+}
+
+TEST(AsyncVariableTest, ThreadJoinMutable) {
+  AsyncVariable async_variable;
+  std::thread check_thread =
+      std::thread(mutable_async_variable, &async_variable);
+  check_thread.join();
+  int value = async_variable.Get<int>();
+  EXPECT_EQ(value, 14);
 }
 
 }  // namespace framework
