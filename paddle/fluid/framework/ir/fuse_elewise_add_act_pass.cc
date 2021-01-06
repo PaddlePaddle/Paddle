@@ -231,7 +231,7 @@ Node *FuseElewiseAddActPass::CreateFuseElewiseAddActNode(
   desc.SetInput("Y", std::vector<std::string>({ele_y_n}));
   desc.SetOutput("Out", std::vector<std::string>({act_out_n}));
   desc.SetOutput("IntermediateOut", std::vector<std::string>({ele_out_n}));
-  desc.SetType("fused_elemwise_activation");
+  desc.SetType("fused_elemwise_add_activation");
   desc.SetAttr("save_intermediate_out", true);
   desc.SetAttr("functor_list", std::vector<std::string>(
                                    {op_1->Op()->Type(), op_2->Op()->Type()}));
