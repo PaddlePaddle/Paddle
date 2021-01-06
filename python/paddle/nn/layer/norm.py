@@ -1115,7 +1115,7 @@ class SyncBatchNorm(_BatchNormBase):
             layer_output._mean = layer._mean
             layer_output._variance = layer._variance
 
-        for name, sublayer in layer.named_sublayers():
+        for name, sublayer in layer.named_children():
             layer_output.add_sublayer(name,
                                       cls.convert_sync_batchnorm(sublayer))
         del layer
