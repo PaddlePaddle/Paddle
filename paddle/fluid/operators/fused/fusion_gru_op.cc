@@ -489,4 +489,4 @@ REGISTER_OP_VERSION(fusion_gru)
             "Scale_weights",
             "The added attribute 'Scale_weights' is not yet "
             "registered.",
-            {1.0f}));
+            std::vector<float>{1.0f}));
