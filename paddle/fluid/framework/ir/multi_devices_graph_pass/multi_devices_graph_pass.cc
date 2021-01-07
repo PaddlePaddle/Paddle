@@ -522,7 +522,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
               scopes, places, grad_merge_cond_name, multi_nccl_ctxs_));
 #elif defined(PADDLE_WITH_XPU_BKCL)
       result->Get<GraphOps>(kGraphOps).emplace_back(
-          new datails::GradMergeAllReduceOpHandle(
+          new details::GradMergeAllReduceOpHandle(
               result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
               scopes, places, grad_merge_cond_name, multi_bkcl_ctxs_));
 #else
