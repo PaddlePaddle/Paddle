@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import os
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -212,14 +211,10 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         for i in range(iters):
             self.assertAlmostEqual(loss_vals[i], loss_vals_fused[i], delta=1e-5)
 
-    @unittest.skipIf(os.name == "nt",
-                     "fusion_group is not enabled for Windows.")
     def test_fuse_bn_add_act(self):
         place = fluid.CUDAPlace(0)
         self.check(place, use_cuda=True)
 
-    @unittest.skipIf(os.name == "nt",
-                     "fusion_group is not enabled for Windows.")
     def test_fuse_bn_add_act_API(self):
         # build_fused_program: use fused_bn_add_act python API
         main_program = fluid.Program()

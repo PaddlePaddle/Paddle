@@ -97,7 +97,9 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
             feed_list=[img, label], capacity=5, iterable=True)
         loader.set_batch_generator(self._random_batch_reader(), places=place)
 
-        for data in loader():
+        for i, data in enumerate(loader()):
+            if i >= 40:
+                break
             exe.run(main_program, feed=data, fetch_list=[avg_loss])
 
         fluid.io.save_inference_model(
