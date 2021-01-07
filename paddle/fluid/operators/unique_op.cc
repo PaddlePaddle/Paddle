@@ -184,7 +184,7 @@ REGISTER_OP_VERSION(unique)
             .NewAttr("axis",
                      "The axis to apply unique. If None, the input will be "
                      "flattened.",
-                     {})
+                     std::vector<int>{})
             .NewAttr("is_sorted",
                      "If True, the unique elements of X are in ascending order."
                      "Otherwise, the unique elements are not sorted.",

@@ -462,6 +462,7 @@ def xpu_places(device_ids=None):
         list of paddle.XPUPlace: Created XPU place list.
     Examples:
         .. code-block:: python
+        
             import paddle
             import paddle.static as static
             
@@ -1053,8 +1054,8 @@ class Variable(object):
         if is_new_var:
             self.desc.set_type(type)
         elif self.desc.type() != type:
-            raise ValueError("Variable {0} has been created before. The "
-                             "previous type is {1}; the new type is {2}. They"
+            raise ValueError("Variable '{0}' has been created before. The "
+                             "previous type is {1}, the new type is {2}. They"
                              " are not matched".format(self.name,
                                                        self.desc.type(), type))
 
@@ -1066,8 +1067,8 @@ class Variable(object):
                 shape = tuple(shape)
                 if shape != old_shape:
                     raise ValueError(
-                        "Variable {0} has been created before. the previous "
-                        "shape is {1}; the new shape is {2}. They are not "
+                        "Variable '{0}' has been created before. The previous "
+                        "shape is {1}, the new shape is {2}. They are not "
                         "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
             if is_new_var:
@@ -1075,8 +1076,8 @@ class Variable(object):
             else:
                 old_dtype = self.dtype
                 if dtype != old_dtype:
-                    raise ValueError("Variable {0} has been created before. "
-                                     "The previous data type is {1}; the new "
+                    raise ValueError("Variable '{0}' has been created before. "
+                                     "The previous data type is {1}, the new "
                                      "data type is {2}. They are not "
                                      "matched.".format(self.name, old_dtype,
                                                        dtype))
@@ -1086,8 +1087,8 @@ class Variable(object):
                 self.desc.set_lod_level(lod_level)
             else:
                 if lod_level != self.lod_level:
-                    raise ValueError("Variable {0} has been created before. "
-                                     "The previous lod_level is {1}; the new "
+                    raise ValueError("Variable '{0}' has been created before. "
+                                     "The previous lod_level is {1}, the new "
                                      "lod_level is {2}. They are not "
                                      "matched".format(self.name, self.lod_level,
                                                       lod_level))
@@ -1097,8 +1098,8 @@ class Variable(object):
             else:
                 if persistable != self.persistable:
                     raise ValueError(
-                        "Variable {0} has been created before."
-                        "The previous persistable is {1}; the new "
+                        "Variable '{0}' has been created before."
+                        "The previous persistable is {1}, the new "
                         "persistable is {2}. They are not matched".format(
                             self.name, self.persistable, persistable))
 
@@ -5804,3 +5805,64 @@ def get_flags(flags):
     else:
         raise TypeError('Flags in get_flags should be a list, tuple or string.')
     return flags_value
+
+
+def _get_paddle_place(place):
+    "convert the string to paddle Place"
+    if place is None:
+        return place
+    if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
+                          core.CUDAPinnedPlace, core.CUDAPlace)):
+        return place
+
+    if not isinstance(place, str):
+        raise ValueError(
+            "place only support string which is 'Place' and so on.")
+
+    place = place.lower()
+    if (place == "cpu"):
+        return core.CPUPlace()
+    if (place == "device"):
+        return core.Place()
+
+    avaliable_gpu_place = re.match(r'gpu:\d+', place)
+    if place == "gpu_pinned" or place == "gpu" or avaliable_gpu_place:
+        if not core.is_compiled_with_cuda():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with CUDA".format(avaliable_gpu_place))
+        if place == "gpu_pinned":
+            return core.CUDAPinnedPlace()
+        elif place == "gpu":
+            return core.CUDAPlace(0)
+        else:
+            place_info_list = place.split(':', 1)
+            device_id = place_info_list[1]
+            device_id = int(device_id)
+            return core.CUDAPlace(device_id)
+    avaliable_xpu_place = re.match(r'xpu:\d+', place)
+    if avaliable_xpu_place:
+        if not core.is_compiled_with_xpu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with XPU".format(avaliable_xpu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.XPUPlace(device_id)
+    raise ValueError(
+        "paddle support CPUPlace, CUDAPlace,CUDAPinnedPlace and XPUPlace, Please check your Place Input"
+    )
+
+
+def _get_paddle_place_list(places):
+
+    if not isinstance(places, (list, tuple)):
+        raise TypeError("places must to be List or Tuple")
+
+    ret = []
+    for p in places:
+        p = _get_paddle_place(p)
+        ret.append(p)
+
+    return ret
