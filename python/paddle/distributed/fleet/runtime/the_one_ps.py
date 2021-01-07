@@ -845,8 +845,7 @@ class TheOnePSRuntime(RuntimeBase):
                                            feeded_var_names,
                                            target_vars,
                                            main_program=None,
-                                           export_for_deployment=True,
-                                           mode=0):
+                                           export_for_deployment=True):
         """
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
@@ -884,7 +883,7 @@ class TheOnePSRuntime(RuntimeBase):
             program = Program.parse_from_string(program_desc_str)
             program._copy_dist_param_info_from(fluid.default_main_program())
             self._ps_inference_save_persistables(
-                executor, dirname, program, mode=mode)
+                executor, dirname, program)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)

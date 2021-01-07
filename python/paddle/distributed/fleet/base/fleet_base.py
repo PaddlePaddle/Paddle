@@ -520,8 +520,7 @@ class Fleet(object):
                              feeded_var_names,
                              target_vars,
                              main_program=None,
-                             export_for_deployment=True,
-                             mode=0):
+                             export_for_deployment=True):
         """
         save inference model for inference.
 
@@ -544,7 +543,7 @@ class Fleet(object):
 
         self._runtime_handle._save_inference_model(
             executor, dirname, feeded_var_names, target_vars, main_program,
-            export_for_deployment, mode)
+            export_for_deployment)
 
     def save_persistables(self, executor, dirname, main_program=None, mode=0):
         """
