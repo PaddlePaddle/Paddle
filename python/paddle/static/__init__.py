@@ -63,4 +63,4 @@ from ..fluid.io import load_program_state  #DEFINE_ALIAS
 from ..fluid.io import set_program_state  #DEFINE_ALIAS
 from ..fluid.layers import create_parameter  #DEFINE_ALIAS
 from ..fluid.layers import create_global_var  #DEFINE_ALIAS
-from ..fluid.layers.metric_op.auc import auc  #DEFINE_ALIAS
+from ..fluid.layers.metric_op import auc  #DEFINE_ALIAS
