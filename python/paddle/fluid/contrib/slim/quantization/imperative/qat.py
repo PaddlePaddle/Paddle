@@ -368,11 +368,11 @@ class ImperativeCalcOutScale(object):
                 self._out_scale_dict[key] = float(self._out_scale_dict[key]
                                                   .numpy())
 
-        paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
-
         if paddle.in_dynamic_mode():
             is_dynamic_mode = True
             paddle.enable_static()
+
+        paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
