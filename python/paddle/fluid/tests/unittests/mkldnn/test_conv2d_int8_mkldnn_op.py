@@ -28,6 +28,8 @@ def conv2d_forward_refer(input, filter, group, conv_param):
     return out
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 or INT8 evaluation")
 class TestConv2DInt8Op(TestConv2DOp):
     def setUp(self):
         self.op_type = "conv2d"
@@ -186,6 +188,8 @@ class TestConv2DInt8Op(TestConv2DOp):
 #--------------------test conv2d u8 in and u8 out with residual fuse--------------------
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 or INT8 evaluation")
 class TestConv2D(TestConv2DInt8Op):
     def init_test_case(self):
         self.pad = [0, 0]
@@ -201,6 +205,8 @@ class TestConv2D(TestConv2DInt8Op):
         self.scale_in_eltwise = 0.6
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 or INT8 evaluation")
 class TestWithPad(TestConv2D):
     def init_test_case(self):
         TestConv2D.init_test_case(self)
@@ -208,11 +214,15 @@ class TestWithPad(TestConv2D):
         self.input_residual_size = [2, 6, 5, 5]
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 or INT8 evaluation")
 class TestWithGroup(TestConv2D):
     def init_group(self):
         self.groups = 3
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 or INT8 evaluation")
 class TestWithStride(TestConv2DInt8Op):
     def init_test_case(self):
         self.pad = [1, 1]
@@ -228,6 +238,8 @@ class TestWithStride(TestConv2DInt8Op):
         self.scale_in_eltwise = 0.5
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 or INT8 evaluation")
 class TestWithDilations(TestConv2DInt8Op):
     def init_test_case(self):
         self.pad = [1, 1]
@@ -244,6 +256,8 @@ class TestWithDilations(TestConv2DInt8Op):
         self.scale_in_eltwise = 0.5
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 or INT8 evaluation")
 class TestWith1x1(TestConv2DInt8Op):
     def init_test_case(self):
         self.pad = [0, 0]
@@ -259,6 +273,8 @@ class TestWith1x1(TestConv2DInt8Op):
         self.scale_in_eltwise = 0.5
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 or INT8 evaluation")
 class TestWithInput1x1Filter1x1(TestConv2DInt8Op):
     def init_test_case(self):
         self.pad = [0, 0]
@@ -289,43 +305,50 @@ def init_data_type_with_fusion(self, input_dt, fuse_activation, fuse_residual):
 def create_test_int8_class(parent):
 
     #--------------------test conv2d s8 in and u8 out--------------------
-
+    @unittest.skipIf(not core.supports_bfloat16(),
+                     "place does not support BF16 or INT8 evaluation")
     class TestS8U8Case(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.int8, "relu", False)
 
     #--------------------test conv2d s8 in and s8 out--------------------
-
+    @unittest.skipIf(not core.supports_bfloat16(),
+                     "place does not support BF16 or INT8 evaluation")
     class TestS8S8Case(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.int8, "", False)
 
     #--------------------test conv2d u8 in and s8 out--------------------
-
+    @unittest.skipIf(not core.supports_bfloat16(),
+                     "place does not support BF16 or INT8 evaluation")
     class TestU8S8Case(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, "", False)
 
     #--------------------test conv2d u8 in and u8 out without residual fuse--------------------
-
+    @unittest.skipIf(not core.supports_bfloat16(),
+                     "place does not support BF16 or INT8 evaluation")
     class TestU8U8Case(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, "relu", False)
 
     #--------------------test conv2d s8 in and u8 out with residual fuse--------------------
-
+    @unittest.skipIf(not core.supports_bfloat16(),
+                     "place does not support BF16 or INT8 evaluation")
     class TestS8U8ResCase(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.int8, "relu", True)
 
     #--------------------test conv2d s8 in and s8 out with residual fuse--------------------
-
+    @unittest.skipIf(not core.supports_bfloat16(),
+                     "place does not support BF16 or INT8 evaluation")
     class TestS8S8ResCase(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.int8, "", True)
 
     #--------------------test conv2d u8 in and s8 out with residual fuse--------------------
-
+    @unittest.skipIf(not core.supports_bfloat16(),
+                     "place does not support BF16 or INT8 evaluation")
     class TestU8S8ResCase(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, "", True)
@@ -365,6 +388,8 @@ create_test_int8_class(TestWith1x1)
 create_test_int8_class(TestWithInput1x1Filter1x1)
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 or INT8 evaluation")
 class TestConv2DOp_AsyPadding_INT_MKLDNN(TestConv2DInt8Op):
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -374,12 +399,16 @@ class TestConv2DOp_AsyPadding_INT_MKLDNN(TestConv2DInt8Op):
         self.padding_algorithm = "EXPLICIT"
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 or INT8 evaluation")
 class TestConv2DOp_Same_INT_MKLDNN(TestConv2DOp_AsyPadding_INT_MKLDNN):
     def init_paddings(self):
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 or INT8 evaluation")
 class TestConv2DOp_Valid_INT_MKLDNN(TestConv2DOp_AsyPadding_INT_MKLDNN):
     def init_paddings(self):
         self.pad = [1, 1]
