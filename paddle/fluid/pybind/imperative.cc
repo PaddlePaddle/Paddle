@@ -200,8 +200,9 @@ static void InitVarBaseFromTensorWithArgDefault(
 }
 
 template <typename P>
-static void InitVarBaseFromTensorWithArg(
-    imperative::VarBase *self, const framework::LoDTensor &tensor, const P &place) {
+static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
+                                         const framework::LoDTensor &tensor,
+                                         const P &place) {
   VLOG(4) << "Init VarBase";
   new (self) imperative::VarBase(
       imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor"));
@@ -594,10 +595,14 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
-      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CPUPlace>, py::arg("tensor"), py::arg("place"))
-      .def("__init__", &InitVarBaseFromTensorWithArg<platform::XPUPlace>, py::arg("tensor"), py::arg("place"))
-      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPlace>, py::arg("tensor"), py::arg("place"))
-      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPinnedPlace>, py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CPUPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::XPUPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPinnedPlace>,
+           py::arg("tensor"), py::arg("place"))
       .def("__setitem__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
               py::object &value_obj) {
