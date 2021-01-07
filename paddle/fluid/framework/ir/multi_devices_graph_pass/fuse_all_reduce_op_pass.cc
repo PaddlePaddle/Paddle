@@ -276,7 +276,7 @@ class FuseAllReduceOpPass : public ir::Pass {
                                   ir::Node::Type::kOperation),
           local_scopes, places, num_of_all_reduce, multi_nccl_ctxs);
 #elif defined(PADDLE_WITH_XPU_BKCL)
-      auto *op_handle = new details::FusedAllReduceOpHandle(
+      op_handle = new details::FusedAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
           local_scopes, places, num_of_all_reduce, multi_bkcl_ctxs);
