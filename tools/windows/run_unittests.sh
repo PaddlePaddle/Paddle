@@ -83,16 +83,6 @@ diable_wingpu_test="^test_gradient_clip$|\
 ^test_rnn_op$|\
 ^test_simple_rnn_op$|\
 ^test_lstm_cudnn_op$|\
-^test_conv2d_int8_mkldnn_op$|\
-^test_inplace_addto_strategy$|\
-^test_ir_inplace_pass$|\
-^test_ir_memory_optimize_pass$|\
-^test_memory_reuse_exclude_feed_var$|\
-^test_mix_precision_all_reduce_fuse$|\
-^test_parallel_executor_pg$|\
-^test_print_op$|\
-^test_py_func_op$|\
-^test_weight_decay$|\
 ^test_crypto$|\
 ^test_program_prune_backward$|\
 ^test_imperative_ocr_attention_model$|\
