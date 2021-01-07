@@ -121,6 +121,7 @@ class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
              "(LoDTensor, SelectedRows or LoDTensorArray) The input variable "
              "could be LoDTensor, SelectedRows or LoDTensorArray.")
         .AsDispensable();
+    AddAttr<int>("index", "index of input").SetDefault({});
     AddOutput("Out",
               "(LoDTensor, SelectedRows or LoDTensorArray) The type of output "
               "is the same as input X.");

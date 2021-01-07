@@ -37,11 +37,15 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVecotorToTensor(
   auto values = ctx.Attr<std::vector<int>>(value_name);
   framework::TensorFromVector(values, ctx.device_context(), out);
 
-  // use the array to replace to vector
-  bool* array_ptr = new T[values.size()];
-  for (unsigned int i = 0; i < values.size(); i++) {
-    array_ptr[i] = static_cast<T>(values[i]);
-  }
+  auto index = ctx.Attr<int>("index");
+  array_ptr[index] = static_cast<T>(values[index]);
+
+  // // use the array to replace to vector
+  // bool* array_ptr = new T[values.size()];
+  // for (unsigned int i = 0; i < values.size(); i++) {
+  //   array_ptr[i] = static_cast<T>(values[i]);
+  // }
+
   framework::TensorFromArray(array_ptr, values.size(), ctx.device_context(),
                              out);
   delete[] array_ptr;
@@ -63,7 +67,7 @@ class AssignValueKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::Tensor>("Out");
     int dtype = ctx.Attr<int>("dtype");
     int index = ctx.Attr<int>("index");
-    VLOG(0) << "index of input:"<<index;
+    VLOG(0) << "index of input:" << index;
     const char* value_name = nullptr;
     switch (dtype) {
       case framework::proto::VarType::BOOL:

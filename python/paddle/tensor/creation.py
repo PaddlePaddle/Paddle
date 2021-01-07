@@ -1070,7 +1070,10 @@ def assign(x, output=None, index=None):
         if output is None:
             output = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
-            type='assign', inputs={'X': [x]}, outputs={'Out': [output]})
+            type='assign',
+            inputs={'X': [x]},
+            attrs={'index': index},
+            outputs={'Out': [output]})
     elif isinstance(x, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(x.dtype)
         if dtype == VarDesc.VarType.BOOL:
@@ -1098,9 +1101,11 @@ def assign(x, output=None, index=None):
         helper.append_op(
             type='assign_value',
             outputs={'Out': [output]},
-            attrs={'dtype': dtype,
-                   'index': index,
-                   'shape': list(x.shape),
-                   value_name: values})
+            attrs={
+                'dtype': dtype,
+                'index': index,
+                'shape': list(x.shape),
+                value_name: values
+            })
 
     return output
