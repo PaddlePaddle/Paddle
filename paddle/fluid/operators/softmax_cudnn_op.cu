@@ -335,7 +335,12 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
         } else {
           assert(false && "not support");
         }
-      } else if (dim < 32) {
+      } else if (dim >= 32 && (dim % 32 == 0)) {
+        optimize = true;
+        BlockSoftmaxForward<
+            T><<<N, dim, 0, ctx.cuda_device_context().stream()>>>(out_data,
+                                                                  x->data<T>());
+      } else {
         // LOG(INFO) << "N: " << N << "dim: " << dim;
         optimize = true;
         int log2_elements = static_cast<int>(log2_ceil(dim));
@@ -372,23 +377,19 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
           default:
             break;
         }
-      } else if (dim >= 32 && (dim % 32 == 0)) {
-        optimize = true;
-        BlockSoftmaxForward<
-            T><<<N, dim, 0, ctx.cuda_device_context().stream()>>>(out_data,
-                                                                  x->data<T>());
-      } else if (dim >= 32 && dim <= 512) {
-        optimize = true;
-        // int warp_per_block = (dim + 32 - 1) / 32;
-        // int block = warp_per_block * 32;
-        // int grid = (N*dim + block - 1) / block;
-        // LOG(INFO) << "N: " << N << "dim: " << dim;
-        // LOG(INFO) << "block: " << block<<"grid: "<<grid;
-        int block = dim;
-        SoftmaxForward<T><<<N, block, block * sizeof(float),
-                            ctx.cuda_device_context().stream()>>>(
-            out_data, x->data<T>(), N, dim);
       }
+      // else if (dim >= 32 && dim <= 512) {
+      // optimize = true;
+      // int warp_per_block = (dim + 32 - 1) / 32;
+      // int block = warp_per_block * 32;
+      // int grid = (N*dim + block - 1) / block;
+      // LOG(INFO) << "N: " << N << "dim: " << dim;
+      // LOG(INFO) << "block: " << block<<"grid: "<<grid;
+      // int block = dim;
+      // SoftmaxForward<T><<<N, block, block * sizeof(float),
+      //                     ctx.cuda_device_context().stream()>>>(
+      //     out_data, x->data<T>(), N, dim);
+      //}
     }
     if (!optimize) {
       ScopedTensorDescriptor desc;
