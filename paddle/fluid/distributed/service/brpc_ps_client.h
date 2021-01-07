@@ -23,6 +23,9 @@
 #include "brpc/controller.h"
 #include "brpc/server.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor_util.h"
 
 namespace paddle {
 namespace distributed {
@@ -162,6 +165,8 @@ class BrpcPsClient : public PSClient {
                                      const std::vector<std::string> &param);
 
   void local_save_sparse_param(
+    uint32_t table_id, const std::string &path);
+  void local_save_sparse_tensor(
     uint32_t table_id, const std::string &path);
 
   void SaveToText(std::ostream* os, const std::vector<uint64_t>* keys, const std::vector<float*>* values, const uint32_t& var_shape);

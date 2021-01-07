@@ -58,6 +58,16 @@ DEFINE_int32(pserver_connect_timeout_ms, 10000,
 DEFINE_int32(pserver_sparse_merge_thread, 1, "pserver sparse merge thread num");
 
 namespace paddle {
+namespace framework {
+class Scope;
+class Variable;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace distributed {
 
 inline size_t get_sparse_shard(uint32_t shard_num, uint32_t server_num,
@@ -352,16 +362,91 @@ std::future<int32_t> BrpcPsClient::save(const std::string &epoch,
 std::future<int32_t> BrpcPsClient::save(uint32_t table_id,
                                         const std::string &epoch,
                                         const std::string &mode) {
-  local_save_sparse_param(table_id, epoch);
+  if( mode == "4"){
+    local_save_sparse_param(table_id, epoch);
+  } else if ( mode == "5"){
+    local_save_sparse_tensor(table_id, epoch);
+  }
   return send_save_cmd(table_id, PS_SAVE_ONE_TABLE, {epoch, mode});
+}
+
+void BrpcPsClient::local_save_sparse_tensor(
+    uint32_t table_id, const std::string &path) {
+  // get var information
+  std::string var_name = "";
+  int64_t var_num = 0;
+  int64_t var_shape = 0;
+  const auto& worker_param = _config.worker_param().downpour_worker_param();
+  for(size_t i =0; i< worker_param.downpour_table_param_size(); ++i){
+    if (worker_param.downpour_table_param(i).table_id() == table_id){
+      var_name = worker_param.downpour_table_param(i).common().table_name();
+      var_num = worker_param.downpour_table_param(i).accessor().fea_dim();
+      var_shape = worker_param.downpour_table_param(i).accessor().embedx_dim();
+      break;
+    }
+  }
+
+  // assert var_name != ""
+  std::string var_store = string::Sprintf("%s", path);
+  MkDirRecursively(var_store.c_str());
+  VLOG(1) << "Save sparse table " << var_name << " in dir: " << var_store << " begin";
+
+  std::vector<float> save_huge_vec(var_num * var_shape);
+  std::vector<uint64_t> save_key(var_num);
+  std::vector<float*> save_vec;
+  for(size_t i=0; i<save_key.size(); ++i){
+    save_key[i] = i;
+    save_vec.push_back(save_huge_vec.data() + i*var_shape);
+  }
+
+  auto status = pull_sparse((float **)save_vec.data(), table_id, save_key.data(), save_key.size());
+  status.wait(); 
+
+  VLOG(1) << "Save sparse table " << var_name << " end pull sparse";
+  // create lod tensor
+  std::shared_ptr<framework::Scope> scope;
+  scope.reset(new framework::Scope());
+  auto place = platform::CPUPlace();
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(place);
+
+  VLOG(1) << "Save sparse table " << var_name << " end create scope, place";
+
+  framework::Variable *var = scope->Var(var_name);
+  framework::LoDTensor* var_tensor = var->GetMutable<framework::LoDTensor>();
+
+  std::vector<int64_t> vec_dim = {var_num, var_shape};
+  var_tensor->Resize(framework::make_ddim(vec_dim));
+
+  // set lod
+  // framework::LoD lod;
+  // for(size_t l=0; l<var_num; ++l){
+  //   lod.push_back(l * var_shape);
+  // }
+  // var_tensor->set_lod(lod);
+  VLOG(1) << "Save sparse table " << var_name << " end create var";
+
+  float* tensor_data = var_tensor->mutable_data<float>(place);
+  memcpy(tensor_data, save_huge_vec.data(), var_num * var_shape * sizeof(float));
+  
+  VLOG(1) << "Save sparse table " << var_name << " end memcpy";
+  std::string file_name = string::Sprintf("%s/%s", var_store, var_name);
+  std::ofstream fout(file_name, std::ios::binary);
+  PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
+                    platform::errors::Unavailable(
+                        "Cannot open %s to save variables.", file_name));
+
+  framework::SerializeToStream(fout, *var_tensor, dev_ctx);
+  fout.close();
+  VLOG(1) << "Save sparse table " << var_name << " end";
 }
 
 void BrpcPsClient::local_save_sparse_param(
     uint32_t table_id, const std::string &path) {
   // get var information
   std::string var_name = "";
-  uint32_t var_num = 0;
-  uint32_t var_shape = 0;
+  int64_t var_num = 0;
+  int64_t var_shape = 0;
   const auto& worker_param = _config.worker_param().downpour_worker_param();
   for(size_t i =0; i< worker_param.downpour_table_param_size(); ++i){
     if (worker_param.downpour_table_param(i).table_id() == table_id){

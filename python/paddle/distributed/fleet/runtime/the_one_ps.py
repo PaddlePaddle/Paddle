@@ -761,23 +761,15 @@ class TheOnePSRuntime(RuntimeBase):
 
         return is_valid
 
-    def _remote_save_sparse_params(self, executor, dirname, context, main_program):
+    def _save_sparse_params(self, executor, dirname, context, main_program, mode):
         values = []
         for id, names in context.items():
             values.extend(names)
-            self._worker.save_one_model(id, dirname, 0)
+            self._worker.save_one_model(id, dirname, mode)
         return values
 
-    def _local_save_sparse_params(self, executor, dirname, context, main_program):
-        for id, names in context.items():
-            self._worker.recv_save_model(id, dirname)
-        pass
-
-    def _local_save_sparse_tensor(self, executor, dirname, context, main_program):
-        pass
-
     def _save_distributed_persistables(self, executor, dirname, main_program,
-                                       mode):
+                                       mode=0):
 
         denses = self.compiled_strategy.get_the_one_recv_context(
             is_dense=True,
@@ -788,9 +780,9 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             use_origin_program=True)
 
-        
-        recv_sparse_varnames = self._remote_save_sparse_params(executor, dirname,
-                                                                sparses, main_program)
+     
+        recv_sparse_varnames = self._save_sparse_params(executor, dirname,
+                                                            sparses, main_program, mode)
 
         recv_dense_varnames = []
         for id, names in denses.items():
@@ -853,7 +845,8 @@ class TheOnePSRuntime(RuntimeBase):
                                            feeded_var_names,
                                            target_vars,
                                            main_program=None,
-                                           export_for_deployment=True):
+                                           export_for_deployment=True,
+                                           mode=0):
         """
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
@@ -891,7 +884,7 @@ class TheOnePSRuntime(RuntimeBase):
             program = Program.parse_from_string(program_desc_str)
             program._copy_dist_param_info_from(fluid.default_main_program())
             self._ps_inference_save_persistables(
-                executor, dirname, program, mode=0)
+                executor, dirname, program, mode=mode)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)
