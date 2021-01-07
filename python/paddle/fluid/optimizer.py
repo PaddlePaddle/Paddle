@@ -4600,7 +4600,7 @@ class RecomputeOptimizer(Optimizer):
         self._checkpoints = None
         self._learning_rate = self._optimizer._learning_rate
         self._learning_rate_map = self._optimizer._learning_rate_map
-        self._offload = False
+        self.enable_offload = False
 
     def _set_checkpoints(self, checkpoints):
         """
@@ -4618,7 +4618,7 @@ class RecomputeOptimizer(Optimizer):
 
     # should enable offload before calling backward 
     def _enable_offload(self):
-        self._offload = True
+        self.enable_offload = True
 
     @framework.deprecate_stat_dict
     def load(self, state_dict):
@@ -4708,7 +4708,7 @@ class RecomputeOptimizer(Optimizer):
 
         return self._optimizer.apply_gradients(params_grads=params_grads)
 
-    def creat_vars(self, varname):
+    def _creat_vars(self, varname):
         pinned_var_name = unique_name.generate(varname + "@Pinned")
         fetched_var_name = unique_name.generate(varname + "@Fetch")
         # no need to rename the checkpoint in Forward pass
@@ -4804,6 +4804,7 @@ class RecomputeOptimizer(Optimizer):
         self._insert_async_memcpy_op(idx, varname, pinned_varname, 0, 1)
 
     def _insert_sync_op(self, op_idx, checkpoint_name):
+        # single stream offload no need sync 
         pass
 
     def _record_fetch_op(self, idx):
@@ -4888,7 +4889,7 @@ class RecomputeOptimizer(Optimizer):
                    ) == 0, "{} checkpoints have NOT been Recorded".format(
                        self.un_fetch_checkpoint_names)
 
-    def _update_backword(self):
+    def _update_backward(self):
         if len(self.idx2insertions) == 0:
             return
         total_op = len(self.block.ops)
@@ -5035,9 +5036,12 @@ class RecomputeOptimizer(Optimizer):
                        [ele[1] for ele in self.idx2insertions.values()])
 
     def _check_offload_fetch(self):
+        # TODO(JZ-LIANG) the single stream offload need no sync and therefore
+        # no need to check the offload-sync-fetch-sync-usage logic
+        # here is the api for future multi-stream offload
         pass
 
-    def offload(self, loss, startup_program=None):
+    def _offload(self, loss, startup_program=None):
         """
         core steps for recompute offload
         1. create pinned vars and temp vars 
@@ -5061,15 +5065,15 @@ class RecomputeOptimizer(Optimizer):
             # 1.2 create CUDAPinnedPlace vars as offloaded checkpoint in host mem
             self.checkpoint_name2pinned_name = dict()
             self.checkpoint_name2fetch_name = dict()
-            # self.checkpoint_name2load_name = dict()
+
             for checkpoint_varname in self.sorted_checkpoint_names:
-                pinned_var_name, fetch_var_name = self.creat_vars(
+                pinned_var_name, fetch_var_name = self._creat_vars(
                     checkpoint_varname)
                 self.checkpoint_name2pinned_name[
                     checkpoint_varname] = pinned_var_name
                 self.checkpoint_name2fetch_name[
                     checkpoint_varname] = fetch_var_name
-                # self.checkpoint_name2load_name[checkpoint_var.name] = offload_var_name
+
             # 1.3 add pinned_var to startup_prog
             self._append_fill_constant_ops(startup_program)
 
@@ -5080,7 +5084,7 @@ class RecomputeOptimizer(Optimizer):
 
             # step 2. parse & update FW: rename, offload, sync
             self._parse_backward()
-            self._update_backword()
+            self._update_backward()
 
             # step 3. parse & update BW: rename, offload, sync
             self._parse_forward()
@@ -5169,9 +5173,9 @@ class RecomputeOptimizer(Optimizer):
                     no_grad_set,
                     checkpoints=checkpoint_vars)
 
-        if self._offload:
+        if self.enable_offload:
             self.sorted_checkpoint_names = sorted_checkpoint_names
-            self.offload(loss, startup_program=startup_program)
+            self._offload(loss, startup_program=startup_program)
 
         return params_grads
 
