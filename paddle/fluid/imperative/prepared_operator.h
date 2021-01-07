@@ -65,11 +65,10 @@ void SetForwardDataTypeOfGradVar<VarBase>(const std::shared_ptr<VarBase>& var) {
 }
 
 template <typename VarType>
-NameVarMap<VarType> PrepareData(
+std::shared_ptr<NameVarMap<VarType>> PrepareData(
     const framework::OperatorWithKernel& op, const NameVarMap<VarType>& ins,
     const framework::OpKernelType& expected_kernel_key) {
-  bool inplace_transform = true;
-  NameVarMap<VarType> tmp_ins;
+  std::shared_ptr<NameVarMap<VarType>> tmp_ins_ptr = nullptr;
   for (const auto& name_pair : ins) {
     for (size_t i = 0; i < name_pair.second.size(); ++i) {
       auto& var_base = name_pair.second[i];
@@ -89,14 +88,13 @@ NameVarMap<VarType> PrepareData(
           if (NeedTransformDataType(kernel_type_for_var, expected_kernel_key)) {
             // To avoid NameVarMap copy construction overhead in general
             // scenarios, if inplace transformed, return original input directly
-            inplace_transform = false;
-            if (tmp_ins.empty()) {
-              tmp_ins = ins;
+            if (tmp_ins_ptr == nullptr) {
+              tmp_ins_ptr = std::make_shared<NameVarMap<VarType>>(ins);
             }
             auto tmp_var = std::make_shared<VarType>(var_base->Name());
             tmp_var->SetType(var_base->Type());
             SetTensorToVariable(var_base->Var(), out, tmp_var->MutableVar());
-            tmp_ins[name_pair.first][i] = tmp_var;
+            (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
           } else {
             // if dtype is same, transform inplace will not change the original
             // value, transform inplace to avoid multiple copy
@@ -106,10 +104,7 @@ NameVarMap<VarType> PrepareData(
       }
     }
   }
-  if (inplace_transform) {
-    return ins;
-  }
-  return tmp_ins;
+  return tmp_ins_ptr;
 }
 
 class PreparedOp {

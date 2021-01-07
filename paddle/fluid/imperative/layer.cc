@@ -377,10 +377,13 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * overwritten in the previous dynamic graph implemention.
    */
   auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs);
-  auto tmp_ins =
+  auto tmp_ins_ptr =
       PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
-
-  prepared_op.Run(tmp_ins, outs, attrs);
+  if (tmp_ins_ptr == nullptr) {
+    prepared_op.Run(ins, outs, attrs);
+  } else {
+    prepared_op.Run(*tmp_ins_ptr, outs, attrs);
+  }
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
 }
