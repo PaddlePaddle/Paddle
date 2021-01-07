@@ -199,6 +199,9 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
     case PaddleDType::UINT8:
       tensor.copy_to_cpu<uint8_t>(static_cast<uint8_t *>(array.mutable_data()));
       break;
+    case PaddleDType::INT8:
+      tensor.copy_to_cpu<int8_t>(static_cast<int8_t *>(array.mutable_data()));
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported data type. Now only supports INT32, INT64, UINT8 and "
@@ -222,6 +225,12 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
       break;
     case PaddleDType::FLOAT32:
       tensor.CopyToCpu<float>(static_cast<float *>(array.mutable_data()));
+      break;
+    case PaddleDType::UINT8:
+      tensor.CopyToCpu(static_cast<uint8_t *>(array.mutable_data()));
+      break;
+    case PaddleDType::INT8:
+      tensor.CopyToCpu(static_cast<int8_t *>(array.mutable_data()));
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(

@@ -946,7 +946,7 @@ EOF
         echo "ipipe_log_param_Exclusive_TestCases_Count: $num"
     else
         echo "$2 card TestCases count is $num"
-        echo "ipipe_log_param_${2}_Cards_TestCases_Count $num"
+        echo "ipipe_log_param_${2}_Cards_TestCases_Count: $num"
     fi
 }
 
@@ -1880,6 +1880,11 @@ function main() {
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
+        ;;
+      check_xpu_coverage)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        parallel_test
+        check_coverage
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}

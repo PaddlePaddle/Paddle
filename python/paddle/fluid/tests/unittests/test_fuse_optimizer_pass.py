@@ -38,7 +38,7 @@ class TestFuseOptimizationOps(TestParallelExecutorBase):
                                      feed_dict=None,
                                      get_data_from_feeder=None,
                                      optimizer=fluid.optimizer.Adam):
-        if use_device == DeviceType.GPU and not core.is_compiled_with_cuda():
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
         not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
@@ -76,7 +76,7 @@ class TestFuseAdamOps(TestFuseOptimizationOps):
 
     def test_batchnorm_fc_with_fuse_op(self):
         self._decorate_compare_fused_optimizer_ops(
-            fc_with_batchnorm, DeviceType.GPU, optimizer=self.optimizer)
+            fc_with_batchnorm, DeviceType.CUDA, optimizer=self.optimizer)
         self._decorate_compare_fused_optimizer_ops(
             fc_with_batchnorm, DeviceType.CPU, optimizer=self.optimizer)
 
@@ -121,7 +121,7 @@ class TestSpareFuseAdamOps(TestFuseOptimizationOps):
     def test_simple_bow_net_with_fuse_op(self):
         model = partial(bow_net, dict_dim=self.word_dict_len, is_sparse=True)
         self._decorate_compare_fused_optimizer_ops(
-            model, DeviceType.GPU, optimizer=self.optimizer)
+            model, DeviceType.CUDA, optimizer=self.optimizer)
         self._decorate_compare_fused_optimizer_ops(
             model, DeviceType.CPU, optimizer=self.optimizer)
 
@@ -144,7 +144,7 @@ class TestPassConflictBase(TestFuseAdamOps):
                                      feed_dict=None,
                                      get_data_from_feeder=None,
                                      optimizer=fluid.optimizer.Adam):
-        if use_device == DeviceType.GPU and not core.is_compiled_with_cuda():
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
         self.check_pass_conflict(
@@ -165,7 +165,7 @@ class TestFuseAdamOpsPassConflict(TestPassConflictBase):
         self._decorate_compare_fused_optimizer_ops(
             fc_with_batchnorm, DeviceType.CPU, optimizer=self.optimizer)
         self._decorate_compare_fused_optimizer_ops(
-            fc_with_batchnorm, DeviceType.GPU, optimizer=self.optimizer)
+            fc_with_batchnorm, DeviceType.CUDA, optimizer=self.optimizer)
 
 
 class TestFuseSGDOpsPassConflict(TestFuseAdamOpsPassConflict):

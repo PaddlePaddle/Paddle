@@ -58,7 +58,7 @@ class TestIrInplace(TestParallelExecutorBase):
             fc_with_batchnorm,
             feed_dict={"image": img,
                        "label": label},
-            use_device=DeviceType.GPU,
+            use_device=DeviceType.CUDA,
             use_ir_memory_optimize=ir_memory_optimize,
             enable_inplace=enable_inplace)
 

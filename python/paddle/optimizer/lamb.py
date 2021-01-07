@@ -65,6 +65,7 @@ class Lamb(Optimizer):
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
     Examples:
         .. code-block:: python
+            
             import paddle
             import numpy as np
             inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')

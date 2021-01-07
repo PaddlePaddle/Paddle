@@ -61,7 +61,7 @@ class TestMNIST(TestParallelExecutorBase):
         return img, label
 
     def _compare_ir_memory_optimize(self, model, use_device):
-        if use_device == DeviceType.GPU and not core.is_compiled_with_cuda():
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
         img, label = self._dummy_data()
@@ -84,11 +84,11 @@ class TestMNIST(TestParallelExecutorBase):
 
     def test_simple_fc_net(self):
         self._compare_ir_memory_optimize(simple_fc_net, DeviceType.CPU)
-        self._compare_ir_memory_optimize(simple_fc_net, DeviceType.GPU)
+        self._compare_ir_memory_optimize(simple_fc_net, DeviceType.CUDA)
 
     def test_fc_with_reshape_net(self):
         self._compare_ir_memory_optimize(fc_with_inplace_net, DeviceType.CPU)
-        self._compare_ir_memory_optimize(fc_with_inplace_net, DeviceType.GPU)
+        self._compare_ir_memory_optimize(fc_with_inplace_net, DeviceType.CUDA)
 
 
 if __name__ == '__main__':

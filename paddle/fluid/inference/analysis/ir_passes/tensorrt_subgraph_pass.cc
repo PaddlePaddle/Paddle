@@ -39,8 +39,15 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
+  auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
+    if (find(trt_disabled_ops.begin(), trt_disabled_ops.end(),
+             node->Op()->Type()) != trt_disabled_ops.end()) {
+      VLOG(3) << node->Op()->Type().c_str()
+              << " is diabled by config in TensorRT";
+      return false;
+    }
     return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op(),
                                              no_calib_int8);
   };
@@ -383,8 +390,8 @@ REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
             .EQ("concat", 0)
             .EQ("tanh", 0)
             .EQ("pad", 0)
-            .EQ("elementwise_add", 0)
-            .EQ("elementwise_mul", 0)
+            .LE("elementwise_add", 1)
+            .LE("elementwise_mul", 1)
             .EQ("prelu", 0)
             .LE("conv2d_transpose", 1)
             .LE("leaky_relu", 1)
@@ -392,8 +399,8 @@ REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
             .EQ("shuffle_channel", 0)
             .EQ("swish", 0)
             .EQ("split", 0)
-            .EQ("instance_norm", 0)
+            .LE("instance_norm", 1)
             .EQ("gelu", 0)
             .EQ("layer_norm", 0)
             .EQ("scale", 0)
-            .EQ("matmul", 0));
+            .LE("matmul", 1));
