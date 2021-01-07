@@ -28,6 +28,8 @@ SEED = 10
 IMAGE_SIZE = 784
 CLASS_NUM = 10
 
+LARGE_PARAM = 2**26
+
 
 def random_batch_reader():
     def _get_random_inputs_and_labels():
@@ -57,6 +59,16 @@ class LinearNet(nn.Layer):
         return self._linear(x)
 
 
+class LayerWithLargeParameters(paddle.nn.Layer):
+    def __init__(self):
+        super(LayerWithLargeParameters, self).__init__()
+        self._l = paddle.nn.Linear(10, LARGE_PARAM)
+
+    def forward(self, x):
+        y = self._l(x)
+        return y
+
+
 def train(layer, loader, loss_fn, opt):
     for epoch_id in range(EPOCH_NUM):
         for batch_id, (image, label) in enumerate(loader()):
@@ -65,6 +77,26 @@ def train(layer, loader, loss_fn, opt):
             loss.backward()
             opt.step()
             opt.clear_grad()
+
+
+class TestSaveLoadLargeParameters(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_large_parameters_paddle_save(self):
+        # enable dygraph mode
+        paddle.disable_static()
+        # create network
+        layer = LayerWithLargeParameters()
+        save_dict = layer.state_dict()
+
+        path = "test_paddle_save_load_large_param_save/layer" + ".pdparams"
+        paddle.save(layer.state_dict(), path)
+        dict_load = paddle.load(path)
+        # compare results before and after saving
+        for key, value in save_dict.items():
+            self.assertTrue(
+                np.sum(np.abs(dict_load[key] - value.numpy())) < 1e-15)
 
 
 class TestSaveLoad(unittest.TestCase):

@@ -143,6 +143,7 @@ packages=['paddle',
           'paddle.reader',
           'paddle.distributed',
           'paddle.incubate',
+          'paddle.incubate.optimizer',
           'paddle.distributed.fleet',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.meta_optimizers',
@@ -321,6 +322,10 @@ if '${WITH_XPU}' == 'ON':
     shutil.copy('${XPU_RT_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_API_LIB_NAME}',
                                   '${XPU_RT_LIB_NAME}']
+
+if '${WITH_XPU_BKCL}' == 'ON':
+    shutil.copy('${XPU_BKCL_LIB}', libs_path)
+    package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
 
 # copy libfuild_framework.so to libs
 if os.name != 'nt' and sys.platform != 'darwin':

@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_info.h"
@@ -106,6 +107,35 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
       return "uninited";
     } else {
       return DataTypeToString(tensor.type());
+    }
+  } else {
+    return "";
+  }
+}
+
+static std::string GetPlace(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "";
+  }
+  auto to_string = [](const platform::Place& p) {
+    std::stringstream sstream;
+    sstream << p;
+    return sstream.str();
+  };
+
+  if (var->IsType<LoDTensor>()) {
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "";
+    }
+    return to_string(tensor.place());
+  } else if (var->IsType<SelectedRows>()) {
+    auto tensor = var->Get<SelectedRows>().value();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "uninited";
+    } else {
+      return to_string(tensor.place());
     }
   } else {
     return "";
@@ -297,6 +327,7 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           ss << ":" << dtype;
           ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
           ss << "(" << GetLoDDebug(*scope, var_name) << ")";
+          ss << "(" << GetPlace(*scope, var_name) << ")";
         }
       }
       if (i != input.second.size() - 1) {
@@ -328,6 +359,7 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           ss << ":" << dtype;
           ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
           ss << "(" << GetLoDDebug(*scope, var_name) << ")";
+          ss << "(" << GetPlace(*scope, var_name) << ")";
         }
       }
       if (i != output.second.size() - 1) {
@@ -1130,6 +1162,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
+    VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
+#endif
   }
 
   if (FLAGS_fast_check_nan_inf) {

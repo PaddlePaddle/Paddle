@@ -73,7 +73,7 @@ class TestMNIST(TestParallelExecutorBase):
         return img, label
 
     def _compare(self, model, use_device, random_data=True, only_forward=False):
-        if use_device == DeviceType.GPU and not core.is_compiled_with_cuda():
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
         img, label = self._init_data(random_data)
 
@@ -108,11 +108,11 @@ class TestMNIST(TestParallelExecutorBase):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
 
     def test_simple_depthwise_with_fuse_op(self):
-        self._compare(simple_depthwise_net, DeviceType.GPU)
+        self._compare(simple_depthwise_net, DeviceType.CUDA)
         self._compare(simple_depthwise_net, DeviceType.CPU)
 
     def test_simple_depthwise_with_fuse_op_only_forward(self):
-        self._compare(simple_depthwise_net, DeviceType.GPU, only_forward=True)
+        self._compare(simple_depthwise_net, DeviceType.CUDA, only_forward=True)
         self._compare(simple_depthwise_net, DeviceType.CPU, only_forward=True)
 
 

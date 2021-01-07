@@ -847,6 +847,17 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   }
 
+  if (graph->Has(details::kFusedVars)) {
+    auto &fused_vars = graph->Get<details::FusedVars>(details::kFusedVars);
+    for (auto &fused_var : fused_vars) {
+      var_infos.emplace_back();
+      var_infos.back() = fused_var.second;
+
+      member_->is_persistable_.emplace(fused_var.first,
+                                       fused_var.second.persistable_);
+    }
+  }
+
   std::unordered_map<Scope *, Scope *> scope_map;
   for (auto *scope : member_->local_scopes_) {
     auto &local_exec_scope = scope->NewScope();
@@ -968,9 +979,6 @@ void ParallelExecutor::BCastParamsToDevices(
       continue;
     }
     auto &dims = main_tensor.dims();
-
-    VLOG(1) << "bcast var=" << var;
-
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #if defined(PADDLE_WITH_NCCL)
       std::vector<void *> buffers;
@@ -1013,6 +1021,11 @@ void ParallelExecutor::BCastParamsToDevices(
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
+      // TODO(liuyuhui): BKCL only support parameters using float type,
+      // other parameters need to be strongly converted to float before
+      // broadcasting,
+      // but broadcast is equivalent to no type of operation, does not affect
+      // correctness.
       BKCLDataType data_type = BKCL_FLOAT;
       // BKCLDataType data_type = platform::ToBKCLDataType(main_tensor.type());
       for (size_t i = 0; i < member_->places_.size(); ++i) {
