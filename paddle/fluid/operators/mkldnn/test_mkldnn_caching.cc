@@ -68,8 +68,10 @@ void RunOperator(const platform::Place &place, const std::string &op_type,
                  bool inplace = false) {
   framework::Scope scope;
 
-  std::map<const std::string, int> num_inputs = {
-      {"softmax", 1}, {"relu", 1}, {"elementwise_add", 2}, {"elementwise_mul", 2}};
+  std::map<const std::string, int> num_inputs = {{"softmax", 1},
+                                                 {"relu", 1},
+                                                 {"elementwise_add", 2},
+                                                 {"elementwise_mul", 2}};
 
   std::string first_input = inplace == true ? output_name : "x";
 
