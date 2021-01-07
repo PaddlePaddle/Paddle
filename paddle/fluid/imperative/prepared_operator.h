@@ -70,11 +70,11 @@ NameVarMap<VarType> PrepareData(
     const framework::OpKernelType& expected_kernel_key) {
   bool inplace_transform = true;
   NameVarMap<VarType> tmp_ins;
-  for (auto& name_pair : ins) {
+  for (const auto& name_pair : ins) {
     for (size_t i = 0; i < name_pair.second.size(); ++i) {
       auto& var_base = name_pair.second[i];
-      const auto* tensor = GetTensorFromVar(var_base->Var());
       SetForwardDataTypeOfGradVar(var_base);
+      const auto* tensor = GetTensorFromVar(var_base->Var());
       if (tensor && tensor->IsInitialized()) {
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
@@ -99,7 +99,7 @@ NameVarMap<VarType> PrepareData(
             tmp_ins[name_pair.first][i] = tmp_var;
           } else {
             // if dtype is same, transform inplace will not change the original
-            // value
+            // value, transform inplace to avoid multiple copy
             SetTensorToVariable(var_base->Var(), out, var_base->MutableVar());
           }
         }
