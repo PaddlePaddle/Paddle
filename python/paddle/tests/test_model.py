@@ -586,13 +586,13 @@ class TestModelFunction(unittest.TestCase):
 
     def test_export_deploy_model(self):
         self.set_seed()
-        np.random.seed(201)
+        np.random.seed(207)
         for dynamic in [True, False]:
             paddle.disable_static() if dynamic else None
             prog_translator = ProgramTranslator()
             prog_translator.enable(False) if not dynamic else None
             net = LeNet()
-            inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
+            inputs = [InputSpec([None, 1, 28, 28], 'float64', 'x')]
             model = Model(net, inputs)
             model.prepare()
             save_dir = tempfile.mkdtemp()
