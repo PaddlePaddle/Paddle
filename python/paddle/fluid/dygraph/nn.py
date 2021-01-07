@@ -1476,6 +1476,9 @@ class Dropout(layers.Layer):
         self._is_test = is_test
 
     def forward(self, input):
+        # fast return for p == 0
+        if self._dropout_prob == 0:
+            return input
         prog = default_main_program()
         if (self._seed is None or self._seed == 0) and prog.random_seed != 0:
             self._seed = prog.random_seed

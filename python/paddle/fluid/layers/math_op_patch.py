@@ -179,6 +179,7 @@ def monkey_patch_variable():
             outputs={"Out": [out]},
             attrs={"in_dtype": self.dtype,
                    "out_dtype": out.dtype})
+        out.stop_gradient = self.stop_gradient
         return out
 
     def _scalar_op_(var, scale, bias):
