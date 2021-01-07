@@ -159,7 +159,7 @@ class Test_Detach(unittest.TestCase):
             assert type(e) == AssertionError
             assert str(
                 e
-            ) == "'detach' should be called by imperative Varible in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative mode"
+            ) == "'detach' should be called by imperative Varible in imperative mode, please use paddle.disable_static() or turn off ProgramTranslator to run it in imperative mode"
 
 
 class TestInplace(unittest.TestCase):
