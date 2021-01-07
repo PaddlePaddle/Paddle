@@ -79,8 +79,8 @@ struct VALUE {
   size_t length_;
   std::vector<float> data_;
   int count_;
-  bool seen_after_last_save_;
   int unseen_days_;
+  bool seen_after_last_save_;
   bool is_entry_;
 };
 
@@ -98,6 +98,10 @@ class ValueBlock {
         value_idx_(value_idx) {
     for (int x = 0; x < value_dims.size(); ++x) {
       value_length_ += value_dims[x];
+    }
+
+    for (auto &name : value_names_) {
+      initializer_list_.emplace_back(initializers_->at(name));
     }
 
     // for Entry
