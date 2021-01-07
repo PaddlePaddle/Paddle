@@ -3117,10 +3117,13 @@ class LambOptimizer(AdamOptimizer):
 
         return lamb_op
 
-    def apply_gradients(self, params_grads):
+    def apply_gradients(self, params_grads, use_norm=None):
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
-
-        params_grads = _static_clip_grad_by_global_norm(params_grads)
+        grads = [grad for _, grad in params_grads]
+        if use_norm is None:
+            use_nomr = global_norm(grads)
+        params_grads = _static_clip_grad_by_global_norm(
+            params_grads, use_norm=use_norm)
 
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
@@ -3188,42 +3191,47 @@ def _dynamic_clip_grad_by_global_norm(params_grads):
     return params_and_grads
 
 
-def _static_clip_grad_by_global_norm(params_grads):
-    with framework.name_scope('global_norm_clip'):
+def global_norm(grads):
+    if len(grads) == 0:
+        raise ValueError("len of grads in global_norm should be bigger than 0.")
+    with framework.name_scope('global_norm'):
         sum_square_list = []
-        for p, g in params_grads:
+        for g in grads:
             if g is None:
                 continue
             merge_grad = g
-            with p.block.program._optimized_guard([p, g]):
-                if g.type == core.VarDesc.VarType.SELECTED_ROWS:
-                    merge_grad = layers.merge_selected_rows(g)
-                    merge_grad = layers.get_tensor_from_selected_rows(
-                        merge_grad)
+            if g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                merge_grad = layers.merge_selected_rows(g)
+                merge_grad = layers.get_tensor_form_selected_rows(merge_grad)
+            square = layers.square(merge_grad)
+            sum_square = layers.reduce_sum(square)
+            sum_square_list.append(sum_square)
 
-                square = layers.square(merge_grad)
-                sum_square = layers.reduce_sum(input=square)
-                sum_square_list.append(sum_square)
         if len(sum_square_list) == 0:
-            return params_grads
+            return layers.fill_constant(shape=[1], dtype="float32", value=1.0)
 
-        with p.block.program._optimized_guard([p, g]):
-            global_norm_var = layers.sums(sum_square_list)
-            global_norm_var = layers.sqrt(x=global_norm_var)
-            max_global_norm = layers.fill_constant(
-                shape=[1], dtype=global_norm_var.dtype, value=1.0)
-            scale_var = layers.elementwise_div(
-                x=max_global_norm,
-                y=layers.elementwise_max(
-                    x=max_global_norm, y=global_norm_var))
+        global_norm_var = layers.sum(sum_square_list)
+        global_norm_var = layers.sqrt(global_norm_var)
+
+    return global_norm_var
+
+
+def _static_clip_grad_by_global_norm(params_grads, use_norm):
+    with framework.name_scope('global_norm_clip'):
+        max_global_norm = layers.fill_constant(
+            shape=[1], dtype=use_norm.dtype, value=1.0)
+        scale_var = layers.elementwise_div(
+            x=max_global_norm,
+            y=layers.elementwise_max(
+                x=max_global_norm, y=use_norm))
 
         for p, g in params_grads:
             if g is None:
                 continue
 
-            with p.block.program._optimized_guard([p, g]):
-                new_grad = layers.elementwise_mul(x=g, y=scale_var)
-                layers.assign(new_grad, g)
+            #with p.block.program._optimized_guard([p, g]):
+            new_grad = layers.elementwise_mul(x=g, y=scale_var)
+            layers.assign(new_grad, g)
     return params_grads
 
 

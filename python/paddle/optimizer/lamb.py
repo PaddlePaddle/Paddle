@@ -18,7 +18,7 @@ from ..fluid import framework
 from ..fluid.framework import Variable
 from ..fluid.regularizer import append_regularization_ops
 from ..fluid.clip import append_gradient_clip_ops
-from ..fluid.optimizer import _dynamic_clip_grad_by_global_norm, _static_clip_grad_by_global_norm
+from ..fluid.optimizer import _dynamic_clip_grad_by_global_norm, _static_clip_grad_by_global_norm, global_norm
 
 __all__ = ["Lamb"]
 
@@ -201,10 +201,13 @@ class Lamb(Optimizer):
                 optimize_ops = self.apply_gradients(params_grads)
         return optimize_ops
 
-    def apply_gradients(self, params_grads):
+    def apply_gradients(self, params_grads, use_norm=None):
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
+        grads = [grad for _, grad in params_grads]
 
-        params_grads = _static_clip_grad_by_global_norm(params_grads)
+        if use_norm is None:
+            use_norm = global_norm(grads)
+        params_grads = _static_clip_grad_by_global_norm(params_grads, use_norm)
 
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
