@@ -388,7 +388,10 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   // set the output var
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
-      SetForwardDataTypeOfGradVar(var);
+      // NOTE(zhiqu): The ouput may be NULL because of pruning.
+      if (var) {
+        SetForwardDataTypeOfGradVar(var);
+      }
     }
   }
 }
