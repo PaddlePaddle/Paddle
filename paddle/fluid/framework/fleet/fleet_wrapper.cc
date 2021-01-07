@@ -198,6 +198,7 @@ void FleetWrapper::HeterPullSparseVars(
   for (auto& t : fea_values) {
     pull_result_ptr.push_back(t.data());
   }
+  /*
   auto status = pslib_ptr_->_worker_ptr->heter_pull_sparse(
       workerid, pull_result_ptr.data(), table_id, fea_keys.data(),
       fea_keys.size(), task->taskid_);
@@ -211,6 +212,7 @@ void FleetWrapper::HeterPullSparseVars(
       exit(-1);
     }
   }
+  */
 }
 
 void FleetWrapper::HeterPushSparseVars(
@@ -359,6 +361,7 @@ int FleetWrapper::RegisterHeterCallback(HeterCallBackFunc handler) {
   VLOG(3) << "pslib_ptr_=" << pslib_ptr_;
   VLOG(3) << "_worker_ptr=" << pslib_ptr_->_worker_ptr;
   return pslib_ptr_->_worker_ptr->registe_heter_callback(handler);
+
 #else
   VLOG(0) << "FleetWrapper::RegisterHeterCallback"
           << " does nothing when no pslib";

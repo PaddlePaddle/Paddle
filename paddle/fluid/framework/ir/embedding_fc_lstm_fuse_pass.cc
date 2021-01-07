@@ -263,6 +263,6 @@ REGISTER_PASS_CAPABILITY(embedding_fc_lstm_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("lookup_table_v2", 0)
             .EQ("mul", 0)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("lstm", 0)
             .EQ("fused_embedding_fc_lstm", 0));

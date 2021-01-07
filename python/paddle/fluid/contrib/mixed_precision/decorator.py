@@ -159,9 +159,6 @@ class OptimizerWithMixedPrecision(object):
             params_grads = self._optimizer.backward(
                 self._scaled_loss, startup_program, parameter_list, no_grad_set,
                 callbacks)
-            # Change the op_role_var attr for some ops, so that gradients
-            # transferred across GPUs can be FP16.
-            update_role_var_grad(train_program, params_grads)
         return params_grads
 
     def apply_gradients(self, params_grads):
@@ -175,6 +172,10 @@ class OptimizerWithMixedPrecision(object):
         Returns:
             A list of optimize operators.
         """
+
+        # Change the op_role_var attr for some ops, so that gradients
+        # transferred across GPUs can be FP16.
+        update_role_var_grad(self._train_program, params_grads)
 
         grads = [g for _, g in params_grads]
         if not self._is_distributed:

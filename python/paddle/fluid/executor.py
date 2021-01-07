@@ -480,11 +480,13 @@ class Executor(object):
     and single/multiple-CPU running.
 
     Args:
-        place(paddle.CPUPlace()|paddle.CUDAPlace(n)|None): This parameter represents
+        place(paddle.CPUPlace()|paddle.CUDAPlace(n)|str|None): This parameter represents
             which device the executor runs on. When this parameter is None, PaddlePaddle
             will set the default device according to its installation version. If Paddle
             is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
             GPU version, the default device would be set to `CUDAPlace(0)` . Default is None.
+            If ``place`` is string, it can be ``cpu``, and ``gpu:x``, where ``x`` 
+            is the index of the GPUs.
 
     Returns:
         Executor
@@ -550,7 +552,7 @@ class Executor(object):
             expected_place = framework._current_expected_place()
             self.place = expected_place
         else:
-            self.place = place
+            self.place = framework._get_paddle_place(place)
         self.program_caches = dict()
         self.ctx_caches = dict()
         self.scope_caches = dict()
@@ -1374,8 +1376,6 @@ class Executor(object):
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
             if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
-                is_heter = 1
-            if program._fleet_opt.get("use_ps_gpu", ""):
                 is_heter = 1
         if scope is None:
             scope = global_scope()

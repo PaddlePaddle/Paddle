@@ -390,6 +390,12 @@ class SimpleRNNCell(RNNCellBase):
     def state_shape(self):
         return (self.hidden_size, )
 
+    def extra_repr(self):
+        s = '{input_size}, {hidden_size}'
+        if self.activation is not "tanh":
+            s += ', activation={activation}'
+        return s.format(**self.__dict__)
+
 
 class LSTMCell(RNNCellBase):
     r"""
@@ -540,6 +546,9 @@ class LSTMCell(RNNCellBase):
         """
         return ((self.hidden_size, ), (self.hidden_size, ))
 
+    def extra_repr(self):
+        return '{input_size}, {hidden_size}'.format(**self.__dict__)
+
 
 class GRUCell(RNNCellBase):
     r"""
@@ -683,6 +692,9 @@ class GRUCell(RNNCellBase):
         to the shape of :math:`h_{t-1}`.
         """
         return (self.hidden_size, )
+
+    def extra_repr(self):
+        return '{input_size}, {hidden_size}'.format(**self.__dict__)
 
 
 class RNN(Layer):
@@ -1052,6 +1064,16 @@ class RNNBase(LayerList):
         final_states = concat_states(final_states, self.num_directions == 2,
                                      self.state_components)
         return outputs, final_states
+
+    def extra_repr(self):
+        main_str = '{input_size}, {hidden_size}'
+        if self.num_layers != 1:
+            main_str += ', num_layers={num_layers}'
+        if self.time_major != False:
+            main_str += ', time_major={time_major}'
+        if self.dropout != 0:
+            main_str += ', dropout={dropout}'
+        return main_str.format(**self.__dict__)
 
 
 class SimpleRNN(RNNBase):
