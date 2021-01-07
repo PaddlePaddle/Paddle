@@ -20,6 +20,7 @@ from ..fluid import layers
 from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
 import warnings
+from ..fluid.dygraph import base as imperative_base
 
 import paddle
 
@@ -324,6 +325,7 @@ class Adam(Optimizer):
 
         return adam_op
 
+    @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
         """
