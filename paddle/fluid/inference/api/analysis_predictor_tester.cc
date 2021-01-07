@@ -21,6 +21,7 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #endif
