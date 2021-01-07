@@ -436,6 +436,7 @@ void BasicEngine::Execute() {
       }
 
       need_accu_var_list_.clear();
+      inplace_var_list_.clear();
       leaf_accumulators_.clear();
 
       if (!retain_graph_) {

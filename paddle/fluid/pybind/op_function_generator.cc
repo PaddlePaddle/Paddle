@@ -222,8 +222,13 @@ const char* FUNCTION_ARGS_NO_INPUT = R"(const py::args& args)";
 const char* VIEW_OUTPUT_TEMPLATE = R"(
     auto view_varbase_%s = ConstructViewOutput(%s);)";
 
+const char* INPLACE_LEAF_ERROR_MESSAGE = R"(Leaf Var (%s) that doesn't stop gradient can't use inplace strategy.)";
+
 const char* INPLACE_STRATEGY_TEMPLATE =
 R"(
+    PADDLE_ENFORCE_EQ(
+      %s->SharedVar()->IsLeafGrad(), false,
+      platform::errors::InvalidArgument("%s", %s->Name()));
     %s->BumpInplaceVersion();
     VLOG(3) << "Var(" << %s->Name() << ") uses Inplace Strategy.";
 )";
@@ -427,13 +432,16 @@ std::string GenerateOpFunctionsBody(
       const auto inplace_input_name = inplace_op_map[op_type][out_name];
       // increase inplace_version
       view_or_inplace_strategy_str += paddle::string::Sprintf(
-          INPLACE_STRATEGY_TEMPLATE, inplace_input_name, inplace_input_name);
+          INPLACE_STRATEGY_TEMPLATE, inplace_input_name,
+          INPLACE_LEAF_ERROR_MESSAGE, inplace_input_name, inplace_input_name,
+          inplace_input_name);
       outs_initializer +=
           paddle::string::Sprintf(out_template, out_name, inplace_input_name);
       outs_initializer += ",";
 
       inplace_mapping_str += paddle::string::Sprintf(
           INPLACE_MAPPING_TEMPLATE, inplace_input_name, out_name);
+      inplace_mapping_str += ",";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the
