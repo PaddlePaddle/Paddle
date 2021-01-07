@@ -47,21 +47,42 @@ __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
   }
 }
 
-template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
+template <typename T, int Tile>
 __global__ void LookupTableV2Grad(T *table, const T *output, const int64_t *ids,
                                   const int64_t N, const int64_t K,
                                   const int64_t D) {
-  int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * GridDimX;
+  /*
+    eg: Tile = 4, for each warp each loop
+    data:    out0 out1 ...  out7  out0   out1 ... out7
+    row:      0     0  ...    0     1     1   ...   3
+      |       |     |         |     |     |         |
+      V       V     V         V     V     V         V
+    tile:   tile0 tile1 ... tile7 tile0 tile1 ... tile7
+      |       |     |         |     |     |         |
+      V       V     V         V     V     V         V
+    thread:   t0   t1   ...  t7    t8    t9   ...  t31
+                       CudaAtomicAdd
+      |       |     |         |     |     |         |
+      V       V     V         V     V     V         V
+    data:    tab0 tab1 ...  tab7  tab0   tab1 ... tab7
+    row:     ids0 ids0 ...  ids0  ids1   ids1 ... ids3
+  */
 
-  while (idy < K) {
-    int64_t id = ids[idy];
-    const T *out = output + idy * D;
-    T *tab = table + id * D;
-    for (int i = idx; i < D; i += BlockDimX) {
-      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const int warp_id = tid / 32, tid_of_warp = tid % 32;
+  const int tile_num = (gridDim.x * blockDim.x + Tile - 1) / Tile;
+  const int tile_of_warp = 32 / Tile;
+  int tile_id = warp_id * tile_of_warp + tid_of_warp % 8;
+
+  while (tile_id < D) {
+    for (int i = tid_of_warp / tile_of_warp; i < K; i += Tile) {
+      int64_t id = ids[i];
+      const T *out = output + i * D;
+      T *tab = table + id * D;
+
+      paddle::platform::CudaAtomicAdd(&tab[tile_id], out[tile_id]);
     }
-    idy += BlockDimY * GridDimX;
+    tile_id += tile_num;
   }
 }
 
@@ -204,8 +225,8 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       int D = d_table_t->dims()[1];
       int K = ids_t->numel();
 
-      dim3 threads(128, 8);
-      dim3 grids(8, 1);
+      int threads = 1024;
+      int grids = (8 * D + 1023) / 1024;
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> ids;
       ids.resize(K);
@@ -227,7 +248,7 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       auto t = framework::EigenVector<T>::Flatten(*d_table_t);
       t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
-      LookupTableV2Grad<T, 128, 8, 8><<<grids, threads, 0, dev_ctx.stream()>>>(
+      LookupTableV2Grad<T, 8><<<grids, threads, 0, dev_ctx.stream()>>>(
           d_table, d_output, ids_p, N, K, D);
     }
   }
