@@ -15,16 +15,20 @@ limitations under the License. */
 #include "paddle/fluid/operators/tril_triu_op.h"
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     tril_triu,
     ops::TrilTriuOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TrilTriuOpKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TrilTriuOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::TrilTriuOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::TrilTriuOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::TrilTriuOpKernel<paddle::platform::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     tril_triu_grad,
     ops::TrilTriuGradOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TrilTriuGradOpKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TrilTriuGradOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::TrilTriuGradOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::TrilTriuGradOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::TrilTriuGradOpKernel<paddle::platform::CUDADeviceContext,
+                              plat::float16>);
