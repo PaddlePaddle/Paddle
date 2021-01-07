@@ -246,7 +246,7 @@ def _static_only_(func):
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
-            "'%s' should be called by imperative Varible in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative mode"
+            "'%s' should be called by imperative Varible in imperative mode, please use paddle.disable_static() or turn off ProgramTranslator to run it in imperative mode"
             % func.__name__)
 
     return __impl__
@@ -1628,6 +1628,41 @@ class Variable(object):
             print("Type of current Var is: {}".format(new_variable.type))
         """
         return self.desc.type()
+
+    def clone(self):
+        """
+        Returns a new static Variable, which is the clone of the original static
+        Variable. It remains in the current graph, that is, the cloned Variable 
+        provides gradient propagation. Calling ``out = tensor.clone()`` is same
+        as ``out = assign(tensor)`` .
+
+        Returns:
+            Variable: The cloned Variable.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                # create a cloned Variable
+                y = x.clone()
+
+        """
+        main_program = default_main_program()
+        output = main_program.current_block().create_var(
+            name=unique_name.generate_with_ignorable_key(self.name + "_clone"),
+            dtype=self.dtype,
+            type=self.type,
+            persistable=self.persistable,
+            stop_gradient=self.gradient)
+
+        main_program.current_block().append_op(
+            type='assign', inputs={'X': [self]}, outputs={'Out': [output]})
+        return output
 
     def _set_error_clip(self, error_clip):
         """
