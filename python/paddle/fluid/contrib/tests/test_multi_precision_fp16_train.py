@@ -255,7 +255,7 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 op._set_attr('out_dtype', fluid.core.VarDesc.VarType.FP32)
                 op._set_attr('dtype', fluid.core.VarDesc.VarType.FP32)
 
-        cast_model_to_fp16(main_prog)
+        cast_model_to_fp16(main_prog, use_fp16_guard=False)
 
     def test_non_iterable_dataloader(self):
         self.decorate_with_data_loader()

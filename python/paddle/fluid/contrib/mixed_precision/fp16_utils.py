@@ -15,13 +15,17 @@
 from __future__ import print_function
 
 from ... import core
+from ... import framework
 from ... import layers
 from ... import global_scope
 from ...log_helper import get_logger
-from .fp16_lists import unsupported_fp16_list
+from ...wrapped_decorator import signature_safe_contextmanager
+from .fp16_lists import AutoMixedPrecisionLists
 import collections
 import logging
 import numpy as np
+
+__all__ = ["fp16_guard", "cast_model_to_fp16", "cast_parameters_to_fp16"]
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -30,6 +34,8 @@ _valid_types = [
     core.VarDesc.VarType.LOD_TENSOR, core.VarDesc.VarType.SELECTED_ROWS,
     core.VarDesc.VarType.LOD_TENSOR_ARRAY
 ]
+
+_fp16_guard_pattern = "__use_fp16__"
 
 
 def _rename_arg(op, old_name, new_name):
@@ -244,8 +250,7 @@ def _is_in_black_varnames(op, amp_lists):
     return False
 
 
-def _need_keep_fp32(op, unsupported_op_list, fp16_guard_pattern,
-                    use_fp16_guard):
+def _need_keep_fp32(op, unsupported_op_list, use_fp16_guard):
     if op.type in unsupported_op_list:
         # the highest priority condition: If ops don't have fp16 computing kernels,
         # they must be executed in fp32 calculation pattern.
@@ -261,7 +266,7 @@ def _need_keep_fp32(op, unsupported_op_list, fp16_guard_pattern,
 
     if use_fp16_guard:
         if op.has_attr("op_namescope") and \
-            (fp16_guard_pattern in op.attr("op_namescope")):
+            (_fp16_guard_pattern in op.attr("op_namescope")):
             # op in fp16 guard
             return False
         else:
@@ -271,10 +276,18 @@ def _need_keep_fp32(op, unsupported_op_list, fp16_guard_pattern,
         return False
 
 
-def cast_model_to_fp16(program,
-                       unsupported_op_list=unsupported_fp16_list,
-                       fp16_guard_pattern="__use_fp16__",
-                       use_fp16_guard=False):
+@signature_safe_contextmanager
+def fp16_guard():
+    """
+    As for the pure fp16 training, if users set `use_fp16_guard` to True,
+    only those ops created in the context manager `fp16_guard` will be
+    transformed as float16 type.
+    """
+    with framework.name_scope(prefix=_fp16_guard_pattern):
+        yield
+
+
+def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
     """
     Traverse all ops in the whole model and set their inputs and outputs
     to the fp16 data type. This function will do some special process for
@@ -282,8 +295,13 @@ def cast_model_to_fp16(program,
     batchnorms in FP32.
     Args:
         program (Program): The used program.
+        amp_lists (AutoMixedPrecisionLists): An AutoMixedPrecisionLists object.
+        use_fp16_guard(bool): Determine whether to use `fp16_guard` when
+                              constructing the program. Default True.
     """
 
+    if amp_lists is None:
+        amp_lists = AutoMixedPrecisionLists()
     global_block = program.global_block()
     keep_fp32_ops = set()
     to_fp16_var_names = set()
@@ -296,8 +314,7 @@ def cast_model_to_fp16(program,
         for op in ops:
             if op.type == 'create_py_reader' or op.type == 'read':
                 continue
-            if _need_keep_fp32(op, unsupported_op_list, fp16_guard_pattern,
-                               use_fp16_guard):
+            if _need_keep_fp32(op, amp_lists.unsupported_list, use_fp16_guard):
                 keep_fp32_ops.add(op)
                 continue  # processed below
             for in_name in op.input_names:
@@ -407,13 +424,16 @@ def cast_model_to_fp16(program,
 
 def cast_parameters_to_fp16(place, program, scope=None, to_fp16_var_names=None):
     """
-    Traverse all parameters in the whole model and set them to the fp16 data type.
+    Traverse all parameters in the whole model and set them to the FP16 data type.
     Whereas, this function will keep parameters of batchnorms in FP32.
     Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the weight tensors.
+        place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the FP16 weight tensors.
         program (Program): The used program.
-        scope(fluid.Scope, optional): scope is used to get the weight tensor values.
-        Default is None.
+        scope(fluid.Scope, optional): `scope` is used to get the FP32 weight tensor values.
+                                      Default is None.
+        to_fp16_var_names(set|list, optional): The data types of vars in `to_fp16_var_names`
+                                               will be set to FP16. Usually, it is the returned
+                                               value of `cast_model_to_fp16` API.
     """
     all_parameters = []
     for block in program.blocks:

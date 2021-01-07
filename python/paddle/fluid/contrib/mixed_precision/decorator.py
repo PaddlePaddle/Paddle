@@ -19,7 +19,6 @@ from ... import framework
 from ... import layers
 from ... import program_guard
 from ... import unique_name
-from ...wrapped_decorator import signature_safe_contextmanager
 from . import fp16_utils
 from .fp16_utils import rewrite_program
 from .fp16_utils import cast_model_to_fp16
@@ -31,9 +30,7 @@ from .amp_nn import update_loss_scaling
 import types
 import warnings
 
-__all__ = ["decorate", "fp16_guard"]
-
-_fp16_guard_pattern = "__use_fp16__"
+__all__ = ["decorate"]
 
 
 class OptimizerWithMixedPrecision(object):
@@ -172,8 +169,7 @@ class OptimizerWithMixedPrecision(object):
 
             if self._use_pure_fp16:
                 self._to_fp16_var_names = cast_model_to_fp16(
-                    self._train_program, self._amp_lists.unsupported_list,
-                    _fp16_guard_pattern, self._use_fp16_guard)
+                    self._train_program, self._amp_lists, self._use_fp16_guard)
             else:
                 rewrite_program(self._train_program, self._amp_lists)
 
@@ -214,9 +210,8 @@ class OptimizerWithMixedPrecision(object):
                                     self._to_fp16_var_names)
         if test_program is not None:
             if self._use_pure_fp16:
-                cast_model_to_fp16(test_program,
-                                   self._amp_lists.unsupported_list,
-                                   _fp16_guard_pattern, self._use_fp16_guard)
+                cast_model_to_fp16(test_program, self._amp_lists,
+                                   self._use_fp16_guard)
             elif use_fp16_test:
                 rewrite_program(test_program, self._amp_lists)
 
@@ -432,9 +427,3 @@ def decorate(optimizer,
         use_pure_fp16, use_fp16_guard)
 
     return mp_optimizer
-
-
-@signature_safe_contextmanager
-def fp16_guard():
-    with framework.name_scope(prefix=_fp16_guard_pattern):
-        yield
