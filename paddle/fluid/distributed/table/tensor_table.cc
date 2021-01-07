@@ -92,6 +92,7 @@ int32_t GlobalStepTable::set_table_map(
     }
     iter->second->set_global_lr(lr_value);
   }
+  return 0;
 }
 
 int32_t GlobalStepTable::push_dense(const int64_t *values,

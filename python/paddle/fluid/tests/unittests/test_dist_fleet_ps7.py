@@ -65,9 +65,9 @@ class TestNaturalExpDecay(unittest.TestCase):
 
         fleet.init(role)
         loss = self.net()
-        # scheduler = paddle.optimizer.lr.NaturalExpDecay(
-        #     learning_rate=base_lr, gamma=0.999, verbose=True)
-        optimizer = fluid.optimizer.Adam(1e-4)
+        scheduler = paddle.optimizer.lr.NaturalExpDecay(
+            learning_rate=base_lr, gamma=0.999, verbose=True)
+        optimizer = fluid.optimizer.Adam(scheduler)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
