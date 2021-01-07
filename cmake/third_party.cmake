@@ -17,7 +17,6 @@ include(ExternalProject)
 
 set(THIRD_PARTY_PATH  "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
     "A path setting third party libraries download & build directories.")
-
 set(THIRD_PARTY_CACHE_PATH     "${CMAKE_SOURCE_DIR}"    CACHE STRING
     "A path cache third party source code to avoid repeated download.")
 
