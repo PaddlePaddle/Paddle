@@ -22,6 +22,22 @@ std::shared_ptr<Reducer> Reducer::s_instance_ = NULL;
 
 // context is used to select the stream for concat
 void Group::ConcatTensors(const platform::CUDADeviceContext &context) {
+  // must clear not initialized tensor
+  int64_t all_length = 0;
+  for (auto it = dense_tensors_.begin(); it != dense_tensors_.end();) {
+    if (it->IsInitialized()) {
+      it++;
+      all_length += it->numel();
+    } else {
+      it = dense_tensors_.erase(it);
+    }
+  }
+
+  VLOG(0) << "The group size is " << all_length;
+  auto tensor = dense_contents_.GetMutable<framework::LoDTensor>();
+  tensor->Resize(framework::make_ddim({all_length}))
+      .mutable_data(context.GetPlace(), dtype_);
+
   switch (dtype_) {
     case framework::proto::VarType::FP16:
       ConcatTensorsForAllReduce<platform::float16>(context, dense_tensors_,
@@ -88,12 +104,14 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
                  const std::vector<std::vector<size_t>> &group_indices,
                  const std::vector<bool> &is_sparse_gradient,
                  std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-                 const std::vector<size_t> &group_size_limits)
+                 const std::vector<size_t> &group_size_limits,
+                 bool find_unused_vars)
     : vars_(vars),
       group_indices_(group_indices),
       is_sparse_gradient_(is_sparse_gradient),
       parallel_ctx_(parallel_ctx),
-      group_size_limits_(group_size_limits) {
+      group_size_limits_(group_size_limits),
+      find_unused_vars_(find_unused_vars) {
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();
   // initialize groups
@@ -106,7 +124,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
             new LambdaGradAccumulatorPostHook([=](VariableWrapper *grad) {
               this->AddDistHook(global_var_index);
             })));
-    VarToIndexMap_[var->GradVarBase()->SharedVar().get()] = global_var_index;
+    var_index_map_[var->GradVarBase()->SharedVar().get()] = global_var_index;
   }
   // create streams
   compute_stream_ = static_cast<platform::CUDADeviceContext *>(
@@ -231,9 +249,10 @@ void Reducer::InitializeGroups(
       // process the dense gradient.
       InitializeDenseGroups(variable_indices_, &group);
       // Alloc the continuous space
-      auto tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
-      tensor->Resize(framework::make_ddim({group.all_length_}))
-          .mutable_data(place_, group.dtype_);
+      // auto tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
+      // tensor->Resize(framework::make_ddim({group.all_length_}))
+      // .mutable_data(place_, group.dtype_);
+      // tensor->mutable_data(place_, group.dtype_);
     }
 
     // map variables to this group by VariableLocator
@@ -298,10 +317,22 @@ void Reducer::PrepareForBackward(
     group.pending_ = group.variable_indices_.size();
   });
 
-  // find unused vars
+  PADDLE_ENFORCE_EQ(
+      need_finalize_backward_, false,
+      platform::errors::PreconditionNotMet(
+          "The previous round of calculations were not synchronized, "
+          "which would cause the calculation accuracy to not meet "
+          "expectations. "));
 
+  // find unused vars
   // reset unused var accounting
-  has_marked_unused_vars = false;
+  has_marked_unused_vars_ = false;
+  unused_vars_.clear();
+  node_deps_.clear();
+
+  if (!find_unused_vars_) {
+    return;
+  }
 
   std::queue<std::shared_ptr<GradOpNode>> q;
   std::unordered_set<VariableWrapper *> var_visited;
@@ -310,7 +341,7 @@ void Reducer::PrepareForBackward(
   for (const auto &output : outputs) {
     const auto &grad_node = output->GradVarBase()->GradNode();
     if (grad_node == nullptr || output->OverridedStopGradient()) {
-      VLOG(0) << "Skip auto grad since there is no grad op for output is "
+      VLOG(3) << "Skip auto grad since there is no grad op for output is "
                  "stop_gradient=True: "
               << output->Name();
       continue;
@@ -358,28 +389,12 @@ void Reducer::PrepareForBackward(
     }
   }
 
-  VLOG(0) << "select vars is :";
-  for (auto pos = var_visited.begin(); pos != var_visited.end(); pos++) {
-    const auto &tmp = *pos;
-    VLOG(0) << tmp->Name();
-  }
-  VLOG(0) << "starting select unused var...";
-  for (const auto &it : VarToIndexMap_) {
-    VLOG(0) << it.first->Name();
+  for (const auto &it : var_index_map_) {
     if (var_visited.count(it.first) == 0) {
-      auto unused_index = it.second;
-      const auto &var_locator = variable_locators_[unused_index];
-      auto group_index = var_locator.group_index;
-      auto &group = groups_[group_index];
-      group.pending_ = group.pending_ - 1;
-      VLOG(0) << "The var [" << it.first->Name()
-              << "] is no used, reset the pending of"
-                 " group["
-              << group_index << "]";
+      unused_vars_.push_back(it.second);
+      VLOG(0) << "The var [" << it.first->Name() << "] is no used";
     }
   }
-
-  node_deps_.clear();
 }
 
 // Add hook function to each leaf node. When the gradient of a leaf node is
@@ -392,25 +407,42 @@ void Reducer::PrepareForBackward(
 // concat + allreduce + split is emitted in turn according to next_group_.
 // 3, FinalizeBackward: after the end, synchronize each stream.
 void Reducer::AddDistHook(size_t var_index) {
-  if (!has_rebuilt_group_) {
+  if (NeedRebuildGroup()) {
     rebuild_vars_.push_back(vars_[var_index]);
     rebuild_var_indices_.push_back(var_index);
   }
+
+  if (find_unused_vars_ && !has_marked_unused_vars_) {
+    has_marked_unused_vars_ = true;
+    for (auto unused_index : unused_vars_) {
+      VLOG(0) << "mark unused var [" << unused_index << "] ready";
+      MarkVarReady(unused_index);
+    }
+  }
+
   MarkVarReady(var_index);
 }
 
 void Reducer::MarkVarReady(size_t var_index) {
+  need_finalize_backward_ = true;
+
   auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
   const auto &var_locator = variable_locators_[var_index];
   auto group_index = var_locator.group_index;
   auto &group = groups_[group_index];
   if (!group.is_sparse_) {
     // Only dense_contents_ need memory copy
-    auto inside_group_index = var_locator.inside_group_index;
-    auto length = group.length_[inside_group_index];
-    auto tensor = var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
-    group.dense_tensors_[inside_group_index].ShareDataWith(*tensor).Resize(
-        {static_cast<int64_t>(length)});
+    auto grad = var_warpper->MutableVar();
+    if (grad->IsInitialized()) {
+      auto inside_group_index = var_locator.inside_group_index;
+      auto length = group.length_[inside_group_index];
+      auto tensor = grad->GetMutable<framework::LoDTensor>();
+      group.dense_tensors_[inside_group_index].ShareDataWith(*tensor).Resize(
+          {static_cast<int64_t>(length)});
+    } else {
+      VLOG(0) << "The dense tensor[" << var_warpper->Name()
+              << "] is not initialized.";
+    }
   } else {
     group.sparse_contents_ = var_warpper->MutableVar();
   }
@@ -424,28 +456,6 @@ void Reducer::MarkVarReady(size_t var_index) {
     FinalizeBackward();
   }
 }
-
-// void Reducer::MarkDenseVarReady(size_t var_index) {
-//   auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
-//   const auto &var_locator = variable_locators_[var_index];
-//   auto group_index = var_locator.group_index;
-//   auto inside_group_index = var_locator.inside_group_index;
-//   auto &group = groups_[group_index];
-//   auto length = group.length_[inside_group_index];
-
-//   auto tensor =
-//   var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
-//   group.dense_tensors_[inside_group_index].ShareDataWith(*tensor).Resize(
-//       {static_cast<int64_t>(length)});
-// }
-
-// void Reducer::MarkSparseVarReady(size_t var_index) {
-//   auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
-//   const auto &var_locator = variable_locators_[var_index];
-//   auto group_index = var_locator.group_index;
-//   auto &group = groups_[group_index];
-//   group.sparse_contents_ = var_warpper->MutableVar();
-// }
 
 void Reducer::MarkGroupReady(size_t group_index) {
   if (group_index > next_group_) {
@@ -465,12 +475,17 @@ void Reducer::MarkGroupReady(size_t group_index) {
     auto &group = groups_[next_group_];
     int run_order = next_group_ % nrings_;
     if (group.is_sparse_) {
-      VLOG(3) << "sparse group [" << next_group_ << "] start allreduce in ring["
-              << run_order << "]";
-      parallel_ctx_->AllReduceByStream(
-          *group.sparse_contents_, group.sparse_contents_, run_order, false);
+      if (group.sparse_contents_->IsInitialized()) {
+        VLOG(0) << "sparse group [" << next_group_
+                << "] start allreduce in ring[" << run_order << "]";
+        VLOG(0) << "group msg:" << group;
+        parallel_ctx_->AllReduceByStream(
+            *group.sparse_contents_, group.sparse_contents_, run_order, false);
+      } else {
+        VLOG(0) << "The sparse variable is not initialized...";
+      }
     } else {
-      VLOG(3) << "dense group [" << next_group_ << "] start allreduce in ring["
+      VLOG(0) << "dense group [" << next_group_ << "] start allreduce in ring["
               << run_order << "]";
       // Select common commstream to concat tensors
       // group.dense_tensors ---> group.dense_contents_
@@ -511,7 +526,8 @@ void Reducer::FinalizeBackward() {
         cudaStreamWaitEvent(compute_stream_, comm_events_[i].get(), 0));
   }
 
-  if (!has_rebuilt_group_) {
+  need_finalize_backward_ = false;
+  if (NeedRebuildGroup()) {
     VLOG(3) << "Start rebuilding the groups";
     auto rebuild_group_indices = RebuildGruops();
     auto rebuild_group_number = rebuild_group_indices.size();

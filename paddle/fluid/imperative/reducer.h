@@ -124,7 +124,7 @@ class Reducer {
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
       std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-      const std::vector<size_t>& group_size_limits);
+      const std::vector<size_t>& group_size_limits, bool find_unused_vars);
 
   virtual ~Reducer() {}
 
@@ -156,17 +156,21 @@ class Reducer {
 
   void CreateGroupEvents(int group_num);
 
+  inline bool NeedRebuildGroup() {
+    return !has_rebuilt_group_ && !find_unused_vars_;
+  }
+
   // Reducer Singleton
   static std::shared_ptr<Reducer> SetInstance(
       const std::vector<std::shared_ptr<imperative::VarBase>>& vars,
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
       std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-      const std::vector<size_t>& group_size_limits) {
+      const std::vector<size_t>& group_size_limits, bool find_unused_vars) {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::imperative::Reducer(
           vars, group_indices, is_sparse_gradient, parallel_ctx,
-          group_size_limits));
+          group_size_limits, find_unused_vars));
     }
     return s_instance_;
   }
@@ -205,8 +209,11 @@ class Reducer {
 
   // Following variables are to help unused vars
   std::unordered_map<GradOpNode*, size_t> node_deps_;
-  std::unordered_map<VariableWrapper*, size_t> VarToIndexMap_;
-  bool has_marked_unused_vars{false};
+  std::unordered_map<VariableWrapper*, size_t> var_index_map_;
+  std::vector<size_t> unused_vars_;
+  bool has_marked_unused_vars_{false};
+  bool find_unused_vars_{false};
+  bool need_finalize_backward_{false};
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(

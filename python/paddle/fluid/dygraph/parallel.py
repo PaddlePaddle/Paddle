@@ -466,11 +466,13 @@ class DataParallel(layers.Layer):
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
+        find_unused_vars = True
         self._reducer = core.Reducer(
             trainable_parameters,
             list(reversed(self.group_indices)), is_sparse_gradient,
             parallel_helper.__parallel_ctx__clz__,
-            [self.last_comm_buffer_size, self.comm_buffer_size])
+            [self.last_comm_buffer_size, self.comm_buffer_size],
+            find_unused_vars)
 
     def _find_varbase(self, obj):
         if isinstance(obj, core.VarBase):
