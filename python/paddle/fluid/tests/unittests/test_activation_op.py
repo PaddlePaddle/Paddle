@@ -1479,7 +1479,7 @@ class TestHardSwish(TestActivation):
         if self.dtype == np.float16:
             return
 
-        return # not implemented yet
+        return  # not implemented yet
         self.check_grad(['X'], 'Out')
 
 
