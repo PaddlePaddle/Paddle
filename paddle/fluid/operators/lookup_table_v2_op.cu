@@ -22,10 +22,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, int BlockDimX, int BlockDimY, bool PaddingFlag>
 __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
                               const int64_t N, const int64_t K, const int64_t D,
-                              const int64_t padding_idx, bool PaddingFlag) {
+                              const int64_t padding_idx) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * gridDim.x;
 
@@ -33,7 +33,7 @@ __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
     int64_t id = ids[idy];
     T *out = output + idy * D;
     const T *tab = table + id * D;
-    for (int i = idx; i < D; i += blockDim.x) {
+    for (int i = idx; i < D; i += BlockDimX) {
       if (PaddingFlag) {
         if (id == padding_idx)
           out[i] = static_cast<T>(0);
@@ -43,11 +43,11 @@ __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
         out[i] = tab[i];
       }
     }
-    idy += blockDim.y * gridDim.x;
+    idy += BlockDimY * gridDim.x;
   }
 }
 
-template <typename T>
+template <typename T, int BlockDimX, int BlockDimY>
 __global__ void LookupTableV2Grad(T *table, const T *output, const int64_t *ids,
                                   const int64_t N, const int64_t K,
                                   const int64_t D) {
@@ -58,10 +58,10 @@ __global__ void LookupTableV2Grad(T *table, const T *output, const int64_t *ids,
     int64_t id = ids[idy];
     const T *out = output + idy * D;
     T *tab = table + id * D;
-    for (int i = idx; i < D; i += blockDim.x) {
+    for (int i = idx; i < D; i += BlockDimX) {
       paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
     }
-    idy += blockDim.y * gridDim.x;
+    idy += BlockDimY * gridDim.x;
   }
 }
 
@@ -133,11 +133,11 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
     auto *output = output_t->mutable_data<T>(context.GetPlace());
 
     if (padding_idx == -1)
-      LookupTableV2<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
-          output, table, ids_p, N, K, D, padding_idx, false);
+      LookupTableV2<T, 256, 4, false><<<grids, blocks, 0, dev_ctx.stream()>>>(
+          output, table, ids_p, N, K, D, padding_idx);
     else
-      LookupTableV2<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
-          output, table, ids_p, N, K, D, padding_idx, true);
+      LookupTableV2<T, 256, 4, true><<<grids, blocks, 0, dev_ctx.stream()>>>(
+          output, table, ids_p, N, K, D, padding_idx);
   }
 };
 
@@ -233,7 +233,7 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       auto t = framework::EigenVector<T>::Flatten(*d_table_t);
       t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
-      LookupTableV2Grad<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
+      LookupTableV2Grad<T, 128, 8><<<grids, blocks, 0, dev_ctx.stream()>>>(
           d_table, d_output, ids_p, N, K, D);
     }
   }
