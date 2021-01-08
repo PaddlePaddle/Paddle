@@ -939,7 +939,7 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
                                  bool with_bias, bool with_relu) {
   // Create shared nodes.
   x->assert_is_op_input("mul", "X");
-  auto *mul = pattern->NewNode(mul_repr())->assert_is_ops({"mul", "matmul"});
+  auto *mul = pattern->NewNode(mul_repr())->assert_is_ops({"mul"});
 
   auto *mul_w_var = pattern->NewNode(w_repr())
                         ->AsInput()
@@ -948,6 +948,7 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
 
   auto *mul_out_var =
       pattern->NewNode(mul_out_repr())->assert_is_ops_output({"mul"});
+
   // Add links.
   mul->LinksFrom({x, mul_w_var}).LinksTo({mul_out_var});
   if (!with_bias) {  // not with bias
