@@ -19,7 +19,6 @@ from . import parallel
 from .parallel import init_parallel_env
 from .parallel import get_rank
 from .parallel import get_world_size
-from paddle.fluid.dygraph.parallel import prepare_context  #DEFINE_ALIAS
 from paddle.fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
 from paddle.distributed.fleet.dataset import *
 
@@ -34,7 +33,6 @@ __all__ += [
     "init_parallel_env",
     "get_rank",
     "get_world_size",
-    "prepare_context",
     "ParallelEnv",
     "InMemoryDataset",
     "QueueDataset",
