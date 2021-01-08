@@ -467,4 +467,4 @@ class TestOpNumWithTensorShapeInWhile1(TestOpNumBasicWithTensorShape):
 
 
 if __name__ == '__main__':
-    unittest.main(defaultTest="TestPaddleShapeApi")
+    unittest.main()
