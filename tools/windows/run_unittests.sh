@@ -78,7 +78,6 @@ diable_wingpu_test="^test_analysis_predictor$|\
 ^test_py_reader_push_pop$|\
 ^test_py_reader_using_executor$|\
 ^test_reader_reset$|\
-^test_update_loss_scaling_op$|\
 ^test_imperative_se_resnext$|\
 ^test_imperative_static_runner_while$|\
 ^test_fuse_bn_act_pass$|\
