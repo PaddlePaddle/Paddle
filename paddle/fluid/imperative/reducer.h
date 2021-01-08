@@ -156,9 +156,7 @@ class Reducer {
 
   void CreateGroupEvents(int group_num);
 
-  inline bool NeedRebuildGroup() {
-    return !has_rebuilt_group_ && !find_unused_vars_;
-  }
+  inline bool NeedRebuildGroup() { return !has_rebuilt_group_; }
 
   // Reducer Singleton
   static std::shared_ptr<Reducer> SetInstance(

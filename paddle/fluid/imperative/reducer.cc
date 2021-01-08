@@ -22,7 +22,7 @@ std::shared_ptr<Reducer> Reducer::s_instance_ = NULL;
 
 // context is used to select the stream for concat
 void Group::ConcatTensors(const platform::CUDADeviceContext &context) {
-  VLOG(3) << "Before concat, set group all_length is " << all_length_;
+  VLOG(3) << "Before concat, set ouput tensor size is " << all_length_;
   auto tensor = dense_contents_.GetMutable<framework::LoDTensor>();
   tensor->Resize(framework::make_ddim({all_length_}))
       .mutable_data(context.GetPlace(), dtype_);
@@ -308,15 +308,18 @@ void Reducer::PrepareForBackward(
           "which would cause the calculation accuracy to not meet "
           "expectations. "));
 
-  // find unused vars
   has_marked_unused_vars_ = false;
-  unused_vars_.clear();
-  node_deps_.clear();
-
   if (!find_unused_vars_) {
     return;
   }
 
+  // TODO(shenliang03) "find_unused_vars" interface will be exposed in the
+  // future
+  // to handle control flow to process unused parameters
+  find_unused_vars_ = false;
+
+  unused_vars_.clear();
+  node_deps_.clear();
   std::queue<std::shared_ptr<GradOpNode>> q;
   std::unordered_set<VariableWrapper *> var_visited;
   std::unordered_set<GradOpNode *> init_nodes;
@@ -390,18 +393,21 @@ void Reducer::PrepareForBackward(
 // concat + allreduce + split is emitted in turn according to next_group_.
 // 3, FinalizeBackward: after the end, synchronize each stream.
 void Reducer::AddDistHook(size_t var_index) {
-  if (NeedRebuildGroup()) {
-    rebuild_vars_.push_back(vars_[var_index]);
-    rebuild_var_indices_.push_back(var_index);
-  }
-
-  if (find_unused_vars_ && !has_marked_unused_vars_) {
+  if (!has_marked_unused_vars_) {
     has_marked_unused_vars_ = true;
     for (auto unused_index : unused_vars_) {
+      if (NeedRebuildGroup()) {
+        rebuild_vars_.push_back(vars_[unused_index]);
+        rebuild_var_indices_.push_back(unused_index);
+      }
       MarkVarReady(unused_index, false);
     }
   }
 
+  if (NeedRebuildGroup()) {
+    rebuild_vars_.push_back(vars_[var_index]);
+    rebuild_var_indices_.push_back(var_index);
+  }
   MarkVarReady(var_index, true);
 }
 
@@ -455,7 +461,6 @@ void Reducer::MarkGroupReady(size_t group_index) {
        ++next_group_) {
     auto &group = groups_[next_group_];
     int run_order = next_group_ % nrings_;
-    VLOG(3) << run_order << group;
     if (group.is_sparse_) {
       if (group.sparse_contents_ != nullptr) {
         VLOG(3) << "sparse group [" << next_group_
@@ -490,6 +495,12 @@ void Reducer::MarkGroupReady(size_t group_index) {
 }
 
 std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
+  PADDLE_ENFORCE_EQ(
+      rebuild_vars_.size(), vars_.size(),
+      platform::errors::PreconditionNotMet(
+          "Rebuild vars's number should be equal to original vars'number, "
+          "expect it to be %d, but got %d.",
+          vars_.size(), rebuild_vars_.size()));
   std::reverse(rebuild_vars_.begin(), rebuild_vars_.end());
   std::reverse(rebuild_var_indices_.begin(), rebuild_var_indices_.end());
   auto rebuild_group_indices =

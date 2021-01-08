@@ -466,6 +466,8 @@ class DataParallel(layers.Layer):
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
+        # TODO(shenliang03) "find_unused_vars" interface will be exposed in the future 
+        # to handle control flow to process unused parameters
         find_unused_vars = True
         self._reducer = core.Reducer(
             trainable_parameters,
