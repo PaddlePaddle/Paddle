@@ -28,7 +28,8 @@ def conv2d_forward_refer(input, filter, group, conv_param):
     return out
 
 
-@unittest.skip("place does not support BF16 or INT8 evaluation")
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestConv2DInt8Op(TestConv2DOp):
     def setUp(self):
         self.op_type = "conv2d"
