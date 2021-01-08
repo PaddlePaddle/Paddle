@@ -27,7 +27,6 @@ from contextlib import closing
 import socket
 import warnings
 import six
-from enum import IntEnum
 
 import paddle
 import paddle.fluid as fluid
@@ -35,7 +34,7 @@ logger = logging.getLogger("root")
 logger.propagate = False
 
 
-class DistributeMode(IntEnum):
+class DistributeMode():
     """
     There are various mode for fleetrun, each of them is designed for different model.
     """
@@ -44,7 +43,7 @@ class DistributeMode(IntEnum):
     PS_HETER = 2
 
 
-class DeviceMode(IntEnum):
+class DeviceMode():
     """
     Training devices type
     """
