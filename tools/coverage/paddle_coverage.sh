@@ -19,8 +19,8 @@ set -xe
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
 
 # install lcov
-curl -o /lcov-1.14.tar.gz --connect-timeout 600 --retry 10 --retry-delay 10 -x "" -s https://paddle-ci.gz.bcebos.com/coverage/lcov-1.14.tar.gz || exit 101
-tar -xf /lcov-1.14.tar.gz -C /
+wget -P /home https://paddle-ci.gz.bcebos.com/coverage/lcov-1.14.tar.gz --no-proxy --no-check-certificate || exit 101 
+tar -xf /home/lcov-1.14.tar.gz -C /
 cd /lcov-1.14
 make install
 
