@@ -211,6 +211,7 @@ packages=['paddle',
           'paddle.metric',
           'paddle.static',
           'paddle.static.nn',
+          'paddle.static.amp',
           'paddle.tensor',
           'paddle.onnx',
           ]
