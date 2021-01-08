@@ -21,6 +21,7 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #endif
@@ -493,7 +494,10 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
   config.EnableUseGpu(100, 0);
   config.EnableMkldnnBfloat16();
 #ifdef PADDLE_WITH_MKLDNN
-  ASSERT_EQ(config.mkldnn_bfloat16_enabled(), true);
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_core))
+    ASSERT_EQ(config.mkldnn_bfloat16_enabled(), true);
+  else
+    ASSERT_EQ(config.mkldnn_bfloat16_enabled(), false);
 #else
   ASSERT_EQ(config.mkldnn_bfloat16_enabled(), false);
 #endif

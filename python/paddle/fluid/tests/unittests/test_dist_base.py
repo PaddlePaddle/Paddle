@@ -15,6 +15,7 @@
 from __future__ import print_function
 import time
 
+import ast
 import unittest
 import os
 import sys
@@ -373,6 +374,10 @@ class TestDistRunnerBase(object):
         build_stra.enable_inplace = False
         build_stra.memory_optimize = False
 
+        if args.fuse_all_reduce is not None:
+            sys.stderr.write('fuse_all_reduce={}'.format(args.fuse_all_reduce))
+            build_stra.fuse_all_reduce_ops = args.fuse_all_reduce
+
         if args.hogwild:
             build_stra.async_mode = True
 
@@ -620,6 +625,11 @@ def runtime_main(test_class):
         type=bool,
         default=False)
     parser.add_argument('--sync_batch_norm', action='store_true')
+    parser.add_argument(
+        '--fuse_all_reduce',
+        required=False,
+        type=ast.literal_eval,
+        default=None)
 
     args = parser.parse_args()
 
@@ -688,6 +698,7 @@ class TestDistBase(unittest.TestCase):
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
         self._save_model = False
+        self._fuse_all_reduce = None
         self._setup_config()
 
         global DIST_UT_PORT
@@ -970,6 +981,9 @@ class TestDistBase(unittest.TestCase):
 
         if self._enable_backward_deps:
             tr_cmd += " --enable_backward_deps"
+
+        if self._fuse_all_reduce is not None:
+            tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
 
         if self._gpu_fleet_api:
             tr_cmd += " --gpu_fleet_api"

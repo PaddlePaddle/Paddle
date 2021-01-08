@@ -121,8 +121,11 @@ class SliceOp : public framework::OperatorWithKernel {
           start = std::max(start, 0);
           end = std::max(end, 0);
           end = std::min(end, dim_value);
-          PADDLE_ENFORCE_GT(end, start, platform::errors::InvalidArgument(
-                                            "end should greater than start"));
+          PADDLE_ENFORCE_GT(end, start,
+                            platform::errors::InvalidArgument(
+                                "end should greater than start, but received "
+                                "end = %d, start = %d.",
+                                ends[i], starts[i]));
           out_dims[axes[i]] = end - start;
         }
       }
