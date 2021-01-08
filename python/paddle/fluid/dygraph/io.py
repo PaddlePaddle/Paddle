@@ -638,10 +638,11 @@ def _construct_params_and_buffers(model_path,
         for file_name in os.listdir(model_path):
             if file_name.endswith(INFER_PARAMS_SUFFIX) and file_name.startswith(
                     model_name):
-                parsing_name = file_name[len(model_name):-len(
-                    INFER_PARAMS_SUFFIX) + 1].split('.')
-                if len(parsing_name) == 3 and len(parsing_name[1]) > 0:
-                    func_name = parsing_name[1]
+                part_name = file_name[len(model_name):-len(INFER_PARAMS_SUFFIX)
+                                      + 1]
+                parsing_names = part_name.split('.')
+                if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
+                    func_name = parsing_names[1]
                 else:
                     continue
             else:
