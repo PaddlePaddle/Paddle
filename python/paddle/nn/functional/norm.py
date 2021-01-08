@@ -196,7 +196,9 @@ def batch_norm(x,
         batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
             x, weight, bias, running_mean, running_var, mean_out, variance_out,
             *attrs)
-
+        print(
+            "------------------------------------------- 3 dygraph -----------------------------------"
+        )
         return dygraph_utils._append_activation_in_dygraph(
             batch_norm_out, act=None)
 
@@ -230,18 +232,23 @@ def batch_norm(x,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     batch_norm_out = helper.create_variable_for_type_inference(dtype)
+    reserve_space = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
 
     outputs = {
         "Y": [batch_norm_out],
         "MeanOut": [running_mean],
         "VarianceOut": [running_var],
         "SavedMean": [saved_mean],
-        "SavedVariance": [saved_variance]
+        "SavedVariance": [saved_variance],
+        "ReserveSpace": [reserve_space]
     }
 
     helper.append_op(
         type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
-
+    print(
+        "------------------------------------------- 3 static -----------------------------------"
+    )
     return helper.append_activation(batch_norm_out)
 
 

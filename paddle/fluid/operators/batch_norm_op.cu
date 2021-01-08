@@ -245,7 +245,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
           // Create reserve space and workspace for batch norm.
           // Create tensor for each batchnorm op, it will be used in the
           // backward. Thus this tensor shouldn't be temp.
-          auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+          Tensor *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+
           PADDLE_ENFORCE_NOT_NULL(
               reserve_space,
               platform::errors::NotFound(

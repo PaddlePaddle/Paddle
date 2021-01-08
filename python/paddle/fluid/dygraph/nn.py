@@ -1309,11 +1309,11 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype)
         self._variance.stop_gradient = True
 
-        self._has_reserve_space = False
-        if data_layout == 'NHWC':
-            flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
-            if flag is not None and flag.lower() in ['true', '1']:
-                self._has_reserve_space = True
+        # self._has_reserve_space = False
+        # if data_layout == 'NHWC':
+        #     flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
+        #     if flag is not None and flag.lower() in ['true', '1']:
+        #         self._has_reserve_space = True
 
         self._in_place = in_place
         self._data_layout = data_layout
@@ -1341,7 +1341,9 @@ class BatchNorm(layers.Layer):
             batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
                 mean_out, variance_out, *attrs)
-
+            print(
+                "------------------------------------------- 1 dygraph -----------------------------------"
+            )
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 
@@ -1372,10 +1374,12 @@ class BatchNorm(layers.Layer):
         saved_variance = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
 
-        reserve_space = None
-        if self._has_reserve_space:
-            reserve_space = self._helper.create_variable_for_type_inference(
-                dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
+        reserve_space = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        # reserve_space = None
+        # if self._has_reserve_space:
+        #     reserve_space = self._helper.create_variable_for_type_inference(
+        #         dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
 
         batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
             self._dtype)
@@ -1394,6 +1398,9 @@ class BatchNorm(layers.Layer):
             type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
         # Currently, we don't support inplace in dygraph mode
+        print(
+            "------------------------------------------- 1 static -----------------------------------"
+        )
         return self._helper.append_activation(batch_norm_out, self._act)
 
 
