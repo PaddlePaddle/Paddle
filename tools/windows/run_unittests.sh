@@ -76,6 +76,7 @@ diable_wingpu_test="^test_gradient_clip$|\
 ^test_reader_reset$|\
 ^test_update_loss_scaling_op$|\
 ^test_imperative_se_resnext$|\
+^test_imperative_static_runner_while$|\
 ^test_gru_rnn_op$|\
 ^test_rnn_op$|\
 ^test_simple_rnn_op$|\
