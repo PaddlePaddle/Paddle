@@ -231,24 +231,29 @@ void ComputeElementwiseCUDA(const framework::Tensor *x,
   }
 }
 
-template <typename Functor, typename T, typename OutType = T>
-__global__ void CommonForwardBroadcastCUDAKernel(
-    const int *x_strides_array, const int *y_strides_array,
-    const int *out_dims_array, const T *x, const T *y, OutType *out,
-    int out_size, int max_dim, Functor func, const bool is_xsize_larger) {
+template <typename Functor, typename T, typename OutType = T,
+          bool is_xsize_larger>
+__global__ void CommonForwardBroadcastCUDAKernel(const int *x_strides_array,
+                                                 const int *y_strides_array,
+                                                 const int *out_dims_array,
+                                                 const T *x, const T *y,
+                                                 OutType *out, int out_size,
+                                                 int max_dim, Functor func) {
   for (int out_index = blockIdx.x * blockDim.x + threadIdx.x;
        out_index < out_size; out_index += blockDim.x * gridDim.x) {
     int x_index = 0;
     int y_index = 0;
     int out_index_quotient = out_index;
     int remainder = 0;
-#pragma unroll
+
+#pragma unroll(4)
     for (int i = max_dim - 1; i >= 0; --i) {
-      GetDivMod(out_index_quotient, out_dims_array[i], &out_index_quotient,
-                &remainder);
+      remainder = out_index_quotient % out_dims_array[i];
+      out_index_quotient /= out_dims_array[i];
       x_index += remainder * x_strides_array[i];
       y_index += remainder * y_strides_array[i];
     }
+
     if (is_xsize_larger) {
       out[out_index] = func(x[x_index], y[y_index]);
     } else {
@@ -300,14 +305,24 @@ void CommonForwardBroadcastCUDA(
 
   const int out_size = std::accumulate(out_dims_array, out_dims_array + max_dim,
                                        1, std::multiplies<int>());
-  dim3 gird_size = dim3(
-      (out_size + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
-  dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
+  constexpr int threads = PADDLE_CUDA_THREAD_SIZE;
+  const int concurrent_blocks = ctx.GetMaxPhysicalThreadCount() / threads;
+  const int num_sm = ctx.GetSMCount();
+  dim3 grid_size = dim3(
+      min(num_sm * concurrent_blocks, (out_size + threads - 1) / threads), 1);
+  dim3 block_size = dim3(threads, 1);
 
-  CommonForwardBroadcastCUDAKernel<
-      Functor, T, OutType><<<gird_size, block_size, 0, ctx.stream()>>>(
-      x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu, x_data,
-      y_data, out_data, out_size, max_dim, func, is_xsize_larger);
+  if (is_xsize_larger) {
+    CommonForwardBroadcastCUDAKernel<
+        Functor, T, OutType, true><<<grid_size, block_size, 0, ctx.stream()>>>(
+        x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu, x_data,
+        y_data, out_data, out_size, max_dim, func);
+  } else {
+    CommonForwardBroadcastCUDAKernel<
+        Functor, T, OutType, false><<<grid_size, block_size, 0, ctx.stream()>>>(
+        x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu, x_data,
+        y_data, out_data, out_size, max_dim, func);
+  }
 }
 
 #endif  // __NVCC__
