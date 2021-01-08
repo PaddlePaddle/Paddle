@@ -14,7 +14,6 @@ else()
     set(TR_INFER_PLUGIN_RT libnvinfer_plugin.so)
 endif()
 
-message(${TENSORRT_INCLUDE_DIR})
 find_path(TENSORRT_INCLUDE_DIR NvInfer.h
     PATHS ${TENSORRT_ROOT} ${TENSORRT_ROOT}/include
     ${TENSORRT_ROOT}/include/${CMAKE_LIBRARY_ARCHITECTURE}

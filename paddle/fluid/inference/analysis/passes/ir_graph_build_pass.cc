@@ -40,7 +40,6 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   // between difference devices.
   platform::Place place;
   place = platform::CPUPlace();
-  //place = argument->place();
 
   if (argument->model_dir_valid()) {
     auto program =

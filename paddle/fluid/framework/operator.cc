@@ -1199,7 +1199,7 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
       }
     }
   }
-  VLOG(3) << type_ << " expected_kernel_key:" << expected_kernel_key;
+  VLOG(3) << " expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN
@@ -1342,7 +1342,7 @@ Scope* OperatorWithKernel::PrepareData(
         transfered_inplace_vars->emplace_back(var_name);
       }
 
-      VLOG(1) << "Transform Variable " << var_name << " from "
+      VLOG(3) << "Transform Variable " << var_name << " from "
               << kernel_type_for_var << " to " << expected_kernel_key;
 
       // In the inference scenerio, the scopes will be reused across the

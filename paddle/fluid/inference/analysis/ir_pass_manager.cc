@@ -178,7 +178,6 @@ void IRPassManager::CreatePasses(Argument *argument,
     }
 
     pre_pass = pass_name;
-    //if(pass_name == "ir_params_sync_among_devices_pass") continue;
 
     passes_.emplace_back(std::move(pass));
   }

@@ -19,22 +19,19 @@
 #include <unordered_set>
 #include <vector>
 
-//#include "paddle/fluid/framework/ir/graph_viz_pass.h"
-//#include "paddle/fluid/framework/op_version_registry.h"
-
 namespace paddle {
 namespace framework {
 namespace ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                         \
-  GET_IR_NODE(quant_dequant_op_x);  \
+  GET_IR_NODE(quant_dequant_op_x);        \
   GET_IR_NODE(quant_dequant_op);          \
   GET_IR_NODE(quant_dequant_op_out);      \
   GET_IR_NODE(quant_dequant_op_outscale); \
   GET_IR_NODE(any_op2);
 
-// Delete quant_dequant_op, then quantize and dequantize weight 
+// Delete quant_dequant_op, then quantize and dequantize weight
 void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "delete_quantdequant_filter_op_pattern";
   FusePassBase::Init(pattern_name, graph);
@@ -42,7 +39,8 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
   GraphPatternDetector gpd;
 
   // Create pattern
-  patterns::DeleteQuantDequantFilterOpPattern pattern(gpd.mutable_pattern(), pattern_name);
+  patterns::DeleteQuantDequantFilterOpPattern pattern(gpd.mutable_pattern(),
+                                                      pattern_name);
   pattern();
   auto* scope = param_scope();
   int found_count = 0;
@@ -52,7 +50,8 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
     GET_NODES;
 
     std::unordered_set<const Node*> nodes2rm = {};
-    int bit_length =   BOOST_GET_CONST(int, quant_dequant_op->Op()->GetAttr("bit_length"));
+    int bit_length =
+        BOOST_GET_CONST(int, quant_dequant_op->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
     std::vector<float> weight_scale;
     std::string quant_dequant_op_out_name = quant_dequant_op_out->Var()->Name();
@@ -95,7 +94,8 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
       }
     } else {
       auto scale_name = quant_dequant_op_outscale->Name();
-      const LoDTensor& scale_tensor = scope->FindVar(scale_name)->Get<LoDTensor>();
+      const LoDTensor& scale_tensor =
+          scope->FindVar(scale_name)->Get<LoDTensor>();
       const float* scale_data = scale_tensor.data<float>();
       weight_scale.push_back((range * range) / scale_data[0] / range);
     }
@@ -112,32 +112,35 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
     // If quantized op is conv2d_transpose, weight scale size = weight dims[1]
     if (dequant_type == "fake_quantize_dequantize_abs_max") {
       PADDLE_ENFORCE_EQ(
-                weight_scale.size(), 1,
-                platform::errors::InvalidArgument(
-                    "%s op weight dequantized by [fake_dequantize_max_abs] "
-                    "requires weight scale size = 1, but got %d.",
-                    quantized_op_type, weight_scale.size()));
+          weight_scale.size(), 1,
+          platform::errors::InvalidArgument(
+              "%s op weight dequantized by [fake_dequantize_max_abs] "
+              "requires weight scale size = 1, but got %d.",
+              quantized_op_type, weight_scale.size()));
       for (int j = 0; j < weight_tensor->numel(); j++) {
-        //quantized
+        // quantized
         quantized_weight_data[j] = quantized_weight_data[j] * weight_scale[0];
         quantized_weight_data[j] = std::round(quantized_weight_data[j]);
-        //dequantized
+        // dequantized
         quantized_weight_data[j] /= weight_scale[0];
       }
-    } else if (quantized_op_type == "mul" || quantized_op_type == "matmul" || quantized_op_type == "fc") {
+    } else if (quantized_op_type == "mul" || quantized_op_type == "matmul" ||
+               quantized_op_type == "fc") {
       if (dequant_type == "fake_channel_wise_quantize_dequantize_abs_max") {
         PADDLE_ENFORCE_EQ(
             weight_scale.size(), static_cast<size_t>(w_dims[1]),
             platform::errors::InvalidArgument(
                 "mul op weight dequantized by "
-                "[fake_channel_wise_quantize_dequantize_abs_max] requires weight scale "
+                "[fake_channel_wise_quantize_dequantize_abs_max] requires "
+                "weight scale "
                 "size = 2nd dim of mul's weight, which is %d, but got %d.",
                 static_cast<size_t>(w_dims[1]), weight_scale.size()));
         for (int j = 0; j < weight_tensor->numel(); j++) {
-          //quantized
-          quantized_weight_data[j] = quantized_weight_data[j] * weight_scale[j % w_dims[1]];
+          // quantized
+          quantized_weight_data[j] =
+              quantized_weight_data[j] * weight_scale[j % w_dims[1]];
           quantized_weight_data[j] = std::round(quantized_weight_data[j]);
-          //dequantized
+          // dequantized
           quantized_weight_data[j] /= weight_scale[j % w_dims[1]];
         }
       }
@@ -145,35 +148,39 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
                quantized_op_type == "depthwise_conv2d") {
       if (dequant_type == "fake_channel_wise_quantize_dequantize_abs_max") {
         PADDLE_ENFORCE_EQ(
-          weight_scale.size(), static_cast<size_t>(w_dims[0]),
-          platform::errors::InvalidArgument(
-              "conv2d op requires weight scale size = channel size of the "
-              "weight, which is %d, but got %d.",
-              static_cast<size_t>(w_dims[0]), weight_scale.size()));
+            weight_scale.size(), static_cast<size_t>(w_dims[0]),
+            platform::errors::InvalidArgument(
+                "conv2d op requires weight scale size = channel size of the "
+                "weight, which is %d, but got %d.",
+                static_cast<size_t>(w_dims[0]), weight_scale.size()));
         int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
         for (int j = 0; j < weight_tensor->numel(); j++) {
-          //quantized
-          quantized_weight_data[j] = quantized_weight_data[j] * weight_scale[j / inner_size];
+          // quantized
+          quantized_weight_data[j] =
+              quantized_weight_data[j] * weight_scale[j / inner_size];
           quantized_weight_data[j] = std::round(quantized_weight_data[j]);
-          //dequantized
+          // dequantized
           quantized_weight_data[j] /= weight_scale[j / inner_size];
         }
       }
     } else if (quantized_op_type == "conv2d_transpose") {
       if (dequant_type == "fake_channel_wise_quantize_dequantize_abs_max") {
         PADDLE_ENFORCE_EQ(
-          weight_scale.size(), static_cast<size_t>(w_dims[0]),
-          platform::errors::InvalidArgument(
-              "conv2d_transpose op requires weight scale size = channel size of the "
-              "weight, which is %d, but got %d.",
-              static_cast<size_t>(w_dims[1]), weight_scale.size()));
+            weight_scale.size(), static_cast<size_t>(w_dims[0]),
+            platform::errors::InvalidArgument(
+                "conv2d_transpose op requires weight scale size = channel size "
+                "of the "
+                "weight, which is %d, but got %d.",
+                static_cast<size_t>(w_dims[1]), weight_scale.size()));
         int inner_size = w_dims[2] * w_dims[3];
         for (int j = 0; j < weight_tensor->numel(); j++) {
-          //quantized
-          quantized_weight_data[j] = quantized_weight_data[j] * weight_scale[(j / inner_size) % w_dims[1]];
+          // quantized
+          quantized_weight_data[j] = quantized_weight_data[j] *
+                                     weight_scale[(j / inner_size) % w_dims[1]];
           quantized_weight_data[j] = std::round(quantized_weight_data[j]);
-          //dequantized
-          quantized_weight_data[j] /= weight_scale[(j / inner_size) % w_dims[1]];
+          // dequantized
+          quantized_weight_data[j] /=
+              weight_scale[(j / inner_size) % w_dims[1]];
         }
       }
     } else {
@@ -182,8 +189,9 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
     }
     nodes2rm.insert(quant_dequant_op_out);
 
-    //link weight in quant_dequant_op_x to any_op2
-    any_op2_desc->RenameInput(quant_dequant_op_out->Var()->Name(), quant_dequant_op_x->Var()->Name());
+    // link weight in quant_dequant_op_x to any_op2
+    any_op2_desc->RenameInput(quant_dequant_op_out->Var()->Name(),
+                              quant_dequant_op_x->Var()->Name());
     any_op2_desc->SetAttr("weight_scale", weight_scale);
     any_op2_desc->Flush();
     IR_NODE_LINK_TO(quant_dequant_op_x, any_op2);
@@ -201,4 +209,3 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(delete_quant_dequant_filter_op_pass,
               paddle::framework::ir::DeleteQuantDequantFilterOpPass);
-

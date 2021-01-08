@@ -109,6 +109,7 @@ class AnalysisPredictor : public PaddlePredictor {
   bool Init(const std::shared_ptr<framework::Scope> &parent_scope,
             const std::shared_ptr<framework::ProgramDesc> &program = nullptr);
 
+  ///
   /// \brief Run the prediction engine. Deprecated. Please refer to ZeroCopyRun
   ///
   /// \param[in] inputs input tensors
