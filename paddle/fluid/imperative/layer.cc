@@ -384,6 +384,16 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   }
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
+
+  // set the output var
+  for (auto& var_pair : outs) {
+    for (auto& var : var_pair.second) {
+      // NOTE(zhiqu): The ouput may be NULL because of pruning.
+      if (var) {
+        SetForwardDataTypeOfGradVar(var);
+      }
+    }
+  }
 }
 
 void OpBase::Run(const framework::OperatorBase& op,

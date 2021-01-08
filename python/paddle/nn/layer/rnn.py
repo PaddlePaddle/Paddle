@@ -989,39 +989,50 @@ class RNNBase(LayerList):
     def _cudnn_impl(self, inputs, initial_states, sequence_length):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
-        out = self._helper.create_variable_for_type_inference(inputs.dtype)
-        state = [
-            self._helper.create_variable_for_type_inference(inputs.dtype)
-            for i in range(self.state_components)
-        ]
-        reserve = self._helper.create_variable_for_type_inference(
-            dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
 
-        inputs = {
-            'Input': inputs,
-            'WeightList': self._all_weights,
-            'PreState': initial_states,
-            'SequenceLength': sequence_length
-        }
-        attrs = {
-            'dropout_prob': self.dropout,
-            'is_bidirec': self.num_directions == 2,
-            'input_size': self.input_size,
-            'hidden_size': self.hidden_size,
-            'num_layers': self.num_layers,
-            'mode': self.mode,
-            'is_test': not self.training
-        }
+        if fluid.framework.in_dygraph_mode():
+            _, _, out, state = framework.core.ops.rnn(
+                inputs, initial_states, self._all_weights, sequence_length,
+                self._dropout_state, self.state_components, 'dropout_prob',
+                self.dropout, 'is_bidirec', self.num_directions == 2,
+                'input_size', self.input_size, 'hidden_size', self.hidden_size,
+                'num_layers', self.num_layers, 'mode', self.mode, 'is_test',
+                not self.training)
+        else:
+            out = self._helper.create_variable_for_type_inference(inputs.dtype)
+            state = [
+                self._helper.create_variable_for_type_inference(inputs.dtype)
+                for i in range(self.state_components)
+            ]
+            reserve = self._helper.create_variable_for_type_inference(
+                dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
 
-        outputs = {
-            'Out': out,
-            'State': state,
-            'Reserve': reserve,
-            'DropoutState': self._dropout_state,
-        }
+            inputs = {
+                'Input': inputs,
+                'WeightList': self._all_weights,
+                'PreState': initial_states,
+                'SequenceLength': sequence_length
+            }
+            attrs = {
+                'dropout_prob': self.dropout,
+                'is_bidirec': self.num_directions == 2,
+                'input_size': self.input_size,
+                'hidden_size': self.hidden_size,
+                'num_layers': self.num_layers,
+                'mode': self.mode,
+                'is_test': not self.training
+            }
 
-        self._helper.append_op(
-            type="rnn", inputs=inputs, outputs=outputs, attrs=attrs)
+            outputs = {
+                'Out': out,
+                'State': state,
+                'Reserve': reserve,
+                'DropoutState': self._dropout_state,
+            }
+
+            self._helper.append_op(
+                type="rnn", inputs=inputs, outputs=outputs, attrs=attrs)
+
         out = paddle.tensor.transpose(out,
                                       [1, 0, 2]) if not self.time_major else out
         return out, tuple(state) if len(state) > 1 else state[0]
@@ -1032,15 +1043,15 @@ class RNNBase(LayerList):
         if initial_states is None:
             state_shape = (self.num_layers * self.num_directions, -1,
                            self.hidden_size)
-            if self.state_components == 1:
-                initial_states = paddle.fluid.layers.fill_constant_batch_size_like(
+            initial_states = tuple([
+                paddle.fluid.layers.fill_constant_batch_size_like(
                     inputs, state_shape, dtype, 0, batch_index, 1)
-            else:
-                initial_states = tuple([
-                    paddle.fluid.layers.fill_constant_batch_size_like(
-                        inputs, state_shape, dtype, 0, batch_index, 1)
-                    for _ in range(self.state_components)
-                ])
+                for _ in range(self.state_components)
+            ])
+        else:
+            initial_states = [initial_states] if isinstance(
+                initial_states,
+                paddle.fluid.framework.Variable) else initial_states
 
         if self.could_use_cudnn:
             # Add CPU kernel and dispatch in backend later

@@ -58,6 +58,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
+    {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -87,6 +88,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"multiclass_nms3", {"Out", "NmsRoisNum"}},
     {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"momentum", {"ParamOut", "VelocityOut"}},
+    {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -134,6 +136,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"update_loss_scaling",
      {"Out", "LossScaling", "OutGoodSteps", "OutBadSteps"}},
     {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
+    {"rnn", {"DropoutState"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.
