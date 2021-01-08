@@ -396,10 +396,11 @@ GenerateOpFunctions(const std::string& module_name) {
     }
     outs_initializer += "}";
     if (FindViewOpMap(op_type)) {
+      std::string viwe_input_name = view_op_map[op_type].first;
+      std::string viwe_output_name = view_op_map[op_type].second;
       view_strategy_str += paddle::string::Sprintf(
-          HandleViewBetweenInputAndOutput, view_op_map[op_type].first,
-          view_op_map[op_type].second, view_op_map[op_type].first,
-          view_op_map[op_type].second);
+          HandleViewBetweenInputAndOutput, viwe_input_name, viwe_output_name,
+          viwe_input_name, viwe_output_name);
     }
     if (outs_num == 0) {
       return_type = "void";
