@@ -16,6 +16,7 @@
 import paddle
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
+from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 
@@ -119,7 +120,6 @@ class Linear(layers.Layer):
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
-        self.name = name
         self.weight = self.create_parameter(
             shape=[in_features, out_features],
             attr=self._weight_attr,
@@ -136,6 +136,11 @@ class Linear(layers.Layer):
         out = F.linear(
             x=input, weight=self.weight, bias=self.bias, name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'in_features={}, out_features={}, dtype={}{}'.format(
+            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str)
 
 
 class Upsample(layers.Layer):
@@ -377,6 +382,16 @@ class Upsample(layers.Layer):
 
         return out
 
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            main_str = 'scale_factor={}'.format(self.scale_factor)
+        else:
+            main_str = 'size={}'.format(self.size)
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return '{}, mode={}, align_corners={}, align_mode={}, data_format={}{}'.format(
+            main_str, self.mode, self.align_corners, self.align_mode,
+            self.data_format, name_str)
+
 
 class UpsamplingNearest2D(layers.Layer):
     """
@@ -452,6 +467,15 @@ class UpsamplingNearest2D(layers.Layer):
             name=self.name)
 
         return out
+
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            main_str = 'scale_factor={}'.format(self.scale_factor)
+        else:
+            main_str = 'size={}'.format(self.size)
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return '{}, data_format={}{}'.format(main_str, self.data_format,
+                                             name_str)
 
 
 class UpsamplingBilinear2D(layers.Layer):
@@ -529,6 +553,15 @@ class UpsamplingBilinear2D(layers.Layer):
             name=self.name)
 
         return out
+
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            main_str = 'scale_factor={}'.format(self.scale_factor)
+        else:
+            main_str = 'size={}'.format(self.size)
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return '{}, data_format={}{}'.format(main_str, self.data_format,
+                                             name_str)
 
 
 class Bilinear(layers.Layer):
@@ -619,6 +652,12 @@ class Bilinear(layers.Layer):
     def forward(self, x1, x2):
         return F.bilinear(x1, x2, self.weight, self.bias, self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'in1_features={}, in2_features={}, out_features={}, dtype={}{}'.format(
+            self._in1_features, self._in2_features, self._out_features,
+            self._dtype, name_str)
+
 
 class Dropout(layers.Layer):
     """
@@ -688,6 +727,11 @@ class Dropout(layers.Layer):
             name=self.name)
         return out
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}, axis={}, mode={}{}'.format(self.p, self.axis, self.mode,
+                                                 name_str)
+
 
 class Dropout2D(layers.Layer):
     """
@@ -743,6 +787,11 @@ class Dropout2D(layers.Layer):
             data_format=self.data_format,
             name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}, data_format={}{}'.format(self.p, self.data_format,
+                                               name_str)
 
 
 class Dropout3D(layers.Layer):
@@ -800,6 +849,11 @@ class Dropout3D(layers.Layer):
             name=self.name)
         return out
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}, data_format={}{}'.format(self.p, self.data_format,
+                                               name_str)
+
 
 class AlphaDropout(layers.Layer):
     """
@@ -848,6 +902,10 @@ class AlphaDropout(layers.Layer):
         out = F.alpha_dropout(
             input, p=self.p, training=self.training, name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}{}'.format(self.p, name_str)
 
 
 class Pad1D(layers.Layer):
@@ -923,6 +981,11 @@ class Pad1D(layers.Layer):
                      value=self._value,
                      data_format=self._data_format,
                      name=self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
+            self._pad, self._mode, self._value, self._data_format, name_str)
 
 
 class Pad2D(layers.Layer):
@@ -1002,6 +1065,11 @@ class Pad2D(layers.Layer):
                      data_format=self._data_format,
                      name=self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
+            self._pad, self._mode, self._value, self._data_format, name_str)
+
 
 class Pad3D(layers.Layer):
     """
@@ -1080,6 +1148,11 @@ class Pad3D(layers.Layer):
                      data_format=self._data_format,
                      name=self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
+            self._pad, self._mode, self._value, self._data_format, name_str)
+
 
 class CosineSimilarity(layers.Layer):
     """
@@ -1133,6 +1206,9 @@ class CosineSimilarity(layers.Layer):
 
     def forward(self, x1, x2):
         return F.cosine_similarity(x1, x2, axis=self._axis, eps=self._eps)
+
+    def extra_repr(self):
+        return 'axis={_axis}, eps={_eps}'.format(**self.__dict__)
 
 
 class Embedding(layers.Layer):
@@ -1277,6 +1353,9 @@ class Embedding(layers.Layer):
             dtype=self._dtype,
             is_bias=False)
 
+        if in_dygraph_mode() and padding_idx != -1:
+            self.weight[padding_idx] = 0.0
+
     def forward(self, x):
         return F.embedding(
             x,
@@ -1284,3 +1363,12 @@ class Embedding(layers.Layer):
             padding_idx=self._padding_idx,
             sparse=self._sparse,
             name=self._name)
+
+    def extra_repr(self):
+        main_str = '{_num_embeddings}, {_embedding_dim}'
+        if self._padding_idx is not None:
+            main_str += ', padding_idx={_padding_idx}'
+        main_str += ', sparse={_sparse}'
+        if self._name is not None:
+            main_str += ', name={_name}'
+        return main_str.format(**self.__dict__)

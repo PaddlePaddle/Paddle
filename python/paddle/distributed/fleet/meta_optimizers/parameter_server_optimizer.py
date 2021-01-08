@@ -64,6 +64,11 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         _main = compiled_config.origin_main_program.clone()
         _startup = compiled_config.origin_startup_program.clone()
 
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _add_lr_decay_table_pass
+        _add_lr_decay_table_pass(
+            _main, compiled_config,
+            self.user_defined_strategy.a_sync_configs["lr_decay_steps"])
+
         if not compiled_config.is_geo_mode():
             # for main program
             _main = worker.delete_optimizer_pass(_main, compiled_config)
@@ -127,6 +132,12 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
             if len(ops) == 0:
                 return _main, _startup
+
+            from paddle.fluid.incubate.fleet.parameter_server.ir.public import _add_lr_decay_table_pass
+            lr_decay_steps = self.user_defined_strategy.a_sync_configs[
+                "lr_decay_steps"]
+            _add_lr_decay_table_pass(main_program, compiled_config,
+                                     lr_decay_steps)
 
             for op in ops:
                 if op.type in ["sgd", "adam"]:

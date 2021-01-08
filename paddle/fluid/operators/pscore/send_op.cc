@@ -52,8 +52,9 @@ class SendOp : public framework::OperatorBase {
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
 
     auto* communicator = paddle::distributed::Communicator::GetInstance();
-    communicator->Check(send_varnames);
-    communicator->Send(ins, scope);
+    if (communicator->Check(send_varnames)) {
+      communicator->Send(ins, scope);
+    }
 
     // auto fleet = paddle::distributed::FleetWrapper::GetInstance();
     // if (is_sparse == 0) {
