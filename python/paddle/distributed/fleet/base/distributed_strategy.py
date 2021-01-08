@@ -582,6 +582,38 @@ class DistributedStrategy(object):
             raise ValueError("last_comm_group_size_MB should be greater than 0")
 
     @property
+    def find_unused_parameters(self):
+        """
+        Traverse the autograd graph from all the tensors contained 
+        in the return value of the ``forward'' function of the wrapper 
+        module. In this picture, the parameters that have not received 
+        the gradient will be preemptively marked as reversible. 
+        Please note that all "forward" outputs derived from the module 
+        parameters must participate in the calculation of losses and 
+        subsequent gradient calculations. If not, the wrapper will hang, 
+        waiting for autograd to generate gradients for these parameters. 
+
+        Default value: False
+
+        Examples:
+          .. code-block:: python
+        
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.find_unused_parameters = False
+        """
+        return self.strategy.find_unused_parameters
+
+    @find_unused_parameters.setter
+    @is_strict_auto
+    def find_unused_parameters(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.find_unused_parameters = flag
+        else:
+            raise ValueError(
+                "find_unused_parameters should have value of bool type")
+
+    @property
     def _fuse_grad_size_in_TFLOPS(self):
         return self.strategy.fuse_grad_size_in_TFLOPS
 

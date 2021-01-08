@@ -340,6 +340,15 @@ class DataParallel(layers.Layer):
         last_comm_buffer_size(float, optional): It limits memory size(MB) of last buffer in communication
                                          calling. Making the last communication buffer size small is useful to 
                                          improve performance. Default: 1.
+        find_unused_parameters(bool, optional):  Traverse the autograd graph from all the tensors contained 
+                                        in the return value of the ``forward'' function of the wrapper 
+                                        module. In this picture, the parameters that have not received 
+                                        the gradient will be preemptively marked as reversible. 
+                                        Please note that all "forward" outputs derived from the module 
+                                        parameters must participate in the calculation of losses and 
+                                        subsequent gradient calculations. If not, the wrapper will hang, 
+                                        waiting for autograd to generate gradients for these parameters. 
+                                        Default value: False.
             
     Returns:
         Layer: The data paralleled module.
@@ -395,11 +404,13 @@ class DataParallel(layers.Layer):
                  layers,
                  strategy=None,
                  comm_buffer_size=25,
-                 last_comm_buffer_size=1):
+                 last_comm_buffer_size=1,
+                 find_unused_parameters=False):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
         self._layers = layers
+        self.find_unused_parameters = find_unused_parameters
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
         # It just stores some environment variables, which can be constructed by 
@@ -466,13 +477,12 @@ class DataParallel(layers.Layer):
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
-        find_unused_vars = True
         self._reducer = core.Reducer(
             trainable_parameters,
             list(reversed(self.group_indices)), is_sparse_gradient,
             parallel_helper.__parallel_ctx__clz__,
             [self.last_comm_buffer_size, self.comm_buffer_size],
-            find_unused_vars)
+            self.find_unused_parameters)
 
     def _find_varbase(self, obj):
         if isinstance(obj, core.VarBase):
