@@ -58,7 +58,6 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
-    {"reshape2", {"X", "Shape", "ShapeTensor"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -233,7 +232,7 @@ const char* INPLACE_LEAF_ERROR_MESSAGE = R"(Leaf Var (%s) that doesn't stop grad
 const char* INPLACE_STRATEGY_TEMPLATE =
 R"(
     PADDLE_ENFORCE_EQ(
-      %s->SharedVar()->IsLeafGrad(), false,
+      %s->IsLeaf() && !%s->OverridedStopGradient(), false,
       platform::errors::InvalidArgument("%s", %s->Name()));
     %s->BumpInplaceVersion();
     VLOG(3) << "Var(" << %s->Name() << ") uses Inplace Strategy.";
@@ -438,7 +437,7 @@ std::string GenerateOpFunctionsBody(
       const auto inplace_input_name = inplace_op_map[op_type][out_name];
       // increase inplace_version
       view_or_inplace_strategy_str += paddle::string::Sprintf(
-          INPLACE_STRATEGY_TEMPLATE, inplace_input_name,
+          INPLACE_STRATEGY_TEMPLATE, inplace_input_name, inplace_input_name,
           INPLACE_LEAF_ERROR_MESSAGE, inplace_input_name, inplace_input_name,
           inplace_input_name);
       outs_initializer +=

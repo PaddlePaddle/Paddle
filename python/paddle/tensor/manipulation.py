@@ -40,6 +40,7 @@ __all__ = [
     'broadcast_to',
     'expand_as',
     'flatten',
+    'flatten_',
     'gather',
     'gather_nd',
     'reshape',
@@ -263,6 +264,47 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
     if in_dygraph_mode():
         dy_out, _ = core.ops.flatten_contiguous_range(
+            x, 'start_axis', start_axis, 'stop_axis', stop_axis)
+        return dy_out
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    x_shape = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='flatten_contiguous_range',
+        inputs={"X": x},
+        outputs={'Out': out,
+                 'XShape': x_shape},
+        attrs={"start_axis": start_axis,
+               "stop_axis": stop_axis})
+    return out
+
+
+def flatten_(x, start_axis=0, stop_axis=-1, name=None):
+    if not (isinstance(x, Variable)):
+        raise ValueError("The input x should be a Tensor")
+
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
+    helper = LayerHelper('flatten', **locals())
+
+    x_dim = len(x.shape)
+    if not (isinstance(start_axis, int)) or (
+            start_axis > x_dim - 1) or start_axis < -x_dim:
+        raise ValueError(
+            "The start_axis should be a int, and in range [-rank(x), rank(x))")
+    if not (isinstance(stop_axis, int)) or (
+            stop_axis > x_dim - 1) or stop_axis < -x_dim:
+        raise ValueError(
+            "The stop_axis should be a int, and in range [-rank(x), rank(x))")
+    if start_axis < 0:
+        start_axis = start_axis + x_dim
+    if stop_axis < 0:
+        stop_axis = stop_axis + x_dim
+    if start_axis > stop_axis:
+        raise ValueError("The stop_axis should be larger than stat_axis")
+
+    if in_dygraph_mode():
+        dy_out, _ = core.ops.flatten_contiguous_range_(
             x, 'start_axis', start_axis, 'stop_axis', stop_axis)
         return dy_out
 
@@ -816,7 +858,7 @@ def unsqueeze_(x, axis, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in axis
             ]
-        out, _ = core.ops.unsqueeze2_(input, 'axes', axis)
+        out, _ = core.ops.unsqueeze2_(x, 'axes', axis)
         return out
 
 
@@ -1723,11 +1765,11 @@ def reshape_(x, shape, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
-            out, _ = core.ops.reshape2_(x, None, None, 'shape', shape)
+            out, _ = core.ops.reshape2_(x, None, 'shape', shape)
             return out
         elif isinstance(shape, Variable):
             shape.stop_gradient = True
-            out, _ = core.ops.reshape2_(x, shape, None)
+            out, _ = core.ops.reshape2_(x, shape)
             return out
 
 

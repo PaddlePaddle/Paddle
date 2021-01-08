@@ -132,7 +132,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward,
-                     const std::map<std::string, std::string>& inplace) {
+                     const std::map<std::string, std::string>& inplace_map) {
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for
@@ -184,7 +184,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, new_ins, outs, attrs, place, inplace);
+    CreateGradOpNode(*op, new_ins, outs, attrs, place, inplace_map);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }
@@ -198,9 +198,9 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
-                     const std::map<std::string, std::string>& inplace) {
+                     const std::map<std::string, std::string>& inplace_map) {
   TraceOp(type, ins, outs, std::move(attrs), expected_place_, has_grad_,
-          inplace);
+          inplace_map);
 }
 
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,

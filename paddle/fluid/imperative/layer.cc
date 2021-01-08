@@ -442,7 +442,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
     const platform::Place& place,
-    const std::map<std::string, std::string>& inplace) {
+    const std::map<std::string, std::string>& inplace_map) {
   const auto& info = op.Info();
   if (!info.dygraph_grad_op_maker_) {
     return nullptr;
@@ -455,9 +455,18 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
       grad_op.SetPlace(place);
       ClearNoNeedBufferInputs(&grad_op);
     }
-    if (!inplace.empty()) {
+    if (!inplace_map.empty()) {
       VLOG(3) << "Inplace testv1 " << op.Type();
-      grad_node->SetInplaceGradNameMap(inplace);
+      // for (auto& pair : inplace_map) {
+      //   for (auto& in_var : ins.at(pair.first)) {
+      //     PADDLE_ENFORCE_EQ(
+      //         in_var-> HasGradVar() && !GetGradVar()->HasGradNode())
+      //         in_var->SharedVar()->IsLeafGrad(), false,
+      //         platform::errors::InvalidArgument("Leaf Var (%s) that doesn't
+      //         stop gradient can't use inplace strategy.", in_var->Name()));
+      //   }
+      // }
+      grad_node->SetInplaceGradNameMap(inplace_map);
     }
     return grad_node;
   } else {
