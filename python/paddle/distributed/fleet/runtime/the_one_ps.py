@@ -495,8 +495,7 @@ class TheOnePSRuntime(RuntimeBase):
             # for ps-heter mode, wait heter worker ready
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
             ):
-                wait_server_ready(
-                    self.role_maker._get_heter_worker_endpoints())
+                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
                 self._heter_client = HeterClient(
                     self.role_maker._get_heter_worker_endpoints(),
@@ -673,8 +672,7 @@ class TheOnePSRuntime(RuntimeBase):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 
         dist_varnames = get_sparse_tablenames(self.origin_main_program, True)
-        sparse_varnames = get_sparse_tablenames(
-            self.origin_main_program, False)
+        sparse_varnames = get_sparse_tablenames(self.origin_main_program, False)
 
         distributed_varnames = dist_varnames + sparse_varnames
 
@@ -761,14 +759,18 @@ class TheOnePSRuntime(RuntimeBase):
 
         return is_valid
 
-    def _save_sparse_params(self, executor, dirname, context, main_program, mode):
+    def _save_sparse_params(self, executor, dirname, context, main_program,
+                            mode):
         values = []
         for id, names in context.items():
             values.extend(names)
             self._worker.save_one_model(id, dirname, mode)
         return values
 
-    def _save_distributed_persistables(self, executor, dirname, main_program,
+    def _save_distributed_persistables(self,
+                                       executor,
+                                       dirname,
+                                       main_program,
                                        mode=0):
 
         denses = self.compiled_strategy.get_the_one_recv_context(
@@ -780,9 +782,8 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             use_origin_program=True)
 
-     
-        recv_sparse_varnames = self._save_sparse_params(executor, dirname,
-                                                            sparses, main_program, mode)
+        recv_sparse_varnames = self._save_sparse_params(
+            executor, dirname, sparses, main_program, mode)
 
         recv_dense_varnames = []
         for id, names in denses.items():
@@ -836,6 +837,7 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
+        # Todo: Save optimizer status
         self._save_distributed_persistables(executor, dirname, main_program,
                                             mode)
 
@@ -882,8 +884,7 @@ class TheOnePSRuntime(RuntimeBase):
 
             program = Program.parse_from_string(program_desc_str)
             program._copy_dist_param_info_from(fluid.default_main_program())
-            self._ps_inference_save_persistables(
-                executor, dirname, program)
+            self._ps_inference_save_persistables(executor, dirname, program)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)

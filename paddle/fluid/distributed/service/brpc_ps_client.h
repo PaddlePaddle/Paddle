@@ -17,7 +17,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <string>
 
 #include "brpc/channel.h"
 #include "brpc/controller.h"
@@ -164,8 +163,8 @@ class BrpcPsClient : public PSClient {
   std::future<int32_t> send_save_cmd(uint32_t table_id, int cmd_id,
                                      const std::vector<std::string> &param);
 
-  void local_save_sparse_tensor(
-    uint32_t table_id, const std::string &path);
+  // for local save sparse
+  void local_save_sparse_tensor(uint32_t table_id, const std::string &path);
 
   inline brpc::Channel *get_sparse_channel(size_t server_id) {
     return _server_channels[server_id][0].get();

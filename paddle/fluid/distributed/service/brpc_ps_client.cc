@@ -14,9 +14,9 @@
 
 #include <algorithm>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
-#include <sstream>
 
 #include "Eigen/Dense"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
@@ -185,9 +185,8 @@ int32_t BrpcPsClient::initialize() {
 
 int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id
-               << " failed, "
-                  "err:"
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
+                                                  "err:"
                << _cntls[request_idx]->ErrorText();
     return -1;
   }
@@ -204,9 +203,8 @@ int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
 int DownpourBrpcClosure::check_save_response(size_t request_idx, int cmd_id) {
   uint32_t feasign_size = 0;
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id
-               << " failed, "
-                  "err:"
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
+                                                  "err:"
                << _cntls[request_idx]->ErrorText();
     return -1;
   }
@@ -366,15 +364,15 @@ std::future<int32_t> BrpcPsClient::save(uint32_t table_id,
   return send_save_cmd(table_id, PS_SAVE_ONE_TABLE, {epoch, mode});
 }
 
-void BrpcPsClient::local_save_sparse_tensor(
-    uint32_t table_id, const std::string &path) {
+void BrpcPsClient::local_save_sparse_tensor(uint32_t table_id,
+                                            const std::string &path) {
   // get var information
   std::string var_name = "";
   int64_t var_num = 0;
   int64_t var_shape = 0;
-  const auto& worker_param = _config.worker_param().downpour_worker_param();
-  for(size_t i =0; i< worker_param.downpour_table_param_size(); ++i){
-    if (worker_param.downpour_table_param(i).table_id() == table_id){
+  const auto &worker_param = _config.worker_param().downpour_worker_param();
+  for (size_t i = 0; i < worker_param.downpour_table_param_size(); ++i) {
+    if (worker_param.downpour_table_param(i).table_id() == table_id) {
       var_name = worker_param.downpour_table_param(i).common().table_name();
       var_num = worker_param.downpour_table_param(i).accessor().fea_dim();
       var_shape = worker_param.downpour_table_param(i).accessor().embedx_dim();
@@ -385,16 +383,18 @@ void BrpcPsClient::local_save_sparse_tensor(
   std::string var_store = string::Sprintf("%s", path);
   MkDirRecursively(var_store.c_str());
 
+  // pull sparse from server
   std::vector<float> save_huge_vec(var_num * var_shape);
   std::vector<uint64_t> save_key(var_num);
-  std::vector<float*> save_vec;
-  for(size_t i=0; i<save_key.size(); ++i){
+  std::vector<float *> save_vec;
+  for (size_t i = 0; i < save_key.size(); ++i) {
     save_key[i] = i;
-    save_vec.push_back(save_huge_vec.data() + i*var_shape);
+    save_vec.push_back(save_huge_vec.data() + i * var_shape);
   }
 
-  auto status = pull_sparse((float **)save_vec.data(), table_id, save_key.data(), save_key.size());
-  status.wait(); 
+  auto status = pull_sparse((float **)save_vec.data(), table_id,
+                            save_key.data(), save_key.size());
+  status.wait();
 
   // create lod tensor
   std::shared_ptr<framework::Scope> scope;
@@ -404,14 +404,16 @@ void BrpcPsClient::local_save_sparse_tensor(
   auto &dev_ctx = *pool.Get(place);
 
   framework::Variable *var = scope->Var(var_name);
-  framework::LoDTensor* var_tensor = var->GetMutable<framework::LoDTensor>();
+  framework::LoDTensor *var_tensor = var->GetMutable<framework::LoDTensor>();
 
   std::vector<int64_t> vec_dim = {var_num, var_shape};
   var_tensor->Resize(framework::make_ddim(vec_dim));
 
-  float* tensor_data = var_tensor->mutable_data<float>(place);
-  memcpy(tensor_data, save_huge_vec.data(), var_num * var_shape * sizeof(float));
-  
+  // copy and save
+  float *tensor_data = var_tensor->mutable_data<float>(place);
+  memcpy(tensor_data, save_huge_vec.data(),
+         var_num * var_shape * sizeof(float));
+
   std::string file_name = string::Sprintf("%s/%s", var_store, var_name);
   std::ofstream fout(file_name, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
@@ -421,7 +423,6 @@ void BrpcPsClient::local_save_sparse_tensor(
   framework::SerializeToStream(fout, *var_tensor, dev_ctx);
   fout.close();
 }
-
 
 std::future<int32_t> BrpcPsClient::clear() {
   return send_cmd(-1, PS_CLEAR_ALL_TABLE, {});
@@ -833,8 +834,9 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
             } else {
               last_key = kv_pair->first;
               last_value_data = kv_pair->second;
-              if (value_size != io_buffer_itr.copy_and_forward(
-                                    (void *)(last_value_data), value_size)) {
+              if (value_size !=
+                  io_buffer_itr.copy_and_forward((void *)(last_value_data),
+                                                 value_size)) {
                 LOG(WARNING) << "res data is lack or not in format";
                 ret = -1;
                 break;
