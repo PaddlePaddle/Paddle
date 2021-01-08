@@ -198,7 +198,7 @@ class Pool2dOpConverter : public OpConverter {
             post_pad);
         PADDLE_ENFORCE_NOT_NULL(
             pad_layer, platform::errors::Fatal(
-                           "pad layer in poolOp converter could not be "
+                           "Pad layer in poolOp converter could not be "
                            "created. The pointer to pad layer is `NULL`."));
         input1 = pad_layer->getOutput(0);
       }
