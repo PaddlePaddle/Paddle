@@ -23,7 +23,7 @@ import paddle
 import six
 import paddle.fluid as fluid
 from paddle.nn import functional
-from paddle.nn import Linear, Conv2D, Softmax, Pool2D, BatchNorm
+from paddle.nn import Linear, Conv2D, Softmax, BatchNorm
 from paddle.fluid.layers import nn
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
@@ -31,6 +31,7 @@ from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware, QuantizationTransformPass, AddQuantDequantPass
 from paddle.fluid.dygraph.container import Sequential
+from paddle.fluid.dygraph.nn import Pool2D
 from paddle.nn.layer.activation import ReLU, LeakyReLU, ReLU6, Tanh, Swish
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -157,7 +158,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 weight_attr=conv2d_w3_attr,
                 bias_attr=conv2d_b3_attr),
             ReLU6(),
-           Tanh())
+            Tanh())
         self.fc = Sequential(
             Linear(
                 in_features=400,
@@ -326,8 +327,8 @@ class TestImperativeAddQuantDequant(unittest.TestCase):
             weight_quantize_type=weight_quantize_type,
             activation_quantize_type=activation_quant_type,
             quantizable_layer_type=[
-                'Conv2D', 'Linear', 'ReLU', 'LeakyReLU', 'ReLU6', #'Pool2D',
-                'Tanh', 'Swish'
+                'Conv2D', 'Linear', 'ReLU', 'LeakyReLU', 'ReLU6', 'Tanh',
+                'Swish'
             ])
 
         with fluid.dygraph.guard():
@@ -425,13 +426,12 @@ class TestImperativeAddQuantDequant(unittest.TestCase):
             scope=scope,
             place=place,
             quantizable_op_type=[
-                'relu',  'leaky_relu', 'relu6', #'pool2d',
-                'tanh', 'swish'
+                'relu', 'leaky_relu', 'relu6', 'tanh', 'swish'
             ])
         transform_pass.apply(main_graph)
         transform_pass.apply(infer_graph)
         add_quant_dequant_pass.apply(main_graph)
-        add_quant_dequant_pass.apply(infer_graph)               
+        add_quant_dequant_pass.apply(infer_graph)
         build_strategy = fluid.BuildStrategy()
         build_strategy.fuse_all_reduce_ops = False
         binary = fluid.CompiledProgram(main_graph.graph).with_data_parallel(
