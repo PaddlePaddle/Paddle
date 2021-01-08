@@ -62,6 +62,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
+list(REMOVE_ITEM TEST_OPS test_pipeline)
 
 if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
