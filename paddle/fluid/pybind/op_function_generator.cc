@@ -58,7 +58,6 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
-    {"reshape2", {"X", "Shape", "ShapeTensor"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -143,18 +142,17 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
 // It's a 2-layer map. The key of outer map is the view op name, the value is
 // also a map which implies the mapping relationship between the output and
 // input varbase.
-std::map<std::string, std::map<std::string, std::string>> view_op_map = {
-    {"squeeze2", {{"Out", "X"}}},  // "X" -> "Out"
-    {"unsqueeze2", {{"Out", "X"}}},
-    {"reshape2", {{"Out", "X"}}},
-    {"flatten_contiguous_range", {{"Out", "X"}}},
+std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
+    {"squeeze2", {"X", "Out"}},  // "X" -> "Out"
+    {"unsqueeze2", {"X", "Out"}},
+    {"reshape2", {"X", "Out"}},
+    {"flatten_contiguous_range", {"X", "Out"}},
 };
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
 const char* OUT_DUPLICABLE_INITIALIZER_TEMPLATE = R"({"%s", ConstructDuplicableOutput(%s)})";
-const char* OUT_VIEW_INITIALIZER_TEMPLATE = R"({"%s", {view_varbase_%s}})";
 
 const char* INPUT_INITIALIZER_TEMPLATE = R"({"%s", {%s}})";
 const char* INPUT_LIST_INITIALIZER_TEMPLATE = R"({"%s", %s})";
@@ -206,8 +204,10 @@ const char* RETURN_TEMPLATE = R"(outs["%s"][0])";
 const char* FUNCTION_ARGS = R"(%s, const py::args& args)";
 const char* FUNCTION_ARGS_NO_INPUT = R"(const py::args& args)";
 
-const char* VIEW_OUTPUT_TEMPLATE = R"(
-    auto view_varbase_%s = ConstructViewOutput(%s);)";
+const char* HandleViewBetweenInputAndOutput = R"(
+    if (ins.count("%s") && outs.count("%s")) {
+      HandleViewBetweenInputAndOutput(ins["%s"][0], outs["%s"][0]);
+    })";
 
 const char* OP_FUNCTION_TEMPLATE =
 R"(
@@ -219,7 +219,6 @@ R"(
   {
     py::gil_scoped_release release;
     auto tracer = imperative::GetCurrentTracer();
-    %s
     imperative::NameVarBaseMap outs = %s;
     imperative::NameVarBaseMap ins = %s;
     %s
@@ -246,9 +245,8 @@ static inline bool FindPassingOutsMap(const std::string& op_type,
   return op_passing_outs_map[op_type].count(out_name);
 }
 
-static inline bool FindViewOutsMap(const std::string& op_type,
-                                   const std::string& out_name) {
-  return view_op_map[op_type].count(out_name);
+static inline bool FindViewOpMap(const std::string& op_type) {
+  return view_op_map.count(op_type);
 }
 
 static inline std::string TempName(const std::string& name) {
@@ -378,12 +376,6 @@ GenerateOpFunctions(const std::string& module_name) {
           input_args_num++;
           outs_initializer += paddle::string::Sprintf(
               OUT_DUPLICABLE_INITIALIZER_TEMPLATE, out_name, out_num_str);
-        } else if (FindViewOutsMap(op_type, out_name)) {
-          std::string view_in_name = view_op_map[op_type][out_name];
-          view_strategy_str += paddle::string::Sprintf(VIEW_OUTPUT_TEMPLATE,
-                                                       out_name, view_in_name);
-          outs_initializer += paddle::string::Sprintf(
-              OUT_VIEW_INITIALIZER_TEMPLATE, out_name, out_name);
         } else {
           outs_initializer +=
               paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
@@ -403,6 +395,12 @@ GenerateOpFunctions(const std::string& module_name) {
       return_str.pop_back();
     }
     outs_initializer += "}";
+    if (FindViewOpMap(op_type)) {
+      view_strategy_str += paddle::string::Sprintf(
+          HandleViewBetweenInputAndOutput, view_op_map[op_type].first,
+          view_op_map[op_type].second, view_op_map[op_type].first,
+          view_op_map[op_type].second);
+    }
     if (outs_num == 0) {
       return_type = "void";
     }
@@ -421,10 +419,10 @@ GenerateOpFunctions(const std::string& module_name) {
     // generate op funtcion body
     auto op_function_str = paddle::string::Sprintf(
         OP_FUNCTION_TEMPLATE, return_type, func_name, function_args,
-        ins_cast_str, op_type, input_args_num, view_strategy_str,
-        outs_initializer, ins_initializer,
-        ins_initializer_with_null + outs_initializer_with_null, op_type,
-        return_str);
+        ins_cast_str, op_type, input_args_num, outs_initializer,
+        ins_initializer, ins_initializer_with_null +
+                             outs_initializer_with_null + view_strategy_str,
+        op_type, return_str);
 
     // generate pybind item
     auto bind_function_str = paddle::string::Sprintf(

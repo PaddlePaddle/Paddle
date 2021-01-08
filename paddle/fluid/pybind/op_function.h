@@ -148,8 +148,10 @@ ConstructDuplicableOutput(const size_t num) {
   return res;
 }
 
-static inline std::shared_ptr<imperative::VarBase> ConstructViewOutput(
-    const std::shared_ptr<imperative::VarBase>& input_var) {
+static inline std::shared_ptr<imperative::VarBase>
+HandleViewBetweenInputAndOutput(
+    const std::shared_ptr<imperative::VarBase>& input_var,
+    const std::shared_ptr<imperative::VarBase>& view_output_var) {
   PADDLE_ENFORCE_EQ(
       input_var->Var().IsInitialized(), true,
       platform::errors::InvalidArgument("Tensor %s has not been initialized!",
@@ -160,25 +162,16 @@ static inline std::shared_ptr<imperative::VarBase> ConstructViewOutput(
           "Type of Tensor[%s] must be LoDTensor, but received %s!",
           input_var->Name(), framework::ToTypeName(input_var->Var().Type())));
 
-  auto tracer = imperative::GetCurrentTracer();
-  auto view_output_var = std::shared_ptr<imperative::VarBase>(
-      new imperative::VarBase(tracer->GenerateUniqueName()));
-  view_output_var->SetPersistable(input_var->Persistable());
-  view_output_var->SetType(input_var->Type());
-  view_output_var->SetDataType(input_var->DataType());
+  const auto& input_tensor = input_var->Var().Get<framework::LoDTensor>();
+  PADDLE_ENFORCE_EQ(
+      input_tensor.IsInitialized(), true,
+      platform::errors::InvalidArgument(
+          "LoDTensor %s has not been initialized!", input_var->Name()));
 
-  if (input_var->Var().IsType<framework::LoDTensor>()) {
-    const auto& input_tensor = input_var->Var().Get<framework::LoDTensor>();
-    PADDLE_ENFORCE_EQ(
-        input_tensor.IsInitialized(), true,
-        platform::errors::InvalidArgument(
-            "LoDTensor %s has not been initialized!", input_var->Name()));
-
-    auto* view_output_tensor =
-        view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
-    view_output_tensor->ShareDataWith(input_tensor);
-    view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
-  }
+  auto* view_output_tensor =
+      view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
+  view_output_tensor->ShareDataWith(input_tensor);
+  view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
 
   VLOG(3) << "The Output Var(" << view_output_var->Name()
           << ") share allocation with Input Var(" << input_var->Name() << ").";
