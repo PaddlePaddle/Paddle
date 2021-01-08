@@ -262,14 +262,34 @@ def convert_len(var):
         return len(var)
 
 
-def convert_var_shape(x):
+def convert_var_shape(x, idx=None, in_control_flow=False):
     """
     A function representation of the shape of variable.
     """
-    if isinstance(x, Variable):
-        return nn.shape(x)
+
+    def has_negetive(list_shape, idx=None):
+        if idx is not None:
+            return list_shape[idx] < 0
+
+        num_negetive = sum([1 if i < 0 else 0 for i in list_shape])
+        return num_negetive > 0
+
+    # When `x` is Variable, call nn.shape(x) in following cases:
+    #  (1) The shape of `x` is used in control flow condition.
+    #      ```
+    #      if x.shape[0] == 1:
+    #          y = XX
+    #      ```
+    #  (2) The dim to be used is negetive
+    #      ```
+    #      # Assume x.shape=[3, -1] in static mode
+    #      y = paddle.reshape(x, shape=[1, x.shape[1]])
+    #      ```
+    if isinstance(x, Variable) and (in_control_flow or has_negetive(x.shape,
+                                                                    idx)):
+        return nn.shape(x) if idx is None else nn.shape(x)[idx]
     else:
-        return x.shape
+        return x.shape if idx is None else x.shape[idx]
 
 
 def convert_shape_compare(left, *args):
