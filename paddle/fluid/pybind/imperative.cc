@@ -1060,21 +1060,52 @@ void BindImperative(py::module *m_ptr) {
        )DOC")
       .def("copy_", &imperative::VarBase::CopyFrom)
       .def("_copy_to",
-           [](const imperative::VarBase &self, const platform::CPUPlace &place,
-              bool blocking) { return self.NewVarBase(place, blocking); },
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CPUPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             // Note(zhiqiu): Since NewVarBase may use GpuCopyAsync to
+             // copy data from the tensor of self to the tensor of new varbase,
+             // we need to ensure that the varbase self is not destructed until
+             // the GpuCopyAsync is completed. Otherwise, the memory may be
+             // freed
+             // when varbase self is destructed.
+             // To do that, we increase the reference count of self by 1 and
+             // add a cuda event to wait the GpuCopyAsync's completion.
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
            py::return_value_policy::copy)
       .def("_copy_to",
-           [](const imperative::VarBase &self,
-              const platform::CUDAPinnedPlace &place,
-              bool blocking) { return self.NewVarBase(place, blocking); },
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CUDAPinnedPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
            py::return_value_policy::copy)
       .def("_copy_to",
-           [](const imperative::VarBase &self, const platform::XPUPlace &place,
-              bool blocking) { return self.NewVarBase(place, blocking); },
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::XPUPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
            py::return_value_policy::copy)
       .def("_copy_to",
-           [](const imperative::VarBase &self, const platform::CUDAPlace &place,
-              bool blocking) { return self.NewVarBase(place, blocking); },
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CUDAPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
            py::return_value_policy::copy)
       .def("value", [](imperative::VarBase &self) { return self.MutableVar(); },
            py::return_value_policy::reference)
