@@ -75,6 +75,17 @@ def dyfunc_tuple_shape_2(x):
     return res
 
 
+def dyfunc_paddle_shape_api(x):
+    x = paddle.to_tensor(x)
+    # paddle.shape will not be converted.
+    a = paddle.shape(x)[0]
+    # alias api will also not be converted.
+    alias_old_api = paddle.fluid.layers
+    b = alias_old_api.shape(x)[1]
+    res = paddle.reshape(x, shape=(b, a))
+    return res
+
+
 def dyfunc_with_if_1(x):
     x = fluid.dygraph.to_variable(x)
     res = fluid.layers.reshape(x, [-1, 1])
@@ -250,6 +261,12 @@ class TestTupleShape2(TestTensorShapeBasic):
     def init_test_func(self):
         self.input = numpy.ones((5, 7)).astype("int32")
         self.dygraph_func = dyfunc_tuple_shape_2
+
+
+class TestPaddleShapeApi(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.input = numpy.ones((5, 7)).astype("int32")
+        self.dygraph_func = dyfunc_paddle_shape_api
 
 
 # 2. Tests with control flow if

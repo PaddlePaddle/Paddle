@@ -166,6 +166,14 @@ class TensorShapeTransformer(gast.NodeTransformer):
         return need_transformed
 
     def _used_by_paddle_api(self, node):
+        """
+        Whether node is used in paddle api as arguments.
+        For example:
+            1) Return True in `paddle.relu(x)` where node is `x` (gast.Name)
+            2) Return True in `paddle.add(self.x)` where node is `self.x` (gast.Attribute)
+            3) Return False in `paddle.add(self.x)` where node is `paddle.add` (gast.Attribute),
+               because the role of node is not arguments but `gast.Call.func`.
+        """
         assert isinstance(node, (gast.Attribute, gast.Name))
         wrapper_node = self.node_to_wrapper_map.get(node)
         if not wrapper_node:
@@ -174,7 +182,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
         while wrapper_node.parent:
             parent_node = wrapper_node.parent.node
             if isinstance(parent_node, gast.Call):
-                if is_paddle_api(parent_node):
+                # Note(Aurelius84): Filter the case when the role of node is `gast.Call.func`.
+                if is_paddle_api(parent_node) and parent_node.func != node:
                     return True
                 else:
                     return False
