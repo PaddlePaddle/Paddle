@@ -661,7 +661,7 @@ REGISTER_OP_VERSION(conv_transpose)
             "output_padding",
             "In order to add additional size to one side of each dimension "
             "in the output",
-            {}));
+            std::vector<int>{}));
 
 REGISTER_OP_VERSION(conv2d_transpose)
     .AddCheckpoint(
@@ -672,7 +672,7 @@ REGISTER_OP_VERSION(conv2d_transpose)
             "output_padding",
             "In order to add additional size to one side of each dimension "
             "in the output",
-            {}));
+            std::vector<int>{}));
 
 REGISTER_OP_VERSION(conv3d_transpose)
     .AddCheckpoint(
@@ -683,7 +683,7 @@ REGISTER_OP_VERSION(conv3d_transpose)
             "output_padding",
             "In order to add additional size to one side of each dimension "
             "in the output",
-            {}));
+            std::vector<int>{}));
 
 REGISTER_OP_VERSION(depthwise_conv2d_transpose)
     .AddCheckpoint(
@@ -694,4 +694,4 @@ REGISTER_OP_VERSION(depthwise_conv2d_transpose)
             "output_padding",
             "In order to add additional size to one side of each dimension "
             "in the output",
-            {}));
+            std::vector<int>{}));

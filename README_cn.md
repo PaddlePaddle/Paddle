@@ -33,7 +33,7 @@ pip install paddlepaddle-gpu
 pip install paddlepaddle-gpu==1.8.5.post97
 
 ```
-更多安装信息详见官网 [安装说明](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.8/beginners_guide/install/index_cn.html)
+更多安装信息详见官网 [安装说明](https://www.paddlepaddle.org.cn/install/quick)
 
 PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型更高效。**每日登陆即送12小时**，**连续五天运行再加送48小时**，[前往使用免费算力](https://ai.baidu.com/support/news?action=detail&id=981)。
 
@@ -67,27 +67,27 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 我们提供 [英文](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/beginners_guide/index_en.html) 和
 [中文](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.8/beginners_guide/index_cn.html) 文档
 
-- [深度学习基础教程](https://www.paddlepaddle.org.cn/documentation/docs/zh/1.8/beginners_guide/basics/index_cn.html)
+- [深度学习基础教程](https://www.paddlepaddle.org.cn/documentation/docs/zh/beginners_guide/index_cn.html)
 
    或许您想从深度学习基础开始学习飞桨
   
 
-- [使用指南](https://www.paddlepaddle.org.cn/documentation/docs/zh/1.8/user_guides/index_cn.html)
+- [典型案例](https://www.paddlepaddle.org.cn/documentation/docs/zh/user_guides/index_cn.html)
 
    或许您已经掌握了新手入门阶段的内容，期望可以针对实际问题建模、搭建自己网络
   
 
-- [进阶使用](https://www.paddlepaddle.org.cn/documentation/docs/zh/1.8/advanced_usage/index_cn.html)
+- [进阶指南](https://www.paddlepaddle.org.cn/documentation/docs/zh/advanced_guide/index_cn.html)
 
    或许您已比较熟练使用PaddlePaddle来完成常规任务，期望获得更高效的模型或者定义自己的Operator
   
   
-- [API Reference](http://paddlepaddle.org.cn/documentation/docs/zh/1.6/api_cn/index_cn.html)
+- [API Reference](https://www.paddlepaddle.org.cn/documentation/docs/zh/api_cn/index_cn.html)
 
    新的API支持代码更少更简洁的程序
    
 
-- [贡献方式](http://paddlepaddle.org.cn/documentation/docs/zh/1.8/advanced_usage/development/contribute_to_paddle/index_cn.html)
+- [贡献方式](https://www.paddlepaddle.org.cn/documentation/docs/zh/advanced_guide/addon_development/contribute_code/index_cn.html)
 
    欢迎您的贡献!
 

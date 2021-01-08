@@ -20,10 +20,10 @@ limitations under the License. */
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
@@ -157,7 +157,10 @@ void RunServer() {
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(server_proto));
   LOG(INFO) << "RUN configure";
-  pserver_ptr_->configure(server_proto, _ps_env, 0);
+  std::vector<framework::ProgramDesc> empty_vec;
+  framework::ProgramDesc empty_prog;
+  empty_vec.push_back(empty_prog);
+  pserver_ptr_->configure(server_proto, _ps_env, 0, empty_vec);
   LOG(INFO) << "RUN start";
   pserver_ptr_->start(ip_, port_);
   LOG(INFO) << "End start";
