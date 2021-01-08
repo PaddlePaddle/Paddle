@@ -148,35 +148,30 @@ ConstructDuplicableOutput(const size_t num) {
   return res;
 }
 
-static inline std::shared_ptr<imperative::VarBase>
-HandleViewBetweenInputAndOutput(
+static inline void HandleViewBetweenInputAndOutput(
     const std::shared_ptr<imperative::VarBase>& input_var,
     const std::shared_ptr<imperative::VarBase>& view_output_var) {
   PADDLE_ENFORCE_EQ(
       input_var->Var().IsInitialized(), true,
       platform::errors::InvalidArgument("Tensor %s has not been initialized!",
                                         input_var->Name()));
-  PADDLE_ENFORCE_EQ(
-      input_var->Var().IsType<framework::LoDTensor>(), true,
-      platform::errors::InvalidArgument(
-          "Type of Tensor[%s] must be LoDTensor, but received %s!",
-          input_var->Name(), framework::ToTypeName(input_var->Var().Type())));
 
-  const auto& input_tensor = input_var->Var().Get<framework::LoDTensor>();
-  PADDLE_ENFORCE_EQ(
-      input_tensor.IsInitialized(), true,
-      platform::errors::InvalidArgument(
-          "LoDTensor %s has not been initialized!", input_var->Name()));
+  if (input_var->Var().IsType<framework::LoDTensor>()) {
+    const auto& input_tensor = input_var->Var().Get<framework::LoDTensor>();
+    PADDLE_ENFORCE_EQ(
+        input_tensor.IsInitialized(), true,
+        platform::errors::InvalidArgument(
+            "LoDTensor %s has not been initialized!", input_var->Name()));
 
-  auto* view_output_tensor =
-      view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
-  view_output_tensor->ShareDataWith(input_tensor);
-  view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
+    auto* view_output_tensor =
+        view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
+    view_output_tensor->ShareDataWith(input_tensor);
+    view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
 
-  VLOG(3) << "The Output Var(" << view_output_var->Name()
-          << ") share allocation with Input Var(" << input_var->Name() << ").";
-
-  return view_output_var;
+    VLOG(3) << "Perform View between Output Var(" << view_output_var->Name()
+            << ") and Input Var(" << input_var->Name()
+            << "), share allocation and inplace version.";
+  }
 }
 }  // namespace pybind
 }  // namespace paddle
