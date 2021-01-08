@@ -636,8 +636,8 @@ def _construct_params_and_buffers(model_path,
         model_name = params_filename[:-len(INFER_PARAMS_SUFFIX)]
         #Load every file that meets the requirements in the directory model_path.
         for file_name in os.listdir(model_path):
-            if file_name.endswith(INFER_PARAMS_SUFFIX) and file_name.startswith(
-                    model_name):
+            if file_name.startswith(model_name) and file_name.endswith(
+                    INFER_PARAMS_SUFFIX):
                 part_name = file_name[len(model_name):-len(INFER_PARAMS_SUFFIX)
                                       + 1]
                 parsing_names = part_name.split('.')
