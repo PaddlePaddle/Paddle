@@ -304,9 +304,12 @@ void Reducer::PrepareForBackward(
   PADDLE_ENFORCE_EQ(
       need_finalize_backward_, false,
       platform::errors::PreconditionNotMet(
-          "The previous round of calculations were not synchronized, "
-          "which would cause the calculation accuracy to not meet "
-          "expectations. "));
+          "Please note that all `forward` outputs derived from the module "
+          "parameters must participate in the calculation of losses and "
+          "subsequent gradient calculations. If not, the wrapper will hang, "
+          "waiting for autograd to generate gradients for these parameters. "
+          "you can use detach or stop_gradient to make the unused parameters "
+          "detached from the autograd graph."));
 
   has_marked_unused_vars_ = false;
   if (!find_unused_vars_) {
