@@ -246,8 +246,10 @@ def _static_only_(func):
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
-            "'%s' should be called by imperative Varible in imperative mode, please use paddle.disable_static() or turn off ProgramTranslator to run it in imperative mode"
-            % func.__name__)
+            "'%s' should be called by imperative Varible in imperative mode, please run it in dygraph "
+            "mode. You can turn off paddle.enable_static() if you are in static mode, or turn off "
+            "ProgramTranslator if you are using @paddle.jit.to_static" %
+            func.__name__)
 
     return __impl__
 
