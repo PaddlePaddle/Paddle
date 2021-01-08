@@ -1652,15 +1652,14 @@ class Variable(object):
                 y = x.clone()
 
         """
-        main_program = default_main_program()
-        output = main_program.current_block().create_var(
+        output = self.block.create_var(
             name=unique_name.generate_with_ignorable_key(self.name + "_clone"),
             dtype=self.dtype,
             type=self.type,
             persistable=self.persistable,
-            stop_gradient=self.gradient)
+            stop_gradient=self.stop_gradient)
 
-        main_program.current_block().append_op(
+        self.block.append_op(
             type='assign', inputs={'X': [self]}, outputs={'Out': [output]})
         return output
 
