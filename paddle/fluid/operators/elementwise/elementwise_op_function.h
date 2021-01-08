@@ -262,6 +262,34 @@ __global__ void CommonForwardBroadcastCUDAKernel(const int *x_strides_array,
   }
 }
 
+template <typename Functor, typename T, typename OutType = T,
+          bool is_xsize_larger>
+__global__ void BatchStridedForwardBroadcastCUDAKernel(const T *x, const T *y,
+                                                       OutType *out,
+                                                       Functor func,
+                                                       const int stride,
+                                                       const int numel) {
+  // numel -> number of elements in a batch
+
+  const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  const int t_stride = blockDim.x * gridDim.x;
+  const int batch = blockIdx.y;
+  int x_idx, y_idx, out_idx;
+
+  for (int idx = tid; idx < numel; idx += t_stride) {
+    out_idx = batch * numel + idx;
+    if (is_xsize_larger) {
+      x_idx = out_idx;
+      y_idx = batch * stride + (tid % stride);
+      out[out_idx] = func(x[x_idx], y[y_idx]);
+    } else {
+      y_idx = out_idx;
+      x_idx = batch * stride + (tid % stride);
+      out[out_idx] = func(y[y_idx], x[x_idx]);
+    }
+  }
+}
+
 template <typename Functor, typename T, typename OutType = T>
 void CommonForwardBroadcastCUDA(
     const framework::Tensor *x, const framework::Tensor *y,
@@ -273,6 +301,42 @@ void CommonForwardBroadcastCUDA(
   const T *x_data = x->data<T>();
   const T *y_data = y->data<T>();
   OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
+
+  const int *bcast_dims = is_xsize_larger ? y_dims_array : x_dims_array;
+  bool is_strided = (max_dim > 1), start_stride = false;
+  int stride = 1;
+  for (int i = 1; i < max_dim; ++i) {
+    if (bcast_dims[i] != 1 && !start_stride) start_stride = true;
+    if (bcast_dims[i] == 1 && start_stride) is_strided = false;
+    if (start_stride) stride *= bcast_dims[i];
+  }
+
+  if (is_strided) {
+    const int numel =
+        std::accumulate(out_dims_array + 1, out_dims_array + max_dim, 1,
+                        std::multiplies<int>());  // not include batch dim
+    const int num_batch = out_dims_array[0];
+    constexpr int threads = PADDLE_CUDA_THREAD_SIZE;
+    const int concurrent_blocks = ctx.GetMaxPhysicalThreadCount() / threads;
+    const int num_sm = ctx.GetSMCount();
+    dim3 grid_size =
+        dim3(min(num_sm * concurrent_blocks, (numel + threads - 1) / threads),
+             num_batch);
+    dim3 block_size = dim3(threads, 1);
+
+    if (is_xsize_larger) {
+      BatchStridedForwardBroadcastCUDAKernel<
+          Functor, T, OutType,
+          true><<<grid_size, block_size, 0, ctx.stream()>>>(
+          x_data, y_data, out_data, func, stride, numel);
+    } else {
+      BatchStridedForwardBroadcastCUDAKernel<
+          Functor, T, OutType,
+          false><<<grid_size, block_size, 0, ctx.stream()>>>(
+          x_data, y_data, out_data, func, stride, numel);
+    }
+    return;
+  }
 
   std::vector<int> x_strides_array(max_dim);
   std::vector<int> y_strides_array(max_dim);
