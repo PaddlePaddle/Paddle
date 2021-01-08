@@ -23,6 +23,39 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+TEST(conv2d_fusion_op, test) {
+  std::unordered_set<std::string> parameters({"conv2d_fusion-Y", "conv2d_fusion-Z"});
+  framework::Scope scope;
+  TRTConvertValidation validator(5, parameters, scope, 1 << 15);
+
+  validator.DeclInputVar("conv2d_fusion-X", nvinfer1::Dims3(2, 5, 5));
+  validator.DeclParamVar("conv2d_fusion-Y", nvinfer1::Dims4(3, 2, 3, 3));
+  validator.DeclParamVar("conv2d_fusion-Z", nvinfer1::Dims3(3, 1, 1));
+  validator.DeclOutputVar("conv2d_fusion-Out", nvinfer1::Dims3(3, 5, 5));
+
+  // Prepare Op description
+  framework::OpDesc desc;
+  desc.SetType("conv2d_fusion");
+  desc.SetInput("Input", {"conv2d_fusion-X"});
+  desc.SetInput("Filter", {"conv2d_fusion-Y"});
+  desc.SetInput("Bias", {"conv2d_fusion-Z"});
+  desc.SetOutput("Output", {"conv2d_fusion-Out"});
+
+  const std::vector<int> strides({1, 1});
+  const std::vector<int> paddings({1, 1});
+  const std::vector<int> dilations({1, 1});
+  const int groups = 1;
+
+  desc.SetAttr("strides", strides);
+  desc.SetAttr("paddings", paddings);
+  desc.SetAttr("dilations", dilations);
+  desc.SetAttr("groups", groups);
+
+  validator.SetOp(*desc.Proto());
+
+  validator.Execute(3);
+}
+
 TEST(conv2d_op, test) {
   std::unordered_set<std::string> parameters({"conv2d-Y"});
   framework::Scope scope;
@@ -53,6 +86,7 @@ TEST(conv2d_op, test) {
 
   validator.Execute(3);
 }
+
 
 TEST(conv2d_transpose_op, test) {
   std::unordered_set<std::string> parameters({"deconv2d-Y"});

@@ -356,7 +356,7 @@ DEFINE_double(fraction_of_cpu_memory_to_use, 1,
  *       FLAGS_fraction_of_cpu_memory_to_use*(total physical memory)
  *       as memory block sizes.
  */
-DEFINE_uint64(initial_cpu_memory_in_mb, 500ul,
+DEFINE_uint64(initial_cpu_memory_in_mb, 10ul,
               "Initial CPU memory for PaddlePaddle, in MD unit.");
 
 /**

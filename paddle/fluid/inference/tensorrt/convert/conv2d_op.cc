@@ -105,8 +105,16 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                 static_cast<void*>(weight_data),
                                 static_cast<size_t>(Y_t->numel())};
+  float* bias_data = nullptr;
+  size_t bias_size = 0;
+  if(op_desc.Type() == "conv2d_fusion") {
+    auto* weight_tensor = scope.FindVar(op_desc.Input("Bias").front());
+    auto* weight_tensor_data = weight_tensor->GetMutable<framework::LoDTensor>();
+    bias_data = engine->GetWeightCPUData(op_desc.Input("Bias").front(), weight_tensor_data, false);
+    bias_size = static_cast<size_t>(weight_tensor_data->numel());
+  }
 
-  TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
+  TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, static_cast<void*>(bias_data), bias_size};
   auto* layer = fadd_layer(const_cast<nvinfer1::ITensor*>(X), n_output, n_input,
                            nv_ksize, weight, bias);
   PADDLE_ENFORCE_NOT_NULL(layer,
@@ -184,4 +192,5 @@ class Deconv2dOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(conv2d, Conv2dOpConverter);
+REGISTER_TRT_OP_CONVERTER(conv2d_fusion, Conv2dOpConverter);
 REGISTER_TRT_OP_CONVERTER(conv2d_transpose, Deconv2dOpConverter);

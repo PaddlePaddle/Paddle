@@ -32,6 +32,7 @@ void Analyzer::RunAnalysis(Argument *argument) {
                         "analsis_passes is not valid in the argument."));
   const bool disable_logs = argument->disable_logs();
   for (auto &pass : argument->analysis_passes()) {
+    //if(pass == "ir_params_sync_among_devices_pass") continue;
     if (!disable_logs) {
       string::PrettyLogH1("--- Running analysis [%s]", pass);
     }

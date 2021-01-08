@@ -38,6 +38,7 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
                                                 pattern_name);
   pattern();
   auto* scope = param_scope();
+  int found_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -52,7 +53,7 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
         scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
 
     const float* input_scale_data = input_scale_tensor.data<float>();
-    float input_scale = input_scale_data[0];
+    float input_scale = input_scale_data[0]/127.;
     auto* any_op2_desc = any_op2->Op();
     // auto input_args_names = any_op2_desc->InputArgumentNames();
     auto var_map = any_op2_desc->Inputs();
@@ -88,9 +89,11 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
     GraphSafeRemoveNodes(graph,
                          {quant_dequant_op, quant_dequant_op_out,
                           quant_dequant_op_inscale, quant_dequant_op_outscale});
+    found_count++;
   };
 
   gpd(graph, handler);
+  AddStatis(found_count);
 }
 
 }  // namespace ir

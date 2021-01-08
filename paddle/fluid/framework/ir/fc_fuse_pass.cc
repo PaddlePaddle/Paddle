@@ -43,7 +43,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
   auto* x = gpd.mutable_pattern()
                 ->NewNode("fc_fuse/x")
                 ->AsInput()
-                ->assert_is_op_input("mul", "X");
+                ->assert_is_ops_input({"mul"}, "X");
   patterns::FC fc_pattern(gpd.mutable_pattern(), "fc_fuse");
   fc_pattern(x, true /*with bias*/, with_relu);
 
@@ -87,7 +87,9 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     desc.SetOutput("Out", std::vector<std::string>({fc_out_name}));
 
     // Set attrs of fc
-    desc.SetAttr("in_num_col_dims", mul->Op()->GetAttr("x_num_col_dims"));
+    if(mul->Op()->Type() == "mul") {
+      desc.SetAttr("in_num_col_dims", mul->Op()->GetAttr("x_num_col_dims"));
+    }
     std::string activation_type = with_relu ? "relu" : "";
     desc.SetAttr("activation_type", activation_type);
 
@@ -148,6 +150,15 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       if (elementwise_desc->HasAttr("out_scale"))
         desc.SetAttr("out_scale", elementwise_desc->GetAttr("out_scale"));
     }
+
+    auto elementwise_add_op_desc = elementwise_add->Op();
+    //if we can find out_threshold in elementwise_add, then set it as the out_thrshold of fc
+    auto out_threshold_attr = elementwise_add_op_desc->GetNullableAttr("out_threshold");
+    if(out_threshold_attr.which()) {
+      VLOG(4) << "setting out_threshold: " << boost::get<float>(out_threshold_attr);
+      desc.SetAttr("out_threshold", out_threshold_attr);
+    }
+    desc.Flush();
 
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
     if (with_relu) {

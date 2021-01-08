@@ -36,6 +36,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace inference {
@@ -151,6 +152,8 @@ struct Argument {
 
   // The default program, loaded from disk.
   DECL_ARGUMENT_UNIQUE_FIELD(main_program, MainProgram, framework::ProgramDesc);
+
+  DECL_ARGUMENT_FIELD(place, Place, platform::Place);
 
   // The ir passes to perform in analysis phase.
   DECL_ARGUMENT_FIELD(ir_analysis_passes, IrAnalysisPasses,

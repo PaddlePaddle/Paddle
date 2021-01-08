@@ -7,6 +7,7 @@ paddle/fluid/op_use_default_grad_maker_PR.spec
 
 *.DS_Store
 *.vs
+tags
 build/
 build_doc/
 *.user

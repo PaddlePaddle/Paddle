@@ -140,7 +140,7 @@ class OpConverter {
       }
       auto* output_itensor = engine->GetITensor(output_name);
       engine->SetTensorDynamicRange(output_itensor, out_scale);
-      VLOG(1) << "Set out scale = " << out_scale << " for tensor "
+      VLOG(4) << "Set out scale = " << out_scale << " for tensor "
               << output_name << ".";
     }
   }

@@ -939,15 +939,17 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
                                  bool with_bias, bool with_relu) {
   // Create shared nodes.
   x->assert_is_op_input("mul", "X");
-  auto *mul = pattern->NewNode(mul_repr())->assert_is_op("mul");
+  //x->assert_is_ops_input({"mul", "matmul"}, "X");
+  auto *mul = pattern->NewNode(mul_repr())->assert_is_ops({"mul", "matmul"});
 
   auto *mul_w_var = pattern->NewNode(w_repr())
                         ->AsInput()
                         ->assert_is_persistable_var()
                         ->assert_is_op_input("mul", "Y");
+                        //->assert_is_ops_input({"mul", "matmul"}, "Y");
 
   auto *mul_out_var =
-      pattern->NewNode(mul_out_repr())->assert_is_op_output("mul");
+      pattern->NewNode(mul_out_repr())->assert_is_ops_output({"mul", "matmul"});//->assert_is_op_output("mul");
 
   // Add links.
   mul->LinksFrom({x, mul_w_var}).LinksTo({mul_out_var});
@@ -1555,9 +1557,6 @@ PDNode *patterns::Reshape::operator()() {
 }
 
 PDNode *patterns::Matmul::operator()() {
-  auto prev_op_x = pattern->NewNode(prev_op_x_repr())->assert_is_op();
-  auto prev_op_y = pattern->NewNode(prev_op_y_repr())->assert_is_op();
-
   auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
   auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
                          ->AsInput()
@@ -1569,8 +1568,69 @@ PDNode *patterns::Matmul::operator()() {
                         ->AsOutput()
                         ->assert_is_op_output("matmul", "Out");
 
-  prev_op_x->LinksTo({matmul_in_x});
-  prev_op_y->LinksTo({matmul_in_y});
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  return matmul_out;
+}
+
+PDNode *patterns::Squeeze2Matmul::operator()() {
+  auto squeeze2_in_x = pattern->NewNode(squeeze2_in_x_repr())
+                           ->assert_is_op_input("squeeze2", "X")
+                           ->AsInput();
+  auto squeeze2_op =
+      pattern->NewNode(squeeze2_op_repr())->assert_is_op("squeeze2");
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->assert_is_op_output("squeeze2", "Out")
+                         ->assert_is_op_input("matmul", "X");
+  auto matmul_in_y =
+      pattern->NewNode(matmul_in_y_repr())->assert_is_op_input("matmul", "Y");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("matmul", "Out");
+
+  squeeze2_op->LinksFrom({squeeze2_in_x}).LinksTo({matmul_in_x});
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  return matmul_out;
+}
+
+PDNode *patterns::Reshape2Matmul::operator()() {
+  auto reshape2_in_x = pattern->NewNode(reshape2_in_x_repr())
+                           ->assert_is_op_input("reshape2", "X")
+                           ->AsInput();
+  auto reshape2_op =
+      pattern->NewNode(reshape2_op_repr())->assert_is_op("reshape2");
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->assert_is_op_output("reshape2", "Out")
+                         ->assert_is_op_input("matmul", "X");
+  auto matmul_in_y =
+      pattern->NewNode(matmul_in_y_repr())->assert_is_op_input("matmul", "Y");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("matmul", "Out");
+
+  reshape2_op->LinksFrom({reshape2_in_x}).LinksTo({matmul_in_x});
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  return matmul_out;
+}
+
+PDNode *patterns::Flatten2Matmul::operator()() {
+  auto flatten2_in_x = pattern->NewNode(flatten2_in_x_repr())
+                           ->assert_is_op_input("flatten2", "X")
+                           ->AsInput();
+  auto flatten2_op =
+      pattern->NewNode(flatten2_op_repr())->assert_is_op("flatten2");
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->assert_is_op_output("flatten2", "Out")
+                         ->assert_is_op_input("matmul", "X");
+  auto matmul_in_y =
+      pattern->NewNode(matmul_in_y_repr())->assert_is_op_input("matmul", "Y");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("matmul", "Out");
+
+  flatten2_op->LinksFrom({flatten2_in_x}).LinksTo({matmul_in_x});
   matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
   return matmul_out;
 }
@@ -2431,6 +2491,36 @@ void patterns::DeleteQuantDequantOpPattern::operator()() {
   auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
 
   quant_dequant_op->LinksFrom({any_op_out, quant_dequant_op_inscale});
+  quant_dequant_op_outscale->LinksFrom({quant_dequant_op});
+  quant_dequant_out->LinksFrom({quant_dequant_op});
+  any_op2->LinksFrom({quant_dequant_out});
+}
+
+void patterns::DeleteQuantDequantFilterOpPattern::operator()() {
+  auto quant_dequant_op_x =
+      pattern->NewNode(quant_dequant_op_x_repr())
+          ->assert_is_ops_input(
+            {"fake_channel_wise_quantize_dequantize_abs_max", "fake_quantize_dequantize_abs_max"}, "X")
+          ->AsInput();
+
+  auto quant_dequant_op =
+      pattern->NewNode(quant_dequant_op_repr())
+          ->assert_is_ops({"fake_channel_wise_quantize_dequantize_abs_max", "fake_quantize_dequantize_abs_max"});
+
+  auto quant_dequant_out =
+      pattern->NewNode(quant_dequant_op_out_repr())
+          ->assert_is_ops_output(
+            {"fake_channel_wise_quantize_dequantize_abs_max", "fake_quantize_dequantize_abs_max"}, "Out")
+          ->AsIntermediate();
+
+  auto quant_dequant_op_outscale =
+      pattern->NewNode(quant_dequant_op_outscale_repr())
+          ->assert_is_ops_output(
+            {"fake_channel_wise_quantize_dequantize_abs_max", "fake_quantize_dequantize_abs_max"}, "OutScale")
+          ->AsOutput();
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  quant_dequant_op->LinksFrom({quant_dequant_op_x});
   quant_dequant_op_outscale->LinksFrom({quant_dequant_op});
   quant_dequant_out->LinksFrom({quant_dequant_op});
   any_op2->LinksFrom({quant_dequant_out});

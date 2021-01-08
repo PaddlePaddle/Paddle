@@ -175,7 +175,7 @@ if(WIN32)
             DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib
             ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 else(WIN32)
-    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
+    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.so)
     copy(inference_lib_dist
                 SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
                 DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
@@ -227,9 +227,9 @@ set(module "framework")
 set(framework_lib_deps framework_proto data_feed_proto trainer_desc_proto)
 add_dependencies(fluid_lib_dist ${framework_lib_deps})
 copy(fluid_lib_dist
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/trainer_desc.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/data_feed.pb.h ${src_dir}/${module}/ir/memory_optimize_pass/*.h
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/trainer_desc.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/data_feed.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/heter_service.pb.h ${src_dir}/${module}/ir/memory_optimize_pass/*.h
         ${src_dir}/${module}/ir/*.h ${src_dir}/${module}/fleet/*.h
-        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}/ir/memory_optimize_pass ${dst_dir}/${module}/ir ${dst_dir}/${module}/fleet)
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}/ir/memory_optimize_pass ${dst_dir}/${module}/ir ${dst_dir}/${module}/fleet)
 
 set(module "operators")
 copy(fluid_lib_dist
