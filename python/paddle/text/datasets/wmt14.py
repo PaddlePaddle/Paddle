@@ -43,7 +43,7 @@ class WMT14(Dataset):
     Implementation of `WMT14 <http://www.statmt.org/wmt14/>`_ test dataset.
     The original WMT14 dataset is too large and a small set of data for set is
     provided. This module will download dataset from
-    http://paddlepaddle.bj.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz
+    http://paddlemodels.bj.bcebos.com/wmt/wmt14.tgz .
 
     Args:
         data_file(str): path to data tar file, can be set None if
@@ -69,8 +69,6 @@ class WMT14(Dataset):
 
                 def forward(self, src_ids, trg_ids, trg_ids_next):
                     return paddle.sum(src_ids), paddle.sum(trg_ids), paddle.sum(trg_ids_next)
-
-            paddle.disable_static()
 
             wmt14 = WMT14(mode='train', dict_size=50)
 

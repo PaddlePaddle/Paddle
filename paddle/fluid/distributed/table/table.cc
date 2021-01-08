@@ -29,10 +29,11 @@ namespace distributed {
 
 REGISTER_CLASS(Table, CommonDenseTable);
 REGISTER_CLASS(Table, CommonSparseTable);
-REGISTER_CLASS(Table, DenseTensorTable);
 REGISTER_CLASS(Table, SparseGeoTable);
 REGISTER_CLASS(Table, BarrierTable);
-
+REGISTER_CLASS(Table, TensorTable);
+REGISTER_CLASS(Table, DenseTensorTable);
+REGISTER_CLASS(Table, GlobalStepTable);
 REGISTER_CLASS(ValueAccessor, CommMergeAccessor);
 
 int32_t TableManager::initialize() {

@@ -16,6 +16,7 @@ from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
+from ..fluid.dygraph import base as imperative_base
 
 import paddle
 
@@ -247,6 +248,7 @@ class Adam(Optimizer):
 
         return adam_op
 
+    @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
         """
@@ -270,7 +272,6 @@ class Adam(Optimizer):
                 adam.step()
                 adam.clear_grad()
         """
-        self._dtype = None
         params_grads = []
         for param in self._parameter_list:
             if not param.trainable:
