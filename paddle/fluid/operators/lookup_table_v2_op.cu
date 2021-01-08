@@ -47,21 +47,29 @@ __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
   }
 }
 
-template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
+template <typename T>
 __global__ void LookupTableV2Grad(T *table, const T *output, const int64_t *ids,
                                   const int64_t N, const int64_t K,
                                   const int64_t D) {
-  int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * GridDimX;
+  const int stride = gridDim.x * blockDim.x * blockDim.y;
+  int64_t idx = threadIdx.x + threadIdx.y * blockDim.x +
+                blockIdx.x * blockDim.x * blockDim.y;
 
-  while (idy < K) {
-    int64_t id = ids[idy];
-    const T *out = output + idy * D;
-    T *tab = table + id * D;
-    for (int i = idx; i < D; i += BlockDimX) {
-      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+  extern __shared__ int64_t s_ids[];
+#pragma unroll
+  for (int64_t i = idx; i < K; i += blockDim.x * blockDim.y) s_ids[i] = ids[i];
+  __syncthreads();
+
+  while (idx < D) {
+#pragma unroll
+    for (int64_t i = 0; i < K; i++) {
+      int64_t id = s_ids[i];
+      const T *out = output + i * D;
+      T *tab = table + id * D;
+
+      tab[idx] += out[idx];
     }
-    idy += BlockDimY * GridDimX;
+    idx += stride;
   }
 }
 
@@ -205,7 +213,7 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       int K = ids_t->numel();
 
       dim3 threads(128, 8);
-      dim3 grids(8, 1);
+      dim3 grids((D + 1023) / 1024);
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> ids;
       ids.resize(K);
@@ -227,7 +235,8 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       auto t = framework::EigenVector<T>::Flatten(*d_table_t);
       t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
-      LookupTableV2Grad<T, 128, 8, 8><<<grids, threads, 0, dev_ctx.stream()>>>(
+      LookupTableV2Grad<
+          T><<<grids, threads, K * sizeof(int64_t), dev_ctx.stream()>>>(
           d_table, d_output, ids_p, N, K, D);
     }
   }
