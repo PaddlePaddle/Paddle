@@ -280,11 +280,11 @@ __global__ void BatchStridedForwardBroadcastCUDAKernel(const T *x, const T *y,
     out_idx = batch * numel + idx;
     if (is_xsize_larger) {
       x_idx = out_idx;
-      y_idx = batch * stride + (tid % stride);
+      y_idx = batch * stride + (idx % stride);
       out[out_idx] = func(x[x_idx], y[y_idx]);
     } else {
       y_idx = out_idx;
-      x_idx = batch * stride + (tid % stride);
+      x_idx = batch * stride + (idx % stride);
       out[out_idx] = func(y[y_idx], x[x_idx]);
     }
   }
