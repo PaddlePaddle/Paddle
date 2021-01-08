@@ -37,8 +37,7 @@ fi
 
 # /*==================Fixed Disabled Windows unittests==============================*/
 # TODO: fix these unittest that is bound to fail
-diable_wingpu_test="^test_analysis_predictor$|\
-^test_gradient_clip$|\
+diable_wingpu_test="^test_gradient_clip$|\
 ^test_translated_layer$|\
 ^test_imperative_resnet$|\
 ^test_imperative_resnet_sorted_gradient$|\
