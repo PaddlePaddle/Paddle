@@ -939,18 +939,15 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
                                  bool with_bias, bool with_relu) {
   // Create shared nodes.
   x->assert_is_op_input("mul", "X");
-  //x->assert_is_ops_input({"mul", "matmul"}, "X");
   auto *mul = pattern->NewNode(mul_repr())->assert_is_ops({"mul", "matmul"});
 
   auto *mul_w_var = pattern->NewNode(w_repr())
                         ->AsInput()
                         ->assert_is_persistable_var()
                         ->assert_is_op_input("mul", "Y");
-                        //->assert_is_ops_input({"mul", "matmul"}, "Y");
 
   auto *mul_out_var =
-      pattern->NewNode(mul_out_repr())->assert_is_ops_output({"mul", "matmul"});//->assert_is_op_output("mul");
-
+      pattern->NewNode(mul_out_repr())->assert_is_ops_output({"mul"});
   // Add links.
   mul->LinksFrom({x, mul_w_var}).LinksTo({mul_out_var});
   if (!with_bias) {  // not with bias
@@ -2500,23 +2497,30 @@ void patterns::DeleteQuantDequantFilterOpPattern::operator()() {
   auto quant_dequant_op_x =
       pattern->NewNode(quant_dequant_op_x_repr())
           ->assert_is_ops_input(
-            {"fake_channel_wise_quantize_dequantize_abs_max", "fake_quantize_dequantize_abs_max"}, "X")
+              {"fake_channel_wise_quantize_dequantize_abs_max",
+               "fake_quantize_dequantize_abs_max"},
+              "X")
           ->AsInput();
 
   auto quant_dequant_op =
       pattern->NewNode(quant_dequant_op_repr())
-          ->assert_is_ops({"fake_channel_wise_quantize_dequantize_abs_max", "fake_quantize_dequantize_abs_max"});
+          ->assert_is_ops({"fake_channel_wise_quantize_dequantize_abs_max",
+                           "fake_quantize_dequantize_abs_max"});
 
   auto quant_dequant_out =
       pattern->NewNode(quant_dequant_op_out_repr())
           ->assert_is_ops_output(
-            {"fake_channel_wise_quantize_dequantize_abs_max", "fake_quantize_dequantize_abs_max"}, "Out")
+              {"fake_channel_wise_quantize_dequantize_abs_max",
+               "fake_quantize_dequantize_abs_max"},
+              "Out")
           ->AsIntermediate();
 
   auto quant_dequant_op_outscale =
       pattern->NewNode(quant_dequant_op_outscale_repr())
           ->assert_is_ops_output(
-            {"fake_channel_wise_quantize_dequantize_abs_max", "fake_quantize_dequantize_abs_max"}, "OutScale")
+              {"fake_channel_wise_quantize_dequantize_abs_max",
+               "fake_quantize_dequantize_abs_max"},
+              "OutScale")
           ->AsOutput();
   auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
 
