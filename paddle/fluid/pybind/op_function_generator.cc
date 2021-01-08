@@ -145,11 +145,11 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
 // It's a 2-layer map. The key of outer map is the view op name, the value is
 // also a map which implies the mapping relationship between the output and
 // input varbase.
-std::map<std::string, std::map<std::string, std::string>> view_op_map = {
-    {"squeeze2", {{"Out", "X"}}},  // "X" -> "Out"
-    {"unsqueeze2", {{"Out", "X"}}},
-    {"reshape2", {{"Out", "X"}}},
-    {"flatten_contiguous_range", {{"Out", "X"}}},
+std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
+    {"squeeze2", {"X", "Out"}},  // "X" -> "Out"
+    {"unsqueeze2", {"X", "Out"}},
+    {"reshape2", {"X", "Out"}},
+    {"flatten_contiguous_range", {"X", "Out"}},
 };
 
 // NOTE(pangyoki): Inplace Strategy.
@@ -175,7 +175,6 @@ std::set<std::string> unsupported_inplace_op_set = {
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
 const char* OUT_DUPLICABLE_INITIALIZER_TEMPLATE = R"({"%s", ConstructDuplicableOutput(%s)})";
-const char* OUT_VIEW_INITIALIZER_TEMPLATE = R"({"%s", {view_varbase_%s}})";
 
 const char* INPUT_INITIALIZER_TEMPLATE = R"({"%s", {%s}})";
 const char* INPUT_LIST_INITIALIZER_TEMPLATE = R"({"%s", %s})";
@@ -227,8 +226,10 @@ const char* RETURN_TEMPLATE = R"(outs["%s"][0])";
 const char* FUNCTION_ARGS = R"(%s, const py::args& args)";
 const char* FUNCTION_ARGS_NO_INPUT = R"(const py::args& args)";
 
-const char* VIEW_OUTPUT_TEMPLATE = R"(
-    auto view_varbase_%s = ConstructViewOutput(%s);)";
+const char* HandleViewBetweenInputAndOutput = R"(
+    if (ins.count("%s") && outs.count("%s")) {
+      HandleViewBetweenInputAndOutput(ins["%s"][0], outs["%s"][0]);
+    })";
 
 const char* INPLACE_LEAF_ERROR_MESSAGE = R"(Leaf Var (%s) that doesn't stop gradient can't use inplace strategy.)";
 
@@ -293,9 +294,8 @@ static inline bool FindInplacePassingOutsMap(const std::string& op_type,
   return inplace_op_map[op_type].count(out_name);
 }
 
-static inline bool FindViewOutsMap(const std::string& op_type,
-                                   const std::string& out_name) {
-  return view_op_map[op_type].count(out_name);
+static inline bool FindViewOpMap(const std::string& op_type) {
+  return view_op_map.count(op_type);
 }
 
 static inline std::string TempName(const std::string& name) {
@@ -342,7 +342,8 @@ std::string GenerateOpFunctionsBody(
   int arg_idx = 0;
   int input_args_num = 0;
   std::string ins_cast_str = "";
-  std::string view_or_inplace_strategy_str = "";
+  std::string view_strategy_str = "";
+  std::string inplace_strategy_str = "";
   for (auto& input : op_proto->inputs()) {
     auto& in_name = input.name();
     // skip those dispensable inputs, like ResidualData in conv2d
@@ -439,7 +440,7 @@ std::string GenerateOpFunctionsBody(
 
       const auto inplace_input_name = inplace_op_map[op_type][out_name];
       // increase inplace_version
-      view_or_inplace_strategy_str += paddle::string::Sprintf(
+      inplace_strategy_str += paddle::string::Sprintf(
           INPLACE_STRATEGY_TEMPLATE, inplace_input_name, inplace_input_name,
           INPLACE_LEAF_ERROR_MESSAGE, inplace_input_name, inplace_input_name,
           inplace_input_name);
@@ -464,12 +465,6 @@ std::string GenerateOpFunctionsBody(
         input_args_num++;
         outs_initializer += paddle::string::Sprintf(
             OUT_DUPLICABLE_INITIALIZER_TEMPLATE, out_name, out_num_str);
-      } else if (FindViewOutsMap(op_type, out_name)) {
-        std::string view_in_name = view_op_map[op_type][out_name];
-        view_or_inplace_strategy_str += paddle::string::Sprintf(
-            VIEW_OUTPUT_TEMPLATE, out_name, view_in_name);
-        outs_initializer += paddle::string::Sprintf(
-            OUT_VIEW_INITIALIZER_TEMPLATE, out_name, out_name);
       } else {
         outs_initializer +=
             paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
@@ -489,6 +484,13 @@ std::string GenerateOpFunctionsBody(
     return_str.pop_back();
   }
   outs_initializer += "}";
+  if (FindViewOpMap(op_type)) {
+    std::string viwe_input_name = view_op_map[op_type].first;
+    std::string viwe_output_name = view_op_map[op_type].second;
+    view_strategy_str += paddle::string::Sprintf(
+        HandleViewBetweenInputAndOutput, viwe_input_name, viwe_output_name,
+        viwe_input_name, viwe_output_name);
+  }
   if (outs_num == 0) {
     return_type = "void";
   }
@@ -506,9 +508,10 @@ std::string GenerateOpFunctionsBody(
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(
       OP_FUNCTION_TEMPLATE, return_type, func_name, function_args, ins_cast_str,
-      op_type, input_args_num, view_or_inplace_strategy_str, outs_initializer,
-      ins_initializer, ins_initializer_with_null + outs_initializer_with_null,
-      op_type, inplace_mapping_str, return_str);
+      op_type, input_args_num, inplace_strategy_str, outs_initializer,
+      ins_initializer, ins_initializer_with_null + outs_initializer_with_null +
+                           view_strategy_str,
+      op_type, return_str);
 
   return op_function_str;
 }

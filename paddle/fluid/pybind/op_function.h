@@ -148,26 +148,13 @@ ConstructDuplicableOutput(const size_t num) {
   return res;
 }
 
-static inline std::shared_ptr<imperative::VarBase> ConstructViewOutput(
-    const std::shared_ptr<imperative::VarBase>& input_var) {
+static inline void HandleViewBetweenInputAndOutput(
+    const std::shared_ptr<imperative::VarBase>& input_var,
+    const std::shared_ptr<imperative::VarBase>& view_output_var) {
   PADDLE_ENFORCE_EQ(
       input_var->Var().IsInitialized(), true,
       platform::errors::InvalidArgument("Tensor %s has not been initialized!",
                                         input_var->Name()));
-  PADDLE_ENFORCE_EQ(input_var->Var().IsType<framework::LoDTensor>() ||
-                        input_var->Var().IsType<framework::SelectedRows>(),
-                    true, platform::errors::InvalidArgument(
-                              "Type of Tensor[%s] must be LoDTensor or "
-                              "SelectedRows, but received %s!",
-                              input_var->Name(),
-                              framework::ToTypeName(input_var->Var().Type())));
-
-  auto tracer = imperative::GetCurrentTracer();
-  auto view_output_var = std::shared_ptr<imperative::VarBase>(
-      new imperative::VarBase(tracer->GenerateUniqueName()));
-  view_output_var->SetPersistable(input_var->Persistable());
-  view_output_var->SetType(input_var->Type());
-  view_output_var->SetDataType(input_var->DataType());
 
   if (input_var->Var().IsType<framework::LoDTensor>()) {
     const auto& input_tensor = input_var->Var().Get<framework::LoDTensor>();
@@ -180,28 +167,11 @@ static inline std::shared_ptr<imperative::VarBase> ConstructViewOutput(
         view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
     view_output_tensor->ShareDataWith(input_tensor);
     view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
-  } else {
-    const auto& input_selected_rows =
-        input_var->Var().Get<framework::SelectedRows>();
-    PADDLE_ENFORCE_EQ(
-        input_selected_rows.value().IsInitialized(), true,
-        platform::errors::InvalidArgument(
-            "SelectedRows %s has not been initialized!", input_var->Name()));
 
-    auto* view_output_selected_rows =
-        view_output_var->MutableVar()->GetMutable<framework::SelectedRows>();
-    view_output_selected_rows->set_height(input_selected_rows.height());
-    view_output_selected_rows->set_rows(input_selected_rows.rows());
-    view_output_selected_rows->mutable_value()->ShareDataWith(
-        input_selected_rows.value());
-    view_output_selected_rows->mutable_value()->ShareInplaceVersionCounterWith(
-        input_selected_rows.value());
+    VLOG(3) << "Perform View between Output Var(" << view_output_var->Name()
+            << ") and Input Var(" << input_var->Name()
+            << "), share allocation and inplace version.";
   }
-
-  VLOG(3) << "The Output Var(" << view_output_var->Name()
-          << ") share allocation with Input Var(" << input_var->Name() << ").";
-
-  return view_output_var;
 }
 }  // namespace pybind
 }  // namespace paddle
