@@ -132,7 +132,7 @@ def to_assign_node(node):
     else:
         for idx, kw in enumerate(node.keywords):
             if kw.arg == 'value' or kw.arg == 'data':
-                node.keywords[idx].arg = 'input'
+                node.keywords[idx].arg = 'x'
                 node.keywords = [node.keywords[idx]]
                 node.args = []
                 break
