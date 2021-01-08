@@ -317,8 +317,7 @@ void Reducer::PrepareForBackward(
   }
 
   // TODO(shenliang03) "find_unused_vars" interface will be exposed in the
-  // future
-  // to handle control flow to process unused parameters
+  // future to handle control flow to process unused parameters
   find_unused_vars_ = false;
 
   unused_vars_.clear();
