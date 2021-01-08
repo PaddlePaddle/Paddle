@@ -22,6 +22,8 @@ import logging
 import pickle
 import contextlib
 from functools import reduce
+import io
+import builtins
 
 import numpy as np
 import math
@@ -47,6 +49,20 @@ from paddle.utils import deprecated
 from paddle.fluid.framework import static_only
 
 batch = paddle.batch
+
+class RestrictedUnpickler(pickle.Unpickler):
+
+    def find_class(self, module, name):
+        """Only allow safe classes from builtins"""
+        if module == "builtins" and name in safe_builtins:
+            return getattr(builtins, name)
+        """Forbid everything else"""
+        raise pickle.UnpicklingError("global '%s.%s' is forbidden" %
+                                     (module, name))
+
+def restricted_loads(s):
+    """Helper function analogous to pickle.loads()"""
+    return RestrictedUnpickler(io.BytesIO(s)).load()
 
 __all__ = [
     'save_vars',
@@ -1980,6 +1996,7 @@ def load(program, model_path, executor=None, var_list=None):
                                                    global_scope(),
                                                    executor._default_executor)
     with open(parameter_file_name, 'rb') as f:
+        restricted_loads(f.read())
         load_dict = pickle.load(f) if six.PY2 else pickle.load(
             f, encoding='latin1')
         load_dict = _pack_loaded_dict(load_dict)
@@ -2002,6 +2019,7 @@ def load(program, model_path, executor=None, var_list=None):
                 optimizer_var_list, global_scope(), executor._default_executor)
 
         with open(opt_file_name, 'rb') as f:
+            restricted_loads(f.read())
             load_dict = pickle.load(f) if six.PY2 else pickle.load(
                 f, encoding='latin1')
         for v in optimizer_var_list:
@@ -2160,12 +2178,14 @@ def load_program_state(model_path, var_list=None):
         "Parameter file [{}] not exits".format(parameter_file_name)
 
     with open(parameter_file_name, 'rb') as f:
+        restricted_loads(f.read())
         para_dict = pickle.load(f) if six.PY2 else pickle.load(
             f, encoding='latin1')
 
     opt_file_name = model_prefix + ".pdopt"
     if os.path.exists(opt_file_name):
         with open(opt_file_name, 'rb') as f:
+            restricted_loads(f.read())
             opti_dict = pickle.load(f) if six.PY2 else pickle.load(
                 f, encoding='latin1')
 
