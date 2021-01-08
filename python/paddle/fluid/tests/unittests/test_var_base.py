@@ -156,6 +156,24 @@ class TestVarBase(unittest.TestCase):
             _test_place(core.CUDAPlace(0))
             _test_place("gpu:0")
 
+    def test_to_tensor_change_place(self):
+        if core.is_compiled_with_cuda():
+            a_np = np.random.rand(1024, 1024)
+            with paddle.fluid.dygraph.guard(core.CPUPlace()):
+                a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
+                a = paddle.to_tensor(a)
+                self.assertEqual(a.place.__repr__(), "CPUPlace")
+
+            with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
+                a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
+                a = paddle.to_tensor(a)
+                self.assertEqual(a.place.__repr__(), "CUDAPlace(0)")
+
+            with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
+                a = paddle.to_tensor(a_np, place=paddle.CPUPlace())
+                a = paddle.to_tensor(a, place=paddle.CUDAPinnedPlace())
+                self.assertEqual(a.place.__repr__(), "CUDAPinnedPlace")
+
     def test_to_variable(self):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array, name="abc")
