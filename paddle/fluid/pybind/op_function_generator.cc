@@ -142,9 +142,9 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
 // NOTE(pangyoki): Tensor View Strategy.
 // In this case, a new output varbase will be created, and this varbase will
 // reuse the input varbase's allocation.
-// It's a 2-layer map. The key of outer map is the view op name, the value is
-// also a map which implies the mapping relationship between the output and
-// input varbase.
+// It's a map. The key of outer map is the view op name, the value is
+// a pair which implies the mapping relationship between the input and
+// output varbase.
 std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
     {"squeeze2", {"X", "Out"}},  // "X" -> "Out"
     {"unsqueeze2", {"X", "Out"}},
@@ -226,7 +226,7 @@ const char* RETURN_TEMPLATE = R"(outs["%s"][0])";
 const char* FUNCTION_ARGS = R"(%s, const py::args& args)";
 const char* FUNCTION_ARGS_NO_INPUT = R"(const py::args& args)";
 
-const char* HandleViewBetweenInputAndOutput = R"(
+const char* HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT = R"(
     if (ins.count("%s") && outs.count("%s")) {
       HandleViewBetweenInputAndOutput(ins["%s"][0], outs["%s"][0]);
     })";
@@ -484,11 +484,14 @@ std::string GenerateOpFunctionsBody(
     return_str.pop_back();
   }
   outs_initializer += "}";
-  if (FindViewOpMap(op_type)) {
+  if (inplace_mapping_str.back() == ',') {
+    inplace_mapping_str.pop_back();
+  }
+  if (!use_inplace_strategy && FindViewOpMap(op_type)) {
     std::string viwe_input_name = view_op_map[op_type].first;
     std::string viwe_output_name = view_op_map[op_type].second;
     view_strategy_str += paddle::string::Sprintf(
-        HandleViewBetweenInputAndOutput, viwe_input_name, viwe_output_name,
+        HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
         viwe_input_name, viwe_output_name);
   }
   if (outs_num == 0) {
@@ -511,7 +514,7 @@ std::string GenerateOpFunctionsBody(
       op_type, input_args_num, inplace_strategy_str, outs_initializer,
       ins_initializer, ins_initializer_with_null + outs_initializer_with_null +
                            view_strategy_str,
-      op_type, return_str);
+      op_type, inplace_mapping_str, return_str);
 
   return op_function_str;
 }
