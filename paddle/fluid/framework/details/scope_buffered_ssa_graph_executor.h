@@ -64,6 +64,7 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
 
   bool DropScopeOrNot() const;
 
+  bool is_initialized_{false};
   size_t drop_scope_counter_{0};
   ExecutionStrategy strategy_;
   std::unique_ptr<SSAGraphExecutor> underlying_executor_;

@@ -156,11 +156,11 @@ def pow(x, y, name=None):
 
     Args:
         x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
-        y (Tensor): An N-D Tensor with type float32, float64, int32 or int64.
+        y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     
     Returns:
-        N-D Tensor. A location into which the result is stored. Its dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
 
     Examples:
 
@@ -168,17 +168,24 @@ def pow(x, y, name=None):
 
             import paddle
 
-            # example 1: y is a float
-            x = paddle.to_tensor([1, 2, 3])
-            y = 2
-            res = paddle.pow(x, y)
-            print(res) # [1 4 9]
-            
+            x = paddle.to_tensor([1, 2, 3], dtype='float32')
+
+            # example 1: y is a float or int
+            res = paddle.pow(x, 2)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1., 4., 9.])
+            res = paddle.pow(x, 2.5)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1.         , 5.65685415 , 15.58845711])
+
             # example 2: y is a Tensor
-            y = paddle.full(shape=[1], fill_value=2, dtype='int64')
-        
+            y = paddle.to_tensor([2], dtype='float32')
             res = paddle.pow(x, y)
-            print(res) # [1 4 9]
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1., 4., 9.])
 
     """
     # in dynamic graph mode

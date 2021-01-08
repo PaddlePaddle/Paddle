@@ -76,16 +76,35 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       func_(func),
       dev_ctx_(dev_ctx) {}
 
-PreparedOp PreparedOp::Prepare(
-    const framework::OperatorWithKernel& op,
-    const framework::OpKernelType& expected_kernel_key) {
+template <typename VarType>
+PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
+                       const NameVarMap<VarType>& outs,
+                       const framework::OperatorWithKernel& op,
+                       const platform::Place& place,
+                       const framework::AttributeMap& attrs) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(expected_kernel_key.place_);
+  auto* dev_ctx = pool.Get(place);
+  framework::RuntimeContext ctx({}, {});
 
-  // check if op[type] has kernel registered.
+#ifdef PADDLE_WITH_MKLDNN
+  // MKLDNN variant of code reads attributes in some of GetKernelTypeForVar and
+  // GetKernelType functions, so we need to copy the attributes there.
+  // Const qualifier of Attrs had to be discarded to overwrite it.
+  if (FLAGS_use_mkldnn) {
+    auto& mutable_op_attrs = const_cast<framework::AttributeMap&>(op.Attrs());
+    mutable_op_attrs = attrs;
+  }
+#endif
+
+  // 1. get expected kernel key
+  auto expected_kernel_key =
+      op.GetExpectedKernelType(DygraphExecutionContext<VarType>(
+          op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs));
+  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+
+  // 2. check if op[type] has kernel registered.
   auto& all_op_kernels = op.AllOpKernels();
   auto kernels_iter = all_op_kernels.find(op.Type());
-
   PADDLE_ENFORCE_NE(
       kernels_iter, all_op_kernels.end(),
       platform::errors::NotFound(
@@ -93,16 +112,41 @@ PreparedOp PreparedOp::Prepare(
           op.Type()));
 
   auto& kernels = kernels_iter->second;
-
-  framework::RuntimeContext ctx({}, {});
   auto kernel_iter = kernels.find(expected_kernel_key);
+#ifdef PADDLE_WITH_XPU
+  if (kernel_iter == kernels.end() &&
+      is_xpu_place(expected_kernel_key.place_)) {
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
   // TODO(jiabin): Add operator.cc's line 1000 part back when we need that case
   PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
                     platform::errors::NotFound(
                         "Operator %s does not have kernel for %s.", op.Type(),
                         KernelTypeToString(expected_kernel_key)));
 
+  if (!(expected_kernel_key.place_ == place)) {
+    dev_ctx = pool.Get(expected_kernel_key.place_);
+  }
+
   return PreparedOp(op, ctx, expected_kernel_key, kernel_iter->second, dev_ctx);
+}
+
+PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,
+                               const NameVarMap<VarBase>& outs,
+                               const framework::OperatorWithKernel& op,
+                               const platform::Place& place,
+                               const framework::AttributeMap& attrs) {
+  return PrepareImpl<VarBase>(ins, outs, op, place, attrs);
+}
+
+PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
+                               const NameVarMap<VariableWrapper>& outs,
+                               const framework::OperatorWithKernel& op,
+                               const platform::Place& place,
+                               const framework::AttributeMap& attrs) {
+  return PrepareImpl<VariableWrapper>(ins, outs, op, place, attrs);
 }
 
 template <typename VarType>

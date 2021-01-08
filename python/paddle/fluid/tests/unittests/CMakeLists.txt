@@ -73,6 +73,10 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_sendrecv)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter_api)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_split_embedding)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_split_embedding_none_divisible)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_split_row_linear)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_split_col_linear)
     LIST(REMOVE_ITEM TEST_OPS test_collective_reduce_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_scatter_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_barrier_api)
@@ -458,8 +462,6 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
 
-    # FIXME(seiriosX) will fix this
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_sparse_embedding_ctr")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
@@ -636,9 +638,6 @@ if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_multiprocess_dataloader_static PROPERTIES TIMEOUT 120)
 endif()
 
-# setting timeout value for old unittests
-# set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
-
 if (NOT WIN32)
     set_tests_properties(test_multiprocess_reader_exception PROPERTIES TIMEOUT 120)
     set_tests_properties(test_layers PROPERTIES TIMEOUT 120)
@@ -651,12 +650,15 @@ endif()
 
 if (WITH_DISTRIBUTE)
     set_tests_properties(test_communicator_half_async PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 120)
 endif()
 
 if (WITH_DISTRIBUTE AND NOT APPLE)
     if(WITH_GPU)
         set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT 120)
         set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_dist_mnist_gradient_merge PROPERTIES TIMEOUT 120)
     endif()
 endif()
 
@@ -695,7 +697,13 @@ set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 120)
+if (WIN32)
+    set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_paddle_save_load PROPERTIES TIMEOUT 250)
+else()
+    set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 200)
+    set_tests_properties(test_paddle_save_load PROPERTIES TIMEOUT 150)
+endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data PROPERTIES TIMEOUT 120)
@@ -819,6 +827,17 @@ if(WITH_GPU AND NOT WIN32)
     set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_split_embedding
+        test_collective_split_embedding_none_divisible
+        test_collective_split_row_linear
+        test_collective_split_col_linear
+        test_collective_scatter_api
+        test_collective_barrier_api
+        test_collective_reduce_api
+        test_collective_allreduce_api
+        test_collective_broadcast_api
+        test_collective_allgather_api
+        PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(WITH_GPU)
     set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT 120)

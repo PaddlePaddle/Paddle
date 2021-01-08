@@ -20,14 +20,17 @@ RUN bash build_scripts/install_nccl2.sh
 RUN bash build_scripts/install_trt.sh 
 RUN rm -rf build_scripts
 
-ENV SSL_CERT_FILE=/opt/_internal/certs.pem
-
 # git 2.17.1
 RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
   tar -xvf git-2.17.1.tar.gz && \
   cd git-2.17.1 && \
-  ./configure --with-openssl=/usr/local/ssl --prefix=/usr/local && \
+  ./configure --with-openssl --prefix=/usr/local && \
   make -j8 && make install 
+
+ENV SSL_CERT_FILE=/opt/_internal/certs.pem
+ENV GOROOT=/usr/local/go GOPATH=/root/gopath
+ENV PATH=/usr/local/ssl:${GOROOT}/bin:${GOPATH}/bin:${PATH}
+ENV LIBRARY_PATH=/usr/local/ssl/lib:$LIBRARY_PATH
 
 # for paddle
 RUN wget --no-check-certificate -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
@@ -36,9 +39,6 @@ RUN wget --no-check-certificate -qO- https://storage.googleapis.com/golang/go1.8
     mkdir /root/gopath/bin && \
     mkdir /root/gopath/src
 
-
-ENV GOROOT=/usr/local/go GOPATH=/root/gopath
-ENV PATH=/usr/local/ssl:${GOROOT}/bin:${GOPATH}/bin:${PATH}
 
 # protobuf 3.6.1
 RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/protobuf-cpp-3.6.1.tar.gz && \ 

@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -62,7 +63,7 @@ constexpr char kUseHierarchicalAllReduce[] = "use_hierarchical_allreduce";
 typedef std::unordered_set<VarHandleBase *> GraphDepVars;
 constexpr char kGraphDepVars[] = "dep_vars";
 
-typedef std::unordered_set<std::string> FusedVars;
+typedef std::unordered_map<std::string, details::VariableInfo> FusedVars;
 constexpr char kFusedVars[] = "fused_vars";
 constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
 
@@ -78,6 +79,7 @@ constexpr char kParamsAndSparseGrads[] = "params_and_sparse_grads";
 
 typedef std::vector<ProgramDesc> ProgramDescs;
 constexpr char kProgramDescs[] = "program_descs";
+constexpr char kStartupProgramDescs[] = "startup_program_descs";
 
 typedef std::unordered_set<std::string> PinnedVars;
 constexpr char kPinnedVars[] = "pinned_vars";

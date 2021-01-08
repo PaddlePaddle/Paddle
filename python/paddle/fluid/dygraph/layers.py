@@ -46,6 +46,17 @@ def _convert_camel_to_snake(name):
     return _all_cap_re.sub(r'\1_\2', s1).lower()
 
 
+def _addindent(string, indent):
+    s1 = string.split('\n')
+    if len(s1) == 1:
+        return string
+    s2 = []
+    for idx, line in enumerate(s1):
+        if idx > 0:
+            s2.append(str((indent * ' ') + line))
+    return s1[0] + '\n' + '\n'.join(s2)
+
+
 class HookRemoveHelper(object):
     """ A HookRemoveHelper that can be used to remove hook. """
 
@@ -1165,6 +1176,35 @@ class Layer(core.Layer):
         keys = method + attrs + parameters + sublayers + buffers
 
         return keys
+
+    def extra_repr(self):
+        """
+        Extra representation of this layer, you can have custom implementation
+        of your own layer.
+        """
+        return ''
+
+    def __repr__(self):
+        extra_lines = []
+        extra_repr = self.extra_repr()
+        extra_lines = extra_repr.split('\n')
+        sublayer_lines = []
+        for name, layer in self._sub_layers.items():
+            sublayer_str = repr(layer)
+            sublayer_str = _addindent(sublayer_str, 2)
+            sublayer_lines.append('(' + name + '): ' + sublayer_str)
+
+        final_str = self.__class__.__name__ + '('
+        if extra_lines:
+            if len(extra_lines) > 1:
+                final_str += '\n  ' + '\n  '.join(extra_lines) + '\n'
+            elif len(extra_lines) == 1:
+                final_str += extra_lines[0]
+        if sublayer_lines:
+            final_str += '\n  ' + '\n  '.join(sublayer_lines) + '\n'
+
+        final_str += ')'
+        return final_str
 
     def state_dict(self,
                    destination=None,
