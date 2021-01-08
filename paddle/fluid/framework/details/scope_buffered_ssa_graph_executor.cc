@@ -123,17 +123,27 @@ void ScopeBufferedSSAGraphExecutor::InitVariables() {
   }
 
   const ir::Graph &graph = Graph();
+  if (!is_initialized_) {
+    // startup_program_descs only need to be executed once
+    if (graph.Has(details::kStartupProgramDescs)) {
+      auto &program_descs =
+          graph.Get<details::ProgramDescs>(details::kStartupProgramDescs);
+
+      for (auto &program_desc : program_descs) {
+        for (auto &op_desc : program_desc.Block(0).AllOps()) {
+          for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
+            auto op = OpRegistry::CreateOp(*op_desc);
+            op->Run(*local_exec_scopes_[i], places_[i]);
+          }
+        }
+      }
+    }
+    is_initialized_ = true;
+  }
+
   if (graph.Has(details::kProgramDescs)) {
     auto &program_descs =
         graph.Get<details::ProgramDescs>(details::kProgramDescs);
-    // Init vars
-    auto &fused_grad_vars = graph.Get<details::FusedVars>(details::kFusedVars);
-    for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
-      for (auto &var_name : fused_grad_vars) {
-        auto var = local_exec_scopes_[i]->Var(var_name);
-        var->GetMutable<LoDTensor>();
-      }
-    }
 
     for (auto &program_desc : program_descs) {
       for (auto &op_desc : program_desc.Block(0).AllOps()) {

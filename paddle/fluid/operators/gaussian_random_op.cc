@@ -210,7 +210,7 @@ REGISTER_OP_VERSION(gaussian_random)
             .NewInput("ShapeTensorList",
                       "The output shape supports list filled with Tensor. "
                       "ShapeTensorList is dispensable.")
-            .ModifyAttr(
-                "shape",
-                "Add the default value of shape, the default value is {}.",
-                {}));
+            .ModifyAttr("shape",
+                        "The arg 'default_value' of attr 'shape' is changed: "
+                        "from 'None' to '{}'.",
+                        std::vector<int64_t>{}));

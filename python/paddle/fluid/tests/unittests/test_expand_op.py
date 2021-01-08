@@ -19,6 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+import paddle
 
 
 # Situation 1: expand_times is a list(without tensor)
@@ -235,6 +236,20 @@ class TestExpandAPI(unittest.TestCase):
         assert np.array_equal(res_1, np.tile(input, (2, 3)))
         assert np.array_equal(res_2, np.tile(input, (2, 3)))
         assert np.array_equal(res_3, np.tile(input, (1, 3)))
+
+
+class TestExpandDygraphAPI(unittest.TestCase):
+    def test_expand_times_is_tensor(self):
+        with paddle.fluid.dygraph.guard():
+            a = paddle.rand([2, 5])
+            b = paddle.fluid.layers.expand(a, expand_times=[2, 3])
+            c = paddle.fluid.layers.expand(
+                a, expand_times=paddle.to_tensor(
+                    [2, 3], dtype='int32'))
+            self.assertTrue(
+                np.array_equal(b.numpy(), np.tile(a.numpy(), [2, 3])))
+            self.assertTrue(
+                np.array_equal(c.numpy(), np.tile(a.numpy(), [2, 3])))
 
 
 if __name__ == "__main__":
