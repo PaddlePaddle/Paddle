@@ -641,6 +641,7 @@ def _construct_params_and_buffers(model_path,
                 part_name = file_name[len(model_name):-len(INFER_PARAMS_SUFFIX)
                                       + 1]
                 parsing_names = part_name.split('.')
+
                 if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
                     func_name = parsing_names[1]
                 else:
