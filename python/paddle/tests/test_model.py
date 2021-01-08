@@ -586,20 +586,20 @@ class TestModelFunction(unittest.TestCase):
 
     def test_export_deploy_model(self):
         self.set_seed()
-        np.random.seed(2179)
+        np.random.seed(217)
         for dynamic in [True, False]:
             paddle.disable_static() if dynamic else None
             prog_translator = ProgramTranslator()
             prog_translator.enable(False) if not dynamic else None
             net = LeNet()
-            inputs = [InputSpec([None, 1, 28, 28], 'float64', 'x')]
+            inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
             save_dir = tempfile.mkdtemp()
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
             tensor_img = np.array(
-                np.random.random((1, 1, 28, 28)), dtype=np.float64)
+                np.random.random((1, 1, 28, 28)), dtype=np.float32)
 
             model.save(save_dir, training=False)
             ori_results = model.predict_batch(tensor_img)
