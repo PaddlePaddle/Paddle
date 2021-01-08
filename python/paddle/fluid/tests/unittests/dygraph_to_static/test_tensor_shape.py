@@ -297,7 +297,13 @@ class TestTupleShape2(TestTensorShapeBasic):
 class TestPaddleShapeApi(TestTensorShapeBasic):
     def init_test_func(self):
         self.input = numpy.ones((5, 7)).astype("int32")
+        self.input_spec = [paddle.static.InputSpec(shape=[5, 7], dtype="int32")]
         self.dygraph_func = dyfunc_paddle_shape_api
+
+    def _set_expected_op_num(self):
+        self.expected_op_num = 6
+        self.expected_shape_op_num = 2
+        self.expected_slice_op_num = 2
 
 
 # 2. Tests with control flow if
@@ -461,4 +467,4 @@ class TestOpNumWithTensorShapeInWhile1(TestOpNumBasicWithTensorShape):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(defaultTest="TestPaddleShapeApi")
