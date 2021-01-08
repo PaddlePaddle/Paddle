@@ -376,12 +376,14 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
    */
-  auto expected_kernel_key =
-      GetExpectedKernelKey<VarType>(ins, outs, *op_kernel, place, attrs);
-  auto prepared_op = PreparedOp::Prepare(*op_kernel, expected_kernel_key);
-  auto tmp_ins = PrepareData<VarType>(*op_kernel, ins, expected_kernel_key);
-
-  prepared_op.Run(tmp_ins, outs, attrs);
+  auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs);
+  auto tmp_ins_ptr =
+      PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
+  if (tmp_ins_ptr == nullptr) {
+    prepared_op.Run(ins, outs, attrs);
+  } else {
+    prepared_op.Run(*tmp_ins_ptr, outs, attrs);
+  }
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
 }

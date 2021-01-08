@@ -792,6 +792,34 @@ std::future<int32_t> BrpcPsClient::push_dense_raw_gradient(
   return fut;
 }
 
+std::future<int32_t> BrpcPsClient::push_global_step(int table_id,
+                                                    int64_t *total_send_data,
+                                                    void *done) {
+  size_t request_call_num = _server_channels.size();
+  DownpourBrpcClosure *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+  for (size_t i = 0; i < request_call_num; ++i) {
+    closure->request(i)->set_cmd_id(PS_PUSH_GLOBAL_STEP);
+    closure->request(i)->set_table_id(table_id);
+    closure->request(i)->set_client_id(_client_id);
+    auto *push_data = closure->request(i)->mutable_data();
+    push_data->clear();
+    int32_t num_per_shard = 1;
+    push_data->resize(sizeof(uint32_t) + num_per_shard * sizeof(int64_t));
+    char *push_data_ptr = const_cast<char *>(push_data->data());
+    memcpy(push_data_ptr, &num_per_shard, sizeof(uint32_t));
+    memcpy(push_data_ptr + sizeof(uint32_t), total_send_data,
+           num_per_shard * sizeof(int64_t));
+
+    PsService_Stub rpc_stub(get_dense_channel(i));
+    rpc_stub.service(closure->cntl(i), closure->request(i),
+                     closure->response(i), closure);
+  }
+  return fut;
+}
+
 std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
                                                size_t table_id,
                                                const uint64_t *keys,

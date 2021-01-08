@@ -1199,6 +1199,39 @@ class TestProgramStateOldSave(unittest.TestCase):
                 self.assertTrue(np.array_equal(new_t, base_t))
 
 
+class TestStaticSaveLoadLargeParameters(unittest.TestCase):
+    def test_large_parameters_static_save(self):
+        # enable static mode
+        paddle.enable_static()
+        LARGE_PARAM = 2**26
+        with new_program_scope():
+            # create network
+            x = paddle.static.data(
+                name="static_save_load_large_x",
+                shape=[None, 10],
+                dtype='float32')
+            z = paddle.static.nn.fc(x, LARGE_PARAM)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            prog = paddle.static.default_main_program()
+
+            inputs = np.random.randn(1, 10).astype("float32")
+            result_z = exe.run(program=prog,
+                               feed={"static_save_load_large_x": inputs},
+                               fetch_list=[z.name])
+            path = "test_static_save_load_large_param/static_save"
+            paddle.fluid.save(prog, path)
+
+            paddle.fluid.load(prog, path)
+            result_load = exe.run(program=prog,
+                                  feed={"static_save_load_large_x": inputs},
+                                  fetch_list=[z.name])
+            # compare results before and after saving
+            self.assertTrue(
+                np.sum(np.abs(result_z[0] - result_load[0])) < 1e-15)
+
+
 class TestProgramStateOldSaveSingleModel(unittest.TestCase):
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
