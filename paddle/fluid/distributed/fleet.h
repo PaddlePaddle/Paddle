@@ -154,8 +154,10 @@ class FleetWrapper {
   // init server
   // void InitServer(const std::string& dist_desc,
   //                 const std::vector<uint64_t>& host_sign_list, int index);
-  void InitServer(const std::string& dist_desc,
-                  const std::vector<std::string>& host_sign_list, int index);
+  void InitServer(
+      const std::string& dist_desc,
+      const std::vector<std::string>& host_sign_list, int index,
+      const std::vector<framework::ProgramDesc>& server_sub_program = {});
   // init trainer
   void InitWorker(const std::string& dist_desc,
                   const std::vector<std::string>& host_sign_list, Scope* scope,
