@@ -125,7 +125,7 @@ class ReadOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(
         out_arg_names.size(), need_check_feed.size(),
         platform::errors::InvalidArgument(
-            "output size of read_op and the number of fed "
+            "Output size of read_op and the number of fed "
             "variables of reader do not match. Received size of output is %d, "
             "number of fed variables of reader is %d",
             out_arg_names.size(), need_check_feed.size()));
