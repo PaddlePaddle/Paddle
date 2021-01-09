@@ -1,6 +1,12 @@
 set(BRPC_SRCS ps_client.cc server.cc)
 set_source_files_properties(${BRPC_SRCS})
 
+IF(WITH_MKLDNN)
+    set(MKLDNN_CTX_DEPS mkldnn)
+ELSE()
+    set(MKLDNN_CTX_DEPS)
+ENDIF()
+
 set(BRPC_DEPS brpc ssl crypto protobuf gflags glog zlib leveldb snappy gflags glog)
 
 brpc_library(sendrecv_rpc SRCS
@@ -8,7 +14,7 @@ brpc_library(sendrecv_rpc SRCS
         PROTO sendrecv.proto
         DEPS ${BRPC_DEPS} )
 
-set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper)
+set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper ${MKLDNN_CTX_DEPS})
 
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 
