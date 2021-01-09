@@ -102,6 +102,9 @@ if(WIN32)
 
     # TODO: Fix these unittests failed on Windows
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
+    if (WITH_GPU)
+        LIST(REMOVE_ITEM TEST_OPS test_update_loss_scaling_op)
+    endif()
 endif()
 
 if(NOT WITH_DISTRIBUTE OR WIN32)

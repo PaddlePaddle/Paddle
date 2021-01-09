@@ -74,7 +74,6 @@ diable_wingpu_test="^test_gradient_clip$|\
 ^test_py_reader_pin_memory$|\
 ^test_py_reader_push_pop$|\
 ^test_reader_reset$|\
-^test_update_loss_scaling_op$|\
 ^test_imperative_se_resnext$|\
 ^test_imperative_static_runner_while$|\
 ^test_fuse_bn_act_pass$|\
