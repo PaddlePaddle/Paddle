@@ -600,9 +600,13 @@ def _construct_program_holders(model_path, model_filename=None):
                 model_file_path = os.path.join(model_path, model_filename)
             elif filename.endswith(INFER_MODEL_SUFFIX) and filename.startswith(
                     model_name):
-                func_name = filename[len(model_name) + 1:-len(
-                    INFER_MODEL_SUFFIX)]
-                model_file_path = os.path.join(model_path, filename)
+                parsing_names = filename[len(model_name):-len(
+                    INFER_MODEL_SUFFIX) + 1].split('.')
+                if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
+                    func_name = parsing_names[1]
+                    model_file_path = os.path.join(model_path, filename)
+                else:
+                    continue
             else:
                 continue
             program_holder_dict[func_name] = _ProgramHolder(
@@ -638,10 +642,8 @@ def _construct_params_and_buffers(model_path,
         for file_name in os.listdir(model_path):
             if file_name.startswith(model_name) and file_name.endswith(
                     INFER_PARAMS_SUFFIX):
-                part_name = file_name[len(model_name):-len(INFER_PARAMS_SUFFIX)
-                                      + 1]
-                parsing_names = part_name.split('.')
-
+                parsing_names = file_name[len(model_name):-len(
+                    INFER_PARAMS_SUFFIX) + 1].split('.')
                 if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
                     func_name = parsing_names[1]
                 else:
