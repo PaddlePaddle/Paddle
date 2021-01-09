@@ -3,6 +3,7 @@ set_source_files_properties(${BRPC_SRCS})
 
 IF(WITH_MKLDNN)
     include_directories(${MKLDNN_INC_DIR})
+    include(external/mkldnn)
     set(MKLDNN_CTX_DEPS mkldnn)
 ELSE()
     set(MKLDNN_CTX_DEPS)
