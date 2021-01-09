@@ -76,7 +76,7 @@ class SimpleNet(Layer):
         loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
 
-        return loss
+        return {"loss": loss}
 
 
 # global configs
@@ -126,7 +126,7 @@ class TestSparseEmbeddingUnusedVars(TestParallelDyGraphRunnerBase):
 
         dy_loss = model(x, y)
 
-        return dy_loss
+        return dy_loss["loss"]
 
 
 if __name__ == "__main__":
