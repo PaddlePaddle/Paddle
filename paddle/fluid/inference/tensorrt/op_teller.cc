@@ -66,7 +66,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "elementwise_add",
                                                   "leaky_relu",
                                                   "fc",
-                                                  //"flatten2",
                                                   "concat",
                                                   "scale",
                                                   "elementwise_mul",
@@ -97,7 +96,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shuffle_channel",
       "swish",
       "split",
-      //"flatten2",
       "instance_norm",
       "gelu",
       "layer_norm",
@@ -136,8 +134,9 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
           if (shape.size() < 3) {
-            VLOG(1) << "matmul op dims < 3 not supported in tensorrt, but got dims " 
-              << shape.size() << ", so jump it.";
+            VLOG(1)
+                << "matmul op dims < 3 not supported in tensorrt, but got dims "
+                << shape.size() << ", so jump it.";
             return false;
           }
         }

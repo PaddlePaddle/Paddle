@@ -256,7 +256,8 @@ void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     size_t flatten2_in_nums = flatten2_op->inputs.size();
     auto flatten2_in_x_shape = flatten2_in_x->Var()->GetShape();
     size_t flatten2_in_x_rank = flatten2_in_x_shape.size();
-    int flatten2_axis = BOOST_GET_CONST(int, flatten2_op->Op()->GetAttr("axis"));
+    int flatten2_axis =
+        BOOST_GET_CONST(int, flatten2_op->Op()->GetAttr("axis"));
     flag = flag && flatten2_in_nums == 1 && flatten2_in_x_rank == 4 &&
            (matmul_in_x->outputs).size() == 1;
 
@@ -301,7 +302,6 @@ void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
@@ -310,7 +310,7 @@ REGISTER_PASS(map_matmul_to_mul_pass, paddle::framework::ir::MapMatmul2MulPass);
 REGISTER_PASS_CAPABILITY(map_matmul_to_mul_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("mul", 0));
 
 REGISTER_PASS(squeeze2_matmul_fuse_pass,
@@ -318,7 +318,7 @@ REGISTER_PASS(squeeze2_matmul_fuse_pass,
 REGISTER_PASS_CAPABILITY(squeeze2_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("squeeze2", 0)
             .EQ("mul", 0));
 
@@ -327,7 +327,7 @@ REGISTER_PASS(reshape2_matmul_fuse_pass,
 REGISTER_PASS_CAPABILITY(reshape2_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("reshape2", 0)
             .EQ("mul", 0));
 
@@ -336,6 +336,6 @@ REGISTER_PASS(flatten2_matmul_fuse_pass,
 REGISTER_PASS_CAPABILITY(flatten2_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("flatten2", 0)
             .EQ("mul", 0));
