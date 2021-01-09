@@ -606,6 +606,7 @@ def _construct_program_holders(model_path, model_filename=None):
                     func_name = parsing_names[1]
                     model_file_path = os.path.join(model_path, filename)
                 else:
+                    func_name = ''
                     continue
             else:
                 continue
@@ -647,6 +648,7 @@ def _construct_params_and_buffers(model_path,
                 if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
                     func_name = parsing_names[1]
                 else:
+                    func_name = ''
                     continue
             else:
                 continue
