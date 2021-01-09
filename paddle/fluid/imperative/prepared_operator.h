@@ -50,7 +50,7 @@ void SetForwardDataTypeOfGradVar<VariableWrapper>(
     const std::shared_ptr<VariableWrapper>& var) {
   if (var->HasGradVar()) {
     auto grad_var = var->GetGradVar();
-    VLOG(6) << "Set grad var (" << grad_var->Name() << ") dtype to ("
+    VLOG(6) << "Set grad var (" << grad_var->Name() << ")'s forward dtype to ("
             << framework::DataTypeToString(var->DataType()) << ").";
     grad_var->SetForwardDataType(var->DataType());
   }

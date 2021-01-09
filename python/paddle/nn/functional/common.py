@@ -1276,6 +1276,9 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     x_dim = len(x.shape)
 
+    if mode == "constant" and isinstance(pad, list) and len(pad) == x_dim * 2:
+        return layers.pad(x, pad, pad_value=value)
+
     assert x_dim in [
         3, 4, 5
     ], "input tesor dimension must be in [3, 4, 5] but got {}".format(x_dim)
@@ -1290,9 +1293,6 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         x_dim, supported_format_map[x_dim], data_format)
 
     unsqueezed_dim = []
-
-    if mode == "constant" and isinstance(pad, list) and len(pad) == x_dim * 2:
-        return layers.pad(x, pad, pad_value=value)
 
     if isinstance(pad, Variable):
         if data_format in ["NCL", "NCHW", "NCDHW"]:

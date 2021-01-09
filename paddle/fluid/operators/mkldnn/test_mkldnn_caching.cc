@@ -27,6 +27,8 @@
 
 USE_OP(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
+USE_OP(elementwise_mul);
+USE_OP_DEVICE_KERNEL(elementwise_mul, MKLDNN);
 USE_OP(relu);
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
 USE_OP(softmax);
@@ -66,8 +68,10 @@ void RunOperator(const platform::Place &place, const std::string &op_type,
                  bool inplace = false) {
   framework::Scope scope;
 
-  std::map<const std::string, int> num_inputs = {
-      {"softmax", 1}, {"relu", 1}, {"elementwise_add", 2}};
+  std::map<const std::string, int> num_inputs = {{"softmax", 1},
+                                                 {"relu", 1},
+                                                 {"elementwise_add", 2},
+                                                 {"elementwise_mul", 2}};
 
   std::string first_input = inplace == true ? output_name : "x";
 
@@ -161,6 +165,18 @@ TEST(test_elementwise_add_reuse_cache, cpu_place) {
   RunOperator<float>(p, "elementwise_add", dims, "elementwise_add_out");
   RunOperator<float>(p, "relu", dims, "elementwise_add_out", true);
   PADDLE_ENFORCE_EQ(ct.Analyze(8), true,
+                    platform::errors::InvalidArgument(
+                        "Wrong number of cached oneDNN objects"));
+}
+
+TEST(test_elementwises_sequence_reuse_cache, cpu_place) {
+  framework::DDim dims({32, 64});
+  platform::CPUPlace p;
+  CacheTester ct;
+  RunOperator<float>(p, "elementwise_add", dims, "elementwise_add_out", true);
+  RunOperator<float>(p, "elementwise_mul", dims, "elementwise_add_out", true);
+  RunOperator<float>(p, "relu", dims, "elementwise_add_out", true);
+  PADDLE_ENFORCE_EQ(ct.Analyze(11), true,
                     platform::errors::InvalidArgument(
                         "Wrong number of cached oneDNN objects"));
 }

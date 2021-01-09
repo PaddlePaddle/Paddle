@@ -241,9 +241,10 @@ class VariableWrapper {
   void SetGradVar(const std::shared_ptr<VariableWrapper>& var) {
     auto shared_var = grad_var_.lock();
     if (shared_var != var) {
-      PADDLE_ENFORCE_EQ(shared_var, nullptr,
-                        platform::errors::PermissionDenied(
-                            "Cannot set gradient var wrapper twice"));
+      PADDLE_ENFORCE_EQ(
+          shared_var, nullptr,
+          platform::errors::PermissionDenied(
+              "Cannot set gradient variable wrapper twice for %s", name_));
       grad_var_ = var;
     }
   }
