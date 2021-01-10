@@ -8,7 +8,11 @@ brpc_library(sendrecv_rpc SRCS
         PROTO sendrecv.proto
         DEPS ${BRPC_DEPS} )
 
-set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper)
+if(WITH_MKLDNN)
+    set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper mkldnn_dep)
+else()
+    set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper)
+endif()
 
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 

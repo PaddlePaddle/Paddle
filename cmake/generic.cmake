@@ -318,6 +318,11 @@ function(cc_library TARGET_NAME)
         list(REMOVE_ITEM cc_library_DEPS warpctc)
         add_dependencies(${TARGET_NAME} warpctc)
       endif()
+      # special for mkldnn
+      if("${cc_library_DEPS};" MATCHES "mkldnn_dep;")
+        list(REMOVE_ITEM cc_library_DEPS mkldnn_dep)
+        add_dependencies(${TARGET_NAME} mkldnn)
+      endif()
       # Only deps libmklml.so, not link
       if("${cc_library_DEPS};" MATCHES "mklml;")
         list(REMOVE_ITEM cc_library_DEPS mklml)
