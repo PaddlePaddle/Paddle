@@ -269,7 +269,31 @@ class TestDygraphInplaceElu(TestDygraphInplace):
         return paddle.nn.functional.elu(var)
 
     def inplace_api_processing(self, var):
-        return paddle.nn.functional.activation.elu_(var)
+        return paddle.nn.functional.elu_(var)
+
+
+class TestDygraphInplaceRelu(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.nn.functional.relu(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.nn.functional.relu_(var)
+
+
+class TestDygraphInplaceSoftmax(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.nn.functional.softmax(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.nn.functional.softmax_(var)
+
+
+class TestDygraphInplaceTanh(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.tanh(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.tanh_(var)
 
 
 if __name__ == '__main__':

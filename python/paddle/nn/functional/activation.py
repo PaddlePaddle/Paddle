@@ -22,6 +22,8 @@ from ...fluid.layers import sigmoid  #DEFINE_ALIAS
 from ...tensor.math import tanh  #DEFINE_ALIAS
 from ...tensor.math import tanh_  #DEFINE_ALIAS
 
+from ...tensor.manipulation import dygraph_inplace_in_static_mode
+
 __all__ = [
     'brelu',
     'elu',
@@ -106,20 +108,9 @@ def elu(x, alpha=1.0, name=None):
 
 def elu_(x, alpha=1.0, name=None):
     r"""
-    elu activation.
-
-    .. math::
-
-        elu(x) = max(0, x) + min(0, \\alpha * (e^{x}-1))
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
-        alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
+    Inplace version of ``elu`` API. Please refer to doc of ``elu``.
+    Inplace strategy: Do not create a new output Tensor, output and input is the same Tensor.
+    Inplace input: x
 
     Examples:
         .. code-block:: python
@@ -128,13 +119,18 @@ def elu_(x, alpha=1.0, name=None):
             import paddle.nn.functional as F
 
             x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
-            out = F.elu(x, alpha=0.2)
+            out = F.elu_(x, alpha=0.2)
             # [[-0.12642411  6.        ]
             #  [ 1.          15.6      ]]
+            print(id(x) == id(out))
+            # True
     """
 
     if in_dygraph_mode():
         return core.ops.elu_(x, 'alpha', alpha)
+
+    dygraph_inplace_in_static_mode("elu")
+    return elu(x, alpha, name)
 
 
 def gelu(x, approximate=False, name=None):
@@ -554,33 +550,26 @@ def relu(x, name=None):
 
 def relu_(x, name=None):
     """
-    relu activation.
-
-    .. math::
-
-        out = max(x, 0)
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
+    Inplace version of ``relu`` API. Please refer to doc of ``relu``.
+    Inplace strategy: Do not create a new output Tensor, output and input is the same Tensor.
+    Inplace input: x
 
     Examples:
         .. code-block:: python
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
-            out = F.relu(x) # [0., 0., 1.]
+            x = paddle.to_tensor([-2, 0, 1], dtype='float32')
+            out = F.relu_(x) # [0., 0., 1.]
+            print(id(x) == id(out))  # True
     """
 
     if in_dygraph_mode():
         return core.ops.relu_(x)
+
+    dygraph_inplace_in_static_mode("relu")
+    return relu(x, name)
 
 
 def log_sigmoid(x, name=None):
@@ -950,93 +939,10 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
 def softmax_(x, axis=-1, dtype=None, name=None):
     r"""
-    This operator implements the softmax layer. The calculation process is as follows:
-
-    1. The dimension :attr:`axis` of ``x`` will be permuted to the last.
-
-    2. Then ``x`` will be logically flattened to a 2-D matrix. The matrix's second
-    dimension(row length) is the same as the dimension :attr:`axis` of ``x``,
-    and the first dimension(column length) is the product of all other dimensions
-    of ``x``. For each row of the matrix, the softmax operator squashes the
-    K-dimensional(K is the width of the matrix, which is also the size of ``x``'s
-    dimension :attr:`axis`) vector of arbitrary real values to a K-dimensional
-    vector of real values in the range [0, 1] that add up to 1.
-
-    3. After the softmax operation is completed, the inverse operations of steps 1 and 2
-    are performed to restore the two-dimensional matrix to the same dimension as the ``x`` .
-
-    It computes the exponential of the given dimension and the sum of exponential
-    values of all the other dimensions in the K-dimensional vector input.
-    Then the ratio of the exponential of the given dimension and the sum of
-    exponential values of all the other dimensions is the output of the softmax
-    operator.
-
-    For each row :math:`i` and each column :math:`j` in the matrix, we have:
-
-    .. math::
-
-        softmax[i, j] = \\frac{\\exp(x[i, j])}{\\sum_j(exp(x[i, j])}
-
-    Example:
-
-    .. code-block:: text
-
-        Case 1:
-          Input:
-            x.shape = [2, 3, 4]
-            x.data = [[[2.0, 3.0, 4.0, 5.0],
-                       [3.0, 4.0, 5.0, 6.0],
-                       [7.0, 8.0, 8.0, 9.0]],
-                      [[1.0, 2.0, 3.0, 4.0],
-                       [5.0, 6.0, 7.0, 8.0],
-                       [6.0, 7.0, 8.0, 9.0]]]
-
-          Attrs:
-            axis = -1
-
-          Output:
-            out.shape = [2, 3, 4]
-            out.data = [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-                         [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
-                        [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
-
-        Case 2:
-          Input:
-            x.shape = [2, 3, 4]
-            x.data = [[[2.0, 3.0, 4.0, 5.0],
-                       [3.0, 4.0, 5.0, 6.0],
-                       [7.0, 8.0, 8.0, 9.0]],
-                      [[1.0, 2.0, 3.0, 4.0],
-                       [5.0, 6.0, 7.0, 8.0],
-                       [6.0, 7.0, 8.0, 9.0]]]
-          Attrs:
-            axis = 1
-
-          Output:
-            out.shape = [2, 3, 4]
-            out.data = [[[0.00657326, 0.00657326, 0.01714783, 0.01714783],
-                         [0.01786798, 0.01786798, 0.04661262, 0.04661262],
-                         [0.97555875, 0.97555875, 0.93623955, 0.93623955]],
-                        [[0.00490169, 0.00490169, 0.00490169, 0.00490169],
-                         [0.26762315, 0.26762315, 0.26762315, 0.26762315],
-                         [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
-        axis (int, optional): The axis along which to perform log_softmax
-            calculations. It should be in range [-D, D), where D is the
-            dimensions of ``x`` . If ``axis`` < 0, it works the same way as
-            :math:`axis + D` . Default is -1.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        A Tensor with the same shape and data type (use ``dtype`` if it is
-        specified) as x.
+    Inplace version of ``softmax`` API. Please refer to doc of ``softmax``.
+    Inplace strategy: Do not create a new output Tensor, output and input is the same Tensor.
+    Inplace input: x
+    Dtype can only be None.
 
     Examples:
         .. code-block:: python
@@ -1045,23 +951,19 @@ def softmax_(x, axis=-1, dtype=None, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            x = np.array([[[2.0, 3.0, 4.0, 5.0],
+            x_numpy = np.array([[[2.0, 3.0, 4.0, 5.0],
                         [3.0, 4.0, 5.0, 6.0],
                         [7.0, 8.0, 8.0, 9.0]],
                         [[1.0, 2.0, 3.0, 4.0],
                         [5.0, 6.0, 7.0, 8.0],
                         [6.0, 7.0, 8.0, 9.0]]], 'float32')
-            x = paddle.to_tensor(x)
-            out1 = F.softmax(x)
-            out2 = F.softmax(x, dtype='float64')
-            # out1's data type is float32; out2's data type is float64
-            # out1 and out2's value is as follows:
+            x = paddle.to_tensor(x_numpy)
+            out = F.softmax_(x)
             # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
             #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
-            # [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+            #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]]
+            print(id(x) == id(out))
+            # True
     """
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
@@ -1069,10 +971,10 @@ def softmax_(x, axis=-1, dtype=None, name=None):
     use_cudnn = True
 
     if in_dygraph_mode():
-        outs_cast = x if dtype is None \
-            else core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
-        return core.ops.softmax_(outs_cast, 'axis', axis, 'use_cudnn',
-                                 use_cudnn)
+        return core.ops.softmax_(x, 'axis', axis, 'use_cudnn', use_cudnn)
+
+    dygraph_inplace_in_static_mode("softmax")
+    return softmax(x, axis, dtype, name)
 
 
 def softplus(x, beta=1, threshold=20, name=None):
