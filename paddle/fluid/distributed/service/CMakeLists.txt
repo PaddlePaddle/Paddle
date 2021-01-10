@@ -12,6 +12,11 @@ brpc_library(sendrecv_rpc SRCS
         PROTO sendrecv.proto
         DEPS ${BRPC_DEPS} )
 
+if(WITH_MKLDNN)
+    add_dependencies(sendrecv_rpc mkldnn)
+    add_dependencies(sendrecv_rpc extern_mkldnn)
+endif()
+
 set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper)
 
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
