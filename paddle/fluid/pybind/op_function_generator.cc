@@ -152,22 +152,11 @@ std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
     {"flatten_contiguous_range", {"X", "Out"}},
 };
 
-// NOTE(pangyoki): Inplace Strategy.
-// In this case, output will reuse input varbase.
-// Has the same function as `view_op_map`, but used for in-place ops.
-// Dygraph mode needs to be aligned with the in-place strategy in static mode,
-// and the mapping relationships between input and output that have been defined
-// in static mode should be used in dygraph mode.
-// Use `InitializeInplaceOpMap` function to initialize this map.
-std::map<std::string, std::map<std::string, std::string>> inplace_op_map = {};
-
-// TODO(pangyoki): Unsupported Inplace Strategy.
-// The set includes ops that have differences in the implementation of inplace
-// strategies between dygraph and static mode.
-// These ops have inplace implementation in static mode, but have no
-// implementation
-// in dygraph mode in temporary. They will be processed later.
-std::set<std::string> unsupported_inplace_op_set = {
+// NOTE(pangyoki): Inplace OP with duplicable input.
+// The set includes inplace ops that have duplicable input.
+// The first Varbase in input needs to be specified for the inplace strategy
+// and share Varbase with the output.
+std::set<std::string> inplace_op_duplicable_ins_set = {
     "sum",
 };
 
@@ -231,6 +220,8 @@ const char* HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT = R"(
       HandleViewBetweenInputAndOutput(ins["%s"][0], outs["%s"][0]);
     })";
 
+const char* INPLACE_DUPLICABLE_INPUT = R"([0])";
+
 const char* INPLACE_LEAF_ERROR_MESSAGE = R"(Leaf Var (%s) that doesn't stop gradient can't use inplace strategy.)";
 
 const char* INPLACE_STRATEGY_TEMPLATE =
@@ -281,17 +272,8 @@ static inline bool FindPassingOutsMap(const std::string& op_type,
   return op_passing_outs_map[op_type].count(out_name);
 }
 
-static inline bool FindInplaceOpMap(const std::string& op_type) {
-  return inplace_op_map.count(op_type);
-}
-
-static inline bool FindUnsupportedInplaceOpSet(const std::string& op_type) {
-  return unsupported_inplace_op_set.count(op_type);
-}
-
-static inline bool FindInplacePassingOutsMap(const std::string& op_type,
-                                             const std::string& out_name) {
-  return inplace_op_map[op_type].count(out_name);
+static inline bool FindDuplicableInputInplaceOpSet(const std::string& op_type) {
+  return inplace_op_duplicable_ins_set.count(op_type);
 }
 
 static inline bool FindViewOpMap(const std::string& op_type) {
@@ -302,38 +284,10 @@ static inline std::string TempName(const std::string& name) {
   return name + '_';
 }
 
-void InitializeInplaceOpMap() {
-  auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
-
-  for (auto& pair : op_info_map) {
-    auto& op_info = pair.second;
-    auto op_proto = op_info.proto_;
-    if (op_proto == nullptr) {
-      continue;
-    }
-    auto& op_type = op_proto->type();
-    auto& infer_inplace =
-        paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
-    std::map<std::string, std::string> inplace_output_input_mapping;
-    if (infer_inplace) {
-      VLOG(3) << "Inplace OP: " << op_type;
-
-      auto in_to_outs = infer_inplace(true);
-      for (auto& map_pair : in_to_outs) {
-        auto in_param = map_pair.first;
-        auto out_param = map_pair.second;
-        VLOG(4) << "Inplace Input(" << in_param << "), correspond Output("
-                << out_param << ").";
-        inplace_output_input_mapping[map_pair.second] = map_pair.first;
-      }
-      inplace_op_map[op_type] = inplace_output_input_mapping;
-    }
-  }
-}
-
 std::string GenerateOpFunctionsBody(
     const paddle::framework::proto::OpProto* op_proto, std::string func_name,
-    bool use_inplace_strategy = false) {
+    bool use_inplace_strategy = false,
+    std::map<std::string, std::string> inplace_map = {}) {
   auto& op_type = op_proto->type();
   std::string input_args = "";
   std::string ins_initializer = "{";
@@ -427,19 +381,30 @@ std::string GenerateOpFunctionsBody(
             paddle::string::Sprintf(out_template, out_name, out_name);
         outs_initializer += ",";
       }
-    } else if (use_inplace_strategy &&
-               FindInplacePassingOutsMap(op_type, out_name)) {
+    } else if (use_inplace_strategy && inplace_map.count(out_name)) {
       PADDLE_ENFORCE_NE(
-          inplace_op_map[op_type][out_name], "",
+          inplace_map[out_name], "",
           paddle::platform::errors::InvalidArgument(
               "Inplace op %s has no input corresponding to output %s.", op_type,
               out_name));
 
-      // TODO(pangyoki): Don't support duplicable output in temporary
+      // TODO(pangyoki): Inplace op don't have duplicable output in temporary,
+      // so don't support duplicable output now.
       const auto out_template = INPUT_INITIALIZER_TEMPLATE;
 
-      const auto inplace_input_name = inplace_op_map[op_type][out_name];
-      // increase inplace_version
+      auto inplace_input_name = inplace_map[out_name];
+      inplace_mapping_str += paddle::string::Sprintf(
+          INPLACE_MAPPING_TEMPLATE, inplace_input_name, out_name);
+      inplace_mapping_str += ",";
+
+      // If inplace op has duplicable input, the first Varbase in input will
+      // share Varbase with output.
+      if (FindDuplicableInputInplaceOpSet(op_type)) {
+        inplace_input_name += INPLACE_DUPLICABLE_INPUT;
+      }
+
+      // Leaf Var that doesn't stop gradient can't use inplace strategy.
+      // Increase inplace_version.
       inplace_strategy_str += paddle::string::Sprintf(
           INPLACE_STRATEGY_TEMPLATE, inplace_input_name, inplace_input_name,
           INPLACE_LEAF_ERROR_MESSAGE, inplace_input_name, inplace_input_name,
@@ -447,10 +412,6 @@ std::string GenerateOpFunctionsBody(
       outs_initializer +=
           paddle::string::Sprintf(out_template, out_name, inplace_input_name);
       outs_initializer += ",";
-
-      inplace_mapping_str += paddle::string::Sprintf(
-          INPLACE_MAPPING_TEMPLATE, inplace_input_name, out_name);
-      inplace_mapping_str += ",";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the
@@ -539,6 +500,25 @@ GenerateOpFunctions(const std::string& module_name) {
       continue;
     }
 
+    // NOTE(pangyoki): Inplace Strategy.
+    // In this case, output will reuse input varbase.
+    // Dygraph mode needs to be aligned with the in-place strategy in static
+    // mode,
+    // and the mapping relationships between output and input that have been
+    // defined
+    // in static mode should be used in dygraph mode.
+    // Find which ops need to use Inplace strategy in static mode, and get the
+    // mapping relationship between Inplace output and input.
+    auto& infer_inplace =
+        paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
+    std::map<std::string, std::string> inplace_map;
+    if (infer_inplace) {
+      auto in_to_outs = infer_inplace(true);
+      for (auto& inplace_pair : in_to_outs) {
+        inplace_map[inplace_pair.second] = inplace_pair.first;
+      }
+    }
+
     std::string func_name = "imperative_" + op_type;
     std::string op_function_str = GenerateOpFunctionsBody(op_proto, func_name);
 
@@ -549,13 +529,13 @@ GenerateOpFunctions(const std::string& module_name) {
     op_function_list.emplace_back(std::move(op_function_str));
     bind_function_list.emplace_back(std::move(bind_function_str));
 
-    if (FindInplaceOpMap(op_type) && !FindUnsupportedInplaceOpSet(op_type)) {
+    if (infer_inplace) {
       // Reuse Varbase Inplace OP: op_type_.
       // The inplace OP needs a new implementation method.
       std::string inplace_op_type = op_type + "_";
       std::string inplace_func_name = "imperative_" + inplace_op_type;
-      std::string inplace_op_function_str =
-          GenerateOpFunctionsBody(op_proto, inplace_func_name, true);
+      std::string inplace_op_function_str = GenerateOpFunctionsBody(
+          op_proto, inplace_func_name, true, inplace_map);
 
       // generate pybind item
       auto inplace_bind_function_str =
@@ -585,7 +565,6 @@ int main(int argc, char* argv[]) {
     out << "#include  " + header + "\n";
   }
 
-  InitializeInplaceOpMap();
   auto op_funcs = GenerateOpFunctions("m");
 
   out << "namespace py = pybind11;"
