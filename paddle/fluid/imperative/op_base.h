@@ -233,8 +233,10 @@ class GradOpNode {
   void SetInplaceGradNameMap(
       const std::map<std::string, std::string>& inplace_input_map) {
     for (auto& pair : inplace_input_map) {
-      VLOG(3) << "Inplace testv2 " << framework::GradVarName(pair.first)
-              << " Mapping " << framework::GradVarName(pair.second);
+      VLOG(10) << "Set mapping relationship ("
+               << framework::GradVarName(pair.first) << ", "
+               << framework::GradVarName(pair.second)
+               << ") for Inplace grad node.";
       inplace_grad_name_map_[framework::GradVarName(pair.first)] =
           framework::GradVarName(pair.second);
     }
@@ -254,6 +256,8 @@ class GradOpNode {
  private:
   std::vector<OpBase> ops_;
   std::vector<std::shared_ptr<GradOpNode>> grad_pending_nodes_;
+  // Mapping relationship between grad output and grad input of the grad node of
+  // Inplace op.
   std::map<std::string, std::string> inplace_grad_name_map_;
 };
 

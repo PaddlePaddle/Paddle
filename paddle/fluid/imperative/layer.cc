@@ -466,16 +466,6 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
       ClearNoNeedBufferInputs(&grad_op);
     }
     if (!inplace_map.empty()) {
-      VLOG(3) << "Inplace testv1 " << op.Type();
-      // for (auto& pair : inplace_map) {
-      //   for (auto& in_var : ins.at(pair.first)) {
-      //     PADDLE_ENFORCE_EQ(
-      //         in_var-> HasGradVar() && !GetGradVar()->HasGradNode())
-      //         in_var->SharedVar()->IsLeafGrad(), false,
-      //         platform::errors::InvalidArgument("Leaf Var (%s) that doesn't
-      //         stop gradient can't use inplace strategy.", in_var->Name()));
-      //   }
-      // }
       grad_node->SetInplaceGradNameMap(inplace_map);
     }
     return grad_node;

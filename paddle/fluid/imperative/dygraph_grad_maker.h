@@ -337,6 +337,10 @@ class TracedGradOp {
  private:
   const std::shared_ptr<GradOpNode>& node_;
   OpBase* op_;
+  // Inplace op has recursion problems when performing grad calculation.
+  // Because the input and output of inplace op are the same, the grad
+  // node of inplace var will be overwritten.
+  // This map is used to store the grad node of inplace var in temporary.
   std::unordered_map<std::shared_ptr<VarBase>, std::shared_ptr<GradOpNode>>
       map_dirty_grad_node_;
 };

@@ -257,10 +257,8 @@ class VariableWrapper {
 
     auto shared_node = grad_node_.lock();
     if (shared_node != grad_node) {
-      // PADDLE_ENFORCE_EQ(
-      //     shared_node, nullptr,
-      //     platform::errors::PermissionDenied("Cannot set gradient op
-      //     twice"));
+      VLOG(3) << "The gradient op of Var (" << Name()
+              << ") has been set twice. It's OK if it uses Inplace Strategy.";
       grad_node_ = grad_node;
     }
   }

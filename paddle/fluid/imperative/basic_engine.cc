@@ -155,8 +155,7 @@ void BasicEngine::PrepareGradAccumulators(
       } else {
         // Because Inplace op overwrites the grad_node of the input grad_var. So
         // only the information of grad_pending_node can be used to find the
-        // grad_node
-        // of grad_var.
+        // grad_node of grad_var.
         bool find_grad_node_of_var = false;
         for (auto& grad_pending_node : grad_pending_nodes) {
           PADDLE_ENFORCE_NOT_NULL(grad_pending_node,
@@ -204,7 +203,7 @@ void BasicEngine::PrepareGradAccumulators(
 
             VLOG(3) << "Prepare to acccumulate variable grad " << var->Name()
                     << "(" << var.get()
-                    << ") that has grad node  with reference count "
+                    << ") that has grad node with reference count "
                     << accumulator->RefCnt();
             break;
           }
