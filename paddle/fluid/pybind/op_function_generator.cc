@@ -503,10 +503,8 @@ GenerateOpFunctions(const std::string& module_name) {
     // NOTE(pangyoki): Inplace Strategy.
     // In this case, output will reuse input varbase.
     // Dygraph mode needs to be aligned with the in-place strategy in static
-    // mode,
-    // and the mapping relationships between output and input that have been
-    // defined
-    // in static mode should be used in dygraph mode.
+    // mode, and the mapping relationships between output and input that have
+    // been defined in static mode should be used in dygraph mode.
     // Find which ops need to use Inplace strategy in static mode, and get the
     // mapping relationship between Inplace output and input.
     auto& infer_inplace =

@@ -101,15 +101,16 @@ class TestDygraphInplace(unittest.TestCase):
 
     def init_data(self):
         self.input_var_numpy = np.random.rand(2, 3, 1)
+        self.dtype = "float32"
 
     def non_inplace_api_processing(self, var):
         return paddle.squeeze(var)
 
     def inplace_api_processing(self, var):
-        return var.squeeze_()
+        return paddle.squeeze_(var)
 
     def test_inplace_api(self):
-        var = paddle.to_tensor(self.input_var_numpy).astype(np.float32)
+        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
         inplace_var = self.inplace_api_processing(var)
         self.assertTrue(id(var) == id(inplace_var))
 
@@ -118,7 +119,7 @@ class TestDygraphInplace(unittest.TestCase):
 
     def test_forward_version(self):
         with paddle.fluid.dygraph.guard():
-            var = paddle.to_tensor(self.input_var_numpy).astype(np.float32)
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             self.assertEqual(var.inplace_version, 0)
 
             inplace_var = self.inplace_api_processing(var)
@@ -132,7 +133,7 @@ class TestDygraphInplace(unittest.TestCase):
 
     def test_leaf_inplace_var_error(self):
         with paddle.fluid.dygraph.guard():
-            var = paddle.to_tensor(self.input_var_numpy).astype(np.float32)
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             var.stop_gradient = False
 
             def leaf_inplace_error():
@@ -144,7 +145,7 @@ class TestDygraphInplace(unittest.TestCase):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
         with paddle.fluid.dygraph.guard():
-            var_a = paddle.to_tensor(self.input_var_numpy).astype(np.float32)
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             var_a.stop_gradient = False
 
             var_b = var_a**2
@@ -165,7 +166,7 @@ class TestDygraphInplace(unittest.TestCase):
         # in incorrect gradient computation.
         grad_var_a, grad_var_a_inplace = 0, 1
         with paddle.fluid.dygraph.guard():
-            var_a = paddle.to_tensor(self.input_var_numpy).astype(np.float32)
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             var_a.stop_gradient = False
 
             var_b = var_a**2
@@ -179,7 +180,7 @@ class TestDygraphInplace(unittest.TestCase):
             grad_var_a_inplace = var_a.grad
 
         with paddle.fluid.dygraph.guard():
-            var_a = paddle.to_tensor(self.input_var_numpy).astype(np.float32)
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             var_a.stop_gradient = False
 
             var_b = var_a**2
@@ -196,7 +197,7 @@ class TestDygraphInplace(unittest.TestCase):
         # The inplace operator doesn't result in incorrect gradient computation.
         grad_var_a, grad_var_a_inplace = 0, 1
         with paddle.fluid.dygraph.guard():
-            var_a = paddle.to_tensor(self.input_var_numpy).astype(np.float32)
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             var_a.stop_gradient = False
 
             var_b = var_a**2
@@ -211,7 +212,7 @@ class TestDygraphInplace(unittest.TestCase):
             grad_var_a_inplace = var_a.grad
 
         with paddle.fluid.dygraph.guard():
-            var_a = paddle.to_tensor(self.input_var_numpy).astype(np.float32)
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             var_a.stop_gradient = False
 
             var_b = var_a**2
@@ -224,7 +225,6 @@ class TestDygraphInplace(unittest.TestCase):
 
             loss.backward()
             grad_var_a = var_a.grad
-        print(grad_var_a_inplace, grad_var_a)
         self.assertTrue(np.array_equal(grad_var_a_inplace, grad_var_a))
 
 
@@ -233,7 +233,7 @@ class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
         return paddle.unsqueeze(var, -1)
 
     def inplace_api_processing(self, var):
-        return paddle.tensor.unsqueeze_(var, -1)
+        return paddle.unsqueeze_(var, -1)
 
 
 class TestDygraphInplaceReshape(TestDygraphInplace):
@@ -241,7 +241,27 @@ class TestDygraphInplaceReshape(TestDygraphInplace):
         return paddle.reshape(var, [-1])
 
     def inplace_api_processing(self, var):
-        return var.reshape_([-1])
+        return paddle.reshape_(var, [-1])
+
+
+class TestDygraphInplaceScatter(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.array([[1, 1], [2, 2], [3, 3]])
+        self.dtype = "float32"
+
+    def non_inplace_api_processing(self, var):
+        index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
+        updates = paddle.to_tensor(
+            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
+
+        return paddle.scatter(var, index, updates, overwrite=False)
+
+    def inplace_api_processing(self, var):
+        index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
+        updates = paddle.to_tensor(
+            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
+
+        return paddle.scatter_(var, index, updates, overwrite=False)
 
 
 class TestDygraphInplaceElu(TestDygraphInplace):

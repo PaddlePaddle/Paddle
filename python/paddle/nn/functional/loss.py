@@ -28,7 +28,6 @@ from ...fluid.layers import log_loss  #DEFINE_ALIAS
 from ...fluid.layers import npair_loss  #DEFINE_ALIAS
 from ...fluid.layers import reshape
 from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
-from ...fluid.layers import softmax_with_cross_entropy_  #DEFINE_ALIAS
 from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
 
 from ...fluid.layers import edit_distance  #DEFINE_ALIAS
@@ -55,7 +54,6 @@ __all__ = [
     'sigmoid_focal_loss',
     'smooth_l1_loss',
     'softmax_with_cross_entropy',
-    'softmax_with_cross_entropy_',
     'square_error_cost',
     'ctc_loss',
 ]
