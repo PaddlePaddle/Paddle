@@ -257,8 +257,10 @@ class VariableWrapper {
 
     auto shared_node = grad_node_.lock();
     if (shared_node != grad_node) {
-      VLOG(3) << "The gradient op of Var (" << Name()
-              << ") has been set twice. It's OK if it uses Inplace Strategy.";
+      if (shared_node) {
+        VLOG(3) << "The gradient op of Var (" << Name()
+                << ") has been set twice. It's OK if it uses Inplace Strategy.";
+      }
       grad_node_ = grad_node;
     }
   }
