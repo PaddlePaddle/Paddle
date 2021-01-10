@@ -29,6 +29,7 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/string/string_helper.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/imperative/all_reduce.h"
@@ -211,7 +212,7 @@ class Reducer {
   std::vector<size_t> unused_vars_;
   bool has_marked_unused_vars_{false};
   bool find_unused_vars_{false};
-  bool need_finalize_backward_{false};
+  bool all_group_ready_{false};
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(

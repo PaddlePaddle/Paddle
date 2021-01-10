@@ -302,15 +302,16 @@ void Reducer::PrepareForBackward(
   });
 
   PADDLE_ENFORCE_EQ(
-      need_finalize_backward_, false,
+      all_group_ready_, false,
       platform::errors::PreconditionNotMet(
-          "Please note that all `forward` outputs derived from the module "
+          "Please note that all ``forward`` outputs derived from the module "
           "parameters must participate in the calculation of losses and "
           "subsequent gradient calculations. If not, the wrapper will hang, "
           "waiting for autograd to generate gradients for these parameters. "
           "you can use detach or stop_gradient to make the unused parameters "
           "detached from the autograd graph."));
 
+  // The first var to trigger the unused parameter
   has_marked_unused_vars_ = false;
   if (!find_unused_vars_) {
     return;
@@ -329,7 +330,7 @@ void Reducer::PrepareForBackward(
   for (const auto &output : outputs) {
     const auto &grad_node = output->GradVarBase()->GradNode();
     if (grad_node == nullptr || output->OverridedStopGradient()) {
-      VLOG(3) << "Skip auto grad since there is no grad op for output is "
+      VLOG(3) << "Skip auto grad since there is no grad op or output is "
                  "stop_gradient=True: "
               << output->Name();
       continue;
@@ -395,6 +396,9 @@ void Reducer::PrepareForBackward(
 // concat + allreduce + split is emitted in turn according to next_group_.
 // 3, FinalizeBackward: after the end, synchronize each stream.
 void Reducer::AddDistHook(size_t var_index) {
+  VLOG(3) << "Var[" << var_index << "] ["
+          << vars_[var_index]->GradVarBase()->Name()
+          << "] arrived and triggered disthook";
   if (!has_marked_unused_vars_) {
     has_marked_unused_vars_ = true;
     for (auto unused_index : unused_vars_) {
@@ -414,7 +418,7 @@ void Reducer::AddDistHook(size_t var_index) {
 }
 
 void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
-  need_finalize_backward_ = true;
+  all_group_ready_ = true;
   const auto &var_locator = variable_locators_[var_index];
   auto group_index = var_locator.group_index;
   auto &group = groups_[group_index];
@@ -497,6 +501,9 @@ void Reducer::MarkGroupReady(size_t group_index) {
 }
 
 std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
+  VLOG(3) << "The order of parameter arrival: "
+          << string::join_strings(rebuild_var_indices_, ',');
+
   PADDLE_ENFORCE_EQ(
       rebuild_vars_.size(), vars_.size(),
       platform::errors::PreconditionNotMet(
@@ -516,7 +523,7 @@ std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
 }
 
 void Reducer::FinalizeBackward() {
-  need_finalize_backward_ = false;
+  all_group_ready_ = false;
   // Must prevent compute_stream_ starting until all comm streams have finished
   for (int i = 0; i < nrings_; ++i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
