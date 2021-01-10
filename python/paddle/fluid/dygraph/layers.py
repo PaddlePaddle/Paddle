@@ -21,6 +21,7 @@ import re
 import copy
 import weakref
 import warnings
+from copy import deepcopy
 
 from . import parallel_helper
 from .. import unique_name
@@ -43,6 +44,17 @@ _all_cap_re = re.compile('([a-z])([A-Z])')
 def _convert_camel_to_snake(name):
     s1 = _first_cap_re.sub(r'\1_\2', name)
     return _all_cap_re.sub(r'\1_\2', s1).lower()
+
+
+def _addindent(string, indent):
+    s1 = string.split('\n')
+    if len(s1) == 1:
+        return string
+    s2 = []
+    for idx, line in enumerate(s1):
+        if idx > 0:
+            s2.append(str((indent * ' ') + line))
+    return s1[0] + '\n' + '\n'.join(s2)
 
 
 class HookRemoveHelper(object):
@@ -132,8 +144,11 @@ class Layer(core.Layer):
                 out = mylayer(x)
 
         """
-        # global setting
-        framework._dygraph_tracer().train_mode()
+        # global setting in dygraph
+        # NOTE(chenweihang): nn.Layer also can be used in static mode,
+        # but _dygraph_tracer() can not be called in static mode
+        if in_dygraph_mode():
+            framework._dygraph_tracer().train_mode()
         # Layer-level setting
         self.training = True
         for layer in self.sublayers():
@@ -170,8 +185,11 @@ class Layer(core.Layer):
                 print(out)
 
         """
-        # global setting
-        framework._dygraph_tracer().eval_mode()
+        # global setting in dygraph
+        # NOTE(chenweihang): nn.Layer also can be used in static mode,
+        # but _dygraph_tracer() can not be called in static mode
+        if in_dygraph_mode():
+            framework._dygraph_tracer().eval_mode()
         # Layer-level setting
         self.training = False
         for layer in self.sublayers():
@@ -1010,15 +1028,26 @@ class Layer(core.Layer):
             self._parameters[name] = parameter
         return parameter
 
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
     def __getattr__(self, name):
-        if name in self._parameters:
-            return self._parameters[name]
-        elif name in self._sub_layers:
-            return self._sub_layers[name]
-        elif name in self._buffers:
-            return self._buffers[name]
-        else:
-            return object.__getattribute__(self, name)
+        if '_parameters' in self.__dict__:
+            _parameters = self.__dict__['_parameters']
+            if name in self._parameters:
+                return self._parameters[name]
+        if '_sub_layers' in self.__dict__:
+            _sub_layers = self.__dict__['_sub_layers']
+            if name in self._sub_layers:
+                return self._sub_layers[name]
+        if '_buffers' in self.__dict__:
+            _buffers = self.__dict__['_buffers']
+            if name in _buffers:
+                return _buffers[name]
+        return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
         def _remove_if_exist(*dicts):
@@ -1148,6 +1177,35 @@ class Layer(core.Layer):
 
         return keys
 
+    def extra_repr(self):
+        """
+        Extra representation of this layer, you can have custom implementation
+        of your own layer.
+        """
+        return ''
+
+    def __repr__(self):
+        extra_lines = []
+        extra_repr = self.extra_repr()
+        extra_lines = extra_repr.split('\n')
+        sublayer_lines = []
+        for name, layer in self._sub_layers.items():
+            sublayer_str = repr(layer)
+            sublayer_str = _addindent(sublayer_str, 2)
+            sublayer_lines.append('(' + name + '): ' + sublayer_str)
+
+        final_str = self.__class__.__name__ + '('
+        if extra_lines:
+            if len(extra_lines) > 1:
+                final_str += '\n  ' + '\n  '.join(extra_lines) + '\n'
+            elif len(extra_lines) == 1:
+                final_str += extra_lines[0]
+        if sublayer_lines:
+            final_str += '\n  ' + '\n  '.join(sublayer_lines) + '\n'
+
+        final_str += ')'
+        return final_str
+
     def state_dict(self,
                    destination=None,
                    include_sublayers=True,
@@ -1256,6 +1314,10 @@ class Layer(core.Layer):
                     place = core.CPUPlace()
                 elif p.is_cuda_pinned_place():
                     place = core.CUDAPinnedPlace()
+                elif p.is_xpu_place():
+                    p = core.Place()
+                    p.set_place(t._place())
+                    place = core.XPUPlace(p.xpu_device_id())
                 else:
                     p = core.Place()
                     p.set_place(t._place())

@@ -23,6 +23,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
@@ -98,9 +99,15 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
       }
 
       if (tensor && !tensor->IsInitialized()) {
-        VLOG(6) << "Set ungenerated Grad: " << var->Name() << " as zero";
         auto* dev_ctx = platform::DeviceContextPool::Instance().Get(op.place());
-        tensor->mutable_data(op.place(), var->DataType());
+        // NOTE(zhiqiu): since grad variable is ungenerated, so the dtype is not
+        // correct. var->DataType() returns the default dtype, which is float32.
+        // Here, we use the type of the corresponding forward datatype.
+
+        tensor->mutable_data(op.place(), var->ForwardDataType());
+        VLOG(6) << "Set ungenerated Grad: " << var->Name()
+                << " as zero with dtype "
+                << framework::DataTypeToString(var->ForwardDataType());
         operators::math::set_constant(*dev_ctx, tensor, 0.0);
       }
     }
@@ -239,6 +246,7 @@ void BasicEngine::Execute() {
           if (var->OverridedStopGradient() || iter->second->RefCnt() > 1) {
             auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
             tmp_var->SetType(var->Type());
+            tmp_var->SetForwardDataType(var->ForwardDataType());
             var = tmp_var;
             need_accu_var_list_.emplace_back(iter->second.get(), var);
             VLOG(10) << "create temporary var of " << var->Name()

@@ -26,11 +26,7 @@ namespace inference {
 TEST(AnalysisPredictor, use_gpu) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   AnalysisConfig config;
-#if defined(PADDLE_WITH_CUDA)
   config.EnableUseGpu(100, 0);
-#elif defined(LITE_SUBGRAPH_WITH_XPU)
-  config.EnableXpu(100);
-#endif
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32, true);
 

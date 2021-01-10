@@ -67,8 +67,11 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
     MKLDNNMemoryFormat src_fmt = input->format();
-    std::string key = platform::CreateKey(platform::ThreadIDasStr(), src_dt,
-                                          src_tz, ctx.OutputName("Output"));
+
+    std::string key =
+        platform::CreateKey(dev_ctx, src_dt, src_tz, ctx.OutputName("Output"));
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+
     const std::string key_prim = key + "@r";
     const std::string key_src_mem = key + "@s";
     const std::string key_dst_mem = key + "@d";

@@ -71,7 +71,7 @@ def concat(x, axis=0, name=None):
     This OP concatenates the input along the axis.
 
     Args:
-        x(list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16, 
+        x(list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16,
             float32, float64, int32, int64. All the Tensors in ``x`` must have same data type.
         axis(int|Tensor, optional): Specify the axis to operate on the input Tensors.
             It's a scalar with data type int or a Tensor with shape [1] and data type int32 
@@ -110,7 +110,6 @@ def concat(x, axis=0, name=None):
             #  [11 12 13]
             #  [14 15 16]]
     """
-    check_type(x, 'x', (list, tuple), 'concat')
     return paddle.fluid.layers.concat(input=x, axis=axis, name=name)
 
 
@@ -168,6 +167,10 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
     Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
 
+    Note that the output Tensor will share data with origin Tensor and doesn't have a 
+    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, please 
+    use `Tensor.clone` like ``flatten_clone_x = x.flatten().clone()``.
+
     For Example:
 
     .. code-block:: text
@@ -220,12 +223,16 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             import paddle
 
             image_shape=(2, 3, 4, 4)
-            
+
             x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
             img = paddle.reshape(x, image_shape)
-            
+
             out = paddle.flatten(img, start_axis=1, stop_axis=2)
             # out shape is [2, 12, 4]
+
+            # out shares data with img in dygraph mode
+            img[0, 0, 0, 0] = -1
+            print(out[0, 0, 0]) # [-1]
     """
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
@@ -285,6 +292,7 @@ def roll(x, shifts, axis=None, name=None):
 
     Examples:
         .. code-block:: python
+            
             import paddle
 
             x = paddle.to_tensor([[1.0, 2.0, 3.0],
@@ -479,6 +487,10 @@ def split(x, num_or_sections, axis=0, name=None):
 def squeeze(x, axis=None, name=None):
     """
     This OP will squeeze the dimension(s) of size 1 of input tensor x's shape. 
+    
+    Note that the output Tensor will share data with origin Tensor and doesn't have a 
+    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, 
+    please use `Tensor.clone` like ``squeeze_clone_x = x.squeeze().clone()``.
 
     If axis is provided, it will remove the dimension(s) by given axis that of size 1. 
     If the dimension of given axis is not of size 1, the dimension remain unchanged. 
@@ -536,7 +548,13 @@ def squeeze(x, axis=None, name=None):
             
             x = paddle.rand([5, 1, 10])
             output = paddle.squeeze(x, axis=1)
+
+            print(x.shape)  # [5, 1, 10]
             print(output.shape)  # [5, 10]
+
+            # output shares data with x in dygraph mode
+            x[0, 0, 0] = 10.
+            print(output[0, 0]) # [10.]
 
     """
     if axis is None:
@@ -678,6 +696,10 @@ def unsqueeze(x, axis, name=None):
     required argument axis, a dimension or list of dimensions that will be inserted.
     Dimension indices in axis are as seen in the output tensor.
 
+    Note that the output Tensor will share data with origin Tensor and doesn't have a 
+    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, 
+    please use `Tensor.clone` like ``unsqueeze_clone_x = x.unsqueeze(-1).clone()``.
+
     Args:
         x (Tensor): The input Tensor to be unsqueezed. Supported data type: float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` . 
@@ -706,6 +728,12 @@ def unsqueeze(x, axis, name=None):
             axis = paddle.to_tensor([0, 1, 2])
             out3 = paddle.unsqueeze(x, axis=axis) 
             print(out3.shape)  # [1, 1, 1, 5, 10]
+
+            # out1, out2, out3 share data with x in dygraph mode
+            x[0, 0] = 10.
+            print(out1[0, 0, 0]) # [10.]
+            print(out2[0, 0, 0, 0]) # [10.]
+            print(out3[0, 0, 0, 0, 0]) # [10.]
             
     """
 
@@ -792,29 +820,29 @@ def gather(x, index, axis=None, name=None):
 
 def unbind(input, axis=0):
     """
-	:alias_main: paddle.tensor.unbind
-	:alias: paddle.tensor.unbind,paddle.tensor.manipulation.unbind
 
     Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
+
     Args:
-        input (Variable): The input variable which is an N-D Tensor, data type being float32, float64, int32 or int64.
-       
-        axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind. If :math:`axis < 0`, the
-            dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
+        input (Tensor): The input variable which is an N-D Tensor, data type being float32, float64, int32 or int64.
+        axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind. 
+            If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
     Returns:
-        list(Variable): The list of segmented Tensor variables.
+        list(Tensor): The list of segmented Tensor variables.
 
     Example:
         .. code-block:: python
+
             import paddle
+            import numpy as np
             # input is a variable which shape is [3, 4, 5]
-            input = paddle.fluid.data(
-                 name="input", shape=[3, 4, 5], dtype="float32")
-            [x0, x1, x2] = paddle.tensor.unbind(input, axis=0)
+            np_input = np.random.rand(3, 4, 5).astype('float32')
+            input = paddle.to_tensor(np_input)
+            [x0, x1, x2] = paddle.unbind(input, axis=0)
             # x0.shape [4, 5]
             # x1.shape [4, 5]
             # x2.shape [4, 5]
-            [x0, x1, x2, x3] = paddle.tensor.unbind(input, axis=1)
+            [x0, x1, x2, x3] = paddle.unbind(input, axis=1)
             # x0.shape [3, 5]
             # x1.shape [3, 5]
             # x2.shape [3, 5]
@@ -838,6 +866,8 @@ def unbind(input, axis=0):
         helper.create_variable_for_type_inference(dtype=helper.input_dtype())
         for i in range(num)
     ]
+    if in_dygraph_mode():
+        return core.ops.unbind(input, num, 'axis', axis)
 
     helper.append_op(
         type="unbind",
@@ -1380,6 +1410,11 @@ def reshape(x, shape, name=None):
     """
     This operator changes the shape of ``x`` without changing its data.
 
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode. 
+    If you want to use the Tensor copy version, please use `Tensor.clone` like 
+    ``reshape_clone_x = x.reshape([-1]).clone()``.
+
     Some tricks exist when specifying the target shape.
 
     1. -1 means the value of this dimension is inferred from the total element
@@ -1428,16 +1463,24 @@ def reshape(x, shape, name=None):
 
             x = paddle.rand([2, 4, 6], dtype="float32")
             positive_four = paddle.full([1], 4, "int32")
+
             out = paddle.reshape(x, [-1, 0, 3, 2])
             print(out)
             # the shape is [2,4,3,2].
+
             out = paddle.reshape(x, shape=[positive_four, 12])
             print(out)
             # the shape of out_2 is [4, 12].
+
             shape_tensor = paddle.to_tensor(np.array([8, 6]).astype("int32"))
             out = paddle.reshape(x, shape=shape_tensor)
             print(out)
             # the shape is [8, 6].
+            # out shares data with x in dygraph mode
+            x[0, 0, 0] = 10.
+            print(out[0, 0])
+            # the value is [10.]
+
     """
     return paddle.fluid.layers.reshape(x=x, shape=shape, name=name)
 

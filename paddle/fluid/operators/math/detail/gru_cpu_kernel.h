@@ -276,7 +276,7 @@ inline void forward_reset_output(
       // use eigen
       forward_reset_outputV2(*context, value, frame_size);
     } else {
-      if (OpResetOutput::avx && (frame_size & static_cast<int>(8 - 1)) &&
+      if (OpResetOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
           (sizeof(T) == 4)) {
         hl_avx_gru_forward_reset_output(
             op_reset_output, value.gate_value, value.reset_output_value,
@@ -329,7 +329,7 @@ inline void forward_final_output(
       // eigen
       forward_final_outputV2(*context, value, frame_size);
     } else {
-      if (OpFinalOutput::avx && (frame_size & static_cast<int>(8 - 1)) &&
+      if (OpFinalOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
           (sizeof(T) == 4)) {
         hl_avx_gru_forward_final_output(op_final_output, value.gate_value,
                                         value.prev_out_value,

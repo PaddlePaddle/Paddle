@@ -81,7 +81,7 @@ class VariableWrapper {
   }
 
   bool IsLeafGrad() const {
-    if (!HasGradVar() && !HasGradNode() && !OverridedStopGradient()) {
+    if (!HasGradNode() && !OverridedStopGradient()) {
       return true;
     }
     return false;
@@ -122,10 +122,6 @@ class VariableWrapper {
 
   framework::proto::VarType::Type Type() const { return type_; }
 
-  void SetDataType(framework::proto::VarType::Type data_type) {
-    data_type_ = data_type;
-  }
-
   std::shared_ptr<VariableWrapper> GetGradVar() const {
     return grad_var_.lock();
   }
@@ -139,6 +135,10 @@ class VariableWrapper {
   bool HasGradNode() const { return !grad_node_.expired(); }
 
   bool HasGradVar() const { return !grad_var_.expired(); }
+
+  void SetDataType(framework::proto::VarType::Type data_type) {
+    data_type_ = data_type;
+  }
 
   framework::proto::VarType::Type DataType() const {
     const framework::Tensor* tensor = nullptr;
@@ -158,6 +158,14 @@ class VariableWrapper {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
       return data_type_;
     }
+  }
+
+  void SetForwardDataType(framework::proto::VarType::Type data_type) {
+    fwd_data_type_ = data_type;
+  }
+
+  framework::proto::VarType::Type ForwardDataType() const {
+    return fwd_data_type_;
   }
 
   const platform::Place Place() const {
@@ -233,9 +241,10 @@ class VariableWrapper {
   void SetGradVar(const std::shared_ptr<VariableWrapper>& var) {
     auto shared_var = grad_var_.lock();
     if (shared_var != var) {
-      PADDLE_ENFORCE_EQ(shared_var, nullptr,
-                        platform::errors::PermissionDenied(
-                            "Cannot set gradient var wrapper twice"));
+      PADDLE_ENFORCE_EQ(
+          shared_var, nullptr,
+          platform::errors::PermissionDenied(
+              "Cannot set gradient variable wrapper twice for %s", name_));
       grad_var_ = var;
     }
   }
@@ -305,6 +314,13 @@ class VariableWrapper {
 
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};
+
+  // See [ Why need handle complex gradient to real gradient? ]
+  // Used for grad var to get the data type of its corresponding forward var,
+  // if inconsistent, the data type of grad var needs to be casted to be
+  // consistent with forward var
+  framework::proto::VarType::Type fwd_data_type_{
+      static_cast<framework::proto::VarType::Type>(-1)};
 
   std::weak_ptr<VariableWrapper> grad_var_;
   std::weak_ptr<GradOpNode> grad_node_;

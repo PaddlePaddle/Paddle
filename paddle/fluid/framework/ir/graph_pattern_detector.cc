@@ -1017,6 +1017,23 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
   return fc_out_var;
 }
 
+PDNode *patterns::FCActOneDNN::operator()(const std::string &act_type) {
+  auto *fc = pattern->NewNode(fc_repr())->assert_is_op("fc");
+  auto *fc_out = pattern->NewNode(fc_out_repr())
+                     ->assert_is_op_output("fc", "Out")
+                     ->assert_is_op_input(act_type);
+  auto *act =
+      pattern->NewNode(act_repr())->assert_is_op(act_type)->AsIntermediate();
+  auto *act_out = pattern->NewNode(act_out_repr())
+                      ->assert_is_op_output(act_type, "Out")
+                      ->AsOutput();
+
+  fc->LinksTo({fc_out});
+  act->LinksFrom({fc_out}).LinksTo({act_out});
+
+  return act_out;
+}
+
 PDNode *patterns::Embedding::operator()(PDNode *x) {
   x->assert_is_op_input("lookup_table", "Ids");
   auto *lookup_table_op =
@@ -1556,6 +1573,7 @@ PDNode *patterns::Reshape::operator()() {
 
 PDNode *patterns::Matmul::operator()() {
   auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+
   auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
                          ->AsInput()
                          ->assert_is_op_input("matmul", "X");

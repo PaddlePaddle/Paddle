@@ -96,6 +96,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
   const int fake_batch_size = 1;
 
   auto valid_var = [&](framework::ir::Node* node) -> bool {
+    // lod operator reuse may cause unknown errors.
     std::set<std::string> invalid_op = {"while",
                                         "conditional_block",
                                         "tensorrt_engine",
@@ -103,6 +104,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
                                         "merge_lod_tensor_infer",
                                         "merge_lod_tensor",
                                         "equal",
+                                        "sequence_pool",
                                         "lod_reset"};
     for (auto* tmp : node->inputs) {
       CHECK(tmp->IsOp());

@@ -39,6 +39,7 @@ enum PaddleDType {
   INT64,
   INT32,
   UINT8,
+  INT8,
   // TODO(Superjomn) support more data types if needed.
 };
 
@@ -307,7 +308,7 @@ class PD_INFER_DECL PaddlePredictor {
   /// This will save the IO copy for transfering inputs and outputs to predictor
   /// workspace
   /// and get some performance improvement.
-  /// To use it, one should call the AnalysisConfig.SwitchUseFeedFetchOp(true)
+  /// To use it, one should call the AnalysisConfig.SwitchUseFeedFetchOp(false)
   /// and then use the `GetInputTensor` and `GetOutputTensor`
   /// to directly write or read the input/output tensors.
   /// \return Whether the run is successful
@@ -449,5 +450,10 @@ PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 PD_INFER_DECL std::string get_version();
 
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
+
+#ifdef PADDLE_ON_INFERENCE
+PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
+    const std::string& config_file);
+#endif
 
 }  // namespace paddle
