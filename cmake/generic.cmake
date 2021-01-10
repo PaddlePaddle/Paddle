@@ -322,6 +322,7 @@ function(cc_library TARGET_NAME)
       if("${cc_library_DEPS};" MATCHES "mkldnn_dep;")
         list(REMOVE_ITEM cc_library_DEPS mkldnn_dep)
         add_dependencies(${TARGET_NAME} mkldnn)
+        add_dependencies(${TARGET_NAME} extern_mkldnn)
       endif()
       # Only deps libmklml.so, not link
       if("${cc_library_DEPS};" MATCHES "mklml;")
