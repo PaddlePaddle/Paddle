@@ -315,7 +315,7 @@ class TestRealComplexElementwiseMulOp(TestComplexElementwiseMulOp):
     def init_grad_input_output(self):
         self.grad_out = np.ones((2, 3, 4, 5), self.dtype) + 1J * np.ones(
             (2, 3, 4, 5), self.dtype)
-        self.grad_x = self.grad_out * np.conj(self.y).real
+        self.grad_x = np.real(self.grad_out * np.conj(self.y))
         self.grad_y = self.grad_out * np.conj(self.x)
 
 
