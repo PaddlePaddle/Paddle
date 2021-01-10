@@ -3,13 +3,7 @@ set_source_files_properties(${BRPC_SRCS})
 
 MESSAGE(STATUS "houjue_debug: WITH_MKLDNN: ${WITH_MKLDNN}, WITH_MKL: ${WITH_MKL}, AVX2_FOUND: ${AVX2_FOUND}")
 
-if(WITH_MKLDNN)
-    message(STATUS "houjue_debug: add mkldnn_dep for brpc deps")
-    set(BRPC_DEPS brpc ssl crypto protobuf gflags glog zlib leveldb snappy gflags glog mkldnn_dep)
-else()
-    message(STATUS "houjue_debug: add mkldnn_dep for brpc deps")
-    set(BRPC_DEPS brpc ssl crypto protobuf gflags glog zlib leveldb snappy gflags glog)
-endif()
+set(BRPC_DEPS brpc ssl crypto protobuf gflags glog zlib leveldb snappy gflags glog device_context)
 
 brpc_library(sendrecv_rpc SRCS
         ${BRPC_SRCS}
