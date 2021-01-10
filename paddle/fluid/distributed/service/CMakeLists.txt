@@ -13,6 +13,7 @@ brpc_library(sendrecv_rpc SRCS
         DEPS ${BRPC_DEPS} )
 
 if(WITH_MKLDNN)
+    message(STATUS "houjue_debug: add_dependencies for sendrecv_rpc")
     add_dependencies(sendrecv_rpc mkldnn)
     add_dependencies(sendrecv_rpc extern_mkldnn)
 endif()
