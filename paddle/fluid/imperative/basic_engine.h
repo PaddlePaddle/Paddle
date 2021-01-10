@@ -48,19 +48,26 @@ class BasicEngine : public Engine {
  private:
   std::shared_ptr<GradOpNode> init_node_;
   std::unordered_map<GradOpNode*, size_t> node_deps_;
+  // The input and output of Inplace op are the same. If only `var` is used
+  // as the key, then the input and output of inplace op must be gradient
+  // accumulated. Therefore, add the `grad_node` as the key to prevent the
+  // problem of gradient accumulation in inplace op.
   std::unordered_map<std::shared_ptr<GradOpNode>,
                      std::unordered_map<VariableWrapper*,
                                         std::unique_ptr<GradientAccumulator>>>
-      accumulators_;
-  // leaf var doesn't have grad_node, that is, last grad_node doesn't have
-  // grad_pending_node
+      accumulators_with_grad_node_;
+  // Leaf var doesn't have grad_node, and leaf var with `stop_gradient=False`
+  // can't use Inplace strategy. If a var doesn't have grad_node, only use
+  // `var` as the key.
   std::unordered_map<VariableWrapper*, std::unique_ptr<GradientAccumulator>>
-      leaf_basic_accumulators_;
-  std::vector<std::pair<GradientAccumulator*, std::shared_ptr<VariableWrapper>>>
-      need_accu_var_list_;
+      accumulators_;
+  // The output grad var of Inplace grad op. Because Inplace grad op does not
+  // use the Inplace strategy, a new output grad var needs to be created.
   std::vector<std::pair<std::shared_ptr<VariableWrapper>,
                         std::shared_ptr<VariableWrapper>>>
-      inplace_var_list_;
+      inplace_output_grad_var_list_;
+  std::vector<std::pair<GradientAccumulator*, std::shared_ptr<VariableWrapper>>>
+      need_accu_var_list_;
   // leaf_accumulators_ is only for leaf tensor(hooks/accumulate grad)
   std::unordered_set<GradientAccumulator*> leaf_accumulators_;
 
