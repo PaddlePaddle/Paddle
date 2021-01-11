@@ -30,9 +30,10 @@ from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass, OutS
 from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, ReLU6
-from paddle.nn import Linear, Conv2D, Softmax, BatchNorm
+from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
 from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.log_helper import get_logger
+from paddle.fluid.dygraph import nn
 
 paddle.enable_static()
 
@@ -50,7 +51,6 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
     fc_w1_attr = fluid.ParamAttr(name="fc_w_1")
     fc_w2_attr = fluid.ParamAttr(name="fc_w_2")
     fc_w3_attr = fluid.ParamAttr(name="fc_w_3")
-    conv2d_b1_attr = fluid.ParamAttr(name="conv2d_b_1")
     conv2d_b2_attr = fluid.ParamAttr(name="conv2d_b_2")
     fc_b1_attr = fluid.ParamAttr(name="fc_b_1")
     fc_b2_attr = fluid.ParamAttr(name="fc_b_2")
@@ -62,7 +62,7 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
         stride=1,
         padding=1,
         param_attr=conv2d_w1_attr,
-        bias_attr=conv2d_b1_attr)
+        bias_attr=False)
     batch_norm1 = layers.batch_norm(conv1)
     relu1 = layers.relu(batch_norm1)
     pool1 = fluid.layers.pool2d(
@@ -99,14 +99,13 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
 
 
 class ImperativeLenet(fluid.dygraph.Layer):
-    def __init__(self, num_classes=10, classifier_activation='softmax'):
+    def __init__(self, num_classes=10):
         super(ImperativeLenet, self).__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
         conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
         fc_w1_attr = fluid.ParamAttr(name="fc_w_1")
         fc_w2_attr = fluid.ParamAttr(name="fc_w_2")
         fc_w3_attr = fluid.ParamAttr(name="fc_w_3")
-        conv2d_b1_attr = fluid.ParamAttr(name="conv2d_b_1")
         conv2d_b2_attr = fluid.ParamAttr(name="conv2d_b_2")
         fc_b1_attr = fluid.ParamAttr(name="fc_b_1")
         fc_b2_attr = fluid.ParamAttr(name="fc_b_2")
@@ -119,8 +118,8 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 stride=1,
                 padding=1,
                 weight_attr=conv2d_w1_attr,
-                bias_attr=conv2d_b1_attr),
-            BatchNorm(6),
+                bias_attr=False),
+            BatchNorm2D(6),
             ReLU(),
             Pool2D(
                 pool_size=2, pool_type='max', pool_stride=2),
@@ -132,10 +131,10 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 padding=0,
                 weight_attr=conv2d_w2_attr,
                 bias_attr=conv2d_b2_attr),
-            BatchNorm(16),
+            BatchNorm2D(16),
             ReLU6(),
-            Pool2D(
-                pool_size=2, pool_type='max', pool_stride=2))
+            MaxPool2D(
+                kernel_size=2, stride=2))
 
         self.fc = Sequential(
             Linear(
@@ -188,10 +187,10 @@ class TestImperativeOutSclae(unittest.TestCase):
         reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=32, drop_last=True)
         weight_quantize_type = 'abs_max'
-        activation_quant_type = 'moving_average_abs_max'
+        activation_quantize_type = 'moving_average_abs_max'
         param_init_map = {}
         seed = 1000
-        lr = 0.1
+        lr = 0.001
         dynamic_out_scale_list = []
         static_out_scale_list = []
 
@@ -199,7 +198,9 @@ class TestImperativeOutSclae(unittest.TestCase):
         _logger.info(
             "--------------------------dynamic graph qat--------------------------"
         )
-        imperative_out_scale = ImperativeQuantAware()
+        imperative_out_scale = ImperativeQuantAware(
+            weight_quantize_type=weight_quantize_type,
+            activation_quantize_type=activation_quantize_type)
 
         with fluid.dygraph.guard():
             np.random.seed(seed)
@@ -282,14 +283,18 @@ class TestImperativeOutSclae(unittest.TestCase):
         with fluid.scope_guard(scope):
             exe.run(startup)
         for param in main.all_parameters():
+            if "batch_norm" in param.name:
+                param_name = param.name.replace("norm", "norm2d")
+            else:
+                param_name = param.name
             param_tensor = scope.var(param.name).get_tensor()
-            param_tensor.set(param_init_map[param.name], place)
+            param_tensor.set(param_init_map[param_name], place)
         main_graph = IrGraph(core.Graph(main.desc), for_test=False)
         infer_graph = IrGraph(core.Graph(infer.desc), for_test=True)
         transform_pass = QuantizationTransformPass(
             scope=scope,
             place=place,
-            activation_quantize_type=activation_quant_type,
+            activation_quantize_type=activation_quantize_type,
             weight_quantize_type=weight_quantize_type,
             quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'])
         transform_pass.apply(main_graph)
