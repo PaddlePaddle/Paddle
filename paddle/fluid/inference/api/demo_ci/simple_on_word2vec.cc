@@ -16,13 +16,13 @@ limitations under the License. */
  * This file contains a simple demo for how to take a model for inference.
  */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <algorithm>
 #include <memory>
 #include <thread>  //NOLINT
 
+#include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 
 DEFINE_string(dirname, "", "Directory of the inference model.");

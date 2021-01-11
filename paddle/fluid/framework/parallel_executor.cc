@@ -167,7 +167,9 @@ class ParallelExecutorPrivate {
         nccl_id = new ncclUniqueId();
         PADDLE_ENFORCE_EQ(
             platform::dynload::ncclGetUniqueId(nccl_id), ncclSuccess,
-            platform::errors::PreconditionNotMet("Get NCCL unique ID failed."));
+            platform::errors::PreconditionNotMet(
+                "PaddlePaddle failed to get NCCL unique ID. It may due to your "
+                "system settings or NCCL library error, please debug on NCCL"));
         VLOG(10) << "can't find nccl_id_var:" << var_name
                  << ", nccl_id:" << nccl_id;
       }
@@ -844,6 +846,17 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
       member_->is_persistable_.emplace(node->Var()->Name(),
                                        node->Var()->Persistable());
+    }
+  }
+
+  if (graph->Has(details::kFusedVars)) {
+    auto &fused_vars = graph->Get<details::FusedVars>(details::kFusedVars);
+    for (auto &fused_var : fused_vars) {
+      var_infos.emplace_back();
+      var_infos.back() = fused_var.second;
+
+      member_->is_persistable_.emplace(fused_var.first,
+                                       fused_var.second.persistable_);
     }
   }
 

@@ -84,7 +84,8 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(fpn_rois->lod().size(), 1UL,
                         platform::errors::InvalidArgument(
                             "DistributeFpnProposalsOp needs LoD "
-                            "with one level."));
+                            "with one level. But received level is %d",
+                            fpn_rois->lod().size()));
     }
 
     std::vector<size_t> fpn_rois_lod;
