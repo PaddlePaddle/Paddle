@@ -210,16 +210,20 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
+        args.cdesc.desc(), CUDNN_DEFAULT_MATH));
+    VLOG(5) << "NOT use cudnn_tensor_op_math";
     if (dev_ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
                                                          CUDNN_TENSOR_OP_MATH));
       VLOG(5) << "use cudnn_tensor_op_math";
-    } else {
+    } else if (dtype == CUDNN_DATA_FLOAT && !args.cdesc.allow_tf32_) {
+#if CUDA_VERSION >= 11000
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
-                                                         CUDNN_DEFAULT_MATH));
-      VLOG(5) << "NOT use cudnn_tensor_op_math";
+                                                         CUDNN_FMA_MATH));
+#endif  // CUDA_VERSION >= 11000
     }
 #endif
 
@@ -340,16 +344,20 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     algo_t algo;
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
+        args.cdesc.desc(), CUDNN_DEFAULT_MATH));
+    VLOG(5) << "NOT use cudnn_tensor_op_math";
     if (dev_ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
                                                          CUDNN_TENSOR_OP_MATH));
       VLOG(5) << "use cudnn_tensor_op_math";
-    } else {
+    } else if (dtype == CUDNN_DATA_FLOAT && !args.cdesc.allow_tf32_) {
+#if CUDA_VERSION >= 11000
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
-                                                         CUDNN_DEFAULT_MATH));
-      VLOG(5) << "NOT use cudnn_tensor_op_math";
+                                                         CUDNN_FMA_MATH));
+#endif  // CUDA_VERSION >= 11000
     }
 #endif
 
@@ -485,16 +493,20 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
 
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
+        args.cdesc.desc(), CUDNN_DEFAULT_MATH));
+    VLOG(5) << "NOT use cudnn_tensor_op_math";
     if (dev_ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
                                                          CUDNN_TENSOR_OP_MATH));
       VLOG(5) << "use cudnn_tensor_op_math";
-    } else {
+    } else if (dtype == CUDNN_DATA_FLOAT && !args.cdesc.allow_tf32_) {
+#if CUDA_VERSION >= 11000
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
-                                                         CUDNN_DEFAULT_MATH));
-      VLOG(5) << "NOT use cudnn_tensor_op_math";
+                                                         CUDNN_FMA_MATH));
+#endif  // CUDA_VERSION >= 11000
     }
 #endif
 

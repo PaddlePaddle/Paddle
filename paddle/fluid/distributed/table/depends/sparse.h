@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <gflags/gflags.h>
 #include <math.h>  // for sqrt in CPU and CUDA
 #include <functional>
 #include <memory>
@@ -22,6 +21,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
