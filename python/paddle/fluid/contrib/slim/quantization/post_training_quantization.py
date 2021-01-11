@@ -254,11 +254,11 @@ class PostTrainingQuantization(object):
         ]
         self._support_weight_quantize_type = ['abs_max', 'channel_wise_abs_max']
         self._support_algo_type = ['KL', 'abs_max', 'min_max']
-        self._spec_quantize_op_type = ['lstm']
+        self._dynamic_quantize_op_type = ['lstm']
         self._support_quantize_op_type = \
             list(set(QuantizationTransformPass._supported_quantizable_op_type +
                 AddQuantDequantPass._supported_quantizable_op_type +
-                self._spec_quantize_op_type))
+                self._dynamic_quantize_op_type))
 
         # Check inputs
         assert executor is not None, "The executor cannot be None."
@@ -385,8 +385,9 @@ class PostTrainingQuantization(object):
 
         self._save_output_threshold()
         if any(op_type in self._quantizable_op_type
-               for op_type in self._spec_quantize_op_type):
-            self._collect_target_weight_threshold(self._spec_quantize_op_type)
+               for op_type in self._dynamic_quantize_op_type):
+            self._collect_target_weight_threshold(
+                self._dynamic_quantize_op_type)
         return self._program
 
     def save_quantized_model(self,
