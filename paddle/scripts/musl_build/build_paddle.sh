@@ -81,7 +81,17 @@ if [ "$BUILD_MAN" != "1" ]; then
         RUN_ARGS+=("--env" "WITH_UT_REQUIREMENT=$MOUNT_DIR/$UNITTEST_REQ")
         echo ">>> install unit test requirement"
     fi
-  
+
+    for CTEST_FLAGS in $(env | grep ^CTEST_); do
+        RUN_ARGS+=("--env" "$CTEST_FLAGS")
+        echo ">>> ctest: $CTEST_FLAGS"
+    done
+
+     for CBUILD_FLAGS in $(env | grep ^FLAGS_); do
+        RUN_ARGS+=("--env" "$CBUILD_FLAGS")
+        echo ">>> flags: $CBUILD_FLAGS"
+    done
+
     if [ "$WITH_PRUNE_CONTAINER" == "1" ]; then
         echo ">>> with prune container"
         RUN_ARGS+=("--rm")

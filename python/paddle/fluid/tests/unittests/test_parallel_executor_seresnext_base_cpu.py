@@ -15,7 +15,7 @@
 from __future__ import print_function
 import unittest
 import seresnext_net
-from seresnext_test_base import TestResnetBase
+from seresnext_test_base import TestResnetBase, DeviceType
 from functools import partial
 
 
@@ -30,7 +30,10 @@ class TestResnetCPU(TestResnetBase):
             optimizer=seresnext_net.optimizer,
             use_parallel_executor=False)
         self._compare_result_with_origin_model(
-            check_func, use_cuda=False, compare_seperately=False, delta2=1e-3)
+            check_func,
+            use_device=DeviceType.CPU,
+            compare_seperately=False,
+            delta2=1e-3)
 
 
 if __name__ == '__main__':

@@ -516,8 +516,8 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(
-                dev_ctx, framework::vectorize(x->dims()),
-                uniq_name + (algo == dnnl::algorithm::binary_mul ? "M" : ""))) {
+                dev_ctx, framework::vectorize(x->dims()), uniq_name,
+                (algo == dnnl::algorithm::binary_mul ? "M" : ""))) {
     // bradcasting combined with in-place may require
     auto rankdiff = x->dims().size() - y->dims().size();
     if (rankdiff > 0) {
@@ -1054,13 +1054,14 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     if (mem_p == nullptr) {
       auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_, fmt);
-
-      auto dst_data = output->mutable_data(place, vtype_);
+      auto dst_data = output->mutable_data(place, vtype_, dst_md.get_size());
 
       mem_p = std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
       dev_ctx_.SetBlob(local_key, mem_p);
     } else {
-      auto dst_data = output->mutable_data(place, vtype_);
+      // Even if memory object exists , we may be using it for diffrent tensor
+      auto dst_data =
+          output->mutable_data(place, vtype_, mem_p->get_desc().get_size());
       mem_p->set_data_handle(dst_data);
     }
     return mem_p;

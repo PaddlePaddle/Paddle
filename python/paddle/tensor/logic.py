@@ -23,13 +23,10 @@ from ..framework import VarBase as Tensor
 
 # TODO: define logic functions of a tensor  
 from ..fluid.layers import is_empty  #DEFINE_ALIAS
-from ..fluid.layers import isfinite  #DEFINE_ALIAS
 from ..fluid.layers import logical_and  #DEFINE_ALIAS
 from ..fluid.layers import logical_not  #DEFINE_ALIAS
 from ..fluid.layers import logical_or  #DEFINE_ALIAS
 from ..fluid.layers import logical_xor  #DEFINE_ALIAS
-from ..fluid.layers import reduce_all  #DEFINE_ALIAS
-from ..fluid.layers import reduce_any  #DEFINE_ALIAS
 
 __all__ = [
     'equal',
@@ -37,7 +34,6 @@ __all__ = [
     'greater_equal',
     'greater_than',
     'is_empty',
-    'isfinite',
     'less_equal',
     'less_than',
     'logical_and',

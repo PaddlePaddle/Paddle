@@ -1177,6 +1177,12 @@ REGISTER_OP_KERNEL(
     paddle::operators::CUDNNConvDoubleGradOpKernel<double>,
     paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>);
 
+REGISTER_OP_CUDA_KERNEL(
+    depthwise_conv2d_grad_grad,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<float>,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<double>,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>);
+
 REGISTER_OP_KERNEL(conv3d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<float>,
                    paddle::operators::CUDNNConvOpKernel<double>,
