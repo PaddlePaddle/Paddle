@@ -186,15 +186,13 @@ class TestVarBase(unittest.TestCase):
         for blocking in [True, False]:
             # CPU -> CUDAPinned -> CUDA
             _test_move_to(in_var, paddle.CPUPlace(), blocking)
-            _test_move_to(in_var, paddle.CUDAPinnedPlace(), blocking)
             if core.is_compiled_with_cuda():
+                _test_move_to(in_var, paddle.CUDAPinnedPlace(), blocking)
                 _test_move_to(in_var, paddle.CUDAPlace(0), blocking)
-            # CUDA -> CUDAPinned -> CPU
-            _test_move_to(in_var, paddle.CUDAPinnedPlace(), blocking)
-            _test_move_to(in_var, paddle.CPUPlace(), blocking)
-
-            # CPU -> CUDA -> CPU
-            if core.is_compiled_with_cuda():
+                # CUDA -> CUDAPinned -> CPU
+                _test_move_to(in_var, paddle.CUDAPinnedPlace(), blocking)
+                _test_move_to(in_var, paddle.CPUPlace(), blocking)
+                # CPU -> CUDA -> CPU
                 _test_move_to(in_var, paddle.CUDAPlace(0), blocking)
                 _test_move_to(in_var, paddle.CPUPlace(), blocking)
 
