@@ -306,7 +306,7 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
       int rois_num_with_lod = rois_lod[rois_batch_size];
       PADDLE_ENFORCE_EQ(rois_num_with_lod, rois_num,
                         platform::errors::InvalidArgument(
-                            "The rois_num from input should be equal to the rois_num from lod，"
+                            "The rois_num from input should be equal to the rois_num from lod,"
                             "but received rois_num from input: %d and the rois_num from lod: %d.",
                             rois_num_with_lod, rois_num));
 
