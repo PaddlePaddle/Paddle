@@ -580,9 +580,8 @@ def squeeze(x, axis=None, name=None):
 
 def squeeze_(x, axis=None, name=None):
     """
-    Inplace version of ``squeeze`` API. Please refer to doc of ``squeeze``.
-    Inplace strategy: Do not create a new output Tensor, output and input is the same Tensor.
-    Inplace input: x
+    Inplace version of ``squeeze`` API. Please refer to :ref:`api_paddle_tensor_squeeze`.
+    Inplace strategy works on Tensor ``x``.
 
     Examples:
         .. code-block:: python
@@ -787,9 +786,8 @@ def unsqueeze(x, axis, name=None):
 
 def unsqueeze_(x, axis, name=None):
     """
-    Inplace version of ``unsqueeze`` API. Please refer to doc of ``unsqueeze``.
-    Inplace strategy: Do not create a new output Tensor, output and input is the same Tensor.
-    Inplace input: x
+    Inplace version of ``unsqueeze`` API. Please refer to :ref:`api_paddle_tensor_unsqueeze`.
+    Inplace strategy works on Tensor ``x``.
 
     Examples:
         .. code-block:: python
@@ -1059,9 +1057,8 @@ def scatter(x, index, updates, overwrite=True, name=None):
 
 def scatter_(x, index, updates, overwrite=True, name=None):
     """
-    Inplace version of ``scatter`` API. Please refer to doc of ``scatter``.
-    Inplace strategy: Do not create a new output Tensor, output and input is the same Tensor.
-    Inplace input: x
+    Inplace version of ``scatter`` API. Please refer to :ref:`api_paddle_tensor_scatter`.
+    Inplace strategy works on Tensor ``x``.
 
     Examples:
         .. code-block:: python
@@ -1615,9 +1612,8 @@ def reshape(x, shape, name=None):
 
 def reshape_(x, shape, name=None):
     """
-    Inplace version of ``reshape`` API. Please refer to doc of ``reshape``.
-    Inplace strategy: Do not create a new output Tensor, output and input is the same Tensor.
-    Inplace input: x
+    Inplace version of ``reshape`` API. Please refer to :ref:`api_paddle_tensor_reshape`.
+    Inplace strategy works on Tensor ``x``.
 
     Examples:
         .. code-block:: python

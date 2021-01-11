@@ -1973,9 +1973,8 @@ def tanh(x, name=None):
 
 def tanh_(x, name=None):
     r"""
-    Inplace version of ``tanh`` API. Please refer to doc of ``tanh``.
-    Inplace strategy: Do not create a new output Tensor, output and input is the same Tensor.
-    Inplace input: x
+    Inplace version of ``tanh`` API. Please refer to :ref:`api_tensor_tanh`.
+    Inplace strategy works on Tensor ``x``.
 
     Examples:
 

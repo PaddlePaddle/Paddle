@@ -108,9 +108,8 @@ def elu(x, alpha=1.0, name=None):
 
 def elu_(x, alpha=1.0, name=None):
     r"""
-    Inplace version of ``elu`` API. Please refer to doc of ``elu``.
-    Inplace strategy: Do not create a new output Tensor, output and input is the same Tensor.
-    Inplace input: x
+    Inplace version of ``elu`` API. Please refer to :ref:`api_nn_cn_elu`.
+    Inplace strategy works on Tensor ``x``.
 
     Examples:
         .. code-block:: python
@@ -550,9 +549,8 @@ def relu(x, name=None):
 
 def relu_(x, name=None):
     """
-    Inplace version of ``relu`` API. Please refer to doc of ``relu``.
-    Inplace strategy: Do not create a new output Tensor, output and input is the same Tensor.
-    Inplace input: x
+    Inplace version of ``relu`` API. Please refer to :ref:`api_nn_cn_relu`.
+    Inplace strategy works on Tensor ``x``.
 
     Examples:
         .. code-block:: python
@@ -939,10 +937,8 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
 def softmax_(x, axis=-1, dtype=None, name=None):
     r"""
-    Inplace version of ``softmax`` API. Please refer to doc of ``softmax``.
-    Inplace strategy: Do not create a new output Tensor, output and input is the same Tensor.
-    Inplace input: x
-    Dtype can only be None.
+    Inplace version of ``softmax`` API. Please refer to :ref:`api_nn_cn_softmax`.
+    Inplace strategy works on Tensor ``x``. Dtype is useless in dygraph mode.
 
     Examples:
         .. code-block:: python
