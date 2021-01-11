@@ -107,7 +107,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/crypto.h"
 #endif
 
-#if defined PADDLE_WITH_DISTRIBUTE && !defined PADDLE_WITH_PSLIB
+#if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
@@ -2841,7 +2841,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindCrypto(&m);
 #endif
 
-#if defined PADDLE_WITH_DISTRIBUTE && !defined PADDLE_WITH_PSLIB
+#if defined PADDLE_WITH_PSCORE
   BindDistFleetWrapper(&m);
   BindPSHost(&m);
   BindCommunicatorContext(&m);

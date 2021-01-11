@@ -77,17 +77,12 @@ set(SHARED_INFERENCE_SRCS
     ${mkldnn_quantizer_src_file})
 
 # Create shared inference library defaultly
-if(NOT WITH_DISTRIBUTE)
+if(NOT WITH_PSCORE)
   cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
           DEPS ${fluid_modules} analysis_predictor)
 else()
-  if(NOT WITH_PSLIB)
-    cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
+  cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
             DEPS ${fluid_modules} analysis_predictor fleet ps_service)
-  else()
-    cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-            DEPS ${fluid_modules} analysis_predictor)
-  endif()
 endif()
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
