@@ -124,7 +124,6 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 "fc_1.b_0", "fc_2.b_0", "fc_2.w_0", "fc_1.b_0_velocity_0",
                 "fc_2.b_0_velocity_0", "fc_2.w_0_velocity_0", "learning_rate_0"
             ]))
-
         self.assertEqual(ops, [
             'fill_constant', 'fill_constant', 'fill_constant',
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',

@@ -104,10 +104,7 @@ class ProgramStats(object):
 
     def _update_segment_start(self, min_idx, pre_segment_end_idx):
         """
-        FIXME (JZ-LIANG): the amp-related cast ops for persist vars should be 
-        included into current recompute segment, even though those ops may precede 
-        to checkpoint-generating op. this function is temporary sulotion to ensure 
-        there just one var (checkpoint) being hold-in-gpu-mem for each segment.
+        persist vars of amp-related cast should be included in recompute segment
         """
 
         def is_amp_cast(op):
@@ -843,14 +840,6 @@ def _append_backward_ops_with_checkpoints_(
     vars_should_be_hold = list(set(vars_should_be_hold))
 
     # 3) go through each recompute_segments, add backward ops with forward recomputation
-    """
-    local_block: tmp block for generate grad ops, take grad_op, fw_op_to_generate_grad_op
-    buffer_block:  tmp block for recom-fw ops
-    grad_op_descs: (list) hold final recompute & grad ops
-    grad_to_var:  (list) hold final grad vars
-    added_descs: (list) return value by _add_descs_to_block
-    buffer_descs: (list) return value by _add_needed_descs_to_block
-    """
     grad_op_descs = []
     var_name_dict = {}
 
@@ -884,11 +873,9 @@ def _append_backward_ops_with_checkpoints_(
             grad_op_descs.extend(added_descs)
             grad_to_var.update(op_grad_to_var)
 
-        # create recompute ops
         ff_ops = ops[segment[0]:segment[1]]
         var_suffix = ".subprog_%d" % i
 
-        # create rename_dict for not hold var
         for op in ff_ops:
             if op.has_attr("sub_block"):
                 raise Exception("Recompute don't support ops with sub_block"
@@ -898,15 +885,12 @@ def _append_backward_ops_with_checkpoints_(
             input_and_output_names.extend(op.desc.input_arg_names())
             input_and_output_names.extend(op.desc.output_arg_names())
             for name in input_and_output_names:
-                # only target on activations, so need to skip rename of persistable (param, opt_state)
                 if block.var(name).persistable or name in checkpoints_name:
                     continue
                 if name in vars_should_be_hold:
                     continue
-                # map origin fw var name to  recompute fw var name
                 if name not in var_name_dict:
                     var_name_dict[name] = name + var_suffix
-
         # 3.a. add ops in current recompute_segment as forward recomputation ops
         buffer_descs = _add_needed_descs_to_block(ff_ops, buffer_block, block,
                                                   vars_in_memory)

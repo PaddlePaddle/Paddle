@@ -39,7 +39,6 @@ class RecomputeOptimizer(MetaOptimizerBase):
             return
 
         configs = self.user_defined_strategy.recompute_configs
-
         self.wrapped_opt = RO(self.inner_opt)
         self.wrapped_opt._set_checkpoints(list(configs["checkpoints"]))
         if configs["enable_offload"]:

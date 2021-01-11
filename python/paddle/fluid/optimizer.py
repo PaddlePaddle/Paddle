@@ -4773,10 +4773,8 @@ class RecomputeOptimizer(Optimizer):
 
         return
 
-    # def _rename_input(self, op):
     def _insert_async_memcpy_op(self, insert_idx, src_varname, dst_varname,
                                 op_role, kind):
-        # we should allow stream argument here
         OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
         self.block._insert_op_without_sync(
             insert_idx,
@@ -4800,7 +4798,6 @@ class RecomputeOptimizer(Optimizer):
         assert varname in self.checkpoint_name2pinned_name, "Try to offload {} to Pinned Memory, but it is NOT a checkpoint".format(
             varname)
         pinned_varname = self.checkpoint_name2pinned_name[varname]
-        # not need to rename checkpoint in forward
         self._insert_async_memcpy_op(idx, varname, pinned_varname, 0, 3)
 
     def _insert_sync_op(self, op_idx, checkpoint_name):
@@ -4923,8 +4920,6 @@ class RecomputeOptimizer(Optimizer):
                 'idx': -1
             }
         self.synced_checkpoints = set()
-
-        # find FW start op idx
         self.fw_strart_op_idx = len(self.block.ops)
         for idx, op in enumerate(self.block.ops):
             if int(op.desc.attr("op_role")) == 0:
@@ -4950,7 +4945,6 @@ class RecomputeOptimizer(Optimizer):
                         output_var, op)
 
                     if output_var in self.un_offload_checkpoint_names:
-
                         # insert sync op if last checkpoint has not been sync
                         if last_offload_checkpoint != None:
                             if self.checkpoint_usage_count_and_idx[
@@ -4964,16 +4958,13 @@ class RecomputeOptimizer(Optimizer):
                                     last_offload_checkpoint)
                                 self._record_sync_op(last_usage_idx + 1,
                                                      last_offload_checkpoint)
-
                         # insert offload op after the checkpoint's generation op
                         self._record_offload_op(idx + 1, output_var)
                         last_offload_checkpoint = output_var
-
                     else:
                         raise ValueError(
                             "There should be just ONE op that output checkpoint [{}]".
                             format(output_var))
-
                 # need to sync the last need to offload checkpoint before the last checkpoint as output op
                 if output_var == last_checkpoint:
                     assert len(
@@ -4995,7 +4986,6 @@ class RecomputeOptimizer(Optimizer):
                             last_offload_checkpoint)
                         self._record_sync_op(last_usage_idx + 1,
                                              last_offload_checkpoint)
-
             # record checkpoint usage  
             for input_var in input_vars:
                 if input_var in need_offload_checkpoint_names:
@@ -5036,9 +5026,7 @@ class RecomputeOptimizer(Optimizer):
                        [ele[1] for ele in self.idx2insertions.values()])
 
     def _check_offload_fetch(self):
-        # TODO(JZ-LIANG) the single stream offload need no sync and therefore
-        # no need to check the offload-sync-fetch-sync-usage logic
-        # here is the api for future multi-stream offload
+        # TODO(JZ-LIANG) the single stream offload need no sync
         pass
 
     def _offload(self, loss, startup_program=None):
@@ -5065,7 +5053,6 @@ class RecomputeOptimizer(Optimizer):
             # 1.2 create CUDAPinnedPlace vars as offloaded checkpoint in host mem
             self.checkpoint_name2pinned_name = dict()
             self.checkpoint_name2fetch_name = dict()
-
             for checkpoint_varname in self.sorted_checkpoint_names:
                 pinned_var_name, fetch_var_name = self._creat_vars(
                     checkpoint_varname)
@@ -5073,23 +5060,17 @@ class RecomputeOptimizer(Optimizer):
                     checkpoint_varname] = pinned_var_name
                 self.checkpoint_name2fetch_name[
                     checkpoint_varname] = fetch_var_name
-
             # 1.3 add pinned_var to startup_prog
             self._append_fill_constant_ops(startup_program)
-
             # TODO (JZ-LIANG) to provide two offload stragtegy in future
-            # should implement overlap and non-overlap two strategy
             # 1. overlap memcpy & caculate: faster, less memory saving
             # 2. non-overlap: slower, more memory saving
-
             # step 2. parse & update FW: rename, offload, sync
             self._parse_backward()
             self._update_backward()
-
             # step 3. parse & update BW: rename, offload, sync
             self._parse_forward()
             self._update_forward()
-
             # step 4. verify the correctness
             self._check_offload_fetch()
 
