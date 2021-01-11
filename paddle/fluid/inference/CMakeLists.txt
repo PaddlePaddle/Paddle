@@ -80,11 +80,11 @@ set(SHARED_INFERENCE_SRCS
 set(SHARED_INFERENCE_DEPS ${fluid_modules} analysis_predictor)
 
 if (WITH_CRYPTO) 
-    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DPS} paddle_crypto)
+    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
 endif (WITH_CRYPTO)
 
 if (WITH_DISTRIBUTE)
-    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DPS} fleet ps_service)
+    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service)
 endif ()
 
 # Create shared inference library
