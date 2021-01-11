@@ -304,11 +304,13 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
                             "rois_batch_size: %d and batch_size: %d",
                             rois_batch_size, batch_size));
       int rois_num_with_lod = rois_lod[rois_batch_size];
-      PADDLE_ENFORCE_EQ(rois_num_with_lod, rois_num,
-                        platform::errors::InvalidArgument(
-                            "The rois_num from input should be equal to the rois_num from lod,"
-                            "but received rois_num from input: %d and the rois_num from lod: %d.",
-                            rois_num_with_lod, rois_num));
+      PADDLE_ENFORCE_EQ(
+          rois_num_with_lod, rois_num,
+          platform::errors::InvalidArgument("The rois_num from input should be "
+                                            "equal to the rois_num from lod, "
+                                            "but received rois_num from input: "
+                                            "%d and the rois_num from lod: %d.",
+                                            rois_num_with_lod, rois_num));
 
       // calculate batch id index for each roi according to LoD
       for (int n = 0; n < rois_batch_size; ++n) {
