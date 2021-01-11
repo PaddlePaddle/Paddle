@@ -38,6 +38,7 @@ class AutoMixedPrecisionLists(object):
         self.white_list = copy.copy(white_list)
         self.black_list = copy.copy(black_list)
         self.gray_list = copy.copy(gray_list)
+        self.unsupported_list = copy.copy(unsupported_fp16_list)
         self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
@@ -64,6 +65,7 @@ class AutoMixedPrecisionLists(object):
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
+                self.unsupported_list.add(op_name)
 
 
 # The three sets listed below are changed dynamiclly. They don't contain all  
@@ -141,10 +143,10 @@ gray_list = {
     'cast',
     'fused_bn_add_activation',
 }
-'''
+
 # The set of ops that don't support fp16 calculation
 unsupported_fp16_list = {
-	# from python/paddle/fluid/layers/io.py
+    # from python/paddle/fluid/layers/io.py
     'send',
     'send_barrier',
     'recv',
@@ -153,8 +155,8 @@ unsupported_fp16_list = {
     'create_double_buffer_reader',
     'read',
     'load',
-    
-   	# from python/paddle/fluid/control_flow.py
+
+    # from python/paddle/fluid/control_flow.py
     'increment',
     'less_than',
     'less_equal',
@@ -174,7 +176,6 @@ unsupported_fp16_list = {
     'while',
     'ifelse',
     'is_empty',
-
     'lstm',
     'cudnn_lstm',
     'lstmp',
@@ -275,7 +276,6 @@ unsupported_fp16_list = {
     'pixel_shuffle',
     'fsp',
     'cvm',
-
     'affine_channel',
     'roi_pool',
     'roi_align',
@@ -283,6 +283,4 @@ unsupported_fp16_list = {
     'generate_proposals',
     'generate_proposal_labels',
     'generate_mask_labels',
-		
 }
-'''

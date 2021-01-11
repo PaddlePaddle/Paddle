@@ -58,6 +58,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
+    {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -87,6 +88,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"multiclass_nms3", {"Out", "NmsRoisNum"}},
     {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"momentum", {"ParamOut", "VelocityOut"}},
+    {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -134,6 +136,20 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"update_loss_scaling",
      {"Out", "LossScaling", "OutGoodSteps", "OutBadSteps"}},
     {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
+    {"rnn", {"DropoutState"}},
+};
+
+// NOTE(pangyoki): Tensor View Strategy.
+// In this case, a new output varbase will be created, and this varbase will
+// reuse the input varbase's allocation.
+// It's a 2-layer map. The key of outer map is the view op name, the value is
+// also a map which implies the mapping relationship between the output and
+// input varbase.
+std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
+    {"squeeze2", {"X", "Out"}},  // "X" -> "Out"
+    {"unsqueeze2", {"X", "Out"}},
+    {"reshape2", {"X", "Out"}},
+    {"flatten_contiguous_range", {"X", "Out"}},
 };
 
 // clang-format off
@@ -191,6 +207,11 @@ const char* RETURN_TEMPLATE = R"(outs["%s"][0])";
 const char* FUNCTION_ARGS = R"(%s, const py::args& args)";
 const char* FUNCTION_ARGS_NO_INPUT = R"(const py::args& args)";
 
+const char* HandleViewBetweenInputAndOutput = R"(
+    if (ins.count("%s") && outs.count("%s")) {
+      HandleViewBetweenInputAndOutput(ins["%s"][0], outs["%s"][0]);
+    })";
+
 const char* OP_FUNCTION_TEMPLATE =
 R"(
 %s %s(%s)
@@ -227,6 +248,10 @@ static inline bool FindPassingOutsMap(const std::string& op_type,
   return op_passing_outs_map[op_type].count(out_name);
 }
 
+static inline bool FindViewOpMap(const std::string& op_type) {
+  return view_op_map.count(op_type);
+}
+
 static inline std::string TempName(const std::string& name) {
   return name + '_';
 }
@@ -257,6 +282,7 @@ GenerateOpFunctions(const std::string& module_name) {
     int arg_idx = 0;
     int input_args_num = 0;
     std::string ins_cast_str = "";
+    std::string view_strategy_str = "";
     for (auto& input : op_proto->inputs()) {
       auto& in_name = input.name();
       // skip those dispensable inputs, like ResidualData in conv2d
@@ -372,6 +398,13 @@ GenerateOpFunctions(const std::string& module_name) {
       return_str.pop_back();
     }
     outs_initializer += "}";
+    if (FindViewOpMap(op_type)) {
+      std::string viwe_input_name = view_op_map[op_type].first;
+      std::string viwe_output_name = view_op_map[op_type].second;
+      view_strategy_str += paddle::string::Sprintf(
+          HandleViewBetweenInputAndOutput, viwe_input_name, viwe_output_name,
+          viwe_input_name, viwe_output_name);
+    }
     if (outs_num == 0) {
       return_type = "void";
     }
@@ -391,7 +424,8 @@ GenerateOpFunctions(const std::string& module_name) {
     auto op_function_str = paddle::string::Sprintf(
         OP_FUNCTION_TEMPLATE, return_type, func_name, function_args,
         ins_cast_str, op_type, input_args_num, outs_initializer,
-        ins_initializer, ins_initializer_with_null + outs_initializer_with_null,
+        ins_initializer, ins_initializer_with_null +
+                             outs_initializer_with_null + view_strategy_str,
         op_type, return_str);
 
     // generate pybind item
