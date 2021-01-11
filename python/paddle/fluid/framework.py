@@ -246,8 +246,10 @@ def _static_only_(func):
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
-            "'%s' should be called by imperative Varible in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative mode"
-            % func.__name__)
+            "'%s' should be called by imperative Varible in imperative mode, please run it in dygraph "
+            "mode. You can turn off paddle.enable_static() if you are in static mode, or turn off "
+            "ProgramTranslator if you are using @paddle.jit.to_static" %
+            func.__name__)
 
     return __impl__
 
@@ -1054,8 +1056,8 @@ class Variable(object):
         if is_new_var:
             self.desc.set_type(type)
         elif self.desc.type() != type:
-            raise ValueError("Variable {0} has been created before. The "
-                             "previous type is {1}; the new type is {2}. They"
+            raise ValueError("Variable '{0}' has been created before. The "
+                             "previous type is {1}, the new type is {2}. They"
                              " are not matched".format(self.name,
                                                        self.desc.type(), type))
 
@@ -1067,8 +1069,8 @@ class Variable(object):
                 shape = tuple(shape)
                 if shape != old_shape:
                     raise ValueError(
-                        "Variable {0} has been created before. the previous "
-                        "shape is {1}; the new shape is {2}. They are not "
+                        "Variable '{0}' has been created before. The previous "
+                        "shape is {1}, the new shape is {2}. They are not "
                         "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
             if is_new_var:
@@ -1076,8 +1078,8 @@ class Variable(object):
             else:
                 old_dtype = self.dtype
                 if dtype != old_dtype:
-                    raise ValueError("Variable {0} has been created before. "
-                                     "The previous data type is {1}; the new "
+                    raise ValueError("Variable '{0}' has been created before. "
+                                     "The previous data type is {1}, the new "
                                      "data type is {2}. They are not "
                                      "matched.".format(self.name, old_dtype,
                                                        dtype))
@@ -1087,8 +1089,8 @@ class Variable(object):
                 self.desc.set_lod_level(lod_level)
             else:
                 if lod_level != self.lod_level:
-                    raise ValueError("Variable {0} has been created before. "
-                                     "The previous lod_level is {1}; the new "
+                    raise ValueError("Variable '{0}' has been created before. "
+                                     "The previous lod_level is {1}, the new "
                                      "lod_level is {2}. They are not "
                                      "matched".format(self.name, self.lod_level,
                                                       lod_level))
@@ -1098,8 +1100,8 @@ class Variable(object):
             else:
                 if persistable != self.persistable:
                     raise ValueError(
-                        "Variable {0} has been created before."
-                        "The previous persistable is {1}; the new "
+                        "Variable '{0}' has been created before."
+                        "The previous persistable is {1}, the new "
                         "persistable is {2}. They are not matched".format(
                             self.name, self.persistable, persistable))
 
@@ -1629,6 +1631,40 @@ class Variable(object):
         """
         return self.desc.type()
 
+    def clone(self):
+        """
+        Returns a new static Variable, which is the clone of the original static
+        Variable. It remains in the current graph, that is, the cloned Variable 
+        provides gradient propagation. Calling ``out = tensor.clone()`` is same
+        as ``out = assign(tensor)`` .
+
+        Returns:
+            Variable: The cloned Variable.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                # create a cloned Variable
+                y = x.clone()
+
+        """
+        output = self.block.create_var(
+            name=unique_name.generate_with_ignorable_key(self.name + "_clone"),
+            dtype=self.dtype,
+            type=self.type,
+            persistable=self.persistable,
+            stop_gradient=self.stop_gradient)
+
+        self.block.append_op(
+            type='assign', inputs={'X': [self]}, outputs={'Out': [output]})
+        return output
+
     def _set_error_clip(self, error_clip):
         """
         Set the error_clip.
@@ -1861,9 +1897,10 @@ class Variable(object):
         dtype = self.dtype
         attrs['dtype'] = dtype
 
+        from .data_feeder import convert_dtype
         #  2.1 value is an integer of float
         if isinstance(value, (int, float)):
-            value = np.array([value])
+            value = np.array([value]).astype(convert_dtype(dtype))
 
         #  2.2 value is a np.ndarray
         if isinstance(value, np.ndarray):
@@ -1874,6 +1911,9 @@ class Variable(object):
             elif dtype == core.VarDesc.VarType.FP32:
                 value_name = "fp32_values"
                 values = [float(v) for v in value.flat]
+            elif dtype == core.VarDesc.VarType.FP64:
+                value_name = "fp64_values"
+                values = [float(v) for v in value.flat]
             elif dtype == core.VarDesc.VarType.INT32:
                 value_name = "int32_values"
                 values = [int(v) for v in value.flat]
@@ -1881,7 +1921,6 @@ class Variable(object):
                 value_name = "int64_values"
                 values = [int(v) for v in value.flat]
             else:
-                from .data_feeder import convert_dtype
                 raise TypeError(
                     "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
                     "the data type of the paddle.Tensor must be bool, float32, int32 or int64, but "
@@ -5805,3 +5844,64 @@ def get_flags(flags):
     else:
         raise TypeError('Flags in get_flags should be a list, tuple or string.')
     return flags_value
+
+
+def _get_paddle_place(place):
+    "convert the string to paddle Place"
+    if place is None:
+        return place
+    if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
+                          core.CUDAPinnedPlace, core.CUDAPlace)):
+        return place
+
+    if not isinstance(place, str):
+        raise ValueError(
+            "place only support string which is 'Place' and so on.")
+
+    place = place.lower()
+    if (place == "cpu"):
+        return core.CPUPlace()
+    if (place == "device"):
+        return core.Place()
+
+    avaliable_gpu_place = re.match(r'gpu:\d+', place)
+    if place == "gpu_pinned" or place == "gpu" or avaliable_gpu_place:
+        if not core.is_compiled_with_cuda():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with CUDA".format(avaliable_gpu_place))
+        if place == "gpu_pinned":
+            return core.CUDAPinnedPlace()
+        elif place == "gpu":
+            return core.CUDAPlace(0)
+        else:
+            place_info_list = place.split(':', 1)
+            device_id = place_info_list[1]
+            device_id = int(device_id)
+            return core.CUDAPlace(device_id)
+    avaliable_xpu_place = re.match(r'xpu:\d+', place)
+    if avaliable_xpu_place:
+        if not core.is_compiled_with_xpu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with XPU".format(avaliable_xpu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.XPUPlace(device_id)
+    raise ValueError(
+        "paddle support CPUPlace, CUDAPlace,CUDAPinnedPlace and XPUPlace, Please check your Place Input"
+    )
+
+
+def _get_paddle_place_list(places):
+
+    if not isinstance(places, (list, tuple)):
+        raise TypeError("places must to be List or Tuple")
+
+    ret = []
+    for p in places:
+        p = _get_paddle_place(p)
+        ret.append(p)
+
+    return ret

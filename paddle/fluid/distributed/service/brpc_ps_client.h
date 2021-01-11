@@ -140,7 +140,9 @@ class BrpcPsClient : public PSClient {
                                               std::vector<float> *values,
                                               std::vector<uint64_t> *keys,
                                               int pserver_idx);
-
+  virtual std::future<int32_t> push_global_step(int table_id,
+                                                int64_t *total_send_data,
+                                                void *done);
   virtual std::future<int32_t> flush();
 
   virtual std::future<int32_t> send_client2client_msg(

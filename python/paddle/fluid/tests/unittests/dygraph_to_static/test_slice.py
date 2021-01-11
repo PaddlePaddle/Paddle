@@ -40,9 +40,12 @@ def test_slice_in_if(x):
     if x.numpy()[0] > 0:
         a.append(x)
     else:
-        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="int64"))
+        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="int32"))
+
     if x.numpy()[0] > 0:
         a[0] = x
+
+    a[0] = x + 1
     out = a[0]
     return out
 

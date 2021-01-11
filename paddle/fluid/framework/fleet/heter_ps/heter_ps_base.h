@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 
 #ifdef PADDLE_WITH_PSLIB
 

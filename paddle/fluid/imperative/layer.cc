@@ -25,6 +25,7 @@
 #include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -231,9 +232,9 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
       true, platform::errors::InvalidArgument(
                 "Variable is not initialized or Variable's type is not "
                 "LoDTensor or SelectedRows when getting numpy tensor"));
+
   if (Var().IsType<framework::LoDTensor>()) {
     auto& src_tensor = Var().Get<framework::LoDTensor>();
-
     // TODO(Jiabin): change this after move unique_name generator to CXX
     auto new_var = std::make_shared<VarBase>(
         true, Name() + std::to_string(copied_counter_++));
@@ -252,10 +253,8 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
         platform::DeviceContextPool::Instance().Get(src_place)->Wait();
       }
     }
-
-    if (platform::is_gpu_place(dst_place)) {
-      VLOG(3) << "copy tensor " << Name() << " from gpu";
-    }
+    VLOG(4) << "copy tensor " << Name() << " from " << Place() << " to "
+            << dst_place;
     return new_var;
   } else {
     auto& src_selected_rows = Var().Get<framework::SelectedRows>();
@@ -276,9 +275,8 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     }
     dst_selected_rows->set_height(src_selected_rows.height());
     dst_selected_rows->set_rows(src_selected_rows.rows());
-    if (platform::is_gpu_place(dst_place)) {
-      VLOG(3) << "copy selected rows " << Name() << " from gpu";
-    }
+    VLOG(4) << "copy tensor " << Name() << " from " << Place() << " to "
+            << dst_place;
     return new_var;
   }
 }
@@ -376,14 +374,26 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
    */
-  auto expected_kernel_key =
-      GetExpectedKernelKey<VarType>(ins, outs, *op_kernel, place, attrs);
-  auto prepared_op = PreparedOp::Prepare(*op_kernel, expected_kernel_key);
-  auto tmp_ins = PrepareData<VarType>(*op_kernel, ins, expected_kernel_key);
-
-  prepared_op.Run(tmp_ins, outs, attrs);
+  auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs);
+  auto tmp_ins_ptr =
+      PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
+  if (tmp_ins_ptr == nullptr) {
+    prepared_op.Run(ins, outs, attrs);
+  } else {
+    prepared_op.Run(*tmp_ins_ptr, outs, attrs);
+  }
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
+
+  // set the output var
+  for (auto& var_pair : outs) {
+    for (auto& var : var_pair.second) {
+      // NOTE(zhiqu): The ouput may be NULL because of pruning.
+      if (var) {
+        SetForwardDataTypeOfGradVar(var);
+      }
+    }
+  }
 }
 
 void OpBase::Run(const framework::OperatorBase& op,

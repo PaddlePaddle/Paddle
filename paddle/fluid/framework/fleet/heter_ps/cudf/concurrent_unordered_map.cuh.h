@@ -765,7 +765,7 @@ x.second );
   unsigned long long get_num_collisions() const { return m_collisions; }
 
   void print() {
-    for (size_type i = 0; i < m_hashtbl_size; ++i) {
+    for (size_type i = 0; i < 10; ++i) {
       std::cout << i << ": " << m_hashtbl_values[i].first << ","
                 << m_hashtbl_values[i].second << std::endl;
     }

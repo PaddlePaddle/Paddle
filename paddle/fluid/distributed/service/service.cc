@@ -66,9 +66,10 @@ void PSCore::init_gflag(const std::string& gflags) {
   ::google::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
 }
 
-int PSCore::init_server(const std::string& dist_desc,
-                        const std::vector<std::string>* host_sign_list,
-                        int node_num, int index) {
+int PSCore::init_server(
+    const std::string& dist_desc,
+    const std::vector<std::string>* host_sign_list, int node_num, int index,
+    const std::vector<framework::ProgramDesc>& server_sub_program) {
   google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
   init_gflag(_ps_param.init_gflags());
   _ps_env = paddle::distributed::PaddlePSEnvironment();
@@ -76,7 +77,7 @@ int PSCore::init_server(const std::string& dist_desc,
   int ret = 0;
   _server_ptr = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(_ps_param));
-  ret = _server_ptr->configure(_ps_param, _ps_env, index);
+  ret = _server_ptr->configure(_ps_param, _ps_env, index, server_sub_program);
   CHECK(ret == 0) << "failed to configure server";
   return ret;
 }

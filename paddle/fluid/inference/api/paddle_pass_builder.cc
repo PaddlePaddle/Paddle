@@ -82,11 +82,14 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "embedding_eltwise_layernorm_fuse_pass",  //
       "multihead_matmul_fuse_pass_v2",          //
       "skip_layernorm_fuse_pass",               //
-      "unsqueeze2_eltwise_fuse_pass",
-      "conv_bn_fuse_pass",       //
-      "fc_fuse_pass",            //
-      "tensorrt_subgraph_pass",  //
-      "conv_bn_fuse_pass",       //
+      "conv_bn_fuse_pass",                      //
+      "unsqueeze2_eltwise_fuse_pass",           //
+      "squeeze2_matmul_fuse_pass",              //
+      "reshape2_matmul_fuse_pass",              //
+      "map_matmul_to_mul_pass",                 //
+      "fc_fuse_pass",                           //
+      "tensorrt_subgraph_pass",                 //
+      "conv_bn_fuse_pass",                      //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
       "conv_elementwise_add_act_fuse_pass",   //
@@ -113,6 +116,9 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_eltwiseadd_bn_fuse_pass",              //
         "embedding_eltwise_layernorm_fuse_pass",     //
         "multihead_matmul_fuse_pass_v2",             //
+        "squeeze2_matmul_fuse_pass",                 //
+        "reshape2_matmul_fuse_pass",                 //
+        "map_matmul_to_mul_pass",                    //
         "fc_fuse_pass",                              //
         "fc_elementwise_layernorm_fuse_pass",        //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
@@ -164,6 +170,9 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "fc_gru_fuse_pass",                        //
                   "mul_gru_fuse_pass",                       //
                   "seq_concat_fc_fuse_pass",                 //
+                  "squeeze2_matmul_fuse_pass",               //
+                  "reshape2_matmul_fuse_pass",               //
+                  "map_matmul_to_mul_pass",                  //
                   "fc_fuse_pass",                            //
                   "repeated_fc_relu_fuse_pass",              //
                   "squared_mat_sub_fuse_pass",               //
@@ -211,8 +220,12 @@ void CpuPassStrategy::EnableMKLDNN() {
              // "fc_mkldnn_pass",
              // "fc_act_mkldnn_fuse_pass",
              "batch_norm_act_fuse_pass",
+#ifndef _WIN32
+             // TODO(intel): Please fix the bug on windows.
+             // https://github.com/PaddlePaddle/Paddle/issues/29710
              "mkldnn_inplace_pass",  // This pass should be activated after
                                      // fuses
+#endif
          })) {
       passes_.push_back(pass);
     }
