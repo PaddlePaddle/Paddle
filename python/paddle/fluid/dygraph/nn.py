@@ -1341,9 +1341,6 @@ class BatchNorm(layers.Layer):
             batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
                 mean_out, variance_out, *attrs)
-            print(
-                "------------------------------------------- 1 dygraph -----------------------------------"
-            )
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 
@@ -1398,9 +1395,6 @@ class BatchNorm(layers.Layer):
             type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
         # Currently, we don't support inplace in dygraph mode
-        print(
-            "------------------------------------------- 1 static -----------------------------------"
-        )
         return self._helper.append_activation(batch_norm_out, self._act)
 
 

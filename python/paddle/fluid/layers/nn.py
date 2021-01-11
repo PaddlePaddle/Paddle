@@ -2785,9 +2785,6 @@ def batch_norm(input,
             print(hidden2.shape)
             # [3, 200]
     """
-    print(
-        "------------------------------------------- 2 static -----------------------------------"
-    )
     assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('batch_norm', **locals())
 
@@ -2855,7 +2852,7 @@ def batch_norm(input,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     reserve_space = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
+        dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
     # reserve_space = None
     # if has_reserve_space:
     #     reserve_space = helper.create_variable_for_type_inference(

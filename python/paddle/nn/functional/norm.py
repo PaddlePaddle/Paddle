@@ -196,9 +196,6 @@ def batch_norm(x,
         batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
             x, weight, bias, running_mean, running_var, mean_out, variance_out,
             *attrs)
-        print(
-            "------------------------------------------- 3 dygraph -----------------------------------"
-        )
         return dygraph_utils._append_activation_in_dygraph(
             batch_norm_out, act=None)
 
@@ -246,9 +243,7 @@ def batch_norm(x,
 
     helper.append_op(
         type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
-    print(
-        "------------------------------------------- 3 static -----------------------------------"
-    )
+
     return helper.append_activation(batch_norm_out)
 
 
