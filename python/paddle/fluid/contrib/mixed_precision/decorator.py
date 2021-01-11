@@ -185,9 +185,6 @@ class OptimizerWithMixedPrecision(object):
             params_grads = self._optimizer.backward(
                 self._scaled_loss, startup_program, parameter_list, no_grad_set,
                 callbacks)
-            # Change the op_role_var attr for some ops, so that gradients
-            # transferred across GPUs can be FP16.
-            update_role_var_grad(train_program, params_grads)
         return params_grads
 
     def amp_init(self,
@@ -199,7 +196,7 @@ class OptimizerWithMixedPrecision(object):
         Init the amp training, such as cast fp32 parameters to fp16 type.
   
         Args:
-            place(CPUPlace|CUDAPlace): place is used to initialize 
+            place(CPUPlace|CUDAPlace): place is used to initialize
                 fp16 parameters with fp32 values.
             scope(Scope): The scope is used to find fp32 parameters.
             test_program(Program): The program is used for testing.
@@ -229,6 +226,10 @@ class OptimizerWithMixedPrecision(object):
         Returns:
             A list of optimize operators.
         """
+
+        # Change the op_role_var attr for some ops, so that gradients
+        # transferred across GPUs can be FP16.
+        update_role_var_grad(self._train_program, params_grads)
 
         # When not using dynamic loss scaling and the init loss scaling value is equal to 1.0,
         # the model can be optimized.

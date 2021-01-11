@@ -4,6 +4,7 @@ cc_library(multi_devices_graph_print_pass SRCS multi_devices_graph_print_pass.cc
 cc_library(multi_devices_graph_check_pass SRCS multi_devices_graph_check_pass.cc DEPS multi_devices_helper)
 
 set(ALL_REDUCE_OP_HANDLES all_reduce_op_handle)
+set(ALL_REDUCE_OP_HANDLES grad_merge_all_reduce_op_handle)
 if(WITH_GPU AND WITH_DGC)
   list(APPEND ALL_REDUCE_OP_HANDLES sparse_all_reduce_op_handle)
 endif()
@@ -13,7 +14,7 @@ cc_library(multi_devices_graph_pass SRCS multi_devices_graph_pass.cc DEPS multi_
 cc_library(sequential_execution_pass SRCS sequential_execution_pass.cc DEPS graph graph_helper pass)
 cc_library(set_reader_device_info_utils SRCS set_reader_device_info_utils.cc DEPS graph graph_helper pass multi_devices_graph_pass)
 
-cc_library(fuse_all_reduce_op_pass SRCS fuse_all_reduce_op_pass.cc DEPS graph graph_helper fused_all_reduce_op_handle)
+cc_library(fuse_all_reduce_op_pass SRCS fuse_all_reduce_op_pass.cc DEPS graph graph_helper fused_all_reduce_op_handle grad_merge_all_reduce_op_handle)
 cc_library(all_reduce_deps_pass SRCS all_reduce_deps_pass.cc DEPS all_reduce_op_handle graph graph_helper pass)
 cc_library(backward_optimizer_op_deps_pass SRCS backward_optimizer_op_deps_pass.cc DEPS graph graph_helper pass)
 cc_library(add_reader_dependency_pass SRCS add_reader_dependency_pass.cc DEPS graph graph_helper pass)
