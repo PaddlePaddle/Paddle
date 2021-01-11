@@ -1253,9 +1253,7 @@ def cross_entropy(input,
                     count = core.ops.reduce_sum(mask, 'reduce_all', True)
                     ret = out_sum / count
                 else:
-                    mask = paddle.cast(mask, "float64")
-                    weight_gather_reshape = paddle.cast(weight_gather_reshape,
-                                                        "float64")
+                    mask = paddle.cast(mask, weight_gather_reshape.dtype)
                     weight_ignored = core.ops.elementwise_mul(
                         mask, weight_gather_reshape)
                     weight_sum = core.ops.reduce_sum(weight_ignored,
