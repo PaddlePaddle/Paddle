@@ -516,8 +516,8 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(
-                dev_ctx, framework::vectorize(x->dims()),
-                uniq_name + (algo == dnnl::algorithm::binary_mul ? "M" : ""))) {
+                dev_ctx, framework::vectorize(x->dims()), uniq_name,
+                (algo == dnnl::algorithm::binary_mul ? "M" : ""))) {
     // bradcasting combined with in-place may require
     auto rankdiff = x->dims().size() - y->dims().size();
     if (rankdiff > 0) {
