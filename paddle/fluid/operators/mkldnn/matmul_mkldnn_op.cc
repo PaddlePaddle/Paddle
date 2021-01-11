@@ -374,9 +374,12 @@ class DNNLMatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     if (ctx.HasAttr("head_number")) {
-      PADDLE_ENFORCE_EQ(ctx.Attr<int>("head_number"), 1,
-                        platform::errors::Unimplemented(
-                            "DNNL matmul doesn't support multiple heads."));
+      PADDLE_ENFORCE_EQ(
+          ctx.Attr<int>("head_number"), 1,
+          platform::errors::Unimplemented(
+              "DNNL matmul doesn't support multiple heads. Expected "
+              "head_number=1. But received `head_number` is %d",
+              ctx.Attr<int>("head_number")));
     }
     platform::MKLDNNDeviceContext::tls().log_lib_version();
     ExecuteMatMul<T, T>(ctx);

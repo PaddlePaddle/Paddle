@@ -43,9 +43,13 @@ inline std::string GetValueName(framework::proto::VarType::Type data_type) {
     case framework::proto::VarType::FP32:
       value_name = "fp32_values";
       break;
+    case framework::proto::VarType::FP64:
+      value_name = "fp64_values";
+      break;
     case framework::proto::VarType::BOOL:
       value_name = "bool_values";
       break;
+
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported data type(code %d) for SetValue operator, only "
@@ -83,7 +87,7 @@ template <typename DeviceContext, typename T>
 class SetValueKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    const int rank = ctx.Output<framework::LoDTensor>("Out")->dims().size();
+    const int rank = ctx.Input<framework::LoDTensor>("Input")->dims().size();
 
     // TODO(liym27): A more elegent code to do this. C++ has to make template
     //  integer as constant, but we had better have alternative writing in the
@@ -107,6 +111,9 @@ class SetValueKernel : public framework::OpKernel<T> {
       case 6:
         SetValueCompute<6>(ctx);
         break;
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The rank of input should be less than 7, but received %d.", rank));
     }
   }
 
