@@ -864,6 +864,18 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
             paddle.jit.save(
                 layer, model_path, input_spec=[InputSpec(shape=[None, 784])])
 
+    def test_parse_name(self):
+        model_path_inference = "jit_save_load_parse_name/model"
+        IMAGE_SIZE = 224
+        layer = LinearNet(IMAGE_SIZE, 1)
+        inps = paddle.randn([1, IMAGE_SIZE])
+        layer(inps)
+        paddle.jit.save(layer, model_path_inference)
+        paddle.jit.save(layer, model_path_inference + '_v2')
+        load_net = paddle.jit.load(model_path_inference)
+
+        self.assertFalse(hasattr(load_net, 'v2'))
+
 
 class LayerSaved(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
