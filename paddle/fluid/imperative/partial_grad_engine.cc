@@ -857,6 +857,7 @@ void PartialGradTask::RunEachOp(OpBase *op) {
 
           auto new_grad_var = std::make_shared<VarBase>(true, grad_var->Name());
           new_grad_var->SetOverridedStopGradient(false);
+          new_grad_var->SetForwardDataType(grad_var->ForwardDataType());
           if (new_grad_var_iter->second->TotalRefCnt() > 1) {
             grads_to_accumulate_.emplace_back(new_grad_var_iter->second.get(),
                                               new_grad_var->SharedVar());

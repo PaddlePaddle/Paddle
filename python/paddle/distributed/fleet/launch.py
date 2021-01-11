@@ -117,6 +117,8 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--gpus=\"0,1,2,3\" will launch four training processes each bound to one gpu."
     )
 
+    base_group.add_argument("--selected_gpus", dest="gpus")
+
     base_group.add_argument(
         "training_script",
         type=str,
@@ -219,7 +221,7 @@ def launch_collective(args):
     global_envs = copy.copy(os.environ.copy())
     gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
-    global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "1"))
+    global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
     global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
 

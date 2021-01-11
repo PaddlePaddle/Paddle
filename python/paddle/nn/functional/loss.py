@@ -513,7 +513,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             label_data = np.random.rand(3,3).astype("float32")
             input = paddle.to_tensor(input_data)
             label = paddle.to_tensor(label_data)
-            output = paddle.nn.functioanl.smooth_l1_loss(input, label)
+            output = paddle.nn.functional.smooth_l1_loss(input, label)
             print(output)
     """
     fluid.data_feeder.check_variable_and_dtype(
@@ -796,14 +796,14 @@ def nll_loss(input,
     c = input_shape[1]
     if in_dygraph_mode():
         if input_dims != 2 and input_dims != 4:
-            input, _ = core.ops.reshape2(input, 'shape', [n, c, 1, -1])
-            label, _ = core.ops.reshape2(label, 'shape', [n, 1, -1])
+            input, _ = core.ops.reshape2(input, None, 'shape', [n, c, 1, -1])
+            label, _ = core.ops.reshape2(label, None, 'shape', [n, 1, -1])
             out_shape = [n] + input_shape[2:]
         out, total_weight = core.ops.nll_loss(input, label, weight,
                                               'ignore_index', ignore_index,
                                               'reduction', reduction)
         if input_dims != 2 and input_dims != 4 and reduction == 'none':
-            out, _ = core.ops.reshape2(out, 'shape', out_shape)
+            out, _ = core.ops.reshape2(out, None, 'shape', out_shape)
         return out
 
     helper = LayerHelper('nll_loss', **locals())
@@ -1187,12 +1187,16 @@ def cross_entropy(input,
         .. code-block:: python
 
             import paddle
+            import numpy as np
+
             input_data = np.random.random([5, 100]).astype("float64")
             label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
             weight_data = np.random.random([100]).astype("float64")
+
             input =  paddle.to_tensor(input_data)
             label =  paddle.to_tensor(label_data)
             weight = paddle.to_tensor(weight_data)
+
             loss = paddle.nn.functional.cross_entropy(input=input, label=label, weight=weight)
             print(loss)
             # [4.28546723]
@@ -1221,8 +1225,8 @@ def cross_entropy(input,
         if weight is not None:
             weight_gather = core.ops.gather_nd(weight, label)  #trans to sample
             input_shape = list(label.shape)
-            weight_gather_reshape, _ = core.ops.reshape2(weight_gather, 'shape',
-                                                         input_shape)
+            weight_gather_reshape, _ = core.ops.reshape2(weight_gather, None,
+                                                         'shape', input_shape)
             out = core.ops.elementwise_mul(out, weight_gather_reshape)
 
         if reduction == "sum":

@@ -73,6 +73,10 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_sendrecv)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter_api)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_split_embedding)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_split_embedding_none_divisible)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_split_row_linear)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_split_col_linear)
     LIST(REMOVE_ITEM TEST_OPS test_collective_reduce_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_scatter_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_barrier_api)
@@ -97,6 +101,9 @@ if(WIN32)
 
     # TODO: Fix these unittests failed on Windows
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
+    if (WITH_GPU)
+        LIST(REMOVE_ITEM TEST_OPS test_update_loss_scaling_op)
+    endif()
 endif()
 
 if(NOT WITH_DISTRIBUTE OR WIN32)
@@ -219,12 +226,12 @@ function(py_test_modules TARGET_NAME)
     set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    if(WITH_COVERAGE)
+    if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+                COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+                COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+                ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
                 COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
@@ -325,6 +332,7 @@ function(parallel_bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
+list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
@@ -357,7 +365,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 # disable test_cumsum_op temporaily
-list(REMOVE_ITEM TEST_OPS test_cumsum_op)
+# list(REMOVE_ITEM TEST_OPS test_cumsum_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -457,8 +465,6 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
 
-    # FIXME(seiriosX) will fix this
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_sparse_embedding_ctr")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
@@ -538,10 +544,12 @@ if(WIN32)
     py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth CUDA_VISIBLE_DEVICES=0)
     py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass ENVS CUDA_VISIBLE_DEVICES=0)
     py_test_modules(test_feed_data_check_shape_type MODULES test_feed_data_check_shape_type ENVS CUDA_VISIBLE_DEVICES=0)
+    py_test_modules(test_fetch_lod_tensor_array MODULES test_fetch_lod_tensor_array ENVS CUDA_VISIBLE_DEVICES=0)
 else()
     py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
     py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass)
     py_test_modules(test_feed_data_check_shape_type MODULES test_feed_data_check_shape_type)
+    py_test_modules(test_fetch_lod_tensor_array MODULES test_fetch_lod_tensor_array)
 endif()
 
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
@@ -633,9 +641,6 @@ if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_multiprocess_dataloader_static PROPERTIES TIMEOUT 120)
 endif()
 
-# setting timeout value for old unittests
-# set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
-
 if (NOT WIN32)
     set_tests_properties(test_multiprocess_reader_exception PROPERTIES TIMEOUT 120)
     set_tests_properties(test_layers PROPERTIES TIMEOUT 120)
@@ -648,12 +653,15 @@ endif()
 
 if (WITH_DISTRIBUTE)
     set_tests_properties(test_communicator_half_async PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 120)
 endif()
 
 if (WITH_DISTRIBUTE AND NOT APPLE)
     if(WITH_GPU)
         set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT 120)
         set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_dist_mnist_gradient_merge PROPERTIES TIMEOUT 120)
     endif()
 endif()
 
@@ -692,7 +700,13 @@ set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 120)
+if (WIN32)
+    set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_paddle_save_load PROPERTIES TIMEOUT 250)
+else()
+    set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 200)
+    set_tests_properties(test_paddle_save_load PROPERTIES TIMEOUT 150)
+endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data PROPERTIES TIMEOUT 120)
@@ -816,6 +830,17 @@ if(WITH_GPU AND NOT WIN32)
     set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_split_embedding
+        test_collective_split_embedding_none_divisible
+        test_collective_split_row_linear
+        test_collective_split_col_linear
+        test_collective_scatter_api
+        test_collective_barrier_api
+        test_collective_reduce_api
+        test_collective_allreduce_api
+        test_collective_broadcast_api
+        test_collective_allgather_api
+        PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(WITH_GPU)
     set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT 120)

@@ -68,7 +68,6 @@ from .common import pad  #DEFINE_ALIAS
 from .common import cosine_similarity  #DEFINE_ALIAS
 from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
-from .common import assign  #DEFINE_ALIAS
 from .common import interpolate  #DEFINE_ALIAS
 from .common import upsample  #DEFINE_ALIAS
 from .common import bilinear  #DEFINE_ALIAS
@@ -88,7 +87,6 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .extension import multiclass_nms  #DEFINE_ALIAS
 # from .extension import polygon_box_transform  #DEFINE_ALIAS
 # from .extension import random_crop  #DEFINE_ALIAS
-# from .extension import row_conv  #DEFINE_ALIAS
 # from .extension import rpn_target_assign  #DEFINE_ALIAS
 # from .extension import similarity_focus  #DEFINE_ALIAS
 # from .extension import target_assign  #DEFINE_ALIAS

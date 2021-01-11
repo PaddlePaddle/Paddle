@@ -24,6 +24,15 @@ def check_path_exists(path):
     assert os.path.exists(path), "%s does not exist." % path
 
 
+def parse_case_name(log_file_name):
+    """Parse case name.
+    """
+    case_id, case_info = log_file_name.split("-")
+    direction = case_info.split(".")[0].split("_")[-1]
+
+    return "%s(%s)" % (case_id, direction)
+
+
 def parse_log_file(log_file):
     """Load one case result from log file.
     """
@@ -34,6 +43,8 @@ def parse_log_file(log_file):
         for line in f.read().strip().split('\n')[::-1]:
             try:
                 result = json.loads(line)
+                if result.get("disabled", False) == True:
+                    return None
                 return result
             except ValueError:
                 pass  # do nothing
@@ -157,7 +168,7 @@ if __name__ == "__main__":
         pr_result = parse_log_file(os.path.join(args.pr_logs_dir, log_file))
         if develop_result is None or pr_result is None:
             continue
-        case_name = log_file.split("-")[0]
+        case_name = parse_case_name(log_file)
         compare_benchmark_result(case_name, develop_result, pr_result,
                                  check_results)
 

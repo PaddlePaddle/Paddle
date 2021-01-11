@@ -1225,6 +1225,13 @@ void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
 void FleetWrapper::LoadWithWhitelist(const uint64_t table_id,
                                      const std::string& path, const int mode) {
 #ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->load_with_whitelist(table_id, path,
+                                                          std::to_string(mode));
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "load model of table id: " << table_id
+               << ", from path: " << path << " failed";
+  }
 #else
   VLOG(0) << "FleetWrapper::LoadWhitelist does nothing when no pslib";
 #endif
@@ -1349,7 +1356,16 @@ int32_t FleetWrapper::SaveWithWhitelist(int table_id, const std::string& path,
                                         const int mode,
                                         const std::string& whitelist_path) {
 #ifdef PADDLE_WITH_PSLIB
-  return 0;
+  auto ret = pslib_ptr_->_worker_ptr->save_with_whitelist(
+      table_id, path, std::to_string(mode), whitelist_path);
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "table save cache failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+  return feasign_cnt;
 #else
   VLOG(0) << "FleetWrapper::SaveCache does nothing when no pslib";
   return -1;

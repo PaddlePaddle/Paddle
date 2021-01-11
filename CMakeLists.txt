@@ -29,7 +29,7 @@ include(generic)            # simplify cmake module
 find_package(CUDA QUIET)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
-option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN"        OFF)
+option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
@@ -166,9 +166,11 @@ option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE}
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
+option(WITH_XPU_BKCL    "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL"   OFF)
 option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
 option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
+option(WITH_MIPS   "Compile PaddlePaddle with mips support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
 
@@ -211,6 +213,13 @@ if (NOT WITH_GPU AND WITH_NCCL)
         "Disable NCCL when compiling without GPU. Force WITH_NCCL=OFF.")
     set(WITH_NCCL OFF CACHE STRING
         "Disable NCCL when compiling without GPU" FORCE)
+endif()
+
+if (NOT WITH_XPU AND WITH_XPU_BKCL)
+    MESSAGE(WARNING
+        "Disable BKCL when compiling without XPU. Force WITH_XPU_BKCL=OFF.")
+    set(WITH_XPU_BKCL OFF CACHE STRING
+        "Disable BKCL when compiling without XPU" FORCE)
 endif()
 
 if(WITH_NCCL)
@@ -297,6 +306,11 @@ if (WITH_SW)
     set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_SW=ON" FORCE)
     set(WITH_MKL OFF CACHE STRING "Disable MKL when compiling WITH_SW=ON." FORCE)
     add_definitions(-DPADDLE_WITH_SW)
+endif()
+
+if (WITH_MIPS)
+    set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_MIPS=ON" FORCE)
+    add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")

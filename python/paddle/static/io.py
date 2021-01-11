@@ -213,8 +213,7 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
     Args:
         feed_vars(Variable | list[Variable]): Variables needed by inference.
         fetch_vars(Variable | list[Variable]): Variables returned by inference.
-        kwargs: Supported keys including 'program'.
-                Attention please, kwargs is used for backward compatibility mainly.
+        kwargs: Supported keys including 'program'.Attention please, kwargs is used for backward compatibility mainly.
           - program(Program): specify a program if you don't want to use default main program.
 
     Returns:
@@ -277,8 +276,7 @@ def serialize_persistables(feed_vars, fetch_vars, executor, **kwargs):
     Args:
         feed_vars(Variable | list[Variable]): Variables needed by inference.
         fetch_vars(Variable | list[Variable]): Variables returned by inference.
-        kwargs: Supported keys including 'program'.
-                Attention please, kwargs is used for backward compatibility mainly.
+        kwargs: Supported keys including 'program'.Attention please, kwargs is used for backward compatibility mainly.
           - program(Program): specify a program if you don't want to use default main program.
 
     Returns:
@@ -403,8 +401,7 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
         fetch_vars(Variable | list[Variable]): Variables returned by inference.
         executor(Executor): The executor that saves the inference model. You can refer
                             to :ref:`api_guide_executor_en` for more details.
-        kwargs: Supported keys including 'program'.
-                Attention please, kwargs is used for backward compatibility mainly.
+        kwargs: Supported keys including 'program'.Attention please, kwargs is used for backward compatibility mainly.
           - program(Program): specify a program if you don't want to use default main program.
     Returns:
         None
@@ -645,8 +642,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
           - Set to None when reading the model from memory.
         executor(Executor): The executor to run for loading inference model.
                             See :ref:`api_guide_executor_en` for more details about it.
-        kwargs: Supported keys including 'model_filename', 'params_filename'.
-                Attention please, kwargs is used for backward compatibility mainly.
+        kwargs: Supported keys including 'model_filename', 'params_filename'.Attention please, kwargs is used for backward compatibility mainly.
           - model_filename(str): specify model_filename if you don't want to use default name.
           - params_filename(str): specify params_filename if you don't want to use default name.
 

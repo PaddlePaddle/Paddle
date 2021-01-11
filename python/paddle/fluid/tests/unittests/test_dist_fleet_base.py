@@ -13,6 +13,11 @@
 # limitations under the License.
 
 from __future__ import print_function
+from paddle.distributed.fleet.utils.ps_util import Distributed
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 """
     high level unit test for distribute fleet.
 """
@@ -32,11 +37,7 @@ import tempfile
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.distributed.fleet as fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
-from paddle.distributed.fleet.utils.ps_util import Distributed
+paddle.enable_static()
 
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
 
@@ -120,14 +121,20 @@ class FleetDistRunnerBase(object):
                 fluid.clip.set_gradient_clip(
                     clip=fluid.clip.GradientClipByGlobalNorm(2.0))
 
-        use_decay = int(os.getenv("DECAY", "0"))
+        use_decay = int(os.getenv("USE_DECAY", "0"))
         if use_decay:
+            scheduler = paddle.optimizer.lr.ExponentialDecay(
+                learning_rate=LEARNING_RATE, gamma=0.999, verbose=True)
+            optimizer = fluid.optimizer.SGD(scheduler)
+            """
+            # learning rate decay method before 2.0
             optimizer = fluid.optimizer.SGD(
                 learning_rate=fluid.layers.exponential_decay(
                     learning_rate=LEARNING_RATE,
                     decay_steps=500,
                     decay_rate=0.969,
-                    staircase=True))
+                    staircase=True)) 
+            """
         else:
             optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
