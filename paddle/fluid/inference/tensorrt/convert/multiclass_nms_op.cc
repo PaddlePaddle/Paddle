@@ -43,22 +43,6 @@ class MultiClassNMSOpConverter : public OpConverter {
     auto* bboxes_tensor = engine_->GetITensor(bboxes);
     auto* scores_tensor = engine_->GetITensor(scores);
 
-    auto CheckParams = [](const framework::OpDesc& op_desc,
-                          const char* params) {
-      PADDLE_ENFORCE_EQ(
-          op_desc.HasAttr(params), true,
-          platform::errors::Fatal(
-              "Inference multiclass_nms with TensorRT should also "
-              "set parameters %s.",
-              params));
-    };
-    CheckParams(op_desc, "background_label");
-    CheckParams(op_desc, "score_threshold");
-    CheckParams(op_desc, "nms_top_k");
-    CheckParams(op_desc, "nms_threshold");
-    CheckParams(op_desc, "keep_top_k");
-    CheckParams(op_desc, "normalized");
-
     int background_label =
         BOOST_GET_CONST(int, op_desc.GetAttr("background_label"));
     float score_threshold =
@@ -84,11 +68,6 @@ class MultiClassNMSOpConverter : public OpConverter {
     std::vector<nvinfer1::ITensor*> batch_nms_inputs;
     batch_nms_inputs.push_back(bboxes_expand_layer->getOutput(0));
     batch_nms_inputs.push_back(scores_transpose_layer->getOutput(0));
-
-    PADDLE_ENFORCE_EQ(engine_->use_oss(), true,
-                      platform::errors::Unimplemented(
-                          "Inference multiclass_nms with TensorRT should also "
-                          "enable tensorrt oss."));
 
     constexpr bool shareLocation = true;
     constexpr bool clip_boxes = false;

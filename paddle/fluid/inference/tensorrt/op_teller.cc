@@ -144,6 +144,18 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
         }
       }
     }
+    if (op_type == "multiclass_nms") {
+      bool has_attrs =
+          (desc.HasAttr("background_label") &&
+           desc.HasAttr("score_threshold") && desc.HasAttr("nms_top_k") &&
+           desc.HasAttr("keep_top_k") && desc.HasAttr("normalized"));
+      if (has_attrs == false) return false;
+
+      auto registry = GetPluginRegistry();
+      if (registry == nullptr) return false;
+      auto creator = registry->getPluginCreator("BatchedNMS_TRT", "1");
+      if (creator == nullptr) return false;
+    }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
   return false;
