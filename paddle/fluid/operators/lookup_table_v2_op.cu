@@ -247,7 +247,7 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       int D = d_table_t->dims()[1];
       int K = ids_t->numel();
 
-      int threads = std::min(D, 256);
+      int threads = std::min(D, 512);
       int grids = (D + threads - 1) / threads;
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> ids;
