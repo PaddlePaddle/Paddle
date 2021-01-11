@@ -361,10 +361,14 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Y"), ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
+    FusedElemwiseAddActivationNoNeddBufVarInferer, "X", "Y");
 }  // namespace operators
 }  // namespace paddle
 
@@ -386,6 +390,30 @@ REGISTER_OP_CPU_KERNEL(
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_activation_grad,
+    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
+                                           float>,
+    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
+                                           double>);
+
+// for memory optimization, we register the fused_elemwise_add_activation OP
+REGISTER_OPERATOR(
+    fused_elemwise_add_activation, ops::FusedElemwiseActivationOp,
+    ops::FusedElemwiseActivationMaker,
+    ops::FusedElemwiseActivationGradMaker<paddle::framework::OpDesc>,
+    ops::FusedElemwiseActivationGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(fused_elemwise_add_activation_grad,
+                  ops::FusedElemwiseAddActivationNoNeddBufVarInferer,
+                  ops::FusedElemwiseActivationOpGrad);
+
+REGISTER_OP_CPU_KERNEL(
+    fused_elemwise_add_activation,
+    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
+                                       float>,
+    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
+                                       double>);
+
+REGISTER_OP_CPU_KERNEL(
+    fused_elemwise_add_activation_grad,
     ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
                                            float>,
     ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,

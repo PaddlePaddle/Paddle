@@ -71,6 +71,7 @@ class AdamW(Adam):
             gradient in current mini-batch, so it will be much more faster. But this mode has
             different semantics with the original Adam algorithm and may lead to different result.
             The default value is False.
+        multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -111,6 +112,7 @@ class AdamW(Adam):
                  apply_decay_param_fun=None,
                  grad_clip=None,
                  lazy_mode=False,
+                 multi_precision=False,
                  name=None):
         assert learning_rate is not None
         assert beta1 is not None
@@ -138,7 +140,8 @@ class AdamW(Adam):
             epsilon=epsilon,
             grad_clip=grad_clip,
             name=name,
-            lazy_mode=lazy_mode)
+            lazy_mode=lazy_mode,
+            multi_precision=multi_precision)
 
     def _append_decoupled_weight_decay(self, block, param_and_grad):
         """
