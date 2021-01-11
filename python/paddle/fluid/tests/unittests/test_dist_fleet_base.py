@@ -402,16 +402,18 @@ def runtime_main(test_class):
 
     if args.test and args.model_dir != "":
         avg_cost = model.net(args, is_train=False)
-        infer_env = DistributedInfer(
-            loss=model.avg_cost,
+        dist_infer = DistributedInfer()
+        dist_infer.init_distributed_infer_env(
             exe=model.get_executor(),
+            loss=model.avg_cost,
             role_maker=role,
             dirname=args.model_dir)
         if fleet.is_worker():
-            model.do_distributed_testing(fleet)
-            fleet.stop_worker()
-            infer_env.reset()
-            return
+            with paddle.static.program_guard(
+                    main_program=dist_infer.get_dist_infer_program()):
+                model.do_distributed_testing(fleet)
+                fleet.stop_worker()
+                return
 
     fleet.init(role)
     strategy = model.build_strategy(args)
@@ -427,14 +429,17 @@ def runtime_main(test_class):
             model.run_pyreader_trainer(args)
 
         if args.test:
-            test_origin_program = fluid.Program()
-            test_startup_program = fluid.Program()
-            with fluid.program_guard(
+            test_origin_program = paddle.static.Program()
+            test_startup_program = paddle.static.Program()
+            with paddle.static.program_guard(
                     main_program=test_origin_program,
                     startup_program=test_startup_program):
-                with fluid.unique_name.guard():
+                with paddle.utils.unique_name.guard():
                     avg_cost = model.net(args, is_train=False)
-            infer_env = DistributedInfer(main_program=test_origin_program)
-            model.do_distributed_testing(fleet)
-            infer_env.reset()
+            dist_infer = DistributedInfer(
+                main_program=test_origin_program,
+                startup_program=test_startup_program)
+            with paddle.static.program_guard(
+                    main_program=dist_infer.get_dist_infer_program()):
+                model.do_distributed_testing(fleet)
         fleet.stop_worker()

@@ -17,7 +17,6 @@ import paddle.fluid as fluid
 import math
 import numpy as np
 from paddle.fluid.framework import Variable
-import paddle.distributed.fleet as fleet
 
 
 def sum(input, scope=None, util=None):
@@ -48,6 +47,7 @@ def sum(input, scope=None, util=None):
     if scope is None:
         scope = fluid.global_scope()
     if util is None:
+        import paddle.distributed.fleet as fleet
         util = fleet.util
     if isinstance(input, Variable):
         input = np.array(scope.find_var(input.name).get_tensor())
@@ -88,6 +88,7 @@ def max(input, scope=None, util=None):
     if scope is None:
         scope = fluid.global_scope()
     if util is None:
+        import paddle.distributed.fleet as fleet
         util = fleet.util
     if isinstance(input, Variable):
         input = np.array(scope.find_var(input.name).get_tensor())
@@ -128,6 +129,7 @@ def min(input, scope=None, util=None):
     if scope is None:
         scope = fluid.global_scope()
     if util is None:
+        import paddle.distributed.fleet as fleet
         util = fleet.util
     if isinstance(input, Variable):
         input = np.array(scope.find_var(input.name).get_tensor())
@@ -170,6 +172,7 @@ def auc(stat_pos, stat_neg, scope=None, util=None):
     if scope is None:
         scope = fluid.global_scope()
     if util is None:
+        import paddle.distributed.fleet as fleet
         util = fleet.util
 
     if isinstance(stat_pos, Variable):
@@ -248,6 +251,7 @@ def mae(abserr, total_ins_num, scope=None, util=None):
     if scope is None:
         scope = fluid.global_scope()
     if util is None:
+        import paddle.distributed.fleet as fleet
         util = fleet.util
 
     if isinstance(abserr, Variable):
@@ -291,6 +295,7 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
     if scope is None:
         scope = fluid.global_scope()
     if util is None:
+        import paddle.distributed.fleet as fleet
         util = fleet.util
 
     if isinstance(sqrerr, Variable):
@@ -333,6 +338,7 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
     if scope is None:
         scope = fluid.global_scope()
     if util is None:
+        import paddle.distributed.fleet as fleet
         util = fleet.util
 
     if isinstance(sqrerr, Variable):
@@ -386,6 +392,7 @@ def acc(correct, total, scope=None, util=None):
     if scope is None:
         scope = fluid.global_scope()
     if util is None:
+        import paddle.distributed.fleet as fleet
         util = fleet.util
 
     if isinstance(correct, Variable):

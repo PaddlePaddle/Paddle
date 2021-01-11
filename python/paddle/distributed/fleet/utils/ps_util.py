@@ -21,13 +21,11 @@ from paddle.fluid.framework import switch_main_program, switch_startup_program
 
 
 class DistributedInfer:
-    def __init__(self,
-                 exe=None,
-                 loss=None,
-                 role_maker=None,
-                 main_program=None,
-                 startup_program=None,
-                 dirname=None):
+    """
+    Utility class for distributed infer of PaddlePaddle.
+    """
+
+    def __init__(self, main_program=None, startup_program=None):
         if main_program:
             self.origin_main_program = main_program.clone()
         else:
@@ -39,10 +37,15 @@ class DistributedInfer:
         else:
             self.origin_startup_program = paddle.static.default_startup_program(
             )
+        self.sparse_table_maps = None
 
+    def init_distributed_infer_env(self,
+                                   exe,
+                                   loss,
+                                   role_maker=None,
+                                   dirname=None):
         import paddle.distributed.fleet as fleet
 
-        varname2tables = {}
         if fleet.fleet._runtime_handle is None:
             fleet.init(role_maker=role_maker)
 
@@ -51,7 +54,8 @@ class DistributedInfer:
             strategy.a_sync = True
             optimizer = fleet.distributed_optimizer(
                 fake_optimizer, strategy=strategy)
-            optimizer.minimize(loss, startup_program=startup_program)
+            optimizer.minimize(
+                loss, startup_program=self.origin_startup_program)
 
             if fleet.is_server():
                 fleet.init_server(dirname=dirname)
@@ -59,45 +63,53 @@ class DistributedInfer:
             else:
                 exe.run(paddle.static.default_startup_program())
                 fleet.init_worker()
-                send_ctx = fleet.fleet._runtime_handle._communicator.send_ctx_
-                for gradname, ctx in send_ctx.items():
-                    if ctx.is_sparse:
-                        param = gradname.strip("@GRAD")
-                        varname2tables[param] = ctx.table_id()
-                    else:
-                        continue
-                if dirname is not None:
-                    all_persist_vars = [
-                        v for v in self.origin_main_program.list_vars()
-                        if fluid.io.is_persistable(v)
-                    ]
-                    dense_persist_vars = [(v.name, v) for v in all_persist_vars
-                                          if v.name not in varname2tables]
-                    need_load_vars = [
-                        v[1] for v in dense_persist_vars
-                        if os.path.isfile(os.path.join(dirname, v[0]))
-                    ]
-                    fluid.io.load_vars(
-                        exe,
-                        dirname,
-                        main_program=self.origin_main_program,
-                        vars=need_load_vars)
-        else:
+                self._init_dense_params(exe, dirname)
+            switch_startup_program(self.origin_startup_program)
+            switch_main_program(self.origin_main_program)
+
+    def _get_sparse_table_map(self):
+        import paddle.distributed.fleet as fleet
+
+        if self.sparse_table_maps is None:
+            self.sparse_table_maps = {}
             send_ctx = fleet.fleet._runtime_handle._communicator.send_ctx_
             for gradname, ctx in send_ctx.items():
                 if ctx.is_sparse:
                     param = gradname.strip("@GRAD")
-                    varname2tables[param] = ctx.table_id()
+                    self.sparse_table_maps[param] = ctx.table_id()
                 else:
                     continue
+        return self.sparse_table_maps
 
+    def _init_dense_params(self, exe=None, dirname=None):
+        import paddle.distributed.fleet as fleet
+
+        sparse_table_maps = self._get_sparse_table_map()
+
+        if dirname is not None and exe is not None:
+            all_persist_vars = [
+                v for v in self.origin_main_program.list_vars()
+                if fluid.io.is_persistable(v)
+            ]
+            dense_persist_vars = [(v.name, v) for v in all_persist_vars
+                                  if v.name not in sparse_table_maps]
+            need_load_vars = [
+                v[1] for v in dense_persist_vars
+                if os.path.isfile(os.path.join(dirname, v[0]))
+            ]
+            fluid.io.load_vars(
+                exe,
+                dirname,
+                main_program=self.origin_main_program,
+                vars=need_load_vars)
+
+    def get_dist_infer_program(self):
+        import paddle.distributed.fleet as fleet
+
+        varname2tables = self._get_sparse_table_map()
         convert_program = self._convert_program(self.origin_main_program,
                                                 varname2tables)
-        switch_main_program(convert_program)
-        switch_startup_program(self.origin_startup_program)
-
-    def reset(self):
-        switch_main_program(self.origin_main_program)
+        return convert_program
 
     def _convert_program(self, main_program, varname2tables):
         def distributed_ops_pass(program):
