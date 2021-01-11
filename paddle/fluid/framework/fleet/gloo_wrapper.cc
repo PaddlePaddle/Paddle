@@ -272,11 +272,14 @@ void GlooWrapper::Init() {
   attr.iface = iface_;
   std::shared_ptr<gloo::rendezvous::HdfsStore> file_store = nullptr;
   std::shared_ptr<gloo::rendezvous::HTTPStore> http_store = nullptr;
-  auto context = std::make_shared<gloo::rendezvous::Context>(rank_, size_);
-  context->setTimeout(run_timeout_);
+  std::shared_ptr<gloo::rendezvous::Context> context = nullptr;
   auto dev = gloo::transport::tcp::CreateDevice(attr);
+
   switch (store_type_) {
     case GlooStoreType::HDFS: {
+      context = std::make_shared<gloo::rendezvous::ParallelConnectContext>(
+          rank_, size_);
+      context->setTimeout(run_timeout_);
       std::string cmd = std::string("${HADOOP_HOME}/bin/hadoop fs");
       cmd += " -D fs.default.name=" + hdfs_name_;
       cmd += " -D hadoop.job.ugi=" + hdfs_ugi_;
@@ -289,6 +292,8 @@ void GlooWrapper::Init() {
       break;
     }
     case GlooStoreType::HTTP: {
+      context = std::make_shared<gloo::rendezvous::Context>(rank_, size_);
+      context->setTimeout(run_timeout_);
       http_store = std::make_shared<gloo::rendezvous::HTTPStore>(
           http_ip_, http_port_, prefix_ + "_" + http_scope_, rank_);
       http_store->SetTimeoutSeconds(init_timeout_.count());
