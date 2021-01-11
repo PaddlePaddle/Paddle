@@ -304,8 +304,10 @@ void CommonForwardBroadcastCUDA(
 
   const auto x_dims = x->dims();
   const auto y_dims = y->dims();
+  const auto out_dims = z->dims();
 
   const auto &bcast_dims = is_xsize_larger ? y_dims : x_dims;
+  const auto &base_dims = is_xsize_larger ? x_dims : y_dims;
   bool is_strided =
       ((x_dims.size() > 1 && y_dims.size() > 1) && (x_dims[0] == y_dims[0]) &&
        (x_dims.size() == y_dims.size()));
@@ -317,11 +319,22 @@ void CommonForwardBroadcastCUDA(
     if (start_stride) stride *= bcast_dims[i];
   }
 
+  if (base_dims.size() != out_dims.size()) {
+    is_strided = false;
+  } else {
+    for (int i = 0; i < base_dims.size(); ++i) {
+      if (base_dims[i] != out_dims[i]) {
+        is_strided = false;
+        break;
+      }
+    }
+  }
+
   if (is_strided) {
     const int numel =
-        std::accumulate(out_dims_array + 1, out_dims_array + max_dim, 1,
+        std::accumulate(out_dims_array + 1, out_dims_array + out_dims.size(), 1,
                         std::multiplies<int>());  // not include batch dim
-    const int num_batch = out_dims_array[0];
+    const int num_batch = out_dims[0];
     constexpr int threads = PADDLE_CUDA_THREAD_SIZE;
     const int concurrent_blocks = ctx.GetMaxPhysicalThreadCount() / threads;
     const int num_sm = ctx.GetSMCount();
