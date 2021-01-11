@@ -136,8 +136,9 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.allclose(x, y, 'rtol', str(rtol), 'atol', str(atol), 'equal_nan',
-                                 equal_nan)
+        return core.ops.allclose(x, y, 'rtol',
+                                 str(rtol), 'atol',
+                                 str(atol), 'equal_nan', equal_nan)
 
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
     check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
