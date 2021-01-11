@@ -151,6 +151,10 @@ class BrpcPsClient : public PSClient {
   virtual std::future<int32_t> send_client2client_msg(
       int msg_type, int to_client_id, const std::string &msg) override;
 
+  // for local save sparse
+  virtual int32_t recv_and_save_table(const uint64_t table_id,
+                                      const std::string &path);
+
  private:
   virtual int32_t initialize() override;
 
@@ -164,9 +168,6 @@ class BrpcPsClient : public PSClient {
 
   std::future<int32_t> send_save_cmd(uint32_t table_id, int cmd_id,
                                      const std::vector<std::string> &param);
-
-  // for local save sparse
-  void local_save_sparse_tensor(uint32_t table_id, const std::string &path);
 
   inline brpc::Channel *get_sparse_channel(size_t server_id) {
     return _server_channels[server_id][0].get();

@@ -853,10 +853,16 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
+        distributed_varnames = self.compiled_strategy.get_sparse_tablenames(
+            self.compiled_strategy.origin_main_program, True)
         values = []
         for id, names in context.items():
-            values.extend(names)
+            # save sparse & distributed param on server
             self._worker.save_one_model(id, dirname, mode)
+            if names not in distributed_varnames:
+                # only save sparse param to local
+                self._worker.recv_and_save_model(id, dirname)
+            values.extend(names)
         return values
 
     def _save_distributed_persistables(self,
@@ -874,14 +880,14 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             use_origin_program=True)
 
-        recv_sparse_varnames = self._save_sparse_params(
-            executor, dirname, sparses, main_program, mode)
+        sparse_varnames = self._save_sparse_params(executor, dirname, sparses,
+                                                   main_program, mode)
 
         recv_dense_varnames = []
         for id, names in denses.items():
             recv_dense_varnames.extend(names)
 
-        saved_varnames = recv_sparse_varnames
+        saved_varnames = sparse_varnames
 
         remaining_vars = list(
             filter(
