@@ -220,7 +220,7 @@ void XPUDeviceContext::Wait() const {
                         "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
-  xpu_wait();
+  xpu_wait(context_->xpu_stream);
 }
 
 Place XPUDeviceContext::GetPlace() const { return place_; }
