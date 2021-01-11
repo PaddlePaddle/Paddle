@@ -390,6 +390,12 @@ class SimpleRNNCell(RNNCellBase):
     def state_shape(self):
         return (self.hidden_size, )
 
+    def extra_repr(self):
+        s = '{input_size}, {hidden_size}'
+        if self.activation is not "tanh":
+            s += ', activation={activation}'
+        return s.format(**self.__dict__)
+
 
 class LSTMCell(RNNCellBase):
     r"""
@@ -540,6 +546,9 @@ class LSTMCell(RNNCellBase):
         """
         return ((self.hidden_size, ), (self.hidden_size, ))
 
+    def extra_repr(self):
+        return '{input_size}, {hidden_size}'.format(**self.__dict__)
+
 
 class GRUCell(RNNCellBase):
     r"""
@@ -683,6 +692,9 @@ class GRUCell(RNNCellBase):
         to the shape of :math:`h_{t-1}`.
         """
         return (self.hidden_size, )
+
+    def extra_repr(self):
+        return '{input_size}, {hidden_size}'.format(**self.__dict__)
 
 
 class RNN(Layer):
@@ -858,11 +870,12 @@ class RNNBase(LayerList):
                  bias_ih_attr=None,
                  bias_hh_attr=None):
         super(RNNBase, self).__init__()
+        bidirectional_list = ["bidirectional", "bidirect"]
         self.mode = mode
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.dropout = dropout
-        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.num_directions = 2 if direction in bidirectional_list else 1
         self.time_major = time_major
         self.num_layers = num_layers
         self.state_components = 2 if mode == "LSTM" else 1
@@ -882,14 +895,14 @@ class RNNBase(LayerList):
             rnn_cls = SimpleRNNCell
             kwargs["activation"] = self.activation
 
-        if direction in ["forward", "backward"]:
-            is_reverse = direction == "backward"
+        if direction in ["forward"]:
+            is_reverse = False
             cell = rnn_cls(input_size, hidden_size, **kwargs)
             self.append(RNN(cell, is_reverse, time_major))
             for i in range(1, num_layers):
                 cell = rnn_cls(hidden_size, hidden_size, **kwargs)
                 self.append(RNN(cell, is_reverse, time_major))
-        elif direction == "bidirectional":
+        elif direction in bidirectional_list:
             cell_fw = rnn_cls(input_size, hidden_size, **kwargs)
             cell_bw = rnn_cls(input_size, hidden_size, **kwargs)
             self.append(BiRNN(cell_fw, cell_bw, time_major))
@@ -899,13 +912,12 @@ class RNNBase(LayerList):
                 self.append(BiRNN(cell_fw, cell_bw, time_major))
         else:
             raise ValueError(
-                "direction should be forward, backward or bidirectional, "
+                "direction should be forward or bidirect (or bidirectional), "
                 "received direction = {}".format(direction))
 
         self.could_use_cudnn = True
-        self.could_use_cudnn &= direction != "backward"
         self.could_use_cudnn &= len(self.parameters()) == num_layers * 4 * (
-            2 if direction == "bidirectional" else 1)
+            2 if direction in bidirectional_list else 1)
 
         # Expose params as RNN's attribute, which can make it compatible when
         # replacing small ops composed rnn with cpp rnn kernel.
@@ -977,39 +989,50 @@ class RNNBase(LayerList):
     def _cudnn_impl(self, inputs, initial_states, sequence_length):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
-        out = self._helper.create_variable_for_type_inference(inputs.dtype)
-        state = [
-            self._helper.create_variable_for_type_inference(inputs.dtype)
-            for i in range(self.state_components)
-        ]
-        reserve = self._helper.create_variable_for_type_inference(
-            dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
 
-        inputs = {
-            'Input': inputs,
-            'WeightList': self._all_weights,
-            'PreState': initial_states,
-            'SequenceLength': sequence_length
-        }
-        attrs = {
-            'dropout_prob': self.dropout,
-            'is_bidirec': self.num_directions == 2,
-            'input_size': self.input_size,
-            'hidden_size': self.hidden_size,
-            'num_layers': self.num_layers,
-            'mode': self.mode,
-            'is_test': not self.training
-        }
+        if fluid.framework.in_dygraph_mode():
+            _, _, out, state = framework.core.ops.rnn(
+                inputs, initial_states, self._all_weights, sequence_length,
+                self._dropout_state, self.state_components, 'dropout_prob',
+                self.dropout, 'is_bidirec', self.num_directions == 2,
+                'input_size', self.input_size, 'hidden_size', self.hidden_size,
+                'num_layers', self.num_layers, 'mode', self.mode, 'is_test',
+                not self.training)
+        else:
+            out = self._helper.create_variable_for_type_inference(inputs.dtype)
+            state = [
+                self._helper.create_variable_for_type_inference(inputs.dtype)
+                for i in range(self.state_components)
+            ]
+            reserve = self._helper.create_variable_for_type_inference(
+                dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
 
-        outputs = {
-            'Out': out,
-            'State': state,
-            'Reserve': reserve,
-            'DropoutState': self._dropout_state,
-        }
+            inputs = {
+                'Input': inputs,
+                'WeightList': self._all_weights,
+                'PreState': initial_states,
+                'SequenceLength': sequence_length
+            }
+            attrs = {
+                'dropout_prob': self.dropout,
+                'is_bidirec': self.num_directions == 2,
+                'input_size': self.input_size,
+                'hidden_size': self.hidden_size,
+                'num_layers': self.num_layers,
+                'mode': self.mode,
+                'is_test': not self.training
+            }
 
-        self._helper.append_op(
-            type="rnn", inputs=inputs, outputs=outputs, attrs=attrs)
+            outputs = {
+                'Out': out,
+                'State': state,
+                'Reserve': reserve,
+                'DropoutState': self._dropout_state,
+            }
+
+            self._helper.append_op(
+                type="rnn", inputs=inputs, outputs=outputs, attrs=attrs)
+
         out = paddle.tensor.transpose(out,
                                       [1, 0, 2]) if not self.time_major else out
         return out, tuple(state) if len(state) > 1 else state[0]
@@ -1020,15 +1043,15 @@ class RNNBase(LayerList):
         if initial_states is None:
             state_shape = (self.num_layers * self.num_directions, -1,
                            self.hidden_size)
-            if self.state_components == 1:
-                initial_states = paddle.fluid.layers.fill_constant_batch_size_like(
+            initial_states = tuple([
+                paddle.fluid.layers.fill_constant_batch_size_like(
                     inputs, state_shape, dtype, 0, batch_index, 1)
-            else:
-                initial_states = tuple([
-                    paddle.fluid.layers.fill_constant_batch_size_like(
-                        inputs, state_shape, dtype, 0, batch_index, 1)
-                    for _ in range(self.state_components)
-                ])
+                for _ in range(self.state_components)
+            ])
+        else:
+            initial_states = [initial_states] if isinstance(
+                initial_states,
+                paddle.fluid.framework.Variable) else initial_states
 
         if self.could_use_cudnn:
             # Add CPU kernel and dispatch in backend later
@@ -1052,6 +1075,16 @@ class RNNBase(LayerList):
         final_states = concat_states(final_states, self.num_directions == 2,
                                      self.state_components)
         return outputs, final_states
+
+    def extra_repr(self):
+        main_str = '{input_size}, {hidden_size}'
+        if self.num_layers != 1:
+            main_str += ', num_layers={num_layers}'
+        if self.time_major != False:
+            main_str += ', time_major={time_major}'
+        if self.dropout != 0:
+            main_str += ', dropout={dropout}'
+        return main_str.format(**self.__dict__)
 
 
 class SimpleRNN(RNNBase):
@@ -1079,8 +1112,8 @@ class SimpleRNN(RNNBase):
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        direction (str, optional): The direction of the network. It can be "forward", 
-            "backward" and "bidirectional". When "bidirectional", the way to merge
+        direction (str, optional): The direction of the network. It can be "forward"
+            or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input means the
             time steps. Defaults to False.
@@ -1195,8 +1228,8 @@ class LSTM(RNNBase):
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        direction (str, optional): The direction of the network. It can be "forward", 
-            "backward" and "bidirectional". When "bidirectional", the way to merge
+        direction (str, optional): The direction of the network. It can be "forward"
+            or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
             means the time steps. Defaults to False.
@@ -1300,8 +1333,8 @@ class GRU(RNNBase):
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        direction (str, optional): The direction of the network. It can be "forward",
-            "backward" and "bidirectional". When "bidirectional", the way to merge
+        direction (str, optional): The direction of the network. It can be "forward"
+            or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
             means the time steps. Defaults to False.

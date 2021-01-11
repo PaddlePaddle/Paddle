@@ -13,81 +13,120 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/tensor_table.h"
+#include <chrono>  // NOLINT
+#include <map>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/distributed/common/utils.h"
-
+DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
-int32_t DenseTensorTable::initialize() {
-  _shards_task_pool.resize(10);
-  for (int i = 0; i < _shards_task_pool.size(); ++i) {
-    _shards_task_pool[i].reset(new ::ThreadPool(1));
-  }
+int32_t TensorTable::set_program_env(
+    framework::Scope *scope, platform::Place place,
+    const std::vector<framework::ProgramDesc> *sub_program) {
+  scope_ = scope;
+  place_ = place;
+  executor_ = new framework::Executor(place_);
+  sub_program_ = sub_program;
   return 0;
 }
 
-int32_t DenseTensorTable::initialize_tensor(framework::Scope *scope,
-                                            framework::ProgramDesc *program,
-                                            framework::Executor *executor) {
-  scope_ = scope;
-  program_ = program;
-  executor_ = executor;
+int32_t GlobalStepTable::initialize() {
+  auto _program_config = _config.tensor();
+  auto trainers_ = _config.common().trainer_num();
+  FLAGS_eager_delete_tensor_gb = -1;
+  // Get Config
+  if (_program_config.has_startup_program_id()) {
+    startup_program_id_ = _program_config.startup_program_id();
+  }
+  if (_program_config.has_main_program_id()) {
+    main_program_id_ = _program_config.main_program_id();
+  }
+  if (_program_config.has_feed_var_name()) {
+    feed_var_name_ = _program_config.feed_var_name();
+  }
+  if (_program_config.has_fetch_var_name()) {
+    fetch_var_name_ = _program_config.fetch_var_name();
+  }
 
-  auto tensor_config = _config.tensor();
-  if (tensor_config.has_common_block_map()) {
-    auto block_maps =
-        paddle::string::split_string(tensor_config.common_block_map(), "#");
-    for (auto &block_map : block_maps) {
-      auto block = paddle::string::split_string(block_map, ":");
-      auto block_id = std::stoi(block[0]);
-      std::vector<int> block_ids{block_id};
-      auto block_cmd = block[1];
-      auto prepared = executor_->Prepare(*program_, block_ids);
-      (*prepared_ctx_)[block_cmd] = prepared[0];
+  // Run startup program
+  if (startup_program_id_ != -1) {
+    std::map<std::string, const framework::LoDTensor *> fake_feed;
+    std::map<std::string, framework::FetchType *> fake_fetch;
+    auto startup_program_desc = sub_program_->at(startup_program_id_);
+    auto ctx = executor_->Prepare(startup_program_desc, 0);
+    executor_->RunPreparedContext(ctx.get(), scope_, false);
+  }
+
+  if (main_program_id_ != -1) {
+    // Run main porgram, if program is used for learning decay
+    auto main_program_desc = sub_program_->at(main_program_id_);
+    auto main_ctx = executor_->Prepare(main_program_desc, 0);
+    exec_context_ = std::move(main_ctx);
+    executor_->RunPreparedContext(exec_context_.get(), scope_, false);
+    // init decay_counters
+    decay_counters_.reserve(trainers_);
+    for (int32_t i = 0; i < trainers_; ++i) {
+      decay_counters_[i] = 0;
     }
   }
-}
 
-int32_t DenseTensorTable::pull_dense(float *values, size_t numel) {
-  PADDLE_ENFORCE_EQ(numel, _data.numel(),
-                    paddle::platform::errors::PreconditionNotMet(
-                        "pull dense error, excepted numel %d, but actually %d.",
-                        _data.numel(), numel));
-
-  GetBlas<float>().VCOPY(numel, _data.data<float>(), values);
   return 0;
 }
 
-int32_t DenseTensorTable::push_dense(const float *values, size_t numel) {
-  auto varname = _config.tensor().grad();
-  auto local_scope = scope_->NewTmpScope();
-  auto *var = local_scope->Var(varname);
-  auto *t = var->GetMutable<framework::LoDTensor>();
-  auto dims = paddle::framework::make_ddim({});
+int32_t GlobalStepTable::set_table_map(
+    std::unordered_map<uint32_t, std::shared_ptr<Table>> *table_map) {
+  auto *lr_var = scope_->FindVar(fetch_var_name_);
+  auto *lr_tensor = lr_var->GetMutable<framework::LoDTensor>();
+  auto *lr_value = lr_tensor->mutable_data<float>(platform::CPUPlace());
+  VLOG(3) << "GlobalStepTable::set_table_map set global lr: " << *lr_value;
 
-  auto ctx = paddle::platform::CPUDeviceContext();
-  t->mutable_data<float>(_data.dims(), ctx.GetPlace());
-
-  GetBlas<float>().VCOPY(numel, values, t->data<float>());
-  executor_->RunPreparedContext((*prepared_ctx_)["push"].get(),
-                                local_scope.get());
+  for (auto iter = table_map->begin(); iter != table_map->end(); iter++) {
+    auto table_id = iter->first;
+    if (table_id == _config.table_id()) {
+      continue;
+    }
+    iter->second->set_global_lr(lr_value);
+  }
+  return 0;
 }
 
-int32_t DenseTensorTable::push_dense_param(const float *values, size_t numel) {
-  auto ctx = paddle::platform::CPUDeviceContext();
-  if (_data.IsInitialized()) {
-    PADDLE_ENFORCE_EQ(
-        numel, _data.numel(),
-        paddle::platform::errors::PreconditionNotMet(
-            "pull dense error, excepted numel %d, but actually %d.",
-            _data.numel(), numel));
-  } else {
-    _data.mutable_data<float>(
-        framework::make_ddim({static_cast<int64_t>(numel), 1}), ctx.GetPlace());
+int32_t GlobalStepTable::push_dense(const int64_t *values,
+                                    const int32_t trainer_id) {
+  return _run_program(values, trainer_id);
+}
+
+int32_t GlobalStepTable::_run_program(const int64_t *values,
+                                      const uint32_t trainer_id) {
+  FLAGS_eager_delete_tensor_gb = -1;
+  auto counter = decay_counters_.at(trainer_id);
+  counter += int(values[0]);
+  decay_counters_.at(trainer_id) = counter;
+
+  auto *global_step_var = scope_->FindVar(feed_var_name_);
+  auto *tensor = global_step_var->GetMutable<framework::LoDTensor>();
+  auto *value = tensor->mutable_data<int64_t>(platform::CPUPlace());
+
+  auto global_counter = 0;
+  for (auto &trainer_counter : decay_counters_) {
+    global_counter += trainer_counter.second;
   }
 
-  GetBlas<float>().VCOPY(numel, values, _data.data<float>());
+  // Todo: hard code for increment op
+  value[0] = global_counter - 1;
+  VLOG(3) << "GlobalStepTable::_run_program global_counter " << value[0];
+
+  executor_->RunPreparedContext(exec_context_.get(), scope_, false, false);
+  auto *lr_var = scope_->FindVar(fetch_var_name_);
+  auto *lr_tensor = lr_var->GetMutable<framework::LoDTensor>();
+  auto *lr_value = lr_tensor->mutable_data<float>(platform::CPUPlace());
+  VLOG(3) << "GlobalStepTable::LR value: " << lr_value[0];
   return 0;
 }
+
 }  // namespace distributed
 }  // namespace paddle

@@ -38,11 +38,9 @@ if core.is_compiled_with_cuda():
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
-quant_skip_pattern_list = ['skip_qat', 'skip_quant']
-
 
 class ImperativeLenet(fluid.dygraph.Layer):
-    def __init__(self, num_classes=10, classifier_activation='softmax'):
+    def __init__(self, num_classes=10):
         super(ImperativeLenet, self).__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
         conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
@@ -135,7 +133,7 @@ class TestImperativeOutSclae(unittest.TestCase):
 
         np.random.seed(seed)
         reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=32, drop_last=True)
+            paddle.dataset.mnist.test(), batch_size=512, drop_last=True)
         lenet = ImperativeLenet()
         fixed_state = {}
         for name, param in lenet.named_parameters():

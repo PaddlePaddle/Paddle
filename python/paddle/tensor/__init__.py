@@ -22,6 +22,8 @@ from __future__ import print_function
 from .random import randperm
 from .attribute import rank  #DEFINE_ALIAS
 from .attribute import shape  #DEFINE_ALIAS
+from .attribute import real  #DEFINE_ALIAS
+from .attribute import imag  #DEFINE_ALIAS
 from .creation import to_tensor  #DEFINE_ALIAS
 from .creation import diag  #DEFINE_ALIAS
 from .creation import eye  #DEFINE_ALIAS
@@ -168,6 +170,7 @@ from .math import prod  #DEFINE_ALIAS
 from .math import all  #DEFINE_ALIAS
 from .math import any  #DEFINE_ALIAS
 from .math import broadcast_shape  #DEFINE_ALIAS
+from .math import conj  #DEFINE_ALIAS
 
 from .random import multinomial  #DEFINE_ALIAS
 from .random import standard_normal
@@ -200,3 +203,8 @@ from .stat import median  #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS
 from .to_string import set_printoptions  #DEFINE_ALIAS
+
+from .array import array_length  #DEFINE_ALIAS
+from .array import array_read  #DEFINE_ALIAS
+from .array import array_write  #DEFINE_ALIAS
+from .array import create_array  #DEFINE_ALIAS
