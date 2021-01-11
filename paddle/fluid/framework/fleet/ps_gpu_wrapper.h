@@ -83,6 +83,7 @@ class PSGPUWrapper {
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
       keys_tensor.resize(resource_->total_gpu());
+      heter_devices_ = dev_ids;
     }
   }
 
@@ -113,8 +114,7 @@ class PSGPUWrapper {
     float initial_range = (config.find("initial_range") == config.end())
                               ? 1.0
                               : config["initial_range"];
-    this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
-                       learning_rate, initial_g2sum, initial_range);
+
     // mf config settings
     float mf_create_thresholds =
         (config.find("mf_create_thresholds") == config.end())
@@ -135,8 +135,14 @@ class PSGPUWrapper {
     float mf_max_bound = (config.find("mf_max_bound") == config.end())
                              ? 1.0
                              : config["mf_max_bound"];
-    this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate, mf_initial_g2sum,
-                       mf_initial_range, mf_min_bound, mf_max_bound);
+    for (size_t i = 0; i < heter_devices_.size(); i++) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(heter_devices_[i]));
+      this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
+                         learning_rate, initial_g2sum, initial_range);
+      this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
+                         mf_initial_g2sum, mf_initial_range, mf_min_bound,
+                         mf_max_bound);
+    }
   }
   void SetDataset(Dataset* dataset) { dataset_ = dataset; }
 
@@ -166,6 +172,7 @@ class PSGPUWrapper {
   std::shared_ptr<HeterPsResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
   std::vector<int> slot_vector_;
+  std::vector<int> heter_devices_;
   std::unordered_set<std::string> gpu_ps_config_keys_;
   HeterObjectPool<HeterContext> gpu_task_pool_;
   std::vector<std::vector<std::vector<uint64_t>>> thread_keys_;
