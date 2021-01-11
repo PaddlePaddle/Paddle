@@ -447,7 +447,7 @@ class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
               platform::errors::Unimplemented(
                   "Warp softmax backward is only available for fp32 and fp16"));
         }
-      } else if (dim < 40) {
+      } else if (dim < 40 && dim % 32 != 0) {
         optimize = true;
         Tensor mul_grad;
         int numel = N * dim;
