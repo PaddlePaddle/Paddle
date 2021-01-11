@@ -191,22 +191,10 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 }
 
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
-                     const NameVarBaseMap& outs,
-                     framework::AttributeMap attrs) {
-  TraceOp(type, ins, outs, std::move(attrs), expected_place_, has_grad_, {});
-}
-
-void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const std::map<std::string, std::string>& inplace_map) {
   TraceOp(type, ins, outs, std::move(attrs), expected_place_, has_grad_,
           inplace_map);
-}
-
-void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
-                     const NameVarBaseMap& outs, framework::AttributeMap attrs,
-                     const platform::Place& place, bool trace_backward) {
-  TraceOp(type, ins, outs, std::move(attrs), place, trace_backward, {});
 }
 
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,

@@ -70,9 +70,9 @@ __all__ = [
 ]
 
 
-def dygraph_inplace_in_static_mode(api_name):
+def _print_warning_in_static_mode(api_name):
     warnings.warn(
-        "{}_() API only uses Inplace strategy in dygraph mode, the function is the same as {}() in static mode.".
+        "In static mode, {}_() is the same as {}() and does not perform inplace operation.".
         format(api_name, api_name))
 
 
@@ -580,8 +580,8 @@ def squeeze(x, axis=None, name=None):
 
 def squeeze_(x, axis=None, name=None):
     """
-    Inplace version of ``squeeze`` API. Please refer to :ref:`api_paddle_tensor_squeeze`.
-    Inplace strategy works on Tensor ``x``.
+    Inplace version of ``squeeze`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_squeeze`.
 
     Examples:
         .. code-block:: python
@@ -607,7 +607,7 @@ def squeeze_(x, axis=None, name=None):
         out, _ = core.ops.squeeze2_(x, 'axes', axis)
         return out
 
-    dygraph_inplace_in_static_mode("squeeze")
+    _print_warning_in_static_mode("squeeze")
     return squeeze(x, axis, name)
 
 
@@ -786,8 +786,8 @@ def unsqueeze(x, axis, name=None):
 
 def unsqueeze_(x, axis, name=None):
     """
-    Inplace version of ``unsqueeze`` API. Please refer to :ref:`api_paddle_tensor_unsqueeze`.
-    Inplace strategy works on Tensor ``x``.
+    Inplace version of ``unsqueeze`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_unsqueeze`.
 
     Examples:
         .. code-block:: python
@@ -825,7 +825,7 @@ def unsqueeze_(x, axis, name=None):
         out, _ = core.ops.unsqueeze2_(x, 'axes', axis)
         return out
 
-    dygraph_inplace_in_static_mode("unsqueeze")
+    _print_warning_in_static_mode("unsqueeze")
     return unsqueeze(x, axis, name)
 
 
@@ -1057,8 +1057,8 @@ def scatter(x, index, updates, overwrite=True, name=None):
 
 def scatter_(x, index, updates, overwrite=True, name=None):
     """
-    Inplace version of ``scatter`` API. Please refer to :ref:`api_paddle_tensor_scatter`.
-    Inplace strategy works on Tensor ``x``.
+    Inplace version of ``scatter`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_scatter`.
 
     Examples:
         .. code-block:: python
@@ -1087,7 +1087,7 @@ def scatter_(x, index, updates, overwrite=True, name=None):
     if in_dygraph_mode():
         return core.ops.scatter_(x, index, updates, 'overwrite', overwrite)
 
-    dygraph_inplace_in_static_mode("scatter")
+    _print_warning_in_static_mode("scatter")
     return scatter(x, index, updates, overwrite, name)
 
 
@@ -1612,8 +1612,8 @@ def reshape(x, shape, name=None):
 
 def reshape_(x, shape, name=None):
     """
-    Inplace version of ``reshape`` API. Please refer to :ref:`api_paddle_tensor_reshape`.
-    Inplace strategy works on Tensor ``x``.
+    Inplace version of ``reshape`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_reshape`.
 
     Examples:
         .. code-block:: python
@@ -1651,7 +1651,7 @@ def reshape_(x, shape, name=None):
             out, _ = core.ops.reshape2_(x, shape)
             return out
 
-    dygraph_inplace_in_static_mode("reshape")
+    _print_warning_in_static_mode("reshape")
     return reshape(x, shape, name)
 
 

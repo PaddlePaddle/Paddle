@@ -22,7 +22,7 @@ from ...fluid.layers import sigmoid  #DEFINE_ALIAS
 from ...tensor.math import tanh  #DEFINE_ALIAS
 from ...tensor.math import tanh_  #DEFINE_ALIAS
 
-from ...tensor.manipulation import dygraph_inplace_in_static_mode
+from ...tensor.manipulation import _print_warning_in_static_mode
 
 __all__ = [
     'brelu',
@@ -108,8 +108,8 @@ def elu(x, alpha=1.0, name=None):
 
 def elu_(x, alpha=1.0, name=None):
     r"""
-    Inplace version of ``elu`` API. Please refer to :ref:`api_nn_cn_elu`.
-    Inplace strategy works on Tensor ``x``.
+    Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_nn_cn_elu`.
 
     Examples:
         .. code-block:: python
@@ -128,7 +128,7 @@ def elu_(x, alpha=1.0, name=None):
     if in_dygraph_mode():
         return core.ops.elu_(x, 'alpha', alpha)
 
-    dygraph_inplace_in_static_mode("elu")
+    _print_warning_in_static_mode("elu")
     return elu(x, alpha, name)
 
 
@@ -549,8 +549,8 @@ def relu(x, name=None):
 
 def relu_(x, name=None):
     """
-    Inplace version of ``relu`` API. Please refer to :ref:`api_nn_cn_relu`.
-    Inplace strategy works on Tensor ``x``.
+    Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_nn_cn_relu`.
 
     Examples:
         .. code-block:: python
@@ -566,7 +566,7 @@ def relu_(x, name=None):
     if in_dygraph_mode():
         return core.ops.relu_(x)
 
-    dygraph_inplace_in_static_mode("relu")
+    _print_warning_in_static_mode("relu")
     return relu(x, name)
 
 
@@ -937,8 +937,8 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
 def softmax_(x, axis=-1, dtype=None, name=None):
     r"""
-    Inplace version of ``softmax`` API. Please refer to :ref:`api_nn_cn_softmax`.
-    Inplace strategy works on Tensor ``x``. Dtype is useless in dygraph mode.
+    Inplace version of ``softmax`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_nn_cn_softmax`.
 
     Examples:
         .. code-block:: python
@@ -969,7 +969,7 @@ def softmax_(x, axis=-1, dtype=None, name=None):
     if in_dygraph_mode():
         return core.ops.softmax_(x, 'axis', axis, 'use_cudnn', use_cudnn)
 
-    dygraph_inplace_in_static_mode("softmax")
+    _print_warning_in_static_mode("softmax")
     return softmax(x, axis, dtype, name)
 
 
