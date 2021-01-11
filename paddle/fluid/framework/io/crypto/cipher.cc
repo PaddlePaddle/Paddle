@@ -56,9 +56,16 @@ std::shared_ptr<Cipher> CipherFactory::CreateCipher(
 }
 
 }  // namespace framework
-#ifdef PADDLE_ON_INFERENCE
+
 std::shared_ptr<framework::Cipher> MakeCipher(const std::string& config_file) {
+#ifdef PADDLE_ON_INFERENCE
   return framework::CipherFactory::CreateCipher(config_file);
-}
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Cipher API is not available, should not reach here. Please re-compile "
+      "with ON_INFER=ON."));
+  return nullptr;
 #endif
+}
+
 }  // namespace paddle
