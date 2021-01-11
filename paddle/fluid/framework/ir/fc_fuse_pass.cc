@@ -156,7 +156,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
         elementwise_add_op_desc->GetNullableAttr("out_threshold");
     if (out_threshold_attr.which()) {
       VLOG(4) << "setting out_threshold: "
-              << boost::get<float>(out_threshold_attr);
+              << BOOST_GET_CONST(float, out_threshold_attr);
       desc.SetAttr("out_threshold", out_threshold_attr);
     }
     desc.Flush();
