@@ -14,7 +14,7 @@
 
 from ... import default_main_program
 from ... import default_startup_program
-from ... import layers
+from ... import layers, clip
 from ... import unique_name
 from ... import program_guard
 from . import fp16_utils
@@ -23,7 +23,6 @@ from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
 from .amp_nn import check_finite_and_unscale
 from .amp_nn import update_loss_scaling
-from ...optimizer import global_norm
 
 __all__ = ["decorate"]
 
@@ -212,14 +211,9 @@ class OptimizerWithMixedPrecision(object):
                     name="update_loss_scaling")
 
         if self._optimizer.__class__.__name__ in ['Lamb', 'LambOptimizer']:
-            use_norm = layers.cond(
-                found_inf,
-                true_fn=lambda: layers.ones(shape=[1], dtype="float32"),
-                false_fn=lambda: global_norm([grad for _, grad in params_grads]))
-            optimize_ops = self._optimizer.apply_gradients(params_grads,
-                                                           use_norm)
-        else:
-            optimize_ops = self._optimizer.apply_gradients(params_grads)
+            self._optimizer._grad_clip = clip.ClipGradByGlobalNorm(
+                clip_norm=1.0)
+        optimize_ops = self._optimizer.apply_gradients(params_grads)
         return optimize_ops
 
     def apply_optimize(self, loss, startup_program, params_grads):

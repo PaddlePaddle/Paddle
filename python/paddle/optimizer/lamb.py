@@ -18,7 +18,6 @@ from ..fluid import framework
 from ..fluid.framework import Variable
 from ..fluid.regularizer import append_regularization_ops
 from ..fluid.clip import append_gradient_clip_ops
-from ..fluid.optimizer import _dynamic_clip_grad_by_global_norm, _static_clip_grad_by_global_norm, global_norm
 
 __all__ = ["Lamb"]
 
@@ -155,70 +154,44 @@ class Lamb(Optimizer):
             weight_decay = 0.0
         else:
             weight_decay = self._lamb_weight_decay
+        lr = self._create_param_lr(param_and_grad)
+
+        if framework.in_dygraph_mode():
+            _, _, _, _, _ = core.ops.lamb(
+                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
+                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
+                moment2, beta1_pow_acc, beta2_pow_acc, 'beta1', self._beta1,
+                'beta2', self._beta2, 'epsilon', self._epsilon, 'weight_decay',
+                weight_decay)
+            return None
 
         # create the lamb optimize op
+        inputs = {
+            "Param": param_and_grad[0],
+            "Grad": param_and_grad[1],
+            "LearningRate": lr,
+            "Moment1": moment1,
+            "Moment2": moment2,
+            "Beta1Pow": beta1_pow_acc,
+            "Beta2Pow": beta2_pow_acc
+        }
+        outputs = {
+            "ParamOut": param_and_grad[0],
+            "Moment1Out": moment1,
+            "Moment2Out": moment2,
+            "Beta1PowOut": beta1_pow_acc,
+            "Beta2PowOut": beta2_pow_acc
+        }
+        attrs = {
+            "beta1": self._beta1,
+            "beta2": self._beta2,
+            "epsilon": self._epsilon,
+            "weight_decay": weight_decay
+        }
         lamb_op = block.append_op(
             type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad),
-                "Moment1": moment1,
-                "Moment2": moment2,
-                "Beta1Pow": beta1_pow_acc,
-                "Beta2Pow": beta2_pow_acc
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "Moment1Out": moment1,
-                "Moment2Out": moment2,
-                "Beta1PowOut": beta1_pow_acc,
-                "Beta2PowOut": beta2_pow_acc
-            },
-            attrs={
-                "beta1": self._beta1,
-                "beta2": self._beta2,
-                "epsilon": self._epsilon,
-                "weight_decay": weight_decay
-            },
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
             stop_gradient=True)
-
         return lamb_op
-
-    def _apply_optimize(self, loss, startup_program, params_grads):
-        if framework.in_dygraph_mode():
-            with program_guard(framework.default_main_program(),
-                               framework.default_startup_program()):
-                params_grads = _dynamic_clip_grad_by_global_norm(params_grads)
-                if self._grad_clip is not None:
-                    params_grads = self._grad_clip(params_grads)
-                params_grads = append_regularization_ops(params_grads,
-                                                         self.regularization)
-                optimize_ops = self._create_optimization_pass(params_grads)
-        else:
-            program = loss.block.program
-            with program_guard(program, startup_program):
-                optimize_ops = self.apply_gradients(params_grads)
-        return optimize_ops
-
-    def apply_gradients(self, params_grads, use_norm=None):
-        params_grads = sorted(params_grads, key=lambda x: x[0].name)
-        grads = [grad for _, grad in params_grads]
-
-        if use_norm is None:
-            use_norm = global_norm(grads)
-        params_grads = _static_clip_grad_by_global_norm(params_grads, use_norm)
-
-        # 'optimizer(grad_clip)' or 'set_gradient_clip'
-        if self._grad_clip is not None:
-            params_grads = self._grad_clip(params_grads)
-        else:
-
-            params_grads = append_gradient_clip_ops(params_grads)
-
-        # Add regularization if any
-        params_grads = append_regularization_ops(params_grads,
-                                                 self.regularization)
-
-        optimize_ops = self._create_optimization_pass(params_grads)
-        return optimize_ops

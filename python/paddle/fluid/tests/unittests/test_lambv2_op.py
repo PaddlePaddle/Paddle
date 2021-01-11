@@ -89,32 +89,23 @@ class LAMBOptimizer(paddle.optimizer.Lamb):
 
 class TestLambOpV2(unittest.TestCase):
     def test_lamb_op(self):
-        paddle.enable_static()
-        place = fluid.CPUPlace()
-        shape = [2, 3, 8, 8]
-        exe = fluid.Executor(place)
-        train_prog = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(train_prog, startup):
-            with fluid.unique_name.guard():
-                data = fluid.data(name="data", shape=shape)
-                conv = fluid.layers.conv2d(data, 8, 3)
-                loss = fluid.layers.reduce_mean(conv)
-                beta1 = 0.85
-                beta2 = 0.95
-                betas = [beta1, beta2]
-                opt = paddle.optimizer.Lamb(
-                    learning_rate=1e-5, beta1=beta1, beta2=beta2, epsilon=1e-8)
-                opt.minimize(loss)
+        shape = [2, 4, 8, 8]
+        data = paddle.to_tensor(np.random.random(size=shape).astype("float32"))
+        conv = paddle.nn.Conv2D(4, 6, (3, 3))
+        data = conv(data)
+        loss = paddle.mean(data)
+        opt = paddle.optimizer.Lamb(
+            learning_rate=1e-5, epsilon=1e-8, parameters=conv.parameters())
+        loss.backward()
+        opt.minimize(loss)
 
-        exe.run(startup)
-        data_np = np.random.random(shape).astype('float32')
-        rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
-        assert rets[0] is not None
+        assert loss.numpy() is not None
 
 
 class TestLambOpWithCombinedOp(unittest.TestCase):
     def test_lamb_op_with_multi_steps(self):
+        paddle.enable_static()
+
         def _build_static_model(main, startup, seed=100):
             with fluid.program_guard(main, startup):
                 main.random_seed = seed

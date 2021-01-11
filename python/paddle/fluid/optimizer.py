@@ -3087,6 +3087,15 @@ class LambOptimizer(AdamOptimizer):
             weight_decay = 0.0
         else:
             weight_decay = self._weight_decay
+        lr = self._create_param_lr(param_and_grad)
+
+        if framework.in_dygraph_mode():
+            _, _, _, _, _ = core.ops.Lamb(
+                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
+                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
+                moment2, beta1_pow_acc, beta2_pow_acc, 'beta1', beta1, 'beta2',
+                beta2, 'epsilon', self._epsilon, 'weight_decay', weight_decay)
+            return None
 
         # create the lamb optimize op
         lamb_op = block.append_op(
@@ -3116,123 +3125,6 @@ class LambOptimizer(AdamOptimizer):
             stop_gradient=True)
 
         return lamb_op
-
-    def apply_gradients(self, params_grads, use_norm=None):
-        params_grads = sorted(params_grads, key=lambda x: x[0].name)
-        grads = [grad for _, grad in params_grads]
-        if use_norm is None:
-            use_nomr = global_norm(grads)
-        params_grads = _static_clip_grad_by_global_norm(
-            params_grads, use_norm=use_norm)
-
-        # 'optimizer(grad_clip)' or 'set_gradient_clip'
-        if self._grad_clip is not None:
-            params_grads = self._grad_clip(params_grads)
-        else:
-            params_grads = append_gradient_clip_ops(params_grads)
-
-        # Add regularization if any
-        params_grads = append_regularization_ops(params_grads,
-                                                 self.regularization)
-
-        optimize_ops = self._create_optimization_pass(params_grads)
-        return optimize_ops
-
-    def apply_optimize(self, loss, startup_program, params_grads):
-        if framework.in_dygraph_mode():
-            with program_guard(framework.default_main_program(),
-                               framework.default_startup_program()):
-                params_grads = _dynamic_clip_grad_by_global_norm(params_grads)
-                if self._grad_clip is not None:
-                    params_grads = self._grad_clip(params_grads)
-                params_grads = append_regularization_ops(params_grads,
-                                                         self.regularization)
-                optimize_ops = self._create_optimization_pass(params_grads)
-        else:
-            program = loss.block.program
-            with program_guard(program, startup_program):
-                optimize_ops = self.apply_gradients(params_grads)
-        return optimize_ops
-
-
-def _dynamic_clip_grad_by_global_norm(params_grads):
-    params_and_grads = []
-    sum_square_list = []
-    for p, g in params_grads:
-        if g is None:
-            continue
-        merge_grad = g
-        if g.type == core.VarDesc.VarType.SELECTED_ROWS:
-            merge_grad = layers.merge_selected_rows(g)
-            merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
-        square = layers.square(merge_grad)
-        sum_square = layers.reduce_sum(square)
-        sum_square_list.append(sum_square)
-
-    # all parameters have been filterd out
-    if len(sum_square_list) == 0:
-        return params_grads
-
-    global_norm_var = layers.concat(sum_square_list)
-    global_norm_var = layers.reduce_sum(global_norm_var)
-    global_norm_var = layers.sqrt(global_norm_var)
-    max_global_norm = layers.fill_constant(
-        shape=[1], dtype=global_norm_var.dtype, value=1.0)
-    clip_var = layers.elementwise_div(
-        x=max_global_norm,
-        y=layers.elementwise_max(
-            x=global_norm_var, y=max_global_norm))
-    for p, g in params_grads:
-        if g is None:
-            continue
-        new_grad = layers.elementwise_mul(x=g, y=clip_var)
-        params_and_grads.append((p, new_grad))
-
-    return params_and_grads
-
-
-def global_norm(grads):
-    if len(grads) == 0:
-        raise ValueError("len of grads in global_norm should be bigger than 0.")
-    with framework.name_scope('global_norm'):
-        sum_square_list = []
-        for g in grads:
-            if g is None:
-                continue
-            merge_grad = g
-            if g.type == core.VarDesc.VarType.SELECTED_ROWS:
-                merge_grad = layers.merge_selected_rows(g)
-                merge_grad = layers.get_tensor_form_selected_rows(merge_grad)
-            square = layers.square(merge_grad)
-            sum_square = layers.reduce_sum(square)
-            sum_square_list.append(sum_square)
-
-        if len(sum_square_list) == 0:
-            return layers.fill_constant(shape=[1], dtype="float32", value=1.0)
-
-        global_norm_var = layers.sum(sum_square_list)
-        global_norm_var = layers.sqrt(global_norm_var)
-
-    return global_norm_var
-
-
-def _static_clip_grad_by_global_norm(params_grads, use_norm):
-    with framework.name_scope('global_norm_clip'):
-        max_global_norm = layers.fill_constant(
-            shape=[1], dtype=use_norm.dtype, value=1.0)
-        scale_var = layers.elementwise_div(
-            x=max_global_norm,
-            y=layers.elementwise_max(
-                x=max_global_norm, y=use_norm))
-
-        for p, g in params_grads:
-            if g is None:
-                continue
-
-            #with p.block.program._optimized_guard([p, g]):
-            new_grad = layers.elementwise_mul(x=g, y=scale_var)
-            layers.assign(new_grad, g)
-    return params_grads
 
 
 # We short the class name, since users will use the optimizer with the package
