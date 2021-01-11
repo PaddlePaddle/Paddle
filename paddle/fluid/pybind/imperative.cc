@@ -1107,6 +1107,30 @@ void BindImperative(py::module *m_ptr) {
              return new_var;
            },
            py::return_value_policy::copy)
+      .def("_move_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CPUPlace &place, bool blocking) {
+             self->MoveTo(place, blocking);
+             return self;
+           })
+      .def("_move_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CUDAPinnedPlace &place, bool blocking) {
+             self->MoveTo(place, blocking);
+             return self;
+           })
+      .def("_move_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::XPUPlace &place, bool blocking) {
+             self->MoveTo(place, blocking);
+             return self;
+           })
+      .def("_move_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CUDAPlace &place, bool blocking) {
+             self->MoveTo(place, blocking);
+             return self;
+           })
       .def("value", [](imperative::VarBase &self) { return self.MutableVar(); },
            py::return_value_policy::reference)
       .def_property("name", &imperative::VarBase::Name,
@@ -1116,22 +1140,28 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::VarBase::SetOverridedStopGradient)
       .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
-      .def_property_readonly(
-          "shape",
-          [](imperative::VarBase &self) {
-            if (self.Var().IsType<framework::LoDTensor>()) {
-              return framework::vectorize<int>(
-                  self.Var().Get<framework::LoDTensor>().dims());
-            } else if (self.Var().IsType<framework::SelectedRows>()) {
-              return framework::vectorize<int>(
-                  self.Var().Get<framework::SelectedRows>().value().dims());
-            } else {
-              VLOG(2) << "It is meaningless to get shape of "
-                         "variable type "
-                      << GetTypeName(self);
-              return std::vector<int>();
-            }
-          })
+      .def_property_readonly("shape",
+                             [](imperative::VarBase &self) {
+                               if (self.Var().IsType<framework::LoDTensor>()) {
+                                 return framework::vectorize<int>(
+                                     self.Var()
+                                         .Get<framework::LoDTensor>()
+                                         .dims());
+                               } else if (self.Var()
+                                              .IsType<
+                                                  framework::SelectedRows>()) {
+                                 return framework::vectorize<int>(
+                                     self.Var()
+                                         .Get<framework::SelectedRows>()
+                                         .value()
+                                         .dims());
+                               } else {
+                                 VLOG(2) << "It is meaningless to get shape of "
+                                            "variable type "
+                                         << GetTypeName(self);
+                                 return std::vector<int>();
+                               }
+                             })
       .def_property_readonly("is_leaf", &imperative::VarBase::IsLeaf,
                              R"DOC(
       Whether a Tensor is leaf Tensor.

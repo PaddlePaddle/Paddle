@@ -17,6 +17,7 @@
 #include <queue>
 #include <utility>
 
+#include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -309,6 +310,42 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
       }
     }
   }
+}
+
+void VarBase::MoveTo(const platform::Place& dst_place, bool blocking) {
+  PADDLE_ENFORCE_EQ(
+      Var().IsInitialized() && (Var().IsType<framework::LoDTensor>() ||
+                                Var().IsType<framework::SelectedRows>()),
+      true, platform::errors::InvalidArgument(
+                "Variable is not initialized or Variable's type is not "
+                "LoDTensor or SelectedRows when moving to destination place"));
+
+  if (platform::is_same_place(Place(), dst_place)) {
+    // do nothing
+    return;
+  }
+
+  const framework::Tensor* src_tensor = nullptr;
+  if (Var().IsType<framework::LoDTensor>()) {
+    src_tensor = &Var().Get<framework::LoDTensor>();
+  } else {
+    src_tensor = &Var().Get<framework::SelectedRows>().value();
+  }
+
+  framework::Tensor dst_tensor;
+  dst_tensor.Resize(src_tensor->dims());
+  dst_tensor.mutable_data(dst_place, src_tensor->type());
+
+  // Copy tensor data from src_place into dst_place
+  framework::TensorCopy(*src_tensor, dst_place, &dst_tensor);
+  if (blocking) {
+    platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+    // Has checked tensor is in different place before.
+    platform::DeviceContextPool::Instance().Get(Place())->Wait();
+  }
+
+  // inplace update src tensor data
+  SetTensorToVariable(Var(), dst_tensor, MutableVar());
 }
 
 void VarBase::BumpInplaceVersion() {

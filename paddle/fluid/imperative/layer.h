@@ -218,6 +218,8 @@ class VarBase {
 
   void CopyFrom(const imperative::VarBase& src, bool blocking);
 
+  void MoveTo(const platform::Place& dst_place, bool blocking);
+
   void BumpInplaceVersion();
 
  private:

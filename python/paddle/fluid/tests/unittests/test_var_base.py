@@ -174,6 +174,30 @@ class TestVarBase(unittest.TestCase):
                 a = paddle.to_tensor(a, place=paddle.CUDAPinnedPlace())
                 self.assertEqual(a.place.__repr__(), "CUDAPinnedPlace")
 
+    def test_move_to_new_device_inplace(self):
+        def _test_move_to(var, dst_place, blocking):
+            src_data = var.numpy()
+            var._move_to(dst_place, blocking)
+            self.assertEqual(str(var.place), str(dst_place))
+            self.assertTrue(np.array_equal(var.numpy(), src_data))
+
+        in_var = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+
+        for blocking in [True, False]:
+            # CPU -> CUDAPinned -> CUDA
+            _test_move_to(in_var, paddle.CPUPlace(), blocking)
+            _test_move_to(in_var, paddle.CUDAPinnedPlace(), blocking)
+            if core.is_compiled_with_cuda():
+                _test_move_to(in_var, paddle.CUDAPlace(0), blocking)
+            # CUDA -> CUDAPinned -> CPU
+            _test_move_to(in_var, paddle.CUDAPinnedPlace(), blocking)
+            _test_move_to(in_var, paddle.CPUPlace(), blocking)
+
+            # CPU -> CUDA -> CPU
+            if core.is_compiled_with_cuda():
+                _test_move_to(in_var, paddle.CUDAPlace(0), blocking)
+                _test_move_to(in_var, paddle.CPUPlace(), blocking)
+
     def test_to_variable(self):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array, name="abc")
