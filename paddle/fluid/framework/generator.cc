@@ -172,8 +172,7 @@ std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
   PADDLE_THROW(platform::errors::PermissionDenied(
       "Increment Offset only support in CUDA place"));
 #endif
-  return std::make_pair(static_cast<int>(this->state_.current_seed),
-                        cur_offset);
+  return std::make_pair(this->state_.current_seed, cur_offset);
 }
 
 void Generator::SetIsInitPy(bool is_init_py) {
