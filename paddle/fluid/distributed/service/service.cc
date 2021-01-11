@@ -21,7 +21,7 @@
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/string/string_helper.h"
 
-using namespace std;
+using namespace std;  // NOLINT
 
 namespace paddle {
 namespace distributed {
@@ -59,11 +59,11 @@ void PSCore::init_gflag(const std::string& gflags) {
   flags.insert(it, "exe default");
   char* flags_ptr[flags.size()];
   for (size_t i = 0; i < flags.size(); ++i) {
-    flags_ptr[i] = (char*)(flags[i].c_str());
+    flags_ptr[i] = reinterpret_cast<char*>(flags[i].c_str());
   }
   int params_cnt = flags.size();
   char** params_ptr = &(flags_ptr[0]);
-  ::google::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
 }
 
 int PSCore::init_server(
