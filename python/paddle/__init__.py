@@ -254,6 +254,7 @@ from .tensor.stat import median  #DEFINE_ALIAS
 from .device import get_cudnn_version
 from .device import set_device
 from .device import get_device
+from .device import device_guard  #DEFINE_ALIAS
 from .device import is_compiled_with_cuda  #DEFINE_ALIAS
 from .device import is_compiled_with_xpu
 from .device import XPUPlace
