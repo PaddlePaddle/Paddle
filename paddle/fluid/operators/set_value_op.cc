@@ -79,6 +79,8 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<int64_t>>("int64_values", "store the int64 values")
         .SetDefault({});
+    AddAttr<std::vector<double>>("fp64_values", "store the float64 values")
+        .SetDefault({});
 
     AddAttr<std::vector<int64_t>>("shape", "(vector<int64_t>) Shape of values.")
         .SetDefault({});

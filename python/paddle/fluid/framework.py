@@ -1893,9 +1893,10 @@ class Variable(object):
         dtype = self.dtype
         attrs['dtype'] = dtype
 
+        from .data_feeder import convert_dtype
         #  2.1 value is an integer of float
         if isinstance(value, (int, float)):
-            value = np.array([value])
+            value = np.array([value]).astype(convert_dtype(dtype))
 
         #  2.2 value is a np.ndarray
         if isinstance(value, np.ndarray):
@@ -1906,6 +1907,9 @@ class Variable(object):
             elif dtype == core.VarDesc.VarType.FP32:
                 value_name = "fp32_values"
                 values = [float(v) for v in value.flat]
+            elif dtype == core.VarDesc.VarType.FP64:
+                value_name = "fp64_values"
+                values = [float(v) for v in value.flat]
             elif dtype == core.VarDesc.VarType.INT32:
                 value_name = "int32_values"
                 values = [int(v) for v in value.flat]
@@ -1913,7 +1917,6 @@ class Variable(object):
                 value_name = "int64_values"
                 values = [int(v) for v in value.flat]
             else:
-                from .data_feeder import convert_dtype
                 raise TypeError(
                     "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
                     "the data type of the paddle.Tensor must be bool, float32, int32 or int64, but "
