@@ -18,8 +18,8 @@ import six
 import sys
 from .. import compat as cpt
 from . import framework
+from .framework import _get_paddle_place, _get_paddle_place_list
 from .framework import cuda_places, cpu_places, xpu_places
-
 from . import core
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
@@ -202,7 +202,7 @@ class CompiledProgram(object):
                 Tensors to other devices when it is first executed, the CompiledProgram
                 specified by share_vars_from must be run before the current CompiledProgram.
                 The default is None.
-            places(list(CUDAPlace)|list(CPUPlace)|None): This parameter specifies the device
+            places(list(CUDAPlace)|list(CPUPlace)|list(str)|None): This parameter specifies the device
                 on which the model is running. If you want to run on GPU0 and GPU1, places are
                 [fluid.CUDAPlace(0), fluid.CUDAPlace(1)]; if you want to run with 2 CPUs, places are
                 [fluid.CPUPlace()] * 2. If the parameter is not set, i.e. the parameter is None,
@@ -213,7 +213,8 @@ class CompiledProgram(object):
                 CPU number is obtained from the environment variable CPU_NUM. For example,
                 export CPU_NUM=4, if the environment variable is not set, the executor will
                 add the variable to the environment variable and set its value to 1.
-                The default is None.
+                The default is None. If ``places`` is the list of string, the string in the list
+                can be ``cpu``, ``gpu:x``, where ``x`` is the index of the GPUs. 
 
         Returns:
             CompiledProgram
@@ -282,7 +283,10 @@ class CompiledProgram(object):
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
         self._share_vars_from = share_vars_from
-        self._places = places
+        if isinstance(places, (list, tuple)):
+            self._places = _get_paddle_place_list(places)
+        else:
+            self._places = _get_paddle_place(places)
 
         if _has_backward_op(self._graph):
             assert self._loss_name is not None, "The loss name of CompiledProgram is None. The loss name should be set if CompiledProgram contains backward part."

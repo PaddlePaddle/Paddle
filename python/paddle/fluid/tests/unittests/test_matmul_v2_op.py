@@ -525,6 +525,21 @@ class TestComplexMatMulOpBroadcast(OpTest):
             user_defined_grad_outputs=[self.grad_out])
 
 
+class TestMatMulTypePromotion(TestComplexMatMulOp):
+    def init_input_output(self):
+        self.x = np.random.random((10, 10)).astype(self.dtype)
+        self.y = np.random.random(
+            (10, 10)).astype(self.dtype) + 1J * np.random.random(
+                (10, 10)).astype(self.dtype)
+        self.out = np.dot(self.x, self.y)
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((10, 10), self.dtype) + 1J * np.ones(
+            (10, 10), self.dtype)
+        self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T).real
+        self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

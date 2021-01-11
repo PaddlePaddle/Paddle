@@ -540,5 +540,26 @@ int32_t BrpcPsService::start_profiler(Table *table,
   return 0;
 }
 
+int32_t PsService::push_global_step(Table *table,
+                                    const PsRequestMessage &request,
+                                    PsResponseMessage &response,
+                                    brpc::Controller *cntl) {
+  CHECK_TABLE_EXIST(table, request, response);
+  auto req_buffer_size = request.data().size();
+  if (req_buffer_size < 1) {
+    set_response_code(response, 0, "run_program data is empty");
+    return 0;
+  }
+  uint32_t num = *(const uint32_t *)(request.data().data());
+  const int64_t *values =
+      (const int64_t *)(request.data().data() + sizeof(uint32_t));
+  auto trainer_id = request.client_id();
+  if (table->push_dense(values, trainer_id) != 0) {
+    set_response_code(response, -1, "run_program failed");
+  }
+
+  return 0;
+}
+
 }  // namespace distributed
 }  // namespace paddle

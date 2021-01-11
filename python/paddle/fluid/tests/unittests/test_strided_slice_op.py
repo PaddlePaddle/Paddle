@@ -519,7 +519,7 @@ class TestStridedSliceAPI(unittest.TestCase):
                 np.random.randn(2, 10), place=paddle.CUDAPinnedPlace())
             self.assertTrue(x.place.is_cuda_pinned_place())
             y = x[:, ::2]
-            self.assertTrue(x.place.is_cuda_pinned_place())
+            self.assertFalse(x.place.is_cuda_pinned_place())
             self.assertFalse(y.place.is_cuda_pinned_place())
 
 

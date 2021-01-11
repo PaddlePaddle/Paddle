@@ -27,6 +27,20 @@
 #include "paddle/fluid/distributed/service/env.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/channel.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+class Executor;
+class ProgramDesc;
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace distributed {
@@ -42,8 +56,9 @@ class PSServer {
   PSServer(PSServer &&) = delete;
   PSServer(const PSServer &) = delete;
 
-  virtual int32_t configure(const PSParameter &config, PSEnvironment &env,
-                            size_t server_rank) final;
+  virtual int32_t configure(
+      const PSParameter &config, PSEnvironment &env, size_t server_rank,
+      const std::vector<framework::ProgramDesc> &server_sub_program = {}) final;
 
   // return server_ip
   virtual std::string ip() { return butil::my_ip_cstr(); }
@@ -88,6 +103,10 @@ class PSServer {
   PSEnvironment *_environment;
   std::unordered_map<uint32_t, std::shared_ptr<Table>> _table_map;
   std::unordered_map<int32_t, MsgHandlerFunc> _msg_handler_map;
+
+ protected:
+  std::shared_ptr<framework::Scope> scope_;
+  platform::Place place_ = platform::CPUPlace();
 };
 
 REGISTER_PSCORE_REGISTERER(PSServer);

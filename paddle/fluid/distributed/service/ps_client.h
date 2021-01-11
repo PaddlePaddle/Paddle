@@ -134,6 +134,9 @@ class PSClient {
                                               std::vector<uint64_t> *keys,
                                               int pserver_idx) = 0;
 
+  virtual std::future<int32_t> push_global_step(int table_id,
+                                                int64_t *total_send_data,
+                                                void *done) = 0;
   virtual void finalize_worker() = 0;
   // client to client, 消息发送
   virtual std::future<int32_t> send_client2client_msg(int msg_type,

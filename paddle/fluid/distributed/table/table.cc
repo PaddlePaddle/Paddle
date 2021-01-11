@@ -23,6 +23,7 @@
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
 #include "paddle/fluid/distributed/table/sparse_geo_table.h"
 #include "paddle/fluid/distributed/table/tensor_accessor.h"
+#include "paddle/fluid/distributed/table/tensor_table.h"
 
 namespace paddle {
 namespace distributed {
@@ -31,7 +32,9 @@ REGISTER_PSCORE_CLASS(Table, CommonDenseTable);
 REGISTER_PSCORE_CLASS(Table, CommonSparseTable);
 REGISTER_PSCORE_CLASS(Table, SparseGeoTable);
 REGISTER_PSCORE_CLASS(Table, BarrierTable);
-
+REGISTER_PSCORE_CLASS(Table, TensorTable);
+REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
+REGISTER_PSCORE_CLASS(Table, GlobalStepTable);
 REGISTER_PSCORE_CLASS(ValueAccessor, CommMergeAccessor);
 
 int32_t TableManager::initialize() {

@@ -55,8 +55,10 @@ PSServer *PSServerFactory::create(const PSParameter &ps_config) {
   return server;
 }
 
-int32_t PSServer::configure(const PSParameter &config, PSEnvironment &env,
-                            size_t server_rank) {
+int32_t PSServer::configure(
+    const PSParameter &config, PSEnvironment &env, size_t server_rank,
+    const std::vector<framework::ProgramDesc> &server_sub_program) {
+  scope_.reset(new framework::Scope());
   _config = config.server_param();
   _rank = server_rank;
   _environment = &env;
@@ -67,6 +69,7 @@ int32_t PSServer::configure(const PSParameter &config, PSEnvironment &env,
   const auto &downpour_param = _config.downpour_server_param();
 
   uint32_t barrier_table = UINT32_MAX;
+  uint32_t global_step_table = UINT32_MAX;
 
   for (size_t i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
     auto *table = CREATE_PSCORE_CLASS(
@@ -76,6 +79,12 @@ int32_t PSServer::configure(const PSParameter &config, PSEnvironment &env,
         "BarrierTable") {
       barrier_table = downpour_param.downpour_table_param(i).table_id();
     }
+    if (downpour_param.downpour_table_param(i).table_class() ==
+        "GlobalStepTable") {
+      global_step_table = downpour_param.downpour_table_param(i).table_id();
+    }
+
+    table->set_program_env(scope_.get(), place_, &server_sub_program);
     table->set_shard(_rank, shard_num);
     table->initialize(downpour_param.downpour_table_param(i),
                       config.fs_client_param());
@@ -84,6 +93,9 @@ int32_t PSServer::configure(const PSParameter &config, PSEnvironment &env,
 
   if (barrier_table != UINT32_MAX) {
     _table_map[barrier_table]->set_table_map(&_table_map);
+  }
+  if (global_step_table != UINT32_MAX) {
+    _table_map[global_step_table]->set_table_map(&_table_map);
   }
 
   return initialize();
