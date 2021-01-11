@@ -53,12 +53,12 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
             "scores": scores_data,
         }
         self.enable_trt = True
-        self.enable_tensorrt_oss = True
         self.trt_parameters = TensorRTMultiClassNMSTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
 
     def set_params(self):
+        self.enable_tensorrt_oss = True
         self.background_label = -1
         self.score_threshold = .5
         self.nms_top_k = 8
@@ -98,6 +98,19 @@ class TensorRTMultiClassNMSTest2(TensorRTMultiClassNMSTest):
         self.normalized = False
         self.num_classes = 8
         self.num_boxes = 8
+
+
+class TensorRTMultiClassNMSTest3(TensorRTMultiClassNMSTest):
+    def set_params(self):
+        self.enable_tensorrt_oss = False
+        self.background_label = -1
+        self.score_threshold = .5
+        self.nms_top_k = 16
+        self.nms_threshold = .3
+        self.keep_top_k = 16
+        self.normalized = False
+        self.num_classes = 8
+        self.num_boxes = 16
 
 
 if __name__ == "__main__":
