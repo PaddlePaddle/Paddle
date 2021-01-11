@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/unused_var_check.h"
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <string>
 #include <vector>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_info.h"
