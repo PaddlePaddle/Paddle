@@ -16,7 +16,7 @@ from ... import core
 from ... import default_main_program
 from ... import default_startup_program
 from ... import framework
-from ... import layers
+from ... import layers, clip
 from ... import program_guard
 from ... import unique_name
 from . import fp16_utils
