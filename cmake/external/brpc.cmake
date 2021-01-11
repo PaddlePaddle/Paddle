@@ -14,10 +14,6 @@
 
 INCLUDE(ExternalProject)
 
-set(BRPC_CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-narrowing -Wno-aligned-new")
-set(BRPC_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-narrowing -Wno-aligned-new")
-set(BRPC_CMAKE_CPP_FLAGS "${CMAKE_CPP_FLAGS} -Wno-narrowing -Wno-aligned-new")
-
 find_package(OpenSSL REQUIRED)
 
 message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
@@ -35,6 +31,16 @@ SET(BRPC_INCLUDE_DIR "${BRPC_INSTALL_DIR}/include" CACHE PATH "brpc include dire
 SET(BRPC_LIBRARIES "${BRPC_INSTALL_DIR}/lib/libbrpc.a" CACHE FILEPATH "brpc library." FORCE)
 
 INCLUDE_DIRECTORIES(${BRPC_INCLUDE_DIR})
+
+if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+    set(BRPC_CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-narrowing -faligned-new")
+    set(BRPC_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-narrowing -faligned-new")
+    set(BRPC_CMAKE_CPP_FLAGS "${CMAKE_CPP_FLAGS} -Wno-narrowing -faligned-new")
+else()
+    set(BRPC_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    set(BRPC_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(BRPC_CMAKE_CPP_FLAGS "${CMAKE_CPP_FLAGS}")
+endif()
 
 # Reference https://stackoverflow.com/questions/45414507/pass-a-list-of-prefix-paths-to-externalproject-add-in-cmake-args
 set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/leveldb|${THIRD_PARTY_PATH}/install/snappy|${THIRD_PARTY_PATH}/install/gtest|${THIRD_PARTY_PATH}/install/protobuf|${THIRD_PARTY_PATH}/install/zlib|${THIRD_PARTY_PATH}/install/glog")
