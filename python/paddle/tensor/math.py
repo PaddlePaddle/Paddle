@@ -1975,19 +1975,6 @@ def tanh_(x, name=None):
     r"""
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_tanh`.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.tanh_(x)
-            print(out)
-            # [-0.37994896 -0.19737532  0.09966799  0.29131261]
-            print(id(x) == id(out))
-            # True
     """
     if in_dygraph_mode():
         return core.ops.tanh_(x)

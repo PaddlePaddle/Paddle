@@ -582,19 +582,6 @@ def squeeze_(x, axis=None, name=None):
     """
     Inplace version of ``squeeze`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_squeeze`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.rand([5, 1, 10])
-            output = paddle.squeeze_(x, axis=1)
-
-            print(x.shape)  # [5, 10]
-            print(output.shape)  # [5, 10]
-            print(id(x) == id(output))  # True
-
     """
     if axis is None:
         axis = []
@@ -788,29 +775,6 @@ def unsqueeze_(x, axis, name=None):
     """
     Inplace version of ``unsqueeze`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_unsqueeze`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.rand([5, 10])
-            print(x.shape)  # [5, 10]
-
-            out1 = paddle.unsqueeze_(x, axis=0)
-            print(x.shape)  # [1, 5, 10]
-            print(out1.shape)  # [1, 5, 10]
-
-            out2 = paddle.unsqueeze_(x, axis=[0, 2]) 
-            print(x.shape)  # [1, 1, 1, 5, 10]
-            print(out2.shape)  # [1, 1, 1, 5, 10]
-
-            axis = paddle.to_tensor([4])
-            out3 = paddle.unsqueeze_(x, axis=axis) 
-            print(x.shape)  # [1, 1, 1, 5, 1, 10]
-            print(out3.shape)  # [1, 1, 1, 5, 1, 10]
-            print(id(x) == id(out3))  # True
-            
     """
     if in_dygraph_mode():
         if isinstance(axis, int):
@@ -1059,30 +1023,6 @@ def scatter_(x, index, updates, overwrite=True, name=None):
     """
     Inplace version of ``scatter`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_scatter`.
-
-    Examples:
-        .. code-block:: python
-            
-            import paddle
-
-            x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
-            index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
-            updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
-
-            output1 = paddle.scatter_(x, index, updates, overwrite=False)
-            # [[3., 3.],
-            #  [6., 6.],
-            #  [1., 1.]]
-            print(x)
-            # [[3., 3.],
-            #  [6., 6.],
-            #  [1., 1.]]
-
-            output2 = paddle.scatter_(x, index, updates, overwrite=True)
-            # [[3., 3.],
-            #  [4., 4.],
-            #  [1., 1.]]
-            print(id(x) == id(output2))
     """
     if in_dygraph_mode():
         return core.ops.scatter_(x, index, updates, 'overwrite', overwrite)
@@ -1614,29 +1554,6 @@ def reshape_(x, shape, name=None):
     """
     Inplace version of ``reshape`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_reshape`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.rand([2, 4, 6], dtype="float32")
-            positive_four = paddle.full([1], 4, "int32")
-
-            out = paddle.reshape_(x, [-1, 0, 3, 2])
-            print(x.shape)  # [2,4,3,2]
-            print(out.shape)  # [2,4,3,2]
-
-            out = paddle.reshape_(x, shape=[positive_four, 12])
-            print(x.shape)  # [4, 12]
-            print(out.shape)  # [4, 12]
-
-            shape_tensor = paddle.to_tensor([8, 6], dtype="int32")
-            out = paddle.reshape_(x, shape=shape_tensor)
-            print(x.shape)  # [8, 6]
-            print(out.shape)  # [8, 6]
-            print(id(x) == id(out))  # True
-
     """
     if in_dygraph_mode():
         if isinstance(shape, (list, tuple)):

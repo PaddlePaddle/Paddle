@@ -110,19 +110,6 @@ def elu_(x, alpha=1.0, name=None):
     r"""
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_elu`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
-            out = F.elu_(x, alpha=0.2)
-            # [[-0.12642411  6.        ]
-            #  [ 1.          15.6      ]]
-            print(id(x) == id(out))
-            # True
     """
 
     if in_dygraph_mode():
@@ -551,16 +538,6 @@ def relu_(x, name=None):
     """
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_relu`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            x = paddle.to_tensor([-2, 0, 1], dtype='float32')
-            out = F.relu_(x) # [0., 0., 1.]
-            print(id(x) == id(out))  # True
     """
 
     if in_dygraph_mode():
@@ -939,27 +916,6 @@ def softmax_(x, axis=-1, dtype=None, name=None):
     r"""
     Inplace version of ``softmax`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_softmax`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-            import numpy as np
-
-            x_numpy = np.array([[[2.0, 3.0, 4.0, 5.0],
-                        [3.0, 4.0, 5.0, 6.0],
-                        [7.0, 8.0, 8.0, 9.0]],
-                        [[1.0, 2.0, 3.0, 4.0],
-                        [5.0, 6.0, 7.0, 8.0],
-                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
-            x = paddle.to_tensor(x_numpy)
-            out = F.softmax_(x)
-            # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]]
-            print(id(x) == id(out))
-            # True
     """
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
