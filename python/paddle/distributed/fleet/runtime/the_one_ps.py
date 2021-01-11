@@ -523,7 +523,8 @@ class TheOnePSRuntime(RuntimeBase):
             # for ps-heter mode, wait heter worker ready
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
             ):
-                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
+                wait_server_ready(
+                    self.role_maker._get_heter_worker_endpoints())
 
                 self._heter_client = HeterClient(
                     self.role_maker._get_heter_worker_endpoints(),
@@ -764,7 +765,8 @@ class TheOnePSRuntime(RuntimeBase):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 
         dist_varnames = get_sparse_tablenames(self.origin_main_program, True)
-        sparse_varnames = get_sparse_tablenames(self.origin_main_program, False)
+        sparse_varnames = get_sparse_tablenames(
+            self.origin_main_program, False)
 
         distributed_varnames = dist_varnames + sparse_varnames
 
@@ -853,15 +855,16 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
-        distributed_varnames = self.compiled_strategy.get_sparse_tablenames(
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
+        distributed_varnames = get_sparse_tablenames(
             self.compiled_strategy.origin_main_program, True)
         values = []
         for id, names in context.items():
-            # save sparse & distributed param on server
-            self._worker.save_one_model(id, dirname, mode)
             if names not in distributed_varnames:
                 # only save sparse param to local
                 self._worker.recv_and_save_model(id, dirname)
+            # save sparse & distributed param on server
+            self._worker.save_one_model(id, dirname, mode)
             values.extend(names)
         return values
 
