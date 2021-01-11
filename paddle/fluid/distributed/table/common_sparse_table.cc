@@ -93,23 +93,25 @@ struct Meta {
 
 void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
                   std::vector<std::vector<float>>* values) {
-  PADDLE_ENFORCE_EQ(columns.size(), meta.names.size() + 1,
+  PADDLE_ENFORCE_EQ(columns.size(), 2,
                     paddle::platform::errors::InvalidArgument(
                         "record in txt do not match meta."));
 
-  values->reserve(columns.size() - 1);
+  auto load_values = paddle::string::split_string<std::string>(columns[1], ",");
+  values->reserve(meta.names.size());
 
-  for (int x = 1; x < columns.size(); ++x) {
-    auto& column = columns[x];
-    auto val_ = paddle::string::split_string<std::string>(column, ",");
-
+  int offset = 0;
+  for (int x = 0; x < meta.names.size(); ++x) {
     std::vector<float> val;
-    std::transform(val_.begin(), val_.end(), std::back_inserter(val),
-                   [](std::string va) { return std::stof(va); });
-    PADDLE_ENFORCE_EQ(val.size(), meta.dims[x - 1],
+    auto start = load_values.begin() + offset;
+    auto end = load_values.begin() + offset + meta.dims[x];
+    PADDLE_ENFORCE_LE(offset + meta.dims[x], load_values.size(),
                       paddle::platform::errors::InvalidArgument(
                           "record in txt do not match meta."));
+    std::transform(start, end, std::back_inserter(val),
+                   [](std::string va) { return std::stof(va); });
     values->push_back(val);
+    offset += meta.dims[x];
   }
 }
 

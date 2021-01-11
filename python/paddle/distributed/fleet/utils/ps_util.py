@@ -14,11 +14,92 @@
 """Parameter Server utils"""
 
 import numpy as np
+import os
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.framework import switch_main_program, switch_startup_program
 
 
-class Distributed:
-    @staticmethod
-    def estimate(main_program, varname2tables):
+class DistributedInfer:
+    def __init__(self,
+                 exe=None,
+                 loss=None,
+                 role_maker=None,
+                 main_program=None,
+                 startup_program=None,
+                 dirname=None):
+        if main_program:
+            self.origin_main_program = main_program.clone()
+        else:
+            self.origin_main_program = paddle.static.default_main_program(
+            ).clone()
+
+        if startup_program:
+            self.origin_startup_program = startup_program
+        else:
+            self.origin_startup_program = paddle.static.default_startup_program(
+            )
+
+        import paddle.distributed.fleet as fleet
+
+        varname2tables = {}
+        if fleet.fleet._runtime_handle is None:
+            fleet.init(role_maker=role_maker)
+
+            fake_optimizer = paddle.optimizer.SGD()
+            strategy = fleet.DistributedStrategy()
+            strategy.a_sync = True
+            optimizer = fleet.distributed_optimizer(
+                fake_optimizer, strategy=strategy)
+            optimizer.minimize(loss, startup_program=startup_program)
+
+            if fleet.is_server():
+                fleet.init_server(dirname=dirname)
+                fleet.run_server()
+            else:
+                exe.run(paddle.static.default_startup_program())
+                fleet.init_worker()
+                send_ctx = fleet.fleet._runtime_handle._communicator.send_ctx_
+                for gradname, ctx in send_ctx.items():
+                    if ctx.is_sparse:
+                        param = gradname.strip("@GRAD")
+                        varname2tables[param] = ctx.table_id()
+                    else:
+                        continue
+                if dirname is not None:
+                    all_persist_vars = [
+                        v for v in self.origin_main_program.list_vars()
+                        if fluid.io.is_persistable(v)
+                    ]
+                    dense_persist_vars = [(v.name, v) for v in all_persist_vars
+                                          if v.name not in varname2tables]
+                    need_load_vars = [
+                        v[1] for v in dense_persist_vars
+                        if os.path.isfile(os.path.join(dirname, v[0]))
+                    ]
+                    fluid.io.load_vars(
+                        exe,
+                        dirname,
+                        main_program=self.origin_main_program,
+                        vars=need_load_vars)
+        else:
+            send_ctx = fleet.fleet._runtime_handle._communicator.send_ctx_
+            for gradname, ctx in send_ctx.items():
+                if ctx.is_sparse:
+                    param = gradname.strip("@GRAD")
+                    varname2tables[param] = ctx.table_id()
+                else:
+                    continue
+
+        convert_program = self._convert_program(self.origin_main_program,
+                                                varname2tables)
+        switch_main_program(convert_program)
+        switch_startup_program(self.origin_startup_program)
+
+    def reset(self):
+        switch_main_program(self.origin_main_program)
+
+    def _convert_program(self, main_program, varname2tables):
         def distributed_ops_pass(program):
             SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
 
