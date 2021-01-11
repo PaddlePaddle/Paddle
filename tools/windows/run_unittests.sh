@@ -64,7 +64,6 @@ diable_wingpu_test="^test_gradient_clip$|\
 ^test_dataloader_early_reset$|\
 ^test_decoupled_py_reader_data_check$|\
 ^test_fleet_base_single$|\
-^test_fuse_elewise_add_act_pass$|\
 ^test_fuse_optimizer_pass$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
