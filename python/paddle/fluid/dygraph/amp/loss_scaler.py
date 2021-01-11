@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-from paddle.fluid import core, clip
+from paddle.fluid import core
+from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _varbase_creator, _dygraph_tracer, dygraph_only
 from paddle.fluid.data_feeder import check_type
@@ -199,7 +200,7 @@ class AmpScaler(object):
             self._cache_founf_inf = True
         else:
             if optimizer.__class__.__name__ in ["Lamb", "LambOptimizer"]:
-                optimizer._grad_clip = clip.ClipGradByGlobalNorm(clip_norm=1.0)
+                optimizer._grad_clip = ClipGradByGlobalNorm(clip_norm=1.0)
             optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
             self._cache_founf_inf = False
 
