@@ -205,6 +205,8 @@ void BasicEngine::Execute() {
     q.pop();
 
     for (auto& cur_op : *shared_cur_node) {
+      platform::RecordEvent op_type_record_event(cur_op.Type());
+
       ++op_num;
 
       // CheckBackWardInput
