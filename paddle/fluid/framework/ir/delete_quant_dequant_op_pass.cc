@@ -52,7 +52,7 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
         scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
 
     const float* input_scale_data = input_scale_tensor.data<float>();
-    float input_scale = input_scale_data[0];
+    float input_scale = input_scale_data[0] / 127.;
     auto* any_op2_desc = any_op2->Op();
     // auto input_args_names = any_op2_desc->InputArgumentNames();
     auto var_map = any_op2_desc->Inputs();
