@@ -25,35 +25,35 @@ from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.backward import append_backward
 
 
-class TestPinnedMemcpyOp(op_test.OpTest):
+class TestMemcpyOp(op_test.OpTest):
     def setUp(self):
         paddle.enable_static()
         self.dtype = np.float16
 
-        self.op_type = "pinned_memcpy"
+        self.op_type = "memcpy"
         np_tensor = np.random.random(size=(5, 5)).astype('float16')
 
         self.inputs = {'X': np_tensor}
-        self.attrs = {"to_pinned": True}
+        self.attrs = {"dst_place_type": 3}
         self.outputs = {'Out': np_tensor}
 
     # pinned_memcpy only support paddle GPU version by now
     def test_copy_to_pinned(self):
         if core.is_compiled_with_cuda():
-            self.attrs = {"to_pinned": True}
+            self.attrs = {"dst_place_type": 3}
             self.check_output(check_dygraph=False)
         else:
             pass
 
     def test_copy_from_pinned(self):
         if core.is_compiled_with_cuda():
-            self.attrs = {"to_pinned": False}
+            self.attrs = {"dst_place_type": 2}
             self.check_output(check_dygraph=False)
         else:
             pass
 
 
-class TestPinnedMemcpy_FillConstant(unittest.TestCase):
+class TestMemcpy_FillConstant(unittest.TestCase):
     def get_prog(self):
         paddle.enable_static()
         main_program = Program()
@@ -102,10 +102,10 @@ class TestPinnedMemcpy_FillConstant(unittest.TestCase):
 
         main_program, gpu_var, pinned_var = self.get_prog()
         main_program.global_block().append_op(
-            type='pinned_memcpy',
+            type='memcpy',
             inputs={'X': gpu_var},
             outputs={'Out': pinned_var},
-            attrs={'to_pinned': True, })
+            attrs={'dst_place_type': 3, })
 
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
@@ -120,10 +120,10 @@ class TestPinnedMemcpy_FillConstant(unittest.TestCase):
 
         main_program, gpu_var, pinned_var = self.get_prog()
         main_program.global_block().append_op(
-            type='pinned_memcpy',
+            type='memcpy',
             inputs={'X': pinned_var},
             outputs={'Out': gpu_var},
-            attrs={'to_pinned': False, })
+            attrs={'dst_place_type': 2, })
 
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
@@ -135,7 +135,7 @@ class TestPinnedMemcpy_FillConstant(unittest.TestCase):
         self.assertTrue(np.allclose(gpu_, np.zeros((10, 10))))
 
 
-class TestPinnedMemcpyOPError(unittest.TestCase):
+class TestMemcpyOPError(unittest.TestCase):
     def test_SELECTED_ROWS(self):
         paddle.enable_static()
         main_program = Program()
@@ -175,10 +175,10 @@ class TestPinnedMemcpyOPError(unittest.TestCase):
                 })
 
             main_program.global_block().append_op(
-                type='pinned_memcpy',
+                type='memcpy',
                 inputs={'X': selected_row_var},
                 outputs={'Out': pinned_var},
-                attrs={'to_pinned': True, })
+                attrs={'dst_place_type': 3, })
 
         with self.assertRaises(NotImplementedError):
             place = fluid.CUDAPlace(0)
@@ -187,6 +187,57 @@ class TestPinnedMemcpyOPError(unittest.TestCase):
                 main_program,
                 feed={},
                 fetch_list=[selected_row_var.name, pinned_var.name])
+
+    def test_OTHER_PLACE_NotImplementedError(self):
+        paddle.enable_static()
+        main_program = Program()
+        startup_program = Program()
+
+        with program_guard(main_program):
+            lod_tensor_var = main_program.global_block().create_var( \
+                name="lod_tensor_0", dtype="float32", persistable=False, stop_gradient=True)
+
+            pinned_var_name = "tensor@Pinned"
+            pinned_var = main_program.global_block().create_var(
+                name=pinned_var_name,
+                shape=[10, 10],
+                dtype='float32',
+                persistable=False,
+                stop_gradient=True)
+
+            main_program.global_block().append_op(
+                type="fill_constant",
+                outputs={"Out": lod_tensor_var},
+                attrs={
+                    "shape": lod_tensor_var.shape,
+                    "dtype": lod_tensor_var.dtype,
+                    "value": 1.0,
+                    "place_type": 1,
+                })
+
+            main_program.global_block().append_op(
+                type="fill_constant",
+                outputs={"Out": pinned_var_name},
+                attrs={
+                    "shape": [10, 10],
+                    "dtype": pinned_var.dtype,
+                    "value": 0.0,
+                    "place_type": 3,
+                })
+
+            main_program.global_block().append_op(
+                type='memcpy',
+                inputs={'X': pinned_var},
+                outputs={'Out': lod_tensor_var},
+                attrs={'dst_place_type': 0, })
+
+        with self.assertRaises(NotImplementedError):
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            lod_tensor_var_, pinned_ = exe.run(
+                main_program,
+                feed={},
+                fetch_list=[lod_tensor_var.name, pinned_var.name])
 
 
 if __name__ == '__main__':

@@ -108,17 +108,11 @@ class FillConstantKernel : public framework::OpKernel<T> {
       bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
       if (cpu_place) {
         actual_place = 1;
-      }
-#ifdef PADDLE_WITH_CUDA
-      if (!cpu_place) {
+      } else if (ctx.GetPlace() == platform::CUDAPlace()) {
         actual_place = 2;
-      }
-#endif
-#ifdef PADDLE_WITH_XPU
-      if (!cpu_place) {
+      } else if (ctx.GetPlace() == platform::XPUPlace()) {
         actual_place = 4;
       }
-#endif
     }
 
     if (actual_place == 1) {

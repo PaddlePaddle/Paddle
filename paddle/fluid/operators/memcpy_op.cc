@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pinned_memcpy_op.h"
+#include "paddle/fluid/operators/memcpy_op.h"
 
 #include <string>
 
@@ -34,12 +34,11 @@ struct float16;
 namespace paddle {
 namespace operators {
 
-class PinnedMemcpyOp : public framework::OperatorWithKernel {
+class MemcpyOp : public framework::OperatorWithKernel {
  public:
-  PinnedMemcpyOp(const std::string &type,
-                 const framework::VariableNameMap &inputs,
-                 const framework::VariableNameMap &outputs,
-                 const framework::AttributeMap &attrs)
+  MemcpyOp(const std::string &type, const framework::VariableNameMap &inputs,
+           const framework::VariableNameMap &outputs,
+           const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
@@ -72,44 +71,51 @@ class PinnedMemcpyOp : public framework::OperatorWithKernel {
   }
 };
 
-class PinnedMemcpyInferVarType : public framework::VarTypeInference {
+class MemcpyInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
     ctx->SyncTypeAndDataType("X", "Out");
   }
 };
 
-class PinnedMemcpyKernel {
+class MemcpyKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
     auto *x = ctx.InputVar("X");
     if (x == nullptr) {
       return;
     }
-    PADDLE_ENFORCE_EQ(ctx.HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of pinned_memcpy_op is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx.HasOutput("Out"), true,
+        platform::errors::NotFound("Output(Out) of memcpy_op is not found."));
     auto *out = ctx.OutputVar("Out");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
-    auto to_pinned = ctx.Attr<bool>("to_pinned");
-    framework::VisitVarType(*x, PinnedMemcpyFunctor(out, dev_ctx, to_pinned));
+    auto dst_place_type = ctx.Attr<int>("dst_place_type");
+    framework::VisitVarType(*x, MemcpyFunctor(out, dev_ctx, dst_place_type));
   }
 };
 
-class PinnedMemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
+class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input variable ").AsDispensable();
+    AddInput("X", "(LoDTensor) The input variable ");
     AddOutput("Out",
               "(LoDTensor) The type of output "
               "is the same as input X.");
-    AddAttr<bool>(
-        "to_pinned",
-        "Determine the direction of tensor copy. "
-        "True: the src is on CUDAPlace, dst is on CUDAPinnedPlace. "
-        "False: the src is on CUDAPinnedPlace, dst is on CUDAPlace. ");
-    AddComment(R"DOC(PinnedMemcpy Operator
+    AddAttr<int>("dst_place_type",
+                 "Determine the dst place of tensor copy. "
+                 "By Now it ONLY support CUDAPlace and CUDAPinnedPlace. Other "
+                 "place type is Unimplemented and will cause ERROR."
+                 "0: dst is on CPUPlace. "
+                 "1: dst is on CUDAPlace. "
+                 "2: dst is on CUDAPinnedPlace. "
+                 "3: dst is on XPUPlace. ");
+    AddComment(R"DOC(
+    Memcpy Operator.
+    By now, it ONLY supports the memcopy between CUDAPinnedPlace and CUDAPlace,
+    and used as an internal op by Recompute-Offload.
+    You would have to update it if you want other more capacities.
 
 Out = X,  when type in [LoDTensor]
 raise error if the type is not listed above.
@@ -117,45 +123,26 @@ raise error if the type is not listed above.
   }
 };
 
-template <typename T>
-class PinnedMemcpyGradMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("pinned_memcpy");
-    op->SetInput("X", this->OutputGrad("Out"));
-    op->SetOutput("Out", this->InputGrad("X"));
-  }
-};
-
-DECLARE_INPLACE_OP_INFERER(PinnedMemcpyOpInplaceInferer, {"X", "Out"});
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OPERATOR(pinned_memcpy, ops::PinnedMemcpyOp,
-                  ops::PinnedMemcpyGradMaker<paddle::framework::OpDesc>,
-                  ops::PinnedMemcpyGradMaker<paddle::imperative::OpBase>,
-                  ops::PinnedMemcpyOpProtoMaker,
-                  ops::PinnedMemcpyOpInplaceInferer,
-                  ops::PinnedMemcpyInferVarType);
+REGISTER_OPERATOR(
+    memcpy, ops::MemcpyOp, ops::MemcpyOpProtoMaker, ops::MemcpyInferVarType,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(pinned_memcpy, float, ops::PinnedMemcpyKernel,
-                               double, ops::PinnedMemcpyKernel, int,
-                               ops::PinnedMemcpyKernel, int64_t,
-                               ops::PinnedMemcpyKernel, bool,
-                               ops::PinnedMemcpyKernel, plat::float16,
-                               ops::PinnedMemcpyKernel);
+REGISTER_OP_CPU_KERNEL_FUNCTOR(memcpy, float, ops::MemcpyKernel, double,
+                               ops::MemcpyKernel, int, ops::MemcpyKernel,
+                               int64_t, ops::MemcpyKernel, bool,
+                               ops::MemcpyKernel, plat::float16,
+                               ops::MemcpyKernel);
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(pinned_memcpy, float, ops::PinnedMemcpyKernel,
-                                double, ops::PinnedMemcpyKernel, int,
-                                ops::PinnedMemcpyKernel, int64_t,
-                                ops::PinnedMemcpyKernel, bool,
-                                ops::PinnedMemcpyKernel, plat::float16,
-                                ops::PinnedMemcpyKernel);
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(memcpy, float, ops::MemcpyKernel, double,
+                                ops::MemcpyKernel, int, ops::MemcpyKernel,
+                                int64_t, ops::MemcpyKernel, bool,
+                                ops::MemcpyKernel, plat::float16,
+                                ops::MemcpyKernel);
 #endif

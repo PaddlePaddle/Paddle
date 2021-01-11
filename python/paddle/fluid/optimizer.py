@@ -4780,12 +4780,12 @@ class RecomputeOptimizer(Optimizer):
         OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
         self.block._insert_op_without_sync(
             insert_idx,
-            type='pinned_memcpy',
+            type='memcpy',
             inputs={'X': [self._main_program.global_block().var(src_varname)]},
             outputs={
                 'Out': [self._main_program.global_block().var(dst_varname)]
             },
-            attrs={"to_pinned": int(kind) == 1,
+            attrs={"dst_place_type": int(kind),
                    OP_ROLE_KEY: op_role})
 
     def _insert_fetch_op(self, idx, varname):
@@ -4801,7 +4801,7 @@ class RecomputeOptimizer(Optimizer):
             varname)
         pinned_varname = self.checkpoint_name2pinned_name[varname]
         # not need to rename checkpoint in forward
-        self._insert_async_memcpy_op(idx, varname, pinned_varname, 0, 1)
+        self._insert_async_memcpy_op(idx, varname, pinned_varname, 0, 3)
 
     def _insert_sync_op(self, op_idx, checkpoint_name):
         # single stream offload no need sync 
