@@ -115,7 +115,8 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_VERSION(momentum)
     .AddCheckpoint(
         R"ROC(
-      Upgrade momentum add 2 attributes [regularization_method, regularization_coeff].
+      Upgrade momentum add 4 attributes [regularization_method, regularization_coeff,
+      multi_precision, rescale_grad].
     )ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewAttr("regularization_method",
