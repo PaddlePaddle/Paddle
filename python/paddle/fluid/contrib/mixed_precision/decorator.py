@@ -14,9 +14,10 @@
 
 from ... import default_main_program
 from ... import default_startup_program
-from ... import layers, clip
-from ... import unique_name
+from ... import framework
+from ... import layers
 from ... import program_guard
+from ... import unique_name
 from . import fp16_utils
 from .fp16_utils import rewrite_program
 from .fp16_utils import update_role_var_grad

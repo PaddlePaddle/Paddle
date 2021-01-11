@@ -130,6 +130,20 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
+    {"rnn", {"DropoutState"}},
+};
+
+// NOTE(pangyoki): Tensor View Strategy.
+// In this case, a new output varbase will be created, and this varbase will
+// reuse the input varbase's allocation.
+// It's a 2-layer map. The key of outer map is the view op name, the value is
+// also a map which implies the mapping relationship between the output and
+// input varbase.
+std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
+    {"squeeze2", {"X", "Out"}},  // "X" -> "Out"
+    {"unsqueeze2", {"X", "Out"}},
+    {"reshape2", {"X", "Out"}},
+    {"flatten_contiguous_range", {"X", "Out"}},
 };
 
 // clang-format off
