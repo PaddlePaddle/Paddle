@@ -18,7 +18,7 @@ import numpy as np
 from ..fluid.layers import tensor
 from ..fluid.framework import Variable
 from ..fluid.framework import unique_name
-from ..fluid.framework import _current_expected_place
+from ..fluid.framework import _current_expected_place, _get_paddle_place
 from ..fluid.framework import dygraph_only
 from ..fluid.initializer import Constant
 from ..fluid.layers import core
@@ -26,7 +26,6 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
 from paddle.common_ops_import import *
-
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import linspace  #DEFINE_ALIAS
 import paddle
@@ -70,8 +69,9 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
             'complex64' , 'complex128'. Default: None, infers dtype from ``data`` 
             except for python float number which gets dtype from ``get_default_type`` .
-        place(CPUPlace|CUDAPinnedPlace|CUDAPlace, optional): The place to allocate Tensor. Can be  
-            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place.
+        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be  
+            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is 
+            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs. 
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
 
     Returns:
@@ -81,7 +81,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         TypeError: If the data type of ``data`` is not scalar, list, tuple, numpy.ndarray, paddle.Tensor
         ValueError: If ``data`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]
         TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
-        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace
+        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace or specified pattern string. 
 
     Examples:
 
@@ -119,10 +119,12 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         #         [(3+2j), (4+0j)]])
     """
 
+    place = _get_paddle_place(place)
     if place is None:
         place = _current_expected_place()
-    elif not isinstance(place, (core.Place, core.CPUPlace, core.CUDAPinnedPlace,
-                                core.CUDAPlace)):
+    elif not isinstance(
+            place,
+        (core.Place, core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
         raise ValueError(
             "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
         )
