@@ -28,6 +28,7 @@
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
