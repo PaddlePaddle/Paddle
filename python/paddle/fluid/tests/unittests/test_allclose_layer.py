@@ -61,10 +61,7 @@ class TestAllcloseLayer(unittest.TestCase):
         # for corner case
         x = np.array([10.1, 10.1]).astype(dtype)
         y = np.array([10, 10]).astype(dtype)
-        result_c, = exe.run(feed={
-                                  'a': x,
-                                  'b': y},
-                            fetch_list=[result_corner])
+        result_c, = exe.run(feed={'a': x, 'b': y}, fetch_list=[result_corner])
         corner_res = (dtype == 'float64')
         self.assertEqual(result_c[0], corner_res)
 
@@ -169,20 +166,12 @@ class TestAllcloseLayer(unittest.TestCase):
             x_v_4 = paddle.to_tensor(x_4)
             y_v_4 = paddle.to_tensor(y_4)
             ret_4 = paddle.allclose(
-                x_v_4,
-                y_v_4,
-                rtol=0.01,
-                atol=0.0,
-                name='test_7')
+                x_v_4, y_v_4, rtol=0.01, atol=0.0, name='test_7')
             self.assertEqual(ret_4.numpy()[0], False)
             x_v_5 = paddle.to_tensor(x_5)
             y_v_5 = paddle.to_tensor(y_5)
             ret_5 = paddle.allclose(
-                x_v_5,
-                y_v_5,
-                rtol=0.01,
-                atol=0.0,
-                name='test_8')
+                x_v_5, y_v_5, rtol=0.01, atol=0.0, name='test_8')
             self.assertEqual(ret_5.numpy()[0], True)
 
 

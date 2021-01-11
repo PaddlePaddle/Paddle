@@ -16,9 +16,9 @@
 #include <cmath>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -68,9 +68,11 @@ class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Rtol", "The relative tolerance.").AsDispensable();
     AddInput("Atol", "The absolute tolerance.").AsDispensable();
     AddOutput("Out", "The output tensor, it's data type is bool.");
-    AddAttr<std::string>("rtol", "The relative tolerance. Default: :math:`1e-5` .")
+    AddAttr<std::string>("rtol",
+                         "The relative tolerance. Default: :math:`1e-5` .")
         .SetDefault("1e-5");
-    AddAttr<std::string>("atol", "The absolute tolerance. Default: :math:`1e-8` .")
+    AddAttr<std::string>("atol",
+                         "The absolute tolerance. Default: :math:`1e-8` .")
         .SetDefault("1e-8");
     AddAttr<bool>("equal_nan",
                   "If :math:`True` , then two :math:`NaNs` will be "
@@ -167,5 +169,6 @@ REGISTER_OP_VERSION(allclose)
             .NewAttr("rtol",
                      "(string) The relative tolerance. Default: :math:`1e-5` .",
                      std::string("1e-5"))
-            .NewAttr("atol", "(string) The absolute tolerance. Default: :math:`1e-8` .",
+            .NewAttr("atol",
+                     "(string) The absolute tolerance. Default: :math:`1e-8` .",
                      std::string("1e-8")));

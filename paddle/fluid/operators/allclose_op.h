@@ -15,10 +15,10 @@
 #pragma once
 
 #include <string>
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/framework/data_type.h"
 
 namespace paddle {
 namespace operators {
@@ -55,26 +55,26 @@ class AllcloseKernel : public framework::OpKernel<T> {
     GetTensorValue<DeviceContext, double> get_tensor_value;
     if (ctx.HasInput("Rtol")) {
       const auto* rtol = ctx.Input<Tensor>("Rtol");
-      PADDLE_ENFORCE_EQ(rtol->numel(), 1,
-                  platform::errors::InvalidArgument(
-                      "Input(Rtol) size must be 1, but get %d.",
-                      rtol->numel()));
+      PADDLE_ENFORCE_EQ(
+          rtol->numel(), 1,
+          platform::errors::InvalidArgument(
+              "Input(Rtol) size must be 1, but get %d.", rtol->numel()));
       PADDLE_ENFORCE_EQ(rtol->type(), framework::proto::VarType::FP64,
-                  platform::errors::InvalidArgument(
-                      "Input(Rtol) type must be double, but get %s.",
-                      framework::DataTypeToString(rtol->type())));
+                        platform::errors::InvalidArgument(
+                            "Input(Rtol) type must be double, but get %s.",
+                            framework::DataTypeToString(rtol->type())));
       rtol_v = get_tensor_value(dev_ctx, *rtol);
     }
     if (ctx.HasInput("Atol")) {
       const auto* atol = ctx.Input<Tensor>("Atol");
-      PADDLE_ENFORCE_EQ(atol->numel(), 1,
-                  platform::errors::InvalidArgument(
-                      "Input(Atol) size must be 1, but get %d",
-                      atol->numel()));
+      PADDLE_ENFORCE_EQ(
+          atol->numel(), 1,
+          platform::errors::InvalidArgument(
+              "Input(Atol) size must be 1, but get %d", atol->numel()));
       PADDLE_ENFORCE_EQ(atol->type(), framework::proto::VarType::FP64,
-                  platform::errors::InvalidArgument(
-                      "Input(Atol) type must be double, but get %s",
-                      framework::DataTypeToString(atol->type())));
+                        platform::errors::InvalidArgument(
+                            "Input(Atol) type must be double, but get %s",
+                            framework::DataTypeToString(atol->type())));
       atol_v = get_tensor_value(dev_ctx, *atol);
     }
 
