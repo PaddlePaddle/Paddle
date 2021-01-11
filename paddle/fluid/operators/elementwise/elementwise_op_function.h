@@ -302,11 +302,16 @@ void CommonForwardBroadcastCUDA(
   const T *y_data = y->data<T>();
   OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
 
-  const int *bcast_dims = is_xsize_larger ? y_dims_array : x_dims_array;
-  bool is_strided = ((max_dim > 1) && (x_dims_array[0] == y_dims_array[0]));
+  const auto x_dims = x->dims();
+  const auto y_dims = y->dims();
+
+  const auto &bcast_dims = is_xsize_larger ? y_dims : x_dims;
+  bool is_strided =
+      ((x_dims.size() > 1 && y_dims.size() > 1) && (x_dims[0] == y_dims[0]) &&
+       (x_dims.size() == y_dims.size()));
   bool start_stride = false;
   int stride = 1;
-  for (int i = 1; i < max_dim; ++i) {
+  for (int i = 1; i < bcast_dims.size(); ++i) {
     if (bcast_dims[i] != 1 && !start_stride) start_stride = true;
     if (bcast_dims[i] == 1 && start_stride) is_strided = false;
     if (start_stride) stride *= bcast_dims[i];
