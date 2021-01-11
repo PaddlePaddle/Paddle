@@ -118,13 +118,44 @@ class OpUpdate : public OpUpdateBase {
   OpUpdateType type_;
 };
 
+template <OpUpdateType type__, typename InfoType>
+OpUpdate<InfoType, type__>* new_update(InfoType&& info) {
+  return new OpUpdate<InfoType, type__>(info);
+}
+
+template <typename T>
+OpAttrVariantT op_attr_wrapper(const T& val) {
+  return OpAttrVariantT{val};
+}
+
+template <int N>
+OpAttrVariantT op_attr_wrapper(const char (&val)[N]) {
+  PADDLE_ENFORCE_EQ(
+      val[N - 1], 0,
+      platform::errors::InvalidArgument(
+          "The argument of operator register %c is illegal.", val[N - 1]));
+  return OpAttrVariantT{std::string{val}};
+}
+
 class OpVersionDesc {
  public:
   /* Compatibility upgrade */
+  template <typename T>
   OpVersionDesc&& ModifyAttr(const std::string& name, const std::string& remark,
-                             const OpAttrVariantT& default_value);
+                             const T& default_value) {
+    infos_.emplace_back(new_update<OpUpdateType::kModifyAttr>(
+        OpAttrInfo(name, remark, op_attr_wrapper(default_value))));
+    return std::move(*this);
+  }
+
+  template <typename T>
   OpVersionDesc&& NewAttr(const std::string& name, const std::string& remark,
-                          const OpAttrVariantT& default_value);
+                          const T& default_value) {
+    infos_.emplace_back(new_update<OpUpdateType::kNewAttr>(
+        OpAttrInfo(name, remark, op_attr_wrapper(default_value))));
+    return std::move(*this);
+  }
+
   OpVersionDesc&& NewInput(const std::string& name, const std::string& remark);
   OpVersionDesc&& NewOutput(const std::string& name, const std::string& remark);
   OpVersionDesc&& BugfixWithBehaviorChanged(const std::string& remark);
@@ -240,7 +271,13 @@ class OpVersionComparator {
       if (OpVersionRegistrar::GetInstance().Has(op_name_)) {                 \
         version_id = OpVersionRegistrar::GetInstance().version_id(op_name_); \
       }                                                                      \
-      return version_id cmp_math target_version_;                            \
+      bool check_ok = version_id cmp_math target_version_;                   \
+      if (!check_ok) {                                                       \
+        LOG(WARNING) << "Check op version in pass failed. op name:"          \
+                     << op_name_.c_str() << " op_version:" << version_id     \
+                     << "  target_version:" << target_version_;              \
+      }                                                                      \
+      return check_ok;                                                       \
     }                                                                        \
     virtual ~OpVersion##cmp_name##Comparator() {}                            \
                                                                              \
@@ -326,6 +363,11 @@ class PassVersionCheckerRegistrar {
     return instance;
   }
   PassVersionCheckers& Register(const std::string& pass_name) {
+    PADDLE_ENFORCE_EQ(pass_version_checkers_map_.find(pass_name),
+                      pass_version_checkers_map_.end(),
+                      platform::errors::AlreadyExists(
+                          "PassVersionCheckers(%s) has alredy been registered.",
+                          pass_name.c_str()));
     return pass_version_checkers_map_[pass_name];
   }
   bool IsPassCompatible(const std::string& fuse_pass_name) const {

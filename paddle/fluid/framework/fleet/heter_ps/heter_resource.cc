@@ -19,23 +19,35 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-GPUResource::GPUResource(int dev_id, int index) {
+GPUResource::GPUResource(std::vector<int>& dev_ids, int index) {
   index_ = index;
-  dev_id_ = dev_id;
+  dev_ids_ = dev_ids;
+  dev_id_ = dev_ids_[index];
 
   platform::CUDADeviceGuard guard(dev_id_);
+  local_streams_.resize(dev_ids_.size());
+  comm_streams_.resize(dev_ids_.size());
+
+  for (size_t i = 0; i < dev_ids_.size(); ++i) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaStreamCreateWithFlags(&local_streams_[i], cudaStreamNonBlocking));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaStreamCreateWithFlags(&comm_streams_[i], cudaStreamNonBlocking));
+  }
 
   PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking));
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaStreamCreateWithFlags(&copy_stream_, cudaStreamNonBlocking));
+      cudaStreamCreateWithFlags(&remote_stream_, cudaStreamNonBlocking));
 }
 
 GPUResource::~GPUResource() {
   platform::CUDADeviceGuard guard(dev_id_);
-
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(copy_stream_));
+  for (size_t i = 0; i < local_streams_.size(); ++i) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(local_streams_[i]));
+  }
+  for (size_t i = 0; i < comm_streams_.size(); ++i) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(comm_streams_[i]));
+  }
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(remote_stream_));
 }
 
 void HeterPsResource::enable_p2p() {
@@ -64,18 +76,22 @@ HeterPsResource::HeterPsResource(const std::vector<int>& dev_ids) {
   dev_ids_ = dev_ids;
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
     std::shared_ptr<GPUResource> resource =
-        std::make_shared<GPUResource>(dev_ids_[i], i);
+        std::make_shared<GPUResource>(dev_ids_, i);
     resources_.push_back(resource);
     devid_2_index_[dev_ids_[i]] = i;
   }
 }
 
-cudaStream_t HeterPsResource::copy_stream(int num) {
-  return resources_[num]->copy_stream();
+cudaStream_t HeterPsResource::comm_stream(int gpu_num, int stream_num) {
+  return resources_[gpu_num]->comm_stream(stream_num);
 }
 
-cudaStream_t HeterPsResource::stream(int num) {
-  return resources_[num]->stream();
+cudaStream_t HeterPsResource::local_stream(int gpu_num, int stream_num) {
+  return resources_[gpu_num]->local_stream(stream_num);
+}
+
+cudaStream_t HeterPsResource::remote_stream(int gpu_num) {
+  return resources_[gpu_num]->remote_stream();
 }
 
 int HeterPsResource::dev_id(int num) { return dev_ids_[num]; }
