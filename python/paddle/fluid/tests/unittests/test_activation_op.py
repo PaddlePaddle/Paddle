@@ -1098,7 +1098,7 @@ class TestReluAPI(unittest.TestCase):
             self.relu(x_fp16)
 
 
-class TestRelu_InplaceAPI(unittest.TestCase):
+class TestRelu_InplaceAPI(TestReluAPI):
     # test paddle.nn.functional.relu_
     def executed_api(self):
         self.relu = F.relu_
