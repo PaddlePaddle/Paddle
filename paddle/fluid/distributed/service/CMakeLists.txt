@@ -1,22 +1,12 @@
 set(BRPC_SRCS ps_client.cc server.cc)
 set_source_files_properties(${BRPC_SRCS})
 
-MESSAGE(STATUS "houjue_debug: WITH_MKLDNN: ${WITH_MKLDNN}, WITH_MKL: ${WITH_MKL}, AVX2_FOUND: ${AVX2_FOUND}")
-
 set(BRPC_DEPS brpc ssl crypto protobuf gflags glog zlib leveldb snappy gflags glog device_context)
 
 brpc_library(sendrecv_rpc SRCS
         ${BRPC_SRCS}
         PROTO sendrecv.proto
         DEPS ${BRPC_DEPS} )
-
-if(WITH_MKLDNN)
-    message(STATUS "houjue_debug: add_dependencies for sendrecv_rpc")
-    add_dependencies(sendrecv_rpc mkldnn)
-    add_dependencies(sendrecv_rpc extern_mkldnn)
-else()
-    message(STATUS "houjue_debug: not add_dependencies for sendrecv_rpc")
-endif()
 
 set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper)
 
