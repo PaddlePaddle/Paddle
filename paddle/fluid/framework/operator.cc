@@ -1040,11 +1040,11 @@ static void CheckTensorNANOrInf(const std::string& op_type,
                               op_type, name));
 }
 
-bool OperatorWithKernel::SupportsMKLDNN(const framework::ExecutionContext& ctx,
-                                        proto::VarType::Type data_type) const {
+bool OperatorWithKernel::SupportsMKLDNN(
+    const proto::VarType::Type data_type) const {
   auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
   return std::any_of(op_kernels.begin(), op_kernels.end(),
-                     [ctx, data_type](OpKernelMap::const_reference kern_pair) {
+                     [data_type](OpKernelMap::const_reference kern_pair) {
                        return platform::is_cpu_place(kern_pair.first.place_) &&
                               kern_pair.first.library_type_ ==
                                   LibraryType::kMKLDNN &&
@@ -1056,7 +1056,7 @@ bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
   bool use_mkldnn_ctx =
       ctx.Attr<bool>("use_mkldnn") && platform::is_cpu_place(ctx.GetPlace());
-  return use_mkldnn_ctx && this->SupportsMKLDNN(ctx, data_type);
+  return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,

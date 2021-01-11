@@ -490,8 +490,7 @@ class OperatorWithKernel : public OperatorBase {
                          return platform::is_gpu_place(kern_pair.first.place_);
                        });
   }
-  bool SupportsMKLDNN(const framework::ExecutionContext& ctx,
-                      proto::VarType::Type data_type) const;
+  bool SupportsMKLDNN(proto::VarType::Type data_type) const;
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
