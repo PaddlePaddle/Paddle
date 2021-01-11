@@ -54,9 +54,14 @@ class BatchNormMKLDNNHandler
       const float epsilon = ctx.Attr<float>("epsilon");
       const bool fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
 
+      std::vector<std::string> DataLayout_error_msg = {"kNHWC", "kNCHW",
+                                                       "kAnyLayout", "kMKLDNN"};
       PADDLE_ENFORCE_EQ(
           x->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for X tensor"));
+          platform::errors::InvalidArgument(
+              "Wrong layout set for X tensor. Expected layout is `kMKLDNN`, "
+              "But received %s.",
+              DataLayout_error_msg[static_cast<int>(DataLayout::kMKLDNN)]));
       PADDLE_ENFORCE_NE(
           x->format(), MKLDNNMemoryFormat::undef,
           platform::errors::InvalidArgument("Wrong format set for X tensor"));
