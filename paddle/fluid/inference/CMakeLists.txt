@@ -83,7 +83,7 @@ if (WITH_CRYPTO)
     set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
 endif (WITH_CRYPTO)
 
-if (WITH_DISTRIBUTE)
+if (WITH_PSCORE)
     set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service)
 endif ()
 

@@ -274,7 +274,7 @@ if(WITH_BOX_PS)
     list(APPEND third_party_deps extern_box_ps)
 endif(WITH_BOX_PS)
 
-if (WITH_DISTRIBUTE)
+if (WITH_PSCORE)
     include(external/snappy)
     list(APPEND third_party_deps extern_snappy)
 
