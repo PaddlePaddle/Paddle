@@ -47,63 +47,37 @@ __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
   }
 }
 
-template <typename T>
+template <typename T, int BlockSize>
 __global__ void LookupTableV2Grad(T *table, const T *output, const int64_t *ids,
                                   const int64_t N, const int64_t K,
                                   const int64_t D, const int64_t padding_idx) {
+  const int tid = threadIdx.x;
   const int stride = gridDim.x * blockDim.x;
   int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
 
-  extern __shared__ int64_t s_ids[];
-#pragma unroll
-  for (int64_t i = threadIdx.x; i < K; i += blockDim.x) s_ids[i] = ids[i];
-  __syncthreads();
+  __shared__ int64_t s_ids[BlockSize];
 
   T *tab_padding = table + padding_idx * D;
   while (idx < D) {
     T padding_sum = tab_padding[idx];
 
-#pragma unroll
-    for (int64_t i = 0; i < K; i++) {
-      int64_t id = s_ids[i];
-      const T *out = output + i * D;
-      T *tab = table + id * D;
+    for (int64_t k = 0; k < K; k += BlockSize) {
+      if (k + tid < K) s_ids[tid] = ids[k + tid];
+      __syncthreads();
 
-      if (id == padding_idx)
-        padding_sum += out[idx];
-      else
-        tab[idx] += out[idx];
+      const int i_end = min(static_cast<int>(K - k), BlockSize);
+      for (int i = 0; i < i_end; i++) {
+        int64_t id = s_ids[i];
+        const T *out = output + (k + i) * D;
+        T *tab = table + id * D;
+
+        if (id == padding_idx)
+          padding_sum += out[idx];
+        else
+          tab[idx] += out[idx];
+      }
     }
     tab_padding[idx] = padding_sum;
-    idx += stride;
-  }
-}
-
-template <typename T>
-__global__ void LookupTableV2Grad_N8(T *table, const T *output,
-                                     const int64_t *ids, const int64_t N,
-                                     const int64_t K, const int64_t D) {
-  const int stride = gridDim.x * blockDim.x;
-  int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-
-  extern __shared__ int64_t s_ids[];
-#pragma unroll
-  for (int64_t i = threadIdx.x; i < K; i += blockDim.x) s_ids[i] = ids[i];
-  __syncthreads();
-
-  while (idx < D) {
-    T tab_res[8]{(T)0};
-#pragma unroll
-    for (int64_t i = 0; i < K; i++) {
-      int64_t id = s_ids[i];
-      const T *out = output + i * D;
-      tab_res[id] += out[idx];
-    }
-#pragma unroll
-    for (int i = 0; i < N; i++) {
-      T *tab = table + i * D;
-      tab[idx] += tab_res[i];
-    }
     idx += stride;
   }
 }
@@ -242,13 +216,14 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       auto ids_t = context.Input<LoDTensor>("Ids");
       auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+      int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
       int N = d_table_t->dims()[0];
       int D = d_table_t->dims()[1];
       int K = ids_t->numel();
 
-      int threads = std::min(D, 512);
-      int grids = (D + threads - 1) / threads;
+      dim3 threads(256);
+      dim3 grids(std::min(K, 8), 1);
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> ids;
       ids.resize(K);
@@ -270,25 +245,8 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       auto t = framework::EigenVector<T>::Flatten(*d_table_t);
       t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
-      if (N <= 8) {
-        /*
-          while 8?
-          When greater than 8:
-          the complier may store the array to local memory rather than register.
-          When less than 8:
-          The global memory can not coalesce.
-        */
-        LookupTableV2Grad_N8<
-            T><<<grids, threads, K * sizeof(int64_t), dev_ctx.stream()>>>(
-            d_table, d_output, ids_p, N, K, D);
-      } else {
-        int64_t padding_idx = context.Attr<int64_t>("padding_idx");
-        if (padding_idx == -1) padding_idx = 0;
-
-        LookupTableV2Grad<
-            T><<<grids, threads, K * sizeof(int64_t), dev_ctx.stream()>>>(
-            d_table, d_output, ids_p, N, K, D, padding_idx);
-      }
+      LookupTableV2Grad<T, 256><<<grids, threads, 0, dev_ctx.stream()>>>(
+          d_table, d_output, ids_p, N, K, D, padding_idx);
     }
   }
 };
