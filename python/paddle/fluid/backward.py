@@ -760,13 +760,10 @@ def _append_backward_ops_with_checkpoints_(
     buffer_block = block.program._create_block()
     # 0) deal with forward recomputing program descs
     program_stat = ProgramStats(block, ops)
-    # dropout seed op
     program_stat.modify_forward_desc_for_recompute()
-    # dependency parse: var_op_deps, op_deps
     program_stat.build_stats()
 
     # 1) find ops between checkpoints, i.e. recompute_segments
-    # sort checkpoint_names by the idx of its last generate op
     checkpoints_name = program_stat.sort_checkpoints(checkpoints_name)
     segments = []
 

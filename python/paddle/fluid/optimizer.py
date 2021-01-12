@@ -4711,14 +4711,11 @@ class RecomputeOptimizer(Optimizer):
     def _creat_vars(self, varname):
         pinned_var_name = unique_name.generate(varname + "@Pinned")
         fetched_var_name = unique_name.generate(varname + "@Fetch")
-        # no need to rename the checkpoint in Forward pass
-        # offload_var_name = unique_name.generate(var.name + "@Offload")
 
         pinned_var = self._main_program.global_block().create_var(
             name=pinned_var_name,
             shape=self.checkpoint_shape,
             dtype=self._main_program.global_block().var(varname).dtype,
-            # the pinned vars are activations, should not be persistable, 
             persistable=False,
             stop_gradient=True)
 
@@ -4727,8 +4724,6 @@ class RecomputeOptimizer(Optimizer):
             shape=self.checkpoint_shape,
             dtype=self._main_program.global_block().var(varname).dtype,
             persistable=False,
-            # Fetch var will participate in backward chain rule,
-            # while Pinned var should not 
             stop_gradient=False)
 
         return pinned_var_name, fetched_var_name
@@ -4748,10 +4743,7 @@ class RecomputeOptimizer(Optimizer):
         OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
         for varname in fill_constant_vars:
             var = self._main_program.global_block().var(varname)
-            # NOTE (JZ-LIANG) create the var with the same name in main_prog in startup_prog
-            # though the non-persistable var belongs to local scope of startup prog and won't share
-            # with main prog, but we need it to pre-allocate the CUDAPinned MEM in host. 
-            # should be revise in future.
+            # NOTE (JZ-LIANG) to pre-allocate the CUDAPinned MEM
             pinned_var = block.create_var(
                 name=varname,
                 shape=self.checkpoint_shape,
@@ -4859,8 +4851,7 @@ class RecomputeOptimizer(Optimizer):
                     if input_var not in self.un_fetch_checkpoint_names:
                         # fetch the  offloade checkpoint when the first usage of its previous one
                         if self.checkpoint_usage_count[input_var] == 0:
-                            # TODO (JZ-LIANG) when use an extra stream for memcpy
-                            # sync memcpy_stream here, before checkpoint first usage
+                            # TODO (JZ-LIANG) sync memcpy_stream if extra stream for memcpy
                             second_to_last_fetch_checkpoint = fetched_checkpoint_varname
                             # there is NO fetch ahead the first checkpoint 
                             if input_var != self.sorted_checkpoint_names[0]:
@@ -5041,14 +5032,12 @@ class RecomputeOptimizer(Optimizer):
             startup_program = fluid.default_startup_program()
 
         with program_guard(self._main_program, startup_program):
-            # step 1.1 infer actual shape for checkpoints
             assert len(self.checkpoint_shape) > 0, (
                 "checkpoints shape {} should be an non empty list like: [12, 512, 1024]".
                 format(self.checkpoint_shape))
             assert all([ele > 0 for ele in self.checkpoint_shape]), (
                 "all ele in checkpoints shape {} should be a determined integer larger than 0".
                 format(self.checkpoint_shape))
-            # 1.2 create CUDAPinnedPlace vars as offloaded checkpoint in host mem
             self.checkpoint_name2pinned_name = dict()
             self.checkpoint_name2fetch_name = dict()
             for checkpoint_varname in self.sorted_checkpoint_names:
@@ -5058,11 +5047,8 @@ class RecomputeOptimizer(Optimizer):
                     checkpoint_varname] = pinned_var_name
                 self.checkpoint_name2fetch_name[
                     checkpoint_varname] = fetch_var_name
-            # 1.3 add pinned_var to startup_prog
             self._append_fill_constant_ops(startup_program)
             # TODO (JZ-LIANG) to provide two offload stragtegy in future
-            # 1. overlap memcpy & caculate: faster, less memory saving
-            # 2. non-overlap: slower, more memory saving
             # step 2. parse & update FW: rename, offload, sync
             self._parse_backward()
             self._update_backward()
