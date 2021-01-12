@@ -108,12 +108,11 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   float* bias_data = nullptr;
   size_t bias_size = 0;
   if (op_desc.Type() == "conv2d_fusion") {
-    auto* weight_tensor = scope.FindVar(op_desc.Input("Bias").front());
-    auto* weight_tensor_data =
-        weight_tensor->GetMutable<framework::LoDTensor>();
+    auto* bias_tensor = scope.FindVar(op_desc.Input("Bias").front());
+    auto* bias_tensor_data = bias_tensor->GetMutable<framework::LoDTensor>();
     bias_data = engine->GetWeightCPUData(op_desc.Input("Bias").front(),
-                                         weight_tensor_data, false);
-    bias_size = static_cast<size_t>(weight_tensor_data->numel());
+                                         bias_tensor_data, false);
+    bias_size = static_cast<size_t>(bias_tensor_data->numel());
   }
 
   TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,

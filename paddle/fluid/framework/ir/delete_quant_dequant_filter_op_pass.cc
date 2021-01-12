@@ -114,9 +114,13 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
       PADDLE_ENFORCE_EQ(
           weight_scale.size(), 1,
           platform::errors::InvalidArgument(
-              "%s op weight dequantized by [fake_dequantize_max_abs] "
+              "%s op weight dequantized by [fake_quantize_dequantize_max_abs] "
               "requires weight scale size = 1, but got %d.",
               quantized_op_type, weight_scale.size()));
+      PADDLE_ENFORCE_EQ(
+          weight_scale[0] != 0, 1,
+          platform::errors::InvalidArgument(
+              "%s op weight scale should be nonzero, but get zero"));
       for (int j = 0; j < weight_tensor->numel(); j++) {
         // quantized
         quantized_weight_data[j] = quantized_weight_data[j] * weight_scale[0];
@@ -137,6 +141,11 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
                 static_cast<size_t>(w_dims[1]), weight_scale.size()));
         for (int j = 0; j < weight_tensor->numel(); j++) {
           // quantized
+          PADDLE_ENFORCE_EQ(weight_scale[j % w_dims[1]] != 0, 1,
+                            platform::errors::InvalidArgument(
+                                "%s op weight scale "
+                                "should be nonzero, but get zero",
+                                quantized_op_type));
           quantized_weight_data[j] =
               quantized_weight_data[j] * weight_scale[j % w_dims[1]];
           quantized_weight_data[j] = std::round(quantized_weight_data[j]);
@@ -156,6 +165,11 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
         int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
         for (int j = 0; j < weight_tensor->numel(); j++) {
           // quantized
+          PADDLE_ENFORCE_EQ(weight_scale[j / inner_size] != 0, 1,
+                            platform::errors::InvalidArgument(
+                                "%s op weight scale "
+                                "should be nonzero, but get zero",
+                                quantized_op_type));
           quantized_weight_data[j] =
               quantized_weight_data[j] * weight_scale[j / inner_size];
           quantized_weight_data[j] = std::round(quantized_weight_data[j]);
@@ -175,6 +189,11 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
         int inner_size = w_dims[2] * w_dims[3];
         for (int j = 0; j < weight_tensor->numel(); j++) {
           // quantized
+          PADDLE_ENFORCE_EQ(weight_scale[(j / inner_size) % w_dims[1]] != 0, 1,
+                            platform::errors::InvalidArgument(
+                                "%s op weight scale "
+                                "should be nonzero, but get zero",
+                                quantized_op_type));
           quantized_weight_data[j] = quantized_weight_data[j] *
                                      weight_scale[(j / inner_size) % w_dims[1]];
           quantized_weight_data[j] = std::round(quantized_weight_data[j]);
