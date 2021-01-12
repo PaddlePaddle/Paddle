@@ -1137,6 +1137,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::EventRole::kInnerOp);
     (*kernel_func_)(
         ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
+
     if (std::getenv("FLAGS_opt_xpu_mem") != nullptr &&
         platform::is_xpu_place(kernel_type_->place_)) {
       xpu_wait();
