@@ -14,7 +14,9 @@
 
 #include "paddle/fluid/operators/allclose_op.h"
 #include <cmath>
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -63,9 +65,15 @@ class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor, it's data type should be float32, float64.");
     AddInput("Other",
              "The input tensor, it's data type should be float32, float64.");
-    AddInput("Rtol", "The relative tolerance.");
-    AddInput("Atol", "The absolute tolerance.");
+    AddInput("Rtol", "The relative tolerance.").AsDispensable();
+    AddInput("Atol", "The absolute tolerance.").AsDispensable();
     AddOutput("Out", "The output tensor, it's data type is bool.");
+    AddAttr<std::string>("rtol",
+                         "The relative tolerance. Default: :math:`1e-5` .")
+        .SetDefault("1e-5");
+    AddAttr<std::string>("atol",
+                         "The absolute tolerance. Default: :math:`1e-8` .")
+        .SetDefault("1e-8");
     AddAttr<bool>("equal_nan",
                   "If :math:`True` , then two :math:`NaNs` will be "
                   "compared as equal. Default: :math:`False` .")
@@ -91,8 +99,6 @@ class AllcloseOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Allclose");
     OP_INOUT_CHECK(ctx->HasInput("Other"), "Input", "Other", "Allclose");
-    OP_INOUT_CHECK(ctx->HasInput("Rtol"), "Input", "Rtol", "Allclose");
-    OP_INOUT_CHECK(ctx->HasInput("Atol"), "Input", "Atol", "Allclose");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Allclose");
 
     auto input_dim = ctx->GetInputDim("Input");
@@ -153,3 +159,16 @@ REGISTER_OPERATOR(
     ops::AllcloseOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(allclose, ops::AllcloseKernel<CPU, float>,
                        ops::AllcloseKernel<CPU, double>);
+
+REGISTER_OP_VERSION(allclose)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade allclose add 2 attributes [atol, rtol].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("rtol",
+                     "(string) The relative tolerance. Default: :math:`1e-5` .",
+                     std::string("1e-5"))
+            .NewAttr("atol",
+                     "(string) The absolute tolerance. Default: :math:`1e-8` .",
+                     std::string("1e-8")));
