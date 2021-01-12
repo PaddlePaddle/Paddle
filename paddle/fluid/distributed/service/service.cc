@@ -59,7 +59,7 @@ void PSCore::init_gflag(const std::string& gflags) {
   flags.insert(it, "exe default");
   char* flags_ptr[flags.size()];
   for (size_t i = 0; i < flags.size(); ++i) {
-    flags_ptr[i] = reinterpret_cast<char*>(flags[i].c_str());
+    flags_ptr[i] = (char*)(flags[i].c_str());  // NOLINT
   }
   int params_cnt = flags.size();
   char** params_ptr = &(flags_ptr[0]);
