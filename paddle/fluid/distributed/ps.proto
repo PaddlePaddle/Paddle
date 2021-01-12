@@ -86,7 +86,7 @@ message SparseTableParameter {
 message ServerServiceParameter {
   optional string server_class = 1 [ default = "BrpcPsServer" ];
   optional string client_class = 2 [ default = "BrpcPsClient" ];
-  optional string service_class = 3 [ default = "PsService" ];
+  optional string service_class = 3 [ default = "BrpcPsService" ];
   optional uint32 start_server_port = 4
       [ default = 0 ]; // will find a avaliable port from it
   optional uint32 server_thread_num = 5 [ default = 12 ];

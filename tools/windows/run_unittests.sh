@@ -82,7 +82,6 @@ diable_wingpu_test="^test_gradient_clip$|\
 ^test_rnn_op$|\
 ^test_simple_rnn_op$|\
 ^test_lstm_cudnn_op$|\
-^test_conv2d_int8_mkldnn_op$|\
 ^test_crypto$|\
 ^test_program_prune_backward$|\
 ^test_imperative_ocr_attention_model$|\

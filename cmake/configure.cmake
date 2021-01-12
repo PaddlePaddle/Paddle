@@ -160,6 +160,11 @@ if(WITH_DISTRIBUTE)
   add_definitions(-DPADDLE_WITH_DISTRIBUTE)
 endif()
 
+if(WITH_PSCORE)
+    add_definitions(-DPADDLE_WITH_PSCORE)
+endif()
+
+
 if(WITH_GRPC)
     add_definitions(-DPADDLE_WITH_GRPC)
 endif(WITH_GRPC)
