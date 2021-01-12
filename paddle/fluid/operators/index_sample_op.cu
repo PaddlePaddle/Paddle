@@ -19,10 +19,14 @@
 namespace paddle {
 namespace operators {
 
+using platform::PADDLE_CUDA_NUM_THREADS;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
 template <typename T, typename IndexT = int>
-__global__ void index_kernel(IndexT* p_index, T* p_input, T* p_output,
-                             size_t stride_index, size_t stride_input,
-                             size_t height) {
+__global__ void index_kernel(const IndexT* p_index, const T* p_input,
+                             T* p_output, size_t stride_index,
+                             size_t stride_input, size_t height) {
   int ix = blockDim.x * blockIdx.x + threadIdx.x;
   int iy = blockDim.y * blockIdx.y + threadIdx.y;
   int tid = iy * stride_index + ix;
@@ -36,9 +40,9 @@ __global__ void index_kernel(IndexT* p_index, T* p_input, T* p_output,
 }
 
 template <typename T, typename IndexT = int>
-__global__ void index_kernel_grad(IndexT* p_index, T* p_input, T* p_output,
-                                  size_t stride_index, size_t stride_input,
-                                  size_t height) {
+__global__ void index_kernel_grad(const IndexT* p_index, const T* p_input,
+                                  T* p_output, size_t stride_index,
+                                  size_t stride_input, size_t height) {
   int ix = blockDim.x * blockIdx.x + threadIdx.x;
   int iy = blockDim.y * blockIdx.y + threadIdx.y;
   int tid = iy * stride_index + ix;
@@ -99,9 +103,9 @@ class IndexSampleCUDAKernel : public framework::OpKernel<T> {
 
     auto input_dim = input->dims();
     auto index_dim = index->dims();
-    auto batch_size = input_dim[0];
-    auto input_length = input_dim[1];
-    auto index_length = index_dim[1];
+    size_t batch_size = input_dim[0];
+    size_t input_length = input_dim[1];
+    size_t index_length = index_dim[1];
 
     auto block_width = ComputeBlockSize(index_length);
     int block_height =
@@ -134,7 +138,7 @@ class IndexSampleGradCUDAKernel : public framework::OpKernel<T> {
     auto* input_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
     auto* index = ctx.Input<LoDTensor>("Index");
 
-    auto* output_grad_data = output_grad->data<T>();
+    const auto* output_grad_data = output_grad->data<T>();
     auto* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
 
     const auto& index_type = index->type();
@@ -176,12 +180,12 @@ class IndexSampleGradCUDAKernel : public framework::OpKernel<T> {
 
     auto input_dim = input_grad->dims();
     auto index_dim = index->dims();
-    auto batch_size = index_dim[0];
-    auto input_length = input_dim[1];
-    auto index_length = index_dim[1];
+    size_t batch_size = index_dim[0];
+    size_t input_length = input_dim[1];
+    size_t index_length = index_dim[1];
 
     auto block_width = ComputeBlockSize(index_length);
-    int block_height =
+    auto block_height =
         ComputeBlockSize(index_length * batch_size) / block_width;
 
     dim3 block_dim(block_width, block_height);
