@@ -69,5 +69,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<bool>, ops::ShapeKernel<int>,
+                       ops::ShapeKernel<int8_t>, ops::ShapeKernel<uint8_t>,
                        ops::ShapeKernel<int64_t>, ops::ShapeKernel<float>,
                        ops::ShapeKernel<double>);

@@ -16,8 +16,8 @@ limitations under the License. */
  * This file contains demo for mobilenet, se-resnext50 and ocr.
  */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 
 #ifdef PADDLE_WITH_CUDA
