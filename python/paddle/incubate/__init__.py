@@ -14,11 +14,7 @@
 
 from . import optimizer
 from ..fluid.contrib import reader
-from ..fluid.contrib.layers import sparse_embedding
-from ..fluid.io import load_vars
 
 __all__ = []
 __all__ += ["reader"]
-__all__ += ["sparse_embedding"]
-__all__ += ["load_vars"]
 __all__ += optimizer.__all__
