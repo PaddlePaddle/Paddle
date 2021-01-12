@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ class MemcpyFunctor {
   }
 
   void operator()(const framework::SelectedRows &rows) const {
-    // (JZ-LIANT) to support SelectedRows
+    // (JZ-LIANG) to support SelectedRows
     PADDLE_THROW(platform::errors::Unimplemented(
         "Memcpy for SelectedRows is NOT support yet."));
   }

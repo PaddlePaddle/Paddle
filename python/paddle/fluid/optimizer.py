@@ -4765,9 +4765,7 @@ class RecomputeOptimizer(Optimizer):
                     "shape": var.shape,
                     "dtype": var.dtype,
                     "value": 0.0,
-                    "force_cpu": True,
-                    "op_device": "cpu",
-                    "pinned": True,
+                    "place_type": 2,
                     OP_ROLE_KEY: op_role,
                 })
 

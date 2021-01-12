@@ -104,23 +104,23 @@ class FillConstantKernel : public framework::OpKernel<T> {
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
     int actual_place = place_type;
 
-    if (actual_place == 0) {
+    if (actual_place == -1) {
       bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
       if (cpu_place) {
-        actual_place = 1;
+        actual_place = 0;
       } else if (platform::is_gpu_place(ctx.GetPlace())) {
-        actual_place = 2;
+        actual_place = 1;
       } else if (platform::is_xpu_place(ctx.GetPlace())) {
-        actual_place = 4;
+        actual_place = 3;
       }
     }
 
-    if (actual_place == 1) {
+    if (actual_place == 0) {
       tensor->mutable_data(platform::CPUPlace(), data_type);
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
-    } else if (actual_place == 2) {
+    } else if (actual_place == 1) {
 #ifdef PADDLE_WITH_CUDA
       tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::CUDADeviceContext, T> functor;
@@ -130,10 +130,9 @@ class FillConstantKernel : public framework::OpKernel<T> {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU."));
 #endif
-    } else if (actual_place == 3) {
+    } else if (actual_place == 2) {
 #ifdef PADDLE_WITH_CUDA
       tensor->mutable_data(platform::CUDAPinnedPlace(), data_type);
-      // ?? should be CPUDeviceContext or CUDADeviceContext
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
@@ -141,7 +140,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU."));
 #endif
-    } else if (actual_place == 4) {
+    } else if (actual_place == 3) {
 #ifdef PADDLE_WITH_XPU
       tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::XPUDeviceContext, T> functor;
@@ -153,7 +152,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
 #endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Could NOT determine the place of variable, place = %d .",
+          "Could NOT determine the place of variable, place_type = %d .",
           actual_place));
     }
   }

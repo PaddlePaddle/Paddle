@@ -117,14 +117,14 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                   "device")
         .SetDefault(false);
     AddAttr<int>("place_type",
-                 "(int, default 0) allow mamually setting place where the "
+                 "(int, default -1) allow mamually setting place where the "
                  "variable should be hold. "
-                 "0: not set manually, determine the place by executor. "
-                 "1: CPUPlace. "
-                 "2: CUDAPlace. "
-                 "3: CUDAPinnedPlace. "
-                 "4: XPUPlace. ")
-        .SetDefault(0);
+                 "-1: not set manually, determine the place by executor. "
+                 "0: CPUPlace. "
+                 "1: CUDAPlace. "
+                 "2: CUDAPinnedPlace. "
+                 "3: XPUPlace. ")
+        .SetDefault(-1);
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "
               "with the specified value");
@@ -170,4 +170,4 @@ REGISTER_OP_VERSION(fill_constant)
     )ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "place_type",
-            "In order to support tensor in CUDAPinnedPlace and XPUPlace", 0));
+            "In order to support tensor in CUDAPinnedPlace and XPUPlace", -1));

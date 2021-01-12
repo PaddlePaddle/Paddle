@@ -51,7 +51,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
                     "shape": [10, 10],
                     "dtype": gpu_var.dtype,
                     "value": 1.0,
-                    "place_type": 2
+                    "place_type": 1
                 })
             main_program.global_block().append_op(
                 type="fill_constant",
@@ -60,7 +60,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
                     "shape": [10, 10],
                     "dtype": gpu_var.dtype,
                     "value": 0.0,
-                    "place_type": 3
+                    "place_type": 2
                 })
         return main_program, gpu_var, pinned_var
 
@@ -113,7 +113,7 @@ class TestMemcpyOPError(unittest.TestCase):
                     "shape": [10, 10],
                     "dtype": pinned_var.dtype,
                     "value": 0.0,
-                    "place_type": 3
+                    "place_type": 2
                 })
         return main_program, pinned_var
 
@@ -129,7 +129,7 @@ class TestMemcpyOPError(unittest.TestCase):
                 "shape": selected_row_var.shape,
                 "dtype": selected_row_var.dtype,
                 "value": 1.0,
-                "place_type": 2
+                "place_type": 1
             })
         main_program.global_block().append_op(
             type='memcpy',
@@ -155,7 +155,7 @@ class TestMemcpyOPError(unittest.TestCase):
                 "shape": lod_tensor_var.shape,
                 "dtype": lod_tensor_var.dtype,
                 "value": 1.0,
-                "place_type": 1
+                "place_type": 0
             })
         main_program.global_block().append_op(
             type='memcpy',

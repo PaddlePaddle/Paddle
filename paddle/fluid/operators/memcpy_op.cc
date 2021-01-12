@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,14 +42,12 @@ class MemcpyOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    if (ctx->HasInput("X")) {
-      auto type = ctx->GetInputsVarType("X")[0];
-      if (type == framework::proto::VarType::SELECTED_ROWS ||
-          type == framework::proto::VarType::LOD_TENSOR) {
-        ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-        if (type == framework::proto::VarType::LOD_TENSOR) {
-          ctx->ShareLoD("X", /*->*/ "Out");
-        }
+    auto type = ctx->GetInputsVarType("X")[0];
+    if (type == framework::proto::VarType::SELECTED_ROWS ||
+        type == framework::proto::VarType::LOD_TENSOR) {
+      ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+      if (type == framework::proto::VarType::LOD_TENSOR) {
+        ctx->ShareLoD("X", /*->*/ "Out");
       }
     }
   }
