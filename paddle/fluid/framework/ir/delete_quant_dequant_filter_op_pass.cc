@@ -63,10 +63,12 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
       if (std::find(name_m.second.begin(), name_m.second.end(),
                     quant_dequant_op_out_name) != name_m.second.end()) {
         arg_name = name_m.first;
+        break;
       }
     }
-    CHECK(arg_name.size() > 0) << "can not find the input "
-                               << quant_dequant_op_out_name;
+    PADDLE_ENFORCE_GT(arg_name.size(), 0, platform::errors::InvalidArgument(
+                                              "can not find the input %s.",
+                                              quant_dequant_op_out_name));
     any_op2_desc->SetAttr("enable_int8", true);
     any_op2_desc->SetAttr("bit_length", bit_length);
     // modify the any_op2's inputs
@@ -77,15 +79,19 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
     // Get weight scale
     if (dequant_type == "fake_channel_wise_quantize_dequantize_abs_max") {
       auto scales_name = quant_dequant_op->Op()->Output("OutScale");
-      PADDLE_ENFORCE_EQ(
-          scales_name.size(), 1,
+      PADDLE_ENFORCE_EQ(scales_name.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Scales size in channel-wise quant dequantize op "
+                            "should be 1, got %d.",
+                            scales_name.size()));
+      PADDLE_ENFORCE(
+          scope->FindVar(scales_name[0]) != nullptr,
           platform::errors::InvalidArgument(
-              "Scales size in channel-wise dequantize op should be 1, got %d.",
-              scales_name.size()));
+              "Scale data in channel-wise quant dequant op should exist."));
       const LoDTensor& channel_scale_tensor =
           scope->FindVar(scales_name[0])->Get<LoDTensor>();
-      PADDLE_ENFORCE_EQ(
-          paddle::platform::is_cpu_place(channel_scale_tensor.place()), true,
+      PADDLE_ENFORCE(
+          paddle::platform::is_cpu_place(channel_scale_tensor.place()),
           platform::errors::InvalidArgument(
               "Channel scale tensor's place should be CPU."));
       const float* channel_scale_data = channel_scale_tensor.data<float>();
@@ -94,6 +100,9 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
       }
     } else {
       auto scale_name = quant_dequant_op_outscale->Name();
+      PADDLE_ENFORCE(scope->FindVar(scale_name) != nullptr,
+                     platform::errors::InvalidArgument(
+                         "Scale data in quant dequant op should exist."));
       const LoDTensor& scale_tensor =
           scope->FindVar(scale_name)->Get<LoDTensor>();
       const float* scale_data = scale_tensor.data<float>();
@@ -102,6 +111,9 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
 
     nodes2rm.insert(quant_dequant_op_outscale);
     // perform quantize dequantize operations
+    PADDLE_ENFORCE(scope->FindVar(quant_dequant_op_x->Name()) != nullptr,
+                   platform::errors::InvalidArgument(
+                       "Scale data in quant dequant op should exist."));
     auto* weight_tensor =
         scope->FindVar(quant_dequant_op_x->Name())->GetMutable<LoDTensor>();
     auto w_dims = weight_tensor->dims();
@@ -117,9 +129,9 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
               "%s op weight dequantized by [fake_quantize_dequantize_max_abs] "
               "requires weight scale size = 1, but got %d.",
               quantized_op_type, weight_scale.size()));
-      PADDLE_ENFORCE_EQ(weight_scale[0] != 0, 1,
-                        platform::errors::InvalidArgument(
-                            "Weight scale should be nonzero, but get zero"));
+      PADDLE_ENFORCE(weight_scale[0] != 0,
+                     platform::errors::InvalidArgument(
+                         "Weight scale should be nonzero, but get zero"));
       for (int j = 0; j < weight_tensor->numel(); j++) {
         // quantized
         quantized_weight_data[j] = quantized_weight_data[j] * weight_scale[0];
@@ -136,12 +148,12 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
                 "mul op weight dequantized by "
                 "[fake_channel_wise_quantize_dequantize_abs_max] requires "
                 "weight scale "
-                "size = 2nd dim of mul's weight, which is %d, but got %d.",
+                "size = 2nd dim of mul's weight, which is %zu, but got %zu.",
                 static_cast<size_t>(w_dims[1]), weight_scale.size()));
         for (int j = 0; j < weight_tensor->numel(); j++) {
           // quantized
-          PADDLE_ENFORCE_EQ(
-              weight_scale[j % w_dims[1]] != 0, 1,
+          PADDLE_ENFORCE(
+              weight_scale[j % w_dims[1]] != 0,
               platform::errors::InvalidArgument(
                   "fc op weight scale should be nonzero, but get zero"));
           quantized_weight_data[j] =
@@ -150,6 +162,9 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
           // dequantized
           quantized_weight_data[j] /= weight_scale[j % w_dims[1]];
         }
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unsupported quantized op type: %s", quantized_op_type));
       }
     } else if (quantized_op_type == "conv2d" ||
                quantized_op_type == "depthwise_conv2d") {
@@ -158,13 +173,13 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
             weight_scale.size(), static_cast<size_t>(w_dims[0]),
             platform::errors::InvalidArgument(
                 "conv2d op requires weight scale size = channel size of the "
-                "weight, which is %d, but got %d.",
+                "weight, which is %zu, but got %zu.",
                 static_cast<size_t>(w_dims[0]), weight_scale.size()));
         int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
         for (int j = 0; j < weight_tensor->numel(); j++) {
           // quantized
-          PADDLE_ENFORCE_EQ(
-              weight_scale[j / inner_size] != 0, 1,
+          PADDLE_ENFORCE(
+              weight_scale[j / inner_size] != 0,
               platform::errors::InvalidArgument(
                   "conv2d op weight scale should be nonzero, but get zero"));
           quantized_weight_data[j] =
@@ -173,6 +188,9 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
           // dequantized
           quantized_weight_data[j] /= weight_scale[j / inner_size];
         }
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unsupported quantized op type: %s", quantized_op_type));
       }
     } else if (quantized_op_type == "conv2d_transpose") {
       if (dequant_type == "fake_channel_wise_quantize_dequantize_abs_max") {
@@ -181,12 +199,13 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
             platform::errors::InvalidArgument(
                 "conv2d_transpose op requires weight scale size = channel size "
                 "of the "
-                "weight, which is %d, but got %d.",
+                "weight, which is %zu, but got %zu.",
                 static_cast<size_t>(w_dims[1]), weight_scale.size()));
         int inner_size = w_dims[2] * w_dims[3];
         for (int j = 0; j < weight_tensor->numel(); j++) {
           // quantized
-          PADDLE_ENFORCE_EQ(weight_scale[(j / inner_size) % w_dims[1]] != 0, 1,
+          PADDLE_ENFORCE_EQ(weight_scale[(j / inner_size) % w_dims[1]] != 0,
+                            true,
                             platform::errors::InvalidArgument(
                                 "conv2d_transpose op weight scale should be "
                                 "nonzero, but get zero"));
@@ -197,6 +216,9 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
           quantized_weight_data[j] /=
               weight_scale[(j / inner_size) % w_dims[1]];
         }
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unsupported quantized op type: %s", quantized_op_type));
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(

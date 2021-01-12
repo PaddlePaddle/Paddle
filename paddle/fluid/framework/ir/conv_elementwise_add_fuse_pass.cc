@@ -62,7 +62,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetOutput("Output", {output_name});
     new_op_desc.SetAttr("is_test", true);
     new_op_desc.SetAttr("use_cudnn", false);
-    auto elementwise_add_op_desc = elementwise_add_op->Op();
+    auto* elementwise_add_op_desc = elementwise_add_op->Op();
     auto out_threshold_attr =
         elementwise_add_op_desc->GetNullableAttr("out_threshold");
     // set the out_threshold of the elementwise add op to be the out_threshold

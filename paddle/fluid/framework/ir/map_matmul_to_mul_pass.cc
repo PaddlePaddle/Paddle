@@ -251,15 +251,19 @@ void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, fuse_pattern);
-    bool flag = true;
+    bool pattern_found = true;
 
     size_t flatten2_in_nums = flatten2_op->inputs.size();
     auto flatten2_in_x_shape = flatten2_in_x->Var()->GetShape();
     size_t flatten2_in_x_rank = flatten2_in_x_shape.size();
     int flatten2_axis =
         BOOST_GET_CONST(int, flatten2_op->Op()->GetAttr("axis"));
-    flag = flag && flatten2_in_nums == 1 && flatten2_in_x_rank == 4 &&
-           (matmul_in_x->outputs).size() == 1;
+    // only convert matmul to mul when the flatten2 has a single input
+    // and the rank of input is 4 and the size of the output of matmul
+    // is 1.
+    pattern_found = pattern_found && flatten2_in_nums == 1 &&
+                    flatten2_in_x_rank == 4 &&
+                    (matmul_in_x->outputs).size() == 1;
 
     bool transpose_X =
         BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
@@ -268,15 +272,17 @@ void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     size_t matmul_in_x_rank = (matmul_in_x->Var()->GetShape()).size();
     size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
-    flag = flag && !transpose_X && !transpose_Y &&
-           std::abs(alpha - 1.0) < 1e-5 && matmul_in_x_rank == 2 &&
-           matmul_in_y_rank == 2;
+    pattern_found = pattern_found && !transpose_X && !transpose_Y &&
+                    std::abs(alpha - 1.0) < 1e-5 && matmul_in_x_rank == 2 &&
+                    matmul_in_y_rank == 2;
 
     std::vector<Node*>& next_ops = matmul_out->outputs;
-    flag = flag && next_ops.size() == 1 &&
-           next_ops[0]->Name() == "elementwise_add";
+    // we further require the matmul op is followed by one elementwise
+    // add op.
+    pattern_found = pattern_found && next_ops.size() == 1 &&
+                    next_ops[0]->Name() == "elementwise_add";
 
-    if (flag) {
+    if (pattern_found) {
       OpDesc desc;
       desc.SetType("mul");
       desc.SetInput("X", {flatten2_in_x->Name()});
