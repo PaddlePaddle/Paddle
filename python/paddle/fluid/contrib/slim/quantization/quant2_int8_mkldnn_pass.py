@@ -144,11 +144,13 @@ class Quant2Int8MkldnnPass(object):
         label to identify it.
         For static models, the skip quantized ops have `skip_quant` attr.
         Therefore, it only needs to find and label the skip quantized ops for
-        dygraph models.
+        dygraph models, in which the quantized ops don't have `quantization_type`
+        attr.
         """
         target_ops = self._conv_ops + self._mul_ops + self._matmul_ops
         for op_node in graph.all_op_nodes():
-            if op_node.name() in target_ops:
+            if op_node.name() in target_ops and \
+               not op_node.op().has_attr("quantization_type"):
                 is_quantized_op = True
                 for var_node in op_node.inputs:
                     for front_op_node in var_node.inputs:
