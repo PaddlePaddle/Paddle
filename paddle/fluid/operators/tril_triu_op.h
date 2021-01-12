@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
