@@ -20,7 +20,7 @@ __all__ = [
     'default_main_program', 'default_startup_program', 'Program', 'data',
     'InputSpec', 'save', 'load', 'save_inference_model', 'load_inference_model',
     'load_program_state', 'set_program_state', 'cpu_places', 'cuda_places',
-    'xpu_places', 'Variable', 'auc'
+    'xpu_places', 'Variable', 'auc', 'accuracy'
 ]
 
 from . import nn
@@ -64,3 +64,4 @@ from ..fluid.io import set_program_state  #DEFINE_ALIAS
 from ..fluid.layers import create_parameter  #DEFINE_ALIAS
 from ..fluid.layers import create_global_var  #DEFINE_ALIAS
 from ..fluid.layers.metric_op import auc  #DEFINE_ALIAS
+from ..fluid.layers.metric_op import accuracy  #DEFINE_ALIAS
