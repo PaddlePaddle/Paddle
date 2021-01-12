@@ -35,5 +35,5 @@ cc_test(test_fleet_cc SRCS test_fleet.cc DEPS fleet_wrapper gloo_wrapper fs shel
 if(WITH_ASCEND)
     cc_library(ascend_wrapper SRCS ascend_wrapper.cc DEPS framework_proto lod_tensor ascend ascend_graph)
 else()
-    cc_library(ascend_wrapper SRCS ascend_wrapper.cc DEPS framework_proto lod_tensor)
+    cc_library(ascend_wrapper SRCS ascend_wrapper.cc)
 endif(WITH_ASCEND)
