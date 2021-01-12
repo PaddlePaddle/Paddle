@@ -100,10 +100,6 @@ class ValueBlock {
       value_length_ += value_dims[x];
     }
 
-    for (auto &name : value_names_) {
-      initializer_list_.emplace_back(initializers_->at(name));
-    }
-
     // for Entry
     {
       if (entry_attr == "none") {
