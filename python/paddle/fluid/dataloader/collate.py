@@ -57,11 +57,11 @@ def default_collate_fn(batch):
     if isinstance(sample, np.ndarray):
         # dataset has only 1 field
         batch = np.stack(batch, axis=0)
-        return _to_tensor(batch)
+        return batch
     elif isinstance(sample, paddle.Tensor):
         return layers.stack(batch, axis=0)
     elif isinstance(sample, (int, float)):
-        return _to_tensor()
+        return np.array(batch)
     elif isinstance(sample, Mapping):
         return {
             key: default_collate_fn([d[key] for d in batch])

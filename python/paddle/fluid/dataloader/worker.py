@@ -16,6 +16,7 @@ import os
 import six
 import sys
 import paddle
+import numpy as np
 from collections import namedtuple
 from .. import core
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
@@ -117,11 +118,10 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                 if use_shared_memory:
                     # FIXME(dkp): _convert_to_tensor_list only support np.array
                     #             list now, should support paddle.Tensor list
-                    if isinstance(batch[0][0], paddle.Tensor):
-                        np_batch = []
-                        for sample in batch:
-                            np_batch.append([s.numpy() for s in sample])
-                        batch = np_batch
+                    if isinstance(batch[0], paddle.Tensor):
+                        batch = [field.numpy() for field in batch]
+                    if isinstance(batch, np.ndarray):
+                        batch = [batch]
 
                     tensor_list = core._convert_to_tensor_list(batch)
                     out_queue.put((idx, tensor_list))
