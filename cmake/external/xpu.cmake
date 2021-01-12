@@ -10,7 +10,7 @@ if (WITH_AARCH64)
 elseif(WITH_SUNWAY)
     SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/sunway/xpu_2020_1227.tar.gz" CACHE STRING "" FORCE)
 else()
-    SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/xpu_2021_0105.tar.gz" CACHE STRING "" FORCE)
+    SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/xpu_2021_01_12.tar.gz" CACHE STRING "" FORCE)
 endif()
 
 SET(XPU_SOURCE_DIR              "${THIRD_PARTY_PATH}/xpu")
