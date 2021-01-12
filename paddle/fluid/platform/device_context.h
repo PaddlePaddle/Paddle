@@ -525,6 +525,9 @@ class MKLDNNDeviceContextThreadLocals {
     // Recently registered data_format. This is needed to
     // know for converting MKL-DNN Tensor to non MKL-DNN
     paddle::framework::DataLayout cur_paddle_data_layout;
+    // MKL-DNN stream used for execution of primitives (per-thread)
+    mkldnn::engine aengine;
+    mkldnn::stream astream;
 
     Body();
     void set_cur_mkldnn_session_id(size_t sid);
@@ -534,6 +537,8 @@ class MKLDNNDeviceContextThreadLocals {
     void set_cur_paddle_data_layout(framework::DataLayout dl);
     framework::DataLayout get_cur_paddle_data_layout(void);
     void log_lib_version(void);
+    const mkldnn::engine& get_engine(void);
+    const mkldnn::stream& get_stream(void);
   };
   MKLDNNDeviceContextThreadLocals() = default;
   MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =
@@ -572,7 +577,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   explicit MKLDNNDeviceContext(CPUPlace place);
 
   /* \brief  Get the active engine */
-  const mkldnn::engine& GetEngine() const { return engine_; }
+  const mkldnn::engine& GetEngine() const { return tls().get_engine(); }
 
   // Remove all entries from the blob map
   void ResetBlobMap();
@@ -605,7 +610,6 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   }
 
  private:
-  mkldnn::engine engine_;
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
