@@ -55,13 +55,19 @@ def default_collate_fn(batch):
     """
     sample = batch[0]
     if isinstance(sample, np.ndarray):
-        # dataset has only 1 field
         batch = np.stack(batch, axis=0)
+        # if CPU-only version, pin_memory will be disabled,
+        # so we compate tensor here
+        if not paddle.is_compiled_with_cuda():
+            batch = _to_tensor(batch)
         return batch
     elif isinstance(sample, paddle.Tensor):
         return layers.stack(batch, axis=0)
     elif isinstance(sample, (int, float)):
-        return np.array(batch)
+        batch - np.array(batch)
+        if not paddle.is_compiled_with_cuda():
+            batch = _to_tensor(batch)
+        return batch
     elif isinstance(sample, Mapping):
         return {
             key: default_collate_fn([d[key] for d in batch])
@@ -83,7 +89,9 @@ def default_convert_fn(batch):
     if isinstance(batch, paddle.Tensor):
         return batch
     elif isinstance(batch, np.ndarray):
-        return _to_tensor(batch)
+        if not paddle.is_compiled_with_cuda():
+            batch = _to_tensor(batch)
+        return batch
     elif isinstance(batch, Mapping):
         return {key: default_convert_fn(batch[key]) for key in batch}
     elif isinstance(batch, Sequence):
