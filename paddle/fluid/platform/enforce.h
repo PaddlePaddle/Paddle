@@ -20,7 +20,7 @@ limitations under the License. */
 
 #if !defined(_WIN32)
 #include <dlfcn.h>   // dladdr
-#include <unistd.h>  // sleep
+#include <unistd.h>  // sleep, usleep
 #else                // _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
@@ -963,11 +963,19 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
     }                                                            \
   } while (0)
 
-inline void retry_sleep(unsigned millisecond) {
+inline void retry_sleep(unsigned milliseconds) {
 #ifdef _WIN32
-  Sleep(millisecond);
+  Sleep(milliseconds);
 #else
-  usleep(millisecond * 1000);
+  if (milliseconds < 1000) {
+    // usleep argument must be less than 1,000,000. Reference:
+    // https://pubs.opengroup.org/onlinepubs/7908799/xsh/usleep.html
+    usleep(milliseconds * 1000);
+  } else {
+    // clip to sleep in seconds because we can not and don't have to
+    // sleep for exact milliseconds
+    sleep(milliseconds / 1000);
+  }
 #endif
 }
 
