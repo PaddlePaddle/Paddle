@@ -61,20 +61,21 @@ if %error_code% NEQ 0 (
     goto :mkbuild
 )
 
+git diff HEAD last_pr --stat --name-only
 setlocal enabledelayedexpansion
-git show-ref --verify --quiet refs/heads/last_pr
-if %ERRORLEVEL% EQU 0 (
-    git diff HEAD last_pr --stat --name-only
-    git diff HEAD last_pr --stat --name-only | findstr "cmake/[a-zA-Z]*\.cmake CMakeLists.txt"
-    if !ERRORLEVEL! EQU 0 (
-        rmdir build /s/q
-    )
-    git branch -D last_pr
-    git branch last_pr
-) else (
-    rmdir build /s/q
-    git branch last_pr
-)
+:: git show-ref --verify --quiet refs/heads/last_pr
+:: if %ERRORLEVEL% EQU 0 (
+::     git diff HEAD last_pr --stat --name-only
+::     git diff HEAD last_pr --stat --name-only | findstr "cmake/[a-zA-Z]*\.cmake CMakeLists.txt"
+::     if !ERRORLEVEL! EQU 0 (
+::         rmdir build /s/q
+::     )
+::     git branch -D last_pr
+::     git branch last_pr
+:: ) else (
+::     rmdir build /s/q
+::     git branch last_pr
+:: )
 
 :: set CI_SKIP_CPP_TEST if only *.py changed
 git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
@@ -286,9 +287,9 @@ clcache.exe -z
 
 echo Build Paddle the %build_times% time:
 if "%WITH_CLCACHE%"=="OFF" (
-    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
+    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:normal paddle.sln
 ) else (
-    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
+    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:normal paddle.sln
 )
 
 if %ERRORLEVEL% NEQ 0 (
