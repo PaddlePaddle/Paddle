@@ -1140,7 +1140,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #ifdef PADDLE_WITH_XPU
     if (std::getenv("FLAGS_opt_xpu_mem") != nullptr &&
         platform::is_xpu_place(kernel_type_->place_)) {
-      xpu_wait();
+      dev_ctx->Wait();
     }
 #endif
   }
