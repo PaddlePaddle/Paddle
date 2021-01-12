@@ -540,10 +540,10 @@ int32_t BrpcPsService::start_profiler(Table *table,
   return 0;
 }
 
-int32_t PsService::push_global_step(Table *table,
-                                    const PsRequestMessage &request,
-                                    PsResponseMessage &response,
-                                    brpc::Controller *cntl) {
+int32_t BrpcPsService::push_global_step(Table *table,
+                                        const PsRequestMessage &request,
+                                        PsResponseMessage &response,
+                                        brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response);
   auto req_buffer_size = request.data().size();
   if (req_buffer_size < 1) {
