@@ -545,7 +545,7 @@ class Fleet(object):
             executor, dirname, feeded_var_names, target_vars, main_program,
             export_for_deployment)
 
-    def save_persistables(self, executor, dirname, main_program=None, mode=1):
+    def save_persistables(self, executor, dirname, main_program=None, mode=0):
         """
 
         saves all persistable tensors from :code:`main_program` to
