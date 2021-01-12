@@ -58,6 +58,7 @@ void BindDistFleetWrapper(py::module* m) {
       .def("pull_dense_params", &FleetWrapper::PullDenseVarsSync)
       .def("save_all_model", &FleetWrapper::SaveModel)
       .def("save_one_model", &FleetWrapper::SaveModelOneTable)
+      .def("recv_and_save_model", &FleetWrapper::RecvAndSaveTable)
       .def("sparse_table_stat", &FleetWrapper::PrintTableStat)
       .def("stop_server", &FleetWrapper::StopServer)
       .def("stop_worker", &FleetWrapper::FinalizeWorker)
