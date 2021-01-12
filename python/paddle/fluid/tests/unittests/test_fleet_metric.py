@@ -73,6 +73,7 @@ class TestFleetMetric(unittest.TestCase):
                 pass
 
         self.util = FakeUtil(FakeFleet())
+        fleet.util = self.util
 
     def test_metric_1(self):
         """Test cases for metrics."""
@@ -104,14 +105,14 @@ class TestFleetMetric(unittest.TestCase):
             metric.rmse(t1, 3, scope, self.util)
             metric.mse(t1, 3, scope, self.util)
             metric.acc(t, t1, scope, self.util)
-            metric.sum(str(t.name), scope, self.util)
-            metric.max(str(t.name), scope, self.util)
-            metric.min(str(t.name), scope, self.util)
-            metric.auc(str(t1.name), str(t.name), scope, self.util)
-            metric.mae(str(t1.name), 3, scope, self.util)
-            metric.rmse(str(t1.name), 3, scope, self.util)
-            metric.mse(str(t1.name), 3, scope, self.util)
-            metric.acc(str(t.name), str(t1.name), scope, self.util)
+            metric.sum(str(t.name), scope)
+            metric.max(str(t.name), scope)
+            metric.min(str(t.name), scope)
+            metric.auc(str(t1.name), str(t.name), scope)
+            metric.mae(str(t1.name), 3, scope)
+            metric.rmse(str(t1.name), 3, scope)
+            metric.mse(str(t1.name), 3, scope)
+            metric.acc(str(t.name), str(t1.name), scope)
         arr = np.array([1, 2, 3, 4])
         metric.sum(arr, util=self.util)
         metric.max(arr, util=self.util)
