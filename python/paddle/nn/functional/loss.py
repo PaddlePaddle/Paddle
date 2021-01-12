@@ -1297,18 +1297,14 @@ def cross_entropy(input,
         if ignore_index != -100:
             out_sum = paddle.sum(out, name=name)
             #for each label[i],set 1 or 0, according to ignore_index
-            ones_t = paddle.ones_like(label)
-            zeros_t = paddle.zeros_like(label)
             #mask[i]=0, if label[i]==ignore_index
             #mask[i]=1, otherwise 
-            mask = paddle.where(label != ignore_index, ones_t, zeros_t)
+            mask = paddle.cast(label != ignore_index, dtype='int32')
             if (weight is None):
                 count = paddle.sum(mask, name=name)
                 ret = out_sum / count
             else:
-                mask = paddle.cast(mask, "float64")
-                weight_gather_reshape = paddle.cast(weight_gather_reshape,
-                                                    "float64")
+                mask = paddle.cast(mask, weight_gather_reshape.dtype)
                 weight_ignored = paddle.multiply(mask, weight_gather_reshape)
                 weight_sum = paddle.sum(weight_ignored, name=name)
                 ret = out_sum / weight_sum
