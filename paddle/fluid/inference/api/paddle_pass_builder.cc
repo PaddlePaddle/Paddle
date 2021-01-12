@@ -220,8 +220,12 @@ void CpuPassStrategy::EnableMKLDNN() {
              // "fc_mkldnn_pass",
              // "fc_act_mkldnn_fuse_pass",
              "batch_norm_act_fuse_pass",
+#ifndef _WIN32
+             // TODO(intel): Please fix the bug on windows.
+             // https://github.com/PaddlePaddle/Paddle/issues/29710
              "mkldnn_inplace_pass",  // This pass should be activated after
                                      // fuses
+#endif
          })) {
       passes_.push_back(pass);
     }
