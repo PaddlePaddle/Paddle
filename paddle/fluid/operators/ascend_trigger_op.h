@@ -15,9 +15,11 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #include "paddle/fluid/framework/op_registry.h"
+#ifdef PADDLE_WITH_ASCEND
+#include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #include "paddle/fluid/framework/tensor.h"
+#endif
 
 namespace paddle {
 namespace operators {

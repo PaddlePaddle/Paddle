@@ -15,13 +15,7 @@
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import numpy as np
-import os
-import shutil
-import paddle.fluid.core as core
 import unittest
-from paddle.fluid.layers.nn import _pull_box_sparse
-from paddle.fluid.transpiler import collective
 
 
 class TestAscendTriggerOP(unittest.TestCase):
@@ -32,10 +26,8 @@ class TestAscendTriggerOP(unittest.TestCase):
         program = fluid.Program()
         block = program.global_block()
         with fluid.program_guard(program):
-            x = fluid.layers.data(
-                name='x', shape=[1], dtype='int64', lod_level=0)
-            y = fluid.layers.data(
-                name='y', shape=[1], dtype='int64', lod_level=0)
+            x = fluid.data(name='x', shape=[1], dtype='int64', lod_level=0)
+            y = fluid.data(name='y', shape=[1], dtype='int64', lod_level=0)
             block.append_op(
                 type="ascend_trigger",
                 inputs={"FeedList": [x]},
@@ -49,6 +41,8 @@ class TestAscendTriggerOP(unittest.TestCase):
             pass
         except:
             self.assertTrue(False)
+
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

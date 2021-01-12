@@ -54,7 +54,7 @@ class AscendInstance {
 
   // add other parameters here to init
   void InitGlobalResouces() {
-    ss = new ge::Session(GetDefaultInitSessionOptions());
+    session_.reset(new ge::Session(GetDefaultInitSessionOptions()));
     VLOG(1) << "InitGlobalResouces Done";
   }
 
@@ -67,7 +67,7 @@ class AscendInstance {
   }
 
   void AddAscendSubgraph(int graph_idx, const AscendGraphDesc &graph) {
-    ge::Status status = ss->AddGraph(graph_idx, graph);
+    ge::Status status = session_->AddGraph(graph_idx, graph);
     PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
                       paddle::platform::errors::PreconditionNotMet(
                           "Calling addGraph of graph engine failed, please "
@@ -146,7 +146,7 @@ class AscendInstance {
 
     // Run Graph
     std::vector<ge::Tensor> ge_outputs;
-    ge::Status status = ss->RunGraph(graph_idx, ge_inputs, ge_outputs);
+    ge::Status status = session_->RunGraph(graph_idx, ge_inputs, ge_outputs);
     PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
                       paddle::platform::errors::PreconditionNotMet(
                           "Calling RunGraph of graph engine failed, please "
@@ -173,7 +173,7 @@ class AscendInstance {
   }
 
  protected:
-  ge::Session *ss = nullptr;
+  std::shared_ptr<ge::Session> session_;
 
  private:
   static std::shared_ptr<AscendInstance> ascend_instance_;
