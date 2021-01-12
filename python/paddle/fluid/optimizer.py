@@ -3093,8 +3093,9 @@ class LambOptimizer(AdamOptimizer):
             _, _, _, _, _ = core.ops.lamb(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
-                moment2, beta1_pow_acc, beta2_pow_acc, 'beta1', beta1, 'beta2',
-                beta2, 'epsilon', self._epsilon, 'weight_decay', weight_decay)
+                moment2, beta1_pow_acc, beta2_pow_acc, 'beta1', self._beta1,
+                'beta2', self._beta2, 'epsilon', self._epsilon, 'weight_decay',
+                weight_decay)
             return None
 
         # create the lamb optimize op
