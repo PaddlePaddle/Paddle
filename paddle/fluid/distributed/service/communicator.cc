@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/service/communicator.h"
+
 #include <google/protobuf/text_format.h>
 #include <paddle/fluid/framework/program_desc.h>
 
@@ -63,11 +64,11 @@ void Communicator::init_gflag(const std::string &gflags) {
   flags.insert(it, "exe default");
   char *flags_ptr[flags.size()];
   for (size_t i = 0; i < flags.size(); ++i) {
-    flags_ptr[i] = reinterpret_cast<char *>(flags[i].c_str());
+    flags_ptr[i] = (char *)(flags[i].c_str());  // NOLINT
   }
   int params_cnt = flags.size();
   char **params_ptr = &(flags_ptr[0]);
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
+  ::google::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
 }
 
 std::once_flag Communicator::init_flag_;
@@ -224,7 +225,7 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [this, request_call_num](void *done) {
         int ret = 0;
-        auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+        auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, PS_PUSH_DENSE_TABLE) != 0) {
             ret = -1;
@@ -261,7 +262,7 @@ void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [this, request_call_num](void *done) {
         int ret = 0;
-        auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+        auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, PS_PUSH_SPARSE_PARAM) != 0) {
             ret = -1;
@@ -299,7 +300,7 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [this, request_call_num](void *done) {
         int ret = 0;
-        auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+        auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, PS_PUSH_SPARSE_TABLE) != 0) {
             ret = -1;
@@ -333,7 +334,7 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
   }
 
   auto status = _worker_ptr->pull_sparse(
-      reinterpret_cast<float **>(push_g_vec.data()), table_id,
+      (float **)push_g_vec.data(), table_id,  // NOLINT
       sparse_push_keys.data(), sparse_push_keys.size());
   status.wait();
   return;
@@ -396,7 +397,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [this, request_call_num](void *done) {
         int ret = 0;
-        auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+        auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, PS_PUSH_GLOBAL_STEP) != 0) {
             ret = -1;
@@ -1105,7 +1106,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   ++_async_call_num;
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [this](void *done) {
     int ret = 0;
-    auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+    auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
     if (closure->check_response(0, PS_PUSH_SPARSE_TABLE) != 0) {
       ret = -1;
     }
