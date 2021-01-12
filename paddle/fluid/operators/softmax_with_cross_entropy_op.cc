@@ -140,9 +140,10 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
       if (i != axis) {
         if (ctx->IsRuntime() || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
           PADDLE_ENFORCE_EQ(logits_dims[i], labels_dims[i],
-                            platform::errors::InvalidArgument(
-                                "Input(Logits) and Input(Label) should in "
-                                "same shape in dimensions except axis."));
+                      platform::errors::InvalidArgument(
+                           "The dimension of Input(Logits) should be the same as Input(Label).  "
+                           "But recieved Logits dimension: [%s], Label dimension: [%s].",
+                           logits_dims[i],labels_dims[i]));
         }
       }
     }
