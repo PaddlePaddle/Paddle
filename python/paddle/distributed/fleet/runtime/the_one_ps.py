@@ -268,7 +268,7 @@ class Service:
     def __init__(self):
         self.server_class = "BrpcPsServer"
         self.client_class = "BrpcPsClient"
-        self.service_class = "PsService"
+        self.service_class = "BrpcPsService"
         self.start_server_port = 0
         self.server_thread_num = 12
 
@@ -851,15 +851,26 @@ class TheOnePSRuntime(RuntimeBase):
 
         return is_valid
 
-    def _save_sparse_params(self, executor, dirname, context, main_program):
+    def _save_sparse_params(self, executor, dirname, context, main_program,
+                            mode):
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
+        distributed_varnames = get_sparse_tablenames(
+            self.compiled_strategy.origin_main_program, True)
         values = []
         for id, names in context.items():
+            if names not in distributed_varnames:
+                # only save sparse param to local
+                self._worker.recv_and_save_model(id, dirname)
+            # save sparse & distributed param on server
+            self._worker.save_one_model(id, dirname, mode)
             values.extend(names)
-            self._worker.save_one_model(id, dirname, 0)
         return values
 
-    def _save_distributed_persistables(self, executor, dirname, main_program,
-                                       mode):
+    def _save_distributed_persistables(self,
+                                       executor,
+                                       dirname,
+                                       main_program,
+                                       mode=0):
 
         denses = self.compiled_strategy.get_the_one_recv_context(
             is_dense=True,
@@ -870,14 +881,14 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             use_origin_program=True)
 
-        recv_sparse_varnames = self._save_sparse_params(executor, dirname,
-                                                        sparses, main_program)
+        sparse_varnames = self._save_sparse_params(executor, dirname, sparses,
+                                                   main_program, mode)
 
         recv_dense_varnames = []
         for id, names in denses.items():
             recv_dense_varnames.extend(names)
 
-        saved_varnames = recv_sparse_varnames
+        saved_varnames = sparse_varnames
 
         remaining_vars = list(
             filter(
@@ -925,6 +936,7 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
+        # Todo(MrChengmo): Save optimizer status
         self._save_distributed_persistables(executor, dirname, main_program,
                                             mode)
 
@@ -971,8 +983,7 @@ class TheOnePSRuntime(RuntimeBase):
 
             program = Program.parse_from_string(program_desc_str)
             program._copy_dist_param_info_from(fluid.default_main_program())
-            self._ps_inference_save_persistables(
-                executor, dirname, program, mode=0)
+            self._ps_inference_save_persistables(executor, dirname, program)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)

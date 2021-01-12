@@ -46,6 +46,8 @@ namespace paddle {
 namespace distributed {
 
 class Table;
+using paddle::distributed::PsRequestMessage;
+using paddle::distributed::PsResponseMessage;
 
 class PSServer {
  public:
@@ -107,7 +109,7 @@ class PSServer {
   platform::Place place_ = platform::CPUPlace();
 };
 
-REGISTER_REGISTERER(PSServer);
+REGISTER_PSCORE_REGISTERER(PSServer);
 
 typedef std::function<void(void *)> PServerCallBack;
 
@@ -141,8 +143,8 @@ class PsBaseService : public PsService {
     return 0;
   }
   virtual void service(::google::protobuf::RpcController *controller,
-                       const ::paddle::PsRequestMessage *request,
-                       ::paddle::PsResponseMessage *response,
+                       const PsRequestMessage *request,
+                       PsResponseMessage *response,
                        ::google::protobuf::Closure *done) override = 0;
 
   virtual void set_response_code(PsResponseMessage &response, int err_code,
@@ -159,7 +161,7 @@ class PsBaseService : public PsService {
   PSServer *_server;
   const ServerParameter *_config;
 };
-REGISTER_REGISTERER(PsBaseService);
+REGISTER_PSCORE_REGISTERER(PsBaseService);
 
 class PSServerFactory {
  public:
