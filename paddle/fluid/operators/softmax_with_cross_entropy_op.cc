@@ -142,7 +142,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
           PADDLE_ENFORCE_EQ(logits_dims[i], labels_dims[i],
                             platform::errors::InvalidArgument(
                                 "The dims of Input(Logits) should be the same as Input(Label).  "
-                                "But recieved Logits dims: [%s], Label dims: [%s],"
+                                "But recieved Logits dims: [%s], Label dims: [%s].",
                                 logits_dims[i],labels_dims[i]));
         }
       }
