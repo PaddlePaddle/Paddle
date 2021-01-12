@@ -118,7 +118,7 @@ class IndexSampleCUDAKernel : public framework::OpKernel<T> {
           batch_size);
     } else if (index_type == framework::proto::VarType::INT32) {
       const int* index_data = index->data<int>();
-      index_kernel<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
+      index_kernel<T, int><<<grid_dim, block_dim, 0, stream>>>(
           index_data, in_data, out_data, index_length, input_length,
           batch_size);
     }
