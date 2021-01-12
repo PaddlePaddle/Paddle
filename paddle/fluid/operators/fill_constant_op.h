@@ -108,9 +108,9 @@ class FillConstantKernel : public framework::OpKernel<T> {
       bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
       if (cpu_place) {
         actual_place = 1;
-      } else if (ctx.GetPlace() == platform::CUDAPlace()) {
+      } else if (platform::is_gpu_place(ctx.GetPlace())) {
         actual_place = 2;
-      } else if (ctx.GetPlace() == platform::XPUPlace()) {
+      } else if (platform::is_xpu_place(ctx.GetPlace())) {
         actual_place = 4;
       }
     }
