@@ -96,7 +96,8 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
                   std::vector<std::vector<float>>* values) {
   PADDLE_ENFORCE_EQ(columns.size(), 2,
                     paddle::platform::errors::InvalidArgument(
-                        "record in txt do not match meta."));
+                        "The data format does not meet the requirements. It "
+                        "should look like feasign_id \t params."));
 
   auto load_values = paddle::string::split_string<std::string>(columns[1], ",");
   values->reserve(meta.names.size());
@@ -108,7 +109,9 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
     auto end = load_values.begin() + offset + meta.dims[x];
     PADDLE_ENFORCE_LE(offset + meta.dims[x], load_values.size(),
                       paddle::platform::errors::InvalidArgument(
-                          "record in txt do not match meta."));
+                          "The data format in txt does not meet the field "
+                          "requirements defined in meta"));
+
     std::transform(start, end, std::back_inserter(val),
                    [](std::string va) { return std::stof(va); });
     values->push_back(val);
