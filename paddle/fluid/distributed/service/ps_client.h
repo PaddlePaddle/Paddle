@@ -28,6 +28,9 @@
 namespace paddle {
 namespace distributed {
 
+using paddle::distributed::PsRequestMessage;
+using paddle::distributed::PsResponseMessage;
+
 typedef std::function<void(void *)> PSClientCallBack;
 class PSClientClosure : public google::protobuf::Closure {
  public:
@@ -201,7 +204,7 @@ class PSClient {
   std::unordered_map<int32_t, MsgHandlerFunc>
       _msg_handler_map;  //处理client2client消息
 };
-REGISTER_REGISTERER(PSClient);
+REGISTER_PSCORE_REGISTERER(PSClient);
 
 class PSClientFactory {
  public:
