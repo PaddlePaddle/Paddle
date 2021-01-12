@@ -30,7 +30,8 @@ int main(int argc, char** argv) {
   std::vector<std::string> undefok;
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_GRPC)
   std::string str_max_body_size;
-  if (google::GetCommandLineOption("max_body_size", &str_max_body_size)) {
+  if (::GFLAGS_NAMESPACE::GetCommandLineOption("max_body_size",
+                                               &str_max_body_size)) {
     setenv("FLAGS_max_body_size", "2147483647", 1);
     envs.push_back("max_body_size");
   }
