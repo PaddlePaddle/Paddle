@@ -523,8 +523,7 @@ class TheOnePSRuntime(RuntimeBase):
             # for ps-heter mode, wait heter worker ready
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
             ):
-                wait_server_ready(
-                    self.role_maker._get_heter_worker_endpoints())
+                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
                 self._heter_client = HeterClient(
                     self.role_maker._get_heter_worker_endpoints(),
@@ -765,8 +764,7 @@ class TheOnePSRuntime(RuntimeBase):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 
         dist_varnames = get_sparse_tablenames(self.origin_main_program, True)
-        sparse_varnames = get_sparse_tablenames(
-            self.origin_main_program, False)
+        sparse_varnames = get_sparse_tablenames(self.origin_main_program, False)
 
         distributed_varnames = dist_varnames + sparse_varnames
 
@@ -938,7 +936,7 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        # Todo: Save optimizer status
+        # Todo(MrChengmo): Save optimizer status
         self._save_distributed_persistables(executor, dirname, main_program,
                                             mode)
 
