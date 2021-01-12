@@ -714,7 +714,7 @@ REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
 REGISTER_ACTIVATION_OP_MAKER(Rsqrt, RsqrtDoc);
-REGISTER_ACTIVATION_OP_MAKER(Abs, AbsDoc);
+// REGISTER_ACTIVATION_OP_MAKER(Abs, AbsDoc);
 REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cos, CosDoc);
@@ -1323,6 +1323,7 @@ REGISTER_OP_CPU_KERNEL(
 /* ========================================================================== */
 
 /* ==========================   abs register  ============================ */
+/*
 REGISTER_OPERATOR(
     abs, ops::ActivationOp, ops::AbsOpMaker, ops::ActivationOpInferVarType,
     ops::ActivationGradOpMaker<ops::AbsGradFunctor<float>::FwdDeps(),
@@ -1370,6 +1371,7 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::AbsGradGradFunctor<int>>,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
                                     ops::AbsGradGradFunctor<int64_t>>);
+*/
 /* ========================================================================== */
 
 /* ==========================  Log register ==================================*/

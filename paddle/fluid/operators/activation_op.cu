@@ -175,7 +175,7 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 /* ==========================   abs register  ============================ */
-
+/*
 REGISTER_OP_CUDA_KERNEL(
     abs, ops::ActivationKernel<plat::CUDADeviceContext, ops::AbsFunctor<float>>,
     ops::ActivationKernel<plat::CUDADeviceContext, ops::AbsFunctor<double>>,
@@ -206,6 +206,7 @@ REGISTER_OP_CUDA_KERNEL(
                                     ops::AbsGradGradFunctor<int>>,
     ops::ActivationDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                     ops::AbsGradGradFunctor<int64_t>>);
+                                    */
 /* ========================================================================== */
 
 /* ==========================  Log register ==================================*/
