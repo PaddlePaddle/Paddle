@@ -13,6 +13,10 @@
 # limitations under the License.
 
 from collections import OrderedDict
+from typing import Union
+import operator
+import itertools
+
 from ..framework import Parameter
 from .layers import Layer
 
@@ -66,17 +70,48 @@ class Sequential(Layer):
             for idx, layer in enumerate(layers):
                 self.add_sublayer(str(idx), layer)
 
-    def __getitem__(self, name):
-        return self._sub_layers[str(name)]
+    def _get_item_by_idx(self, iterator, idx):
+        """Get the idx-th item of the iterator"""
+        size = len(self)
+        idx = operator.index(idx)
+        if not -size <= idx < size:
+            raise IndexError('index {} is out of range'.format(idx))
+        idx %= size
+        return next(itertools.islice(iterator, idx, None))
 
-    def __setitem__(self, name, layer):
-        assert isinstance(layer, Layer)
-        setattr(self, str(name), layer)
+    def __getitem__(self, idx: Union[slice, int, str]):
+        r'''get
+        Support Operations: mm[1], mm[-1], mm[1:], mm['L1'], Where mm is sequential instance.
+        '''
+        if isinstance(idx, str):
+            return self._sub_layers[idx]
+        elif isinstance(idx, slice):
+            return self.__class__(*list(self._sub_layers.items())[idx])
+        else:
+            return self._get_item_by_idx(self._sub_layers.values(), idx)
 
-    def __delitem__(self, name):
-        name = str(name)
-        assert name in self._sub_layers
-        del self._sub_layers[name]
+    def __setitem__(self, idx: Union[int, str], layer: Layer) -> None:
+        r'''set
+        Support Operations: mm[1] = `Layer Instance`, mm['L1'] = `Layer Instance`. Where mm is sequential instance
+        '''
+        if isinstance(idx, str):
+            return setattr(self, str(idx), layer)
+        else:
+            key = self._get_item_by_idx(self._sub_layers.keys(), idx)
+            return setattr(self, key, layer)
+
+    def __delitem__(self, idx: Union[slice, int, str]) -> None:
+        r'''del 
+        Support Operations: del mm[1], del mm[-1], del mm[1:], del mm['L1']. Wehre mm is sequential instance.
+        '''
+        if isinstance(idx, slice):
+            for key in list(self._sub_layers.keys())[idx]:
+                delattr(self, key)
+        elif isinstance(idx, int):
+            key = self._get_item_by_idx(self._sub_layers.keys(), idx)
+            delattr(self, key)
+        else:
+            delattr(self, idx)
 
     def __len__(self):
         return len(self._sub_layers)
