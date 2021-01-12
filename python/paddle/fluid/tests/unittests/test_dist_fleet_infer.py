@@ -30,7 +30,7 @@ class TestDistCtrInfer(TestFleetBase):
         self._need_test = 1
 
         data_url = "https://fleet.bj.bcebos.com/unittest/ctr_saved_params.tar.gz"
-        data_md5 = "e308622b5690f77fdcea2cc3a5d28e78"
+        data_md5 = "aa7e8286ced566ea8a67410be7482438"
         module_name = "ctr_saved_params"
         path = download(data_url, module_name, data_md5)
         print('ctr_params is downloaded at ' + path)
