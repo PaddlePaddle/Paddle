@@ -1248,7 +1248,7 @@ def cross_entropy(input,
                 #mask[i]=1, otherwise 
                 mask = (label != ignore_index)
                 if (weight is None):
-                    mask = paddle.cast(mask, dtype='int32')
+                    mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = core.ops.reduce_sum(mask, 'reduce_all', True)
                     ret = out_sum / count
                 else:
@@ -1302,7 +1302,7 @@ def cross_entropy(input,
             #mask[i]=1, otherwise 
             mask = (label != ignore_index)
             if (weight is None):
-                mask = paddle.cast(mask, dtype='int32')
+                mask = paddle.cast(mask, dtype=out_sum.dtype)
                 count = paddle.sum(mask, name=name)
                 ret = out_sum / count
             else:
