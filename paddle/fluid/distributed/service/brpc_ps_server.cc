@@ -100,6 +100,7 @@ int32_t PsService::initialize() {
   _service_handler_map[PS_BARRIER] = &PsService::barrier;
   _service_handler_map[PS_START_PROFILER] = &PsService::start_profiler;
   _service_handler_map[PS_STOP_PROFILER] = &PsService::stop_profiler;
+  _service_handler_map[PS_PUSH_GLOBAL_STEP] = &PsService::push_global_step;
 
   // shard初始化,server启动后才可从env获取到server_list的shard信息
   initialize_shard_info();
@@ -523,6 +524,27 @@ int32_t PsService::start_profiler(Table *table, const PsRequestMessage &request,
                                   PsResponseMessage &response,
                                   brpc::Controller *cntl) {
   platform::EnableProfiler(platform::ProfilerState::kCPU);
+  return 0;
+}
+
+int32_t PsService::push_global_step(Table *table,
+                                    const PsRequestMessage &request,
+                                    PsResponseMessage &response,
+                                    brpc::Controller *cntl) {
+  CHECK_TABLE_EXIST(table, request, response);
+  auto req_buffer_size = request.data().size();
+  if (req_buffer_size < 1) {
+    set_response_code(response, 0, "run_program data is empty");
+    return 0;
+  }
+  uint32_t num = *(const uint32_t *)(request.data().data());
+  const int64_t *values =
+      (const int64_t *)(request.data().data() + sizeof(uint32_t));
+  auto trainer_id = request.client_id();
+  if (table->push_dense(values, trainer_id) != 0) {
+    set_response_code(response, -1, "run_program failed");
+  }
+
   return 0;
 }
 
