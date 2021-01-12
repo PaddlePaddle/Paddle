@@ -89,52 +89,6 @@ class TestCase3(TestIndexSampleOp):
         self.index_type = "int32"
 
 
-# @unittest.skipIf(not core.is_compiled_with_cuda(),
-#                  "core is not compiled with CUDA")
-# class TestCaseCuda1(TestIndexSampleOp):
-#     def config(self):
-#         """
-#         For one dimension input
-#         """
-#         self.x_shape = (100, 1)
-#         self.x_type = "float64"
-#         self.index_shape = (100, 1)
-#         self.index_type = "int32"
-
-#     def test_check_output(self):
-#         place = core.CUDAPlace(0)
-
-# @unittest.skipIf(not core.is_compiled_with_cuda(),
-#                  "core is not compiled with CUDA")
-# class TestCaseCuda2(TestIndexSampleOp):
-#     def config(self):
-#         """
-#         For int64_t index type
-#         """
-#         self.x_shape = (10, 100)
-#         self.x_type = "float64"
-#         self.index_shape = (10, 10)
-#         self.index_type = "int64"
-
-#     def test_check_output(self):
-#         place = core.CUDAPlace(0)
-
-# @unittest.skipIf(not core.is_compiled_with_cuda(),
-#                  "core is not compiled with CUDA")
-# class TestCase3(TestIndexSampleOp):
-#     def config(self):
-#         """
-#         For int index type
-#         """
-#         self.x_shape = (10, 100)
-#         self.x_type = "float64"
-#         self.index_shape = (10, 10)
-#         self.index_type = "int32"
-
-#     def test_check_output(self):
-#         place = core.CUDAPlace(0)
-
-
 class TestIndexSampleShape(unittest.TestCase):
     def test_shape(self):
         paddle.enable_static()
