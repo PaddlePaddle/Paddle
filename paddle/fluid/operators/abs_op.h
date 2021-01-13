@@ -72,7 +72,7 @@ class AbsDoubleGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     const framework::Tensor* ddx = ctx.Input<framework::Tensor>("DDX");
     const framework::Tensor* x = ctx.Input<framework::Tensor>("X");
-    framework::Tensor* ddout = ctx.Output<framework::Tensor>("DDout");
+    framework::Tensor* ddout = ctx.Output<framework::Tensor>("DDOut");
 
     auto numel = ddx->numel();
     auto* ddx_data = ddx->data<T>();
