@@ -42,7 +42,7 @@ class RangeIterableDatasetSplit(IterableDataset):
             iter_end = min(iter_start + per_worker, self.end)
 
         for i in range(iter_start, iter_end):
-            yield np.array([i])
+            yield i
 
 
 class TestDynamicDataLoaderIterSplit(unittest.TestCase):
@@ -71,7 +71,7 @@ class RangeIterableDataset(IterableDataset):
 
     def __iter__(self):
         for i in range(self.start, self.end):
-            yield np.array([i])
+            yield i
 
 
 class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):

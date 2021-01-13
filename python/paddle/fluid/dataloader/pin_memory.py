@@ -18,7 +18,7 @@ import paddle
 import numpy as np
 from .. import core
 from ..multiprocess_utils import MP_STATUS_CHECK_INTERVAL
-from ..framework import in_dygraph_mode
+from ..framework import in_dygraph_mode, _set_expected_place
 
 # NOTE: queue has a different name in python2 and python3
 if six.PY2:
@@ -45,7 +45,7 @@ def pin_memory(data):
     if isinstance(data, paddle.fluid.LoDTensor):
         if in_dygraph_mode():
             # LoDTensor -> paddle.Tensor(VarBase)
-            return core.VarBase(data, paddle.CUDAPinnedPlace())
+            return core.VarBase(data)
         else:
             return data._pin_memory()
     if isinstance(data, Sequence):
@@ -58,7 +58,14 @@ def pin_memory(data):
         return data
 
 
-def _pin_memory_loop(in_queue, out_queue, done_event):
+def _pin_memory_loop(in_queue, out_queue, done_event, legacy_expected_place):
+    #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
+    # and it will call platform::SetDeviceId() in c++ internally.
+    # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
+    # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
+    # APIs in this thread.
+    _set_expected_place(legacy_expected_place)
+
     while not done_event.is_set():
         try:
             result = in_queue.get(timeout=MP_STATUS_CHECK_INTERVAL)

@@ -46,12 +46,13 @@ def default_collate_fn(batch):
     [batch_filed1, batch_filed2, ...]
 
     Args:  
-        batch(list of list of numpy array): the batch data, each fields
+        batch(list of list of numpy array|paddle.Tensor): the batch data, each fields
               should be a numpy array, each sample should be a list of
               fileds, and batch should be a list of sample.
     
     Returns:
-        a list of numpy array: collated batch
+        a list of numpy array|Paddle.Tensor: collated batch of input batch data,
+            fields data type as same as fields in each sample.
     """
     sample = batch[0]
     if isinstance(sample, np.ndarray):
@@ -64,7 +65,7 @@ def default_collate_fn(batch):
     elif isinstance(sample, paddle.Tensor):
         return layers.stack(batch, axis=0)
     elif isinstance(sample, (int, float)):
-        batch - np.array(batch)
+        batch = np.array(batch)
         if not paddle.is_compiled_with_cuda():
             batch = _to_tensor(batch)
         return batch

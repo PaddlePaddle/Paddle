@@ -857,8 +857,6 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._thread = None
         self._pin_memory = True if use_pinned_memory(
         ) is None else use_pinned_memory()
-        if self._pin_memory and not paddle.is_compiled_with_cuda():
-            self._pin_memory = False
 
     @property
     def queue(self):

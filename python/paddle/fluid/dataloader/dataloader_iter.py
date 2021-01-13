@@ -32,7 +32,7 @@ else:
 
 import paddle
 from .. import core, layers
-from ..framework import in_dygraph_mode
+from ..framework import in_dygraph_mode, _current_expected_place
 from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL
 from .worker import ParentWatchDog, get_worker_info, _worker_loop, _DatasetKind, _IterableDatasetStopIteration
 from .pin_memory import pin_memory, _pin_memory_loop
@@ -196,7 +196,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._pin_memory_thread = threading.Thread(
                 target=_pin_memory_loop,
                 args=(self._worker_result_queue, self._data_queue,
-                      self._pin_memory_thread_done_event))
+                      self._pin_memory_thread_done_event,
+                      _current_expected_place()))
             self._pin_memory_thread.daemon = True
             self._pin_memory_thread.start()
         else:
