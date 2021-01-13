@@ -83,6 +83,12 @@ Variable* Scope::FindVar(const std::string& name) const {
   return FindVarInternal(name);
 }
 
+Variable* Scope::GetVar(const std::string& name) const {
+  auto* var = FindVar(name);
+  PADDLE_ENFORCE_NOT_NULL(var);
+  return var;
+}
+
 Variable* Scope::FindLocalVar(const std::string& name) const {
   SCOPE_VARS_READER_LOCK
   return FindVarLocally(name);

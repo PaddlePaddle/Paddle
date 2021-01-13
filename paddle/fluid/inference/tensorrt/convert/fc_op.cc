@@ -132,7 +132,7 @@ class FcOpConverter : public OpConverter {
     float* bias_data = nullptr;
     int bias_num = 0;
     if (with_bias) {
-      auto* b_v = scope.FindVar(op_desc.Input("Bias").front());
+      auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
       auto* b_t = b_v->GetMutable<framework::LoDTensor>();
       bias_data =
           engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t, false);

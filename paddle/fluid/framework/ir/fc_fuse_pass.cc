@@ -149,7 +149,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
         desc.SetAttr("out_scale", elementwise_desc->GetAttr("out_scale"));
     }
 
-    auto elementwise_add_op_desc = elementwise_add->Op();
+    auto* elementwise_add_op_desc = elementwise_add->Op();
     // if we can find out_threshold in elementwise_add, then set it as the
     // out_thrshold of fc
     auto out_threshold_attr =

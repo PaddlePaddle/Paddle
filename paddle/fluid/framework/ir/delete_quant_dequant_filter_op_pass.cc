@@ -84,12 +84,8 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
                             "Scales size in channel-wise quant dequantize op "
                             "should be 1, got %d.",
                             scales_name.size()));
-      PADDLE_ENFORCE(
-          scope->FindVar(scales_name[0]) != nullptr,
-          platform::errors::InvalidArgument(
-              "Scale data in channel-wise quant dequant op should exist."));
       const LoDTensor& channel_scale_tensor =
-          scope->FindVar(scales_name[0])->Get<LoDTensor>();
+          scope->GetVar(scales_name[0])->Get<LoDTensor>();
       PADDLE_ENFORCE(
           paddle::platform::is_cpu_place(channel_scale_tensor.place()),
           platform::errors::InvalidArgument(
@@ -100,22 +96,16 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
       }
     } else {
       auto scale_name = quant_dequant_op_outscale->Name();
-      PADDLE_ENFORCE(scope->FindVar(scale_name) != nullptr,
-                     platform::errors::InvalidArgument(
-                         "Scale data in quant dequant op should exist."));
       const LoDTensor& scale_tensor =
-          scope->FindVar(scale_name)->Get<LoDTensor>();
+          scope->GetVar(scale_name)->Get<LoDTensor>();
       const float* scale_data = scale_tensor.data<float>();
       weight_scale.push_back((range * range) / scale_data[0] / range);
     }
 
     nodes2rm.insert(quant_dequant_op_outscale);
     // perform quantize dequantize operations
-    PADDLE_ENFORCE(scope->FindVar(quant_dequant_op_x->Name()) != nullptr,
-                   platform::errors::InvalidArgument(
-                       "Scale data in quant dequant op should exist."));
     auto* weight_tensor =
-        scope->FindVar(quant_dequant_op_x->Name())->GetMutable<LoDTensor>();
+        scope->GetVar(quant_dequant_op_x->Name())->GetMutable<LoDTensor>();
     auto w_dims = weight_tensor->dims();
     float* quantized_weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
@@ -129,9 +119,9 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
               "%s op weight dequantized by [fake_quantize_dequantize_max_abs] "
               "requires weight scale size = 1, but got %d.",
               quantized_op_type, weight_scale.size()));
-      PADDLE_ENFORCE(weight_scale[0] != 0,
-                     platform::errors::InvalidArgument(
-                         "Weight scale should be nonzero, but get zero"));
+      PADDLE_ENFORCE_NE(weight_scale[0], 0,
+                        platform::errors::InvalidArgument(
+                            "Weight scale should be nonzero, but get zero"));
       for (int j = 0; j < weight_tensor->numel(); j++) {
         // quantized
         quantized_weight_data[j] = quantized_weight_data[j] * weight_scale[0];
@@ -152,8 +142,8 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
                 static_cast<size_t>(w_dims[1]), weight_scale.size()));
         for (int j = 0; j < weight_tensor->numel(); j++) {
           // quantized
-          PADDLE_ENFORCE(
-              weight_scale[j % w_dims[1]] != 0,
+          PADDLE_ENFORCE_NE(
+              weight_scale[j % w_dims[1]], 0,
               platform::errors::InvalidArgument(
                   "fc op weight scale should be nonzero, but get zero"));
           quantized_weight_data[j] =
@@ -178,8 +168,8 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
         int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
         for (int j = 0; j < weight_tensor->numel(); j++) {
           // quantized
-          PADDLE_ENFORCE(
-              weight_scale[j / inner_size] != 0,
+          PADDLE_ENFORCE_NE(
+              weight_scale[j / inner_size], 0,
               platform::errors::InvalidArgument(
                   "conv2d op weight scale should be nonzero, but get zero"));
           quantized_weight_data[j] =
@@ -204,8 +194,7 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
         int inner_size = w_dims[2] * w_dims[3];
         for (int j = 0; j < weight_tensor->numel(); j++) {
           // quantized
-          PADDLE_ENFORCE_EQ(weight_scale[(j / inner_size) % w_dims[1]] != 0,
-                            true,
+          PADDLE_ENFORCE_NE(weight_scale[(j / inner_size) % w_dims[1]], 0,
                             platform::errors::InvalidArgument(
                                 "conv2d_transpose op weight scale should be "
                                 "nonzero, but get zero"));
