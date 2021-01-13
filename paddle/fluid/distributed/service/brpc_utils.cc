@@ -88,7 +88,7 @@ void SerializeLodTensor(framework::Variable* var,
                         const platform::DeviceContext& ctx, VarMsg* var_msg,
                         butil::IOBuf* iobuf) {
   auto* tensor = var->GetMutable<framework::LoDTensor>();
-  var_msg->set_type(::paddle::LOD_TENSOR);
+  var_msg->set_type(::paddle::distributed::LOD_TENSOR);
   const framework::LoD lod = tensor->lod();
   if (lod.size() > 0) {
     var_msg->set_lod_level(lod.size());
@@ -135,7 +135,7 @@ void SerializeSelectedRows(framework::Variable* var,
   auto* tensor = slr->mutable_value();
   auto* rows = slr->mutable_rows();
 
-  var_msg->set_type(::paddle::SELECTED_ROWS);
+  var_msg->set_type(::paddle::distributed::SELECTED_ROWS);
   var_msg->set_slr_height(slr->height());
 
   auto* var_data = var_msg->mutable_data();
@@ -194,9 +194,9 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
        ++recv_var_index) {
     const auto& msg = multi_msg.var_messages(recv_var_index);
     auto* var = scope->Var(msg.varname());
-    if (msg.type() == ::paddle::LOD_TENSOR) {
+    if (msg.type() == ::paddle::distributed::LOD_TENSOR) {
       DeserializeLodTensor(var, msg, io_buffer_itr, ctx);
-    } else if (msg.type() == ::paddle::SELECTED_ROWS) {
+    } else if (msg.type() == ::paddle::distributed::SELECTED_ROWS) {
       DeserializeSelectedRows(var, msg, io_buffer_itr, ctx);
     }
   }
@@ -215,9 +215,9 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
     PADDLE_ENFORCE_NE(var, nullptr,
                       platform::errors::InvalidArgument(
                           "Not find variable %s in scope.", msg.varname()));
-    if (msg.type() == ::paddle::LOD_TENSOR) {
+    if (msg.type() == ::paddle::distributed::LOD_TENSOR) {
       DeserializeLodTensor(var, msg, io_buffer_itr, ctx);
-    } else if (msg.type() == ::paddle::SELECTED_ROWS) {
+    } else if (msg.type() == ::paddle::distributed::SELECTED_ROWS) {
       DeserializeSelectedRows(var, msg, io_buffer_itr, ctx);
     }
   }

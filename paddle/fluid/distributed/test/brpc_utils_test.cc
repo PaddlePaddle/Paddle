@@ -75,7 +75,7 @@ void RunMultiVarMsg(platform::Place place) {
   auto& ctx = *pool.Get(place);
   CreateVarsOnScope(&scope, &place, ctx);
 
-  ::paddle::MultiVariableMessage multi_msg;
+  ::paddle::distributed::MultiVariableMessage multi_msg;
   std::string message_name("se_de_test");
   std::vector<std::string> send_var_name = {"x1", "x2", "x3"};
   std::vector<std::string> recv_var_name = {};
