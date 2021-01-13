@@ -20,15 +20,19 @@ import random
 import unittest
 import logging
 import paddle
+import six
 import paddle.fluid as fluid
+from paddle.nn import functional
+from paddle.nn import Linear, Conv2D, Softmax, BatchNorm
+from paddle.fluid.layers import nn
 from paddle.fluid import core
+from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
+from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware, QuantizationTransformPass, AddQuantDequantPass
 from paddle.fluid.dygraph.container import Sequential
-from paddle.nn import Linear, Conv2D, Softmax
 from paddle.fluid.dygraph.nn import Pool2D
+from paddle.nn.layer.activation import ReLU, LeakyReLU, ReLU6, Tanh, Swish
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -45,14 +49,17 @@ _logger = get_logger(
 def StaticLenet(data, num_classes=10):
     conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
     conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
+    conv2d_w3_attr = fluid.ParamAttr(name="conv2d_w_3")
     fc_w1_attr = fluid.ParamAttr(name="fc_w_1")
     fc_w2_attr = fluid.ParamAttr(name="fc_w_2")
     fc_w3_attr = fluid.ParamAttr(name="fc_w_3")
     conv2d_b1_attr = fluid.ParamAttr(name="conv2d_b_1")
     conv2d_b2_attr = fluid.ParamAttr(name="conv2d_b_2")
+    conv2d_b3_attr = fluid.ParamAttr(name="conv2d_b_3")
     fc_b1_attr = fluid.ParamAttr(name="fc_b_1")
     fc_b2_attr = fluid.ParamAttr(name="fc_b_2")
     fc_b3_attr = fluid.ParamAttr(name="fc_b_3")
+
     conv1 = fluid.layers.conv2d(
         data,
         num_filters=6,
@@ -61,6 +68,7 @@ def StaticLenet(data, num_classes=10):
         padding=1,
         param_attr=conv2d_w1_attr,
         bias_attr=conv2d_b1_attr)
+    conv1 = fluid.layers.leaky_relu(conv1, alpha=0.02)
     pool1 = fluid.layers.pool2d(
         conv1, pool_size=2, pool_type='max', pool_stride=2)
     conv2 = fluid.layers.conv2d(
@@ -73,8 +81,19 @@ def StaticLenet(data, num_classes=10):
         bias_attr=conv2d_b2_attr)
     pool2 = fluid.layers.pool2d(
         conv2, pool_size=2, pool_type='max', pool_stride=2)
-
-    fc1 = fluid.layers.fc(input=pool2,
+    pool2 = fluid.layers.relu(pool2)
+    pool2 = fluid.layers.swish(pool2)
+    conv3 = fluid.layers.conv2d(
+        pool2,
+        num_filters=16,
+        filter_size=1,
+        stride=1,
+        padding=0,
+        param_attr=conv2d_w3_attr,
+        bias_attr=conv2d_b3_attr)
+    conv3 = fluid.layers.relu6(conv3)
+    conv3 = paddle.tensor.math.tanh(conv3)
+    fc1 = fluid.layers.fc(input=conv3,
                           size=120,
                           param_attr=fc_w1_attr,
                           bias_attr=fc_b1_attr)
@@ -96,11 +115,13 @@ class ImperativeLenet(fluid.dygraph.Layer):
         super(ImperativeLenet, self).__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
         conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
+        conv2d_w3_attr = fluid.ParamAttr(name="conv2d_w_3")
         fc_w1_attr = fluid.ParamAttr(name="fc_w_1")
         fc_w2_attr = fluid.ParamAttr(name="fc_w_2")
         fc_w3_attr = fluid.ParamAttr(name="fc_w_3")
         conv2d_b1_attr = fluid.ParamAttr(name="conv2d_b_1")
         conv2d_b2_attr = fluid.ParamAttr(name="conv2d_b_2")
+        conv2d_b3_attr = fluid.ParamAttr(name="conv2d_b_3")
         fc_b1_attr = fluid.ParamAttr(name="fc_b_1")
         fc_b2_attr = fluid.ParamAttr(name="fc_b_2")
         fc_b3_attr = fluid.ParamAttr(name="fc_b_3")
@@ -113,6 +134,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 padding=1,
                 weight_attr=conv2d_w1_attr,
                 bias_attr=conv2d_b1_attr),
+            LeakyReLU(negative_slope=0.02),
             Pool2D(
                 pool_size=2, pool_type='max', pool_stride=2),
             Conv2D(
@@ -124,8 +146,19 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 weight_attr=conv2d_w2_attr,
                 bias_attr=conv2d_b2_attr),
             Pool2D(
-                pool_size=2, pool_type='max', pool_stride=2))
-
+                pool_size=2, pool_type='max', pool_stride=2),
+            ReLU(),
+            Swish(),
+            Conv2D(
+                in_channels=16,
+                out_channels=16,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+                weight_attr=conv2d_w3_attr,
+                bias_attr=conv2d_b3_attr),
+            ReLU6(),
+            Tanh())
         self.fc = Sequential(
             Linear(
                 in_features=400,
@@ -151,15 +184,16 @@ class ImperativeLenet(fluid.dygraph.Layer):
         return x
 
 
-class TestImperativeQatChannelWise(unittest.TestCase):
-    """
-    QAT = quantization-aware training
-    """
-
+class TestImperativeAddQuantDequant(unittest.TestCase):
     def test_qat_save(self):
+
         imperative_qat = ImperativeQuantAware(
-            weight_quantize_type='channel_wise_abs_max',
-            activation_quantize_type='moving_average_abs_max')
+            weight_quantize_type='abs_max',
+            activation_quantize_type='moving_average_abs_max',
+            quantizable_layer_type=[
+                'Conv2D', 'Linear', 'ReLU', 'Pool2D', 'LeakyReLU', 'ReLU6',
+                'Tanh', 'Swish'
+            ])
 
         with fluid.dygraph.guard():
             lenet = ImperativeLenet()
@@ -230,7 +264,7 @@ class TestImperativeQatChannelWise(unittest.TestCase):
             before_save = lenet(test_img)
 
         # save inference quantized model
-        path = "./qat_infer_model/mnist"
+        path = "./qat_infer_model/lenet"
         save_dir = "./qat_infer_model"
         paddle.jit.save(
             layer=lenet,
@@ -239,7 +273,6 @@ class TestImperativeQatChannelWise(unittest.TestCase):
                 paddle.static.InputSpec(
                     shape=[None, 1, 28, 28], dtype='float32')
             ])
-
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
@@ -249,8 +282,8 @@ class TestImperativeQatChannelWise(unittest.TestCase):
          fetch_targets] = fluid.io.load_inference_model(
              dirname=save_dir,
              executor=exe,
-             model_filename="mnist" + INFER_MODEL_SUFFIX,
-             params_filename="mnist" + INFER_PARAMS_SUFFIX)
+             model_filename="lenet" + INFER_MODEL_SUFFIX,
+             params_filename="lenet" + INFER_PARAMS_SUFFIX)
         after_save, = exe.run(inference_program,
                               feed={feed_target_names[0]: test_data},
                               fetch_list=fetch_targets)
@@ -280,7 +313,7 @@ class TestImperativeQatChannelWise(unittest.TestCase):
 
         reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=32, drop_last=True)
-        weight_quantize_type = 'channel_wise_abs_max'
+        weight_quantize_type = 'abs_max'
         activation_quant_type = 'moving_average_abs_max'
         param_init_map = {}
         seed = 1000
@@ -292,7 +325,11 @@ class TestImperativeQatChannelWise(unittest.TestCase):
         )
         imperative_qat = ImperativeQuantAware(
             weight_quantize_type=weight_quantize_type,
-            activation_quantize_type=activation_quant_type)
+            activation_quantize_type=activation_quant_type,
+            quantizable_layer_type=[
+                'Conv2D', 'Linear', 'ReLU', 'LeakyReLU', 'ReLU6', 'Tanh',
+                'Swish'
+            ])
 
         with fluid.dygraph.guard():
             np.random.seed(seed)
@@ -336,7 +373,9 @@ class TestImperativeQatChannelWise(unittest.TestCase):
                 dynamic_loss_rec.append(avg_loss.numpy()[0])
                 if batch_id % 100 == 0:
                     _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
-
+                if batch_id > 500:
+                    break
+            lenet.eval()
         paddle.jit.save(
             layer=lenet,
             path="./dynamic_mnist/model",
@@ -383,8 +422,16 @@ class TestImperativeQatChannelWise(unittest.TestCase):
             activation_quantize_type=activation_quant_type,
             weight_quantize_type=weight_quantize_type,
             quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'])
+        add_quant_dequant_pass = AddQuantDequantPass(
+            scope=scope,
+            place=place,
+            quantizable_op_type=[
+                'relu', 'leaky_relu', 'relu6', 'tanh', 'swish'
+            ])
         transform_pass.apply(main_graph)
         transform_pass.apply(infer_graph)
+        add_quant_dequant_pass.apply(main_graph)
+        add_quant_dequant_pass.apply(infer_graph)
         build_strategy = fluid.BuildStrategy()
         build_strategy.fuse_all_reduce_ops = False
         binary = fluid.CompiledProgram(main_graph.graph).with_data_parallel(
@@ -405,8 +452,8 @@ class TestImperativeQatChannelWise(unittest.TestCase):
         with fluid.scope_guard(scope):
             fluid.io.save_inference_model("./static_mnist", [infer_img.name],
                                           [infer_pre], exe, save_program)
-        rtol = 1e-05
-        atol = 1e-08
+        rtol = 1e-08
+        atol = 1e-10
         for i, (loss_d,
                 loss_s) in enumerate(zip(dynamic_loss_rec, static_loss_rec)):
             diff = np.abs(loss_d - loss_s)
