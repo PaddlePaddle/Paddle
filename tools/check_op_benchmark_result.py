@@ -127,7 +127,7 @@ def update_api_info_file(fail_case_list, api_info_file):
     check_path_exists(api_info_file)
 
     # set of case names for performance check failures
-    fail_case_set = set(map(lambda x: x.split('_')[0], fail_case_list))
+    fail_case_set = set(map(lambda x: x.rsplit('_', 1)[0], fail_case_list))
 
     # list of api infos for performance check failures
     api_info_list = list()
