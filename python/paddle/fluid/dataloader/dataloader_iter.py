@@ -303,7 +303,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._thread.daemon = True
         self._thread.start()
 
-    def _thread_loop(self, legacy_expected_place=None):
+    def _thread_loop(self, legacy_expected_place):
         try:
             #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
             # and it will call platform::SetDeviceId() in c++ internally.
@@ -613,7 +613,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._blocking_queue.kill()
         logging.error("DataLoader reader thread raised an exception!")
 
-    def _thread_loop(self, legacy_expected_place=None):
+    def _thread_loop(self, legacy_expected_place):
         #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
         # and it will call platform::SetDeviceId() in c++ internally.
         # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,

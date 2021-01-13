@@ -971,7 +971,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._blocking_queue.kill()
         logging.error("DataLoader reader thread raised an exception!")
 
-    def _reader_thread_loop_for_multiprocess(self):
+    def _reader_thread_loop_for_multiprocess(self, legacy_expected_place):
         # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
         _set_expected_place(legacy_expected_place)
 
@@ -1013,7 +1013,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 else:
                     self._exit_thread_expectedly()
 
-    def _reader_thread_loop_for_singleprocess(self):
+    def _reader_thread_loop_for_singleprocess(self, legacy_expected_place):
         try:
             # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
             _set_expected_place(legacy_expected_place)
