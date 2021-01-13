@@ -235,8 +235,7 @@ void BindAscendGraph(py::module *m) {
       .def("build_graph", &Session::BuildGraph)
       .def("run_graph_async", &Session::RunGraphAsync)
       .def("register_call_back_func", 
-		      static_cast<ge::Status (ge::Session::*)(const char*, const ge::session::pCallBackFunc&)>(&ge::Session::RegisterCallBackFunc));
-
+		      static_cast<ge::Status (ge::Session::*)(const char*, const ge::session::pCallBackFunc&)>(&ge::Session::RegisterCallBackFunc))
       .def("is_graph_need_rebuild", &Session::IsGraphNeedRebuild);
 
   py::class_<Graph>(*m, "GEGraph")
@@ -275,9 +274,9 @@ void BindAscendGraph(py::module *m) {
              graphStatus status = graph.GetAllOpName(op_name);
              return py::make_tuple(op_name, status);
            })
-      .def("save_to_file", &Graph::SaveToFile)
-      .def("load_from_file", &Graph::LoadFromFile)
-      .def("get_name", &Graph::GetName)
+      .def("save_to_file", static_cast<ge::graphStatus (ge::Graph::*)(const char *) const>(&ge::Graph::SaveToFile))
+      .def("load_from_file", static_cast<ge::graphStatus (ge::Graph::*)(const char*)>(&Graph::LoadFromFile))
+      .def("get_name", static_cast<ge::graphStatus (ge::Graph::*(AscendString&))>(&Graph::GetName))
       .def("set_need_iteration", &Graph::SetNeedIteration);
 
   py::class_<Operator>(*m, "GEOperator")
@@ -285,7 +284,8 @@ void BindAscendGraph(py::module *m) {
       .def(py::init<const std::string &>())
       .def(py::init<const std::string &, const std::string &>())
       .def("is_empty", &Operator::IsEmpty)
-      .def("get_name", &Operator::GetName)
+      .def("get_name", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(AscendString&)>(&Operator::GetName))
       .def("get_op_type", &Operator::GetOpType)
       .def("set_input",
            (Operator & (Operator::*)(const std::string &, const Operator &)) &
@@ -677,7 +677,8 @@ void BindAscendGraph(py::module *m) {
   py::class_<AttrValue>(*m, "GEAttrValue").def(py::init<>());
 
   py::class_<OperatorFactory>(*m, "GEOperatorFactory")
-      .def("create_operator", &OperatorFactory::CreateOperator)
+      .def("create_operator", 
+		      static_cast<ge::Operator (ge::OperatorFactory::*)(const char*, const char*)>(&ge::OperatorFactory::CreateOperator))
       .def("get_ops_type_list",
            []() -> py::tuple {
              std::vector<std::string> all_ops;
