@@ -70,10 +70,8 @@ class AbsGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto dtype = OperatorWithKernel::IndicateVarDataType(
-        ctx, framework::GradVarName("Out"));
-    auto complex_dtype = framework::ToComplexType(dtype);
-    return framework::OpKernelType(complex_dtype, ctx.GetPlace());
+    auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(dtype, ctx.GetPlace());
   }
 };
 
