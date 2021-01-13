@@ -29,3 +29,4 @@ void BindAscendWrapper(py::module* m);
 }  // namespace pybind
 }  // namespace paddle
 #endif
+
