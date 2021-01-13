@@ -13,7 +13,7 @@
 // limitations under the License.
 
 syntax = "proto2";
-package paddle;
+package paddle.distributed;
 option cc_generic_services = true;
 option cc_enable_arenas = true;
 
@@ -47,6 +47,7 @@ enum PsCmdID {
   PS_PUSH_SPARSE_PARAM = 26;
   PS_START_PROFILER = 27;
   PS_STOP_PROFILER = 28;
+  PS_PUSH_GLOBAL_STEP = 29;
 }
 
 message PsRequestMessage {

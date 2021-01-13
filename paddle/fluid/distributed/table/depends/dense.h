@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include <gflags/gflags.h>
 #include <math.h>  // for sqrt in CPU and CUDA
 #include <functional>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/distributed/common/utils.h"
 
@@ -36,6 +36,10 @@ class DenseOptimizer {
                           std::vector<std::vector<float>>* values) {}
   virtual void update(const float* update_values, size_t num, int begin,
                       int end) = 0;
+  virtual void set_global_lr(float* lr) { global_learning_rate_ = lr; }
+
+ protected:
+  float* global_learning_rate_;
 };
 
 // sum calc for dense tensor
@@ -84,8 +88,10 @@ class DSGD : public DenseOptimizer {
     grads.resize(update_numel);
 
     auto blas = GetBlas<float>();
+    float lr = *(global_learning_rate_) * (*learning_rate);
+    VLOG(4) << "DSGD LearningRate: " << lr;
     blas.VCOPY(update_numel, update_values + begin, grads.data());
-    blas.SCAL(update_numel, *learning_rate, grads.data());
+    blas.SCAL(update_numel, lr, grads.data());
     blas.VSUB(update_numel, param + begin, grads.data(), param + begin);
   }
 
@@ -150,7 +156,8 @@ class DAdam : public DenseOptimizer {
     beta1_pow[0] = beta1_pow[0] * beta1;
     beta2_pow[0] = beta2_pow[0] * beta2;
 
-    float lr_ = learning_rate[0];
+    float lr_ = *(global_learning_rate_)*learning_rate[0];
+    VLOG(4) << "DAdam LearningRate: " << lr_;
     lr_ *= sqrt(1 - beta2_pow[0]) / (1 - beta1_pow[0]);
 
     float* tmp_ = tmp.data();

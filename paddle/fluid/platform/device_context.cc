@@ -74,6 +74,10 @@ namespace platform {
 bool allow_tf32_cublas = true;
 void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
 bool AllowTF32Cublas() { return allow_tf32_cublas; }
+
+bool allow_tf32_cudnn = true;
+void SetAllowTF32Cudnn(bool active) { allow_tf32_cudnn = active; }
+bool AllowTF32Cudnn() { return allow_tf32_cudnn; }
 #endif  // PADDLE_WITH_CUDA
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;

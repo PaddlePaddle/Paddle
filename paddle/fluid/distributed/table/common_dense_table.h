@@ -42,6 +42,7 @@ class CommonDenseTable : public DenseTable {
   virtual int32_t push_dense_param(const float* values, size_t num) override;
   virtual int32_t push_dense(const float* values, size_t num) override;
   virtual int32_t pour() override;
+  virtual int32_t set_global_lr(float* lr) override;
 
   int32_t load(const std::string& path, const std::string& param) override {
     VLOG(0) << "Dense table may load by "

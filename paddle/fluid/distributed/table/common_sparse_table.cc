@@ -21,6 +21,7 @@
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
 
+#define PSERVER_SAVE_SUFFIX "_txt"
 namespace paddle {
 namespace distributed {
 
@@ -175,6 +176,8 @@ int32_t CommonSparseTable::initialize() {
   sync = _config.common().sync();
   VLOG(1) << "table " << _config.common().table_name() << " is sync: " << sync;
 
+  _global_lr = new float(1.0);
+
   auto common = _config.common();
   int size = static_cast<int>(common.params().size());
 
@@ -249,9 +252,11 @@ int32_t CommonSparseTable::initialize_optimizer() {
   if (name == "sgd") {
     optimizer_ = std::make_shared<SSGD>(value_names_, value_dims_,
                                         value_offsets_, value_idx_);
+    optimizer_->set_global_lr(_global_lr);
   } else if (name == "adam") {
     optimizer_ = std::make_shared<SAdam>(value_names_, value_dims_,
                                          value_offsets_, value_idx_);
+    optimizer_->set_global_lr(_global_lr);
   } else if (name == "sum") {
     optimizer_ = std::make_shared<SSUM>(value_names_, value_dims_,
                                         value_offsets_, value_idx_);
@@ -260,6 +265,12 @@ int32_t CommonSparseTable::initialize_optimizer() {
   }
 
   VLOG(0) << "init optimizer " << name << " done";
+  return 0;
+}
+
+int32_t CommonSparseTable::set_global_lr(float* lr) {
+  _global_lr = lr;
+  optimizer_->set_global_lr(_global_lr);
   return 0;
 }
 
@@ -280,7 +291,8 @@ int32_t CommonSparseTable::save(const std::string& dirname,
   VLOG(0) << "sparse table save: " << dirname << " mode: " << mode;
 
   auto varname = _config.common().table_name();
-  std::string var_store = string::Sprintf("%s/%s", dirname, varname);
+  std::string var_store =
+      string::Sprintf("%s/%s%s", dirname, varname, PSERVER_SAVE_SUFFIX);
   MkDirRecursively(var_store.c_str());
 
   VLOG(3) << "save " << varname << " in dir: " << var_store << " begin";
