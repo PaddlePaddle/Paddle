@@ -85,7 +85,8 @@ Variable* Scope::FindVar(const std::string& name) const {
 
 Variable* Scope::GetVar(const std::string& name) const {
   auto* var = FindVar(name);
-  PADDLE_ENFORCE_NOT_NULL(var, "cannot find a valid variable in scope.");
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::NotFound("Cannot find %s in scope.", name));
   return var;
 }
 
