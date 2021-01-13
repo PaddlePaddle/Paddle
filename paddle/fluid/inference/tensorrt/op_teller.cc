@@ -101,7 +101,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "layer_norm",
       "scale",
       "stack",
-      "transpose",
+      "transpose2",
   };
 };
 
@@ -128,7 +128,7 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
           (padding_algorithm == "SAME" && op_type != "pool2d"))
         return false;
     }
-    if (op_type == "transpose") {
+    if (op_type == "transpose2") {
       if (!desc.HasAttr("axis")) return false;
     }
     if (op_type == "matmul") {

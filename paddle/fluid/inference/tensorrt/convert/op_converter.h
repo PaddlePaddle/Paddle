@@ -102,7 +102,12 @@ class OpConverter {
           it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                               op_desc.Type()));
     }
-
+    if (op_desc.Type() == "transpose2") {
+      it = Registry<OpConverter>::Global().Lookup("transpose");
+      PADDLE_ENFORCE_NOT_NULL(
+          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+    }
     if (op_desc.Type() == "depthwise_conv2d") {
       it = Registry<OpConverter>::Global().Lookup("conv2d");
       PADDLE_ENFORCE_NOT_NULL(
