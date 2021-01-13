@@ -1322,58 +1322,6 @@ REGISTER_OP_CPU_KERNEL(
                               ops::ExpGradFunctor<int64_t>>);
 /* ========================================================================== */
 
-/* ==========================   abs register  ============================ */
-/*
-REGISTER_OPERATOR(
-    abs, ops::ActivationOp, ops::AbsOpMaker, ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::AbsGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::AbsGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    std::conditional<ops::CanInplaceAct<ops::AbsGradFunctor<float>>(),
-                     ops::ActFwdInplaceInferer, void>::type);
-REGISTER_OPERATOR(abs_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
-    abs_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::AbsGradGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(abs,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::AbsFunctor<float>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::AbsFunctor<double>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::AbsFunctor<int>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::AbsFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
-    abs_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                        ops::AbsGradFunctor<float>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::AbsGradFunctor<double>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::AbsGradFunctor<int>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::AbsGradFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
-    abs_grad_grad,
-    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
-                                    ops::AbsGradGradFunctor<float>>,
-    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
-                                    ops::AbsGradGradFunctor<double>>,
-    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
-                                    ops::AbsGradGradFunctor<plat::float16>>,
-    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
-                                    ops::AbsGradGradFunctor<int>>,
-    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
-                                    ops::AbsGradGradFunctor<int64_t>>);
-*/
-/* ========================================================================== */
-
 /* ==========================  Log register ==================================*/
 REGISTER_OPERATOR(
     log, ops::ActivationOp, ops::LogOpMaker, ops::ActivationOpInferVarType,

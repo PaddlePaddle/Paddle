@@ -152,6 +152,21 @@ struct AbsFunctor<T, NoComplex<T, Real<T>>> {
   int64_t numel_;
 };
 
+template <>
+struct AbsFunctor<paddle::platform::float16> {
+  AbsFunctor(const paddle::platform::float16* input,
+             paddle::platform::float16* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx] = platform::float16(abs(static_cast<float>(input_[idx])));
+  }
+
+  const paddle::platform::float16* input_;
+  paddle::platform::float16* output_;
+  int64_t numel_;
+};
+
 template <typename T, typename Enable = void>
 struct AbsGradFunctor;
 template <typename T>
@@ -160,7 +175,7 @@ struct AbsGradFunctor<T, math::DisableComplex<T>> {
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] > 0) {
+    if (x_[idx] > T(0)) {
       output_[idx] = dout_[idx];
     } else {
       output_[idx] = -dout_[idx];
@@ -184,6 +199,43 @@ struct AbsGradFunctor<T, math::EnableComplex<T>> {
   }
 
   const math::Real<T>* dout_;
+  const T* x_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <typename T, typename Enable = void>
+struct AbsGradGradFunctor;
+
+template <typename T>
+struct AbsGradGradFunctor<T, math::EnableComplex<T>> {
+  AbsGradGradFunctor(const T* ddx, const T* x, T* output, int64_t numel)
+      : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx] = T(ddx_[idx], 0) * x_[idx] / T(abs(x_[idx]));
+  }
+
+  const T* ddx_;
+  const T* x_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <typename T>
+struct AbsGradGradFunctor<T, math::DisableComplex<T>> {
+  AbsGradGradFunctor(const T* ddx, const T* x, T* output, int64_t numel)
+      : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] > T(0)) {
+      output_[idx] = ddx_[idx];
+    } else {
+      output_[idx] = -ddx_[idx];
+    }
+  }
+
+  const T* ddx_;
   const T* x_;
   T* output_;
   int64_t numel_;
