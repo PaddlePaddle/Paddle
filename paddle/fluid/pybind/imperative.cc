@@ -596,7 +596,6 @@ void BindImperative(py::module *m_ptr) {
            py::arg("zero_copy") = false, py::arg("name") = "",
            py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
-      .def("__init__", &InitVarBaseFromNumpyWithKwargs)
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::CPUPlace>,
            py::arg("tensor"), py::arg("place"))
@@ -606,6 +605,7 @@ void BindImperative(py::module *m_ptr) {
            py::arg("tensor"), py::arg("place"))
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPinnedPlace>,
            py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromNumpyWithKwargs)
       .def("__setitem__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
               py::object &value_obj) {

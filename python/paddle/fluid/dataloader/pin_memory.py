@@ -47,7 +47,7 @@ def pin_memory(data):
             # LoDTensor -> paddle.Tensor(VarBase)
             return core.VarBase(data, paddle.CUDAPinnedPlace())
         else:
-            return data.pin_memory()
+            return data._pin_memory()
     if isinstance(data, Sequence):
         return [pin_memory(d) for d in data]
     if isinstance(data, Mapping):

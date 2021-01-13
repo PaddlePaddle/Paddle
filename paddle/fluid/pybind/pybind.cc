@@ -955,7 +955,7 @@ PYBIND11_MODULE(core_noavx, m) {
              ostr << self;
              return ostr.str();
            })
-      .def("pin_memory",
+      .def("_pin_memory",
            [](const LoDTensor &self) {
              if (!self.IsInitialized() || self.numel() <= 0) {
                return self;
