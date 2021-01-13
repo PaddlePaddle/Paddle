@@ -67,7 +67,8 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     const T* filter_data = filter->data<T>();
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
     const paddle::platform::DataLayout data_layout =
-        (data_layout_str != "NHWC" ? platform::DataLayout::kNCHW : platform::DataLayout::kNHWC);
+        (data_layout_str != "NHWC" ? platform::DataLayout::kNCHW
+                                   : platform::DataLayout::kNHWC);
 
     // if channel_last, transpose to channel_first
     Tensor input_transpose;
@@ -308,7 +309,8 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
     const paddle::platform::DataLayout data_layout =
-        (data_layout_str != "NHWC" ? platform::DataLayout::kNCHW : platform::DataLayout::kNHWC);
+        (data_layout_str != "NHWC" ? platform::DataLayout::kNCHW
+                                   : platform::DataLayout::kNHWC);
 
     // if channel_last, transpose to channel_first
     Tensor input_transpose;
@@ -912,12 +914,12 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
     }
 
     int i_n, i_c, i_d, i_h, i_w;
-    GetNCDHW(transformed_X.dims(), platform::DataLayout::kNCHW, &i_n, &i_c, &i_d, &i_h,
-             &i_w);
+    GetNCDHW(transformed_X.dims(), platform::DataLayout::kNCHW, &i_n, &i_c,
+             &i_d, &i_h, &i_w);
 
     int o_n, o_c, o_d, o_h, o_w;
-    GetNCDHW(transformed_dO.dims(), platform::DataLayout::kNCHW, &o_n, &o_c, &o_d, &o_h,
-             &o_w);
+    GetNCDHW(transformed_dO.dims(), platform::DataLayout::kNCHW, &o_n, &o_c,
+             &o_d, &o_h, &o_w);
 
     int group_offset_in =
         transformed_X.numel() / transformed_X.dims()[0] / groups;

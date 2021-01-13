@@ -35,10 +35,10 @@ class SquaredL2DistanceKernel : public framework::OpKernel<T> {
 
     int cols = in0->numel() / in0_dims[0];
     // reduce dimensions except the first
-    auto x =
-        framework::EigenMatrix<T>::From(*in0, framework::make_ddim({in0_dims[0], cols}));
-    auto y =
-        framework::EigenMatrix<T>::From(*in1, framework::make_ddim({in1_dims[0], cols}));
+    auto x = framework::EigenMatrix<T>::From(
+         *in0, framework::make_ddim({in0_dims[0], cols}));
+    auto y = framework::EigenMatrix<T>::From(
+         *in1, framework::make_ddim({in1_dims[0], cols}));
 
     out0->mutable_data<T>(context.GetPlace());
     out1->mutable_data<T>(context.GetPlace());
@@ -100,8 +100,8 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
 
     x_g->mutable_data<T>(context.GetPlace());
     // eigen matrix
-    auto x_grad =
-        framework::EigenMatrix<T>::From(*x_g, framework::make_ddim({x_dims[0], cols}));
+    auto x_grad = framework::EigenMatrix<T>::From(
+         *x_g, framework::make_ddim({x_dims[0], cols}));
     // dimensions are same with subResult
     x_grad.device(eigen_place) = grad_mat;
 
@@ -115,8 +115,8 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
                           sub_result.dimensions()[0], y_dims[0]));
 
     if (sub_result.dimensions()[0] == y_dims[0]) {
-      auto y_grad =
-          framework::EigenMatrix<T>::From(*y_g, framework::make_ddim({y_dims[0], cols}));
+      auto y_grad = framework::EigenMatrix<T>::From(
+           *y_g, framework::make_ddim({y_dims[0], cols}));
       y_grad.device(eigen_place) = -1 * grad_mat;
     } else {
       auto col_sum_res = -1 * (grad_mat.sum(Eigen::array<int, 1>({{0}})));
