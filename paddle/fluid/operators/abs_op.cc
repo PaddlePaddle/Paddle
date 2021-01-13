@@ -91,6 +91,52 @@ class AbsGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+// AbsGrad: dx=dy if x >=0 else -dy
+// AbsDoubleGrad: ddy = ddx if x >=0 else -ddx
+template <typename T>
+class AbsDoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("abs_grad_grad");
+    // input1: x
+    op->SetInput("X", this->Input("X"));
+    // input2: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
+    // output: ddy
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
+class AbsDoubleGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    if (ctx->HasOutput("DDOut")) {
+      ctx->ShareDim("X", "DDOut");
+      ctx->ShareLoD("X", "DDOut");
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
+    return framework::OpKernelType(dtype, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    return framework::OpKernelType(tensor.type(), tensor.place(),
+                                   tensor.layout());
+  }
+};
+
 DECLARE_INPLACE_OP_INFERER(AbsOpInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(AbsGradOpInplaceInferer,
                            {framework::GradVarName("Out"),
@@ -105,7 +151,11 @@ REGISTER_OPERATOR(abs, ops::AbsOp, ops::AbsOpMaker,
                   ops::AbsGradMaker<paddle::framework::OpDesc>,
                   ops::AbsGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(abs_grad, ops::AbsGradOp);
+REGISTER_OPERATOR(abs_grad, ops::AbsGradOp,
+                  ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(abs_grad_grad, ops::AbsDoubleGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     abs, ops::AbsKernel<paddle::platform::CPUDeviceContext, float>,
@@ -126,3 +176,16 @@ REGISTER_OP_CPU_KERNEL(
                        paddle::platform::complex64>,
     ops::AbsGradKernel<paddle::platform::CPUDeviceContext,
                        paddle::platform::complex128>);
+
+REGISTER_OP_CPU_KERNEL(
+    abs_grad_grad,
+    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::float16>,
+    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex64>,
+    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex128>);
