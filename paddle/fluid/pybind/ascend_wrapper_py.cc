@@ -620,9 +620,9 @@ void BindAscendGraph(py::module *m) {
       .def("set_data",
            (graphStatus (Tensor::*)(const uint8_t *, size_t)) & Tensor::SetData)
       .def("set_data",
-           (graphStatus (Tensor::*)(const std::string &)) & Tensor::SetData)
+           (graphStatus (Tensor::*)(const char*)) & Tensor::SetData)
       .def("set_data",
-           (graphStatus (Tensor::*)(const std::vector<std::string> &)) &
+           (graphStatus (Tensor::*)(const std::vector<ge::AscendString> &)) &
                Tensor::SetData)
 
       .def("get_data",
@@ -645,7 +645,7 @@ void BindAscendGraph(py::module *m) {
            py::arg("format") = FORMAT_ND, py::arg("dt") = DT_FLOAT)
       .def(py::init<const TensorDesc &>())
       .def("update",
-           (void (TensorDesc::*)(Shape, Format, DataType)) & TensorDesc::Update,
+           (void (TensorDesc::*)(const Shape&, Format, DataType)) & TensorDesc::Update,
            py::arg("shape"), py::arg("format") = FORMAT_ND,
            py::arg("dt") = DT_FLOAT)
       .def("set_shape", &TensorDesc::SetShape)
