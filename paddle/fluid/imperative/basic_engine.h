@@ -41,7 +41,7 @@ class BasicEngine : public Engine {
 
   void PrepareGradAccumulators(
       const OpBase& op,
-      const std::vector<std::shared_ptr<GradOpNode>> grad_pending_nodes);
+      const std::vector<std::shared_ptr<GradOpNode>>& grad_pending_nodes);
 
   void Clear();
 

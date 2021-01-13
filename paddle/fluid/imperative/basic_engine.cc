@@ -116,7 +116,7 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
 
 void BasicEngine::PrepareGradAccumulators(
     const OpBase& op,
-    const std::vector<std::shared_ptr<GradOpNode>> grad_pending_nodes) {
+    const std::vector<std::shared_ptr<GradOpNode>>& grad_pending_nodes) {
   for (const auto& pair : op.GetOutsMap()) {
     if (!pair.second.IsGrad()) {
       continue;
