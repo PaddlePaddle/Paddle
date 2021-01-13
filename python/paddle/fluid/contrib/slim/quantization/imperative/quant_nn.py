@@ -24,9 +24,9 @@ from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.nn import functional as F
 
 __all__ = [
-    'FakeQuantMovingAverage', 'FakeQuantAbsMax', 'QuantizedConv2D',
-    'QuantizedLinear', 'FakeChannelWiseQuantDequantAbsMax',
-    'MovingAverageAbsMaxScale'
+    'FakeQuantMovingAverage', 'FakeQuantAbsMax',
+    'FakeChannelWiseQuantDequantAbsMax', 'QuantizedConv2D', 'QuantizedLinear',
+    'QuantizedNoweightLayer', 'MovingAverageAbsMaxScale'
 ]
 
 
@@ -476,6 +476,30 @@ class QuantizedLinear(layers.Layer):
         out = F.linear(
             x=quant_input, weight=quant_weight, bias=self.bias, name=self.name)
         return out
+
+
+class QuantizedNoweightLayer(layers.Layer):
+    def __init__(self,
+                 layer,
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 *args,
+                 **kwargs):
+
+        super(QuantizedNoweightLayer, self).__init__()
+        self._layer = layer
+        self._fake_quant_input = _get_fake_quant_type(
+            'moving_average_abs_max',
+            name=layer.full_name(),
+            moving_rate=moving_rate,
+            quant_bits=activation_bits,
+            dtype=self._dtype,
+            quant_on_weight=False)
+
+    def forward(self, input):
+        quant_input = self._fake_quant_input(input)
+        return self._layer.forward(quant_input)
 
 
 class MovingAverageAbsMaxScale(layers.Layer):
