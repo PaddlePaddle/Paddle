@@ -43,8 +43,7 @@ class TestIndexSampleOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        # self.check_grad(['X'], 'Out')
-        pass
+        self.check_grad(['X'], 'Out')
 
     def config(self):
         """
