@@ -15,7 +15,7 @@
 
 import math
 import numpy as np
-from paddle.fluid.framework import Variable
+from paddle.static import Variable
 import paddle
 
 
