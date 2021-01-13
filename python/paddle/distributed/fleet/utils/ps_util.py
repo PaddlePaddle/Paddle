@@ -16,8 +16,6 @@
 import numpy as np
 import os
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.framework import switch_main_program, switch_startup_program
 
 
 class DistributedInfer:
@@ -64,8 +62,10 @@ class DistributedInfer:
                 exe.run(paddle.static.default_startup_program())
                 fleet.init_worker()
                 self._init_dense_params(exe, dirname)
-            switch_startup_program(self.origin_startup_program)
-            switch_main_program(self.origin_main_program)
+            global_startup_program = paddle.static.default_startup_program()
+            global_startup_program = self.origin_startup_program
+            global_main_program = paddle.static.default_main_program()
+            global_main_program = self.origin_main_program
 
     def _get_sparse_table_map(self):
         import paddle.distributed.fleet as fleet
@@ -89,7 +89,7 @@ class DistributedInfer:
         if dirname is not None and exe is not None:
             all_persist_vars = [
                 v for v in self.origin_main_program.list_vars()
-                if fluid.io.is_persistable(v)
+                if paddle.static.io.is_persistable(v)
             ]
             dense_persist_vars = [(v.name, v) for v in all_persist_vars
                                   if v.name not in sparse_table_maps]
@@ -97,7 +97,7 @@ class DistributedInfer:
                 v[1] for v in dense_persist_vars
                 if os.path.isfile(os.path.join(dirname, v[0]))
             ]
-            fluid.io.load_vars(
+            paddle.static.load_vars(
                 exe,
                 dirname,
                 main_program=self.origin_main_program,
