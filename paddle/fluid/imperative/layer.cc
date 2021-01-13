@@ -17,7 +17,6 @@
 #include <queue>
 #include <utility>
 
-#include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -325,11 +324,12 @@ void VarBase::MoveTo(const platform::Place& dst_place, bool blocking) {
     return;
   }
 
-  const framework::Tensor* src_tensor = nullptr;
+  framework::Tensor* src_tensor = nullptr;
   if (Var().IsType<framework::LoDTensor>()) {
-    src_tensor = &Var().Get<framework::LoDTensor>();
+    src_tensor = MutableVar()->GetMutable<framework::LoDTensor>();
   } else {
-    src_tensor = &Var().Get<framework::SelectedRows>().value();
+    src_tensor =
+        MutableVar()->GetMutable<framework::SelectedRows>()->mutable_value();
   }
 
   framework::Tensor dst_tensor;
@@ -345,7 +345,7 @@ void VarBase::MoveTo(const platform::Place& dst_place, bool blocking) {
   }
 
   // inplace update src tensor data
-  SetTensorToVariable(Var(), dst_tensor, MutableVar());
+  src_tensor->ShareBufferWith(dst_tensor);
 }
 
 void VarBase::BumpInplaceVersion() {
