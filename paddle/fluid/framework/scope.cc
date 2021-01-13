@@ -85,7 +85,7 @@ Variable* Scope::FindVar(const std::string& name) const {
 
 Variable* Scope::GetVar(const std::string& name) const {
   auto* var = FindVar(name);
-  PADDLE_ENFORCE_NOT_NULL(var);
+  PADDLE_ENFORCE(var);
   return var;
 }
 
