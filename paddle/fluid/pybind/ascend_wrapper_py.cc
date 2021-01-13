@@ -276,7 +276,7 @@ void BindAscendGraph(py::module *m) {
            })
       .def("save_to_file", static_cast<ge::graphStatus (ge::Graph::*)(const char *) const>(&ge::Graph::SaveToFile))
       .def("load_from_file", static_cast<ge::graphStatus (ge::Graph::*)(const char*)>(&Graph::LoadFromFile))
-      .def("get_name", static_cast<ge::graphStatus (ge::Graph::*(AscendString&))>(&Graph::GetName))
+      .def("get_name", static_cast<ge::graphStatus (ge::Graph::*)(ge::AscendString&) const>(&Graph::GetName))
       .def("set_need_iteration", &Graph::SetNeedIteration);
 
   py::class_<Operator>(*m, "GEOperator")
@@ -285,8 +285,9 @@ void BindAscendGraph(py::module *m) {
       .def(py::init<const std::string &, const std::string &>())
       .def("is_empty", &Operator::IsEmpty)
       .def("get_name", 
-		      static_cast<ge::graphStatus (ge::Operator::*)(AscendString&)>(&Operator::GetName))
-      .def("get_op_type", &Operator::GetOpType)
+		      static_cast<ge::graphStatus (ge::Operator::*)(ge::AscendString&) const>(&Operator::GetName))
+      .def("get_op_type", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(ge::AscendString&) const>(&Operator::GetOpType))
       .def("set_input",
            (Operator & (Operator::*)(const std::string &, const Operator &)) &
                Operator::SetInput)
@@ -309,15 +310,15 @@ void BindAscendGraph(py::module *m) {
                Operator::GetInputDesc)
       .def("get_input_desc",
            (TensorDesc (Operator::*)(uint32_t) const) & Operator::GetInputDesc)
-      .def("get_dynamic_output_num", &Operator::GetDynamicOutputNum)
-      .def("get_dynamic_input_num", &Operator::GetDynamicInputNum)
+      .def("get_dynamic_output_num", static_cast<int (ge::Operator::*)(const char*) const>(&Operator::GetDynamicOutputNum))
+      .def("get_dynamic_input_num", static_cast<int (ge::Operator::*)(const char*) const>(&Operator::GetDynamicInputNum))
       .def("try_get_input_desc",
            [](Operator &op, const std::string &name) -> py::tuple {
              TensorDesc tensor_desc;
              graphStatus status = op.TryGetInputDesc(name, tensor_desc);
              return py::make_tuple(tensor_desc, status);
            })
-      .def("update_input_desc", &Operator::UpdateInputDesc)
+      .def("update_input_desc", static_cast<ge::graphStatus (ge::Operator::*)(const char*, const TensorDesc&)>(&Operator::UpdateInputDesc))
       .def("get_output_desc",
            (TensorDesc (Operator::*)(const std::string &) const) &
                Operator::GetOutputDesc)
@@ -658,8 +659,8 @@ void BindAscendGraph(py::module *m) {
       .def("get_origin_format", &TensorDesc::GetOriginFormat)
       .def("set_data_type", &TensorDesc::SetDataType)
       .def("get_data_type", &TensorDesc::GetDataType)
-      .def("set_name", &TensorDesc::SetName)
-      .def("get_name", &TensorDesc::GetName)
+      .def("set_name", static_cast<void (ge::TensorDesc::*)(const char*)>(&TensorDesc::SetName))
+      .def("get_name", static_cast<ge::graphStatus (ge::TensorDesc::*)(ge::AscendString&)>(&TensorDesc::GetName))
       .def("set_size", &TensorDesc::SetSize)
       .def("get_size", &TensorDesc::GetSize)
       .def("set_real_dim_cnt", &TensorDesc::SetRealDimCnt)
@@ -677,15 +678,16 @@ void BindAscendGraph(py::module *m) {
   py::class_<AttrValue>(*m, "GEAttrValue").def(py::init<>());
 
   py::class_<OperatorFactory>(*m, "GEOperatorFactory")
-      .def("create_operator", 
-		      static_cast<ge::Operator (ge::OperatorFactory::*)(const char*, const char*)>(&ge::OperatorFactory::CreateOperator))
+      .def_static("create_operator", 
+		      static_cast<ge::Operator (*)(const char*, const char*)>(&ge::OperatorFactory::CreateOperator))
       .def("get_ops_type_list",
            []() -> py::tuple {
              std::vector<std::string> all_ops;
              graphStatus status = OperatorFactory::GetOpsTypeList(all_ops);
              return py::make_tuple(all_ops, status);
            })
-      .def("is_exist_op", &OperatorFactory::IsExistOp);
+      .def_static("is_exist_op", 
+		      static_cast<bool (*)(const char*)>(&OperatorFactory::IsExistOp));
 }
 
 }  // end namespace pybind
