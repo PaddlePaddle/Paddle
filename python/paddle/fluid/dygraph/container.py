@@ -79,8 +79,9 @@ class Sequential(Layer):
         idx %= size
         return next(itertools.islice(iterator, idx, None))
 
-    def __getitem__(self, idx: Union[slice, int, str]):
-        r'''get
+    def __getitem__(self, idx):
+        r'''get 
+        idx: Union[slice, int, str]
         Support Operations: mm[1], mm[-1], mm[1:], mm['L1'], Where mm is sequential instance.
         '''
         if isinstance(idx, str):
@@ -90,8 +91,9 @@ class Sequential(Layer):
         else:
             return self._get_item_by_idx(self._sub_layers.values(), idx)
 
-    def __setitem__(self, idx: Union[int, str], layer: Layer) -> None:
+    def __setitem__(self, idx, layer: Layer):
         r'''set
+        idx: Union[int, str]
         Support Operations: mm[1] = `Layer Instance`, mm['L1'] = `Layer Instance`. Where mm is sequential instance
         '''
         if isinstance(idx, str):
@@ -100,8 +102,9 @@ class Sequential(Layer):
             key = self._get_item_by_idx(self._sub_layers.keys(), idx)
             return setattr(self, key, layer)
 
-    def __delitem__(self, idx: Union[slice, int, str]) -> None:
+    def __delitem__(self, idx):
         r'''del 
+        idx: Union[slice, int, str]
         Support Operations: del mm[1], del mm[-1], del mm[1:], del mm['L1']. Wehre mm is sequential instance.
         '''
         if isinstance(idx, slice):
