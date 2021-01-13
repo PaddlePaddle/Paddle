@@ -19,8 +19,8 @@ limitations under the License. */
 
 #include <map>
 #include <memory>
-#include <string>
 #include <vector>
+#include <string>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -37,7 +37,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// typedef std::vector<std::string> AscendGraphDesc;
 typedef ge::Graph AscendGraphDesc;
 
 class AscendInstance {
@@ -46,28 +45,28 @@ class AscendInstance {
   AscendInstance() {}
   // need to expose pybind function
 
-  std::map<std::string, std::string> GetDefaultInitOptions() {
-    std::map<std::string, std::string> init_options;
-    init_options["ge.exec.deviceId"] = std::to_string(0);
-    init_options["ge.graphRunMode"] = std::to_string(1);
-    return init_options;
+  std::map<ge::AscendString, ge::AscendString> GetDefaultInitOptions() {
+	  std::map<ge::AscendString, ge::AscendString> init_options;
+	  init_options["ge.exec.deviceId"] = "0";
+	  init_options["ge.graphRunMode"] = "1";
+	  return init_options;
   }
 
-  std::map<std::string, std::string> GetDefaultInitSessionOptions() {
-    std::map<std::string, std::string> init_options;
-    init_options["a"] = "b";
-    init_options["ge.trainFlag"] = "1";
-    return init_options;
+  std::map<ge::AscendString, ge::AscendString> GetDefaultInitSessionOptions() {
+	  std::map<ge::AscendString, ge::AscendString> init_options;
+	  init_options["a"] = "b";
+	  init_options["ge.trainFlag"] = "1";
+	  return init_options;
+  }
+
+  ge::Status InitGEForUT(){
+	return ge::GEInitialize(GetDefaultInitOptions());
   }
 
   void InitGlobalResouces() {
-    VLOG(0) << "Begin InitGlobalResouces";
-    // ge::Status status = ge::GEInitialize(GetDefaultInitOptions());
-    // PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
-    // paddle::platform::errors::PreconditionNotMet("Initialize ge failed"));
-
-    ss = new ge::Session(GetDefaultInitSessionOptions());
-    VLOG(0) << "End InitGlobalResouces";
+	  std::cout << "Begin InitGlobalResouces";
+	  ss_ = new ge::Session(GetDefaultInitSessionOptions());
+	  VLOG(0) << "End InitGlobalResouces";
   }
 
   static std::shared_ptr<AscendInstance> GetInstance() {
@@ -80,7 +79,7 @@ class AscendInstance {
 
   void AddAscendSubgraph(int graph_idx, const AscendGraphDesc &graph) {
     // ascend_graphs_.emplace_back(graph);
-    ge::Status status = ss->AddGraph(graph_idx, graph);
+    ge::Status status = ss_->AddGraph(graph_idx, graph);
     PADDLE_ENFORCE_EQ(
         status, ge::SUCCESS,
         paddle::platform::errors::PreconditionNotMet("AddGraph failed"));
@@ -157,7 +156,7 @@ class AscendInstance {
 
     // Run Graph
     std::vector<ge::Tensor> ge_outputs;
-    ge::Status status = ss->RunGraph(graph_idx, ge_inputs, ge_outputs);
+    ge::Status status = ss_->RunGraph(graph_idx, ge_inputs, ge_outputs);
     PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
                       paddle::platform::errors::PreconditionNotMet(
                           "Calling RunGraph of graph engine failed, please "
@@ -184,7 +183,7 @@ class AscendInstance {
   }
 
  protected:
-  ge::Session *ss = nullptr;
+  ge::Session *ss_ = nullptr;
 
  private:
   static std::shared_ptr<AscendInstance> ascend_instance_;

@@ -40,6 +40,8 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
+//typedef std::function<uint32_t(uint32_t graph_id, const std::map<std::string, ge::Tensor>)> session_func_type;
+
 void BindAscendWrapper(py::module *m) {
   py::class_<framework::AscendInstance,
              std::shared_ptr<framework::AscendInstance>>(*m, "AscendInstance")
@@ -51,9 +53,9 @@ void BindAscendWrapper(py::module *m) {
            py::call_guard<py::gil_scoped_release>());
 }  // end AscendWrapper
 
-Status ge_initialize(std::map<std::string, std::string> &options) {  // NOLINT
+ge::Status ge_initialize(std::map<std::string, std::string> &options) {  // NOLINT
   py::gil_scoped_release release;
-  Status res = GEInitialize(options);
+  ge::Status res = ge::GEInitialize(options);
   py::gil_scoped_acquire acquire;
   return res;
 }
@@ -216,9 +218,9 @@ void BindAscendGraph(py::module *m) {
   py::class_<Session>(*m, "GESession")
       .def(py::init<const std::map<std::string, std::string> &>())
       .def("add_graph",
-           (Status (Session::*)(uint32_t, const Graph &)) & Session::AddGraph)
+           (ge::Status (Session::*)(uint32_t, const Graph &)) & Session::AddGraph)
       .def("add_graph",
-           (Status (Session::*)(uint32_t, const Graph &,
+           (ge::Status (Session::*)(uint32_t, const Graph &,
                                 const std::map<std::string, std::string> &)) &
                Session::AddGraph)
       .def("remove_graph", &Session::RemoveGraph)
@@ -226,19 +228,15 @@ void BindAscendGraph(py::module *m) {
            [](Session &ss, uint32_t graphId,
               const std::vector<Tensor> &inputs) -> py::tuple {
              std::vector<Tensor> outputs;
-             Status res = ss.RunGraph(graphId, inputs, outputs);
+	     ge::Status res = ss.RunGraph(graphId, inputs, outputs);
              return py::make_tuple(outputs, res);
            },
            py::call_guard<py::gil_scoped_release>())
       .def("build_graph", &Session::BuildGraph)
       .def("run_graph_async", &Session::RunGraphAsync)
-      .def("register_call_back_func",
-           (Status (Session::*)(  // NOLINT
-               const std::string &,
-               std::function<uint32_t(
-                   uint32_t graph_id,
-                   const std::map<std::string, ge::Tensor> &params_list)>)) &
-               Session::RegisterCallBackFunc)
+      .def("register_call_back_func", 
+		      static_cast<ge::Status (ge::Session::*)(const char*, const ge::session::pCallBackFunc&)>(&ge::Session::RegisterCallBackFunc));
+
       .def("is_graph_need_rebuild", &Session::IsGraphNeedRebuild);
 
   py::class_<Graph>(*m, "GEGraph")
@@ -412,7 +410,7 @@ void BindAscendGraph(py::module *m) {
              std::vector<float> tar;
              float tmp;
              for (int i = 0; i < len; i++) {
-               tmp = static_cast<float>(float > value[i]);
+               tmp = static_cast<float>(value[i]);
                tar.push_back(tmp);
              }
              return op.SetAttr(name, tar);
