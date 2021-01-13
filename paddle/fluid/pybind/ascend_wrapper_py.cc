@@ -306,10 +306,11 @@ void BindAscendGraph(py::module *m) {
              return py::make_tuple(data, res);
            })
       .def("get_input_desc",
-           (TensorDesc (Operator::*)(const char *) const) &
-               Operator::GetInputDesc)
+		      (TensorDesc (Operator::*)(uint32_t) const) & Operator::GetInputDesc)
       .def("get_input_desc",
-           (TensorDesc (Operator::*)(uint32_t) const) & Operator::GetInputDesc)
+           [](Operator& op, const std::string& name){
+	   	return op.GetInputDesc(name.c_str(), name.length());
+           })
       .def("get_dynamic_output_num", static_cast<int (ge::Operator::*)(const char*) const>(&Operator::GetDynamicOutputNum))
       .def("get_dynamic_input_num", static_cast<int (ge::Operator::*)(const char*) const>(&Operator::GetDynamicInputNum))
       .def("try_get_input_desc",
@@ -321,8 +322,9 @@ void BindAscendGraph(py::module *m) {
       .def("update_input_desc", 
 		      static_cast<ge::graphStatus (ge::Operator::*)(const char*, const TensorDesc&)>(&Operator::UpdateInputDesc))
       .def("get_output_desc",
-           (TensorDesc (Operator::*)(const char *) const) &
-               Operator::GetOutputDesc)
+           [](Operator& op, const std::string& name) {
+	   	return op.GetOutputDesc(name.c_str(), name.length());
+           })
       .def("get_output_desc",
            (TensorDesc (Operator::*)(uint32_t) const) & Operator::GetOutputDesc)
       .def("update_output_desc", 
