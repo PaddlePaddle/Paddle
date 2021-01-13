@@ -26,6 +26,7 @@ from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 import warnings
 import paddle
+import itertools
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -465,17 +466,32 @@ class DataParallel(layers.Layer):
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
+        # TODO(shenliang03) "find_unused_vars" interface will be exposed in the future 
+        # to handle control flow to process unused parameters
+        find_unused_vars = True
         self._reducer = core.Reducer(
             trainable_parameters,
             list(reversed(self.group_indices)), is_sparse_gradient,
             parallel_helper.__parallel_ctx__clz__,
-            [self.last_comm_buffer_size, self.comm_buffer_size])
+            [self.last_comm_buffer_size, self.comm_buffer_size],
+            find_unused_vars)
+
+    def _find_varbase(self, obj):
+        if isinstance(obj, core.VarBase):
+            return [obj]
+        if isinstance(obj, (list, tuple)):
+            return itertools.chain(*map(self._find_varbase, obj))
+        if isinstance(obj, dict):
+            return itertools.chain(*map(self._find_varbase, obj.values()))
+        return []
 
     def forward(self, *inputs, **kwargs):
+        outputs = self._layers(*inputs, **kwargs)
         if self._strategy.nranks > 1:
-            self._reducer.prepare_for_backward()
+            self._reducer.prepare_for_backward(
+                list(self._find_varbase(outputs)))
 
-        return self._layers(*inputs, **kwargs)
+        return outputs
 
     @deprecated(
         since="2.0.0", reason="This method does not need to be called anymore.")
