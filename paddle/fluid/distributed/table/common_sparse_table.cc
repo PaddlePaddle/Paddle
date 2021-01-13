@@ -21,6 +21,7 @@
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
 
+#define PSERVER_SAVE_SUFFIX "_txt"
 namespace paddle {
 namespace distributed {
 
@@ -290,7 +291,8 @@ int32_t CommonSparseTable::save(const std::string& dirname,
   VLOG(0) << "sparse table save: " << dirname << " mode: " << mode;
 
   auto varname = _config.common().table_name();
-  std::string var_store = string::Sprintf("%s/%s", dirname, varname);
+  std::string var_store =
+      string::Sprintf("%s/%s%s", dirname, varname, PSERVER_SAVE_SUFFIX);
   MkDirRecursively(var_store.c_str());
 
   VLOG(3) << "save " << varname << " in dir: " << var_store << " begin";
