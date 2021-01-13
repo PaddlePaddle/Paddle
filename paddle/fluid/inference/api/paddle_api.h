@@ -450,4 +450,7 @@ PD_INFER_DECL std::string get_version();
 
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
 
+PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
+    const std::string& config_file);
+
 }  // namespace paddle
