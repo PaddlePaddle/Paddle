@@ -53,15 +53,16 @@ void FleetWrapper::LoadSparseOnServer(const std::string& path,
   pserver_ptr_->_server_ptr->table(table_id)->load(path, meta);
 }
 
-void FleetWrapper::InitServer(const std::string& dist_desc,
-                              const std::vector<std::string>& host_sign_list,
-                              int index) {
+void FleetWrapper::InitServer(
+    const std::string& dist_desc,
+    const std::vector<std::string>& host_sign_list, int index,
+    const std::vector<framework::ProgramDesc>& server_sub_program) {
   if (!is_initialized_) {
     VLOG(3) << "Going to init server";
     pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
         new paddle::distributed::PSCore());
     pserver_ptr_->init_server(dist_desc, &host_sign_list, host_sign_list.size(),
-                              index);
+                              index, server_sub_program);
     is_initialized_ = true;
   } else {
     VLOG(3) << "Server can be initialized only once";
@@ -453,6 +454,16 @@ void FleetWrapper::SaveModelOneTable(const uint64_t table_id,
       communicator->_worker_ptr->save(table_id, path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
+    LOG(ERROR) << "save model of table id: " << table_id
+               << ", to path: " << path << " failed";
+  }
+}
+
+void FleetWrapper::RecvAndSaveTable(const uint64_t table_id,
+                                    const std::string& path) {
+  auto* communicator = Communicator::GetInstance();
+  auto ret = communicator->_worker_ptr->recv_and_save_table(table_id, path);
+  if (ret != 0) {
     LOG(ERROR) << "save model of table id: " << table_id
                << ", to path: " << path << " failed";
   }

@@ -28,6 +28,7 @@ from .dataloader.batch_sampler import _InfiniteIterableSampler
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 from .framework import _get_paddle_place, _get_paddle_place_list
+from paddle.fluid.framework import _set_expected_place, _current_expected_place
 import logging
 import warnings
 
@@ -928,12 +929,14 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # Set reader_thread
             self._thread_done_event = threading.Event()
             self._thread = threading.Thread(
-                target=self._reader_thread_loop_for_multiprocess)
+                target=self._reader_thread_loop_for_multiprocess,
+                args=(_current_expected_place(), ))
             self._thread.daemon = True
             self._thread.start()
         else:
             self._thread = threading.Thread(
-                target=self._reader_thread_loop_for_singleprocess)
+                target=self._reader_thread_loop_for_singleprocess,
+                args=(_current_expected_place(), ))
             self._thread.daemon = True
             self._thread.start()
 
@@ -968,7 +971,10 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._blocking_queue.kill()
         logging.error("DataLoader reader thread raised an exception!")
 
-    def _reader_thread_loop_for_multiprocess(self):
+    def _reader_thread_loop_for_multiprocess(self, legacy_expected_place):
+        # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
+        _set_expected_place(legacy_expected_place)
+
         while not self._thread_done_event.is_set():
             try:
                 # NOTE: [ avoid hanging ] Even with carefully designed data dependencies 
@@ -1007,8 +1013,11 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 else:
                     self._exit_thread_expectedly()
 
-    def _reader_thread_loop_for_singleprocess(self):
+    def _reader_thread_loop_for_singleprocess(self, legacy_expected_place):
         try:
+            # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
+            _set_expected_place(legacy_expected_place)
+
             for sample in self._batch_reader():
                 array = core.LoDTensorArray()
                 for item in sample:
@@ -1248,8 +1257,11 @@ class GeneratorLoader(DataLoaderBase):
         self._reset()
 
     def _start(self):
-        def __thread_main__():
+        def __thread_main__(legacy_expected_place):
             try:
+                # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
+                _set_expected_place(legacy_expected_place)
+
                 while not self._queue.wait_for_inited(1):
                     if self._exited:
                         return
@@ -1276,7 +1288,8 @@ class GeneratorLoader(DataLoaderBase):
                 logging.warn('Your reader has raised an exception!')
                 six.reraise(*sys.exc_info())
 
-        self._thread = threading.Thread(target=__thread_main__)
+        self._thread = threading.Thread(
+            target=__thread_main__, args=(_current_expected_place(), ))
         self._thread.daemon = True
         self._thread.start()
 

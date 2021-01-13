@@ -18,15 +18,12 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "google/protobuf/text_format.h"
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/printf.h"
 
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
@@ -35,6 +32,10 @@ limitations under the License. */
 #include "paddle/fluid/distributed/service/ps_client.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/service/service.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -94,7 +95,7 @@ void GetDownpourSparseTableProto(
       server_proto->mutable_downpour_server_param();
   ::paddle::distributed::ServerServiceParameter* server_service_proto =
       downpour_server_proto->mutable_service_param();
-  server_service_proto->set_service_class("PsService");
+  server_service_proto->set_service_class("BrpcPsService");
   server_service_proto->set_server_class("BrpcPsServer");
   server_service_proto->set_client_class("BrpcPsClient");
   server_service_proto->set_start_server_port(0);
@@ -124,7 +125,7 @@ void GetDownpourSparseTableProto(
       server_proto->mutable_downpour_server_param();
   ::paddle::distributed::ServerServiceParameter* server_service_proto =
       downpour_server_proto->mutable_service_param();
-  server_service_proto->set_service_class("PsService");
+  server_service_proto->set_service_class("BrpcPsService");
   server_service_proto->set_server_class("BrpcPsServer");
   server_service_proto->set_client_class("BrpcPsClient");
   server_service_proto->set_start_server_port(0);
@@ -155,7 +156,10 @@ void RunServer() {
   _ps_env.set_ps_servers(&host_sign_list_, 1);
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(server_proto));
-  pserver_ptr_->configure(server_proto, _ps_env, 0);
+  std::vector<framework::ProgramDesc> empty_vec;
+  framework::ProgramDesc empty_prog;
+  empty_vec.push_back(empty_prog);
+  pserver_ptr_->configure(server_proto, _ps_env, 0, empty_vec);
   pserver_ptr_->start(ip_, port_);
 }
 
@@ -222,7 +226,8 @@ void RunBrpcPushSparse() {
         int ret = 0;
         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
         for (size_t i = 0; i < 1; ++i) {
-          if (closure->check_response(i, paddle::PS_PUSH_SPARSE_PARAM) != 0) {
+          if (closure->check_response(
+                  i, paddle::distributed::PS_PUSH_SPARSE_PARAM) != 0) {
             ret = -1;
             break;
           }
@@ -249,7 +254,8 @@ void RunBrpcPushSparse() {
         int ret = 0;
         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
         for (size_t i = 0; i < 1; ++i) {
-          if (closure->check_response(i, paddle::PS_PUSH_SPARSE_TABLE) != 0) {
+          if (closure->check_response(
+                  i, paddle::distributed::PS_PUSH_SPARSE_TABLE) != 0) {
             ret = -1;
             break;
           }
