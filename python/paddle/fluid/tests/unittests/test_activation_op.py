@@ -276,7 +276,7 @@ class TestTanhAPI(unittest.TestCase):
             self.tanh(x_fp16)
 
 
-class TestTanh_InplaceAPI(TestTanhAPI):
+class TestTanhInplaceAPI(TestTanhAPI):
     # test paddle.tanh_
     def executed_api(self):
         self.tanh = paddle.tanh_
@@ -1098,7 +1098,7 @@ class TestReluAPI(unittest.TestCase):
             self.relu(x_fp16)
 
 
-class TestRelu_InplaceAPI(TestReluAPI):
+class TestReluInplaceAPI(TestReluAPI):
     # test paddle.nn.functional.relu_
     def executed_api(self):
         self.relu = F.relu_
@@ -1682,7 +1682,7 @@ class TestELUAPI(unittest.TestCase):
             self.elu(x_fp16)
 
 
-class TestELU_InplaceAPI(TestELUAPI):
+class TestELUInplaceAPI(TestELUAPI):
     # test paddle.nn.functional.elu_
     def executed_api(self):
         self.elu = F.elu_

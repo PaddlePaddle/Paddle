@@ -254,7 +254,7 @@ class TestUnsqueezeAPI(unittest.TestCase):
         self.assertRaises(TypeError, test_axes_type)
 
 
-class TestUnsqueeze_InplaceAPI(TestUnsqueezeAPI):
+class TestUnsqueezeInplaceAPI(TestUnsqueezeAPI):
     def executed_api(self):
         self.unsqueeze = paddle.unsqueeze_
 

@@ -178,7 +178,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
         self.assertTrue(np.allclose(expected_out, out_np))
 
 
-class API_TestDygraphSqueeze_Inplace(API_TestDygraphSqueeze):
+class API_TestDygraphSqueezeInplace(API_TestDygraphSqueeze):
     def executed_api(self):
         self.squeeze = paddle.squeeze_
 

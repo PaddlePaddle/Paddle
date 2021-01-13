@@ -358,7 +358,7 @@ class TestSoftmaxAPI(unittest.TestCase):
             self.softmax(x_fp16)
 
 
-class TestSoftmax_InplaceAPI(TestSoftmaxAPI):
+class TestSoftmaxInplaceAPI(TestSoftmaxAPI):
     def executed_api(self):
         self.softmax = F.softmax_
 

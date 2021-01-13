@@ -229,7 +229,7 @@ class TestScatterAPI(unittest.TestCase):
                                   np.array([[3., 3.],[6., 6.],[1., 1.]])).all(), True)
 
 
-class TestScatter_InplaceAPI(TestScatterAPI):
+class TestScatterInplaceAPI(TestScatterAPI):
     def executed_api(self):
         self.scatter = paddle.scatter_
 

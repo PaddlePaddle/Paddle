@@ -325,7 +325,7 @@ class TestReshapeAPI(unittest.TestCase):
         assert np.array_equal(out_3.numpy(), input.reshape(shape))
 
 
-class API_TestStaticReshape_(TestReshapeAPI):
+class TestStaticReshape_(TestReshapeAPI):
     def _executed_api(self):
         self.reshape = paddle.reshape_
 
@@ -424,7 +424,7 @@ class TestReshapeOpError(unittest.TestCase):
         self._test_errors()
 
 
-class API_TestDygraphReshape(unittest.TestCase):
+class TestDygraphReshapeAPI(unittest.TestCase):
     def setUp(self):
         self.executed_api()
 
@@ -459,7 +459,7 @@ class API_TestDygraphReshape(unittest.TestCase):
         self.assertTrue(np.allclose(expected_out, out_np))
 
 
-class API_TestDygraphReshape_Inplace(API_TestDygraphReshape):
+class TestDygraphReshapeInplaceAPI(TestDygraphReshapeAPI):
     def executed_api(self):
         self.reshape = paddle.reshape_
 

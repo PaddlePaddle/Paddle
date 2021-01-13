@@ -177,8 +177,6 @@ class OpBase {
   platform::Place place_;
   size_t id_{-1UL};
 
-  std::map<std::string, std::string> inplace_mapping_;
-
   std::weak_ptr<InteriorVarHookPipeline> pre_hooks_;
 };
 
