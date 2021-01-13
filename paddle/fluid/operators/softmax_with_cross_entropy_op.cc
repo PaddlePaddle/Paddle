@@ -139,11 +139,14 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     for (int i = 0; i < logits_rank; i++) {
       if (i != axis) {
         if (ctx->IsRuntime() || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
-          PADDLE_ENFORCE_EQ(logits_dims[i], labels_dims[i],
-                      platform::errors::InvalidArgument(
-                           "The dimension of Input(Logits) should be the same as Input(Label).  "
-                           "But recieved Logits dimension: [%s], Label dimension: [%s].",
-                           logits_dims[i],labels_dims[i]));
+          PADDLE_ENFORCE_EQ(
+              logits_dims[i], labels_dims[i],
+              platform::errors::InvalidArgument(
+                  "The dimension of Input(Logits) should be the same as "
+                  "Input(Label).  "
+                  "But recieved Logits dimension: [%s], Label dimension: [%s].",
+                  log  its_dims[i], labels_dims[i]));
+              
         }
       }
     }
