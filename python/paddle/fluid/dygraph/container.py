@@ -91,11 +91,13 @@ class Sequential(Layer):
         else:
             return self._get_item_by_idx(self._sub_layers.values(), idx)
 
-    def __setitem__(self, idx, layer: Layer):
+    def __setitem__(self, idx, layer):
         r'''set
         idx: Union[int, str]
         Support Operations: mm[1] = `Layer Instance`, mm['L1'] = `Layer Instance`. Where mm is sequential instance
         '''
+        assert isinstance(layer, Layer), "assert `layer` is Layer instance"
+        
         if isinstance(idx, str):
             return setattr(self, str(idx), layer)
         else:
