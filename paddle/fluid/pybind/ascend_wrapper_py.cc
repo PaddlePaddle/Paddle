@@ -318,24 +318,31 @@ void BindAscendGraph(py::module *m) {
              graphStatus status = op.TryGetInputDesc(name, tensor_desc);
              return py::make_tuple(tensor_desc, status);
            })
-      .def("update_input_desc", static_cast<ge::graphStatus (ge::Operator::*)(const char*, const TensorDesc&)>(&Operator::UpdateInputDesc))
+      .def("update_input_desc", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(const char*, const TensorDesc&)>(&Operator::UpdateInputDesc))
       .def("get_output_desc",
            (TensorDesc (Operator::*)(const std::string &) const) &
                Operator::GetOutputDesc)
       .def("get_output_desc",
            (TensorDesc (Operator::*)(uint32_t) const) & Operator::GetOutputDesc)
-      .def("update_output_desc", &Operator::UpdateOutputDesc)
-      .def("get_dynamic_input_desc", &Operator::GetDynamicInputDesc)
-      .def("update_dynamic_input_desc", &Operator::UpdateDynamicInputDesc)
-      .def("get_dynamic_output_desc", &Operator::GetDynamicOutputDesc)
-      .def("update_dynamic_output_desc", &Operator::UpdateDynamicOutputDesc)
+      .def("update_output_desc", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(const char*, const TensorDesc&)>(&Operator::UpdateOutputDesc))
+      .def("get_dynamic_input_desc", 
+		      static_cast<ge::TensorDesc (ge::Operator::*)(const char*, uint32_t) const>(&Operator::GetDynamicInputDesc))
+      .def("update_dynamic_input_desc", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(const char*, uint32_t, const TensorDesc&)>(&Operator::UpdateDynamicInputDesc))
+      .def("get_dynamic_output_desc", 
+		      static_cast<ge::TensorDesc (ge::Operator::*)(const char*, uint32_t) const>(&Operator::GetDynamicOutputDesc))
+      .def("update_dynamic_output_desc", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(const char*, uint32_t, const TensorDesc&)>(&Operator::UpdateDynamicOutputDesc))
       .def("infer_shape_and_type", &Operator::InferShapeAndType)
       .def("set_inference_context", &Operator::SetInferenceContext)
       .def("get_inference_context", &Operator::GetInferenceContext)
       .def("verify_all_attr", &Operator::VerifyAllAttr)
       .def("get_inputs_size", &Operator::GetInputsSize)
       .def("get_outputs_size", &Operator::GetOutputsSize)
-      .def("get_all_attr_names_and_types", &Operator::GetAllAttrNamesAndTypes)
+      .def("get_all_attr_names_and_types", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(std::map<ge::AscendString, ge::AscendString>&) const>(&Operator::GetAllAttrNamesAndTypes))
       .def("set_attr_int64",
            [](Operator &op, const std::string &name,
               int64_t value) -> Operator & {
@@ -593,11 +600,11 @@ void BindAscendGraph(py::module *m) {
            })
       .def("break_connect", &Operator::BreakConnect)
       .def("get_subgraph_names_count", &Operator::GetSubgraphNamesCount)
-      .def("get_subgraph_names", &Operator::GetSubgraphNames)
-      .def("get_subgraph_builder", &Operator::GetSubgraphBuilder)
-      .def("get_subgraph", &Operator::GetSubgraph)
-      .def("get_dynamic_subgraph_builder", &Operator::GetDynamicSubgraphBuilder)
-      .def("get_dynamic_subgraph", &Operator::GetDynamicSubgraph);
+      .def("get_subgraph_names", static_cast<ge::graphStatus (ge::Operator::*)(std::vector<ge::AscendString> &) const>(&Operator::GetSubgraphNames))
+      .def("get_subgraph_builder", static_cast<ge::SubgraphBuilder (ge::Operator::*)(const char*) const>(&Operator::GetSubgraphBuilder))
+      .def("get_subgraph", static_cast<ge::Graph (ge::Operator::*)(const char*) const>(&Operator::GetSubgraph))
+      .def("get_dynamic_subgraph_builder", static_cast<ge::SubgraphBuilder (ge::Operator::*)(const char*, uint32_t) const>(&Operator::GetDynamicSubgraphBuilder))
+      .def("get_dynamic_subgraph", static_cast<ge::Graph (ge::Operator::*)(const char*, uint32_t) const>(&Operator::GetDynamicSubgraph));
 
   py::class_<Tensor>(*m, "GETensor")
       .def(py::init<>())
