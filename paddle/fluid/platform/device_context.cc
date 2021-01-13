@@ -172,7 +172,16 @@ Place CPUDeviceContext::GetPlace() const { return place_; }
 #ifdef PADDLE_WITH_XPU
 XPUDeviceContext::XPUDeviceContext() { context_ = xpu::create_context(); }
 
-XPUDeviceContext::~XPUDeviceContext() { xpu::destroy_context(context_); }
+XPUDeviceContext::~XPUDeviceContext() {
+  xpu::destroy_context(context_);
+  void* l3ptr = nullptr;
+  int l3_size = 13.5 * 1024 * 1024;
+  xpu_malloc(static_cast<void**>(&l3ptr), l3_size, XPU_MEM_L3);
+  if (l3ptr != nullptr) {
+    context_->_l3_mgr.set(l3ptr, l3_size);
+    std::cout << "set l3 size " << l3_size << std::endl;
+  }
+}
 
 XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
   int dev_id = -1;
@@ -189,6 +198,13 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
                         "Baidu Kunlun Card is properly installed.",
                         ret));
   context_ = xpu::create_context();
+  void* l3ptr = nullptr;
+  int l3_size = 13.5 * 1024 * 1024;
+  xpu_malloc(static_cast<void**>(&l3ptr), l3_size, XPU_MEM_L3);
+  if (l3ptr != nullptr) {
+    context_->_l3_mgr.set(l3ptr, l3_size);
+    std::cout << "set l3 size " << l3_size << std::endl;
+  }
   ret = xpu_set_device(dev_id);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
