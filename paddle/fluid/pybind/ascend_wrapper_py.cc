@@ -40,8 +40,6 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-//typedef std::function<uint32_t(uint32_t graph_id, const std::map<ge::AscendString, ge::Tensor>)> session_func_type;
-
 void BindAscendWrapper(py::module *m) {
   py::class_<framework::AscendInstance,
              std::shared_ptr<framework::AscendInstance>>(*m, "AscendInstance")
@@ -53,9 +51,20 @@ void BindAscendWrapper(py::module *m) {
            py::call_guard<py::gil_scoped_release>());
 }  // end AscendWrapper
 
-ge::Status ge_initialize(std::map<ge::AscendString, ge::AscendString> &options) {  // NOLINT
+std::map<ge::AscendString, ge::AscendString> convert_map(const std::map<std::string, std::string>& options){
+  std::map<ge::AscendString, ge::AscendString> rets;
+  for (auto &option : options) {
+    ge::AscendString key = option.first.c_str();
+    ge::AscendString val = option.second.c_str();
+    rets[key] = val;
+  }
+  return rets;
+}
+
+ge::Status ge_initialize(std::map<std::string, std::string> &options) {  // NOLINT
   py::gil_scoped_release release;
-  ge::Status res = ge::GEInitialize(options);
+  auto init_options=convert_map(options);
+  ge::Status res = ge::GEInitialize(init_options);
   py::gil_scoped_acquire acquire;
   return res;
 }
@@ -216,13 +225,16 @@ void BindAscendGraph(py::module *m) {
 
   // 类封装
   py::class_<Session>(*m, "GESession")
-      .def(py::init<const std::map<ge::AscendString, ge::AscendString> &>())
+      .def(py::init([](const std::map<ge::string, ge::string> & options) {
+        return std::unique_ptr<ge::Session>(new ge::Session(convert_map(options)));
+        }))
       .def("add_graph",
            (ge::Status (Session::*)(uint32_t, const Graph &)) & Session::AddGraph)
       .def("add_graph",
-           (ge::Status (Session::*)(uint32_t, const Graph &,
-                                const std::map<ge::AscendString, ge::AscendString> &)) &
-               Session::AddGraph)
+	   [](Session& ss, uint32_t index, const Graph & graph,
+                                const std::map<std::string, std::string> &options){
+                return ss.AddGraph(index, graph, convert_map(options));
+	   })
       .def("remove_graph", &Session::RemoveGraph)
       .def("run_graph",
            [](Session &ss, uint32_t graphId,
