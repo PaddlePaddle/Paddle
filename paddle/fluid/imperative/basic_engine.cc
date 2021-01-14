@@ -158,9 +158,9 @@ void BasicEngine::PrepareGradAccumulators(
         // grad_node of grad_var.
         bool find_grad_node_of_var = false;
         for (auto& grad_pending_node : grad_pending_nodes) {
-          PADDLE_ENFORCE_NOT_NULL(grad_pending_node,
-                                  platform::errors::NotFound(
-                                      "Grad pending node should not be null"));
+          PADDLE_ENFORCE_NOT_NULL(
+              grad_pending_node,
+              platform::errors::NotFound("Grad pending node is nullptr."));
           for (auto& grad_pending_op : *grad_pending_node) {
             VLOG(6) << "Determine whether var (" << var->Name()
                     << ") is the input var of grad_pending_op ("
@@ -211,7 +211,7 @@ void BasicEngine::PrepareGradAccumulators(
         PADDLE_ENFORCE_EQ(
             find_grad_node_of_var, true,
             platform::errors::NotFound(
-                "No grad node corresponding to grad var (%s) was found.",
+                "No grad node corresponding to grad Tensor (%s) was found.",
                 var->Name()));
       }
     }
@@ -221,13 +221,13 @@ void BasicEngine::PrepareGradAccumulators(
 void BasicEngine::PrepareDeps() {
   PADDLE_ENFORCE_EQ(
       node_deps_.empty(), true,
-      platform::errors::AlreadyExists("Op deps must be initialized here"));
+      platform::errors::AlreadyExists("Op deps must be initialized."));
   PADDLE_ENFORCE_EQ(
       accumulators_.empty(), true,
-      platform::errors::AlreadyExists("Accumulators must be initialized here"));
+      platform::errors::AlreadyExists("Accumulators must be initialized."));
   PADDLE_ENFORCE_EQ(
       accumulators_with_grad_node_.empty(), true,
-      platform::errors::AlreadyExists("Accumulators must be initialized here"));
+      platform::errors::AlreadyExists("Accumulators must be initialized."));
 
   std::queue<GradOpNode*> q;
   std::unordered_set<GradOpNode*> visited;
@@ -249,7 +249,7 @@ void BasicEngine::PrepareDeps() {
     for (auto& grad_pending_node : grad_pending_nodes) {
       PADDLE_ENFORCE_NOT_NULL(
           grad_pending_node,
-          platform::errors::NotFound("Grad pending node should not be null"));
+          platform::errors::NotFound("Grad pending node is nullptr."));
       ++node_deps_[grad_pending_node.get()];
       if (visited.count(grad_pending_node.get()) == 0) {
         visited.insert(grad_pending_node.get());
@@ -442,9 +442,9 @@ void BasicEngine::Execute() {
 
     // Step 3: Collect ready ops
     for (auto& grad_pending_node : shared_cur_node->GradPendingNodes()) {
-      PADDLE_ENFORCE_NOT_NULL(grad_pending_node,
-                              platform::errors::NotFound(
-                                  "Grad pending node should not be nullptr"));
+      PADDLE_ENFORCE_NOT_NULL(
+          grad_pending_node,
+          platform::errors::NotFound("Grad pending node is nullptr."));
       auto iter = node_deps_.find(grad_pending_node.get());
       if (iter == node_deps_.end()) {
         continue;
