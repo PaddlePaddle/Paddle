@@ -457,7 +457,7 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
 }
 
 MKLDNNDeviceContextThreadLocals::Body::Body()
-    : aengine(mkldnn::engine::kind::cpu, 0), astream(aengine) {
+    : cur_engine(mkldnn::engine::kind::cpu, 0), cur_stream(cur_engine) {
   cur_mkldnn_session_id = kMKLDNNSessionID_Default;
   cur_input_shape_str = "";
   cur_input_shape_cache_capacity = 1;
