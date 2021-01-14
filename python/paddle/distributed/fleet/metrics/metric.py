@@ -228,7 +228,7 @@ def mae(abserr, total_ins_num, scope=None, util=None):
 
     Args:
         abserr(numpy.array|Variable|string): abserr in output of fluid.contrib.layers.ctr_metric_bundle
-        total_ins_num(int|float): total train/infer instance count
+        total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
     Returns:
@@ -277,7 +277,7 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
 
     Args:
         sqrerr(numpy.array|Variable|string): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
-        total_ins_num(int|float): total train/infer instance count
+        total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
     Returns:
@@ -326,7 +326,7 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
 
     Args:
         sqrerr(numpy.array|Variable|string): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
-        total_ins_num(int|float): total train/infer instance count
+        total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
     Returns:
