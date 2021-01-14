@@ -67,17 +67,17 @@ class Sequential(Layer):
                 self.add_sublayer(str(idx), layer)
 
     def _get_abs_index(self, idx):
-        '''Get the absolute index '''
+        """Get the absolute index"""
         assert -len(self) <= idx < len(self)
         if idx < 0:
             idx += len(self)
         return idx
 
     def __getitem__(self, idx):
-        r'''get 
+        r"""get 
         idx: Union[slice, int, str]
         Support Operations: mm[1], mm[-1], mm[1:], mm['L1'], Where mm is sequential instance.
-        '''
+        """
         if isinstance(idx, str):
             return self._sub_layers[idx]
         elif isinstance(idx, slice):
@@ -86,10 +86,10 @@ class Sequential(Layer):
             return self._sub_layers[str(self._get_abs_index(idx))]
 
     def __setitem__(self, idx, layer):
-        r'''set
+        r"""set
         idx: Union[int, str]
-        Support Operations: mm[1] = `Layer Instance`, mm['L1'] = `Layer Instance`. Where mm is sequential instance
-        '''        
+        Support Operations: mm[1] = 'Layer Instance', mm['L1'] = 'Layer Instance'. Where mm is sequential instance
+        """      
         if isinstance(idx, str):
             return setattr(self, str(idx), layer)
         else:
@@ -97,10 +97,10 @@ class Sequential(Layer):
             return setattr(self, key, layer)
 
     def __delitem__(self, idx):
-        r'''del 
+        r"""del 
         idx: Union[slice, int, str]
         Support Operations: del mm[1], del mm[-1], del mm[1:], del mm['L1']. Wehre mm is sequential instance.
-        '''
+        """
         if isinstance(idx, slice):
             for key in list(self._sub_layers.keys())[idx]:
                 delattr(self, key)
