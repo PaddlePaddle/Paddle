@@ -1044,15 +1044,11 @@ bool OperatorWithKernel::SupportsMKLDNN(
     const proto::VarType::Type data_type) const {
   auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
   return std::any_of(op_kernels.begin(), op_kernels.end(),
-                     [](OpKernelMap::const_reference kern_pair) {
-                       //                     [data_type](OpKernelMap::const_reference
-                       //                     kern_pair) {
+                     [data_type](OpKernelMap::const_reference kern_pair) {
                        return platform::is_cpu_place(kern_pair.first.place_) &&
                               kern_pair.first.library_type_ ==
-                                  LibraryType::kMKLDNN;
-                       //                                  &&
-                       //                                  kern_pair.first.data_type_
-                       //                                  == data_type;
+                                  LibraryType::kMKLDNN &&
+                              kern_pair.first.data_type_ == data_type;
                      });
 }
 
