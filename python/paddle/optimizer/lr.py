@@ -192,7 +192,7 @@ class LRScheduler(object):
 
 
 class NoamDecay(LRScheduler):
-    """
+    r"""
 
     Applies Noam Decay to the initial learning rate. 
 
@@ -376,7 +376,7 @@ class PiecewiseDecay(LRScheduler):
 
 
 class NaturalExpDecay(LRScheduler):
-    """
+    r"""
 
     Applies natural exponential decay to the initial learning rate.
     
@@ -455,7 +455,7 @@ class NaturalExpDecay(LRScheduler):
 
 
 class InverseTimeDecay(LRScheduler):
-    """
+    r"""
 
     Applies inverse time decay to the initial learning rate.
 
@@ -536,7 +536,7 @@ class InverseTimeDecay(LRScheduler):
 
 
 class PolynomialDecay(LRScheduler):
-    """
+    r"""
 
     Applies polynomial decay to the initial learning rate.
 
@@ -656,7 +656,7 @@ class PolynomialDecay(LRScheduler):
 
 
 class LinearWarmup(LRScheduler):
-    """
+    r"""
 
     Linear learning rate warm up strategy. Update the learning rate preliminarily before the normal learning rate scheduler.
     For more information, please refer to `Bag of Tricks for Image Classification with Convolutional Neural Networks <https://arxiv.org/abs/1812.01187>`_
@@ -794,7 +794,7 @@ class LinearWarmup(LRScheduler):
 
 
 class ExponentialDecay(LRScheduler):
-    """
+    r"""
 
     Update learning rate by `gamma` each epoch.
 
@@ -1383,7 +1383,7 @@ class ReduceOnPlateau(LRScheduler):
 
 
 class CosineAnnealingDecay(LRScheduler):
-    """
+    r"""
 
     Set the learning rate using a cosine annealing schedule, where :math:`\eta_{max}` is set to 
     the initial learning_rate. :math:`T_{cur}` is the number of epochs since the last restart in 

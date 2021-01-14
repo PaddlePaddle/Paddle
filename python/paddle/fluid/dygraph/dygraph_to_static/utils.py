@@ -28,6 +28,7 @@ import textwrap
 import numpy as np
 
 from paddle.fluid import unique_name
+from paddle.fluid.data_feeder import convert_dtype
 
 
 class BaseNodeVisitor(gast.NodeVisitor):
@@ -69,6 +70,7 @@ dygraph_class_to_static_api = {
 
 FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
 FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
+FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
 
 # FullArgSpec is valid from Python3. Defined a Namedtuple to
 # to make it available in Python2.
@@ -113,6 +115,15 @@ def parse_arg_and_kwargs(function):
     return arg_names, default_kwargs
 
 
+def parse_varargs_name(function):
+    """
+    Returns varargs name string of function. e.g: 'input' from `foo(x, *input)`
+    """
+    fullargspec = getfullargspec(function)
+    varargs = fullargspec.varargs
+    return varargs
+
+
 def type_name(v):
     return type(v).__name__
 
@@ -149,7 +160,14 @@ def _is_api_in_module_helper(obj, module_prefix):
 
 def is_api_in_module(node, module_prefix):
     assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
-    func_str = astor.to_source(gast.gast_to_ast(node.func))
+
+    # Python can have gast.Call as function, for example: covert_call(func)(x)
+    # We only check the most outside function
+    func_node = node.func
+    while isinstance(func_node, gast.Call):
+        func_node = func_node.func
+
+    func_str = astor.to_source(gast.gast_to_ast(func_node)).strip()
     try:
         # TODO(liym27):
         #  Consider a better to import modules like:
@@ -471,11 +489,17 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     else:
         module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
-    if not hasattr(module, func_name):
+    # The 'forward' or 'another_forward' of 'TranslatedLayer' cannot be obtained
+    # through 'func_name'. So set the special function name '__i_m_p_l__'.
+    if hasattr(module, '__i_m_p_l__'):
+        callable_func = getattr(module, '__i_m_p_l__')
+        callable_func.__name__ = func_name
+    elif hasattr(module, func_name):
+        callable_func = getattr(module, func_name)
+    else:
         raise ValueError(
             'Function: %s doesn\'t exist in the Module transformed from AST.' %
             func_name)
-    callable_func = getattr(module, func_name)
     # After transform dygraph function into callable_func saved in tmp file,
     # it lost the global variables from imported statements or defined in source file.
     # Recovers the necessary variables by `__globals__`.
@@ -750,6 +774,20 @@ class NameNodeReplaceTransformer(gast.NodeTransformer):
 
     def __init__(self, root_node, target_name, replace_node):
         assert isinstance(target_name, str)
+
+        # NOTE(liym27):
+        # Use gast.Name to replace gast.Name, otherwise, errors may occur.
+        #
+        # For examples:
+        # If using a gast.Subscript to replace gast.Name, and the original gast.Name
+        # is in the arguments of FunctionDef, an exception will be raised.
+        #
+        # ```
+        # def func(x[i])) # x[i] can not be a argument
+        #    # ...
+        # ```
+
+        assert isinstance(replace_node, gast.Name)
         self.target_name = target_name
         self.replace_node = replace_node
 
@@ -845,6 +883,8 @@ class ForNodeVisitor(object):
                 self.node.iter.func,
                 gast.Attribute) and self.node.iter.func.attr == 'numpy':
             return True
+        elif isinstance(self.node.iter, gast.Subscript):
+            return True
         else:
             return False
 
@@ -886,10 +926,14 @@ class ForNodeVisitor(object):
         cond_stmt = self._build_cond_stmt(step_node, compare_node)
 
         body_stmts = self.body
-        var_slice_node = self._build_var_slice_node()
+
+        # NOTE(liym27): Here add a gast.Assign, and the target of it is gast.Name.
+        # In NameNodeReplaceTransformer, using gast.Name to replace gast.Name is safe.
+        target_node, assign_node = self._build_assign_var_slice_node()
+        body_stmts[0:0] = [assign_node]
         for body_node in body_stmts:
             NameNodeReplaceTransformer(body_node, self.iter_var_name,
-                                       var_slice_node)
+                                       target_node)
         body_stmts.append(self._build_index_increase_node(step_node))
 
         return init_stmts, cond_stmt, body_stmts
@@ -905,10 +949,13 @@ class ForNodeVisitor(object):
         cond_stmt = self._build_cond_stmt(step_node, compare_node)
 
         body_stmts = self.body
-        var_slice_node = self._build_var_slice_node()
+
+        target_node, assign_node = self._build_assign_var_slice_node()
+        body_stmts[0:0] = [assign_node]
         for body_node in body_stmts:
             NameNodeReplaceTransformer(body_node, self.iter_var_name,
-                                       var_slice_node)
+                                       target_node)
+
         body_stmts.append(self._build_index_increase_node(step_node))
         body_stmts.append(self._build_enum_increase_node())
 
@@ -984,18 +1031,40 @@ class ForNodeVisitor(object):
         return step_node
 
     def _build_cond_stmt(self, step_node, compare_node):
-        return gast.Compare(
-            left=gast.BinOp(
+        if not isinstance(step_node, (gast.Constant, gast.UnaryOp)):
+            raise NotImplementedError(
+                "Dynamic-to-Static only supports the step value is a constant or negative constant in 'for-range' statements, "
+                "such as '2', '-3'. But received: '{}'. Please fix code to be compatible with Dynamic-to-Static."
+                .format(ast_to_source_code(step_node).strip()))
+
+        if isinstance(step_node, gast.UnaryOp) or step_node.value < 0:
+            # eg:
+            # range(max, min, -2)
+            # ->
+            # i > min
+            return gast.Compare(
                 left=gast.Name(
                     id=self.iter_var_name
                     if self.is_for_range_iter() else self.iter_idx_name,
                     ctx=gast.Load(),
                     annotation=None,
                     type_comment=None),
-                op=gast.Add(),
-                right=step_node),
-            ops=[gast.LtE()],
-            comparators=[compare_node])
+                ops=[gast.Gt()],
+                comparators=[compare_node])
+        else:
+            # eg:
+            # range(min, max, 2)
+            # ->
+            # i < max
+            return gast.Compare(
+                left=gast.Name(
+                    id=self.iter_var_name
+                    if self.is_for_range_iter() else self.iter_idx_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None),
+                ops=[gast.Lt()],
+                comparators=[compare_node])
 
     def _build_index_increase_node(self, step_node):
         return gast.AugAssign(
@@ -1008,15 +1077,19 @@ class ForNodeVisitor(object):
             op=gast.Add(),
             value=step_node)
 
-    def _build_var_slice_node(self):
-        return gast.Subscript(
+    def _build_assign_var_slice_node(self):
+        var_slice_node = gast.Subscript(
             value=self.iter_node,
             slice=gast.Index(value=gast.Name(
                 id=self.iter_idx_name,
                 ctx=gast.Load(),
                 annotation=None,
                 type_comment=None)),
-            ctx=gast.Load())
+            ctx=gast.Load(), )
+        new_iter_var_name = unique_name.generate(FOR_ITER_VAR_NAME_PREFIX)
+        target_node, assign_node = create_assign_node(new_iter_var_name,
+                                                      var_slice_node)
+        return target_node, assign_node
 
     def _build_enum_increase_node(self):
         return gast.AugAssign(
@@ -1147,3 +1220,43 @@ def unwrap(func):
         unwrapped_f = unwrapped_f.__wrapped__
 
     return unwrapped_f
+
+
+def input_specs_compatible(src_input_specs, desired_input_specs):
+    """
+    Returns True if the two input specs are compatible, otherwise False.
+
+    args:
+        src_input_spec (list[InputSpec]|tuple(InputSpec)): list/tuple of
+            paddle.static.InputSpec
+        desired_input_specs (list[InputSpec]|tuple(InputSpec)): list/tuple of
+            paddle.static.InputSpec
+    """
+    len_specs = len(src_input_specs)
+    if len_specs != len(desired_input_specs):
+        # NOTE(chenweihang): if the input_spec of jit.save is a subset of
+        # input_spec of to_static, also compatible 
+        for spec in src_input_specs:
+            if spec not in desired_input_specs:
+                return False
+    else:
+        for i in range(len_specs):
+            src_shape = src_input_specs[i].shape
+            other_shape = desired_input_specs[i].shape
+            len_shape = len(src_shape)
+            if len_shape != len(other_shape):
+                return False
+            for j in range(len_shape):
+                if src_shape[j] is None or src_shape[j] < 0:
+                    continue
+                if other_shape[j] is None or other_shape[j] < 0:
+                    continue
+                if src_shape[j] != other_shape[j]:
+                    return False
+
+            src_dtype = convert_dtype(src_input_specs[i].dtype)
+            other_dtype = convert_dtype(desired_input_specs[i].dtype)
+            if src_dtype != other_dtype:
+                return False
+
+    return True

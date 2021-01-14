@@ -101,7 +101,7 @@ class Docstring(object):
     def _arg_with_type(self):
 
         for t in self.d['Args']:
-            m = re.search('([A-Za-z0-9_-]+)\s{0,4}(\(.+\))\s{0,4}:', t)
+            m = re.search(r'([A-Za-z0-9_-]+)\s{0,4}(\(.+\))\s{0,4}:', t)
             if m:
                 self.args[m.group(1)] = m.group(2)
 

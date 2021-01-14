@@ -79,6 +79,14 @@ class TraceBackFrame(OriginInfo):
         self.function_name = function_name
         self.source_code = source_code
 
+    def formated_message(self):
+        # self.source_code may be empty in some functions.
+        # For example, decorator generated function
+        return '    File "{}", line {}, in {}\n\t{}'.format(
+            self.location.filepath, self.location.lineno, self.function_name,
+            self.source_code.lstrip()
+            if isinstance(self.source_code, str) else self.source_code)
+
 
 class ErrorData(object):
     """
@@ -106,7 +114,7 @@ class ErrorData(object):
         message_lines = []
 
         # Step1: Adds header message to prompt users that the following is the original information.
-        header_message = "In user code:"
+        header_message = "In transformed code:"
         message_lines.append(header_message)
         message_lines.append("")
 

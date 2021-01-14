@@ -134,7 +134,7 @@ class DatasetFolder(Dataset):
                                is_valid_file)
         if len(samples) == 0:
             raise (RuntimeError(
-                "Found 0 files in subfolders of: " + self.root + "\n"
+                "Found 0 directories in subfolders of: " + self.root + "\n"
                 "Supported extensions are: " + ",".join(extensions)))
 
         self.loader = default_loader if loader is None else loader
@@ -306,7 +306,7 @@ class ImageFolder(Dataset):
             index (int): Index
 
         Returns:
-            tuple: (sample, target) where target is class_index of the target class.
+            sample of specific index.
         """
         path = self.samples[index]
         sample = self.loader(path)

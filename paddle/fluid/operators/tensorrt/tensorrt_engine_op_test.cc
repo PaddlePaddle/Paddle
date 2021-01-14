@@ -109,6 +109,7 @@ TEST(TensorRTEngineOp, manual) {
   engine_op_desc.SetAttr("use_calib_mode", static_cast<bool>(false));
   engine_op_desc.SetAttr("output_name_mapping",
                          std::vector<std::string>({"z0"}));
+  engine_op_desc.SetAttr("origin_output_dims", std::vector<int>({2}));
   engine_op_desc.SetAttr("subgraph", std::string(block_->SerializeAsString()));
   engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
   int device_id = 0;
@@ -210,6 +211,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   engine_op_desc.SetAttr("use_calib_mode", static_cast<bool>(false));
   engine_op_desc.SetAttr("output_name_mapping",
                          std::vector<std::string>({"z3"}));
+  engine_op_desc.SetAttr("origin_output_dims", std::vector<int>({2}));
   engine_op_desc.SetAttr("subgraph", std::string(block_->SerializeAsString()));
   engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
   int device_id = 0;

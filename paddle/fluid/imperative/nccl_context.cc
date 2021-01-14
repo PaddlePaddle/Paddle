@@ -14,13 +14,13 @@
 
 #include "paddle/fluid/imperative/nccl_context.h"
 
-#include "paddle/fluid/platform/collective_helper.h"
-
 namespace paddle {
 namespace imperative {
 #if defined(PADDLE_WITH_NCCL)
-void NCCLParallelContext::RecvNCCLID(const std::string &ep,
-                                     ncclUniqueId *nccl_id) {
+void NCCLParallelContext::RecvNCCLID(
+    const std::string &ep,
+    std::vector<ncclUniqueId> &nccl_ids) {  // NOLINT
+  int nrings = nccl_ids.size();
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(
       addr.size(), 2UL,
@@ -87,14 +87,16 @@ void NCCLParallelContext::RecvNCCLID(const std::string &ep,
   }
 
   VLOG(3) << "recevived the ncclUniqueId";
-  memcpy(nccl_id, buffer, NCCL_UNIQUE_ID_BYTES);
+
+  memcpy(&nccl_ids[0], buffer, nrings * NCCL_UNIQUE_ID_BYTES);
 
   VLOG(3) << "closing the socket server: " << ep;
   close(server_fd);
 }
 
-void NCCLParallelContext::SendNCCLID(const std::string &ep,
-                                     ncclUniqueId *nccl_id) {
+void NCCLParallelContext::SendNCCLID(
+    const std::string &ep, const std::vector<ncclUniqueId> &nccl_ids) {
+  int nrings = nccl_ids.size();
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(
       addr.size(), 2UL,
@@ -102,12 +104,12 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
           "The endpoint should contain host and port, but got %s.", ep));
   std::string host = addr[0];
   int port = std::stoi(addr[1]);
-  // struct sockaddr_in address;
   int sock = 0;
   struct sockaddr_in serv_addr;
   char buffer[1024] = {0};
 
-  memcpy(buffer, nccl_id, NCCL_UNIQUE_ID_BYTES);
+  memcpy(buffer, &nccl_ids[0], nrings * NCCL_UNIQUE_ID_BYTES);
+
   if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     PADDLE_THROW(platform::errors::Unavailable("Create socket failed."));
   }
@@ -151,39 +153,66 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
       continue;
     }
     VLOG(3) << "sending the ncclUniqueId to " << ep;
-    send(sock, buffer, NCCL_UNIQUE_ID_BYTES, 0);
+    send(sock, buffer, NCCL_UNIQUE_ID_BYTES * nrings, 0);
     break;
   }
   close(sock);
 }
 
-void NCCLParallelContext::BcastNCCLId(ncclUniqueId *nccl_id, int root) {
+void NCCLParallelContext::BcastNCCLId(
+    std::vector<ncclUniqueId> &nccl_ids,  // NOLINT
+    int root) {
   if (strategy_.local_rank_ == root) {
     for (auto ep : strategy_.trainer_endpoints_) {
-      if (ep != strategy_.current_endpoint_) SendNCCLID(ep, nccl_id);
+      if (ep != strategy_.current_endpoint_) SendNCCLID(ep, nccl_ids);
     }
   } else {
-    RecvNCCLID(strategy_.current_endpoint_, nccl_id);
+    RecvNCCLID(strategy_.current_endpoint_, nccl_ids);
   }
 }
 
 void NCCLParallelContext::Init() {
-  ncclUniqueId nccl_id;
+  std::vector<ncclUniqueId> nccl_ids;
+  nccl_ids.resize(strategy_.nrings_);
   if (strategy_.local_rank_ == 0) {
     // generate the unique ncclid on the root worker
-    platform::dynload::ncclGetUniqueId(&nccl_id);
-    BcastNCCLId(&nccl_id, 0);
+    for (size_t i = 0; i < nccl_ids.size(); ++i) {
+      platform::dynload::ncclGetUniqueId(&nccl_ids[i]);
+    }
+    BcastNCCLId(nccl_ids, 0);
   } else {
-    BcastNCCLId(&nccl_id, 0);
+    BcastNCCLId(nccl_ids, 0);
   }
-  int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
-  VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
-          << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id;
 
-  // it will assign nccl_comm in CUDADeviceContext within ring_id 0
-  platform::NCCLCommContext::Instance().CreateNCCLComm(
-      &nccl_id, strategy_.nranks_, strategy_.local_rank_, gpu_id, 0);
+  int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+  for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
+    VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
+            << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
+            << " ring id: " << ring_id;
+    // it will assign nccl_comm in CUDADeviceContext within ring_id
+    platform::NCCLCommContext::Instance().CreateNCCLComm(
+        &nccl_ids[ring_id], strategy_.nranks_, strategy_.local_rank_, gpu_id,
+        ring_id);
+  }
 }
+
+void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
+                                            framework::Variable *dst,
+                                            int ring_id, bool use_calc_stream) {
+  PADDLE_ENFORCE_EQ(
+      platform::is_gpu_place(place_), true,
+      platform::errors::Unimplemented(
+          "Dynamic graph mode does not support multi-CPU training yet."));
+  AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
+}
+
+paddle::platform::CUDADeviceContext *NCCLParallelContext::GetDeviceContext(
+    int ring_id) {
+  return platform::NCCLCommContext::Instance()
+      .Get(ring_id, place_)
+      ->dev_context();
+}
+
 #endif
 
 }  //  namespace imperative

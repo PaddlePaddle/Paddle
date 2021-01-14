@@ -31,7 +31,8 @@ wmic process where name="op_function_generator.exe" call terminate
 
 rem ------initialize common variable------
 if not defined BRANCH set BRANCH=develop
-if not defined TENSORRT_ROOT set TENSORRT_ROOT="C:/TensorRT-5.1.5.0"
+if not defined WITH_TENSORRT set WITH_TENSORRT=ON 
+if not defined TENSORRT_ROOT set TENSORRT_ROOT="D:/TensorRT"
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
 if not defined WITH_TESTING set WITH_TESTING=ON
@@ -41,10 +42,12 @@ if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
 if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_TPCACHE set WITH_TPCACHE=ON
+if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
 rem -------set cache build work directory-----------
 rmdir build\python /s/q
+del build\CMakeCache.txt
 if "%WITH_CACHE%"=="OFF" (
     rmdir build /s/q
     goto :mkbuild
@@ -52,7 +55,7 @@ if "%WITH_CACHE%"=="OFF" (
 
 set error_code=0
 type %cache_dir%\error_code.txt
-set /p error_code=< %cache_dir%\error_code.txt
+: set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
     rmdir build /s/q
     goto :mkbuild
@@ -62,7 +65,7 @@ setlocal enabledelayedexpansion
 git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
-    git diff HEAD last_pr --stat --name-only | findstr ".cmake CMakeLists.txt paddle_build.bat"
+    git diff HEAD last_pr --stat --name-only | findstr "cmake/[a-zA-Z]*\.cmake CMakeLists.txt"
     if !ERRORLEVEL! EQU 0 (
         rmdir build /s/q
     )
@@ -72,6 +75,9 @@ if %ERRORLEVEL% EQU 0 (
     rmdir build /s/q
     git branch last_pr
 )
+
+:: set CI_SKIP_CPP_TEST if only *.py changed
+git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 
 :: for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
 :: set day_now=%datetime:~6,2%
@@ -92,8 +98,14 @@ if %ERRORLEVEL% EQU 0 (
 
 :mkbuild
 if not exist build (
+    echo Windows build cache FALSE
+    set Windows_Build_Cache=FALSE
     mkdir build
+) else (
+    echo Windows build cache TRUE
+    set Windows_Build_Cache=TRUE
 )
+echo ipipe_log_param_Windows_Build_Cache: %Windows_Build_Cache%
 cd /d build
 dir .
 dir %cache_dir%
@@ -113,11 +125,9 @@ rem call paddle_winci\Scripts\activate.bat
 rem ------pre install python requirement----------
 where python
 where pip
-pip install --upgrade pip --user
 pip install wheel --user
-pip install gym --user
-pip install -U -r %work_dir%\python\requirements.txt --user
-pip install -U -r %work_dir%\python\unittest_py\requirements.txt --user
+pip install -r %work_dir%\python\requirements.txt --user
+pip install -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
     echo pip install requirements.txt failed!
     exit /b 7
@@ -135,6 +145,10 @@ set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 clcache.exe -M 21474836480
 
 rem ------show summary of current environment----------
+cmake --version
+nvcc --version
+where nvidia-smi
+nvidia-smi
 python %work_dir%\tools\summary_env.py
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
 
@@ -152,6 +166,7 @@ rem ------initialize cmake variable for mkl------
 set WITH_MKL=ON
 set WITH_GPU=OFF
 set MSVC_STATIC_CRT=ON
+set WITH_CLCACHE=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -173,8 +188,8 @@ set WITH_INFERENCE_API_TEST=OFF
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
-:: call :unit_test || goto unit_test_error
-:: call :test_inference || goto test_inference_error
+call :unit_test || goto unit_test_error
+call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
@@ -224,13 +239,15 @@ echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT%
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD%
 
 cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT%
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD%
 goto:eof
 
 :cmake_error
@@ -264,8 +281,11 @@ echo Build third_party successfully!
 
 set build_times=1
 :build_paddle
+:: reset clcache zero stats for collect PR's actual hit rate
+clcache.exe -z
+
 echo Build Paddle the %build_times% time:
-if "%WITH_GPU%"=="OFF" (
+if "%WITH_CLCACHE%"=="OFF" (
     msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
 ) else (
     msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
@@ -282,6 +302,11 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo Build Paddle successfully!
+echo 0 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
+
+:: ci will collect clcache hit rate
+goto :collect_clcache_hits
 
 goto:eof
 
@@ -310,10 +335,12 @@ set /p libsize=< lib_size.txt
 for /F %%i in ("%libsize%") do (
     set /a libsize_m=%%i/1024
     echo "Windows Paddle_Inference Size: !libsize_m!M"
+    echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
 )
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
 set /p whlsize=< whl_size.txt
 for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
+for /F %%i in ("%whlsize%") do echo ipipe_log_param_Windows_PR_whl_Size: %%i
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 
@@ -339,13 +366,15 @@ exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :unit_test
-@ECHO OFF
+@ECHO ON
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
+
+set FLAGS_call_stack_level=2
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
@@ -383,61 +412,19 @@ if "%WITH_GPU%"=="ON" (
 
 :parallel_test_base_gpu
 echo    ========================================
-echo    Running GPU unit tests in parallel way ...
+echo    Running GPU unit tests...
 echo    ========================================
 
-set FLAGS_fraction_of_gpu_memory_to_use=0.75
+setlocal enabledelayedexpansion
 
-nvidia-smi -L
-for /F %%# in ('nvidia-smi -L ^| findstr "GPU" /C /I') do set CUDA_DEVICE_COUNT=%%#
-if !errorlevel! NEQ 0 exit /b 8
+:: set PATH=C:\Windows\System32;C:\Program Files\NVIDIA Corporation\NVSMI;%PATH%
+:: cmd /C nvidia-smi -L
+:: if %errorlevel% NEQ 0 exit /b 8
+:: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
+set CUDA_DEVICE_COUNT=1
 
-rem TODO: fix these unittest that is bound to fail
-rem /*==================Disabled Windows==============================*/
-set diable_wingpu_test=tensor_util_test^|lod_tensor_test^|selected_rows_test^|broadcast_op_test^|fused_broadcast_op_test^|assign_op_test^|save_load_op_test^|save_load_combine_op_test^|im2col_test^|^
-beam_search_test^|test_analysis_predictor^|test_model^|test_add_reader_dependency^|test_bilateral_slice_op^|test_buffer_shared_memory_reuse_pass^|test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass^|^
-test_cholesky_op^|test_dataloader_early_reset^|test_dataloader_keep_order^|test_dataloader_unkeep_order^|test_decoupled_py_reader^|test_decoupled_py_reader_data_check^|test_eager_deletion_delete_vars^|^
-test_eager_deletion_while_op^|test_feed_data_check_shape_type^|test_fetch_lod_tensor_array^|test_fetch_unmerged^|test_fleet_base_single^|test_fuse_all_reduce_pass^|test_fuse_elewise_add_act_pass^|^
-test_fuse_optimizer_pass^|test_generator_dataloader^|test_gpu_package_without_gpu_device^|test_ir_memory_optimize_ifelse_op^|test_ir_memory_optimize_nlp^|test_lr_scheduler^|^
-test_multiprocess_dataloader_iterable_dataset_dynamic^|test_multiprocess_dataloader_iterable_dataset_static^|test_nvprof^|test_parallel_dygraph_sync_batch_norm^|test_parallel_executor_drop_scope^|^
-test_parallel_executor_dry_run^|test_parallel_executor_feed_persistable_var^|test_parallel_executor_fetch_isolated_var^|test_parallel_executor_inference_feed_partial_data^|test_parallel_executor_mnist^|^
-test_parallel_executor_seresnext_base_gpu^|test_parallel_executor_seresnext_with_fuse_all_reduce_gpu^|test_parallel_executor_seresnext_with_reduce_gpu^|test_parallel_executor_test_while_train^|^
-test_parallel_ssa_graph_inference_feed_partial_data^|test_partial_eager_deletion_transformer^|test_program_prune_backward^|test_prune^|test_py_reader_combination^|test_py_reader_pin_memory^|^
-test_py_reader_push_pop^|test_py_reader_using_executor^|test_reader_reset^|test_sync_batch_norm_op^|test_update_loss_scaling_op^|test_imperative_static_runner_while^|test_parallel_executor_crf^|^
-test_parallel_executor_profiler^|test_parallel_executor_transformer^|test_parallel_executor_transformer_auto_growth^|test_parallel_executor_seresnext_base_cpu^|test_yolov3^|^
-test_parallel_executor_seresnext_with_reduce_cpu^|test_parallel_executor_seresnext_with_fuse_all_reduce_cpu^|test_flags_use_mkldnn^|test_spawn_and_init_parallel_env^|test_train_recognize_digits^|^
-test_optimizer_in_control_flow^|test_fuse_bn_act_pass^|test_fuse_bn_add_act_pass^|test_activation_mkldnn_op^|test_tsm
-rem /*===============================================================*/
+%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE%
 
-rem these unittest that cost long time, diabled temporarily, greater than 10s
-set long_time_test=test_trilinear_interp_v2_op^|best_fit_allocator_test^|timer_test^|best_fit_allocator_test^|test_image_classification^|test_recognize_digits^|decorator_test^|test_callbacks^|^
-test_dataset_cifar^|test_dataset_imdb^|test_dataset_movielens^|test_datasets^|test_pretrained_model^|test_concat_op^|test_elementwise_add_op^|test_elementwise_sub_op^|test_gather_op^|test_gather_nd_op^|^
-test_sequence_concat^|test_sequence_conv^|test_sequence_pool^|test_sequence_slice_op^|test_space_to_depth_op^|test_activation_nn_grad^|test_activation_op^|test_auto_growth_gpu_memory_limit^|^
-test_bicubic_interp_op^|test_bicubic_interp_v2_op^|test_bilinear_interp_v2_op^|test_conv2d_op^|test_conv3d_op^|test_conv3d_transpose_part2_op^|test_conv_nn_grad^|test_crop_tensor_op^|^
-test_cross_entropy2_op^|test_cross_op^|test_deformable_conv_v1_op^|test_dropout_op^|test_dygraph_multi_forward^|test_elementwise_div_op^|test_elementwise_nn_grad^|test_empty_op^|^
-test_fused_elemwise_activation_op^|test_group_norm_op^|test_gru_op^|test_gru_unit_op^|test_imperative_lod_tensor_to_selected_rows^|test_imperative_optimizer^|test_imperative_ptb_rnn^|^
-test_imperative_save_load^|test_imperative_selected_rows_to_lod_tensor^|test_imperative_star_gan_with_gradient_penalty^|test_imperative_transformer_sorted_gradient^|test_layer_norm_op^|^
-test_lstm_cudnn_op^|test_masked_select_op^|test_matmul_v2_op^|test_multiclass_nms_op^|test_naive_best_fit_gpu_memory_limit^|test_nearest_interp_v2_op^|test_nn_grad^|test_norm_nn_grad^|^
-test_normal^|test_pool3d_op^|test_pool2d_op^|test_prroi_pool_op^|test_regularizer^|test_regularizer_api^|test_sgd_op^|test_softmax_with_cross_entropy_op^|test_static_save_load^|^
-test_trilinear_interp_op^|test_trilinear_interp_v2_op^|test_weight_decay^|test_bilinear_interp_op^|test_nearest_interp_op^|test_sequence_conv^|test_transformer^|test_imperative_out_scale^|^
-test_imperative_qat^|test_imperative_qat_channelwise^|test_quantization_pass^|test_beam_search_decoder^|test_argsort_op^|test_eager_deletion_gru_net^|test_lstmp_op^|test_label_semantic_roles^|^
-test_graph^|test_user_defined_quantization
-
-set /a end=CUDA_DEVICE_COUNT-1
-
-set parallel_test=''
-
-for /L %%# in (0,1,%end%) do (
-    set CUDA_VISIBLE_DEVICES=%%#
-    ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -R %parallel_test% -E "%disable_ut_quickly%|%diable_wingpu_test%|%long_time_test%" -LE %nightly_label% --output-on-failure -C Release -j 2 --repeat until-pass:4 after-timeout:4
-    if !errorlevel! NEQ 0 exit /b 8
-)
-
-for /L %%# in (0,1,%end%) do (
-    set CUDA_VISIBLE_DEVICES=%%#
-    ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -E "%disable_ut_quickly%|%parallel_test%|%diable_wingpu_test%|%long_time_test%" -LE %nightly_label% --output-on-failure -C Release -j 1 --repeat until-pass:4 after-timeout:4
-    if !errorlevel! NEQ 0 exit /b 8
-)
 goto:eof
 
 :parallel_test_base_cpu
@@ -506,6 +493,7 @@ echo spec_path=$(pwd)/UNITTEST_PR.spec>>  check_change_of_unittest.sh
 echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
 echo num=$(awk 'END{print NR}' ${spec_path})>> check_change_of_unittest.sh
 echo echo "Windows 1 card TestCases count is $num">> check_change_of_unittest.sh
+echo echo ipipe_log_param_Windows_1_Card_TestCases_Count: $num>> check_change_of_unittest.sh
 echo UPSTREAM_URL='https://github.com/PaddlePaddle/Paddle'>>  check_change_of_unittest.sh
 echo origin_upstream_url=`git remote -v ^| awk '{print $1, $2}' ^| uniq ^| grep upstream ^| awk '{print $2}'`>>  check_change_of_unittest.sh
 echo if [ "$origin_upstream_url" == "" ]; then>>  check_change_of_unittest.sh
@@ -596,6 +584,21 @@ set /a ss=100%ss%%%100
 set /a end_secs=dd*86400+hh*3600+nn*60+ss
 set /a cost_secs=end_secs-start_sec
 echo "Windows %~3 Time: %cost_secs%s"
+set tempTaskName=%~3
+echo ipipe_log_param_Windows_%tempTaskName: =_%_Time: %cost_secs%s
+goto:eof
+
+
+:collect_clcache_hits
+for /f "tokens=2,4" %%i in ('clcache.exe -s ^| findstr "entries hits"') do set %%i=%%j
+if %hits% EQU 0 (
+    echo "clcache hit rate: 0%%"
+    echo ipipe_log_param_Clcache_Hit_Rate: 0%%
+) else (
+    set /a rate=%hits%*10000/%entries%
+    echo "clcache hit rate: %rate:~0,-2%.%rate:~-2%%%"
+    echo ipipe_log_param_Clcache_Hit_Hate: %rate:~0,-2%.%rate:~-2%%%
+)
 goto:eof
 
 
@@ -616,8 +619,6 @@ taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
-echo 0 > %cache_dir%\error_code.txt
-type %cache_dir%\error_code.txt
 echo Windows CI run successfully!
 exit /b 0
 

@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 import warnings
-from .framework import Variable, in_dygraph_mode
+from .framework import Variable, in_dygraph_mode, static_only
 from .layer_helper import LayerHelper
 from .data_feeder import check_variable_and_dtype, check_dtype
 from ..utils import deprecated
@@ -129,6 +129,7 @@ def one_hot(input, depth, allow_out_of_range=False):
     return one_hot_out
 
 
+@static_only
 @deprecated(since='2.0.0', update_to='paddle.nn.functional.embedding')
 def embedding(input,
               size,
@@ -137,7 +138,7 @@ def embedding(input,
               padding_idx=None,
               param_attr=None,
               dtype='float32'):
-    """
+    r"""
     :api_attr: Static Graph
 
     The operator is used to lookup embeddings vector of ids provided by :attr:`input` . 
@@ -196,10 +197,7 @@ def embedding(input,
             indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update. This parameter only
             affects the performance of the backwards gradient update. It is recommended to set 
-            True because sparse update is faster. But some optimizer does not support sparse update,
-            such as :ref:`api_fluid_optimizer_AdadeltaOptimizer` , :ref:`api_fluid_optimizer_AdamaxOptimizer` , 
-            :ref:`api_fluid_optimizer_DecayedAdagradOptimizer` , :ref:`api_fluid_optimizer_FtrlOptimizer` ,
-            :ref:`api_fluid_optimizer_LambOptimizer` and :ref:`api_fluid_optimizer_LarsMomentumOptimizer` .
+            True because sparse update is faster. But some optimizer does not support sparse update
             In these case, is_sparse must be False. Default: False.
         is_distributed(bool): Whether to store the embedding matrix in a distributed manner. Only used
             in multi-machine distributed CPU training. Default: False.
@@ -209,11 +207,10 @@ def embedding(input,
             encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
             If set None, it makes no effect to output. Default: None.
         param_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` . In addition,
+            default weight parameter property is used. In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter. 
             The local word vector needs to be transformed into numpy format, and the shape of local word
-            vector should be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
-            is used to load custom or pre-trained word vectors. See code example 2 for details.
+            vector should be consistent with :attr:`size` .
         dtype(str|core.VarDesc.VarType): It refers to the data type of output Tensor.
             It must be float32 or float64. Default: float32.
 
@@ -266,9 +263,7 @@ def embedding(input,
 
             import paddle
             import numpy as np
-            
-            paddle.disable_static()
-            
+
             x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
             
             # x is a Tensor.

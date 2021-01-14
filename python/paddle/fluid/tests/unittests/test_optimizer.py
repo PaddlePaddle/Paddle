@@ -23,7 +23,9 @@ import paddle.fluid.core as core
 import paddle.compat as cpt
 import numpy as np
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.framework import Program, program_guard, convert_np_dtype_to_dtype_
+import paddle
+paddle.enable_static()
 
 
 class TestOptimizer(unittest.TestCase):
@@ -1010,36 +1012,65 @@ class TestGradientMergeOptimizer(unittest.TestCase):
         with framework.program_guard(main_program, init_program):
             ops, params_grads = opt.minimize(cost)
 
-        self.assertEqual(main_program.num_blocks, 4)
+        self.assertEqual(main_program.num_blocks, 2)
 
         # main block
-        self.assertEqual(len(cost.block.ops), 17)
-        self.assertEqual([op.type for op in cost.block.ops], [
-            'mul', 'elementwise_add', 'mean', 'fill_constant', 'mean_grad',
-            'elementwise_add_grad', 'mul_grad', 'increment', 'fill_constant',
-            'fill_constant', 'elementwise_mod', 'cast', 'not_equal',
-            'logical_not', 'conditional_block', 'conditional_block',
-            'conditional_block_grad'
-        ])
-
-        # merge block
-        self.assertEqual(len(main_program.block(1).ops), 2)
-        self.assertEqual([op.type for op in main_program.block(1).ops], [
-            'elementwise_add',
-            'elementwise_add',
-        ])
-
-        # reset block
-        self.assertEqual(len(main_program.block(2).ops), 6)
-        self.assertEqual([op.type for op in main_program.block(2).ops], [
-            'elementwise_add', 'scale', 'elementwise_add', 'scale',
-            'fill_constant', 'fill_constant'
-        ])
+        self.assertEqual(len(cost.block.ops), 13)
+        self.assertEqual(
+            [op.type for op in cost.block.ops],
+            [
+                'mul',
+                'elementwise_add',
+                'mean',
+                'fill_constant',
+                'mean_grad',
+                'elementwise_add_grad',
+                'mul_grad',
+                'increment',  # step += 1
+                'elementwise_mod',  # step %= k_steps
+                'equal',  # cond_var == (step == 0)
+                'elementwise_add',
+                'elementwise_add',
+                'conditional_block',
+            ])
 
         # optimize block
-        self.assertEqual(len(main_program.block(3).ops), 2)
-        self.assertEqual([op.type for op in main_program.block(3).ops],
-                         ['sgd', 'sgd'])
+        self.assertEqual(len(main_program.block(1).ops), 6)
+        self.assertEqual([op.type for op in main_program.block(1).ops], [
+            'scale', 'scale', 'sgd', 'sgd', 'fill_constant', 'fill_constant'
+        ])
+
+
+class TestOptimizerDtype(unittest.TestCase):
+    '''
+    The dtype of optimizer should be inferred by parameters, and the learning rate
+    is cteated with the same dtype.
+    '''
+
+    def check_with_dtype(self, dtype):
+        class MyLayer(paddle.nn.Layer):
+            def __init__(self, dtype):
+                super(MyLayer, self).__init__()
+                self._w = self.create_parameter([2, 3], dtype=dtype)
+                self._b = self.create_parameter([2, 3], dtype=dtype)
+
+            def forward(self, x):
+                return x * self._w + self._b
+
+        with paddle.fluid.dygraph.guard():
+            model = MyLayer(dtype)
+            x = paddle.rand([10, 2, 3], dtype=dtype)
+            loss = model(x)
+            adam = paddle.optimizer.Adam(parameters=model.parameters())
+            loss.backward()
+            adam.step()
+            self.assertEqual(adam._dtype, convert_np_dtype_to_dtype_(dtype))
+
+    def test_float64(self):
+        self.check_with_dtype('float64')
+
+    def test_float32(self):
+        self.check_with_dtype('float32')
 
 
 if __name__ == '__main__':

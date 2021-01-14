@@ -67,6 +67,15 @@ REGISTER_DEVICE_WORKER_CLASS(DownpourWorkerOpt);
 #ifdef PADDLE_WITH_PSLIB
 REGISTER_DEVICE_WORKER_CLASS(HeterCpuWorker);
 #endif
+
+#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+REGISTER_DEVICE_WORKER_CLASS(HeterBoxWorker);
+#endif
+
+#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+REGISTER_DEVICE_WORKER_CLASS(PSGPUWorker);
+#endif
+
 #if defined(PADDLE_WITH_NCCL)
 REGISTER_DEVICE_WORKER_CLASS(SectionWorker);
 #endif

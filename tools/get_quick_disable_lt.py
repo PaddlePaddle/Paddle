@@ -20,7 +20,11 @@ import requests
 def download_file():
     """Get disabled unit tests"""
     ssl._create_default_https_context = ssl._create_unverified_context
-    url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
+    sysstr = sys.platform
+    if sysstr == 'win32':
+        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_win')
+    else:
+        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
     f = requests.get(url)
     data = f.text
     status_code = f.status_code

@@ -379,6 +379,8 @@
         "While.block",
         "DGCMomentumOptimizer",
         "ParallelEnv",
+        "spawn",
+        "init_parallel_env",
         "DataParallel",
         "DataParallel.scale_loss",
         "DataParallel.apply_collective_grads",
@@ -411,7 +413,8 @@
         "CRFDecoding.forward",
         "SequenceTagging.forward",
         "XPUPlace",
-        "is_compiled_with_xpu"
+        "is_compiled_with_xpu",
+        "xpu_places"
     ],
     "gpu_not_white":[
         "deformable_conv",

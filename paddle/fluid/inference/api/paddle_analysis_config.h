@@ -314,9 +314,16 @@ struct PD_INFER_DECL AnalysisConfig {
       bool disable_trt_plugin_fp16 = false);
 
   ///
+  /// \brief Prevent ops running in Paddle-TRT
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
+  ///
+  void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
+
+  ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
-  /// https://github.com/NVIDIA/TensorRT), with which some models's inference may 
-  /// be more high-performance. Libnvinfer_plugin.so greater than V7.2.1 is needed.
+  /// https://github.com/NVIDIA/TensorRT), with which some models's inference
+  /// may be more high-performance. Libnvinfer_plugin.so greater than
+  /// V7.2.1 is needed.
   ///
   void EnableTensorRtOSS();
   ///
@@ -587,6 +594,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::map<std::string, std::vector<int>> min_input_shape_{};
   std::map<std::string, std::vector<int>> max_input_shape_{};
   std::map<std::string, std::vector<int>> optim_input_shape_{};
+  std::vector<std::string> trt_disabled_ops_{};
   bool disable_trt_plugin_fp16_{false};
 
   // memory reuse related.

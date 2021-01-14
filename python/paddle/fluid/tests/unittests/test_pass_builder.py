@@ -98,13 +98,15 @@ class TestPassBuilder(unittest.TestCase):
 
         pass_builder.remove_pass(len(pass_builder.all_passes()) - 1)
         self.assertEqual(origin_len + 1, len(pass_builder.all_passes()))
-        viz_pass.set("graph_viz_path", "/tmp/test_viz_pass")
+        current_path = os.path.abspath(os.path.dirname(__file__))
+        graph_viz_path = current_path + os.sep + 'tmp' + os.sep + 'test_viz_pass'
+        viz_pass.set("graph_viz_path", graph_viz_path)
 
         self.check_network_convergence(
             use_cuda=core.is_compiled_with_cuda(),
             build_strategy=build_strategy)
         try:
-            os.stat("/tmp/test_viz_pass")
+            os.stat(graph_viz_path)
         except os.error:
             self.assertFalse(True)
 

@@ -116,6 +116,7 @@ class UtilBase(object):
         Examples:
 
             .. code-block:: python
+
                 # Save the following code in `train.py` , and then execute the command `fleetrun --server_num 2 --worker_num 2 train.py` .
 
                 import paddle.distributed.fleet as fleet

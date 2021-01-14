@@ -115,7 +115,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
@@ -210,7 +210,7 @@ REGISTER_OP_VERSION(gaussian_random)
             .NewInput("ShapeTensorList",
                       "The output shape supports list filled with Tensor. "
                       "ShapeTensorList is dispensable.")
-            .ModifyAttr(
-                "shape",
-                "Add the default value of shape, the default value is {}.",
-                {}));
+            .ModifyAttr("shape",
+                        "The arg 'default_value' of attr 'shape' is changed: "
+                        "from 'None' to '{}'.",
+                        std::vector<int64_t>{}));

@@ -26,12 +26,10 @@ namespace math {
 template <typename T>
 struct CUDATypeTraits;
 
-#ifdef SUPPORTS_CUDA_FP16
 template <>
 struct CUDATypeTraits<half> {
   typedef platform::float16 TYPE;
 };
-#endif
 
 template <>
 struct CUDATypeTraits<float> {

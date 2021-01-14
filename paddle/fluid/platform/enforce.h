@@ -19,12 +19,13 @@ limitations under the License. */
 #endif               // __GNUC__
 
 #if !defined(_WIN32)
-#include <dlfcn.h>  // dladdr
-#else               // _WIN32
+#include <dlfcn.h>   // dladdr
+#include <unistd.h>  // sleep, usleep
+#else                // _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #endif
-#include <windows.h>  // GetModuleFileName
+#include <windows.h>  // GetModuleFileName, Sleep
 #endif
 
 #ifdef PADDLE_WITH_CUDA
@@ -65,6 +66,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/curand.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
+#include <error.h>
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
@@ -79,6 +81,9 @@ class ErrorSummary;
 }  // namespace platform
 }  // namespace paddle
 
+#ifdef PADDLE_WITH_CUDA
+DECLARE_int64(gpu_allocator_retry_time);
+#endif
 DECLARE_int32(call_stack_level);
 
 namespace paddle {
@@ -743,31 +748,37 @@ inline bool is_error(curandStatus_t stat) {
 inline const char* curandGetErrorString(curandStatus_t stat) {
   switch (stat) {
     case CURAND_STATUS_SUCCESS:
-      return "CURAND_STATUS_SUCCESS";
+      return "`CURAND_STATUS_SUCCESS`. No errors.";
     case CURAND_STATUS_VERSION_MISMATCH:
-      return "CURAND_STATUS_VERSION_MISMATCH";
+      return "`CURAND_STATUS_VERSION_MISMATCH`. Header file and linked library "
+             "version do not match.";
     case CURAND_STATUS_NOT_INITIALIZED:
-      return "CURAND_STATUS_NOT_INITIALIZED";
+      return "`CURAND_STATUS_NOT_INITIALIZED`. Generator not initialized.";
     case CURAND_STATUS_ALLOCATION_FAILED:
-      return "CURAND_STATUS_ALLOCATION_FAILED";
+      return "`CURAND_STATUS_ALLOCATION_FAILED`. Memory allocation failed.";
     case CURAND_STATUS_TYPE_ERROR:
-      return "CURAND_STATUS_TYPE_ERROR";
+      return "`CURAND_STATUS_TYPE_ERROR`. Generator is wrong type.";
     case CURAND_STATUS_OUT_OF_RANGE:
-      return "CURAND_STATUS_OUT_OF_RANGE";
+      return "`CURAND_STATUS_OUT_OF_RANGE`. Argument out of range.";
     case CURAND_STATUS_LENGTH_NOT_MULTIPLE:
-      return "CURAND_STATUS_LENGTH_NOT_MULTIPLE";
+      return "`CURAND_STATUS_LENGTH_NOT_MULTIPLE`. Length requested is not a "
+             "multple of dimension.";
     case CURAND_STATUS_DOUBLE_PRECISION_REQUIRED:
-      return "CURAND_STATUS_DOUBLE_PRECISION_REQUIRED";
+      return "`CURAND_STATUS_DOUBLE_PRECISION_REQUIRED`. GPU does not have "
+             "double precision required by MRG32k3a.";
     case CURAND_STATUS_LAUNCH_FAILURE:
-      return "CURAND_STATUS_LAUNCH_FAILURE";
+      return "`CURAND_STATUS_LAUNCH_FAILURE`. Kernel launch failure.";
     case CURAND_STATUS_PREEXISTING_FAILURE:
-      return "CURAND_STATUS_PREEXISTING_FAILURE";
+      return "`CURAND_STATUS_PREEXISTING_FAILURE`. Preexisting failure on "
+             "library entry.";
     case CURAND_STATUS_INITIALIZATION_FAILED:
-      return "CURAND_STATUS_INITIALIZATION_FAILED";
+      return "`CURAND_STATUS_INITIALIZATION_FAILED`. Initialization of CUDA "
+             "failed.";
     case CURAND_STATUS_ARCH_MISMATCH:
-      return "CURAND_STATUS_ARCH_MISMATCH";
+      return "`CURAND_STATUS_ARCH_MISMATCH`. Architecture mismatch, GPU does "
+             "not support requested feature.";
     case CURAND_STATUS_INTERNAL_ERROR:
-      return "CURAND_STATUS_INTERNAL_ERROR";
+      return "`CURAND_STATUS_INTERNAL_ERROR`. Internal library error.";
     default:
       return "Unknown curand status";
   }
@@ -796,23 +807,37 @@ inline bool is_error(cublasStatus_t stat) {
 inline const char* cublasGetErrorString(cublasStatus_t stat) {
   switch (stat) {
     case CUBLAS_STATUS_NOT_INITIALIZED:
-      return "CUBLAS_STATUS_NOT_INITIALIZED";
+      return "`CUBLAS_STATUS_NOT_INITIALIZED`. The cuBLAS library was not "
+             "initialized.";
     case CUBLAS_STATUS_ALLOC_FAILED:
-      return "CUBLAS_STATUS_ALLOC_FAILED";
+      return "`CUBLAS_STATUS_ALLOC_FAILED`. Resource allocation failed inside "
+             "the cuBLAS library.";
     case CUBLAS_STATUS_INVALID_VALUE:
-      return "CUBLAS_STATUS_INVALID_VALUE";
+      return "`CUBLAS_STATUS_INVALID_VALUE`. An unsupported value or parameter "
+             "was passed to the function (a negative vector size, for "
+             "example).";
     case CUBLAS_STATUS_ARCH_MISMATCH:
-      return "CUBLAS_STATUS_ARCH_MISMATCH";
+      return "`CUBLAS_STATUS_ARCH_MISMATCH`. The function requires a feature "
+             "absent from the device architecture; usually caused by the lack "
+             "of support for double precision.";
     case CUBLAS_STATUS_MAPPING_ERROR:
-      return "CUBLAS_STATUS_MAPPING_ERROR";
+      return "`CUBLAS_STATUS_MAPPING_ERROR`. An access to GPU memory space "
+             "failed, which is usually caused by a failure to bind a texture.";
     case CUBLAS_STATUS_EXECUTION_FAILED:
-      return "CUBLAS_STATUS_EXECUTION_FAILED";
+      return "`CUBLAS_STATUS_EXECUTION_FAILED`. The GPU program failed to "
+             "execute. This is often caused by a launch failure of the kernel "
+             "on the GPU, which can be caused by multiple reasons.";
     case CUBLAS_STATUS_INTERNAL_ERROR:
-      return "CUBLAS_STATUS_INTERNAL_ERROR";
+      return "`CUBLAS_STATUS_INTERNAL_ERROR`. An internal cuBLAS operation "
+             "failed. This error is usually caused by a cudaMemcpyAsync() "
+             "failure.";
     case CUBLAS_STATUS_NOT_SUPPORTED:
-      return "CUBLAS_STATUS_NOT_SUPPORTED";
+      return "`CUBLAS_STATUS_NOT_SUPPORTED`. The functionality requested is "
+             "not supported.";
     case CUBLAS_STATUS_LICENSE_ERROR:
-      return "CUBLAS_STATUS_LICENSE_ERROR";
+      return "`CUBLAS_STATUS_LICENSE_ERROR`. The functionality requested "
+             "requires some license and an error was detected when trying to "
+             "check the current licensing.";
     default:
       return "Unknown cublas status";
   }
@@ -831,19 +856,34 @@ inline bool is_error(cusolverStatus_t stat) {
 inline const char* cusolverGetErrorString(cusolverStatus_t stat) {
   switch (stat) {
     case CUSOLVER_STATUS_NOT_INITIALIZED:
-      return "CUSOLVER_STATUS_NOT_INITIALIZED";
+      return "`CUSOLVER_STATUS_NOT_INITIALIZED`. The cuSolver library was not "
+             "initialized. This is usually caused by the lack of a prior call, "
+             "an error in the CUDA Runtime API called by the cuSolver routine, "
+             "or an error in the hardware setup.";
     case CUSOLVER_STATUS_ALLOC_FAILED:
-      return "CUSOLVER_STATUS_ALLOC_FAILED";
+      return "`CUSOLVER_STATUS_ALLOC_FAILED`. Resource allocation failed "
+             "inside the cuSolver library. This is usually caused by a "
+             "cudaMalloc() failure.";
     case CUSOLVER_STATUS_INVALID_VALUE:
-      return "CUSOLVER_STATUS_INVALID_VALUE";
+      return "`CUSOLVER_STATUS_INVALID_VALUE`. An unsupported value or "
+             "parameter was passed to the function (a negative vector size, "
+             "for example).";
     case CUSOLVER_STATUS_ARCH_MISMATCH:
-      return "CUSOLVER_STATUS_ARCH_MISMATCH";
+      return "`CUSOLVER_STATUS_ARCH_MISMATCH`. The function requires a feature "
+             "absent from the device architecture; usually caused by the lack "
+             "of support for atomic operations or double precision.";
     case CUSOLVER_STATUS_EXECUTION_FAILED:
-      return "CUSOLVER_STATUS_EXECUTION_FAILED";
+      return "`CUSOLVER_STATUS_EXECUTION_FAILED`. The GPU program failed to "
+             "execute. This is often caused by a launch failure of the kernel "
+             "on the GPU, which can be caused by multiple reasons.";
     case CUSOLVER_STATUS_INTERNAL_ERROR:
-      return "CUSOLVER_STATUS_INTERNAL_ERROR";
+      return "`CUSOLVER_STATUS_INTERNAL_ERROR`. An internal cuSolver operation "
+             "failed. This error is usually caused by a cudaMemcpyAsync() "
+             "failure.";
     case CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED:
-      return "CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED";
+      return "`CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED`. The matrix type is "
+             "not supported by this function. This is usually caused by "
+             "passing an invalid matrix descriptor to the function.";
     default:
       return "Unknown cusolver status";
   }
@@ -862,6 +902,18 @@ inline bool is_error(ncclResult_t nccl_result) {
 
 inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
   std::string msg(" Nccl error, ");
+  if (errno == ENOSPC || errno == EAGAIN) {
+    std::string detail(strerror(errno));
+    detail += "\nPlease try one of the following solutions:";
+    detail += "\n1. export NCCL_SHM_DISABLE=1;";
+    detail += "\n2. export NCCL_P2P_LEVEL=SYS;";
+    detail +=
+        "\n3. Increase shared memory by setting the -shm-size "
+        "option when starting docker container, e.g., setting "
+        " -shm-size=2g.\n";
+    return msg + platform::dynload::ncclGetErrorString(nccl_result) +
+           ", detail: " + detail + " ";
+  }
   return msg + platform::dynload::ncclGetErrorString(nccl_result) + " ";
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL
@@ -904,6 +956,22 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
     }                                                            \
   } while (0)
 
+inline void retry_sleep(unsigned milliseconds) {
+#ifdef _WIN32
+  Sleep(milliseconds);
+#else
+  if (milliseconds < 1000) {
+    // usleep argument must be less than 1,000,000. Reference:
+    // https://pubs.opengroup.org/onlinepubs/7908799/xsh/usleep.html
+    usleep(milliseconds * 1000);
+  } else {
+    // clip to sleep in seconds because we can not and don't have to
+    // sleep for exact milliseconds
+    sleep(milliseconds / 1000);
+  }
+#endif
+}
+
 #define PADDLE_RETRY_CUDA_SUCCESS(COND)                                 \
   do {                                                                  \
     auto __cond__ = (COND);                                             \
@@ -913,6 +981,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
         ::paddle::platform::details::CudaStatusType<                    \
             __CUDA_STATUS_TYPE__>::kSuccess;                            \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
+      retry_sleep(FLAGS_gpu_allocator_retry_time);                      \
       __cond__ = (COND);                                                \
       ++retry_count;                                                    \
     }                                                                   \
