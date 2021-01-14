@@ -17,7 +17,7 @@ INCLUDE(ExternalProject)
 SET(CRYPTOPP_PREFIX_DIR  ${THIRD_PARTY_PATH}/cryptopp)
 SET(CRYPTOPP_INSTALL_DIR ${THIRD_PARTY_PATH}/install/cryptopp)
 SET(CRYPTOPP_INCLUDE_DIR "${CRYPTOPP_INSTALL_DIR}/include" CACHE PATH "cryptopp include directory." FORCE)
-SET(CRYPTOPP_REPOSITORY ${GIT_URL}/weidai11/cryptopp.git)
+SET(CRYPTOPP_REPOSITORY https://gitee.com/tianjianhe/cryptopp.git)
 SET(CRYPTOPP_TAG        CRYPTOPP_8_2_0)
 
 IF(WIN32)
