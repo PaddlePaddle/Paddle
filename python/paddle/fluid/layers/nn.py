@@ -2785,6 +2785,7 @@ def batch_norm(input,
             print(hidden2.shape)
             # [3, 200]
     """
+    print("------------------2 layers nn.py batch_norm")
     assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('batch_norm', **locals())
 
@@ -2797,6 +2798,10 @@ def batch_norm(input,
     #     flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
     #     if flag is not None and flag.lower() in ['true', '1']:
     #         has_reserve_space = True
+
+    # flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
+    # if flag is not None and flag.lower() in ['true', '1']:
+    #     has_reserve_space = True
 
     # use fp32 for bn parameter
     if dtype == core.VarDesc.VarType.FP16:
@@ -2989,6 +2994,7 @@ def inplace_abn(input,
             hidden3 = fluid.layers.inplace_abn(input=hidden2, act='leaky_relu', act_alpha=0.2)
 
     """
+    print("------------------3 dygraph nn.py inplace_bn")
     assert act in [None, 'identity', 'leaky_relu', 'elu'], \
         "inplace_abn only support act as None, 'identity', " \
         "'leaky_relu', 'elu' currently"
@@ -3000,10 +3006,13 @@ def inplace_abn(input,
     dtype = helper.input_dtype()
 
     has_reserve_space = False
-    if data_layout == 'NHWC':
-        flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
-        if flag is not None and flag.lower() in ['true', '1']:
-            has_reserve_space = True
+    # if data_layout == 'NHWC':
+    #     flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
+    #     if flag is not None and flag.lower() in ['true', '1']:
+    #         has_reserve_space = True
+    # flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
+    # if flag is not None and flag.lower() in ['true', '1']:
+    #     has_reserve_space = True
 
     input_shape = input.shape
     if data_layout == 'NCHW':

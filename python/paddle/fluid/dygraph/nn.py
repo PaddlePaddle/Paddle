@@ -1259,6 +1259,7 @@ class BatchNorm(layers.Layer):
                  do_model_average_for_mean_and_var=True,
                  use_global_stats=False,
                  trainable_statistics=False):
+        print("------------------1 dygraph nn.py Batch_norm")
         super(BatchNorm, self).__init__()
         self._param_attr = param_attr
         self._bias_attr = bias_attr
@@ -1309,11 +1310,14 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype)
         self._variance.stop_gradient = True
 
-        # self._has_reserve_space = False
+        self._has_reserve_space = False
         # if data_layout == 'NHWC':
         #     flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
         #     if flag is not None and flag.lower() in ['true', '1']:
         #         self._has_reserve_space = True
+        # flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
+        # if flag is not None and flag.lower() in ['true', '1']:
+        #     self._has_reserve_space = True
 
         self._in_place = in_place
         self._data_layout = data_layout
@@ -1389,7 +1393,7 @@ class BatchNorm(layers.Layer):
             "SavedVariance": [saved_variance]
         }
         if reserve_space is not None:
-            outputs["ReserveSpace"] = reserve_space
+            outputs["ReserveSpace"] = [reserve_space]
 
         self._helper.append_op(
             type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)

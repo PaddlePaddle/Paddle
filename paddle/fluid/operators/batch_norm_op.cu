@@ -30,7 +30,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = framework::DataLayout;  // not platform::DataLayout
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
@@ -72,31 +72,37 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
-    auto dtype = platform::CudnnDataType<T>::type;
-    const bool fast_nhwc_batch_norm =
-        test_mode ||
-        (dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent);
+    // auto dtype = platform::CudnnDataType<T>::type;
+    // const bool fast_nhwc_batch_norm =
+    //     test_mode ||
+    //     (dtype == CUDNN_DATA_HALF &&
+    //     FLAGS_cudnn_batchnorm_spatial_persistent);
 
-    auto compute_format =
-        fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
-            ? DataLayout::kNHWC
-            : DataLayout::kNCHW;
+    // // acceleration
+    // auto compute_format =
+    //     fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
+    //         ? DataLayout::kNHWC
+    //         : DataLayout::kNCHW;
 
     Tensor transformed_x(x->type());
     Tensor transformed_y(y->type());
-    if (data_layout == DataLayout::kNHWC &&
-        compute_format == DataLayout::kNCHW && x_dims.size() > 2) {
-      VLOG(3) << "Transform input tensor from NHWC to NCHW.";
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
-                                                           &transformed_x);
-      TransToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
-                                                          &transformed_x);
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, y,
-                                                           &transformed_y);
-    } else {
-      transformed_x.ShareDataWith(*x);
-      transformed_y.ShareDataWith(*y);
-    }
+
+    // !!!! change NCHW to NHWC !!!!
+    // if (data_layout == DataLayout::kNHWC &&
+    //     compute_format == DataLayout::kNCHW && x_dims.size() > 2) {
+    //   VLOG(3) << "Transform input tensor from NHWC to NCHW.";
+    //   ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
+    //                                                        &transformed_x);
+    //   TransToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
+    //                                                       &transformed_x);
+    //   ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, y,
+    //                                                        &transformed_y);
+    // } else {
+    //   transformed_x.ShareDataWith(*x);
+    //   transformed_y.ShareDataWith(*y);
+    // }
+    transformed_x.ShareDataWith(*x);
+    transformed_y.ShareDataWith(*y);
 
     // ------------------- cudnn descriptors ---------------------
     cudnnTensorDescriptor_t data_desc_;
@@ -114,20 +120,31 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                  << "CUDNN_BN_MIN_EPSILON instead.";
     }
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
-#if CUDNN_VERSION_MIN(7, 4, 0)
-    if (FLAGS_cudnn_batchnorm_spatial_persistent) {
+
+    // #if CUDNN_VERSION_MIN(7, 4, 0)
+    //     if (FLAGS_cudnn_batchnorm_spatial_persistent) {
+    //       mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+    //     } else {
+    //       mode_ = CUDNN_BATCHNORM_SPATIAL;
+    //     }
+    // #else
+    //     mode_ = CUDNN_BATCHNORM_SPATIAL;
+    // #endif  // CUDNN_VERSION_MIN(7, 4, 0)
+    bool training = !test_mode && !use_global_stats;
+    if (training && FLAGS_cudnn_batchnorm_spatial_persistent) {
+#if CUDNN_VERSION >= 7400
       mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+#else
+      mode_ = CUDNN_BATCHNORM_SPATIAL;
+#endif  // CUDNN_VERSION >= 7400
     } else {
       mode_ = CUDNN_BATCHNORM_SPATIAL;
     }
-#else
-    mode_ = CUDNN_BATCHNORM_SPATIAL;
-#endif  // CUDNN_VERSION_MIN(7, 4, 0)
 
     VLOG(3) << "Setting descriptors.";
     std::vector<int> dims;
     std::vector<int> strides;
-    if (compute_format == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::kNCHW) { /* compute_format */
       dims = {N, C, H, W, D};
       strides = {C * H * W * D, H * W * D, W * D, D, 1};
     } else {
@@ -153,7 +170,9 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     // 'test_mode' refers to inference mode;
     // 'use_global_stats' refers to using pre-trained models to train
     // besides the above two modes, we have the 'training' mode
-    bool training = !test_mode && !use_global_stats;
+    std::cout << "----------------0-- FLAG "
+              << FLAGS_cudnn_batchnorm_spatial_persistent
+              << ", data_layout: " << data_layout << std::endl;
     if (training) {
       // if MomentumTensor is set, use MomentumTensor value, momentum
       // is only used in this training branch
@@ -188,7 +207,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         framework::TensorCopy(*x, ctx.GetPlace(), y);
       } else {
         double this_factor = 1. - momentum;
-#if CUDNN_VERSION >= 7400 /* call the new API */
+// call new API
+#if CUDNN_VERSION >= 7401 /* call the new API */
         size_t workspace_size = 0;
         size_t reserve_space_size = 0;
         void *reserve_space_ptr = nullptr;
@@ -211,7 +231,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                     /*mode=*/mode_,
                     /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
                     /*xDesc=*/data_desc_,
-                    /*zDesc=*/data_desc_, /*nullptr*/
+                    /*zDesc=*/nullptr,
                     /*yDesc=*/data_desc_,
                     /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
                     /*activationDesc=*/nullptr,
@@ -232,6 +252,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
             ctx.GetPlace(), transformed_x.type(), reserve_space_size);
         workspace_ptr = workspace_tensor.mutable_data(
             ctx.GetPlace(), transformed_x.type(), workspace_size);
+        std::cout << "----------------1-- NEW API" << std::endl;
         PADDLE_ENFORCE_CUDA_SUCCESS(
             platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
                 handle, mode_, CUDNN_BATCHNORM_OPS_BN, CudnnDataType<T>::kOne(),
@@ -251,7 +272,10 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                     ctx.GetPlace()),
                 nullptr, workspace_ptr, workspace_size, reserve_space_ptr,
                 reserve_space_size));
-#else   /* call the old API */
+// #endif
+#else   //} else {  /* FLAGS_cudnn_batchnorm_spatial_persistent==0, call old API
+        //*/
+        std::cout << "----------------2-- OLD API" << std::endl;
         PADDLE_ENFORCE_CUDA_SUCCESS(
             platform::dynload::cudnnBatchNormalizationForwardTraining(
                 handle, mode_, CudnnDataType<T>::kOne(),
@@ -269,9 +293,10 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                     ctx.GetPlace()),
                 saved_variance->template mutable_data<BatchNormParamType<T>>(
                     ctx.GetPlace())));
-#endif  // CUDNN_VERSION >= 7400
+#endif  // // CUDNN_VERSION >= 7401
       }
-    } else { /* inference mode OR training using pre-trained model */
+    } else { /* !training mode */
+      std::cout << "----------------3-- Inference" << std::endl;
       const auto *est_mean = ctx.Input<Tensor>("Mean");
       const auto *est_var = ctx.Input<Tensor>("Variance");
       // Run inference mode.
@@ -318,12 +343,12 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
               est_var->template data<BatchNormParamType<T>>(), epsilon));
     }
 
-    if (data_layout == DataLayout::kNHWC &&
-        compute_format == DataLayout::kNCHW && x_dims.size() > 2) {
-      VLOG(3) << "Transform batchnorm output from NCHW to NHWC";
-      TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
-          ctx, &transformed_y, y);
-    }
+    // if (data_layout == DataLayout::kNHWC &&
+    //     compute_format == DataLayout::kNCHW && x_dims.size() > 2) {
+    //   VLOG(3) << "Transform batchnorm output from NCHW to NHWC";
+    //   TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
+    //       ctx, &transformed_y, y);
+    // }
     // clean when exit.
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));

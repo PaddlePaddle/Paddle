@@ -442,16 +442,20 @@ class TestBatchNormOpTraining(unittest.TestCase):
                 }
                 block.create_var(name="reserve_space", dtype='float16')
                 outputs["ReserveSpace"] = block.var('reserve_space')
-                # has_reserve_space = False
+                ##has_reserve_space = False
                 # if data_format == 'NHWC':
                 #     flag = os.environ.get(
                 #         'FLAGS_cudnn_batchnorm_spatial_persistent')
                 #     if flag is not None and flag.lower() in ['true', '1']:
                 #         has_reserve_space = True
-                # if has_reserve_space:
-                #     block.create_var(name="reserve_space", dtype='float16')
-                #     outputs["ReserveSpace"] = block.var('reserve_space')
-                #     del os.environ['FLAGS_cudnn_batchnorm_spatial_persistent']
+                ## flag = os.environ.get(
+                ##     'FLAGS_cudnn_batchnorm_spatial_persistent')
+                ## if flag is not None and flag.lower() in ['true', '1']:
+                ##     has_reserve_space = True
+                ## if has_reserve_space:
+                ##     block.create_var(name="reserve_space", dtype='float16')
+                ##     outputs["ReserveSpace"] = block.var('reserve_space')
+                ##     del os.environ['FLAGS_cudnn_batchnorm_spatial_persistent']
                 bn_op = block.append_op(
                     type="batch_norm",
                     inputs=inputs,
