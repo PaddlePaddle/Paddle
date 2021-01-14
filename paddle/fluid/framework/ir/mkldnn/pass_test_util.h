@@ -109,9 +109,9 @@ ProgramDesc BuildProgramDesc(const std::vector<std::string>& transient_vars,
 ///
 /// @return     Return true if all checks passed, otherwise false.
 ///
-bool RunPassAndAssert(Graph* graph, const std::string& from,
-                      const std::string& to, int removed_nodes_count,
-                      int added_nodes_count = 0);
+bool RunPassAndAssert(Graph* graph, const std::string& pass_name,
+                      const std::string& from, const std::string& to,
+                      int removed_nodes_count, int added_nodes_count = 0);
 
 }  // namespace test
 }  // namespace ir

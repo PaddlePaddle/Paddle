@@ -151,13 +151,13 @@ ProgramDesc BuildProgramDesc(const std::vector<std::string>& transient_vars,
   return prog;
 }
 
-bool RunPassAndAssert(Graph* graph, const std::string& from,
-                      const std::string& to, int removed_nodes_count,
-                      int added_nodes_count) {
+bool RunPassAndAssert(Graph* graph, const std::string& pass_name,
+                      const std::string& from, const std::string& to,
+                      int removed_nodes_count, int added_nodes_count) {
   if (!TestIsReachable(*graph, from, to)) return false;
 
   int original_nodes_num = graph->Nodes().size();
-  auto pass = PassRegistry::Instance().Get("batch_norm_act_fuse_pass");
+  auto pass = PassRegistry::Instance().Get(pass_name);
   pass->Apply(graph);
   int current_nodes_num = graph->Nodes().size();
 

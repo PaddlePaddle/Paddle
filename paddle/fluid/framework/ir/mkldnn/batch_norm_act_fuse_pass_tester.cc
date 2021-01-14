@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/batch_norm_act_fuse_pass.h"
 #include "paddle/fluid/framework/ir/mkldnn/pass_test_util.h"
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/errors.h"
 
@@ -63,9 +64,9 @@ TEST(FuseBatchNormActOneDNNPass, ThrowIsTestTrainableStats) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  EXPECT_THROW(
-      test::RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count),
-      paddle::platform::EnforceNotMet);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
+                                      "act_y", removed_nodes_count),
+               paddle::platform::EnforceNotMet);
 }
 
 TEST(FuseBatchNormActOneDNNPass, FuseIsTest) {
@@ -83,8 +84,8 @@ TEST(FuseBatchNormActOneDNNPass, FuseIsTest) {
   Graph graph(prog);
   constexpr int removed_nodes_count = 2;
 
-  EXPECT_TRUE(
-      test::RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count));
+  EXPECT_TRUE(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
+                                     "act_y", removed_nodes_count));
   EXPECT_TRUE(test::AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 0}}));
 
   for (const auto* node : graph.Nodes()) {
@@ -121,9 +122,9 @@ TEST(FuseBatchNormActOneDNNPass, ThrowTrainableStats) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  EXPECT_THROW(
-      test::RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count),
-      paddle::platform::EnforceNotMet);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
+                                      "act_y", removed_nodes_count),
+               paddle::platform::EnforceNotMet);
 }
 
 TEST(FuseBatchNormActOneDNNPass, AllAttrsFalse) {
@@ -147,9 +148,9 @@ TEST(FuseBatchNormActOneDNNPass, AllAttrsFalse) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  EXPECT_THROW(
-      test::RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count),
-      paddle::platform::EnforceNotMet);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
+                                      "act_y", removed_nodes_count),
+               paddle::platform::EnforceNotMet);
 }
 
 TEST(FuseBatchNormActOneDNNPass, ThrowUseMkldnn) {
@@ -174,9 +175,15 @@ TEST(FuseBatchNormActOneDNNPass, ThrowUseMkldnn) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  EXPECT_THROW(
-      test::RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count),
-      paddle::platform::EnforceNotMet);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
+                                      "act_y", removed_nodes_count),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseBatchNormActOneDNNPass, pass_op_version_check) {
+  ASSERT_TRUE(
+      paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
+          .IsPassCompatible("batch_norm_act_fuse_pass"));
 }
 
 }  // namespace ir
