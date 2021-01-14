@@ -13,9 +13,6 @@
 # limitations under the License.
 
 from collections import OrderedDict
-import operator
-import itertools
-
 from ..framework import Parameter
 from .layers import Layer
 
@@ -71,8 +68,7 @@ class Sequential(Layer):
 
     def _get_abs_index(self, idx):
         '''Get the absolute index '''
-        if not (-len(self) <= idx < len(self)):
-            raise IndexError('index {} is out of range'.format(idx))
+        assert -len(self) <= idx < len(self)
         if idx < 0:
             idx += len(self)
         return idx
