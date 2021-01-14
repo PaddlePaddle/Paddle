@@ -526,8 +526,8 @@ class MKLDNNDeviceContextThreadLocals {
     // know for converting MKL-DNN Tensor to non MKL-DNN
     paddle::framework::DataLayout cur_paddle_data_layout;
     // MKL-DNN stream used for execution of primitives (per-thread)
-    mkldnn::engine aengine;
-    mkldnn::stream astream;
+    mkldnn::engine cur_engine;
+    mkldnn::stream cur_stream;
 
     Body();
     void set_cur_mkldnn_session_id(size_t sid);

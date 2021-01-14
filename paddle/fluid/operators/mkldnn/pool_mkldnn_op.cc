@@ -51,7 +51,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto pool_p = handler.AcquireForwardPrimitive();
 
-    auto astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    const auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if ((ctx.Attr<bool>("is_test") == false) &&
         (ctx.Attr<std::string>("pooling_type") == "max")) {
       // Training
@@ -154,7 +154,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     auto pool_bwd_p = handler.AcquireBackwardPrimitive();
 
-    auto astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    const auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (pooling_type == "max") {
       // Max - pooling needs Workspace
       auto workspace_memory = handler.AcquireWorkspaceMemory();

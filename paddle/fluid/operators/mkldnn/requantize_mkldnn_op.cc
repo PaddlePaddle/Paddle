@@ -137,7 +137,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    auto astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    const auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
       platform::RecordEvent record_reorder("int_reorder",
                                            platform::EventRole::kUniqueOp);

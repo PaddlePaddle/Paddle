@@ -137,7 +137,7 @@ class FCPrimitiveFactory {
   }
 
   void Execute() {
-    auto astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    const auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (bias_) {
       fc_->execute(astream, {{MKLDNN_ARG_SRC, *input_},
                              {MKLDNN_ARG_WEIGHTS, *weights_},
@@ -280,7 +280,7 @@ class FCPrimitiveFactory {
     auto dst_mem = std::make_shared<memory>(dst_desc, engine_);
 
     auto reorder = mkldnn::reorder(src_mem, *dst_mem);
-    auto astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    const auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     {
       platform::RecordEvent record_reorder("int_reorder",
@@ -309,7 +309,7 @@ class FCPrimitiveFactory {
     attributes.set_output_scales(mask, scale_data);
     auto reorder = mkldnn::reorder(*src_mem, *dst_mem, attributes);
 
-    auto astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    const auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
       platform::RecordEvent record_reorder("int_reorder",
                                            platform::EventRole::kUniqueOp);

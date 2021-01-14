@@ -501,11 +501,11 @@ void MKLDNNDeviceContextThreadLocals::Body::log_lib_version(void) {
 }
 
 const mkldnn::engine& MKLDNNDeviceContextThreadLocals::Body::get_engine(void) {
-  return aengine;
+  return cur_engine;
 }
 
 const mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
-  return astream;
+  return cur_stream;
 }
 
 void MKLDNNDeviceContext::ResetBlobMap() {
