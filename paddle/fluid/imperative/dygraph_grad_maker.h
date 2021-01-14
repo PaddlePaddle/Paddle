@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -43,14 +44,16 @@ class TracedVarList : public std::vector<std::shared_ptr<T>> {
 
 class GradOpBaseMakerBase {
  public:
-  explicit GradOpBaseMakerBase(const std::string& type,
-                               const NameVarBaseMap& var_base_map_in,
-                               const NameVarBaseMap& var_base_map_out,
-                               const framework::AttributeMap& attrs)
+  explicit GradOpBaseMakerBase(
+      const std::string& type, const NameVarBaseMap& var_base_map_in,
+      const NameVarBaseMap& var_base_map_out,
+      const framework::AttributeMap& attrs,
+      const std::map<std::string, std::string>& inplace_map)
       : type_(type),
         var_base_map_in_(var_base_map_in),
         var_base_map_out_(var_base_map_out),
-        attrs_(attrs) {}
+        attrs_(attrs),
+        inplace_map_(inplace_map) {}
 
   virtual ~GradOpBaseMakerBase() = default;
 
@@ -141,6 +144,10 @@ class GradOpBaseMakerBase {
     return std::make_shared<GradOpNode>();
   }
 
+  const std::map<std::string, std::string>& GetInplaceMap() const {
+    return inplace_map_;
+  }
+
  private:
   template <TracedVarRole kRole>
   TracedVarList<VarBase, kRole> GetVarBaseList(const std::string& name,
@@ -192,6 +199,7 @@ class GradOpBaseMakerBase {
   const NameVarBaseMap& var_base_map_in_;
   const NameVarBaseMap& var_base_map_out_;
   const framework::AttributeMap& attrs_;
+  const std::map<std::string, std::string>& inplace_map_;
 };
 
 class TracedGradOp {

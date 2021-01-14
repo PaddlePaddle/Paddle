@@ -458,15 +458,13 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     return nullptr;
   }
 
-  auto grad_node = info.dygraph_grad_op_maker_(op.Type(), ins, outs, attrs);
+  auto grad_node =
+      info.dygraph_grad_op_maker_(op.Type(), ins, outs, attrs, inplace_map);
   if (grad_node && !grad_node->empty()) {
     for (auto& grad_op : *grad_node) {
       grad_op.SetId(OpBase::GenerateUniqueId());
       grad_op.SetPlace(place);
       ClearNoNeedBufferInputs(&grad_op);
-    }
-    if (!inplace_map.empty()) {
-      grad_node->SetInplaceGradNameMap(inplace_map);
     }
     return grad_node;
   } else {
