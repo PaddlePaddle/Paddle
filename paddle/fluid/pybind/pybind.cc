@@ -67,7 +67,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
 #ifdef PADDLE_WITH_ASCEND
-#include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -2852,8 +2851,6 @@ All parameter, weight, gradient are variables in Paddle.
   BindHeterClient(&m);
 #endif
 #ifdef PADDLE_WITH_ASCEND
-  BindAscendWrapper(&m);
-  BindAscendGraph(&m);
 #endif
 }
 }  // namespace pybind

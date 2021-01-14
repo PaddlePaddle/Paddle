@@ -41,8 +41,6 @@ set(PYBIND_SRCS
 
 
 if(WITH_ASCEND)
-  set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
-  set(PYBIND_SRCS ${PYBIND_SRCS} ascend_wrapper_py.cc)
 endif(WITH_ASCEND)
 
 if(WITH_GLOO)
