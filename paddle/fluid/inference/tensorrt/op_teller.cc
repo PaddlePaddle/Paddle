@@ -15,7 +15,6 @@
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
 namespace framework {
@@ -110,7 +109,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 };
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
-                    bool use_no_calib_int8) {
+                    bool use_no_calib_int8, bool with_dynamic_shape) {
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
        BOOST_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
@@ -137,8 +136,8 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
         return false;
       } else {
         std::vector<int> axis =
-            BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axis"));
-        if (!engine_->with_dynamic_shape() && axis[0] != 0) return false;
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
+        if (!with_dynamic_shape && axis[0] != 0) return false;
         if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       }
     }

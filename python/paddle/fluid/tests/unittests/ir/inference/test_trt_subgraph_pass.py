@@ -739,10 +739,5 @@ class TensorRTSubgraphPassTransposeTest(InferencePassTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
-class TensorRTSubgraphPassTransposeTestCase1(TensorRTSubgraphPassTransposeTest):
-    def append_transpose(self, data):
-        return fluid.layers.transpose(data, [3, 0, 1, 2])
-
-
 if __name__ == "__main__":
     unittest.main()

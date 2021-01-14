@@ -66,7 +66,7 @@ class OpTeller {
   }
 
   bool Tell(const std::string& op_type, const framework::OpDesc& desc,
-            bool use_no_calib_int8 = false);
+            bool use_no_calib_int8 = false, bool with_dynamic_shape = false);
 
  private:
   OpTeller();
