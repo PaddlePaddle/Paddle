@@ -140,7 +140,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    const auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
       platform::RecordEvent record_reorder("int_reorder",
                                            platform::EventRole::kUniqueOp);
