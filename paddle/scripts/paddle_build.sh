@@ -1069,7 +1069,7 @@ set -x
                 echo "The new unit test has the same name as the existing unit test"
                 cat "$PADDLE_ROOT/duplicate_ut"
                 echo "========================================"
-                exit 8;
+                exit 102;
                 set -x
             fi
         fi
