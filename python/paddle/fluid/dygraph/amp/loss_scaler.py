@@ -198,10 +198,6 @@ class AmpScaler(object):
         if self._found_inf:
             self._cache_founf_inf = True
         else:
-            if optimizer.__class__.__name__ in ["Lamb", "LambOptimizer"]:
-                from paddle.fluid.clip import ClipGradByGlobalNorm
-
-                optimizer._grad_clip = ClipGradByGlobalNorm(clip_norm=1.0)
             optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
             self._cache_founf_inf = False
 

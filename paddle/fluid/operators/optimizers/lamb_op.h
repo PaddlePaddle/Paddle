@@ -71,9 +71,6 @@ struct LambMomentUpdateFunctor {
     T mom1 = moment1_[i];
     T mom2 = moment2_[i];
     T p = param_[i];
-    T beta1_pow = *beta1_pow_;
-    T beta2_pow = *beta2_pow_;
-    T mom1_unbiased, mom2_unbiased;
 
     mom1 = beta1_ * mom1 + (1 - beta1_) * g;
     mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
@@ -81,13 +78,13 @@ struct LambMomentUpdateFunctor {
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
 
-    mom1_unbiased = mom1 / (1 - beta1_pow);
-    mom2_unbiased = mom2 / (1 - beta2_pow);
+    T mom1_unbiased = mom1 / (1 - *beta1_pow_);
+    T mom2_unbiased = mom2 / (1 - *beta2_pow_);
     trust_ratio_div_[i] =
         mom1_unbiased / (sqrt(mom2_unbiased) + epsilon_) + weight_decay_ * p;
     if (beta1_pow_out_ && beta2_pow_out_) {
-      beta1_pow_out_[0] = beta1_pow * beta1_;
-      beta2_pow_out_[0] = beta2_pow * beta2_;
+      beta1_pow_out_[0] = *beta1_pow_ * beta1_;
+      beta2_pow_out_[0] = *beta2_pow_ * beta2_;
     }
   }
 };
@@ -146,9 +143,6 @@ struct SparseLambMomentUpdateFunctor {
     T mom1 = moment1_[i];
     T mom2 = moment2_[i];
     T p = param_[i];
-    T beta1_pow = *beta1_pow_;
-    T beta2_pow = *beta2_pow_;
-    T mom1_unbiased, mom2_unbiased;
 
     mom1 = beta1_ * mom1 + (1 - beta1_) * g;
     mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
@@ -156,13 +150,13 @@ struct SparseLambMomentUpdateFunctor {
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
 
-    mom1_unbiased = mom1 / (1 - beta1_pow);
-    mom2_unbiased = mom2 / (1 - beta2_pow);
+    T mom1_unbiased = mom1 / (1 - *beta1_pow_);
+    T mom2_unbiased = mom2 / (1 - *beta2_pow_);
     trust_ratio_div_[i] =
         mom1_unbiased / (sqrt(mom2_unbiased) + epsilon_) + weight_decay_ * p;
     if (beta1_pow_out_ && beta1_pow_out_) {
-      beta1_pow_out_[0] = beta1_pow * beta1_;
-      beta2_pow_out_[0] = beta2_pow * beta2_;
+      beta1_pow_out_[0] = *beta1_pow_ * beta1_;
+      beta2_pow_out_[0] = *beta2_pow_ * beta2_;
     }
   }
 

@@ -165,34 +165,6 @@ class TestAmpScaler(unittest.TestCase):
                 np.allclose(outs_with_scaler[1][i][0].numpy(),
                             outs_no_scaler[1][i][0].numpy()), True)
 
-    def test_lamb_grad_clip(self):
-        inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
-
-        def run_simple_conv(inp_np, use_scaler=True):
-            paddle.seed(10)
-            paddle.framework.random._manual_program_seed(10)
-            with fluid.dygraph.guard():
-                model = SimpleConv(
-                    num_channels=3,
-                    num_filters=64,
-                    filter_size=7,
-                    stride=2,
-                    act='relu')
-                optimizer = paddle.optimizer.Lamb(
-                    learning_rate=0.01, parameters=model.parameters())
-                scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
-                data = fluid.dygraph.to_variable(inp_np)
-
-                out = model(data)
-                loss = fluid.layers.mean(out)
-                scaled_loss = scaler.scale(loss)
-                scaled_loss.backward()
-                optimize_ops, params_grads = scaler.minimize(optimizer,
-                                                             scaled_loss)
-            return optimize_ops, params_grads
-            self.assertEqual(optimizer._grad_clip,
-                             paddle.nn.ClipGradByGlobalNorm)
-
     def test_nan_inf(self):
         inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
         inp_np[0][1][2][3] = np.nan

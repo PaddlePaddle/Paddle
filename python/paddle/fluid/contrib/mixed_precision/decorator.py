@@ -16,7 +16,7 @@ from ... import core
 from ... import default_main_program
 from ... import default_startup_program
 from ... import framework
-from ... import layers, clip
+from ... import layers
 from ... import program_guard
 from ... import unique_name
 from . import fp16_utils
@@ -321,9 +321,6 @@ class OptimizerWithMixedPrecision(object):
                         self._decr_ratio,
                         name="update_loss_scaling")
 
-        if self._optimizer.__class__.__name__ in ['Lamb', 'LambOptimizer']:
-            self._optimizer._grad_clip = clip.ClipGradByGlobalNorm(
-                clip_norm=1.0)
         optimize_ops = self._optimizer.apply_gradients(params_grads)
         return optimize_ops
 

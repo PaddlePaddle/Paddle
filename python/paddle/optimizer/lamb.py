@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .optimizer import Optimizer
-from ..fluid import core, layers, program_guard
+from ..fluid import core, clip
 from ..fluid import framework
 from ..fluid.framework import Variable
 from ..fluid.regularizer import append_regularization_ops
@@ -39,6 +39,10 @@ class Lamb(Optimizer):
 
         v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2
 
+        m_t &= \\frac{m_t}{\\beta_1^t}
+
+        v_t &= \\frac{v_t}{\\beta_2^t}
+
         r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon}
 
         w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
@@ -62,7 +66,7 @@ class Lamb(Optimizer):
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default is :ref:`api_fluid_clip_GradientClipByGlobalNorm` .
         name(str|None): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
     Examples:
@@ -113,6 +117,8 @@ class Lamb(Optimizer):
         self._epsilon = epsilon
         self._lamb_weight_decay = lamb_weight_decay
         self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
+        if self._grad_clip is None:
+            self._grad_clip = clip.ClipGradByGlobalNorm(clip_norm=1.0)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
