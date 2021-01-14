@@ -225,7 +225,7 @@ def lamb_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
     return param_out, moment1_out, moment2_out, beta1_pow_out, beta2_pow_out
 
 
-class gTestSparseLambOp(unittest.TestCase):
+class TestSparseLambOp(unittest.TestCase):
     def setup(self, scope, place):
         beta1 = 0.78
         beta2 = 0.836
