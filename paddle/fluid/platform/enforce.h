@@ -20,7 +20,7 @@ limitations under the License. */
 
 #if !defined(_WIN32)
 #include <dlfcn.h>   // dladdr
-#include <unistd.h>  // sleep
+#include <unistd.h>  // sleep, usleep
 #else                // _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
@@ -284,15 +284,8 @@ inline std::string GetErrorSumaryString(StrType&& what, const char* file,
             "Summary:\n----------------------\n";
   }
   sout << string::Sprintf("%s (at %s:%d)", std::forward<StrType>(what), file,
-                          line);
-  if (FLAGS_call_stack_level < 2) {
-    // NOTE(chenweihang): if no C++ backtrace, give a hint to tell users
-    // how to show C++ backtrace, this hint only show in 2.0-rc verison,
-    // and will be removed in 2.0 official version
-    sout << "\n  [Hint: If you need C++ stacktraces for debugging, please set "
-            "`FLAGS_call_stack_level=2`.]";
-  }
-  sout << std::endl;
+                          line)
+       << std::endl;
   return sout.str();
 }
 
@@ -963,11 +956,19 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
     }                                                            \
   } while (0)
 
-inline void retry_sleep(unsigned millisecond) {
+inline void retry_sleep(unsigned milliseconds) {
 #ifdef _WIN32
-  Sleep(millisecond);
+  Sleep(milliseconds);
 #else
-  usleep(millisecond * 1000);
+  if (milliseconds < 1000) {
+    // usleep argument must be less than 1,000,000. Reference:
+    // https://pubs.opengroup.org/onlinepubs/7908799/xsh/usleep.html
+    usleep(milliseconds * 1000);
+  } else {
+    // clip to sleep in seconds because we can not and don't have to
+    // sleep for exact milliseconds
+    sleep(milliseconds / 1000);
+  }
 #endif
 }
 

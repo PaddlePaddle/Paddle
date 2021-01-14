@@ -71,7 +71,11 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
       desc.SetOutput("Out", {matmul_out->Name()});
       desc.SetAttr("x_num_col_dims", 1);
       desc.SetAttr("y_num_col_dims", 1);
-
+      if (matmul_op->Op()->HasAttr("enable_int8")) {
+        desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
+        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
+        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+      }
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(matmul_in_x, mul_node);
       IR_NODE_LINK_TO(matmul_in_y, mul_node);
@@ -137,7 +141,11 @@ void Squeeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetOutput("Out", {matmul_out->Name()});
       desc.SetAttr("x_num_col_dims", 1);
       desc.SetAttr("y_num_col_dims", 1);
-
+      if (matmul_op->Op()->HasAttr("enable_int8")) {
+        desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
+        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
+        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+      }
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(squeeze2_in_x, mul_node);
       IR_NODE_LINK_TO(matmul_in_y, mul_node);
@@ -205,12 +213,93 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetOutput("Out", {matmul_out->Name()});
       desc.SetAttr("x_num_col_dims", 1);
       desc.SetAttr("y_num_col_dims", 1);
-
+      if (matmul_op->Op()->HasAttr("enable_int8")) {
+        desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
+        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
+        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+      }
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(reshape2_in_x, mul_node);
       IR_NODE_LINK_TO(matmul_in_y, mul_node);
       IR_NODE_LINK_TO(mul_node, matmul_out);
       GraphSafeRemoveNodes(graph, {reshape2_op, matmul_in_x, matmul_op});
+      ++found_count;
+    }
+  };
+
+  gpd(graph, handler);
+  AddStatis(found_count);
+}
+
+void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+  std::string name_scope = "flatten2_matmul_fuse_pass";
+  FusePassBase::Init(name_scope, graph);
+
+  GraphPatternDetector gpd;
+  patterns::Flatten2Matmul fuse_pattern(gpd.mutable_pattern(), name_scope);
+  fuse_pattern();
+
+  int found_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "fuse flatten2+matmul to mul";
+    GET_IR_NODE_FROM_SUBGRAPH(flatten2_in_x, flatten2_in_x, fuse_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(flatten2_op, flatten2_op, fuse_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_in_x, matmul_in_x, fuse_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, fuse_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, fuse_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, fuse_pattern);
+    bool pattern_found = true;
+
+    size_t flatten2_in_nums = flatten2_op->inputs.size();
+    auto flatten2_in_x_shape = flatten2_in_x->Var()->GetShape();
+    size_t flatten2_in_x_rank = flatten2_in_x_shape.size();
+    int flatten2_axis =
+        BOOST_GET_CONST(int, flatten2_op->Op()->GetAttr("axis"));
+    // only convert matmul to mul when the flatten2 has a single input
+    // and the rank of input is 4 and the size of the output of matmul
+    // is 1.
+    pattern_found = pattern_found && flatten2_in_nums == 1 &&
+                    flatten2_in_x_rank == 4 &&
+                    (matmul_in_x->outputs).size() == 1;
+
+    bool transpose_X =
+        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
+    bool transpose_Y =
+        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
+    float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
+    size_t matmul_in_x_rank = (matmul_in_x->Var()->GetShape()).size();
+    size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
+    pattern_found = pattern_found && !transpose_X && !transpose_Y &&
+                    std::abs(alpha - 1.0) < 1e-5 && matmul_in_x_rank == 2 &&
+                    matmul_in_y_rank == 2;
+
+    std::vector<Node*>& next_ops = matmul_out->outputs;
+    // we further require the matmul op is followed by one elementwise
+    // add op.
+    pattern_found = pattern_found && next_ops.size() == 1 &&
+                    next_ops[0]->Name() == "elementwise_add";
+
+    if (pattern_found) {
+      OpDesc desc;
+      desc.SetType("mul");
+      desc.SetInput("X", {flatten2_in_x->Name()});
+      desc.SetInput("Y", {matmul_in_y->Name()});
+      desc.SetOutput("Out", {matmul_out->Name()});
+      desc.SetAttr("x_num_col_dims", flatten2_axis);
+      desc.SetAttr("y_num_col_dims", 1);
+      if (matmul_op->Op()->HasAttr("enable_int8")) {
+        desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
+        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
+        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+      }
+      auto mul_node = g->CreateOpNode(&desc);
+      IR_NODE_LINK_TO(flatten2_in_x, mul_node);
+      IR_NODE_LINK_TO(matmul_in_y, mul_node);
+      IR_NODE_LINK_TO(mul_node, matmul_out);
+      GraphSafeRemoveNodes(graph, {flatten2_op, matmul_in_x, matmul_op});
       ++found_count;
     }
   };
@@ -246,4 +335,13 @@ REGISTER_PASS_CAPABILITY(reshape2_matmul_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("matmul", 1)
             .EQ("reshape2", 0)
+            .EQ("mul", 0));
+
+REGISTER_PASS(flatten2_matmul_fuse_pass,
+              paddle::framework::ir::Flatten2MatmulFusePass);
+REGISTER_PASS_CAPABILITY(flatten2_matmul_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("matmul", 1)
+            .EQ("flatten2", 0)
             .EQ("mul", 0));

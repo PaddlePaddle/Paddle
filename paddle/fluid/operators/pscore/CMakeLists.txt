@@ -1,3 +1,7 @@
+if (WITH_PSLIB)
+    return()
+endif()
+
 include(operators)
 
 set(DISTRIBUTE_DEPS "")

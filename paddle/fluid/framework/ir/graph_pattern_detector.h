@@ -1017,6 +1017,21 @@ struct MatmulWithInputOps : public PatternBase {
   PATTERN_DECL_NODE(matmul_out);
 };
 
+// Flatten2 + Matmul
+// Forward pass.
+struct Flatten2Matmul : public PatternBase {
+  Flatten2Matmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "flatten2_matmul") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(flatten2_in_x);
+  PATTERN_DECL_NODE(flatten2_op);
+  PATTERN_DECL_NODE(matmul_in_x);
+  PATTERN_DECL_NODE(matmul_in_y);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+};
+
 // Concat op
 // Forward pass for concat.
 // concat_out is a result of the operator.
@@ -1441,6 +1456,21 @@ struct DeleteQuantDequantOpPattern : public PatternBase {
 
   PATTERN_DECL_NODE(any_op_out);
   PATTERN_DECL_NODE(quant_dequant_op_inscale);
+  PATTERN_DECL_NODE(quant_dequant_op);
+  PATTERN_DECL_NODE(quant_dequant_op_outscale);
+  PATTERN_DECL_NODE(quant_dequant_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
+struct DeleteQuantDequantFilterOpPattern : public PatternBase {
+  DeleteQuantDequantFilterOpPattern(PDPattern* pattern,
+                                    const std::string& name_scope)
+      : PatternBase(pattern, name_scope,
+                    "delete_quantdequant_filter_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(quant_dequant_op_x);
   PATTERN_DECL_NODE(quant_dequant_op);
   PATTERN_DECL_NODE(quant_dequant_op_outscale);
   PATTERN_DECL_NODE(quant_dequant_op_out);
