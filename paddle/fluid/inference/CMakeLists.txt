@@ -76,14 +76,20 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc
     ${mkldnn_quantizer_src_file})
 
-# Create shared inference library defaultly
-if(NOT WITH_DISTRIBUTE)
-  cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-      DEPS ${fluid_modules} analysis_predictor)
-else()
-  cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-      DEPS ${fluid_modules} analysis_predictor fleet ps_service)
-endif()
+# shared inference library deps
+set(SHARED_INFERENCE_DEPS ${fluid_modules} analysis_predictor)
+
+if (WITH_CRYPTO) 
+    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
+endif (WITH_CRYPTO)
+
+if (WITH_PSCORE)
+    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service)
+endif ()
+
+# Create shared inference library
+cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
+    DEPS ${SHARED_INFERENCE_DEPS})
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_fluid_shared ${os_dependency_modules})

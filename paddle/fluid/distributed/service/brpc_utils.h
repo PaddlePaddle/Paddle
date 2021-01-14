@@ -44,8 +44,8 @@ class DeviceContext;
 namespace paddle {
 namespace distributed {
 
-using MultiVarMsg = ::paddle::MultiVariableMessage;
-using VarMsg = ::paddle::VariableMessage;
+using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
+using VarMsg = ::paddle::distributed::VariableMessage;
 
 void SerializeToMultiVarMsgAndIOBuf(
     const std::string& message_name,

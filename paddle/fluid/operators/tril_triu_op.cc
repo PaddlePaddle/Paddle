@@ -99,6 +99,7 @@ class TrilTriuGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OPERATOR(tril_triu, ops::TrilTriuOp, ops::TrilTriuOpMaker,
                   ops::TrilTriuGradOpMaker<paddle::framework::OpDesc>,
                   ops::TrilTriuGradOpMaker<paddle::imperative::OpBase>);
@@ -107,10 +108,13 @@ REGISTER_OP_CPU_KERNEL(
     tril_triu, ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, plat::float16>);
 REGISTER_OP_CPU_KERNEL(
     tril_triu_grad,
     ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext,
+                              plat::float16>);

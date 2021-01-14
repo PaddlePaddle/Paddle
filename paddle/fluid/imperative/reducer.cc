@@ -22,6 +22,11 @@ std::shared_ptr<Reducer> Reducer::s_instance_ = NULL;
 
 // context is used to select the stream for concat
 void Group::ConcatTensors(const platform::CUDADeviceContext &context) {
+  VLOG(3) << "Before concat, set output tensor size is " << all_length_;
+  auto tensor = dense_contents_.GetMutable<framework::LoDTensor>();
+  tensor->Resize(framework::make_ddim({all_length_}))
+      .mutable_data(context.GetPlace(), dtype_);
+
   switch (dtype_) {
     case framework::proto::VarType::FP16:
       ConcatTensorsForAllReduce<platform::float16>(context, dense_tensors_,
@@ -88,23 +93,27 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
                  const std::vector<std::vector<size_t>> &group_indices,
                  const std::vector<bool> &is_sparse_gradient,
                  std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-                 const std::vector<size_t> &group_size_limits)
+                 const std::vector<size_t> &group_size_limits,
+                 bool find_unused_vars)
     : vars_(vars),
       group_indices_(group_indices),
       is_sparse_gradient_(is_sparse_gradient),
       parallel_ctx_(parallel_ctx),
-      group_size_limits_(group_size_limits) {
+      group_size_limits_(group_size_limits),
+      find_unused_vars_(find_unused_vars) {
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();
   // initialize groups
   InitializeGroups(group_indices);
   for (size_t global_var_index = 0; global_var_index < vars_.size();
        ++global_var_index) {
-    vars_[global_var_index]->SharedVar()->AddGradVarLeafBackwardHook(
+    auto var = vars_[global_var_index];
+    var->SharedVar()->AddGradVarLeafBackwardHook(
         std::unique_ptr<LambdaGradAccumulatorPostHook>(
             new LambdaGradAccumulatorPostHook([=](VariableWrapper *grad) {
-              this->AddDistHook(grad, global_var_index);
+              this->AddDistHook(global_var_index);
             })));
+    var_index_map_[var->GradVarBase()->SharedVar().get()] = global_var_index;
   }
   // create streams
   compute_stream_ = static_cast<platform::CUDADeviceContext *>(
@@ -169,8 +178,6 @@ void Reducer::InitializeDenseGroups(
     all_length += size;
 
     p_group->length_.push_back(size);
-    // for concat operator
-    p_group->dense_tensors_.push_back(framework::Tensor());
 
     // check the dtype and place, it must be same.
     auto dtype = var->DataType();
@@ -193,7 +200,6 @@ void Reducer::InitializeDenseGroups(
       place_ = place;
     }
   }
-  p_group->all_length_ = all_length;
 }
 
 // Each parameter will be initialized according to the group information.
@@ -228,10 +234,6 @@ void Reducer::InitializeGroups(
     } else {
       // process the dense gradient.
       InitializeDenseGroups(variable_indices_, &group);
-      // Alloc the continuous space
-      auto tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
-      tensor->Resize(framework::make_ddim({group.all_length_}))
-          .mutable_data(place_, group.dtype_);
     }
 
     // map variables to this group by VariableLocator
@@ -244,21 +246,144 @@ void Reducer::InitializeGroups(
     }
     group.variable_indices_ = std::move(variable_indices_);
     groups_.emplace_back(std::move(group));
-
     // Debug Message For Reducer
     VLOG(3) << "The Group[" << group_index << "]:";
     VLOG(3) << groups_.back();
   }
 }
 
+void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
+  PADDLE_ENFORCE_EQ(
+      node_deps_.empty(), true,
+      platform::errors::AlreadyExists("Op deps must be initialized here"));
+
+  std::queue<GradOpNode *> q;
+  std::unordered_set<GradOpNode *> visited;
+
+  for (auto pos = init_nodes.begin(); pos != init_nodes.end(); pos++) {
+    q.push(*pos);
+    visited.insert(*pos);
+  }
+
+  while (!q.empty()) {
+    auto *cur_node = q.front();
+    q.pop();
+
+    for (auto &cur_op : *cur_node) {
+      cur_op.EnforceHasInOut();
+    }
+
+    const auto &grad_pending_nodes = cur_node->GradPendingNodes();
+    for (auto &grad_pending_node : grad_pending_nodes) {
+      PADDLE_ENFORCE_NOT_NULL(
+          grad_pending_node,
+          platform::errors::NotFound("Grad pending node should not be null"));
+      ++node_deps_[grad_pending_node.get()];
+      if (visited.count(grad_pending_node.get()) == 0) {
+        visited.insert(grad_pending_node.get());
+        q.push(grad_pending_node.get());
+      }
+    }
+  }
+}
+
 // After each batch is calculated, the counter of each group(group.pending_)
 // and allreudce sequence counter(next_group_) will be cleaned up again.
-void Reducer::PrepareForBackward() {
+void Reducer::PrepareForBackward(
+    const std::vector<std::shared_ptr<imperative::VarBase>> &outputs) {
   VLOG(3) << "start reseting count..";
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
     group.pending_ = group.variable_indices_.size();
+    group.all_length_ = 0;
+    group.dense_tensors_.clear();
+    group.dense_tensors_.reserve(group.pending_);
+    group.sparse_contents_ = nullptr;
   });
+
+  PADDLE_ENFORCE_EQ(
+      all_group_ready_, false,
+      platform::errors::PreconditionNotMet(
+          "Please note that all ``forward`` outputs derived from the module "
+          "parameters must participate in the calculation of losses and "
+          "subsequent gradient calculations. If not, the wrapper will hang, "
+          "waiting for autograd to generate gradients for these parameters. "
+          "you can use detach or stop_gradient to make the unused parameters "
+          "detached from the autograd graph."));
+
+  // The first var to trigger the unused parameter
+  has_marked_unused_vars_ = false;
+  if (!find_unused_vars_) {
+    return;
+  }
+
+  // TODO(shenliang03) "find_unused_vars" interface will be exposed in the
+  // future to handle control flow to process unused parameters
+  find_unused_vars_ = false;
+
+  unused_vars_.clear();
+  node_deps_.clear();
+  std::queue<std::shared_ptr<GradOpNode>> q;
+  std::unordered_set<VariableWrapper *> var_visited;
+  std::unordered_set<GradOpNode *> init_nodes;
+
+  for (const auto &output : outputs) {
+    const auto &grad_node = output->GradVarBase()->GradNode();
+    if (grad_node == nullptr || output->OverridedStopGradient()) {
+      VLOG(3) << "Skip auto grad since there is no grad op or output is "
+                 "stop_gradient=True: "
+              << output->Name();
+      continue;
+    } else {
+      init_nodes.insert(grad_node.get());
+      var_visited.insert(output->SharedVar().get());
+      q.push(grad_node);
+    }
+  }
+
+  PrepareDeps(init_nodes);
+  // Traverse the autograd graph starting at the specified output
+  while (!q.empty()) {
+    auto cur_node = q.front();
+    q.pop();
+
+    for (const auto &cur_op : *cur_node) {
+      cur_op.EnforceHasInOut();
+      auto &bwd_outs = cur_op.GetOutsMap();
+      for (const auto &pair : bwd_outs) {
+        if (!pair.second.IsGrad()) {
+          continue;
+        }
+        for (auto &var : pair.second) {
+          if (!var || var->OverridedStopGradient()) {
+            continue;
+          } else {
+            var_visited.insert(var.get());
+          }
+        }
+      }
+    }
+    for (const auto &grad_pending_node : cur_node->GradPendingNodes()) {
+      PADDLE_ENFORCE_NOT_NULL(grad_pending_node,
+                              platform::errors::NotFound(
+                                  "Grad pending node should not be nullptr"));
+      auto iter = node_deps_.find(grad_pending_node.get());
+      if (iter == node_deps_.end()) {
+        continue;
+      }
+      if (--(iter->second) == 0) {
+        q.push(grad_pending_node);
+      }
+    }
+  }
+
+  for (const auto &it : var_index_map_) {
+    if (var_visited.count(it.first) == 0) {
+      unused_vars_.push_back(it.second);
+      VLOG(3) << "Var[" << it.second << "] [" << it.first->Name()
+              << "] is not used";
+    }
+  }
 }
 
 // Add hook function to each leaf node. When the gradient of a leaf node is
@@ -270,23 +395,50 @@ void Reducer::PrepareForBackward() {
 // counter is 0, it means that allreduce can be emitted, and
 // concat + allreduce + split is emitted in turn according to next_group_.
 // 3, FinalizeBackward: after the end, synchronize each stream.
-void Reducer::AddDistHook(VariableWrapper *var_warpper, size_t var_index) {
+void Reducer::AddDistHook(size_t var_index) {
+  VLOG(3) << "Var[" << var_index << "] ["
+          << vars_[var_index]->GradVarBase()->Name()
+          << "] arrived and triggered disthook";
+  if (!has_marked_unused_vars_) {
+    has_marked_unused_vars_ = true;
+    for (auto unused_index : unused_vars_) {
+      if (NeedRebuildGroup()) {
+        rebuild_vars_.push_back(vars_[unused_index]);
+        rebuild_var_indices_.push_back(unused_index);
+      }
+      MarkVarReady(unused_index, false);
+    }
+  }
+
+  if (NeedRebuildGroup()) {
+    rebuild_vars_.push_back(vars_[var_index]);
+    rebuild_var_indices_.push_back(var_index);
+  }
+  MarkVarReady(var_index, true);
+}
+
+void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
+  all_group_ready_ = true;
   const auto &var_locator = variable_locators_[var_index];
   auto group_index = var_locator.group_index;
   auto &group = groups_[group_index];
 
-  if (!has_rebuilt_group_) {
-    rebuild_vars_.push_back(vars_[var_index]);
-    rebuild_var_indices_.push_back(var_index);
-  }
+  if (is_used_var) {
+    auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
+    if (!group.is_sparse_) {
+      auto grad = var_warpper->MutableVar();
+      auto inside_group_index = var_locator.inside_group_index;
+      auto length = group.length_[inside_group_index];
 
-  if (!group.is_sparse_) {
-    // Only dense_contents_ need memory copy
-    MarkDenseVarReady(var_index, var_warpper);
-  } else {
-    MarkSparseVarReady(var_index, var_warpper);
+      auto tensor = grad->GetMutable<framework::LoDTensor>();
+      framework::Tensor tmp;
+      tmp.ShareDataWith(*tensor).Resize({static_cast<int64_t>(length)});
+      group.dense_tensors_.push_back(std::move(tmp));
+      group.all_length_ += length;
+    } else {
+      group.sparse_contents_ = var_warpper->MutableVar();
+    }
   }
-
   if (--group.pending_ == 0) {
     // can start allreduce
     MarkGroupReady(group_index);
@@ -297,27 +449,6 @@ void Reducer::AddDistHook(VariableWrapper *var_warpper, size_t var_index) {
   }
 }
 
-void Reducer::MarkDenseVarReady(size_t var_index,
-                                VariableWrapper *var_warpper) {
-  const auto &var_locator = variable_locators_[var_index];
-  auto group_index = var_locator.group_index;
-  auto inside_group_index = var_locator.inside_group_index;
-  auto &group = groups_[group_index];
-  auto length = group.length_[inside_group_index];
-
-  auto tensor = var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
-  group.dense_tensors_[inside_group_index].ShareDataWith(*tensor).Resize(
-      {static_cast<int64_t>(length)});
-}
-
-void Reducer::MarkSparseVarReady(size_t var_index,
-                                 VariableWrapper *var_warpper) {
-  const auto &var_locator = variable_locators_[var_index];
-  auto group_index = var_locator.group_index;
-  auto &group = groups_[group_index];
-  group.sparse_contents_ = var_warpper->MutableVar();
-}
-
 void Reducer::MarkGroupReady(size_t group_index) {
   if (group_index > next_group_) {
     VLOG(3) << "It will adjust the order of group in next batch automatically";
@@ -326,6 +457,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
 
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaEventRecord(group_events_[group_index].get(), compute_stream_));
+
   for (int i = 0; i < nrings_; ++i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(
         comm_streams_[i], group_events_[group_index].get(), 0));
@@ -336,29 +468,48 @@ void Reducer::MarkGroupReady(size_t group_index) {
     auto &group = groups_[next_group_];
     int run_order = next_group_ % nrings_;
     if (group.is_sparse_) {
-      VLOG(3) << "sparse group [" << next_group_ << "] start allreduce in ring["
-              << run_order << "]";
-      parallel_ctx_->AllReduceByStream(
-          *group.sparse_contents_, group.sparse_contents_, run_order, false);
+      if (group.sparse_contents_ != nullptr) {
+        VLOG(3) << "sparse group [" << next_group_
+                << "] start allreduce in ring[" << run_order << "]";
+        parallel_ctx_->AllReduceByStream(
+            *group.sparse_contents_, group.sparse_contents_, run_order, false);
+      } else {
+        VLOG(3) << "The sparse group[" << next_group_
+                << "] has no var to allreduce";
+      }
     } else {
-      VLOG(3) << "dense group [" << next_group_ << "] start allreduce in ring["
-              << run_order << "]";
-      // Select common commstream to concat tensors
-      // group.dense_tensors ---> group.dense_contents_
-      group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
+      if (!group.dense_tensors_.empty()) {
+        VLOG(3) << "dense group [" << next_group_
+                << "] start allreduce in ring[" << run_order << "]";
+        // Select common commstream to concat tensors
+        // group.dense_tensors ---> group.dense_contents_
+        group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
 
-      // Start allreduce
-      parallel_ctx_->AllReduceByStream(
-          group.dense_contents_, &(group.dense_contents_), run_order, false);
+        // Start allreduce
+        parallel_ctx_->AllReduceByStream(
+            group.dense_contents_, &(group.dense_contents_), run_order, false);
 
-      // Select common commstream to split tensors
-      // group.dense_contents_ ---> group.dense_tensors
-      group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
+        // Select common commstream to split tensors
+        // group.dense_contents_ ---> group.dense_tensors
+        group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
+      } else {
+        VLOG(3) << "The dense group[" << next_group_
+                << "] has no var to allreduce";
+      }
     }
   }
 }
 
 std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
+  VLOG(3) << "The order of parameter arrival: "
+          << string::join_strings(rebuild_var_indices_, ',');
+
+  PADDLE_ENFORCE_EQ(
+      rebuild_vars_.size(), vars_.size(),
+      platform::errors::PreconditionNotMet(
+          "Rebuild vars's number should be equal to original vars'number, "
+          "expect it to be %d, but got %d.",
+          vars_.size(), rebuild_vars_.size()));
   std::reverse(rebuild_vars_.begin(), rebuild_vars_.end());
   std::reverse(rebuild_var_indices_.begin(), rebuild_var_indices_.end());
   auto rebuild_group_indices =
@@ -372,6 +523,7 @@ std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
 }
 
 void Reducer::FinalizeBackward() {
+  all_group_ready_ = false;
   // Must prevent compute_stream_ starting until all comm streams have finished
   for (int i = 0; i < nrings_; ++i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -382,7 +534,7 @@ void Reducer::FinalizeBackward() {
         cudaStreamWaitEvent(compute_stream_, comm_events_[i].get(), 0));
   }
 
-  if (!has_rebuilt_group_) {
+  if (NeedRebuildGroup()) {
     VLOG(3) << "Start rebuilding the groups";
     auto rebuild_group_indices = RebuildGruops();
     auto rebuild_group_number = rebuild_group_indices.size();
