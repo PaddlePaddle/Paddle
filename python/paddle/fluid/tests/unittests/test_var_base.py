@@ -174,12 +174,21 @@ class TestVarBase(unittest.TestCase):
                 a = paddle.to_tensor(a, place=paddle.CUDAPinnedPlace())
                 self.assertEqual(a.place.__repr__(), "CUDAPinnedPlace")
 
-    def _test_move_to(self, in_var):
+    def _test_move_to(self, in_var, is_selected_row=False):
+        def _get_numpy_data(var, is_selected_row=False):
+            if is_selected_row:
+                np_data = np.array(var.value().get_selected_rows().get_tensor())
+            else:
+                np_data = var.numpy()
+            return np_data
+
         def _assert_move(var, dst_place, blocking):
-            src_data = var.numpy()
+            src_data = _get_numpy_data(var, is_selected_row)
             var._move_to(dst_place, blocking)
             self.assertEqual(str(var.place), str(dst_place))
-            self.assertTrue(np.array_equal(var.numpy(), src_data))
+
+            dst_data = _get_numpy_data(var, is_selected_row)
+            self.assertTrue(np.array_equal(src_data, dst_data))
 
         for blocking in [True, False]:
             # CPU -> CUDAPinned -> CUDA
@@ -207,7 +216,7 @@ class TestVarBase(unittest.TestCase):
         selected_rows.get_tensor().set(np.random.rand(3, 100), core.CPUPlace())
         selected_rows.set_height(10)
         selected_rows.set_rows([3, 5, 7])
-        self._test_move_to(in_var)
+        self._test_move_to(x, True)
 
     def test_to_variable(self):
         with fluid.dygraph.guard():
