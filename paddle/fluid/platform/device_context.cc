@@ -504,7 +504,7 @@ const mkldnn::engine& MKLDNNDeviceContextThreadLocals::Body::get_engine(void) {
   return cur_engine;
 }
 
-const mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
+mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
   return cur_stream;
 }
 

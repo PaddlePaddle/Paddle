@@ -538,7 +538,7 @@ class MKLDNNDeviceContextThreadLocals {
     framework::DataLayout get_cur_paddle_data_layout(void);
     void log_lib_version(void);
     const mkldnn::engine& get_engine(void);
-    const mkldnn::stream& get_stream(void);
+    mkldnn::stream& get_stream(void);
   };
   MKLDNNDeviceContextThreadLocals() = default;
   MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =

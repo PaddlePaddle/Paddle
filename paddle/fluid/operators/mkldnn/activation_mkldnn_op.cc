@@ -110,7 +110,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
       x->IsSharedBufferWith(*y) ? src_memory_p : handler.AcquireDstMemory(y);
   auto activation_p = handler.AcquireForwardPrimitive();
 
-  const auto &astream =
+  auto &astream =
       paddle::platform::MKLDNNDeviceContext::tls().get_stream();
   activation_p->execute(astream, {{MKLDNN_ARG_FROM, *src_memory_p},
                                   {MKLDNN_ARG_TO, *dst_memory_p}});
@@ -157,7 +157,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   auto diff_src_memory_p = handler.AcquireDiffSrcMemory(diff_x);
   auto activation_backward_p = handler.AcquireBackwardPrimitive();
 
-  const auto &astream =
+  auto &astream =
       paddle::platform::MKLDNNDeviceContext::tls().get_stream();
   activation_backward_p->execute(astream,
                                  {{MKLDNN_ARG_SRC, *src_memory_p},
