@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
+#include <queue>
+
 #ifdef PADDLE_WITH_PSLIB
 namespace paddle {
 namespace framework {
@@ -177,6 +179,180 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(
   }
 }
 
+// template <typename KeyType, typename ValType, typename GradType>
+// void HeterComm<KeyType, ValType, GradType>::walk_to_dest_all(
+//                                                         int max_depth,
+//                                                         int start_index,
+//                                                         int gpu_num,
+//                                                         int *h_left,
+//                                                         int *h_right,
+//                                                         char* src_key,
+//                                                         char* src_val) {
+//     int need_copy_val = 0;
+//     if (src_val) {
+//       need_copy_val = 1;
+//     }
+//     std::queue<Node> que;
+//     /*
+//       总体： BFS 并行拷贝
+//       1. 第一层 1 2 4 拷贝，再同步一次
+//       2. 第二层 5 3 6 先 1(sync)->5 2(sync)->3 2(sync)->6 ; 5 3 6 再同步一次
+//       3. 第三层 7 先2(sync)->3(sync)->7; 7再同步一次
+//     */
+//     for (int d = 0; d < max_depth; d++){
+
+//       auto* scr_key_shard = src_key;
+//       auto* src_val_shard = src_val;
+//       for (int i = 0; i < gpu_num; i++) {
+//         if (h_left[i] == -1 || h_right[i] == -1) {
+//           continue;
+//         }
+//         int size = path_[start_index][i].nodes_.size();
+//         if (size >= d+1) {
+//           auto &node = path_[start_index][i].nodes_[d];
+//           que.push(node);
+//           if (d == 0) {
+//             scr_key_shard = src_key + h_left[i];
+//             src_val_shard = src_val + h_left[i];
+//           } else {
+//             scr_key_shard = path_[start_index][i].nodes_[d-1].key_storage;
+//             src_val_shard = path_[start_index][i].nodes_[d-1].val_storage;
+//           }
+//           cudaMemcpyAsync(node.key_storage, scr_key_shard, node.key_bytes_len,
+//                           cudaMemcpyDefault, node.in_stream);
+//           if (need_copy_val) {
+//             cudaMemcpyAsync(node.val_storage, src_val_shard, node.val_bytes_len,
+//                             cudaMemcpyDefault, node.in_stream);
+//           }
+//         }
+//       }
+//       while(!que.empty()) {
+//         Node &tmp_node = que.front();
+//         que.pop();
+//         if (tmp_node.sync) {
+//           cudaStreamSynchronize(tmp_node.in_stream);
+//         }
+//       }
+//     }
+//   }
+
+template <typename KeyType, typename ValType, typename GradType>
+void HeterComm<KeyType, ValType, GradType>::walk_to_dest_all(
+                                                        int max_depth,
+                                                        int start_index,
+                                                        int gpu_num,
+                                                        int *h_left,
+                                                        int *h_right,
+                                                        char* src_key,
+                                                        char* src_val) {
+    int need_copy_val = 0;
+    if (src_val) {
+      need_copy_val = 1;
+    }
+    std::queue<Node> que;
+    std::queue<int> que_gpu;
+    std::queue<Node> que_sync;
+    std::queue<int> que_sync_gpu;
+    /*
+      拷贝树：
+      0->1->5
+      0->2->3->7
+      0->2->6
+      0->4
+      总体： 层次并行拷贝
+      1. 第一层 1 2 4 拷贝，再同步一次； 1(copy,sync) 2(copy,sync) 2(copy,sync) 2 (copy,sync)
+      2. 第二层 5 3 6 拷贝，再同步一次； 3(copy,sync)
+      3. 第三层 7 拷贝，再同步一次；
+    */
+    for (int d = 0; d < max_depth; d++){
+      
+      auto* scr_key_shard = src_key;
+      auto* src_val_shard = src_val;
+      VLOG(0) << "src_key" <<  (void*)src_key << "   h_left[0]:" << h_left[0];
+      for (int i = 0; i < gpu_num; i++) {
+        if (h_left[i] == -1 || h_right[i] == -1) {
+          continue;
+        }
+        int size = path_[start_index][i].nodes_.size();
+        
+        if (size == d + 1) {
+          VLOG(1) << "walk_to_dest start:" << start_index << " depth:" << d << "jingguo:" << path_[start_index][i].nodes_[d].gpu_num << " to :" << i << "  size:" << size;
+          que.push(path_[start_index][i].nodes_[d]);
+          que_gpu.push(i);
+          
+        } else if (size > d + 1){
+          VLOG(1) << "walk_to_dest start:" << start_index << " depth:" << d << "jingguo:" << path_[start_index][i].nodes_[d].gpu_num << " to :" << i << "  size:" << size;
+          que_sync.push(path_[start_index][i].nodes_[d]);
+          que_sync_gpu.push(i);
+        }
+      }
+      // async memcopy
+      int que_size = que.size();
+      for (int k = 0; k < que_size; k++){
+        Node &tmp_node = que.front();
+        int end_index = que_gpu.front();
+        que.push(tmp_node);
+        que.pop();
+        que_gpu.push(end_index);
+        que_gpu.pop();
+        VLOG(1)<< "async memcopy:" << tmp_node.gpu_num << "  to:" << end_index;
+        if (d == 0) {
+          scr_key_shard = src_key + h_left[end_index];
+          src_val_shard = src_val + h_left[end_index];
+          VLOG(1) << "src_key + h_left[" << end_index << "] = " << (void*)scr_key_shard;
+        } else {
+          scr_key_shard = path_[start_index][end_index].nodes_[d-1].key_storage;
+          src_val_shard = path_[start_index][end_index].nodes_[d-1].val_storage;
+          VLOG(1) << "d:" << d << " scr_key_shard:" << (void*)scr_key_shard;
+        }
+        cudaMemcpyAsync(tmp_node.key_storage, scr_key_shard, tmp_node.key_bytes_len,
+                        cudaMemcpyDefault, tmp_node.in_stream);
+        if (need_copy_val) {
+          cudaMemcpyAsync(tmp_node.val_storage, src_val_shard, tmp_node.val_bytes_len,
+                          cudaMemcpyDefault, tmp_node.in_stream);
+        }
+      }
+      // sync
+      while(!que.empty()) {
+        Node &tmp_node = que.front();
+        int end_index = que_gpu.front();
+        que.pop();
+        que_gpu.pop();
+        if (tmp_node.sync) {
+          cudaStreamSynchronize(tmp_node.in_stream);
+        }
+      }
+      // sync memcocy
+      while(!que_sync.empty()) {
+        Node &tmp_node = que_sync.front();
+        int end_index = que_sync_gpu.front();
+        que_sync.pop();
+        que_sync_gpu.pop();
+        VLOG(1)<< "sync memcopy:" << tmp_node.gpu_num << "  to:" << end_index;
+        if (d == 0) {
+          scr_key_shard = src_key + h_left[end_index];
+          src_val_shard = src_val + h_left[end_index];
+          VLOG(1) << "src_key + h_left[" << end_index << "] = " << (void*)scr_key_shard;
+        } else {
+          scr_key_shard = path_[start_index][end_index].nodes_[d-1].key_storage;
+          src_val_shard = path_[start_index][end_index].nodes_[d-1].val_storage;
+          VLOG(1) << "d:" << d << " scr_key_shard:" << (void*)scr_key_shard;
+        }
+        cudaMemcpyAsync(tmp_node.key_storage, scr_key_shard, tmp_node.key_bytes_len,
+                        cudaMemcpyDefault, tmp_node.in_stream);
+        if (need_copy_val) {
+          cudaMemcpyAsync(tmp_node.val_storage, src_val_shard, tmp_node.val_bytes_len,
+                          cudaMemcpyDefault, tmp_node.in_stream);
+        }
+        if (tmp_node.sync) {
+          cudaStreamSynchronize(tmp_node.in_stream);
+        }
+      }
+    }
+    std::queue<Node>().swap(que);
+    std::queue<Node>().swap(que_sync);
+  }
+
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
                                                          int end_index,
@@ -187,6 +363,7 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
     need_copy_val = 1;
   }
   auto& nodes = path_[start_index][end_index].nodes_;
+  VLOG(1) << "nodes size:" << nodes.size()  << "start_index:" << start_index << "end_index:" << end_index; 
   for (size_t i = 0; i < nodes.size(); ++i) {
     cudaMemcpyAsync(nodes[i].key_storage, src_key, nodes[i].key_bytes_len,
                     cudaMemcpyDefault, nodes[i].in_stream);
@@ -448,6 +625,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
              cudaMemcpyDeviceToHost);
 
   std::vector<std::shared_ptr<memory::Allocation>> local_storage;
+  size_t max_depth = 0;
 
   for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
@@ -456,16 +634,20 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     }
     create_storage(num, i, shard_len * sizeof(KeyType),
                    shard_len * sizeof(ValType), local_storage);
+    // BFS max depth
+    max_depth = std::max(max_depth, path_[num][i].nodes_.size());
   }
 
-  for (int i = 0; i < total_gpu; ++i) {
-    int shard_len = h_right[i] - h_left[i] + 1;
-    if (h_left[i] == -1 || h_right[i] == -1) {
-      continue;
-    }
-    walk_to_dest(num, i, reinterpret_cast<char*>(d_shard_keys_ptr + h_left[i]),
-                 NULL);
-  }
+  VLOG(1) << "reinterpret_cast<char*>(d_shard_keys_ptr + h_left[0]:" << reinterpret_cast<void*>(d_shard_keys_ptr + h_left[0]);
+  walk_to_dest_all(max_depth, num, total_gpu, h_left, h_right, reinterpret_cast<char*>(d_shard_keys_ptr), NULL);
+  // for (int i = 0; i < total_gpu; ++i) {
+  //   int shard_len = h_right[i] - h_left[i] + 1;
+  //   if (h_left[i] == -1 || h_right[i] == -1) {
+  //     continue;
+  //   }
+  //   walk_to_dest(num, i, reinterpret_cast<char*>(d_shard_keys_ptr + h_left[i]),
+  //                NULL);
+  // }
 
   for (int i = 0; i < total_gpu; ++i) {
     if (h_left[i] == -1) {
@@ -557,7 +739,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
              cudaMemcpyDeviceToHost);
 
   std::vector<std::shared_ptr<memory::Allocation>> local_storage;
-
+  size_t max_depth = 0;
   for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
     if (h_left[i] == -1 || h_right[i] == -1) {
@@ -565,17 +747,21 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
     }
     create_storage(gpu_num, i, shard_len * sizeof(KeyType),
                    shard_len * sizeof(GradType), local_storage);
+    // BFS max depth
+    max_depth = std::max(max_depth, path_[gpu_num][i].nodes_.size());
   }
 
-  for (int i = 0; i < total_gpu; ++i) {
-    int shard_len = h_right[i] - h_left[i] + 1;
-    if (h_left[i] == -1 || h_right[i] == -1) {
-      continue;
-    }
-    walk_to_dest(gpu_num, i,
-                 reinterpret_cast<char*>(d_shard_keys_ptr + h_left[i]),
-                 reinterpret_cast<char*>(d_shard_grads_ptr + h_left[i]));
-  }
+  VLOG(1) << "reinterpret_cast<char*>(d_shard_keys_ptr + h_left[0]:" << reinterpret_cast<void*>(d_shard_keys_ptr + h_left[0]);
+  walk_to_dest_all(max_depth, gpu_num, total_gpu, h_left, h_right, reinterpret_cast<char*>(d_shard_keys_ptr), NULL);
+  // for (int i = 0; i < total_gpu; ++i) {
+  //   int shard_len = h_right[i] - h_left[i] + 1;
+  //   if (h_left[i] == -1 || h_right[i] == -1) {
+  //     continue;
+  //   }
+  //   walk_to_dest(gpu_num, i,
+  //                reinterpret_cast<char*>(d_shard_keys_ptr + h_left[i]),
+  //                reinterpret_cast<char*>(d_shard_grads_ptr + h_left[i]));
+  // }
 
   for (int i = 0; i < total_gpu; ++i) {
     if (h_left[i] == -1 || h_right[i] == -1) {
