@@ -22,6 +22,9 @@
 #include "brpc/controller.h"
 #include "brpc/server.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor_util.h"
 
 namespace paddle {
 namespace distributed {
@@ -37,8 +40,8 @@ class DownpourPsClientService : public PsService {
     return 0;
   }
   virtual void service(::google::protobuf::RpcController *controller,
-                       const ::paddle::PsRequestMessage *request,
-                       ::paddle::PsResponseMessage *response,
+                       const PsRequestMessage *request,
+                       PsResponseMessage *response,
                        ::google::protobuf::Closure *done) override;
 
  protected:
@@ -140,11 +143,17 @@ class BrpcPsClient : public PSClient {
                                               std::vector<float> *values,
                                               std::vector<uint64_t> *keys,
                                               int pserver_idx);
-
+  virtual std::future<int32_t> push_global_step(int table_id,
+                                                int64_t *total_send_data,
+                                                void *done);
   virtual std::future<int32_t> flush();
 
   virtual std::future<int32_t> send_client2client_msg(
       int msg_type, int to_client_id, const std::string &msg) override;
+
+  // for local save sparse
+  virtual int32_t recv_and_save_table(const uint64_t table_id,
+                                      const std::string &path);
 
  private:
   virtual int32_t initialize() override;

@@ -19,7 +19,7 @@ import collections
 import math
 import os
 import warnings
-
+import logging
 import six
 import paddle.fluid as fluid
 from paddle.fluid import core
@@ -162,6 +162,8 @@ class CompileTimeStrategy(object):
 
         self._build_var_distributed()
 
+        self.tensor_table_dict = {}
+
         # for heter-ps save variables
         self.origin_merged_variables_pairs = list(self.merged_variables_pairs)
         self.origin_merged_dense_pairs = list(self.merged_dense_pairs)
@@ -239,6 +241,24 @@ class CompileTimeStrategy(object):
 
     def get_origin_ps_startup_program(self):
         return self.origin_ps_startup_program
+
+    def add_tensor_table(self,
+                         feed_var_name,
+                         fetch_var_name="",
+                         startup_program=None,
+                         main_program=None,
+                         tensor_table_class=""):
+        self.tensor_table_dict[feed_var_name] = {}
+        self.tensor_table_dict[feed_var_name]["feed_var_name"] = feed_var_name
+        self.tensor_table_dict[feed_var_name]["fetch_var_name"] = fetch_var_name
+        self.tensor_table_dict[feed_var_name][
+            "startup_program"] = startup_program
+        self.tensor_table_dict[feed_var_name]["main_program"] = main_program
+        self.tensor_table_dict[feed_var_name][
+            "tensor_table_class"] = tensor_table_class
+
+    def get_tensor_table_dict(self):
+        return self.tensor_table_dict
 
     def get_sparse_varname_on_ps(self, is_distributed, endpoint=None):
         if not endpoint:
@@ -523,15 +543,20 @@ class CompileTimeStrategy(object):
                     grad.merged_var.name]
                 var_numel = reduce(lambda x, y: x * y, var.shape[1:])
 
-                sparse_ctx = CommContext(
-                    grad_name, [grad_name], ["127.0.0.1:6071"], [var_numel],
-                    [grad_name], trainer_id, True, True, is_distributed, idx)
+                sparse_ctx = CommContext(grad_name, [grad_name],
+                                         ["127.0.0.1:6071"], [var_numel],
+                                         [grad_name], trainer_id, True, True,
+                                         is_distributed, idx, False)
                 idx += 1
                 send_ctx[sparse_ctx.var_name()] = sparse_ctx
 
             if len(send_ctx) == 0:
                 raise ValueError(
                     "GeoSGD require sparse parameters in your net.")
+
+            if len(self.tensor_table_dict) > 0 and self.role_maker._is_worker():
+                name, ctx = self._step_ctx(idx)
+                send_ctx[name] = ctx
 
             return send_ctx
         else:
@@ -559,7 +584,7 @@ class CompileTimeStrategy(object):
             aggregate = True
             dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], origin_varnames, trainer_id,
-                                    aggregate, False, False, idx)
+                                    aggregate, False, False, idx, False)
             send_ctx[grad_name] = dense_ctx
             idx += 1
         else:
@@ -571,9 +596,10 @@ class CompileTimeStrategy(object):
                 var_numel = reduce(lambda x, y: x * y, var.shape)
                 grad_name = origin_varname
                 aggregate = True
-                dense_ctx = CommContext(
-                    grad_name, [grad_name], ["127.0.0.1:6071"], [var_numel],
-                    [origin_varname], trainer_id, aggregate, False, False, idx)
+                dense_ctx = CommContext(grad_name, [grad_name],
+                                        ["127.0.0.1:6071"], [var_numel],
+                                        [origin_varname], trainer_id, aggregate,
+                                        False, False, idx, False)
                 send_ctx[grad_name] = dense_ctx
                 idx += 1
         return idx
@@ -615,10 +641,15 @@ class CompileTimeStrategy(object):
 
             sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
                                      [grad_name], trainer_id, True, True,
-                                     is_distributed, idx)
+                                     is_distributed, idx, False)
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
+
+        if len(self.tensor_table_dict) > 0 and self.role_maker._is_worker():
+            name, ctx = self._step_ctx(idx)
+            send_ctx[name] = ctx
+
         return send_ctx
 
     def get_the_one_recv_context(self,
@@ -632,6 +663,8 @@ class CompileTimeStrategy(object):
                 use_origin_program=use_origin_program)
             for idx, (name, ctx) in enumerate(send_ctx.items()):
                 if ctx.is_sparse():
+                    continue
+                if ctx.is_tensor_table():
                     continue
 
                 origin_grad_varnames = ctx.origin_varnames()
@@ -679,14 +712,14 @@ class CompileTimeStrategy(object):
                         var_distributed.append((g.name, ep, g.shape[0]))
         return var_distributed
 
-    def _step_ctx(self):
+    def _step_ctx(self, idx):
         name = STEP_COUNTER
         trainer_id = self.get_role_id()
         endpoints = self.get_ps_endpoints()
         sections = [1] * len(endpoints)
         names = [name] * len(endpoints)
         ctx = CommContext(name, names, endpoints, sections, [name], trainer_id,
-                          True, False, False)
+                          True, False, False, idx, True)
         return name, ctx
 
     def _create_vars_from_blocklist(self, block_list):
@@ -1116,6 +1149,89 @@ def _get_optimize_ops(_program):
                 continue
             opt_ops.append(op)
     return opt_ops
+
+
+def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
+    if hasattr(compiled_config.origin_main_program, 'lr_sheduler'):
+        from paddle.optimizer.lr import LRScheduler
+        assert isinstance(compiled_config.origin_main_program.lr_sheduler,
+                          LRScheduler), "must be LRScheduler"
+        ops = _get_optimize_ops(compiled_config.origin_main_program)
+        lr_param_dict = _get_lr_param_dict(ops)
+        lr_decay_main_program, lr_decay_startup_program, lr_name = _get_lr_sheduler_program(
+            compiled_config.origin_main_program.lr_sheduler, lr_param_dict,
+            lr_decay_steps)
+        compiled_config.add_tensor_table(
+            "@LR_DECAY_COUNTER@", lr_name, lr_decay_startup_program,
+            lr_decay_main_program, "GlobalStepTable")
+
+
+def _get_lr_param_dict(opt_ops):
+    lr_param_dict = {}
+    for op in opt_ops:
+        lr_name = op.input("LearningRate")[0]
+        param_name = op.input("Param")[0]
+        if lr_name not in lr_param_dict:
+            lr_param_dict[lr_name] = []
+        lr_param_dict[lr_name].append(param_name)
+    return lr_param_dict
+
+
+def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
+    schedler_decay = [
+        'NoamDecay', 'NaturalExpDecay', 'InverseTimeDecay', 'ExponentialDecay'
+    ]
+
+    from paddle.optimizer.lr import ExponentialDecay, NoamDecay, PiecewiseDecay, NaturalExpDecay, InverseTimeDecay
+    from paddle.fluid.layers.learning_rate_scheduler import exponential_decay, noam_decay, piecewise_decay, natural_exp_decay, inverse_time_decay
+
+    decay_main_program = fluid.framework.Program()
+    decay_startup_program = fluid.framework.Program()
+    lr_name = ""
+
+    if isinstance(lr_sheduler, ExponentialDecay):
+        with fluid.program_guard(decay_main_program, decay_startup_program):
+            lr = exponential_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
+            lr_name = lr.name
+            logging.warn(
+                "ExponentialDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
+                "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
+                "\t strategy.a_sync = True \n"
+                "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
+                % lr_decay_steps)
+    elif isinstance(lr_sheduler, NoamDecay):
+        with fluid.program_guard(decay_main_program, decay_startup_program):
+            lr = noam_decay(lr_sheduler.d_model, lr_sheduler.warmup_steps, 1.0)
+            lr_name = lr.name
+            logging.warn("NoamDecay is set, warmup steps is [ %d ]" %
+                         lr_sheduler.warmup_steps)
+    elif isinstance(lr_sheduler, NaturalExpDecay):
+        with fluid.program_guard(decay_main_program, decay_startup_program):
+            lr = natural_exp_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
+            lr_name = lr.name
+            logging.warn(
+                "NaturalExpDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
+                "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
+                "\t strategy.a_sync = True \n"
+                "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
+                % lr_decay_steps)
+    elif isinstance(lr_sheduler, InverseTimeDecay):
+        with fluid.program_guard(decay_main_program, decay_startup_program):
+            lr = inverse_time_decay(1.0, lr_decay_steps, lr_sheduler.gamma,
+                                    True)
+            lr_name = lr.name
+            logging.warn(
+                "InverseTimeDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
+                "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
+                "\t strategy.a_sync = True \n"
+                "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
+                % lr_decay_steps)
+    else:
+        raise ValueError(
+            "Not supported current LearningRate strategy, please use follow decay strategy: {}".
+            format(schedler_decay))
+
+    return decay_main_program, decay_startup_program, lr_name
 
 
 def _get_varname_parts(varname):

@@ -22,8 +22,11 @@ add_subdirectory(jit)
 
 
 if(WITH_DISTRIBUTE)
-    add_subdirectory(pscore)
     add_subdirectory(collective)
+endif()
+
+if (WITH_PSCORE)
+    add_subdirectory(pscore)
 endif()
 
 add_subdirectory(amp)
