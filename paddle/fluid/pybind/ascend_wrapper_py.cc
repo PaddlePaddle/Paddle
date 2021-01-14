@@ -33,6 +33,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
+#include "paddle/fluid/platform/enforce.h"
 
 using namespace ge;  // NOLINT
 namespace py = pybind11;
@@ -65,6 +66,8 @@ ge::Status ge_initialize(std::map<std::string, std::string> &options) {  // NOLI
   py::gil_scoped_release release;
   auto init_options=convert_map(options);
   ge::Status res = ge::GEInitialize(init_options);
+  PADDLE_ENFORCE_EQ(res, 
+		  ge::SUCCESS, platform::errors::Fatal("ge init error:%d", res));
   py::gil_scoped_acquire acquire;
   return res;
 }
@@ -225,7 +228,7 @@ void BindAscendGraph(py::module *m) {
 
   // 类封装
   py::class_<Session>(*m, "GESession")
-      .def(py::init([](const std::map<ge::string, ge::string> & options) {
+      .def(py::init([](const std::map<std::string, std::string> & options) {
         return std::unique_ptr<ge::Session>(new ge::Session(convert_map(options)));
         }))
       .def("add_graph",

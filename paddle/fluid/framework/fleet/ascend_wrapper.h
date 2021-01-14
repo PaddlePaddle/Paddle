@@ -64,9 +64,12 @@ class AscendInstance {
   }
 
   void InitGlobalResouces() {
-	  std::cout << "Begin InitGlobalResouces";
+	  LOG(INFO) << "Begin InitGlobalResouces";
 	  ss_ = new ge::Session(GetDefaultInitSessionOptions());
-	  VLOG(0) << "End InitGlobalResouces";
+	  if (ss_ == nullptr){
+		  LOG(FATAL) << "new session error:" << ss_;
+	  }
+	  LOG(INFO) << "End InitGlobalResouces";
   }
 
   static std::shared_ptr<AscendInstance> GetInstance() {
@@ -78,7 +81,6 @@ class AscendInstance {
   }
 
   void AddAscendSubgraph(int graph_idx, const AscendGraphDesc &graph) {
-    // ascend_graphs_.emplace_back(graph);
     ge::Status status = ss_->AddGraph(graph_idx, graph);
     PADDLE_ENFORCE_EQ(
         status, ge::SUCCESS,
