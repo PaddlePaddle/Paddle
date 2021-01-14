@@ -165,11 +165,7 @@ class CommonAccessor:
                     shape = self.get_shard(total_dims, pserver_num, pserver_id)
             dims.append(shape)
 
-            if formal_name == "Param":
-                initializer = "uniform_random&0&-1.0&1.0"
-            else:
-                initializer = self.get_initializer_attr(param.name,
-                                                        startup_program)
+            initializer = self.get_initializer_attr(param.name, startup_program)
             initializers.append(initializer)
 
         for (attr_varname, type_) in attr_varnames:
