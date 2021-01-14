@@ -569,7 +569,7 @@ class TransformerEncoderLayer(Layer):
                 for more details.
         """
         incremental_cache = self.self_attn.gen_cache(
-            memory, type=self.self_attn.Cache)
+            src, type=self.self_attn.Cache)
         return incremental_cache
 
 
@@ -674,7 +674,7 @@ class TransformerEncoder(Layer):
             produced by `TransformerEncoderLayer.gen_cache`. See 
             `TransformerEncoderLayer.gen_cache` for more details.
         """
-        cache = [layer.gen_cache(memory) for layer in self.layers]
+        cache = [layer.gen_cache(src) for layer in self.layers]
         return cache
 
 
