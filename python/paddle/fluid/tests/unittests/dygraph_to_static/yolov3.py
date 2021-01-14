@@ -76,7 +76,7 @@ cfg.label_smooth = True
 # Model options
 #
 # input size
-cfg.input_size = 608
+cfg.input_size = 224 if sys.platform == 'darwin' else 608
 # pixel mean values
 cfg.pixel_means = [0.485, 0.456, 0.406]
 # pixel std values

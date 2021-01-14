@@ -14,6 +14,8 @@
 
 from . import optimizer
 from ..fluid.contrib import reader
+from ..fluid import load_op_library
+from ..fluid.layer_helper import LayerHelper
 
 __all__ = []
 __all__ += ["reader"]

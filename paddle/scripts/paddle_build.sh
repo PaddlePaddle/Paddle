@@ -249,6 +249,7 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
+        -DWITH_PSCORE=${distibuted_flag}
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
@@ -284,6 +285,7 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
+        -DWITH_PSCORE=${distibuted_flag} \
         -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=develop \
         -DWITH_XPU=${WITH_XPU:-OFF} \
@@ -992,8 +994,14 @@ function card_test() {
         if (( $cardnumber > $CUDA_DEVICE_COUNT )); then
             cardnumber=$CUDA_DEVICE_COUNT
         fi
+        if (( $# > 2 )); then
+            parallel_job=$3
+        else
+            parallel_job=1
+        fi
     else
         cardnumber=$CUDA_DEVICE_COUNT
+        parallel_job=1
     fi
 
     if [[ "$testcases" == "" ]]; then
@@ -1003,6 +1011,9 @@ function card_test() {
     trap 'caught_error' CHLD
     tmpfile_rand=`date +%s%N`
     NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
+    echo "****************************************************************"
+    echo "***These unittests run $parallel_job job each time with $cardnumber GPU***"
+    echo "****************************************************************"
     for (( i = 0; i < $NUM_PROC; i++ )); do
         # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
         # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
@@ -1017,15 +1028,15 @@ function card_test() {
         tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V --timeout 120 | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else  
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         fi
     done
@@ -1074,13 +1085,23 @@ set -x
 set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
+        single_card_tests_eight_parallel='^job$'    # cases list which would run 8 job each time with single GPU
+        single_card_tests_tetrad_parallel='^job$'   # cases list which would run 4 job each time with single GPU
+        single_card_tests_non_parallel_1='^job$'    # cases list which would run 1 job each time with single GPU
+        single_card_tests_non_parallel_2='^job$'    # cases list which would run 1 job each time with single GPU
+        single_card_tests='^job$' # all cases list which would take one graph card
         exclusive_tests=''        # cases list which would be run exclusively
-        single_card_tests=''      # cases list which would take one graph card
         multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
         is_nightly=''             # indicate whether the case will only run at night
-        get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list 
+        get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list
+
+        UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+        output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
+        eight_parallel_job=$(echo $output | cut -d ";" -f 1)
+        tetrad_parallel_jog=$(echo $output | cut -d ";" -f 2)
+        non_parallel_job=$(echo $output | cut -d ";" -f 3)
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -1134,20 +1155,16 @@ set +x
                         multiple_card_tests="$multiple_card_tests|^$testcase$"
                     fi
                 else
-                    if [[ "${#single_card_tests}" -gt 10000 ]];then
-                        if [[ "$single_card_tests_1" == "" ]]; then 
-                            single_card_tests_1="^$testcase$"
-                        else
-                            single_card_tests_1="$single_card_tests_1|^$testcase$"
-                        fi
-                        continue
-                    fi
-
-                    if [[ "$single_card_tests" == "" ]]; then
-                        single_card_tests="^$testcase$"
+                    if [[ $(echo $eight_parallel_job | grep $testcase) != "" ]]; then
+                        single_card_tests_eight_parallel="$single_card_tests_eight_parallel|^$testcase$"
+                    elif [[ $(echo $tetrad_parallel_jog | grep $testcase) != "" ]]; then
+                        single_card_tests_tetrad_parallel="$single_card_tests_tetrad_parallel|^$testcase$"
+                    elif [[ "${#single_card_tests_non_parallel_1}" -gt 10000 ]];then
+                        single_card_tests_non_parallel_2="$single_card_tests_non_parallel_2|^$testcase$"
                     else
-                        single_card_tests="$single_card_tests|^$testcase$"
+                        single_card_tests_non_parallel_1="$single_card_tests_non_parallel_1|^$testcase$"
                     fi
+                    single_card_tests="$single_card_tests|^$testcase$"
                 fi
                 is_exclusive=''
                 is_multicard=''
@@ -1156,10 +1173,12 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        card_test "$single_card_tests" 1    # run cases with single GPU
-        card_test "$single_card_tests_1" 1    # run cases with single GPU
-        card_test "$multiple_card_tests" 2  # run cases with two GPUs
-        card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        card_test "$single_card_tests_eight_parallel" 1 8     # run cases 8 job each time with single GPU
+        card_test "$single_card_tests_tetrad_parallel" 1 4    # run cases 4 job each time with single GPU
+        card_test "$single_card_tests_non_parallel_1" 1       # run cases 1 job each time with single GPU
+        card_test "$single_card_tests_non_parallel_2" 1       # run cases 1 job each time with single GPU
+        card_test "$multiple_card_tests" 2    # run cases with two GPUs
+        card_test "$exclusive_tests"          # run cases exclusively, in this cases would be run with 4/8 GPUs
         collect_failed_tests
         rm -f $tmp_dir/*
         exec_times=0
@@ -1187,9 +1206,7 @@ set +x
                         for line in ${retry_unittests[@]} ;
                             do
 
-                                one_card_tests=$single_card_tests'|'$single_card_tests_1
-
-                                read tmp_one_tmp <<< "$( echo $one_card_tests | grep -oEi $line )"
+                                read tmp_one_tmp <<< "$( echo $single_card_tests | grep -oEi $line )"
                                 read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
                                 read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
 
