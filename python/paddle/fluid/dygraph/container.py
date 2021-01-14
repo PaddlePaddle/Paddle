@@ -69,14 +69,13 @@ class Sequential(Layer):
             for idx, layer in enumerate(layers):
                 self.add_sublayer(str(idx), layer)
 
-    def _get_item_by_idx(self, iterator, idx):
-        """Get the idx-th item of the iterator"""
-        size = len(self)
-        idx = operator.index(idx)
-        if not -size <= idx < size:
+    def _get_abs_index(self, idx):
+        '''Get the absolute index '''
+        if not (-len(self) <= idx < len(self)):
             raise IndexError('index {} is out of range'.format(idx))
-        idx %= size
-        return next(itertools.islice(iterator, idx, None))
+        if idx < 0:
+            idx += len(self)
+        return idx
 
     def __getitem__(self, idx):
         r'''get 
@@ -88,7 +87,7 @@ class Sequential(Layer):
         elif isinstance(idx, slice):
             return self.__class__(*list(self._sub_layers.items())[idx])
         else:
-            return self._get_item_by_idx(self._sub_layers.values(), idx)
+            return self._sub_layers[str(self._get_abs_index(idx))]
 
     def __setitem__(self, idx, layer):
         r'''set
@@ -98,7 +97,7 @@ class Sequential(Layer):
         if isinstance(idx, str):
             return setattr(self, str(idx), layer)
         else:
-            key = self._get_item_by_idx(self._sub_layers.keys(), idx)
+            key = list(self._sub_layers.keys())[self._get_abs_index(idx)]
             return setattr(self, key, layer)
 
     def __delitem__(self, idx):
@@ -110,7 +109,7 @@ class Sequential(Layer):
             for key in list(self._sub_layers.keys())[idx]:
                 delattr(self, key)
         elif isinstance(idx, int):
-            key = self._get_item_by_idx(self._sub_layers.keys(), idx)
+            key = list(self._sub_layers.keys())[self._get_abs_index(idx)]
             delattr(self, key)
         else:
             delattr(self, idx)
