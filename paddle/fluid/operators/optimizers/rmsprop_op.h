@@ -23,6 +23,21 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+
+static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
+  const float* tensor_data = tensor->data<float>();
+  framework::Tensor cpu_tensor;
+  if (platform::is_gpu_place(tensor->place())) {
+    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    tensor_data = cpu_tensor.data<float>();
+  }
+  if (platform::is_xpu_place(tensor->place())) {
+    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    tensor_data = cpu_tensor.data<float>();
+  }
+  return tensor_data[0];
+}
+
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
