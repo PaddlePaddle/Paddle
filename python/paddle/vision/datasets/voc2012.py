@@ -25,8 +25,7 @@ from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ["VOC2012"]
 
-VOC_URL = 'http://host.robots.ox.ac.uk/pascal/VOC/voc2012/\
-VOCtrainval_11-May-2012.tar'
+VOC_URL = 'https://dataset.bj.bcebos.com/voc/VOCtrainval_11-May-2012.tar'
 
 VOC_MD5 = '6cd6e144f989b92b3379bac3b3de84fd'
 SET_FILE = 'VOCdevkit/VOC2012/ImageSets/Segmentation/{}.txt'
