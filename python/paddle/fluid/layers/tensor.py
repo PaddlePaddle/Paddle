@@ -563,9 +563,9 @@ def assign(input, output=None):
                             [3, 4],
                             [1, 3]]).astype(np.int64)
           result1 = paddle.zeros(shape=[3, 3], dtype='float32')
-          paddle.nn.functional.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
-          result2 = paddle.nn.functional.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result3 = paddle.nn.functional.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
+          result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
@@ -1669,7 +1669,7 @@ def eye(num_rows,
         expand_times = batch_shape + [1, 1]
         if in_dygraph_mode():
             out = core.ops.reshape(out, 'shape', re_shape)
-            return core.ops.expand(out, 'expand_times', expand_times)
+            return core.ops.expand(out, None, 'expand_times', expand_times)
 
         if not isinstance(batch_shape, list):
             raise TypeError("batch_shape should be a list")

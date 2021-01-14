@@ -35,9 +35,9 @@ limitations under the License. */
  * phase in the inference service.
  */
 
-#include <gflags/gflags.h>
 #include <string>
 #include <vector>
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 #include "paddle/fluid/inference/analysis/flags.h"
 

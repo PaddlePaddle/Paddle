@@ -64,7 +64,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "The output variable %s of CoalesceTensor operator "
                             "is not LoDTensor.",
-                            in_var_names[i]));
+                            out_var_names[i]));
     }
 
     auto in_tensors = context.MultiInput<framework::LoDTensor>("Input");
@@ -123,6 +123,22 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
       math::SetConstant<DeviceContext, T> set_constant;
       set_constant(dev_ctx, fused_tensor,
                    static_cast<T>(context.Attr<float>("constant")));
+    } else if (context.Attr<bool>("persist_output")) {
+      for (size_t i = 0; i < out_var_names.size(); ++i) {
+        size_t len = static_cast<size_t>(out_tensors[i]->numel());
+        auto sub_tensor = fused_tensor->Slice(
+            static_cast<int64_t>(offset), static_cast<int64_t>(offset + len));
+        // some var may not persistable, or persistable var may not init
+        if (out_tensors[i]->IsInitialized()) {
+          framework::TensorCopy(*out_tensors[i], context.GetPlace(), dev_ctx,
+                                &sub_tensor);
+        }
+        offset +=
+            use_align
+                ? platform::Alignment(len * size_of_dtype, context.GetPlace()) /
+                      size_of_dtype
+                : len;
+      }
     }
 
     // Make the outputs point to the continuous space.
@@ -225,6 +241,9 @@ class CoalesceTensorOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("set_constant",
                   "Whether to set the Output with a constant value.")
         .SetDefault(false);
+    AddAttr<bool>("persist_output",
+                  "Whether to persist the original Output value.")
+        .SetDefault(false);
     AddAttr<float>("constant",
                    "If set_constant is true, the constant value will be used "
                    "to set the Output.")
@@ -250,7 +269,8 @@ Note that, the dtype of Input should be the same, and the dim of Input
 and Output should equal.
 The tensors of Input and Output could be the same or different. And
 coalesce_tensor allows copying the value of Input to Output, or
-setting the Output with a constant value.
+setting the Output with a constant value, or persist the original Output
+value.
 
 )DOC");
   }

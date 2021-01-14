@@ -714,6 +714,10 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
     VectorToRepeated(v, attr_->mutable_longs());
   }
 
+  void operator()(const std::vector<double> &v) const {
+    VectorToRepeated(v, attr_->mutable_float64s());
+  }
+
   void operator()(boost::blank) const {
     PADDLE_THROW(platform::errors::Unavailable(
         "Unsupported calling method of SetAttrDescVisitor object for "
