@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
 namespace framework {
@@ -102,6 +103,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "scale",
       "stack",
       "transpose2",
+      "transpose",
   };
 };
 
@@ -128,8 +130,15 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
           (padding_algorithm == "SAME" && op_type != "pool2d"))
         return false;
     }
-    if (op_type == "transpose2") {
-      if (!desc.HasAttr("axis")) return false;
+    if (op_type == "transpose2" || op_type == "transpose") {
+      if (!desc.HasAttr("axis")) {
+        return false;
+      } else {
+        std::vector<int> axis =
+            BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axis"));
+        if (!engine_->with_dynamic_shape() && axis[0] != 0) return false;
+        if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      }
     }
     if (op_type == "matmul") {
       auto* block = desc.Block();

@@ -53,15 +53,7 @@ class TransposeOpConverter : public OpConverter {
     int dims = input->getDimensions().nbDims;
     std::vector<int> axis =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axis"));
-    PADDLE_ENFORCE_LT(axis.size(), nvinfer1::Dims::MAX_DIMS,
-                      platform::errors::InvalidArgument(
-                          "The size of transpose op's axis should not exceed "
-                          "the max dims(currently %d) of TRT, but got %d",
-                          nvinfer1::Dims::MAX_DIMS, axis.size()));
     if (!engine_->with_dynamic_shape()) {
-      PADDLE_ENFORCE_EQ(axis[0], 0, platform::errors::InvalidArgument(
-                                        "TRT static shape mode doesn't support "
-                                        "transposing the batch dimension."));
       for (size_t i = 1; i < axis.size(); i++) {
         axis[i]--;
       }
@@ -72,9 +64,10 @@ class TransposeOpConverter : public OpConverter {
       int j = engine_->with_dynamic_shape() ? i : i + 1;
       perm.order[i] = axis[j];
     }
-    PADDLE_ENFORCE_EQ(
-        IsValidPermutation(dims, perm), true,
-        platform::errors::InvalidArgument("Invalid permutation in transpose."));
+    PADDLE_ENFORCE_EQ(IsValidPermutation(dims, perm), true,
+                      platform::errors::InvalidArgument(
+                          "Invalid permutation in transpose. Input tensor: %s",
+                          op_desc.Input("X")[0]));
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     layer->setFirstTranspose(perm);
 
