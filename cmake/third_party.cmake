@@ -279,7 +279,7 @@ if(WITH_ASCEND)
     list(APPEND third_party_deps extern_ascend)
 endif (WITH_ASCEND)
 
-if (WITH_DISTRIBUTE)
+if (WITH_PSCORE)
     include(external/snappy)
     list(APPEND third_party_deps extern_snappy)
 

@@ -1,7 +1,4 @@
-if (WITH_PSLIB)
-    return()
-endif()
-if(NOT WITH_DISTRIBUTE)
+if(NOT WITH_PSCORE)
     return()
 endif()
 

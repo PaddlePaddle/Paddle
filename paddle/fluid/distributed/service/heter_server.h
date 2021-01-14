@@ -39,8 +39,8 @@ DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
-using MultiVarMsg = ::paddle::MultiVariableMessage;
-using VarMsg = ::paddle::VariableMessage;
+using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
+using VarMsg = ::paddle::distributed::VariableMessage;
 
 class HeterService;
 typedef int32_t (HeterService::*serviceHandlerFunc)(
@@ -51,7 +51,7 @@ typedef std::function<void(void*)> HeterRpcCallbackFunc;
 typedef std::function<int(const MultiVarMsg*, MultiVarMsg*, brpc::Controller*)>
     HeterServiceHandler;
 
-class HeterService : public ::paddle::PsService {
+class HeterService : public ::paddle::distributed::PsService {
  public:
   HeterService() {
     _service_handler_map[PS_STOP_SERVER] = &HeterService::stop_heter_worker;
@@ -62,8 +62,8 @@ class HeterService : public ::paddle::PsService {
   virtual ~HeterService() {}
 
   virtual void service(::google::protobuf::RpcController* controller,
-                       const ::paddle::PsRequestMessage* request,
-                       ::paddle::PsResponseMessage* response,
+                       const PsRequestMessage* request,
+                       PsResponseMessage* response,
                        ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::string log_label("ReceiveCmd-");

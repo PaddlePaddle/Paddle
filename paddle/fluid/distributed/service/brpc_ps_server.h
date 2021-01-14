@@ -52,19 +52,19 @@ class BrpcPsServer : public PSServer {
   std::vector<std::shared_ptr<brpc::Channel>> _pserver_channels;
 };
 
-class PsService;
+class BrpcPsService;
 
-typedef int32_t (PsService::*serviceHandlerFunc)(
+typedef int32_t (BrpcPsService::*serviceHandlerFunc)(
     Table *table, const PsRequestMessage &request, PsResponseMessage &response,
     brpc::Controller *cntl);
 
-class PsService : public PsBaseService {
+class BrpcPsService : public PsBaseService {
  public:
   virtual int32_t initialize() override;
 
   virtual void service(::google::protobuf::RpcController *controller,
-                       const ::paddle::PsRequestMessage *request,
-                       ::paddle::PsResponseMessage *response,
+                       const PsRequestMessage *request,
+                       PsResponseMessage *response,
                        ::google::protobuf::Closure *done) override;
 
  private:
