@@ -37,11 +37,6 @@ import tempfile
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.distributed.fleet as fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
-from paddle.distributed.fleet.utils.ps_util import Distributed
 paddle.enable_static()
 
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
