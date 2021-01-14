@@ -28,17 +28,19 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
     PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
-                      "The Var(%s)'s type should be LoDTensor, "
-                      "but the received is %s",
-                      ctx.Inputs("Param").front(),
-                      framework::ToTypeName(param_var->Type()));
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+                          "but the received is %s",
+                          ctx.InputNames("Param").front(),
+                          framework::ToTypeName(param_var->Type())));
 
     const auto *grad_var = ctx.InputVar("Grad");
     PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
-                      "The Var(%s)'s type should be LoDTensor, "
-                      "but the received is %s",
-                      ctx.Inputs("Grad").front(),
-                      framework::ToTypeName(grad_var->Type()));
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+                          "but the received is %s",
+                          ctx.InputNames("Grad").front(),
+                          framework::ToTypeName(grad_var->Type())));
 
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
 
@@ -48,8 +50,14 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
 
     auto sz = param_out->numel();
-    PADDLE_ENFORCE_EQ(param->numel(), sz);
-    PADDLE_ENFORCE_EQ(grad->numel(), sz);
+    PADDLE_ENFORCE_EQ(param->numel(), sz,
+                      platform::errors::InvalidArgument(
+                          "Input parameter's number of elements is error, "
+                          "expected %zu, but received %zu."));
+    PADDLE_ENFORCE_EQ(grad->numel(), sz,
+                      platform::errors::InvalidArgument(
+                          "Input gradient's number of elements is error, "
+                          "expected %zu, but received %zu."));
 
     const T *lr = learning_rate->data<T>();
     const T *param_data = param->data<T>();
@@ -79,16 +87,14 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     float X;
     float mu = 0.0;
     float U1, U2;
-    unsigned seed = (unsigned int)(time(NULL));
+    unsigned seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
+    if (seed == 0) {
+      seed = (unsigned)(time(NULL));
+    }
     std::minstd_rand engine;
     engine.seed(seed);
     std::uniform_real_distribution<T> dist(0.0, 1.0);
     do {
-      // srand((unsigned int)(time(NULL)));
-      // U1 = (rand() * 1.0) / RAND_MAX;
-      // U2 = (rand() * 1.0) / RAND_MAX;
-      // U1 = rand_rr(&seed) * (1.0 / RAND_MAX);
-      // U2 = rand_rr(&seed) * (1.0 / RAND_MAX);
       U1 = dist(engine);
       U2 = dist(engine);
       V1 = 2 * U1 - 1;

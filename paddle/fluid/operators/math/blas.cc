@@ -13,14 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/math/blas.h"
-
 #include <utility>
+
 namespace paddle {
 namespace operators {
 namespace math {
 MatDescriptor CreateMatrixDescriptor(const framework::DDim &tensor_dim,
                                      int num_flatten_cols, bool trans) {
-  PADDLE_ENFORCE_GT(tensor_dim.size(), 1);
+  PADDLE_ENFORCE_GT(
+      tensor_dim.size(), 1,
+      platform::errors::InvalidArgument("The tensor dim size should be greater "
+                                        "than 1, but reveived dim size is %d",
+                                        tensor_dim.size()));
   MatDescriptor retv;
   if (num_flatten_cols > 1) {
     auto flatten_dim = framework::flatten_to_2d(tensor_dim, num_flatten_cols);

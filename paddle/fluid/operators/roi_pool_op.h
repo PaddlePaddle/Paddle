@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <limits>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -55,17 +57,38 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
 
-    auto rois_lod = rois->lod().back();
-    int rois_batch_size = rois_lod.size() - 1;
-    PADDLE_ENFORCE_EQ(
-        rois_batch_size, batch_size,
-        "The rois_batch_size and imgs batch_size must be the same.");
-    int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
-                      "The rois_num from input and lod must be the same.");
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        roi_batch_id_data[i] = n;
+    int rois_batch_size;
+    if (ctx.HasInput("RoisNum")) {
+      auto* rois_num_t = ctx.Input<framework::Tensor>("RoisNum");
+      rois_batch_size = rois_num_t->numel();
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          platform::errors::InvalidArgument("The rois_batch_size and imgs "
+                                            "batch_size must be the same."));
+      auto* rois_num_data = rois_num_t->data<int>();
+      int start = 0;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (int i = start; i < start + rois_num_data[n]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
+        start += rois_num_data[n];
+      }
+    } else {
+      auto rois_lod = rois->lod().back();
+      rois_batch_size = rois_lod.size() - 1;
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          platform::errors::InvalidArgument("The rois_batch_size and imgs "
+                                            "batch_size must be the same."));
+      int rois_num_with_lod = rois_lod[rois_batch_size];
+      PADDLE_ENFORCE_EQ(
+          rois_num, rois_num_with_lod,
+          platform::errors::InvalidArgument("The rois_num from input "
+                                            "and lod must be the same."));
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
       }
     }
 
@@ -163,11 +186,25 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
       int* roi_batch_id_data =
           roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
 
-      auto rois_lod = rois->lod().back();
-      int rois_batch_size = rois_lod.size() - 1;
-      for (int n = 0; n < rois_batch_size; ++n) {
-        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-          roi_batch_id_data[i] = n;
+      int rois_batch_size;
+      if (ctx.HasInput("RoisNum")) {
+        auto* rois_num_t = ctx.Input<framework::Tensor>("RoisNum");
+        rois_batch_size = rois_num_t->numel();
+        auto* rois_num_data = rois_num_t->data<int>();
+        int start = 0;
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (int i = start; i < start + rois_num_data[n]; ++i) {
+            roi_batch_id_data[i] = n;
+          }
+          start += rois_num_data[n];
+        }
+      } else {
+        auto rois_lod = rois->lod().back();
+        rois_batch_size = rois_lod.size() - 1;
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+            roi_batch_id_data[i] = n;
+          }
         }
       }
 

@@ -104,7 +104,8 @@ void DensePullThread::wait_all() {
   }
 
   if (_pull_dense_fail_times > 20) {
-    LOG(FATAL) << "pull dense failed times more than 20 times";
+    PADDLE_THROW(
+        platform::errors::Fatal("Pull dense failed more than 20 times."));
     exit(-1);
   }
 
@@ -143,7 +144,9 @@ void ExecutorThreadWorker::CreateThreadScope(const ProgramDesc& program) {
   auto& block = program.Block(0);
 
   PADDLE_ENFORCE_NOT_NULL(
-      root_scope_, "root_scope should be set before creating thread scope");
+      root_scope_,
+      platform::errors::PreconditionNotMet(
+          "root_scope should be set before creating thread scope."));
 
   thread_scope_ = &root_scope_->NewScope();
   for (auto& var : block.AllVars()) {

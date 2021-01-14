@@ -16,9 +16,11 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+from scipy.special import expit
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_activation_op import TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestRelu6, TestSigmoid
+from paddle.fluid.tests.unittests.test_gelu_op import gelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
 
@@ -28,12 +30,95 @@ class TestMKLDNNReluDim2(TestRelu):
 
         self.attrs = {"use_mkldnn": True}
 
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNRelu6Dim2(TestRelu6):
+    def setUp(self):
+        super(TestMKLDNNRelu6Dim2, self).setUp()
+        self.attrs.update({"use_mkldnn": True})
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
 
 class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
     def setUp(self):
         super(TestMKLDNNLeakyReluDim2, self).setUp()
 
         self.attrs = {"use_mkldnn": True}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNGeluDim2(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.float32
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        out = gelu(x, False)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNGeluDim2Approx(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.float32
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        out = gelu(x, True)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True, "approximate": True}
+
+
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestMKLDNNGeluBf16Dim2(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.uint16
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+        out = convert_float_to_uint16(gelu(x, False))
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad(self):
+        pass
+
+
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestMKLDNNGeluBf16Dim2Approx(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.uint16
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+        out = convert_float_to_uint16(gelu(x, True))
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True, "approximate": True}
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad(self):
+        pass
 
 
 class TestMKLDNNTanhDim2(TestTanh):
@@ -42,6 +127,9 @@ class TestMKLDNNTanhDim2(TestTanh):
 
         self.attrs = {"use_mkldnn": True}
 
+    def init_dtype(self):
+        self.dtype = np.float32
+
 
 class TestMKLDNNSqrtDim2(TestSqrt):
     def setUp(self):
@@ -49,10 +137,35 @@ class TestMKLDNNSqrtDim2(TestSqrt):
 
         self.attrs = {"use_mkldnn": True}
 
+    def init_dtype(self):
+        self.dtype = np.float32
+
 
 class TestMKLDNNAbsDim2(TestAbs):
     def setUp(self):
         super(TestMKLDNNAbsDim2, self).setUp()
+        self.attrs = {"use_mkldnn": True}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNSwishDim2(TestSwish):
+    def setUp(self):
+        super(TestMKLDNNSwishDim2, self).setUp()
+
+        self.attrs["use_mkldnn"] = True
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNSigmoidDim2(TestSigmoid):
+    def setUp(self):
+        super(TestMKLDNNSigmoidDim2, self).setUp()
         self.attrs = {"use_mkldnn": True}
 
 
@@ -69,6 +182,9 @@ class TestMKLDNNReluDim4(TestRelu):
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
+    def init_dtype(self):
+        self.dtype = np.float32
+
 
 class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
     def setUp(self):
@@ -82,6 +198,77 @@ class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNGeluDim4(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.float32
+
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        out = gelu(x, False)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNGeluDim4Approx(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.float32
+
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        out = gelu(x, True)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True, "approximate": True}
+
+
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestMKLDNNGeluBf16Dim4(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.uint16
+
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(np.float32)
+        out = convert_float_to_uint16(gelu(x, False))
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad(self):
+        pass
+
+
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestMKLDNNGeluBf16Dim4Approx(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.uint16
+
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(np.float32)
+        out = convert_float_to_uint16(gelu(x, True))
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True, "approximate": True}
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad(self):
+        pass
 
 
 class TestMKLDNNTanhDim4(TestTanh):
@@ -115,6 +302,36 @@ class TestMKLDNNAbsDim4(TestAbs):
         x[np.abs(x) < 0.005] = 0.02
         self.inputs = {'X': x}
         self.outputs = {'Out': np.abs(self.inputs['X'])}
+        self.attrs = {"use_mkldnn": True}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNSwishDim4(TestSwish):
+    def setUp(self):
+        super(TestMKLDNNSwishDim4, self).setUp()
+
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        beta = 2.3
+        out = x * expit(beta * x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True, "beta": beta}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNSigmoidDim4(TestSigmoid):
+    def setUp(self):
+        super(TestMKLDNNSigmoidDim4, self).setUp()
+
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        out = 1 / (1 + np.exp(-x))
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
 

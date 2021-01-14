@@ -71,8 +71,12 @@ class KLDivLossKernel : public framework::OpKernel<T> {
     if ("none" == reduction) {
       loss_t.device(place) = output;
     } else if ("batchmean" == reduction) {
-      auto output_sum = output.sum().eval();
-      loss_t.device(place) = output_sum / output_sum.constant(n);
+      auto output_sum = output.sum();
+      if (n > 0) {
+        loss_t.device(place) = output_sum / output_sum.constant(n);
+      } else {
+        loss_t.device(place) = output_sum;
+      }
     } else if ("mean" == reduction) {
       loss_t.device(place) = output.mean();
     } else if ("sum" == reduction) {

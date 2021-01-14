@@ -16,10 +16,10 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 
 
-class TestVarConv2dOp(OpTest):
+class TestVarConv2DOp(OpTest):
     def setUp(self):
         self.init_op_type()
         self.set_data()
@@ -29,7 +29,7 @@ class TestVarConv2dOp(OpTest):
         self.op_type = "var_conv_2d"
 
     def set_data(self):
-        input_channel = 3
+        input_channel = 8
         output_channel = 2
         filter_size = [2, 3]
         stride = [1, 1]
@@ -172,52 +172,53 @@ class TestVarConv2dOp(OpTest):
         return col_res, col_res_lod
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.005)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.005, check_dygraph=False)
 
 
-class TestVarConv2dOpCase1(TestVarConv2dOp):
+class TestVarConv2DOpCase1(TestVarConv2DOp):
     def set_data(self):
         # set in_ch 1
         input_channel = 1
         output_channel = 2
         filter_size = [2, 3]
         stride = [1, 1]
-        row = [1, 4]
-        col = [3, 2]
+        row = [1, 10]
+        col = [40, 6]
         self.init_data(input_channel, output_channel, filter_size, stride, row,
                        col)
 
 
-class TestVarConv2dOpCase2(TestVarConv2dOp):
+class TestVarConv2DOpCase2(TestVarConv2DOp):
     def set_data(self):
         # set out_ch 1
         input_channel = 2
         output_channel = 1
         filter_size = [3, 3]
         stride = [2, 2]
-        row = [4, 7]
-        col = [5, 2]
+        row = [6, 7]
+        col = [8, 2]
         self.init_data(input_channel, output_channel, filter_size, stride, row,
                        col)
 
 
-class TestVarConv2dOpCase3(TestVarConv2dOp):
+class TestVarConv2DOpCase3(TestVarConv2DOp):
     def set_data(self):
         # set batch 1
         input_channel = 2
         output_channel = 1
         filter_size = [3, 3]
         stride = [2, 2]
-        row = [7]
-        col = [2]
+        row = [14]
+        col = [4]
         self.init_data(input_channel, output_channel, filter_size, stride, row,
                        col)
 
 
-class TestVarConv2dOpCase4(TestVarConv2dOp):
+class TestVarConv2DOpCase4(TestVarConv2DOp):
     def set_data(self):
         # set filter size very large
         input_channel = 3
@@ -230,10 +231,10 @@ class TestVarConv2dOpCase4(TestVarConv2dOp):
                        col)
 
 
-class TestVarConv2dOpCase5(TestVarConv2dOp):
+class TestVarConv2DOpCase5(TestVarConv2DOp):
     def set_data(self):
         # set input very small
-        input_channel = 5
+        input_channel = 50
         output_channel = 3
         filter_size = [3, 3]
         stride = [1, 1]
@@ -243,7 +244,10 @@ class TestVarConv2dOpCase5(TestVarConv2dOp):
                        col)
 
 
-class TestVarConv2dOpCase6(TestVarConv2dOp):
+@skip_check_grad_ci(
+    reason="[skip shape check] Use shape of input_channel, row and col all is 1 to test special LoDTensor."
+)
+class TestVarConv2DOpCase6(TestVarConv2DOp):
     def set_data(self):
         input_channel = 1
         output_channel = 3
@@ -255,7 +259,7 @@ class TestVarConv2dOpCase6(TestVarConv2dOp):
                        col)
 
 
-class TestVarConv2dOpCase7(TestVarConv2dOp):
+class TestVarConv2DOpCase7(TestVarConv2DOp):
     def set_data(self):
         input_channel = 2
         output_channel = 3
@@ -267,7 +271,7 @@ class TestVarConv2dOpCase7(TestVarConv2dOp):
                        col)
 
 
-class TestVarConv2dApi(unittest.TestCase):
+class TestVarConv2DApi(unittest.TestCase):
     def test_api(self):
         import paddle.fluid as fluid
 

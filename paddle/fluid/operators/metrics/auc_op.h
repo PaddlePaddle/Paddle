@@ -30,31 +30,46 @@ class AucKernel : public framework::OpKernel<T> {
     auto *predict = ctx.Input<Tensor>("Predict");
     auto *label = ctx.Input<Tensor>("Label");
 
-    std::string curve = ctx.Attr<std::string>("curve");
     int num_thresholds = ctx.Attr<int>("num_thresholds");
-    // buckets contain numbers from 0 to num_thresholds
-    int num_pred_buckets = num_thresholds + 1;
     int slide_steps = ctx.Attr<int>("slide_steps");
 
     // Only use output var for now, make sure it's persistable and
     // not cleaned up for each batch.
-    auto *auc = ctx.Output<Tensor>("AUC");
+    auto *auc_tensor = ctx.Output<Tensor>("AUC");
     auto *stat_pos = ctx.Output<Tensor>("StatPosOut");
     auto *stat_neg = ctx.Output<Tensor>("StatNegOut");
 
     auto *origin_stat_pos = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
     auto *origin_stat_neg = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
+    auto *auc_value = auc_tensor->mutable_data<double>(ctx.GetPlace());
 
-    std::vector<int64_t> stat_pos_data(num_pred_buckets, 0);
-    std::vector<int64_t> stat_neg_data(num_pred_buckets, 0);
+    // Just for pass UT, since UT's input & output connot be set same var
+    auto *stat_pos_in_tensor = ctx.Input<Tensor>("StatPos");
+    auto *pos_in_data = stat_pos_in_tensor->data<int64_t>();
+    auto *stat_neg_in_tensor = ctx.Input<Tensor>("StatNeg");
+    auto *neg_in_data = stat_neg_in_tensor->data<int64_t>();
+    if (stat_pos_in_tensor != stat_pos) {
+      memcpy(origin_stat_pos, pos_in_data,
+             ((1 + slide_steps) * (num_thresholds + 1) +
+              (slide_steps > 0 ? 1 : 0)) *
+                 sizeof(int64_t));
+    }
+    if (stat_neg_in_tensor != stat_neg) {
+      memcpy(origin_stat_neg, neg_in_data,
+             ((1 + slide_steps) * (num_thresholds + 1) +
+              (slide_steps > 0 ? 1 : 0)) *
+                 sizeof(int64_t));
+    }
+    statAuc(label, predict, num_thresholds, slide_steps, origin_stat_pos,
+            origin_stat_neg);
 
-    auto stat_pos_calc = stat_pos_data.data();
-    auto stat_neg_calc = stat_neg_data.data();
-
-    statAuc(label, predict, num_pred_buckets, num_thresholds, slide_steps,
-            origin_stat_pos, origin_stat_neg, &stat_pos_calc, &stat_neg_calc);
-
-    calcAuc(ctx, stat_pos_calc, stat_neg_calc, num_thresholds, auc);
+    int sum_offset = slide_steps * (num_thresholds + 1);
+    calcAuc(origin_stat_pos + sum_offset, origin_stat_neg + sum_offset,
+            num_thresholds, auc_value);
+    if (slide_steps) {
+      origin_stat_pos[(slide_steps + 1) * (num_thresholds + 1)] += 1;
+      origin_stat_neg[(slide_steps + 1) * (num_thresholds + 1)] += 1;
+    }
   }
 
  private:
@@ -65,14 +80,54 @@ class AucKernel : public framework::OpKernel<T> {
 
   inline static void statAuc(const framework::Tensor *label,
                              const framework::Tensor *predict,
-                             const int num_pred_buckets,
                              const int num_thresholds, const int slide_steps,
-                             int64_t *origin_stat_pos, int64_t *origin_stat_neg,
-                             int64_t **stat_pos, int64_t **stat_neg) {
+                             int64_t *origin_stat_pos,
+                             int64_t *origin_stat_neg) {
     size_t batch_size = predict->dims()[0];
     size_t inference_width = predict->dims()[1];
     const T *inference_data = predict->data<T>();
     const auto *label_data = label->data<int64_t>();
+    const int bucket_length = num_thresholds + 1;
+    if (slide_steps == 0) {
+      for (size_t i = 0; i < batch_size; i++) {
+        // if predict_data[i] has dim of 2, then predict_data[i][1] is pos prob
+        // if predict_data[i] has dim of 1, then predict_data[i][0] is pos prob
+        auto predict_data =
+            inference_data[i * inference_width + (inference_width - 1)];
+        PADDLE_ENFORCE_LE(predict_data, 1,
+                          platform::errors::PreconditionNotMet(
+                              "The predict data must less or equal 1."));
+        PADDLE_ENFORCE_GE(predict_data, 0,
+                          platform::errors::PreconditionNotMet(
+                              "The predict data must gather or equal 0."));
+
+        uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
+        if (label_data[i] > 0) {
+          origin_stat_pos[binIdx] += 1;
+        } else if (label_data[i] == 0) {
+          origin_stat_neg[binIdx] += 1;
+        }
+      }
+      return;
+    }
+    // the last number of origin_stat_pos store the index should be used in
+    // current step
+    int cur_step_index =
+        static_cast<int>(origin_stat_pos[(slide_steps + 1) * bucket_length]) %
+        slide_steps;
+    int cur_step_begin = cur_step_index * bucket_length;
+    int sum_step_begin = slide_steps * bucket_length;
+    for (int i = 0; i < bucket_length; ++i) {
+      origin_stat_pos[sum_step_begin + i] -=
+          origin_stat_pos[cur_step_begin + i];
+      origin_stat_neg[sum_step_begin + i] -=
+          origin_stat_neg[cur_step_begin + i];
+    }
+
+    std::memset(origin_stat_pos + cur_step_begin, 0,
+                bucket_length * sizeof(int64_t));
+    std::memset(origin_stat_neg + cur_step_begin, 0,
+                bucket_length * sizeof(int64_t));
 
     for (size_t i = 0; i < batch_size; i++) {
       // if predict_data[i] has dim of 2, then predict_data[i][1] is pos prob
@@ -80,67 +135,29 @@ class AucKernel : public framework::OpKernel<T> {
       auto predict_data =
           inference_data[i * inference_width + (inference_width - 1)];
       PADDLE_ENFORCE_LE(predict_data, 1,
-                        "The predict data must less or equal 1.");
+                        platform::errors::PreconditionNotMet(
+                            "The predict data must less or equal 1."));
       PADDLE_ENFORCE_GE(predict_data, 0,
-                        "The predict data must gather or equal 0.");
+                        platform::errors::PreconditionNotMet(
+                            "The predict data must gather or equal 0."));
 
       uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
-      if (label_data[i]) {
-        (*stat_pos)[binIdx] += 1.0;
-      } else {
-        (*stat_neg)[binIdx] += 1.0;
+      if (label_data[i] > 0) {
+        origin_stat_pos[cur_step_begin + binIdx] += 1;
+      } else if (label_data[i] == 0) {
+        origin_stat_neg[cur_step_begin + binIdx] += 1;
       }
     }
-
-    int bucket_length = num_pred_buckets * sizeof(int64_t);
-
-    // will stat auc unlimited.
-    if (slide_steps == 0) {
-      for (int slide = 0; slide < num_pred_buckets; ++slide) {
-        origin_stat_pos[slide] += (*stat_pos)[slide];
-        origin_stat_neg[slide] += (*stat_neg)[slide];
-      }
-
-      *stat_pos = origin_stat_pos;
-      *stat_neg = origin_stat_neg;
-
-    } else {
-      for (int slide = 1; slide < slide_steps; ++slide) {
-        int dst_idx = (slide - 1) * num_pred_buckets;
-        int src_inx = slide * num_pred_buckets;
-        std::memcpy(origin_stat_pos + dst_idx, origin_stat_pos + src_inx,
-                    bucket_length);
-        std::memcpy(origin_stat_neg + dst_idx, origin_stat_neg + src_inx,
-                    bucket_length);
-      }
-
-      std::memcpy(origin_stat_pos + (slide_steps - 1) * num_pred_buckets,
-                  *stat_pos, bucket_length);
-      std::memcpy(origin_stat_neg + (slide_steps - 1) * num_pred_buckets,
-                  *stat_neg, bucket_length);
-
-      std::memset(*stat_pos, 0, bucket_length);
-      std::memset(*stat_neg, 0, bucket_length);
-
-      for (int slide = 0; slide < num_pred_buckets; ++slide) {
-        int stat_pos_steps = 0;
-        int stat_neg_steps = 0;
-        for (int step = 0; step < slide_steps; ++step) {
-          stat_pos_steps += origin_stat_pos[slide + step * num_pred_buckets];
-          stat_neg_steps += origin_stat_neg[slide + step * num_pred_buckets];
-        }
-        (*stat_pos)[slide] += stat_pos_steps;
-        (*stat_neg)[slide] += stat_neg_steps;
-      }
+    for (int i = 0; i < bucket_length; ++i) {
+      origin_stat_pos[sum_step_begin + i] +=
+          origin_stat_pos[cur_step_begin + i];
+      origin_stat_neg[sum_step_begin + i] +=
+          origin_stat_neg[cur_step_begin + i];
     }
   }
 
-  inline static void calcAuc(const framework::ExecutionContext &ctx,
-                             int64_t *stat_pos, int64_t *stat_neg,
-                             int num_thresholds,
-                             framework::Tensor *auc_tensor) {
-    auto *auc = auc_tensor->mutable_data<double>(ctx.GetPlace());
-
+  inline static void calcAuc(const int64_t *stat_pos, const int64_t *stat_neg,
+                             int num_thresholds, double *auc) {
     *auc = 0.0f;
 
     double totPos = 0.0;

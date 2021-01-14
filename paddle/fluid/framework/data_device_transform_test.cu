@@ -64,7 +64,7 @@ template <typename DeviceContext, typename T>
 class TestKernel : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    std::cout << ctx.op().DebugString() << std::endl;
+    std::cout << ctx.DebugString() << std::endl;
 
     const Tensor* input = ctx.Input<Tensor>("input");
 
@@ -103,7 +103,7 @@ static void BuildVar(const std::string& param_name,
 }
 
 TEST(Operator, CPUtoGPU) {
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
 
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace cpu_place;

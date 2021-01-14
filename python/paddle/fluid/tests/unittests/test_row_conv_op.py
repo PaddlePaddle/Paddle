@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+from paddle import fluid
 
 
 def row_conv_forward(x, lod, wt):
@@ -50,7 +51,7 @@ class TestRowConvOp1(OpTest):
         lod = [[2, 3, 2]]
         T = sum(lod[0])
         D = 16
-        context_length = 2
+        context_length = 8
 
         x = np.random.random((T, D)).astype("float32")
         wt = np.random.random((context_length, D)).astype("float32")
@@ -60,18 +61,18 @@ class TestRowConvOp1(OpTest):
         self.outputs = {'Out': (out, lod)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Filter'], 'Out', max_relative_error=0.05)
+        self.check_grad(['X', 'Filter'], 'Out', check_dygraph=False)
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
-            ['Filter'], 'Out', max_relative_error=0.05, no_grad_set=set('X'))
+            ['Filter'], 'Out', no_grad_set=set('X'), check_dygraph=False)
 
     def test_check_grad_ignore_wt(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.05, no_grad_set=set('Filter'))
+            ['X'], 'Out', no_grad_set=set('Filter'), check_dygraph=False)
 
 
 class TestRowConvOp2(OpTest):
@@ -91,21 +92,33 @@ class TestRowConvOp2(OpTest):
         self.outputs = {'Out': (out, lod)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     #max_relative_error is increased from 0.05 to 0.06 as for higher
     #dimensional input, the dX on CPU for some values has max_rel_error
     #slightly more than 0.05
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Filter'], 'Out', max_relative_error=0.06)
+        self.check_grad(
+            ['X', 'Filter'],
+            'Out',
+            max_relative_error=0.06,
+            check_dygraph=False)
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
-            ['Filter'], 'Out', max_relative_error=0.06, no_grad_set=set('X'))
+            ['Filter'],
+            'Out',
+            max_relative_error=0.06,
+            no_grad_set=set('X'),
+            check_dygraph=False)
 
     def test_check_grad_ignore_wt(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.06, no_grad_set=set('Filter'))
+            ['X'],
+            'Out',
+            max_relative_error=0.06,
+            no_grad_set=set('Filter'),
+            check_dygraph=False)
 
 
 def row_conv_foward_Tensor(x, wt):
@@ -127,11 +140,11 @@ def row_conv_foward_Tensor(x, wt):
 class TestRowOpWithTensorInput(OpTest):
     def setUp(self):
         self.op_type = "row_conv"
-        length = [3, 2, 4]
+        length = [1, 2, 3]
         B = 2
         T = sum(length)
-        D = 16
-        context_length = 2
+        D = 20
+        context_length = 6
 
         x = np.random.random((B, T, D)).astype("float32")
         wt = np.random.random((context_length, D)).astype("float32")
@@ -141,18 +154,48 @@ class TestRowOpWithTensorInput(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
-            ['Filter'], 'Out', max_relative_error=0.05, no_grad_set=set('X'))
+            ['Filter'], 'Out', no_grad_set=set('X'), check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Filter'], 'Out', max_relative_error=0.05)
+        self.check_grad(['X', 'Filter'], 'Out', check_dygraph=False)
 
     def test_check_grad_ignore_wt(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.05, no_grad_set=set('Filter'))
+            ['X'], 'Out', no_grad_set=set('Filter'), check_dygraph=False)
+
+
+class TestRowConvLayer(unittest.TestCase):
+    def setUp(self):
+        self.B = 2
+        self.T = 6
+        self.C = 20
+        self.context_length = 6
+
+        self.x = np.random.random((self.B, self.T, self.C)).astype("float32")
+        self.w = np.random.random(
+            (self.context_length, self.C)).astype("float32")
+        self.out = row_conv_foward_Tensor(self.x, self.w)
+
+    def check_identity(self):
+        start = fluid.Program()
+        main = fluid.Program()
+        with fluid.unique_name.guard():
+            with fluid.program_guard(main, start):
+                x = fluid.data("x", (-1, -1, self.C), "float32")
+                out = fluid.layers.row_conv(
+                    x,
+                    self.context_length,
+                    param_attr=fluid.initializer.NumpyArrayInitializer(self.w))
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(start)
+        out_np, = exe.run(main, feed={'x': self.x}, fetch_list=[out])
+
+        np.testing.assert_allclose(out_np, self.out)
 
 
 if __name__ == '__main__':

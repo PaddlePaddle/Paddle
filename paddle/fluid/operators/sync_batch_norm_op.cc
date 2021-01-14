@@ -17,13 +17,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 template <typename T>
-class BatchNormGradMaker : public framework::SingleGradOpMaker<T> {
+class SyncBatchNormGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
@@ -34,7 +33,7 @@ class BatchNormGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("SavedVariance", this->Output("SavedVariance"));
 
     // used when setting use_global_stats True during training
-    if (boost::get<bool>(this->GetAttr("use_global_stats"))) {
+    if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
       op->SetInput("Mean", this->Output("MeanOut"));
       op->SetInput("Variance", this->Output("VarianceOut"));
     }
@@ -44,8 +43,6 @@ class BatchNormGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -55,6 +52,6 @@ class BatchNormGradMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sync_batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
                   ops::BatchNormOpInferVarType,
-                  ops::BatchNormGradMaker<paddle::framework::OpDesc>,
-                  ops::BatchNormGradMaker<paddle::imperative::OpBase>);
+                  ops::SyncBatchNormGradMaker<paddle::framework::OpDesc>,
+                  ops::SyncBatchNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sync_batch_norm_grad, ops::BatchNormGradOp);

@@ -16,9 +16,12 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/imperative/jit/op_desc_meta.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -27,7 +30,26 @@
 
 namespace paddle {
 namespace imperative {
+class VarBase;
+}  // namespace imperative
+}  // namespace paddle
+
+namespace paddle {
+namespace imperative {
 namespace jit {
+
+using VarDescMetaMap =
+    std::map<std::weak_ptr<VarBase>, std::unique_ptr<framework::VarDesc>,
+             std::owner_less<std::weak_ptr<VarBase>>>;
+
+using VarBaseSet = std::set<std::shared_ptr<VarBase>,
+                            std::owner_less<std::shared_ptr<VarBase>>>;
+
+using TracedProgramTuple =
+    std::tuple<std::unique_ptr<framework::ProgramDesc> /*program*/,
+               std::vector<std::string> /*feed_var_names*/,
+               std::vector<std::string> /*fetch_var_names*/,
+               std::vector<std::shared_ptr<VarBase>> /*persistable_vars*/>;
 
 class ProgramDescTracer {
   DISABLE_COPY_AND_ASSIGN(ProgramDescTracer);
@@ -35,42 +57,26 @@ class ProgramDescTracer {
  public:
   ProgramDescTracer() = default;
 
-  void SetNamePrefix(const std::string &name_prefix);
-
-  void SetFeedVars(const std::vector<std::shared_ptr<VarBase>> &feed_vars,
-                   std::vector<std::string> feed_names);
-
-  void SetFetchVars(const std::vector<std::shared_ptr<VarBase>> &fetch_vars,
-                    std::vector<std::string> fetch_names);
-
   void InsertOp(const std::string &type, const NameVarBaseMap &inputs,
                 const NameVarBaseMap &outputs,
                 const framework::AttributeMap &attrs);
 
-  std::unique_ptr<framework::ProgramDesc> CreateProgramDesc() const;
+  TracedProgramTuple CreateProgramDesc(
+      const std::vector<std::shared_ptr<VarBase>> &feed_vars,
+      const std::string &feed_prefix,
+      const std::vector<std::shared_ptr<VarBase>> &fetch_vars,
+      const std::string &fetch_prefix, const std::string &tmp_prefix) const;
 
   void Reset();
 
  private:
-  void InsertVarIfNotExist(const std::shared_ptr<VarBase> &new_var);
+  void InsertVarIfNotExist(const std::shared_ptr<VarBase> &new_var,
+                           bool is_input);
 
+ private:
   std::vector<std::unique_ptr<OpDescMeta>> ops_;
-
-  std::map<std::weak_ptr<VarBase>,
-           std::pair<size_t, std::unique_ptr<framework::VarDesc>>,
-           std::owner_less<std::weak_ptr<VarBase>>>
-      vars_;
-
-  // The following fields are used to polish the converted ProgramDesc
-  std::map<std::weak_ptr<VarBase>, std::string,
-           std::owner_less<std::weak_ptr<VarBase>>>
-      feed_vars_;
-
-  std::map<std::weak_ptr<VarBase>, std::string,
-           std::owner_less<std::weak_ptr<VarBase>>>
-      fetch_vars_;
-
-  std::string name_prefix_;
+  VarDescMetaMap vars_;
+  VarBaseSet non_exist_input_vars_;
 };
 
 }  // namespace jit

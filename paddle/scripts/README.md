@@ -70,7 +70,6 @@ Users can specify the following Docker build arguments with either "ON" or "OFF"
 | `WITH_STYLE_CHECK` | ON | Check the code style when building. |
 | `PYTHON_ABI` | "" | Build for different python ABI support, can be cp27-cp27m or cp27-cp27mu |
 | `RUN_TEST` | OFF | Run unit test immediently after the build. |
-| `WOBOQ` | OFF | Generate WOBOQ code viewer under `build/woboq_out` |
 
 ## Docker Images
 
@@ -155,21 +154,6 @@ docker push
 kubectl ...
 ```
 
-### Reading source code with woboq codebrowser
-
-For developers who are interested in the C++ source code, you can build C++ source code into HTML pages using [Woboq codebrowser](https://github.com/woboq/woboq_codebrowser).
-
-- The following command builds PaddlePaddle, generates HTML pages from C++ source code, and writes HTML pages into `$HOME/woboq_out` on the host:
-
-```bash
-./paddle/scripts/paddle_docker_build.sh html
-```
-
-- You can open the generated HTML files in your Web browser. Or, if you want to run a Nginx container to serve them for a wider audience, you can run:
-
-```
-docker run -v $HOME/woboq_out:/usr/share/nginx/html -d -p 8080:80 nginx
-```
 
 ## More Options
 

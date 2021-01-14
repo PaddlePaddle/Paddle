@@ -15,6 +15,15 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -32,15 +41,29 @@ class PadOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
     const std::vector<int> paddings =
-        boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
-    const float pad_value = boost::get<float>(op_desc.GetAttr("pad_value"));
+        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+    const float pad_value =
+        BOOST_GET_CONST(float, op_desc.GetAttr("pad_value"));
 
     nvinfer1::Dims input_shape = input->getDimensions();
     int nbDims = input_shape.nbDims;
     int pad_size = static_cast<int>(paddings.size());
-    PADDLE_ENFORCE_GE(nbDims, 2);
-    PADDLE_ENFORCE_EQ((nbDims + 1) * 2, pad_size);
-    PADDLE_ENFORCE(pad_value == 0.0, "The pad layer of TRT only support zero.");
+    PADDLE_ENFORCE_GE(
+        nbDims, 2,
+        platform::errors::InvalidArgument(
+            "Input X[0]'s dimension should greater than or equal to 2. "
+            "But received %d.",
+            nbDims));
+    PADDLE_ENFORCE_EQ(
+        (nbDims + 1) * 2, pad_size,
+        platform::errors::InvalidArgument("Input X[0]'s dimension(nbDims for "
+                                          "short) should meet the condition:"
+                                          "(nbDims + 1) * 2 == pad_size. But "
+                                          "received nbDims:%d, pad_size:%d.",
+                                          nbDims, pad_size));
+    PADDLE_ENFORCE_EQ(pad_value, 0.0,
+                      platform::errors::InvalidArgument(
+                          "The pad layer of TRT only support zero."));
 
     nvinfer1::DimsHW pre_pad(paddings[pad_size - 4], paddings[pad_size - 2]);
     nvinfer1::DimsHW post_pad(paddings[pad_size - 3], paddings[pad_size - 1]);
@@ -49,7 +72,9 @@ class PadOpConverter : public OpConverter {
                                        *const_cast<nvinfer1::ITensor*>(input),
                                        pre_pad, post_pad);
 
-    PADDLE_ENFORCE(layer != nullptr);
+    PADDLE_ENFORCE_NOT_NULL(layer,
+                            platform::errors::External(
+                                "add padding layer to tensorrt engine error"));
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "pad", {output_name}, test_mode);
   }

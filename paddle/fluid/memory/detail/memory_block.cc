@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/memory/detail/memory_block.h"
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -38,7 +39,11 @@ MemoryBlock* MemoryBlock::GetRightBuddy(MetadataCache* cache) {
 void MemoryBlock::Split(MetadataCache* cache, size_t size) {
   auto desc = cache->LoadDesc(this);
   // make sure the split fits
-  PADDLE_ENFORCE_GE(desc->total_size, size);
+  PADDLE_ENFORCE_GE(desc->total_size, size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory block (%d) to split is "
+                        "not larger than size of request memory (%d)",
+                        desc->total_size, size));
 
   // bail out if there is no room for another partition
   if (desc->total_size - size <= sizeof(MemoryBlock::Desc)) {
@@ -78,8 +83,12 @@ void MemoryBlock::Merge(MetadataCache* cache, MemoryBlock* right_buddy) {
   // only free blocks can be merged
   auto desc = cache->LoadDesc(this);
   auto rb_desc = cache->LoadDesc(right_buddy);
-  PADDLE_ENFORCE_EQ(desc->type, FREE_CHUNK);
-  PADDLE_ENFORCE_EQ(rb_desc->type, FREE_CHUNK);
+  PADDLE_ENFORCE_EQ(desc->type, FREE_CHUNK,
+                    platform::errors::PreconditionNotMet(
+                        "The destination chunk to merge is not free"));
+  PADDLE_ENFORCE_EQ(rb_desc->type, FREE_CHUNK,
+                    platform::errors::PreconditionNotMet(
+                        "The source chunk to merge is not free"));
 
   // link this->buddy's buddy
   desc->right_buddy = rb_desc->right_buddy;
@@ -104,8 +113,12 @@ void MemoryBlock::Merge(MetadataCache* cache, MemoryBlock* right_buddy) {
 void MemoryBlock::MarkAsFree(MetadataCache* cache) {
   // check for double free or corruption
   auto desc = cache->LoadDesc(this);
-  PADDLE_ENFORCE_NE(desc->type, FREE_CHUNK);
-  PADDLE_ENFORCE_NE(desc->type, INVALID_CHUNK);
+  PADDLE_ENFORCE_NE(desc->type, FREE_CHUNK,
+                    platform::errors::PreconditionNotMet(
+                        "The chunk to mark as free is free already"));
+  PADDLE_ENFORCE_NE(desc->type, INVALID_CHUNK,
+                    platform::errors::PreconditionNotMet(
+                        "The chunk to mark as free is invalid"));
   desc->type = FREE_CHUNK;
   desc->UpdateGuards();
 }

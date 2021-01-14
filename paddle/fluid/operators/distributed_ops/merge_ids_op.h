@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -30,7 +31,8 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
     if (!platform::is_cpu_place(place)) {
-      PADDLE_THROW("MergeIds do not support GPU kernel");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "MergeIds do not support GPU kernel"));
     }
 
     const auto ids = ctx.MultiInput<framework::LoDTensor>("Ids");
@@ -39,9 +41,11 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
     auto outs = ctx.MultiOutput<framework::LoDTensor>("Out");
 
     PADDLE_ENFORCE_EQ(row_ids.size(), x_tensors.size(),
-                      "the number of Rows and X should be the same");
+                      platform::errors::InvalidArgument(
+                          "the number of Rows and X should be the same"));
     PADDLE_ENFORCE_EQ(ids.size(), outs.size(),
-                      "the number of Ids and Out should be the same");
+                      platform::errors::InvalidArgument(
+                          "the number of Ids and Out should be the same"));
 
     int64_t row_ids_size = 0;
     int64_t row_size = 0;
@@ -55,14 +59,16 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
         embedding_size = x_tensor->dims()[1];
       }
       PADDLE_ENFORCE_EQ(embedding_size, x_tensor->dims()[1],
-                        "embedding size of all input should be the same");
+                        platform::errors::InvalidArgument(
+                            "embedding size of all input should be the same"));
       row_size += x_tensor->dims()[0];
       row_ids_size += row_id->dims()[0];
     }
 
     PADDLE_ENFORCE_EQ(
         row_size, row_ids_size,
-        "the merged X dim[0] and merged Rows dim[0] should be the same");
+        platform::errors::InvalidArgument(
+            "the merged X dim[0] and merged Rows dim[0] should be the same"));
 
     std::unordered_map<int64_t, std::tuple<int64_t, int64_t>>
         selected_rows_idx_map;
@@ -76,7 +82,8 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
       }
     }
     PADDLE_ENFORCE_EQ(row_ids_size, selected_rows_idx_map.size(),
-                      "the rows and tensor map size should be the same");
+                      platform::errors::InvalidArgument(
+                          "the rows and tensor map size should be the same"));
 
     for (size_t i = 0; i < outs.size(); ++i) {
       auto *out_ids = ids[i];

@@ -18,7 +18,12 @@
 
 void fill_fp16_data(paddle::platform::float16* in_ptr, size_t size,
                     const std::vector<float>& data) {
-  PADDLE_ENFORCE_EQ(size, data.size());
+  PADDLE_ENFORCE_EQ(
+      size, data.size(),
+      paddle::platform::errors::InvalidArgument(
+          "The size of argument data should"
+          " be equal to the argument size. Expected %d, but received %d.",
+          size, data.size()));
   for (size_t i = 0; i < data.size(); ++i) {
     in_ptr[i] = paddle::platform::float16(data[i]);
   }

@@ -36,8 +36,9 @@ class CreateCTRReaderOp : public framework::OperatorBase {
     auto* queue_holder_var = scope.FindVar(queue_name);
     PADDLE_ENFORCE_NOT_NULL(
         queue_holder_var,
-        "No LoDTensorBlockingQueueHolder variable with name %s found",
-        queue_name);
+        platform::errors::PreconditionNotMet(
+            "No LoDTensorBlockingQueueHolder variable with name %s found",
+            queue_name));
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
 

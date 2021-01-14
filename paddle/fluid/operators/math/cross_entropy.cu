@@ -25,11 +25,10 @@ template <typename T>
 __global__ void CrossEntropyKernel(T* Y, const T* X, const int64_t* label,
                                    const int N, const int D,
                                    const int ignore_index) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, N) {
     PADDLE_ENFORCE(label[i] >= 0 && label[i] < D || label[i] == ignore_index,
-                   "label[%d] expected >= 0 and < %ld, or == %ld, but got "
-                   "%ld. Please check input value.",
+                   "The value of label[%d] expected >= 0 and < %ld, or == %ld, "
+                   "but got %ld. Please check input value.",
                    i, D, ignore_index, label[i]);
     Y[i] = ignore_index == label[i]
                ? static_cast<T>(0)

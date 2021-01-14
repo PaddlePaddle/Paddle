@@ -19,9 +19,11 @@ namespace framework {
 void LoDRankTable::Reset(const LoD& lod, size_t level) {
   this->coarse_lod_.clear();
   this->items_.clear();
-  PADDLE_ENFORCE(level < lod.size(),
-                 "Cannot rank lod since the level %d is less than lod size %d",
-                 level, lod.size());
+  PADDLE_ENFORCE_LT(
+      level, lod.size(),
+      platform::errors::InvalidArgument(
+          "Cannot reset LoD since the level %d is less than lod size %d.",
+          level, lod.size()));
   coarse_lod_.reserve(level);
   for (size_t i = 0; i < level; ++i) {
     coarse_lod_.push_back(lod[i]);

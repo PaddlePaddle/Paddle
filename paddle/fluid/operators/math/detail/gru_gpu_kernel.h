@@ -31,8 +31,8 @@ namespace detail {
 template <class OpResetOutput, bool is_batch, typename T>
 __global__ void KeGruForwardResetOutput(OpResetOutput op_reset_output,
                                         T *gate_value, T *reset_output_value,
-                                        T *prev_output_value, int frame_size,
-                                        int batch_size,
+                                        const T *prev_output_value,
+                                        int frame_size, int batch_size,
                                         ActivationType active_gate) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frame_idx >= frame_size) return;
@@ -68,12 +68,10 @@ __global__ void KeGruForwardResetOutput(OpResetOutput op_reset_output,
  * grid(frame_blocks, batch_blocks)
  */
 template <class OpFinalOutput, bool is_batch, typename T>
-__global__ void KeGruForwardFinalOutput(OpFinalOutput op_final_output,
-                                        T *gate_value, T *prev_output_value,
-                                        T *output_value, int frame_size,
-                                        int batch_size,
-                                        ActivationType active_node,
-                                        bool origin_mode) {
+__global__ void KeGruForwardFinalOutput(
+    OpFinalOutput op_final_output, T *gate_value, const T *prev_output_value,
+    T *output_value, int frame_size, int batch_size, ActivationType active_node,
+    bool origin_mode) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frame_idx >= frame_size) return;
   int batch_idx = 0;
@@ -105,17 +103,16 @@ __global__ void KeGruForwardFinalOutput(OpFinalOutput op_final_output,
  * threads(tile_size, 1)
  * grid(frame_blocks, 1)
  */
-template <class T>
-__global__ void KeFastCollectiveGruGate(T *gate_value, T *prev_output_value,
-                                        T *gate_weight, T *reset_output,
+template <class T, int Tiled_size>
+__global__ void KeFastCollectiveGruGate(T *gate_value,
+                                        const T *prev_output_value,
+                                        const T *gate_weight, T *reset_output,
                                         int frame_size,
                                         ActivationType active_node) {
   T xt_0 = 0.0f;
   T a0 = 0.0f;
   T c0 = 0.0f;
-
-  int Tiled_size = blockDim.x;
-  T b0[16];
+  T b0[Tiled_size];
 
   int COL = blockIdx.x * blockDim.x + threadIdx.x;
   int Tiled_mask = ((1 << Tiled_size) - 1);
@@ -165,19 +162,18 @@ __global__ void KeFastCollectiveGruGate(T *gate_value, T *prev_output_value,
  * threads(tile_size, 1)
  * grid(frame_blocks, 1)
  */
-template <class T>
-__global__ void KeFastCollectiveGruOut(T *gate_weight, T *prev_out_value,
-                                       T *output_value, T *gate_value,
-                                       T *reset_value, int frame_size,
-                                       ActivationType act_node,
+template <class T, int Tiled_size>
+__global__ void KeFastCollectiveGruOut(const T *gate_weight,
+                                       const T *prev_out_value, T *output_value,
+                                       T *gate_value, T *reset_value,
+                                       int frame_size, ActivationType act_node,
                                        bool origin_mode) {
   int COL = blockIdx.x * blockDim.x + threadIdx.x;
 
   T a0 = 0.0f;
-  T b0[16];
+  T b0[Tiled_size];
   T c0 = 0.0f;
 
-  int Tiled_size = blockDim.x;
   int Tiled_mask = ((1 << Tiled_size) - 1);
   //- Tiled  matrix multiply with register shift
   if (prev_out_value) {
@@ -226,7 +222,7 @@ __global__ void KeFastCollectiveGruOut(T *gate_weight, T *prev_out_value,
  */
 template <class OpStateGrad, bool is_batch, typename T>
 __global__ void KeGruBackwardStateGrad(OpStateGrad op_state_grad, T *gate_value,
-                                       T *gate_grad, T *prev_out_value,
+                                       T *gate_grad, const T *prev_out_value,
                                        T *prev_out_grad, T *output_grad,
                                        int frame_size, int batch_size,
                                        ActivationType active_node,
@@ -275,7 +271,7 @@ __global__ void KeGruBackwardStateGrad(OpStateGrad op_state_grad, T *gate_value,
  */
 template <class OpResetGrad, bool is_batch, typename T>
 __global__ void KeGruBackwardResetGrad(OpResetGrad op_reset_grad, T *gate_value,
-                                       T *gate_grad, T *prev_out_value,
+                                       T *gate_grad, const T *prev_out_value,
                                        T *prev_out_grad, T *reset_output_grad,
                                        int frame_size, int batch_size,
                                        ActivationType active_gate) {

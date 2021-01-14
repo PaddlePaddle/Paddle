@@ -33,12 +33,14 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
   int64_t input_axis_dim = in_dims[axis];
   if (num > 0) {
     if (is_runtime || input_axis_dim > 0) {
-      PADDLE_ENFORCE_EQ(input_axis_dim % num, 0,
-                        "The input's size along the split dimension "
-                        "must be evenly divisible by Attr(num_or_sections). "
-                        "But received Attr(num_or_sections) "
-                        "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
-                        num, in_dims, axis);
+      PADDLE_ENFORCE_EQ(
+          input_axis_dim % num, 0,
+          platform::errors::InvalidArgument(
+              "The input's size along the split dimension "
+              "must be evenly divisible by Attr(num_or_sections). "
+              "But received Attr(num_or_sections) "
+              "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
+              num, in_dims, axis));
       size_t out_axis_dim = input_axis_dim / num;
 
       for (auto& out_dim : outs_dims) {
@@ -64,11 +66,13 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
       }
 
       if (each_section_is_known) {
-        PADDLE_ENFORCE_LE(num_of_unk, 1,
-                          "Only one dimension value of Attr(num_or_sections) "
-                          "in SplitOp can be -1. "
-                          "But received Attr(num_or_sections) = [%s].",
-                          framework::make_ddim(sections));
+        PADDLE_ENFORCE_LE(
+            num_of_unk, 1,
+            platform::errors::InvalidArgument(
+                "Only one dimension value of Attr(num_or_sections) "
+                "in SplitOp can be -1. "
+                "But received Attr(num_or_sections) = [%s].",
+                framework::make_ddim(sections)));
       }
 
       if (unk_dim_idx != -1) {
@@ -77,24 +81,28 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
         // the following check will fail.
         PADDLE_ENFORCE_LT(
             sum_of_section, input_axis_dim,
-            "Sum of Attr(num_or_sections) other than unknown section "
-            "must be less than the input's size "
-            "along the split dimension. But received Attr(num_or_sections) "
-            "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-            framework::make_ddim(sections), in_dims, axis);
+            platform::errors::InvalidArgument(
+                "Sum of Attr(num_or_sections) other than unknown section "
+                "must be less than the input's "
+                "size "
+                "along the split dimension. But received Attr(num_or_sections) "
+                "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
+                framework::make_ddim(sections), in_dims, axis));
         if (each_section_is_known) {
           sections[unk_dim_idx] = input_axis_dim - sum_of_section;
         }
       } else {
         PADDLE_ENFORCE_EQ(
             sum_of_section, input_axis_dim,
-            "Sum of Attr(num_or_sections) must be equal to the input's size "
-            "along the split dimension. But received Attr(num_or_sections)"
-            " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-            framework::make_ddim(sections), in_dims, axis);
+            platform::errors::InvalidArgument(
+                "Sum of Attr(num_or_sections) must be equal to the input's "
+                "size "
+                "along the split dimension. But received Attr(num_or_sections)"
+                " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
+                framework::make_ddim(sections), in_dims, axis));
       }
     }
-    for (size_t i = 0; i < outs_number; ++i) {
+    for (int i = 0; i < outs_number; ++i) {
       outs_dims[i][axis] = sections[i];
     }
   }
@@ -159,14 +167,14 @@ class SplitGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("concat");
     op->SetInput("X", this->OutputGrad("Out"));
-    op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    if (this->HasInput("AxisTensor")) {
+      op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    }
     op->SetOutput("Out", this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(op);
   }
 };
 

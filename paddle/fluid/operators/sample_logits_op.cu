@@ -155,8 +155,15 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
           context.Input<Tensor>("CustomizedSamples");
       const Tensor* customized_probabilities =
           context.Input<Tensor>("CustomizedProbabilities");
-      samples->ShareDataWith(*customized_samples);
-      probabilities->ShareDataWith(*customized_probabilities);
+      PADDLE_ENFORCE_EQ(customized_samples, samples,
+                        platform::errors::InvalidArgument(
+                            "CustomizedSamples must be the same Tensor with "
+                            "Samples when use_customized_samples = True"));
+      PADDLE_ENFORCE_EQ(
+          customized_probabilities, probabilities,
+          platform::errors::InvalidArgument(
+              "CustomizedProbabilities must be the same Tensor with "
+              "Probabilities when use_customized_samples = True"));
     } else {
       samples->mutable_data<int64_t>(context.GetPlace());
       probabilities->mutable_data<T>(samples_dim, context.GetPlace());

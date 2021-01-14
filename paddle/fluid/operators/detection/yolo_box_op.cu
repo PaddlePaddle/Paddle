@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/detection/yolo_box_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
-
+#include "paddle/fluid/platform/gpu_launch_config.h"
 namespace paddle {
 namespace operators {
 
@@ -26,7 +26,9 @@ __global__ void KeYoloBoxFw(const T* input, const int* imgsize, T* boxes,
                             T* scores, const float conf_thresh,
                             const int* anchors, const int n, const int h,
                             const int w, const int an_num, const int class_num,
-                            const int box_num, int input_size) {
+                            const int box_num, int input_size_h,
+                            int input_size_w, bool clip_bbox, const float scale,
+                            const float bias) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   T box[4];
@@ -50,10 +52,11 @@ __global__ void KeYoloBoxFw(const T* input, const int* imgsize, T* boxes,
 
     int box_idx =
         GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 0);
-    GetYoloBox<T>(box, input, anchors, l, k, j, h, input_size, box_idx,
-                  grid_num, img_height, img_width);
+    GetYoloBox<T>(box, input, anchors, l, k, j, h, w, input_size_h,
+                  input_size_w, box_idx, grid_num, img_height, img_width, scale,
+                  bias);
     box_idx = (i * box_num + j * grid_num + k * w + l) * 4;
-    CalcDetectionBox<T>(boxes, box, box_idx, img_height, img_width);
+    CalcDetectionBox<T>(boxes, box, box_idx, img_height, img_width, clip_bbox);
 
     int label_idx =
         GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 5);
@@ -76,19 +79,23 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     int class_num = ctx.Attr<int>("class_num");
     float conf_thresh = ctx.Attr<float>("conf_thresh");
     int downsample_ratio = ctx.Attr<int>("downsample_ratio");
+    bool clip_bbox = ctx.Attr<bool>("clip_bbox");
+    float scale = ctx.Attr<float>("scale_x_y");
+    float bias = -0.5 * (scale - 1.);
 
     const int n = input->dims()[0];
     const int h = input->dims()[2];
     const int w = input->dims()[3];
     const int box_num = boxes->dims()[1];
     const int an_num = anchors.size() / 2;
-    int input_size = downsample_ratio * h;
+    int input_size_h = downsample_ratio * h;
+    int input_size_w = downsample_ratio * w;
 
     auto& dev_ctx = ctx.cuda_device_context();
     int bytes = sizeof(int) * anchors.size();
     auto anchors_ptr = memory::Alloc(dev_ctx, sizeof(int) * anchors.size());
     int* anchors_data = reinterpret_cast<int*>(anchors_ptr->ptr());
-    const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
     const auto cplace = platform::CPUPlace();
     memory::Copy(gplace, anchors_data, cplace, anchors.data(), bytes,
                  dev_ctx.stream());
@@ -101,13 +108,14 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     math::SetConstant<platform::CUDADeviceContext, T> set_zero;
     set_zero(dev_ctx, boxes, static_cast<T>(0));
     set_zero(dev_ctx, scores, static_cast<T>(0));
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), n * box_num);
 
-    int grid_dim = (n * box_num + 512 - 1) / 512;
-    grid_dim = grid_dim > 8 ? 8 : grid_dim;
-
-    KeYoloBoxFw<T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
+    KeYoloBoxFw<T><<<config.block_per_grid, config.thread_per_block, 0,
+                     ctx.cuda_device_context().stream()>>>(
         input_data, imgsize_data, boxes_data, scores_data, conf_thresh,
-        anchors_data, n, h, w, an_num, class_num, box_num, input_size);
+        anchors_data, n, h, w, an_num, class_num, box_num, input_size_h,
+        input_size_w, clip_bbox, scale, bias);
   }
 };
 

@@ -15,7 +15,7 @@
 from __future__ import print_function
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 
 
 def get_output_shape(attrs, in_shape, img_real_size):
@@ -129,7 +129,7 @@ class TestBlockExpandOp(OpTest):
         self.batch_size = 1
         self.img_channels = 3
         self.img_height = 4
-        self.img_width = 4
+        self.img_width = 10
         self.attrs = {
             'kernels': [2, 2],
             'strides': [1, 1],
@@ -142,7 +142,6 @@ class TestBlockExpandOp(OpTest):
         x = np.random.uniform(0.1, 1, [
             self.batch_size, self.img_channels, self.img_height, self.img_width
         ]).astype("float32")
-
         real_size = np.array([]).astype("float32")
         out = Im2Sequence(x, real_size, self.attrs)
         self.inputs = {'X': x}
@@ -170,7 +169,7 @@ class TestBlockExpandOpCase2(TestBlockExpandOp):
 
 class TestBlockExpandOpCase3(TestBlockExpandOp):
     def config(self):
-        self.batch_size = 2
+        self.batch_size = 6
         self.img_channels = 1
         self.img_height = 4
         self.img_width = 5
@@ -183,7 +182,7 @@ class TestBlockExpandOpCase3(TestBlockExpandOp):
 
 class TestBlockExpandOpCase4(TestBlockExpandOp):
     def config(self):
-        self.batch_size = 2
+        self.batch_size = 6
         self.img_channels = 2
         self.img_height = 3
         self.img_width = 3
@@ -194,6 +193,9 @@ class TestBlockExpandOpCase4(TestBlockExpandOp):
         }
 
 
+@skip_check_grad_ci(
+    reason="Since 'real_size' is used just in forward computation, we don't test the gradient here."
+)
 class TestBlockExpandOpCase5(OpTest):
     def config(self):
         self.batch_size = 1
@@ -206,6 +208,7 @@ class TestBlockExpandOpCase5(OpTest):
             'paddings': [2, 1, 2, 1],
             'out_stride': [2, 2],
         }
+        self.real_size = np.array([[8, 10], [5, 8]]).astype("float32")
 
     def setUp(self):
         self.config()
@@ -213,16 +216,15 @@ class TestBlockExpandOpCase5(OpTest):
         x = np.random.uniform(0.1, 1, [
             self.batch_size, self.img_channels, self.img_height, self.img_width
         ]).astype("float32")
-        real_size = np.array([[8, 10], [5, 8]]).astype("float32")
-        out = np.array(Im2Sequence(x, real_size, self.attrs))
-        self.inputs = {'X': x, 'Y': real_size}  #l ??
+        out = np.array(Im2Sequence(x, self.real_size, self.attrs))
+        self.inputs = {'X': x, 'Y': self.real_size}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output()
 
 
-class TestBlockExpandOpCase6(OpTest):
+class TestBlockExpandOpCase6(TestBlockExpandOpCase5):
     def config(self):
         self.batch_size = 3
         self.img_channels = 1
@@ -234,23 +236,10 @@ class TestBlockExpandOpCase6(OpTest):
             'paddings': [0, 0, 0, 0],
             'out_stride': [1, 1],
         }
-
-    def setUp(self):
-        self.config()
-        self.op_type = "im2sequence"
-        x = np.random.uniform(0.1, 1, [
-            self.batch_size, self.img_channels, self.img_height, self.img_width
-        ]).astype("float32")
-        real_size = np.array([[8, 10], [5, 8], [5, 8]]).astype("float32")
-        out = np.array(Im2Sequence(x, real_size, self.attrs))
-        self.inputs = {'X': x, 'Y': real_size}  #l ??
-        self.outputs = {'Out': out}
-
-    def test_check_output(self):
-        self.check_output()
+        self.real_size = np.array([[8, 10], [5, 8], [5, 8]]).astype("float32")
 
 
-class TestBlockExpandOpCase7(OpTest):
+class TestBlockExpandOpCase7(TestBlockExpandOpCase6):
     def config(self):
         self.batch_size = 2
         self.img_channels = 2
@@ -262,22 +251,8 @@ class TestBlockExpandOpCase7(OpTest):
             'paddings': [1, 0, 1, 0],
             'out_stride': [2, 2],
         }
-
-    def setUp(self):
-        self.config()
-        self.op_type = "im2sequence"
-        x = np.random.uniform(0.1, 1, [
-            self.batch_size, self.img_channels, self.img_height, self.img_width
-        ]).astype("float32")
-        real_size = np.array([[6, 6], [4, 4]]).astype("float32")
-        out = np.array(Im2Sequence(x, real_size, self.attrs))
-        self.inputs = {'X': x, 'Y': real_size}
-        self.outputs = {'Out': out}
-
-    def test_check_output(self):
-        self.check_output()
+        self.real_size = np.array([[6, 6], [4, 4]]).astype("float32")
 
 
 if __name__ == '__main__':
     unittest.main()
-#set shiftwidth=4 set expandtab set tabstop=4

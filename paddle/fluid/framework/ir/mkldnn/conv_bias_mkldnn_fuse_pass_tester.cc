@@ -18,6 +18,7 @@
 #include "paddle/fluid/platform/place.h"
 
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
@@ -118,14 +119,14 @@ void MainTest(bool convWithExistingBias) {
     if (node->IsOp() && node->Op()->Type() == "conv2d") {
       auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(boost::get<bool>(op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       // check if "conv" convolution is fused
-      auto op_name = boost::get<std::string>(op->GetAttr("name"));
+      auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
       if (op_name == "conv") {
         auto input_names = op->InputNames();
         ASSERT_TRUE(std::find(input_names.begin(), input_names.end(), "Bias") !=
                     input_names.end());
-        auto bias = boost::get<std::vector<std::string>>(op->Input("Bias"));
+        auto bias = op->Input("Bias");
         if (bias.size()) {
           ++conv_bias_count;
         }
@@ -147,6 +148,12 @@ TEST(ConvBiasFusePass, conv3d) {
 TEST(ConvBiasFusePass, conv2d_transpose) {
   Conv2DTransposeBiasFusePass pass;
   ASSERT_EQ(pass.type(), std::string("conv2d_transpose"));
+}
+
+TEST(ConvBiasFusePass, pass_op_version_check) {
+  ASSERT_TRUE(
+      paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
+          .IsPassCompatible("conv_bias_mkldnn_fuse_pass"));
 }
 
 }  // namespace ir

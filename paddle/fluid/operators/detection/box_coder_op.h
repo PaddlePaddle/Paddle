@@ -21,12 +21,18 @@ namespace operators {
 enum class BoxCodeType { kEncodeCenterSize = 0, kDecodeCenterSize = 1 };
 
 inline BoxCodeType GetBoxCodeType(const std::string &type) {
+  PADDLE_ENFORCE_EQ(
+      (type == "encode_center_size") || (type == "decode_center_size"), true,
+      platform::errors::InvalidArgument(
+          "The 'code_type' attribute in BoxCoder"
+          " must be 'encode_center_size' or 'decode_center_size'. "
+          "But received 'code_type' is %s",
+          type));
   if (type == "encode_center_size") {
     return BoxCodeType::kEncodeCenterSize;
-  } else if (type == "decode_center_size") {
+  } else {
     return BoxCodeType::kDecodeCenterSize;
   }
-  PADDLE_THROW("Not support type %s.", type);
 }
 
 template <typename DeviceContext, typename T>
@@ -186,16 +192,26 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     const int axis = context.Attr<int>("axis");
     if (target_box->lod().size()) {
       PADDLE_ENFORCE_EQ(target_box->lod().size(), 1UL,
-                        "Only support 1 level of LoD.");
+                        platform::errors::InvalidArgument(
+                            "Input(TargetBox) of BoxCoder operator "
+                            "supports LoD with only one level. But received "
+                            "level = %d",
+                            target_box->lod().size()));
     }
     if (prior_box_var) {
-      PADDLE_ENFORCE(variance.empty(),
-                     "Input 'PriorBoxVar' and attribute 'variance' should not"
-                     "be used at the same time.");
+      PADDLE_ENFORCE_EQ(variance.empty(), true,
+                        platform::errors::InvalidArgument(
+                            "Input 'PriorBoxVar' and attribute 'variance' "
+                            "of BoxCoder operator should not be used at the "
+                            "same time."));
     }
     if (!(variance.empty())) {
-      PADDLE_ENFORCE(static_cast<int>(variance.size()) == 4,
-                     "Size of attribute 'variance' should be 4");
+      PADDLE_ENFORCE_EQ(static_cast<int>(variance.size()), 4,
+                        platform::errors::InvalidArgument(
+                            "Size of attribute 'variance' of BoxCoder "
+                            "operator should be 4. But received "
+                            "size = %d",
+                            variance.size()));
     }
     auto code_type = GetBoxCodeType(context.Attr<std::string>("code_type"));
     bool normalized = context.Attr<bool>("box_normalized");

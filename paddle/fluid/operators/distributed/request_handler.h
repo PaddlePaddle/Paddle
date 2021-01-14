@@ -46,6 +46,7 @@ constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
 constexpr char kRequestGetNoBarrier[] = "GetVariableNoBarrier";
 constexpr char kRequestNotify[] = "RequestNotify";
+constexpr char kRequestSendAndRecv[] = "RequestSendAndRecv";
 
 constexpr char kSendRPC[] = "SendRPC";
 constexpr char kGetRPC[] = "GetRPC";
@@ -57,6 +58,8 @@ constexpr char kFetchBarrierRPC[] = "FetchBarrierRPC";
 constexpr char kSendMonomerFetchBarrierRPC[] = "SendMonomerFetchBarrierRPC";
 constexpr char kSendCompleteRPC[] = "SendCompleteRPC";
 constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
+constexpr char kSendAndRecvRPC[] = "SendAndRecvRPC";
+constexpr int64_t kPrefetchTimeout = 60000;
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
@@ -64,9 +67,12 @@ constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
 #define COMPLETE_MESSAGE "COMPLETE@RECV"
 #define WITHOUT_BARRIER_MESSAGE "@WITHOUT_BARRIER@RECV"
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
+#define STEP_COUNTER "@PS_STEP_COUNTER@"
 
 #define CHECKPOINT_SAVE_MESSAGE "SAVE@CHECKPOINTNOTIFY"
 #define CHECKPOINT_LOAD_MESSAGE "LOAD@CHECKPOINTNOTIFY"
+
+enum DistributedMode { kSync = 0, kAsync = 1, kHalfAsync = 2, kGeo = 3 };
 
 class RPCServer;
 
@@ -151,8 +157,8 @@ typedef std::shared_ptr<VarHandle> VarHandlePtr;
 
 class RequestHandler {
  public:
-  explicit RequestHandler(bool sync_mode)
-      : sync_mode_(sync_mode),
+  explicit RequestHandler(int distributed_mode)
+      : distributed_mode_(distributed_mode),
         dev_ctx_(nullptr),
         executor_(nullptr),
         scope_(nullptr),
@@ -198,7 +204,7 @@ class RequestHandler {
   void SetRPCServer(RPCServer* rpc_server) { rpc_server_ = rpc_server; }
 
   // Get attributes.
-  bool sync_mode() { return sync_mode_; }
+  int distributed_mode() { return distributed_mode_; }
   framework::Scope* scope() { return scope_; }
   const platform::DeviceContext* dev_ctx() { return dev_ctx_; }
   framework::ProgramDesc* program() { return program_; }
@@ -225,7 +231,7 @@ class RequestHandler {
                       const std::string& table_name = "") = 0;
 
  protected:
-  const bool sync_mode_;
+  const int distributed_mode_;
 
   const platform::DeviceContext* dev_ctx_;
   framework::Executor* executor_;

@@ -13,8 +13,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
-#include <memory>
+
 #include <string>
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -28,19 +41,54 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("reduce_sum_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetAttrMap(this->Attrs());
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    return op;
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    int in_dtype = ctx.Attr<int>("in_dtype");
+    if (in_dtype >= 0) {
+      return framework::OpKernelType(
+          static_cast<framework::proto::VarType::Type>(in_dtype),
+          ctx.GetPlace());
+    }
+    return framework::OpKernelType(
+        framework::OperatorWithKernel::IndicateVarDataType(
+            ctx, framework::GradVarName("Out")),
+        ctx.GetPlace());
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ReduceSumGradNoNeedBufferVarInference,
-                                      "X");
+template <typename T>
+class ReduceSumDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
+    op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    op->SetAttrMap(this->Attrs());
+    op->SetType("reduce_sum");
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceSumGradNoNeedBufferVarInferer, "X");
+class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
+ public:
+  void operator()(paddle::framework::InferVarTypeContext* ctx) const override {
+    auto data_type = static_cast<paddle::framework::proto::VarType::Type>(
+        BOOST_GET_CONST(int, ctx->GetAttr("out_dtype")));
+    if (data_type >= 0) {
+      ctx->SetOutputDataType("Out", data_type);
+    }
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
@@ -52,10 +100,13 @@ class ReduceSumOpMaker : public ops::ReduceOpMaker {
 };
 
 REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
+                  ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
-                  ops::ReduceSumGradNoNeedBufferVarInference);
+                  ops::ReduceSumDoubleOpGradMaker<paddle::framework::OpDesc>,
+                  ops::ReduceSumDoubleOpGradMaker<paddle::imperative::OpBase>,
+                  ops::ReduceSumGradNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(
     reduce_sum, ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,
@@ -64,6 +115,12 @@ REGISTER_OP_CPU_KERNEL(
                       ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
+                      ops::SumFunctor>,
+    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::complex64, ops::SumFunctor>,
+    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::complex128,
+
                       ops::SumFunctor>);
 
 template <typename T>
@@ -74,4 +131,6 @@ using CPUReduceSumGradKernel =
 REGISTER_OP_CPU_KERNEL(reduce_sum_grad, CPUReduceSumGradKernel<float>,
                        CPUReduceSumGradKernel<double>,
                        CPUReduceSumGradKernel<int>,
-                       CPUReduceSumGradKernel<int64_t>);
+                       CPUReduceSumGradKernel<int64_t>,
+                       CPUReduceSumGradKernel<paddle::platform::complex64>,
+                       CPUReduceSumGradKernel<paddle::platform::complex128>);

@@ -25,6 +25,17 @@
 
 namespace paddle {
 namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+namespace platform {
+class NCCLCommunicator;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 
 class SparseAllReduceOpHandle : public AllReduceOpHandle {
@@ -35,8 +46,6 @@ class SparseAllReduceOpHandle : public AllReduceOpHandle {
                           const platform::NCCLCommunicator *ctxs,
                           bool is_encoded = false, int nranks = -1);
   std::string Name() const override;
-
-  void WaitInputVarGenerated() override;
 
  protected:
   void RunImpl() override;

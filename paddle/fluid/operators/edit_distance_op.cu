@@ -111,8 +111,9 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
 
     if (normalized) {
       for (size_t i = 1; i < ref_lod.size(); ++i) {
-        PADDLE_ENFORCE(ref_lod[i] > ref_lod[i - 1],
-                       "Reference string %d is empty.", i);
+        PADDLE_ENFORCE_GT(ref_lod[i], ref_lod[i - 1],
+                          platform::errors::InvalidArgument(
+                              "Reference string %d is empty.", i));
       }
     }
 
@@ -134,7 +135,7 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
         if (normalized) {
           distance = distance / n;
         }
-        memory::Copy(boost::get<Place>(ctx.GetPlace()), out + num,
+        memory::Copy(BOOST_GET_CONST(Place, ctx.GetPlace()), out + num,
                      platform::CPUPlace(), &distance, sizeof(T), stream);
       } else {
         framework::Tensor dist_t;

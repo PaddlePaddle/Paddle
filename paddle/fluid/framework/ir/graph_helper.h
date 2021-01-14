@@ -28,6 +28,8 @@ namespace framework {
 namespace ir {
 
 // Compare nodes via node id.
+class Graph;
+
 struct NodeComp {
   bool operator()(ir::Node *const &node1, ir::Node *const &node2) const {
     return node1->id() < node2->id();

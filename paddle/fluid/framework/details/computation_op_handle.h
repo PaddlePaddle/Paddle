@@ -26,13 +26,27 @@
 
 namespace paddle {
 namespace framework {
+class OperatorBase;
+class Scope;
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
+struct VarHandleBase;
+
 class ComputationOpHandle : public OpHandleBase {
  public:
   ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place,
                       size_t scope_idx);
 
   OperatorBase *GetOp() { return op_.get(); }
+
+  const OperatorBase *GetOp() const { return op_.get(); }
 
   std::string Name() const override;
 

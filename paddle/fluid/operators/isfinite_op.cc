@@ -13,8 +13,24 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/isfinite_op.h"
+
 #include <string>
-#include <vector>
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -27,9 +43,8 @@ class OverflowOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("X"), "Inputs(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of OverflowOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "isfinite");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "isfinite");
 
     ctx->SetOutputDim("Out", {1});
   }
@@ -44,7 +59,11 @@ class OverflowOp : public framework::OperatorWithKernel {
     } else if (x_var->IsType<framework::SelectedRows>()) {
       dtype = x_var->Get<framework::SelectedRows>().value().type();
     } else {
-      PADDLE_THROW("Cannot find the input data type by all input data");
+      PADDLE_ENFORCE_EQ(
+          true, false,
+          platform::errors::InvalidArgument(
+              "The input type mismatch, the type of Input(X) must be Tensor or "
+              "SelectedRows, please check your input."));
     }
     return framework::OpKernelType(framework::proto::VarType::Type(dtype),
                                    ctx.GetPlace());
@@ -104,6 +123,8 @@ namespace ops = paddle::operators;
   REGISTER_OP_CPU_KERNEL(                                                   \
       op_type, ops::OverflowKernel<paddle::platform::CPUDeviceContext, int, \
                                    ops::functor>,                           \
+      ops::OverflowKernel<paddle::platform::CPUDeviceContext, int64_t,      \
+                          ops::functor>,                                    \
       ops::OverflowKernel<paddle::platform::CPUDeviceContext, float,        \
                           ops::functor>,                                    \
       ops::OverflowKernel<paddle::platform::CPUDeviceContext, double,       \

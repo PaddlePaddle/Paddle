@@ -22,27 +22,11 @@ import paddle.dataset.cifar
 import paddle.dataset.movielens
 import paddle.dataset.conll05
 import paddle.dataset.uci_housing
-import paddle.dataset.sentiment
 import paddle.dataset.wmt14
 import paddle.dataset.wmt16
-import paddle.dataset.mq2007
 import paddle.dataset.flowers
 import paddle.dataset.voc2012
 import paddle.dataset.image
 
-__all__ = [
-    'mnist',
-    'imikolov',
-    'imdb',
-    'cifar',
-    'movielens',
-    'conll05',
-    'sentiment',
-    'uci_housing',
-    'wmt14',
-    'wmt16',
-    'mq2007',
-    'flowers',
-    'voc2012',
-    'image',
-]
+# set __all__ as empty for not showing APIs under paddle.dataset
+__all__ = []

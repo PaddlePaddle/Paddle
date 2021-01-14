@@ -50,6 +50,15 @@ void CPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
   callback();
 }
 
+#ifdef PADDLE_WITH_XPU
+XPUGarbageCollector::XPUGarbageCollector(const platform::XPUPlace &place,
+                                         size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+void XPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
+  callback();
+}
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 UnsafeFastGPUGarbageCollector::UnsafeFastGPUGarbageCollector(
     const platform::CUDAPlace &place, size_t max_memory_size)
@@ -79,15 +88,15 @@ StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
                                                size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {
   platform::CUDADeviceGuard guard(place.device);
-  PADDLE_ENFORCE(cudaStreamCreate(&stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
   callback_manager_.reset(new platform::StreamCallbackManager(stream_));
 }
 
 StreamGarbageCollector::~StreamGarbageCollector() {
-  auto place = boost::get<platform::CUDAPlace>(this->dev_ctx_->GetPlace());
+  auto place = BOOST_GET_CONST(platform::CUDAPlace, this->dev_ctx_->GetPlace());
   platform::CUDADeviceGuard guard(place.device);
-  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-  PADDLE_ENFORCE(cudaStreamDestroy(stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
 }
 
 cudaStream_t StreamGarbageCollector::stream() const { return stream_; }
@@ -97,6 +106,15 @@ void StreamGarbageCollector::Wait() const { callback_manager_->Wait(); }
 void StreamGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
   callback_manager_->AddCallback(callback);
+}
+
+CUDAPinnedGarbageCollector::CUDAPinnedGarbageCollector(
+    const platform::CUDAPinnedPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void CUDAPinnedGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback();
 }
 #endif
 

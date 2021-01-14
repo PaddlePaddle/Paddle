@@ -23,6 +23,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
@@ -38,10 +39,11 @@ struct ExceptionHandler {
   void operator()() const {
     auto ex = this->future_.get();
     if (ex != nullptr) {
-      LOG(FATAL) << "The exception is thrown inside the thread pool. You "
-                    "should use RunAndGetException to handle the exception.\n"
-                    "The default exception handler is LOG(FATAL)."
-                 << ex->what();
+      PADDLE_THROW(platform::errors::Fatal(
+          "The exception is thrown inside the thread pool. You "
+          "should use RunAndGetException to handle the exception."
+          "The exception is:\n %s.",
+          ex->what()));
     }
   }
 };
@@ -78,9 +80,11 @@ class ThreadPool {
         return std::unique_ptr<platform::EnforceNotMet>(
             new platform::EnforceNotMet(ex));
       } catch (const std::exception& e) {
-        LOG(FATAL) << "Unexpected exception is catched in thread pool. All "
-                      "throwable exception in Fluid should be an EnforceNotMet."
-                   << e.what();
+        PADDLE_THROW(platform::errors::Fatal(
+            "Unexpected exception is catched in thread pool. All "
+            "throwable exception in Paddle should be an EnforceNotMet."
+            "The exception is:\n %s.",
+            e.what()));
       }
       return nullptr;
     });
@@ -88,7 +92,8 @@ class ThreadPool {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       if (!running_) {
-        PADDLE_THROW("enqueue on stopped ThreadPool");
+        PADDLE_THROW(platform::errors::Unavailable(
+            "Task is enqueued into stopped ThreadPool."));
       }
       tasks_.push(std::move(task));
     }

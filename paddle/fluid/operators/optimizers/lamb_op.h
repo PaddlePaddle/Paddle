@@ -17,7 +17,6 @@ limitations under the License. */
 #include <Eigen/Dense>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -178,37 +177,40 @@ class LambOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
-                   "but the received is %s",
-                   ctx.Inputs("Param").front(),
-                   framework::ToTypeName(param_var->Type()));
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+                          "but the received is %s",
+                          ctx.InputNames("Param").front(),
+                          framework::ToTypeName(param_var->Type())));
 
     using paddle::framework::LoDTensor;
-    using paddle::operators::detail::Ref;
 
     T weight_decay = static_cast<T>(ctx.Attr<float>("weight_decay"));
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
-    auto& param = Ref(ctx.Input<LoDTensor>("Param"), "Must set Param.");
+    auto& param = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Param"), "Input",
+                                  "Param", "Lamb");
     auto* grad_var = ctx.InputVar("Grad");
-    auto& mom1 = Ref(ctx.Input<LoDTensor>("Moment1"), "Must set Moment1.");
-    auto& mom2 = Ref(ctx.Input<LoDTensor>("Moment2"), "Must set Moment2.");
-    auto& lr =
-        Ref(ctx.Input<LoDTensor>("LearningRate"), "Must set LearningRate.");
+    auto& mom1 = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Moment1"), "Input",
+                                 "Moment1", "Lamb");
+    auto& mom2 = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Moment2"), "Input",
+                                 "Moment2", "Lamb");
+    auto& lr = GET_DATA_SAFELY(ctx.Input<LoDTensor>("LearningRate"), "Input",
+                               "LearningRate", "Lamb");
 
-    auto& beta1_pow =
-        Ref(ctx.Input<LoDTensor>("Beta1Pow"), "Must set Beta1Pow.");
-    auto& beta2_pow =
-        Ref(ctx.Input<LoDTensor>("Beta2Pow"), "Must set Beta2Pow.");
+    auto& beta1_pow = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Beta1Pow"), "Input",
+                                      "Beta1Pow", "Lamb");
+    auto& beta2_pow = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Beta2Pow"), "Input",
+                                      "Beta2Pow", "Lamb");
 
-    auto& param_out =
-        Ref(ctx.Output<LoDTensor>("ParamOut"), "Must set ParamOut.");
-    auto& mom1_out =
-        Ref(ctx.Output<LoDTensor>("Moment1Out"), "Must set Moment1Out.");
-    auto& mom2_out =
-        Ref(ctx.Output<LoDTensor>("Moment2Out"), "Must set Moment1Out.");
+    auto& param_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("ParamOut"),
+                                      "Output", "ParamOut", "Lamb");
+    auto& mom1_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Moment1Out"),
+                                     "Output", "Moment1Out", "Lamb");
+    auto& mom2_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Moment2Out"),
+                                     "Output", "Moment2Out", "Lamb");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, param.numel());
@@ -217,7 +219,7 @@ class LambOpKernel : public framework::OpKernel<T> {
 
     // Update moments
     if (grad_var->IsType<framework::LoDTensor>()) {
-      auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad.");
+      auto& grad = *ctx.Input<LoDTensor>("Grad");
 
       LambMomentUpdateFunctor<T> moment_update_functor(
           weight_decay, beta1, beta2, epsilon, beta1_pow.template data<T>(),
@@ -229,8 +231,8 @@ class LambOpKernel : public framework::OpKernel<T> {
           trust_ratio_div.template data<T>());
       for_range(moment_update_functor);
     } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto& grad =
-          Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad.");
+      auto& grad = GET_DATA_SAFELY(ctx.Input<framework::SelectedRows>("Grad"),
+                                   "Input", "Grad", "Lamb");
       if (grad.rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
@@ -273,7 +275,10 @@ class LambOpKernel : public framework::OpKernel<T> {
           row_numel, grad_merge.rows().size());
       for_range(moment_update_functor);
     } else {
-      PADDLE_THROW("Variable type not supported by lamb_op.");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Variable type not supported by lamb_op. Expect LoDTensor or "
+          "SelectedRows, but got %s",
+          framework::ToTypeName(param_var->Type())));
     }
 
     // Update parameter

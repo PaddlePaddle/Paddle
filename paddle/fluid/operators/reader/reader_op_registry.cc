@@ -13,8 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
-#include <string>
-#include <vector>
+
+namespace paddle {
+namespace framework {
+class VarDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -62,12 +66,14 @@ void FileReaderMakerBase::Make() {
 }
 
 void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(
-      !ctx->IsRuntime(),
-      "'FileReaderInferShape' should only be invoked during compile time.");
+  PADDLE_ENFORCE_NE(
+      ctx->IsRuntime(), true,
+      platform::errors::PreconditionNotMet("'FileReaderInferShape' should only "
+                                           "be invoked during compile time."));
 
-  PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                 "The output file reader should not be null.");
+  PADDLE_ENFORCE_EQ(
+      ctx->HasOutput("Out"), true,
+      platform::errors::NotFound("The output file reader should not be null."));
   bool use_data_config = ctx->Attrs().Get<bool>("use_data_config");
   if (use_data_config) {
     const auto shape_concat =
@@ -77,58 +83,64 @@ void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
     ctx->SetReaderDims("Out", shapes);
 
     const auto lod_levels = ctx->Attrs().Get<std::vector<int>>("lod_levels");
-    PADDLE_ENFORCE_EQ(lod_levels.size(), shapes.size(),
-                      "The number of 'lod_levels'(%d) doesn't match the number "
-                      "of 'shapes'(%d).",
-                      lod_levels.size(), shapes.size());
+    PADDLE_ENFORCE_EQ(
+        lod_levels.size(), shapes.size(),
+        platform::errors::InvalidArgument(
+            "The number of 'lod_levels'(%d) doesn't match the number "
+            "of 'shapes'(%d).",
+            lod_levels.size(), shapes.size()));
     const auto dtypes = ctx->Attrs().Get<std::vector<int>>("dtypes");
     PADDLE_ENFORCE_EQ(
         dtypes.size(), shapes.size(),
-        "The number of 'dtypes'(%d) doesn't match the number of 'shapes'(%d).",
-        dtypes.size(), shapes.size());
+        platform::errors::InvalidArgument("The number of 'dtypes'(%d) doesn't "
+                                          "match the number of 'shapes'(%d).",
+                                          dtypes.size(), shapes.size()));
     const auto need_check_feed =
         ctx->Attrs().Get<std::vector<int>>("need_check_feed");
-    PADDLE_ENFORCE_EQ(need_check_feed.size(), shapes.size(),
-                      "The number of 'need_check_feed'(%d) doesn't match the "
-                      "number of 'shapes'(%d).",
-                      need_check_feed.size(), shapes.size());
+    PADDLE_ENFORCE_EQ(
+        need_check_feed.size(), shapes.size(),
+        platform::errors::InvalidArgument(
+            "The number of 'need_check_feed'(%d) doesn't match the "
+            "number of 'shapes'(%d).",
+            need_check_feed.size(), shapes.size()));
     framework::VarDesc* reader =
-        boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+        BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
     reader->SetLoDLevels(lod_levels);
   }
 }
 
 void FileReaderInferVarType::operator()(
     framework::InferVarTypeContext* ctx) const {
-  std::string reader_name = ctx->Output("Out")[0];
-  ctx->SetType(reader_name, framework::proto::VarType::READER);
+  ctx->SetOutputType("Out", framework::proto::VarType::READER);
 }
 
 void DecoratedReaderInferShape::operator()(
     framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(!ctx->IsRuntime(),
-                 "'DecoratedReaderInferShape' should only be invoked during "
-                 "compile time.");
+  PADDLE_ENFORCE_NE(
+      ctx->IsRuntime(), true,
+      platform::errors::PreconditionNotMet(
+          "'DecoratedReaderInferShape' should only be invoked during "
+          "compile time."));
 
-  PADDLE_ENFORCE(ctx->HasInput("UnderlyingReader"),
-                 "Input(UnderlyingReader) should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                 "The output decorated reader should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("UnderlyingReader"), true,
+                    platform::errors::NotFound(
+                        "Input(UnderlyingReader) should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                    platform::errors::NotFound(
+                        "The output decorated reader should not be null."));
   ctx->SetReaderDims("Out", ctx->GetReaderDims("UnderlyingReader"));
 
-  framework::VarDesc* in_reader = boost::get<framework::VarDesc*>(
-      ctx->GetInputVarPtrs("UnderlyingReader")[0]);
+  framework::VarDesc* in_reader = BOOST_GET(
+      framework::VarDesc*, ctx->GetInputVarPtrs("UnderlyingReader")[0]);
   framework::VarDesc* out_reader =
-      boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+      BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
   out_reader->SetLoDLevels(in_reader->GetLoDLevels());
 }
 
 void DecoratedReaderInferVarType::operator()(
     framework::InferVarTypeContext* ctx) const {
-  const std::string& in_reader_name = ctx->Input("UnderlyingReader")[0];
-  const std::string& out_reader_name = ctx->Output("Out")[0];
-  ctx->SetType(out_reader_name, framework::proto::VarType::READER);
-  ctx->SetDataTypes(out_reader_name, ctx->GetDataTypes(in_reader_name));
+  ctx->SetOutputType("Out", framework::proto::VarType::READER);
+  ctx->SetOutputDataTypes("Out", ctx->GetInputDataTypes("UnderlyingReader"));
 }
 
 void DecoratedReaderMakerBase::Make() {

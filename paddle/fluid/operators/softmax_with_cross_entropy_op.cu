@@ -24,24 +24,30 @@ template <typename T>
 __global__ void CrossEntropyGrad(T* logit_grad, const int64_t* labels,
                                  const int n, const int d, const int remain,
                                  const int ignore_index) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n * remain;
-       i += blockDim.x * gridDim.x) {
-    int idx_n = i / remain;
-    int idx_remain = i % remain;
-    int idx = idx_n * d + labels[i] * remain + idx_remain;
-    logit_grad[idx] -=
-        ignore_index == labels[i] ? static_cast<T>(0.) : static_cast<T>(1.);
+  CUDA_KERNEL_LOOP(index, n * remain) {
+    int idx_n = index / remain;
+    int idx_remain = index % remain;
+    int tmp = labels[index];
+    if (ignore_index != tmp) {
+      int idx = idx_n * d + tmp * remain + idx_remain;
+      logit_grad[idx] -= static_cast<T>(1.);
+    }
   }
 }
 
 template <typename T>
 __global__ void Scale(T* logit_grad, const T* loss_grad, const int num,
-                      const int d, const int remain) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-       i += blockDim.x * gridDim.x) {
-    int idx_n = i / d;
-    int idx_remain = i % remain;
-    logit_grad[i] *= loss_grad[idx_n * remain + idx_remain];
+                      const int d, const int remain, const int64_t* labels,
+                      const int ignore_index) {
+  CUDA_KERNEL_LOOP(index, num) {
+    int idx_n = index / d;
+    int idx_remain = index % remain;
+    int idx_lbl = idx_n * remain + idx_remain;
+    if (labels[idx_lbl] == ignore_index) {
+      logit_grad[index] = static_cast<T>(0.);
+    } else {
+      logit_grad[index] *= loss_grad[idx_lbl];
+    }
   }
 }
 
@@ -100,7 +106,7 @@ where:
 Therefore, the calculation can be separated into 3 steps:
 Step 1: row-wise operation to calculate max_i
 Step 2: row-wise operation to calculate logDiffMaxSum_i
-Step 3: caculate tmp_i_j, and finally get softmax_i_j and cross\_entropy_i
+Step 3: calculate tmp_i_j, and finally get softmax_i_j and cross\_entropy_i
 To save memory, we can share memory among max_i, logDiffMaxSum_i and
 cross\_entropy_i.
 In this way, the 3 steps should be changed to:
@@ -150,10 +156,7 @@ static __global__ void RowReductionForMax(const T* logits_data, T* max_data,
 
   cur_max = BlockReduce<T, BlockDim>(temp_storage).Reduce(cur_max, cub::Max());
 
-  if (threadIdx.x == 0) {
-    max_data[blockIdx.x] =
-        cur_max < static_cast<T>(-64) ? static_cast<T>(-64) : cur_max;
-  }
+  if (threadIdx.x == 0) max_data[blockIdx.x] = cur_max;
 }
 
 // Make sure that BlockDim <= axis_dim
@@ -175,6 +178,12 @@ static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
   auto block_max = max_data[blockIdx.x];
   int step = BlockDim * remain;
 
+  // In numeric stable mode softmax_with_loss, we calc loss with
+  // tmp_i_j = x_i_j - max_i - logDiffMaxSum_i, instead of
+  // log(exp(x_i_j - max_i)/DiffMaxSum_i). Therefore, log(0) will not occur.
+  // Also we calc softmax_i_j = e^{tmp_i_j}, the maximum and minimum value will
+  // be 1.0 and 0.0, represent prob is 1.0 and 0.0.
+  // So there is no need to clip on shift_softmax.
   softmax[beg_idx] = logits_data[beg_idx] - block_max;
   T diff_max_sum = exp_on_device(softmax[beg_idx]);
   auto idx = beg_idx + step;
@@ -197,6 +206,10 @@ static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
     softmax[beg_idx] -= diff_max_sum;
     beg_idx += step;
   }
+
+  // Note(zhiqiu): since different threads may use max_data[blockIdx.x] to
+  // calculate diff_max_sum, __syncthreads() is needed here.
+  __syncthreads();
   if (threadIdx.x == 0) max_data[blockIdx.x] = 0;
 }
 
@@ -253,6 +266,7 @@ struct HardLabelSoftmaxWithCrossEntropyFunctor {
     int idx_remain = idx % remain;
     // labels, loss view as [n, remain]
     int idx_lbl = idx_n * remain + idx_remain;
+    // It also would ignore labels not in range(class_num).
     if (idx_axis != labels_[idx_lbl]) {
       log_softmax_[idx] = exp_on_device(log_softmax_[idx]);
     } else {
@@ -350,7 +364,8 @@ static void HardLabelSoftmaxWithCrossEntropy(
     CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(4);
     CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(2);
     default:
-      PADDLE_THROW("BlockDim must be 2^n in softmax_with_cross_entropy_op");
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Block Dimension must be 2^n in softmax_with_cross_entropy_op."));
       break;
   }
 #undef CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL
@@ -390,7 +405,8 @@ static void SoftmaxWithCrossEntropyFusedKernel(const T* logits_data,
     CALL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(4);
     CALL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(2);
     default:
-      PADDLE_THROW("BlockDim must be 2^n in softmax_with_cross_entropy_op");
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Block Dimension must be 2^n in softmax_with_cross_entropy_op."));
       break;
   }
 
@@ -401,8 +417,10 @@ template <typename T>
 class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(context.GetPlace()), true,
+        platform::errors::Unavailable("softmax_with_cross_entropy operator's "
+                                      "CUDA kernel only runs on GPU device."));
     const Tensor* logits = context.Input<Tensor>("Logits");
     const Tensor* labels = context.Input<Tensor>("Label");
     Tensor* softmax = context.Output<Tensor>("Softmax");
@@ -412,18 +430,18 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logits->dims()[axis];
 
+    const int n = SizeToAxis(axis, logits->dims());
+    const int d = SizeFromAxis(axis, logits->dims());
+
+    auto* softmax_data = softmax->mutable_data<T>(context.GetPlace());
+    auto* loss_data = loss->mutable_data<T>(context.GetPlace());
+
     if (axis_dim == 1) {
       math::SetConstant<platform::CUDADeviceContext, T> set_constant;
       set_constant(context.cuda_device_context(), softmax, static_cast<T>(1));
       set_constant(context.cuda_device_context(), loss, static_cast<T>(0));
       return;
     }
-
-    const int n = SizeToAxis(axis, logits->dims());
-    const int d = SizeFromAxis(axis, logits->dims());
-
-    auto* softmax_data = softmax->mutable_data<T>(context.GetPlace());
-    auto* loss_data = loss->mutable_data<T>(context.GetPlace());
 
     auto soft_label = context.Attr<bool>("soft_label");
     auto ignore_index = context.Attr<int>("ignore_index");
@@ -462,8 +480,10 @@ template <typename T>
 class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(context.GetPlace()), true,
+        platform::errors::Unavailable("softmax_with_cross_entropy operator's "
+                                      "CUDA kernel only runs on GPU device."));
     const Tensor* labels = context.Input<Tensor>("Label");
     const T* loss_grad_data =
         context.Input<Tensor>(framework::GradVarName("Loss"))->data<T>();
@@ -500,7 +520,7 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
       int num = n * d;
       grid = (num + block - 1) / block;
       Scale<T><<<grid, block, 0, stream>>>(logit_grad_data, loss_grad_data, num,
-                                           d, remain);
+                                           d, remain, label_data, ignore_index);
     }
   }
 };

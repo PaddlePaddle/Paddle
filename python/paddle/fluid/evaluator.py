@@ -224,7 +224,7 @@ class EditDistance(Evaluator):
 
     Args:
         input: the sequences predicted by network.
-        label: the target sequences which must has same sequence count
+        label: the target sequences which must have same sequence count
         with input.
         ignored_tokens(list of int): Tokens that should be removed before
         calculating edit distance.

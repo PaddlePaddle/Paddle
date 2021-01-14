@@ -103,6 +103,7 @@ class TestCollectiveRunnerBase(object):
         nranks = 2
         self.initCommunicator(startup_prog, rank, nranks, True,
                               current_endpoint, endpoints)
+        self.rank = rank
         result = self.get_model(train_prog, startup_prog)
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         place = fluid.CUDAPlace(
@@ -163,7 +164,7 @@ class TestDistBase(unittest.TestCase):
         w0_ep, w1_ep = worker_endpoints
         #print("w0_ep:",w0_ep," w1_ep:",w1_ep)
         env0 = {
-            "FLAGS_selected_gpus": "2",
+            "FLAGS_selected_gpus": "0",
             "PADDLE_TRAINER_ID": "0",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
@@ -171,7 +172,7 @@ class TestDistBase(unittest.TestCase):
         }
 
         env1 = {
-            "FLAGS_selected_gpus": "3",
+            "FLAGS_selected_gpus": "1",
             "PADDLE_TRAINER_ID": "1",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
@@ -241,6 +242,15 @@ class TestDistBase(unittest.TestCase):
             need_result = input2
             self.assertTrue(np.allclose(tr0_out, need_result))
             self.assertTrue(np.allclose(tr1_out, need_result))
+        elif col_type == "reduce":
+            need_result = input1 + input2
+            self.assertTrue(np.allclose(tr1_out, need_result))
+        elif col_type == "scatter":
+            need_result = input2
+            need_result1 = need_result[0:need_result.shape[0] // 2]
+            need_result2 = need_result[need_result.shape[0] // 2:]
+            self.assertTrue(np.allclose(tr0_out, need_result1))
+            self.assertTrue(np.allclose(tr1_out, need_result2))
         elif col_type == "allreduce":
             need_result = input1 + input2
             self.assertTrue(
@@ -259,6 +269,11 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out, need_result2, rtol=1e-05, atol=1e-05))
+        elif col_type == "sendrecv":
+            need_result = input1
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
         elif col_type == "reduce_slicegather":
             slicesize = input1.shape[0] // 2
             tmp10 = input1[0:slicesize]

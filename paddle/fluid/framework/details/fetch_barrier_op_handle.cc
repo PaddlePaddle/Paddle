@@ -19,6 +19,8 @@
 namespace paddle {
 namespace framework {
 namespace details {
+struct VarHandleBase;
+
 FetchBarrierOpHandle::FetchBarrierOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places)

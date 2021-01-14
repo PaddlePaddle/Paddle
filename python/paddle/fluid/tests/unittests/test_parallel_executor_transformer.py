@@ -17,13 +17,15 @@ from __future__ import print_function
 import paddle.fluid as fluid
 import transformer_model
 import numpy as np
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
 import unittest
 import paddle
 import paddle.fluid.core as core
 import paddle.dataset.wmt16 as wmt16
 import os
 from feed_data_reader import FeedDataReader
+
+os.environ['CPU_NUM'] = str(4)
 
 
 class ModelHyperParams(object):
@@ -185,24 +187,20 @@ def get_feed_data_reader():
 
 
 class TestTransformer(TestParallelExecutorBase):
-    @classmethod
-    def setUpClass(cls):
-        os.environ['CPU_NUM'] = str(4)
-
     def test_main(self):
         if core.is_compiled_with_cuda():
             self.check_network_convergence(
                 transformer,
-                use_cuda=True,
+                use_device=DeviceType.CUDA,
                 feed_data_reader=get_feed_data_reader())
             self.check_network_convergence(
                 transformer,
-                use_cuda=True,
+                use_device=DeviceType.CUDA,
                 enable_sequential_execution=True,
                 feed_data_reader=get_feed_data_reader())
         self.check_network_convergence(
             transformer,
-            use_cuda=False,
+            use_device=DeviceType.CPU,
             iter=2,
             feed_data_reader=get_feed_data_reader())
 

@@ -11,6 +11,7 @@
 
 #include "paddle/fluid/operators/temporal_shift_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -90,8 +91,9 @@ template <typename T>
 class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::InvalidArgument(
+                          "This kernel only runs on GPU device."));
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     int t = ctx.Attr<int>("seg_num");
@@ -111,11 +113,11 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
     T* output_data = output->mutable_data<T>({nt, c, h, w}, ctx.GetPlace());
 
     int pixelNum = nt * chw;
-    int grid_dim = (pixelNum + 512 - 1) / 512;
-    grid_dim = grid_dim > 8 ? 8 : grid_dim;
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
-    KeTemporalShiftFw<
-        T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
+    KeTemporalShiftFw<T><<<config.block_per_grid, config.thread_per_block, 0,
+                           ctx.cuda_device_context().stream()>>>(
         input_data, output_data, ntchw, tchw, chw, hw, w, t, c, shift_ratio);
   }
 };
@@ -147,11 +149,11 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
         static_cast<T>(0));
 
     int pixelNum = nt * chw;
-    int grid_dim = (pixelNum + 512 - 1) / 512;
-    grid_dim = grid_dim > 8 ? 8 : grid_dim;
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
-    KeTemporalShiftBw<
-        T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
+    KeTemporalShiftBw<T><<<config.block_per_grid, config.thread_per_block, 0,
+                           ctx.cuda_device_context().stream()>>>(
         output_grad_data, input_grad_data, ntchw, tchw, chw, hw, w, t, c,
         shift_ratio);
   }

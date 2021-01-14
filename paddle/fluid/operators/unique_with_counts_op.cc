@@ -22,23 +22,32 @@ class UniqueWithCountsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of UniqueWithCountsOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of UniqueWithCountsOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Index"),
-                   "Output(Index) of UniqueWithCountsOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Count"),
-                   "Output(Count) of UniqueWithCountsOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "unique_with_counts");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "unique_with_counts");
+    OP_INOUT_CHECK(ctx->HasOutput("Index"), "Output", "Index",
+                   "unique_with_counts");
+    OP_INOUT_CHECK(ctx->HasOutput("Count"), "Output", "Count",
+                   "unique_with_counts");
 
     auto in_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE(in_dims.size() == 1,
-                   "The op of fluid.layers.unique_with_counts, Input(X) should "
-                   "be a vector.");
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(), 1,
+        platform::errors::InvalidArgument("The Input(X) should be 1-D Tensor, "
+                                          "But now the dims of Input(X) is %d.",
+                                          in_dims.size()));
 
     ctx->SetOutputDim("Out", {-1});
     ctx->SetOutputDim("Index", in_dims);
     ctx->SetOutputDim("Count", {-1});
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 

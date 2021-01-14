@@ -23,15 +23,16 @@ __global__ void MomentumLarsKernel(const T* p, const T* g, const T* v,
                                    const T* learning_rate, const T mu,
                                    const int64_t num, const T lars_coeff,
                                    const T lars_weight_decay, const T* p_norm,
-                                   const T* g_norm, T* p_out, T* v_out) {
+                                   const T* g_norm, T* p_out, T* v_out,
+                                   const T epsilon) {
   T lr = learning_rate[0];
   T local_lr = learning_rate[0];
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-       i += blockDim.x * gridDim.x) {
-    if (p_norm[0] > 0 && g_norm[0] > 0) {
+  CUDA_KERNEL_LOOP(i, num) {
+    if (lars_weight_decay > 0 && p_norm[0] > 0 && g_norm[0] > 0) {
       local_lr = lr * lars_coeff * p_norm[0] /
-                 (g_norm[0] + lars_weight_decay * p_norm[0]);
+                 (g_norm[0] + lars_weight_decay * p_norm[0] + epsilon);
     }
+
     T v_new = v[i] * mu + local_lr * (g[i] + lars_weight_decay * p[i]);
     v_out[i] = v_new;
     p_out[i] = p[i] - v_new;
@@ -55,6 +56,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     T lars_coeff = ctx.Attr<float>("lars_coeff");
     T lars_weight_decay = ctx.Attr<float>("lars_weight_decay");
+    T epsilon = ctx.Attr<float>("epsilon");
 
     auto* p = param->data<T>();
     auto* v = velocity->data<T>();
@@ -80,7 +82,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     eg_norm.device(*place) = eigen_g.square().sum().sqrt();
     MomentumLarsKernel<<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
         p, g, v, lr, mu, param->numel(), lars_coeff, lars_weight_decay,
-        p_norm_data, g_norm_data, p_out, v_out);
+        p_norm_data, g_norm_data, p_out, v_out, epsilon);
   }
 };
 

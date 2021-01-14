@@ -17,6 +17,7 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
 #if CUDA_VERSION < 9000
@@ -26,21 +27,74 @@ enum cublasMath_t { CUBLAS_DEFAULT_MATH = 0 };
 namespace paddle {
 namespace platform {
 
+/*
+ * Summary: Grid stride looping macro in CUDA kernel
+ *
+ *  [ Why need this macro? ]
+ *
+ *    The original looping in CUDA kernel is:
+ *
+ *    `for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
+ *        i += blockDim.x * gridDim.x)`
+ *
+ *    This for condition is risky. The value of `blockIdx.x * blockDim.x`
+ *    may be large, such as over 1GB, the first iteration is no problem here,
+ *    but when `i += blockDim.x * gridDim.x` is executed, the value of i
+ *    will greater than INT_MAX and overflow becomes negative value, at
+ *    this time, the cycle condition `i < (n)` is still satisfied, so it
+ *    will cause illegal access to cuda memory.
+ *
+ *    Here is a real example in ERINE, it will trigger above error.
+ *    The related data are:
+ *      - blockIdx.x = 2172938
+ *      - blockDim.x = 512
+ *      - blockIdx.x * blockDim.x = 1112543864
+ *      - INT_MAX = 2147483647
+ *
+ *    So we polish the for condition as follow, the int64_t __index__ will
+ *    prevent overflow in the loop increment.
+ *
+ * Parameters:
+ *    - i: loop index
+ *    - num: total element numbers
+ *
+ * Examples:
+ *    template <typename T>
+ *    __global__ void Scale(T* logit_grad, const T* loss_grad, const int num,
+ *                      const int d, const int remain) {
+ *    CUDA_KERNEL_LOOP(index, num) {
+ *      int idx_n = index / d;
+ *      int idx_remain = index % remain;
+ *      logit_grad[index] *= loss_grad[idx_n * remain + idx_remain];
+ *      }
+ *    }
+ *
+*/
+#define CUDA_KERNEL_LOOP(i, num)                             \
+  int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
+  for (int i = __index__; __index__ < (num);                 \
+       __index__ += blockDim.x * gridDim.x, i = __index__)
+
 class CublasHandleHolder {
  public:
   CublasHandleHolder(cudaStream_t stream, cublasMath_t math_type) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cublasCreate(&handle_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cublasSetStream(handle_, stream));
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasCreate(&handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasSetStream(handle_, stream));
 #if CUDA_VERSION >= 9000
     if (math_type == CUBLAS_TENSOR_OP_MATH) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_RETRY_CUDA_SUCCESS(
           dynload::cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH));
+#if CUDA_VERSION >= 11000
+    } else if (math_type == CUBLAS_TF32_TENSOR_OP_MATH) {
+      PADDLE_RETRY_CUDA_SUCCESS(
+          dynload::cublasSetMathMode(handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+#endif  // CUDA_VERSION >= 11000
     }
-#endif
+#endif  // CUDA_VERSION >= 9000
   }
 
-  ~CublasHandleHolder() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cublasDestroy(handle_));
+  ~CublasHandleHolder() PADDLE_MAY_THROW {
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasDestroy(handle_));
   }
 
   template <typename Callback>

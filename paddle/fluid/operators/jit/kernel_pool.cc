@@ -13,13 +13,15 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/kernel_pool.h"
-#include <memory>  // for shared_ptr
-#include <string>
-#include <unordered_map>
 
 namespace paddle {
 namespace operators {
 namespace jit {
+
+std::map<size_t, std::shared_ptr<void>>& GetJITCodesMap() {
+  static thread_local std::map<size_t, std::shared_ptr<void>> g_jit_codes_map;
+  return g_jit_codes_map;
+}
 
 JitCodeCreatorPool& JitCodeCreatorPool::Instance() {
   static JitCodeCreatorPool g_creator_pool;

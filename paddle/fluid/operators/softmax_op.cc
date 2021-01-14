@@ -34,22 +34,24 @@ class SoftmaxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SoftmaxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SoftmaxOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) of SoftmaxOp is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::NotFound("Output(Out) of SoftmaxOp is not found."));
 
     auto dim_x = ctx->GetInputDim("X");
     auto rank_x = dim_x.size();
     auto axis = ctx->Attrs().Get<int>("axis");
-    PADDLE_ENFORCE(axis >= -rank_x && axis < rank_x,
-                   "Attr(axis) value should be in range [-R, R-1], "
-                   "R is the rank of Input(X).");
-
-    auto use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
-    if (axis != rank_x - 1 && axis != -1) {
-      PADDLE_ENFORCE(!use_cudnn, "CUDNN kernel only support axis as -1.");
-    }
+    PADDLE_ENFORCE_GE(axis, -rank_x,
+                      platform::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X)."));
+    PADDLE_ENFORCE_LT(axis, rank_x,
+                      platform::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X)."));
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -70,7 +72,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 #endif
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -78,8 +80,9 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                     "float16 can only be used on GPU place");
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                        platform::errors::InvalidArgument(
+                            "float16 can only be used on GPU place"));
     }
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
@@ -112,6 +115,11 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "bfloat16"});
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
@@ -145,9 +153,10 @@ For each row $i$ and each column $j$ in the matrix, we have:
 
 class SoftmaxOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Out"}};
+    return m;
   }
 };
 
@@ -156,12 +165,17 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Out"), "Input(Out) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should be not null.");
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Out"),
-                      ctx->GetInputDim(framework::GradVarName("Out")),
-                      "Input(Out) and its gradients should have a same shape.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Out"), true,
+        platform::errors::InvalidArgument("Input(Out) is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::InvalidArgument("Input(Out@GRAD) is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputDim("Out"),
+        ctx->GetInputDim(framework::GradVarName("Out")),
+        platform::errors::InvalidArgument("Input(Out) and its gradients "
+                                          "should have a same shape."));
 
     ctx->SetOutputDim(framework::GradVarName("X"),
                       ctx->GetInputDim(framework::GradVarName("Out")));
@@ -182,7 +196,7 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
 #endif
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -190,8 +204,9 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                     "float16 can only be used on GPU place");
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                        platform::errors::InvalidArgument(
+                            "float16 can only be used on GPU place"));
     }
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
@@ -205,8 +220,7 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("softmax_grad");
 
     op->SetInput("Out", this->Output("Out"));
@@ -215,26 +229,10 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
 
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    return std::unique_ptr<T>(op);
   }
 };
 
 DECLARE_INPLACE_OP_INFERER(SoftmaxInplaceInferer, {"X", "Out"});
-
-class SoftmaxGradInplaceInferer final : public framework::InplaceOpInference {
- public:
-  using framework::InplaceOpInference::InplaceOpInference;
-
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc& op_desc, bool use_cuda) const final {
-    if (use_cuda) {
-      return {{"Out", framework::GradVarName("X")}};
-    } else {
-      // NOTE(zjl): AVX implementation of SoftmaxGrad does not support in-place
-      return {};
-    }
-  }
-};
 
 }  // namespace operators
 }  // namespace paddle
@@ -246,8 +244,7 @@ REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
                   ops::SoftmaxOpGradMaker<paddle::framework::OpDesc>,
                   ops::SoftmaxOpGradMaker<paddle::imperative::OpBase>,
                   ops::SoftmaxInplaceInferer);
-REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad,
-                  ops::SoftmaxGradInplaceInferer);
+REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(
     softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, double>);

@@ -33,8 +33,8 @@ def bcast(x, target_tensor):
 class TestExpandAsOpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand_as"
-        x = np.random.rand(12).astype("float64")
-        target_tensor = np.random.rand(24).astype("float64")
+        x = np.random.rand(100).astype("float64")
+        target_tensor = np.random.rand(200).astype("float64")
         self.inputs = {'X': x, 'target_tensor': target_tensor}
         self.attrs = {}
         bcast_dims = bcast(x, target_tensor)
@@ -51,8 +51,8 @@ class TestExpandAsOpRank1(OpTest):
 class TestExpandAsOpRank2(OpTest):
     def setUp(self):
         self.op_type = "expand_as"
-        x = np.random.rand(2, 3).astype("float64")
-        target_tensor = np.random.rand(4, 6).astype("float64")
+        x = np.random.rand(10, 12).astype("float64")
+        target_tensor = np.random.rand(20, 24).astype("float64")
         self.inputs = {'X': x, 'target_tensor': target_tensor}
         self.attrs = {}
         bcast_dims = bcast(x, target_tensor)
@@ -69,8 +69,8 @@ class TestExpandAsOpRank2(OpTest):
 class TestExpandAsOpRank3(OpTest):
     def setUp(self):
         self.op_type = "expand_as"
-        x = np.random.rand(2, 3, 3).astype("float64")
-        target_tensor = np.random.rand(4, 6, 6).astype("float64")
+        x = np.random.rand(2, 3, 20).astype("float64")
+        target_tensor = np.random.rand(4, 6, 40).astype("float64")
         self.inputs = {'X': x, 'target_tensor': target_tensor}
         self.attrs = {}
         bcast_dims = bcast(x, target_tensor)
@@ -87,8 +87,8 @@ class TestExpandAsOpRank3(OpTest):
 class TestExpandAsOpRank4(OpTest):
     def setUp(self):
         self.op_type = "expand_as"
-        x = np.random.rand(1, 1, 3, 16).astype("float64")
-        target_tensor = np.random.rand(4, 6, 6, 32).astype("float64")
+        x = np.random.rand(1, 1, 7, 16).astype("float64")
+        target_tensor = np.random.rand(4, 6, 14, 32).astype("float64")
         self.inputs = {'X': x, 'target_tensor': target_tensor}
         self.attrs = {}
         bcast_dims = bcast(x, target_tensor)
@@ -102,8 +102,23 @@ class TestExpandAsOpRank4(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+# Test dygraph API
+class TestExpandAsDygraphAPI(unittest.TestCase):
+    def test_api(self):
+        import paddle
+        paddle.disable_static()
+        np_data_x = np.array([1, 2, 3]).astype('int32')
+        np_data_y = np.array([1, 2, 3, 1, 2, 3]).astype('int32')
+        data_x = paddle.to_tensor(np_data_x)
+        data_y = paddle.to_tensor(np_data_y)
+        out = fluid.layers.expand_as(data_x, data_y)
+        np_out = out.numpy()
+        assert np.array_equal(np_out, np.tile(np_data_x, (2)))
+        paddle.enable_static()
+
+
 # Test python API
-class TestExpandAPI(OpTest):
+class TestExpandAsAPI(unittest.TestCase):
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([48, 14]).astype("float32")

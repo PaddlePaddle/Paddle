@@ -19,15 +19,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
 __global__ void GatherTree(const T *ids_data, const T *parents_data,
                            T *out_data, const int64_t max_length,
                            const int64_t batch_size, const int64_t beam_size) {
-  CUDA_1D_KERNEL_LOOP(i, batch_size * beam_size) {
+  CUDA_KERNEL_LOOP(i, batch_size * beam_size) {
     int batch = i / beam_size;
     int beam = i % beam_size;
     auto idx =

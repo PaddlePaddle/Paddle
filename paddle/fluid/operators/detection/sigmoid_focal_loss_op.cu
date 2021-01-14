@@ -30,10 +30,6 @@ static inline int NumBlocks(const int N) {
                   kNumMaxinumNumBlocks);
 }
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
 __global__ void GPUSigmoidFocalLossForward(const T *x_data,
                                            const int *label_data,
@@ -41,7 +37,7 @@ __global__ void GPUSigmoidFocalLossForward(const T *x_data,
                                            const T gamma, const T alpha,
                                            const int num_classes,
                                            const int limit, T *out_data) {
-  CUDA_1D_KERNEL_LOOP(i, limit) {
+  CUDA_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     int a = i / num_classes;  // current sample
     int d = i % num_classes;  // current class
@@ -79,7 +75,7 @@ __global__ void GPUSigmoidFocalLossBackward(
     const T *x_data, const int *label_data, const int *fg_num_data,
     const T gamma, const T alpha, const int num_classes, const T *dout_data,
     const int limit, T *dx_data) {
-  CUDA_1D_KERNEL_LOOP(i, limit) {
+  CUDA_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     T dout = dout_data[i];
 

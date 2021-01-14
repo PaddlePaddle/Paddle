@@ -31,10 +31,6 @@ using LoDTensor = framework::LoDTensor;
 static constexpr int kNumCUDAThreads = 64;
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 int const BBoxSize = 4;
 
 static inline int NumBlocks(const int N) {
@@ -48,7 +44,7 @@ __global__ void GPUDistFpnProposalsHelper(
     const int refer_level, const int refer_scale, const int max_level,
     const int min_level, int* roi_batch_id_data, int* sub_lod_list,
     int* target_lvls) {
-  CUDA_1D_KERNEL_LOOP(i, nthreads) {
+  CUDA_KERNEL_LOOP(i, nthreads) {
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
     // get the target level of current rois
@@ -80,10 +76,20 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     int num_level = max_level - min_level + 1;
 
     // check that the fpn_rois is not empty
-    PADDLE_ENFORCE_EQ(fpn_rois->lod().size(), 1UL,
-                      "DistributeFpnProposalsOp need 1 level of LoD");
+    if (!ctx.HasInput("RoisNum")) {
+      PADDLE_ENFORCE_EQ(
+          fpn_rois->lod().size(), 1UL,
+          platform::errors::InvalidArgument("DistributeFpnProposalsOp needs LoD"
+                                            "with one level"));
+    }
 
-    auto fpn_rois_lod = fpn_rois->lod().back();
+    std::vector<size_t> fpn_rois_lod;
+    if (ctx.HasInput("RoisNum")) {
+      auto* rois_num = ctx.Input<Tensor>("RoisNum");
+      fpn_rois_lod = GetLodFromRoisNum(rois_num);
+    } else {
+      fpn_rois_lod = fpn_rois->lod().back();
+    }
     int lod_size = fpn_rois_lod.size() - 1;
     int roi_num = fpn_rois_lod[lod_size];
 
@@ -122,7 +128,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
         max_level, min_level, roi_batch_id_list_gpu.data<int>(),
         sub_lod_list_data, target_lvls_data);
     dev_ctx.Wait();
-    auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
+    auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
 
     Tensor index_in_t;
     int* idx_in = index_in_t.mutable_data<int>({roi_num}, dev_ctx.GetPlace());
@@ -156,6 +162,8 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
         restore_idx_data, roi_num);
 
     int start = 0;
+    auto multi_rois_num = ctx.MultiOutput<Tensor>("MultiLevelRoIsNum");
+
     for (int i = 0; i < num_level; ++i) {
       Tensor sub_lod = sub_lod_list.Slice(i, i + 1);
       int* sub_lod_data = sub_lod.data<int>();
@@ -181,6 +189,11 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
       } else {
         multi_fpn_rois[i]->mutable_data<T>({sub_rois_num, kBoxDim},
                                            dev_ctx.GetPlace());
+      }
+      if (multi_rois_num.size() > 0) {
+        Tensor* rois_num_t = multi_rois_num[i];
+        TensorCopySync(sub_lod, dev_ctx.GetPlace(), rois_num_t);
+        rois_num_t->Resize({lod_size});
       }
       framework::LoD lod;
       lod.emplace_back(offset);

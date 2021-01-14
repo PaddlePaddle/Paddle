@@ -135,51 +135,14 @@ class LayerObjectHelper(LayerHelperBase):
                              (name, self.name))
         return param
 
-    def append_bias_op(self,
-                       input_var,
-                       dim_start=1,
-                       dim_end=None,
-                       bias_attr=None):
-        """Append bias operator and return its output. If the user does not set bias_attr, append_bias_op will return input_var
-
-            Args:
-                input_var: the input variable. The len(input_var.shape) is
-                larger or equal than 2.
-                dim_start:
-                dim_end: the shape of the bias will be
-                bias_attr: the bias_attr of it
-
-        Return the Variable of after append bias op
-        """
-        size = list(input_var.shape[dim_start:dim_end])
-        bias_attr = bias_attr
-        if not bias_attr:
-            return input_var
-
-        b = self.create_parameter(
-            attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True)
-        tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
-        self.append_op(
-            type='elementwise_add',
-            inputs={'X': [input_var],
-                    'Y': [b]},
-            outputs={'Out': [tmp]},
-            attrs={'axis': dim_start})
-        return tmp
-
     # TODO: this should not be called anymore after all activation func move to Layers
-    def append_activation(self,
-                          input_var,
-                          act=None,
-                          use_cudnn=None,
-                          use_mkl_dnn=None):
+    def append_activation(self, input_var, act=None, use_cudnn=None):
         """Append activation
 
             Args:
                 input_var: the input variable. The len(input_var.shape) is
                 larger or equal than 2.
                 act: activation type
-                use_mkl_dnn: if use mkldnn
                 use_cudnn: if use cudnn
 
         Return the Variable of after append activation
@@ -195,8 +158,9 @@ class LayerObjectHelper(LayerHelperBase):
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
-        if (use_mkl_dnn is not None) and use_mkl_dnn:
-            act['use_mkldnn'] = use_mkl_dnn
+        use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+        if (use_mkldnn is not None) and use_mkldnn:
+            act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
 
         tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)

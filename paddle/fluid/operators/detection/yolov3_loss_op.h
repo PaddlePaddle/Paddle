@@ -73,10 +73,11 @@ static inline T sigmoid(T x) {
 template <typename T>
 static inline Box<T> GetYoloBox(const T* x, std::vector<int> anchors, int i,
                                 int j, int an_idx, int grid_size,
-                                int input_size, int index, int stride) {
+                                int input_size, int index, int stride,
+                                float scale, float bias) {
   Box<T> b;
-  b.x = (i + sigmoid<T>(x[index])) / grid_size;
-  b.y = (j + sigmoid<T>(x[index + stride])) / grid_size;
+  b.x = (i + sigmoid<T>(x[index]) * scale + bias) / grid_size;
+  b.y = (j + sigmoid<T>(x[index + stride]) * scale + bias) / grid_size;
   b.w = std::exp(x[index + 2 * stride]) * anchors[2 * an_idx] / input_size;
   b.h = std::exp(x[index + 3 * stride]) * anchors[2 * an_idx + 1] / input_size;
   return b;
@@ -267,6 +268,8 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     float ignore_thresh = ctx.Attr<float>("ignore_thresh");
     int downsample_ratio = ctx.Attr<int>("downsample_ratio");
     bool use_label_smooth = ctx.Attr<bool>("use_label_smooth");
+    float scale = ctx.Attr<float>("scale_x_y");
+    float bias = -0.5 * (scale - 1.);
 
     const int n = input->dims()[0];
     const int h = input->dims()[2];
@@ -299,8 +302,8 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
         gt_match_mask->mutable_data<int>({n, b}, ctx.GetPlace());
 
     const T* gt_score_data;
+    Tensor gtscore;
     if (!gt_score) {
-      Tensor gtscore;
       gtscore.mutable_data<T>({n, b}, ctx.GetPlace());
       math::SetConstant<platform::CPUDeviceContext, T>()(
           ctx.template device_context<platform::CPUDeviceContext>(), &gtscore,
@@ -325,8 +328,9 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
             // then ignore_thresh, ignore the objectness loss.
             int box_idx =
                 GetEntryIndex(i, j, k * w + l, mask_num, an_stride, stride, 0);
-            Box<T> pred = GetYoloBox(input_data, anchors, l, k, anchor_mask[j],
-                                     h, input_size, box_idx, stride);
+            Box<T> pred =
+                GetYoloBox(input_data, anchors, l, k, anchor_mask[j], h,
+                           input_size, box_idx, stride, scale, bias);
             T best_iou = 0;
             for (int t = 0; t < b; t++) {
               if (!gt_valid_mask_data[i * b + t]) {
@@ -454,8 +458,8 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     memset(input_grad_data, 0, input_grad->numel() * sizeof(T));
 
     const T* gt_score_data;
+    Tensor gtscore;
     if (!gt_score) {
-      Tensor gtscore;
       gtscore.mutable_data<T>({n, b}, ctx.GetPlace());
       math::SetConstant<platform::CPUDeviceContext, T>()(
           ctx.template device_context<platform::CPUDeviceContext>(), &gtscore,

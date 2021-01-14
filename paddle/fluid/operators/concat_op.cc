@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -30,17 +31,17 @@ class ConcatOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Inputs(X) of ConcatOp should not be empty.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of ConcatOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "Concat");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Concat");
 
     auto inputs_dims = ctx->GetInputsDim("X");
 
     const size_t inputs_num = inputs_dims.size();
-    PADDLE_ENFORCE_GT(inputs_num, 0,
-                      "ShapeError: Input tensors count should > 0. But "
-                      "recevied inputs' length is 0.");
+    PADDLE_ENFORCE_GT(
+        inputs_num, static_cast<size_t>(0),
+        platform::errors::InvalidArgument(
+            "The number of input tensors in concat op should > 0. But "
+            "received inputs' length is 0."));
     if (inputs_num == 1) {
       VLOG(3) << "Warning: concat op have only one input, may waste memory";
     }
@@ -78,10 +79,11 @@ class ConcatOp : public framework::OperatorWithKernel {
       }
     }
     if (flag == 0) {
-      PADDLE_THROW("All Inputs of Concat OP are Empty!");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "All Inputs of Concat OP are Empty!"));
     }
 #ifdef PADDLE_WITH_MKLDNN
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
@@ -122,12 +124,16 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
              "It has higher priority than Attr(axis). "
              "The shape of AxisTensor must be [1].")
         .AsDispensable();
-    AddAttr<bool>("use_quantizer",
-                  "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
-                  "int8 kernel. "
-                  "Only used on CPU.")
+    AddAttr<bool>(
+        "use_quantizer",
+        "(bool, default false) "
+        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
     AddComment(R"DOC(
 Concat Operator.
 
@@ -152,17 +158,8 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
     auto in_x = "X";
     auto out_x_g_n = framework::GradVarName(in_x);
     ctx->SetOutputsDim(out_x_g_n, ctx->GetInputsDim(in_x));
-    auto &in_names = ctx->Inputs(in_x);
-    auto &out_names = ctx->Outputs(out_x_g_n);
-    PADDLE_ENFORCE_EQ(
-        in_names.size(), out_names.size(),
-        "The number of arguments in %s[%d] and %s[%d] is not equal.", in_x,
-        in_names.size(), out_x_g_n, out_names.size());
-    for (size_t i = 0; i < in_names.size(); ++i) {
-      if (out_names[i] != framework::kEmptyVarName) {
-        ctx->ShareLoD(in_x, out_x_g_n, i, i);
-      }
-    }
+
+    ctx->ShareAllLoD(in_x, out_x_g_n);
   }
 
  protected:
@@ -184,8 +181,7 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ConcatOpGradNoNeedBufferVarInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ConcatOpGradNoNeedBufferVarInferer, "X");
 
 template <typename T>
 class ConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -193,15 +189,29 @@ class ConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("concat_grad");
     op->SetInput("X", this->Input("X"));
-    op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    if (this->HasInput("AxisTensor")) {
+      op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    }
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
     op->SetAttrMap(this->Attrs());
-    return op;
+  }
+};
+
+template <typename T>
+class ConcatDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("concat");
+    grad_op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
+    grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -213,15 +223,23 @@ REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
                   ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
-                  ops::ConcatOpGradNoNeedBufferVarInference);
+                  ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ConcatOpGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::float16>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>);
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
+                          paddle::platform::float16>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>);

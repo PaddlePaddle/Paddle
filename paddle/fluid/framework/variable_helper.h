@@ -13,10 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <vector>
+
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/variable.h"
+
 namespace paddle {
 namespace framework {
+
+class Variable;
 
 void InitializeVariable(Variable* var, proto::VarType::Type var_type);
 void CopyVariable(const Variable& src_var, Variable* dst_var);

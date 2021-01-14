@@ -22,7 +22,7 @@ from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedCollectiveRol
 from paddle.fluid.incubate.fleet.base.role_maker import Role
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import TranspilerOptimizer
+from paddle.fluid.incubate.fleet.parameter_server import TranspilerOptimizer
 from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer
 from dist_simnet_bow import train_network
 
@@ -100,9 +100,10 @@ class FleetTest(unittest.TestCase):
         self.assertRaises(Exception, fleet._transpile, "config")
 
     def set_program(self, avg_cost, strategy):
-        optimizer = fluid.optimizer.SGD(0.1)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(avg_cost)
+        with fluid.scope_guard(fluid.Scope()):
+            optimizer = fluid.optimizer.SGD(0.1)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy)
+            optimizer.minimize(avg_cost)
 
     def test_init_role(self):
         role = role_maker.UserDefinedRoleMaker(
@@ -122,6 +123,27 @@ class FleetTest(unittest.TestCase):
         avg_cost, _, _ = train_network(batch_size, is_distribute, is_sparse)
 
         self.assertRaises(Exception, self.set_program, avg_cost, strategy)
+
+    def test_transpile(self):
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.SERVER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+        # for test optimizer without init(role)
+        fleet.init(role)
+        batch_size = 128
+        is_sparse = True
+        is_distribute = False
+
+        strategy = DistributeTranspilerConfig()
+        strategy.sync_mode = False
+        strategy.runtime_split_send_recv = True
+        avg_cost, _, _ = train_network(batch_size, is_distribute, is_sparse)
+
+        self.set_program(avg_cost, strategy)
+        strategy.runtime_split_send_recv = False
+        self.set_program(avg_cost, strategy)
 
 
 class TranspilerOptimizerTest(unittest.TestCase):

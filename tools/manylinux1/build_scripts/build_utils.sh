@@ -111,9 +111,9 @@ function build_cpython {
 
 
 function build_cpythons {
-    check_var $GET_PIP_URL
-    curl -sLO $GET_PIP_URL
     for py_ver in $@; do
+        check_var $GET_PIP_URL
+        curl -sLO $GET_PIP_URL
         build_cpython $py_ver
     done
     rm get-pip.py

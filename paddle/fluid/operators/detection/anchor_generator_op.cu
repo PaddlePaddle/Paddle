@@ -24,8 +24,7 @@ __global__ void GenAnchors(T* out, const T* aspect_ratios, const int ar_num,
                            const int width, const T offset) {
   int num_anchors = as_num * ar_num;
   int box_num = height * width * num_anchors;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < box_num;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, box_num) {
     int h_idx = i / (num_anchors * width);
     int w_idx = (i / num_anchors) % width;
     T stride_width = stride[0];
@@ -64,10 +63,7 @@ __global__ void GenAnchors(T* out, const T* aspect_ratios, const int ar_num,
 template <typename T>
 __global__ void SetVariance(T* out, const T* var, const int vnum,
                             const int num) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-       i += blockDim.x * gridDim.x) {
-    out[i] = var[i % vnum];
-  }
+  CUDA_KERNEL_LOOP(i, num) { out[i] = var[i % vnum]; }
 }
 
 template <typename T>

@@ -20,7 +20,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -28,6 +27,21 @@ namespace paddle {
 namespace operators {
 
 const int kBoxDim = 4;
+
+inline std::vector<size_t> GetLodFromRoisNum(const Tensor* rois_num) {
+  std::vector<size_t> rois_lod;
+  auto* rois_num_data = rois_num->data<int>();
+  Tensor cpu_tensor;
+  if (platform::is_gpu_place(rois_num->place())) {
+    TensorCopySync(*rois_num, platform::CPUPlace(), &cpu_tensor);
+    rois_num_data = cpu_tensor.data<int>();
+  }
+  rois_lod.push_back(static_cast<size_t>(0));
+  for (int i = 0; i < rois_num->numel(); ++i) {
+    rois_lod.push_back(rois_lod.back() + static_cast<size_t>(rois_num_data[i]));
+  }
+  return rois_lod;
+}
 
 template <typename T>
 static inline T BBoxArea(const T* box, bool normalized) {
@@ -66,17 +80,29 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     const int num_level = max_level - min_level + 1;
 
     // check that the fpn_rois is not empty
-    PADDLE_ENFORCE_EQ(fpn_rois->lod().size(), 1UL,
-                      "DistributeFpnProposalsOp need 1 level of LoD");
+    if (!context.HasInput("RoisNum")) {
+      PADDLE_ENFORCE_EQ(fpn_rois->lod().size(), 1UL,
+                        platform::errors::InvalidArgument(
+                            "DistributeFpnProposalsOp needs LoD "
+                            "with one level. But received level is %d",
+                            fpn_rois->lod().size()));
+    }
 
-    auto fpn_rois_lod = fpn_rois->lod().back();
-    int fpn_rois_num = fpn_rois_lod[fpn_rois_lod.size() - 1];
+    std::vector<size_t> fpn_rois_lod;
+    int fpn_rois_num;
+    if (context.HasInput("RoisNum")) {
+      auto* rois_num = context.Input<Tensor>("RoisNum");
+      fpn_rois_lod = GetLodFromRoisNum(rois_num);
+    } else {
+      fpn_rois_lod = fpn_rois->lod().back();
+    }
+    fpn_rois_num = fpn_rois_lod[fpn_rois_lod.size() - 1];
     std::vector<int> target_level;
     // std::vector<int> target_level(fpn_rois_num, -1);
     // record the number of rois in each level
     std::vector<int> num_rois_level(num_level, 0);
     std::vector<int> num_rois_level_integral(num_level + 1, 0);
-    for (int i = 0; i < fpn_rois_lod.size() - 1; ++i) {
+    for (size_t i = 0; i < fpn_rois_lod.size() - 1; ++i) {
       Tensor fpn_rois_slice =
           fpn_rois->Slice(fpn_rois_lod[i], fpn_rois_lod[i + 1]);
       const T* rois_data = fpn_rois_slice.data<T>();
@@ -111,7 +137,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     int* restore_index_data = restore_index->data<int>();
     std::vector<int> restore_index_inter(fpn_rois_num, -1);
     // distribute the rois into different fpn level by target level
-    for (int i = 0; i < fpn_rois_lod.size() - 1; ++i) {
+    for (size_t i = 0; i < fpn_rois_lod.size() - 1; ++i) {
       Tensor fpn_rois_slice =
           fpn_rois->Slice(fpn_rois_lod[i], fpn_rois_lod[i + 1]);
       const T* rois_data = fpn_rois_slice.data<T>();
@@ -134,6 +160,18 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     }
     for (int i = 0; i < fpn_rois_num; ++i) {
       restore_index_data[restore_index_inter[i]] = i;
+    }
+    auto multi_rois_num = context.MultiOutput<Tensor>("MultiLevelRoIsNum");
+    if (multi_rois_num.size() > 0) {
+      int batch_size = fpn_rois_lod.size() - 1;
+      for (int i = 0; i < num_level; ++i) {
+        int* rois_num_data = multi_rois_num[i]->mutable_data<int>(
+            {batch_size}, context.GetPlace());
+        for (int j = 0; j < batch_size; ++j) {
+          rois_num_data[j] = static_cast<int>(multi_fpn_rois_lod0[i][j + 1] -
+                                              multi_fpn_rois_lod0[i][j]);
+        }
+      }
     }
     // merge lod information into LoDTensor
     for (int i = 0; i < num_level; ++i) {

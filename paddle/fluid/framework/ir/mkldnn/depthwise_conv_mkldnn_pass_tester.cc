@@ -16,6 +16,8 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/framework/op_version_registry.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -70,6 +72,12 @@ ProgramDesc BuildProgramDesc() {
   return prog;
 }
 
+TEST(DepthwiseConvMKLDNNPass, pass_op_version_check) {
+  ASSERT_TRUE(
+      paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
+          .IsPassCompatible("depthwise_conv_mkldnn_pass"));
+}
+
 TEST(DepthwiseConvMKLDNNPass, basic) {
   auto prog = BuildProgramDesc();
 
@@ -95,12 +103,12 @@ TEST(DepthwiseConvMKLDNNPass, basic) {
     if (node->IsOp()) {
       auto* op = node->Op();
       if (op->Type() == "conv2d") {
-        if (boost::get<bool>(op->GetAttr("use_mkldnn")))
+        if (BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))
           after.mkldnn_conv_nodes++;
         else
           after.other_conv_nodes++;
       } else if (op->Type() == "depthwise_conv2d") {
-        if (boost::get<bool>(op->GetAttr("use_mkldnn")))
+        if (BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))
           after.mkldnn_depthwise_conv_nodes++;
         else
           after.other_depthwise_conv_nodes++;

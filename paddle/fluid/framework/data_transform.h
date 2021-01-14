@@ -30,6 +30,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class OpKernelType;
+class Tensor;
+class Variable;
+
 void TransformData(const OpKernelType &expected_kernel_type,
                    const OpKernelType &kernel_type_for_var,
                    const Tensor &input_tensor, Tensor *out);
@@ -39,6 +43,5 @@ void TransformData(const OpKernelType &expected_kernel_type,
  */
 void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
                          Variable *out_var);
-
 }  // namespace framework
 }  // namespace paddle

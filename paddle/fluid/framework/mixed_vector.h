@@ -20,13 +20,13 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <utility>
 #include <vector>
+
+#include "glog/logging.h"
 #include "paddle/fluid/framework/details/cow_ptr.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
-
-#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
@@ -155,8 +155,10 @@ class Vector {
 
     // get cuda ptr. immutable
     const T *CUDAData(platform::Place place) const {
-      PADDLE_ENFORCE(platform::is_gpu_place(place),
-                     "CUDA Data must on CUDA place");
+      PADDLE_ENFORCE_EQ(
+          platform::is_gpu_place(place), true,
+          platform::errors::Unavailable(
+              "Place mismatch, CUDA Data must be on CUDA place."));
       ImmutableCUDA(place);
       return reinterpret_cast<T *>(gpu_->ptr());
     }
@@ -197,7 +199,7 @@ class Vector {
       return gpu_ == nullptr
                  ? boost::none
                  : boost::optional<platform::CUDAPlace>(
-                       boost::get<platform::CUDAPlace>(gpu_->place()));
+                       BOOST_GET_CONST(platform::CUDAPlace, gpu_->place()));
     }
 
    private:
@@ -234,7 +236,8 @@ class Vector {
           UnsetFlag(kDirty);
           SetFlag(kDataInCUDA);
         } else if (IsInCUDA() && !(place == gpu_->place())) {
-          PADDLE_THROW("This situation should not happen");
+          PADDLE_THROW(
+              platform::errors::Unavailable("Unexpected data place mismatch."));
           // Still dirty
         } else {
           // Dirty && DataInCUDA && Device is same
@@ -246,7 +249,8 @@ class Vector {
           CopyCPUDataToCUDA(place);
           SetFlag(kDataInCUDA);
         } else if (!(place == gpu_->place())) {
-          PADDLE_THROW("This situation should not happen.");
+          PADDLE_THROW(
+              platform::errors::Unavailable("Unexpected data place mismatch."));
         } else {
           // Not Dirty && DataInCUDA && Device is same
           // Do nothing.
@@ -386,7 +390,7 @@ class Vector {
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_.Data().CUDAPlace();
       if (cuda_place == boost::none ||
-          cuda_place == boost::get<platform::CUDAPlace>(place)) {
+          cuda_place == BOOST_GET(platform::CUDAPlace, place)) {
         return m_.Data().CUDAData(place);
       }
     }
@@ -402,7 +406,7 @@ class Vector {
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_.Data().CUDAPlace();
       if (cuda_place == boost::none ||
-          cuda_place == boost::get<platform::CUDAPlace>(place)) {
+          cuda_place == BOOST_GET(platform::CUDAPlace, place)) {
         return m_.MutableData()->CUDAMutableData(place);
       }
     }
@@ -501,27 +505,29 @@ class CPUVector : public std::vector<T, std::allocator<T>> {
   }
 
   const T *CUDAData(platform::Place place) const {
-    PADDLE_THROW(
-        "Vector::CUDAData() method is not supported in CPU-only version");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Vector::CUDAData() method is not supported in CPU-only version."));
   }
 
   T *CUDAMutableData(platform::Place place) {
-    PADDLE_THROW(
+    PADDLE_THROW(platform::errors::Unavailable(
         "Vector::CUDAMutableData() method is not supported in CPU-only "
-        "version");
+        "version."));
   }
 
   const T *Data(platform::Place place) const {
-    PADDLE_ENFORCE(
-        platform::is_cpu_place(place),
-        "Vector::Data() method is not supported when not in CPUPlace");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(place), true,
+        platform::errors::Unavailable(
+            "Vector::Data() method is not supported when not in CPUPlace."));
     return this->data();
   }
 
   T *MutableData(platform::Place place) {
-    PADDLE_ENFORCE(
-        platform::is_cpu_place(place),
-        "Vector::MutableData() method is not supported when not in CPUPlace");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(place), true,
+        platform::errors::Unavailable("Vector::MutableData() method is not "
+                                      "supported when not in CPUPlace."));
     return this->data();
   }
 

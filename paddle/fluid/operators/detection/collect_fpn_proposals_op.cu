@@ -40,8 +40,7 @@ static inline int NumBlocks(const int N) {
 
 static __global__ void GetLengthLoD(const int nthreads, const int* batch_ids,
                                     int* length_lod) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (nthreads);
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, nthreads) {
     platform::CudaAtomicAdd(length_lod + batch_ids[i], 1);
   }
 }
@@ -79,16 +78,29 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
     int index = 0;
     int lod_size;
-    auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
+    auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
 
+    auto multi_rois_num = ctx.MultiInput<Tensor>("MultiLevelRoIsNum");
     for (size_t i = 0; i < roi_ins.size(); ++i) {
       auto roi_in = roi_ins[i];
       auto score_in = score_ins[i];
-      auto roi_lod = roi_in->lod().back();
-      lod_size = roi_lod.size() - 1;
-      for (size_t n = 0; n < lod_size; ++n) {
-        for (size_t j = roi_lod[n]; j < roi_lod[n + 1]; ++j) {
-          roi_batch_id_data[index++] = n;
+      if (multi_rois_num.size() > 0) {
+        framework::Tensor temp;
+        TensorCopySync(*multi_rois_num[i], platform::CPUPlace(), &temp);
+        const int* length_in = temp.data<int>();
+        lod_size = multi_rois_num[i]->numel();
+        for (size_t n = 0; n < lod_size; ++n) {
+          for (size_t j = 0; j < length_in[n]; ++j) {
+            roi_batch_id_data[index++] = n;
+          }
+        }
+      } else {
+        auto length_in = roi_in->lod().back();
+        lod_size = length_in.size() - 1;
+        for (size_t n = 0; n < lod_size; ++n) {
+          for (size_t j = length_in[n]; j < length_in[n + 1]; ++j) {
+            roi_batch_id_data[index++] = n;
+          }
         }
       }
 
@@ -189,6 +201,13 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     std::vector<size_t> offset(1, 0);
     for (int i = 0; i < lod_size; ++i) {
       offset.emplace_back(offset.back() + length_lod_cpu[i]);
+    }
+
+    if (ctx.HasOutput("RoisNum")) {
+      auto* rois_num = ctx.Output<Tensor>("RoisNum");
+      int* rois_num_data = rois_num->mutable_data<int>({lod_size}, place);
+      memory::Copy(place, rois_num_data, place, length_lod_data,
+                   lod_size * sizeof(int), dev_ctx.stream());
     }
 
     framework::LoD lod;

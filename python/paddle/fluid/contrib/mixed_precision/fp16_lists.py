@@ -14,7 +14,7 @@
 
 import copy
 
-__all__ = ["AutoMixedPrecisionLists"]
+__all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
 
 class AutoMixedPrecisionLists(object):
@@ -22,11 +22,12 @@ class AutoMixedPrecisionLists(object):
     AutoMixedPrecisionLists is a class for black/white list. It can update
     pre-defined black list and white list according to users' custom black
     white lists. The lists are used for an algorithm which determines op's
-    exectuion mode (fp32 or fp16).
+    execution mode (fp32 or fp16).
 
     Args:
         custom_white_list (set): Users' custom white list.
         custom_black_list (set): Users' custom black list.
+        custom_black_varnames (set): Users' custom black varibles' names.
     """
 
     def __init__(self,
@@ -38,6 +39,7 @@ class AutoMixedPrecisionLists(object):
         self.white_list = copy.copy(white_list)
         self.black_list = copy.copy(black_list)
         self.gray_list = copy.copy(gray_list)
+        self.unsupported_list = copy.copy(unsupported_fp16_list)
         self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
@@ -64,6 +66,7 @@ class AutoMixedPrecisionLists(object):
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
+                self.unsupported_list.add(op_name)
 
 
 # The three sets listed below are changed dynamiclly. They don't contain all  
@@ -74,6 +77,7 @@ class AutoMixedPrecisionLists(object):
 white_list = {
     'conv2d',
     'matmul',
+    'matmul_v2',
     'mul',
 }
 
@@ -95,7 +99,7 @@ black_list = {
 
 # This set contains two types of ops. All ops supported fp16 calculation. One 
 # of two types is considered numerically-safe, but may be made unsafe by an
-# updtream blacklist op. Another type do not have numerically-significant 
+# upstream blacklist op. Another type do not have numerically-significant
 # effects, like stack, flatten2.
 gray_list = {
     'elementwise_add',
@@ -108,9 +112,11 @@ gray_list = {
     'elementwise_mod',
     'elementwise_floordiv',
     'batch_norm',
+    'layer_norm',
     'tanh',
     'sigmoid',
     'lookup_table',
+    'lookup_table_v2',
     'top_k',
     'pool2d',
     'pool3d',
@@ -122,6 +128,7 @@ gray_list = {
     'flatten2',
     'stack',
     'unstack',
+    'uniform_random',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'gaussian_random_batch_size_like',
@@ -135,11 +142,12 @@ gray_list = {
     'get_tensor_from_selected_rows',
     'sign',
     'cast',
+    'fused_bn_add_activation',
 }
-'''
+
 # The set of ops that don't support fp16 calculation
 unsupported_fp16_list = {
-		# from python/paddle/fluid/layers/io.py
+    # from python/paddle/fluid/layers/io.py
     'send',
     'send_barrier',
     'recv',
@@ -148,8 +156,8 @@ unsupported_fp16_list = {
     'create_double_buffer_reader',
     'read',
     'load',
-    
-   	# from python/paddle/fluid/control_flow.py
+
+    # from python/paddle/fluid/control_flow.py
     'increment',
     'less_than',
     'less_equal',
@@ -169,7 +177,6 @@ unsupported_fp16_list = {
     'while',
     'ifelse',
     'is_empty',
-
     'lstm',
     'cudnn_lstm',
     'lstmp',
@@ -190,7 +197,6 @@ unsupported_fp16_list = {
     'sequence_concat',
     'sequence_slice',
     'data_norm',
-    'layer_norm',
     'group_norm',
     'spectral_norm',
     'depthwise_conv2d_transpose',
@@ -271,7 +277,6 @@ unsupported_fp16_list = {
     'pixel_shuffle',
     'fsp',
     'cvm',
-
     'affine_channel',
     'roi_pool',
     'roi_align',
@@ -279,6 +284,6 @@ unsupported_fp16_list = {
     'generate_proposals',
     'generate_proposal_labels',
     'generate_mask_labels',
-		
 }
-'''
+
+CustomOpLists = AutoMixedPrecisionLists

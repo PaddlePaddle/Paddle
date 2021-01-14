@@ -61,16 +61,15 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("PreOut"),
-                   "Output(PreOut) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "hsigmoid");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "hsigmoid");
+    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "hsigmoid");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "hsigmoid");
+    OP_INOUT_CHECK(ctx->HasOutput("PreOut"), "Output", "PreOut", "hsigmoid");
+
     auto with_prefetch = ctx->Attrs().Get<bool>("remote_prefetch");
     if (with_prefetch) {
-      PADDLE_ENFORCE(ctx->HasOutput("W_Out"),
-                     "Output(W_Out) should not be null.");
+      OP_INOUT_CHECK(ctx->HasOutput("W_Out"), "Output", "W_Out", "hsigmoid");
     }
     const int64_t batch_size = ctx->GetInputDim("X")[0];
     std::vector<int64_t> output_shape({batch_size, 1});
@@ -130,7 +129,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput(
         "W_Out",
-        "(LoDTensor, optinal) using input 'W' as Output to make it mutable"
+        "(LoDTensor, optional) using input 'W' as Output to make it mutable"
         "When we are using prefetch")
         .AsIntermediate();
     AddAttr<AttrType>("num_classes", "(int, optional), The number of classes")
@@ -148,7 +147,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<std::string>>(
         "table_names",
-        "(string vector, the splited table names that will be fetched from "
+        "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
         .SetDefault({});
@@ -175,8 +174,7 @@ class HierarchicalSigmoidGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     // Inputs: X, W, Label, PathTable, PathCode, PreOut, Out@GRAD
     op->SetInput("X", this->Input("X"));
@@ -193,8 +191,6 @@ class HierarchicalSigmoidGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -202,16 +198,15 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@Grad) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("PreOut"),
-                   "Input(Preout) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("W")),
-                   "Output(W@Grad should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@Grad should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "hsigmoid_grad");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "hsigmoid_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@Grad", "hsigmoid_grad");
+    OP_INOUT_CHECK(ctx->HasInput("PreOut"), "Input", "PreOut", "hsigmoid_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("W")), "Output",
+                   "W@Grad", "hsigmoid_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   "X@Grad", "hsigmoid_grad");
 
     if (ctx->HasOutput(framework::GradVarName("Bias"))) {
       ctx->SetOutputDim(framework::GradVarName("Bias"),
@@ -234,33 +229,35 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
     : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    auto w_grad_var_name = ctx->Output(framework::GradVarName("W")).front();
-    auto bias_grad_var_name_vec = ctx->Output(framework::GradVarName("Bias"));
-    std::string bias_grad_var_name;
-    bool hasBias = false;
-    if (bias_grad_var_name_vec.size()) {
-      hasBias = true;
-      bias_grad_var_name = ctx->Output(framework::GradVarName("Bias")).front();
+    auto w_grad_var_name = framework::GradVarName("W");
+    auto bias_grad_var_name = framework::GradVarName("Bias");
+    if (ctx->HasOutput(bias_grad_var_name)) {
+      VLOG(3) << "hierarchical_sigmoid_grad op "
+              << framework::GradVarName("Bias") << " is set to LoDTensor";
+      ctx->SetOutputType(bias_grad_var_name,
+                         framework::proto::VarType::LOD_TENSOR);
     }
+
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = boost::get<bool>(attr);
+    bool is_sparse = BOOST_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
-      ctx->SetType(w_grad_var_name, framework::proto::VarType::SELECTED_ROWS);
+      ctx->SetOutputType(w_grad_var_name,
+                         framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
               << " is set to LoDTensor";
-      ctx->SetType(w_grad_var_name, framework::proto::VarType::LOD_TENSOR);
+      ctx->SetOutputType(w_grad_var_name,
+                         framework::proto::VarType::LOD_TENSOR);
     }
-    if (hasBias) {
-      VLOG(3) << "hierarchical_sigmoid_grad op "
-              << framework::GradVarName("Bias") << " is set to LoDTensor";
-      ctx->SetType(bias_grad_var_name, framework::proto::VarType::LOD_TENSOR);
-    }
-    ctx->SetDataType(w_grad_var_name, ctx->GetDataType(ctx->Input("W")[0]));
+
+    ctx->SetOutputDataType(w_grad_var_name, ctx->GetInputDataType("W"));
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
+    HierarchicalSigmoidGradOpNoNeedBufferVarInferer, "Bias");
 
 }  // namespace operators
 }  // namespace paddle
@@ -272,7 +269,8 @@ REGISTER_OPERATOR(
     ops::HierarchicalSigmoidGradMaker<paddle::framework::OpDesc>,
     ops::HierarchicalSigmoidGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(hierarchical_sigmoid_grad, ops::HierarchicalSigmoidGradOp,
-                  ops::HierarchicalSigmoidGradOpGradVarTypeInference);
+                  ops::HierarchicalSigmoidGradOpGradVarTypeInference,
+                  ops::HierarchicalSigmoidGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     hierarchical_sigmoid,
     ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext, float>,

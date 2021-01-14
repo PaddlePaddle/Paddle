@@ -24,19 +24,25 @@ class FilterByInstagOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Ins"), true,
-                      "Input(Ins) should be not null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Ins"), true,
+        platform::errors::InvalidArgument("Input(Ins) should be not null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Ins_tag"), true,
-                      "Input(Ins_tag) should be not null.");
+                      platform::errors::InvalidArgument(
+                          "Input(Ins_tag) should be not null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Filter_tag"), true,
-                      "Input(Filter_tag) should be not null.");
+                      platform::errors::InvalidArgument(
+                          "Input(Filter_tag) should be not null."));
 
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) should be not null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::InvalidArgument("Output(Out) should be not null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("LossWeight"), true,
-                      "Output(LossWeight) shoudl not be null.");
+                      platform::errors::InvalidArgument(
+                          "Output(LossWeight) shoudl not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("IndexMap"), true,
-                      "Output(IndexMap) should be not null.");
+                      platform::errors::InvalidArgument(
+                          "Output(IndexMap) should be not null."));
 
     auto x1_dims = ctx->GetInputDim("Ins");  // batch_size * vec
 
@@ -60,6 +66,9 @@ class FilterByInstagOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Ins_tag", "(LoDTensor) ins tag list");
     AddInput("Filter_tag", "(1D Tensor) filter tag list");
     AddAttr<bool>("is_lod", "is Ins with LoD info or not, default True");
+    AddAttr<int64_t>("out_val_if_empty",
+                     "if the output after filter is empty, the output value")
+        .SetDefault(0);
     AddOutput("Out", "(LoDTensor) embeded tensor filtered by instag");
     AddOutput("LossWeight", "(Tensor) loss weight.");
     AddOutput("IndexMap", "(LoDTensor) mapping from Out rows to X1 rows");
@@ -82,15 +91,20 @@ class FilterByInstagOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("IndexMap"), true,
-                      "Input(IndexMap) should be not null");
+                      platform::errors::InvalidArgument(
+                          "Input(IndexMap) should be not null"));
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Grad Input(Out) should be not null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Ins"), true,
-                      "Input(Ins) should be not null");
+                      platform::errors::InvalidArgument(
+                          "Grad Input(Out) should be not null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Ins"), true,
+        platform::errors::InvalidArgument("Input(Ins) should be not null"));
     PADDLE_ENFORCE_EQ(ctx->HasInput("LossWeight"), true,
-                      "Input(LossWeight) should be not null");
+                      platform::errors::InvalidArgument(
+                          "Input(LossWeight) should be not null"));
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Ins")), true,
-                      "Grad Output(Ins) should be not null");
+                      platform::errors::InvalidArgument(
+                          "Grad Output(Ins) should be not null"));
 
     auto grad_out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x1_dims = ctx->GetInputDim("Ins");
@@ -113,8 +127,7 @@ class FilterByInstagGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("filter_by_instag_grad");
     op->SetInput("IndexMap", this->Output("IndexMap"));
     op->SetInput("Ins", this->Input("Ins"));
@@ -122,7 +135,6 @@ class FilterByInstagGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("LossWeight", this->Output("LossWeight"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("Ins"), this->InputGrad("Ins"));
-    return op;
   }
 };
 }  // namespace operators

@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fc_elementwise_layernorm_fuse_pass.h"
+
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
@@ -129,7 +131,9 @@ static bool IsEqual(const std::vector<T> &x, const std::vector<T> &y) {
 }
 
 void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph);
+  PADDLE_ENFORCE_NOT_NULL(graph,
+                          platform::errors::InvalidArgument(
+                              "Pointer to graph argument should not be NULL."));
   FusePassBase::Init("fc_elementwise_layernorm_fuse", graph);
   int found_subgraph_count = 0;
 
@@ -173,7 +177,7 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     }
 
     int begin_norm_axis =
-        boost::get<int>(layer_norm->Op()->GetAttr("begin_norm_axis"));
+        BOOST_GET_CONST(int, layer_norm->Op()->GetAttr("begin_norm_axis"));
     auto layer_norm_x_dims = fc_out->Var()->GetShape();
     auto layer_norm_x_mat_dims = framework::flatten_to_2d(
         framework::make_ddim(layer_norm_x_dims), begin_norm_axis);
@@ -203,12 +207,14 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     // outputs
     new_desc.SetOutput("Out", {layer_norm_out->Name()});
-    if (layer_norm_mean->outputs.size() > 0U) {
+    bool lnm_has_output = layer_norm_mean->outputs.size() > 0U;
+    if (lnm_has_output) {
       new_desc.SetOutput("Mean", {layer_norm_mean->Name()});
     } else {
       del_node_set.insert(layer_norm_mean);
     }
-    if (layer_norm_variance->outputs.size() > 0U) {
+    bool lnv_has_output = layer_norm_variance->outputs.size() > 0U;
+    if (lnv_has_output) {
       new_desc.SetOutput("Variance", {layer_norm_variance->Name()});
     } else {
       del_node_set.insert(layer_norm_variance);
@@ -237,10 +243,10 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     IR_NODE_LINK_TO(layer_norm_scale, fused_node);
     IR_NODE_LINK_TO(layer_norm_bias, fused_node);
     IR_NODE_LINK_TO(fused_node, layer_norm_out);
-    if (layer_norm_mean->outputs.size() > 0U) {
+    if (lnm_has_output) {
       IR_NODE_LINK_TO(fused_node, layer_norm_mean);
     }
-    if (layer_norm_variance->outputs.size() > 0U) {
+    if (lnv_has_output) {
       IR_NODE_LINK_TO(fused_node, layer_norm_variance);
     }
 

@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
+import paddle.fluid as fluid
 from op_test import OpTest
 import paddle.fluid.core as core
 
@@ -23,9 +25,9 @@ import paddle.fluid.core as core
 class TestScatterOp(OpTest):
     def setUp(self):
         self.op_type = "scatter"
-        ref_np = np.ones((3, 3)).astype("float32")
+        ref_np = np.ones((3, 50)).astype("float32")
         index_np = np.array([1, 2]).astype("int32")
-        updates_np = np.random.random((2, 3)).astype("float32")
+        updates_np = np.random.random((2, 50)).astype("float32")
         output_np = np.copy(ref_np)
         output_np[index_np] = updates_np
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
@@ -171,6 +173,56 @@ class TestScatterOp5(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(place, ['Updates'], 'Out', in_place=True)
+
+
+class TestScatterAPI(unittest.TestCase):
+    def setUp(self):
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[3, 2], dtype="float64")
+            index = fluid.data(name="index", shape=[4], dtype="int64")
+            updates = fluid.data(name="updates", shape=[4, 2], dtype="float64")
+            result = paddle.scatter(input, index, updates, False)
+
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array(
+                [[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float64)
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "input": input_data,
+                                  "index": index_data,
+                                  "updates": updates_data
+                              },
+                              fetch_list=[result])
+            self.assertEqual((fetches[0] == \
+                              np.array([[3., 3.],[6., 6.],[1., 1.]])).all(), True)
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+                updates_data = np.array(
+                    [[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float64)
+
+                x = fluid.dygraph.to_variable(x_data)
+                index = fluid.dygraph.to_variable(index_data)
+                updates = fluid.dygraph.to_variable(updates_data)
+
+                output1 = paddle.scatter(x, index, updates, overwrite=False)
+                self.assertEqual((output1.numpy() == \
+                                  np.array([[3., 3.],[6., 6.],[1., 1.]])).all(), True)
 
 
 if __name__ == "__main__":

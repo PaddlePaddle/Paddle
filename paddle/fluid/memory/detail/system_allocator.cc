@@ -17,11 +17,15 @@ limitations under the License. */
 
 #ifdef _WIN32
 #include <malloc.h>
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>  // VirtualLock/VirtualUnlock
 #else
 #include <sys/mman.h>  // for mlock and munlock
 #endif
-#include <stdlib.h>   // for malloc and free
+#include <stdlib.h>  // for malloc and free
+
 #include <algorithm>  // for std::max
 #include <string>
 #include <utility>
@@ -55,10 +59,14 @@ void* AlignedMalloc(size_t size) {
 #ifdef _WIN32
   p = _aligned_malloc(size, alignment);
 #else
-  PADDLE_ENFORCE_EQ(posix_memalign(&p, alignment, size), 0, "Alloc %ld error!",
-                    size);
+  int error = posix_memalign(&p, alignment, size);
+  PADDLE_ENFORCE_EQ(
+      error, 0,
+      platform::errors::ResourceExhausted(
+          "Fail to alloc memory of %ld size, error code is %d.", size, error));
 #endif
-  PADDLE_ENFORCE_NOT_NULL(p, "Fail to allocate CPU memory: size = %d .", size);
+  PADDLE_ENFORCE_NOT_NULL(p, platform::errors::ResourceExhausted(
+                                 "Fail to alloc memory of %ld size.", size));
   return p;
 }
 
@@ -110,31 +118,30 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
   // if size is 0.  We just make sure it does.
   if (size <= 0) return nullptr;
 
-  paddle::platform::CUDADeviceGuard guard(gpu_id_);
-
   void* p;
-  cudaError_t result = cudaMalloc(&p, size);
+  auto result = platform::RecordedCudaMalloc(&p, size, gpu_id_);
 
   if (result == cudaSuccess) {
     *index = 0;
     gpu_alloc_size_ += size;
     return p;
   } else {
-    if (result == cudaErrorMemoryAllocation) {
-      result = cudaSuccess;
+    size_t avail, total, actual_avail, actual_total;
+    bool is_limited = platform::RecordedCudaMemGetInfo(
+        &avail, &total, &actual_avail, &actual_total, gpu_id_);
+
+    std::string err_msg;
+    if (is_limited) {
+      auto limit_size = (total >> 20);
+      err_msg = string::Sprintf(
+          "\n   3) Set environment variable `FLAGS_gpu_memory_limit_mb` to a "
+          "larger value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the "
+          "maximum GPU memory usage is limited to %d MB.\n"
+          "      The command is `export FLAGS_gpu_memory_limit_mb=xxx`.",
+          limit_size, limit_size);
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(result);
 
-    result = cudaGetLastError();
-    if (result == cudaErrorMemoryAllocation) {
-      result = cudaSuccess;
-    }
-    PADDLE_ENFORCE_CUDA_SUCCESS(result);
-
-    size_t avail, total;
-    platform::GpuMemoryUsage(&avail, &total);
-
-    PADDLE_THROW_BAD_ALLOC(
+    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
         "\n\nOut of memory error on GPU %d. "
         "Cannot allocate %s memory on GPU %d, "
         "available memory is only %s.\n\n"
@@ -145,28 +152,24 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
         "   2) FLAGS_fraction_of_gpu_memory_to_use is %.2lf now, "
         "please set it to a higher value but less than 1.0.\n"
         "      The command is "
-        "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.\n\n",
+        "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.%s\n\n",
         gpu_id_, string::HumanReadableSize(size), gpu_id_,
         string::HumanReadableSize(avail), gpu_id_,
-        FLAGS_fraction_of_gpu_memory_to_use);
+        FLAGS_fraction_of_gpu_memory_to_use, err_msg));
   }
 }
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
-  cudaError_t err;
-  PADDLE_ENFORCE_EQ(index, 0);
-  PADDLE_ENFORCE_GE(gpu_alloc_size_, size);
+  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
+                                  "The index should be 0, index is %d", index));
+  PADDLE_ENFORCE_GE(gpu_alloc_size_, size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated gpu memory (%d)",
+                        size, gpu_alloc_size_));
   gpu_alloc_size_ -= size;
-  err = cudaFree(p);
 
-  // Purposefully allow cudaErrorCudartUnloading, because
-  // that is returned if you ever call cudaFree after the
-  // driver has already shutdown. This happens only if the
-  // process is terminating, in which case we don't care if
-  // cudaFree succeeds.
-  if (err != cudaErrorCudartUnloading) {
-    PADDLE_ENFORCE(err, "cudaFree{Host} failed in GPUAllocator::Free.");
-  }
+  platform::RecordedCudaFree(p, size, gpu_id_);
 }
 
 bool GPUAllocator::UseGpu() const { return true; }
@@ -207,9 +210,14 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
 void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   cudaError_t err;
-  PADDLE_ENFORCE_EQ(index, 1);
+  PADDLE_ENFORCE_EQ(index, 1, platform::errors::InvalidArgument(
+                                  "The index should be 1, but got %d", index));
 
-  PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_, size);
+  PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_, size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated cuda pinned memory (%d)",
+                        size, cuda_pinnd_alloc_size_));
   cuda_pinnd_alloc_size_ -= size;
   err = cudaFreeHost(p);
 
@@ -219,7 +227,11 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   // process is terminating, in which case we don't care if
   // cudaFreeHost succeeds.
   if (err != cudaErrorCudartUnloading) {
-    PADDLE_ENFORCE(err, "cudaFreeHost failed in GPUPinnedAllocator::Free.");
+    PADDLE_ENFORCE_EQ(
+        err, 0,
+        platform::errors::Fatal(
+            "cudaFreeHost failed in GPUPinnedAllocator, error code is %d",
+            err));
   }
 }
 

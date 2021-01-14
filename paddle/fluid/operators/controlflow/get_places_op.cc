@@ -12,10 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <thread>  // NOLINT
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
@@ -52,19 +63,20 @@ class GetPlacesOp : public framework::OperatorBase {
       device_count =
           is_gpu ? CUDADevCount() : std::thread::hardware_concurrency();
     }
-    PADDLE_ENFORCE_NE(device_count, 0UL, "Cannot indicate %s device count",
-                      is_gpu ? "GPU" : "CPU");
+    PADDLE_ENFORCE_NE(device_count, 0UL, platform::errors::InvalidArgument(
+                                             "Cannot indicate %s device count",
+                                             is_gpu ? "GPU" : "CPU"));
 
     auto out_var_name = Output("Out");
-    auto &places =
-        *(detail::Ref(scope.FindVar(out_var_name),
-                      "Output variable %s cannot be found", out_var_name)
-              .GetMutable<platform::PlaceList>());
+    auto &places = *(GET_DATA_SAFELY(scope.FindVar(out_var_name), "Output",
+                                     "Out", "GetPlaces")
+                         .GetMutable<platform::PlaceList>());
     places.reserve(device_count);
     if (is_gpu) {
       PADDLE_ENFORCE_LE(device_count, CUDADevCount(),
-                        "Only %d CUDA devices found, cannot set to %d",
-                        CUDADevCount(), device_count);
+                        platform::errors::InvalidArgument(
+                            "Only %d CUDA devices found, cannot set to %d",
+                            CUDADevCount(), device_count));
       for (size_t i = 0; i < device_count; ++i) {
         places.emplace_back(platform::CUDAPlace(static_cast<int>(i)));
       }
@@ -94,9 +106,8 @@ execution.
 class GetPlacesInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    for (auto &o_name : ctx->Output("Out")) {
-      ctx->SetType(o_name, framework::proto::VarType::PLACE_LIST);
-    }
+    ctx->SetOutputType("Out", framework::proto::VarType::PLACE_LIST,
+                       framework::ALL_ELEMENTS);
   }
 };
 

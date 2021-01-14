@@ -15,6 +15,18 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
 namespace paddle {
+namespace framework {
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 
 /* We will implement the op with block separately in the future.
@@ -51,7 +63,9 @@ class ConditionalBlockInferOp : public ConditionalOp {
 
     if (need_run) {
       auto *scope_var = scope.FindVar(Output("Scope"));
-      PADDLE_ENFORCE(scope_var != nullptr, "Must set scope");
+      PADDLE_ENFORCE_NOT_NULL(
+          scope_var, platform::errors::PreconditionNotMet(
+                         "Scope must be set in ConditionalBlockInferOp."));
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
       scopes->resize(1);
       scopes->front() = &scope.NewScope();

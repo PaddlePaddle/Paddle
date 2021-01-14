@@ -14,19 +14,18 @@
 
 #pragma once
 
-#include <cstdio>
-#include <stdexcept>
-
 #include <time.h>
+
+#include <cstdio>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "glog/logging.h"
 
 #if !defined(_WIN32)
-#include <dlfcn.h>     //  dladdr
-#include <execinfo.h>  // backtrace
+#include <dlfcn.h>  // dladdr
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <algorithm>  // std::accumulate
@@ -48,6 +47,7 @@ static void *dlsym(void *handle, const char *symbol_name) {
   found_symbol = GetProcAddress((HMODULE)handle, symbol_name);
 
   if (found_symbol == NULL) {
+    LOG(ERROR) << "Load symbol " << symbol_name << " failed.";
     throw std::runtime_error(std::string(symbol_name) + " not found.");
   }
   return reinterpret_cast<void *>(found_symbol);
@@ -57,7 +57,11 @@ static void *dlopen(const char *filename, int flag) {
   std::string file_name(filename);
   HMODULE hModule = LoadLibrary(file_name.c_str());
   if (!hModule) {
-    throw std::runtime_error(file_name + " not found.");
+    if (flag) {
+      throw std::runtime_error(file_name + " not found.");
+    } else {
+      return nullptr;
+    }
   }
   return reinterpret_cast<void *>(hModule);
 }

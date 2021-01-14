@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -23,6 +24,9 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
+                               const framework::DDim &in_dims, bool is_runtime);
 
 template <typename DeviceContext, typename T>
 class SqueezeKernel : public framework::OpKernel<T> {
@@ -33,62 +37,13 @@ class SqueezeKernel : public framework::OpKernel<T> {
 
     auto &axes = context.Attr<std::vector<int>>("axes");
     auto x_dims = in->dims();
-    auto out_dims = GetOutputShape(axes, x_dims);
+    auto out_dims = GetOutputShape(axes, x_dims, true);
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
         *in, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
-  }
-
-  static framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
-                                        const framework::DDim &in_dims) {
-    size_t num_squeeze_dims = squeeze_dims.size();
-    int cnt_squeezed_dims = 0;
-    bool should_squeeze[9] = {false};
-
-    // Determines number of dimensions of output tensor after squeeze.
-    // Mark and count the dimensions need to be squeezed
-    if (num_squeeze_dims == 0) {
-      for (int idx = 0; idx < in_dims.size(); ++idx) {
-        if (in_dims[idx] == 1) {
-          should_squeeze[idx] = true;
-          ++cnt_squeezed_dims;
-        }
-      }
-    } else {
-      for (size_t idx = 0; idx < num_squeeze_dims; ++idx) {
-        int current = squeeze_dims[idx] < 0 ? squeeze_dims[idx] + in_dims.size()
-                                            : squeeze_dims[idx];
-
-        PADDLE_ENFORCE_GE(current, 0,
-                          "Invalid axis, the axis should >= 0."
-                          "Current axis is:%d, input tensor's shape = [%s].",
-                          current, in_dims);
-
-        PADDLE_ENFORCE_EQ(in_dims[current], 1,
-                          "Invalid axis index, the axis that will be squeezed "
-                          "should be equal to 1. But current axis = %d,"
-                          "input tensor's shape = [%s].",
-                          in_dims[current], in_dims);
-
-        if (!(should_squeeze[current])) {
-          ++cnt_squeezed_dims;
-        }
-        should_squeeze[current] = true;
-      }
-    }
-
-    // Make output dimensions
-    std::vector<int64_t> output_shape(in_dims.size() - cnt_squeezed_dims, 0);
-    for (int in_idx = 0, out_idx = 0; in_idx < in_dims.size(); ++in_idx) {
-      if (!should_squeeze[in_idx]) {
-        output_shape[out_idx++] = in_dims[in_idx];
-      }
-    }
-
-    return framework::make_ddim(output_shape);
   }
 };
 
@@ -117,8 +72,7 @@ class Squeeze2Kernel : public framework::OpKernel<T> {
     auto &axes = context.Attr<std::vector<int>>("axes");
 
     auto x_dims = in->dims();
-    auto out_dims =
-        SqueezeKernel<DeviceContext, T>::GetOutputShape(axes, x_dims);
+    auto out_dims = GetOutputShape(axes, x_dims, true);
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(

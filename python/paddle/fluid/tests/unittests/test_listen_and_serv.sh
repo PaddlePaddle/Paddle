@@ -8,7 +8,7 @@ flag1=test_handle_signal_in_serv_op.flag
 flag2=test_list_and_serv_run_empty_optimize_block.flag
 
 for i in {1..10}; do 
-    sleep 3s
+    sleep 6s
     if [[ -f "${flag1}" && -f "${flag2}" ]];  then
         echo "test_listen_and_serv_op exit"
         exit 0

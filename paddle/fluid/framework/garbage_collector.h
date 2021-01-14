@@ -19,8 +19,15 @@
 #include <memory>
 #include <mutex>  // NOLINT
 #include <utility>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/device_context.h"
+
+namespace paddle {
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -31,7 +38,7 @@ class GarbageCollector {
 
   GarbageCollector(const platform::Place &place, size_t max_memory_size);
 
-  virtual ~GarbageCollector() = default;
+  virtual ~GarbageCollector() PADDLE_MAY_THROW {}
 
   virtual void Wait() const {}
 
@@ -40,6 +47,10 @@ class GarbageCollector {
 
   template <typename Container, typename Callback>
   void Add(Container &&objs, Callback &&callback);
+
+  void DirectClearCallback(const std::function<void()> &callback) {
+    ClearCallback(callback);
+  }
 
  protected:
   virtual void ClearCallback(const std::function<void()> &callback) = 0;
@@ -58,6 +69,16 @@ class CPUGarbageCollector : public GarbageCollector {
  protected:
   void ClearCallback(const std::function<void()> &callback) override;
 };
+
+#ifdef PADDLE_WITH_XPU
+class XPUGarbageCollector : public GarbageCollector {
+ public:
+  XPUGarbageCollector(const platform::XPUPlace &place, size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 class UnsafeFastGPUGarbageCollector : public GarbageCollector {
@@ -97,6 +118,15 @@ class StreamGarbageCollector : public GarbageCollector {
  private:
   cudaStream_t stream_;
   std::unique_ptr<platform::StreamCallbackManager> callback_manager_;
+};
+
+class CUDAPinnedGarbageCollector : public GarbageCollector {
+ public:
+  CUDAPinnedGarbageCollector(const platform::CUDAPinnedPlace &place,
+                             size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
 };
 #endif
 

@@ -11,9 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/scope_pool.h"
-#include "paddle/fluid/framework/threadpool.h"
+#include <memory>
 
 namespace paddle {
 namespace framework {
@@ -36,7 +35,11 @@ void ScopePool::Remove(Scope *s) {
     std::lock_guard<std::mutex> guard(mtx_);
     has_scope = scopes_.erase(s);
   }
-  PADDLE_ENFORCE(has_scope > 0, "Delete non-existing global scope");
+  PADDLE_ENFORCE_GT(
+      has_scope, 0,
+      platform::errors::NotFound("Global scope %p is not found in ScopePool. "
+                                 "Deleting a nonexistent scope is not allowed.",
+                                 s));
   DeleteScope(s);
 }
 

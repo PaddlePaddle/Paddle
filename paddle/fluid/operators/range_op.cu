@@ -19,13 +19,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
 __global__ void RangeKernel(T start, T step, int64_t size, T* out) {
-  CUDA_1D_KERNEL_LOOP(index, size) { out[index] = start + step * index; }
+  CUDA_KERNEL_LOOP(index, size) { out[index] = start + step * index; }
 }
 
 template <typename T>

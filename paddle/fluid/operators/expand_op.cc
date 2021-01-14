@@ -28,9 +28,8 @@ class ExpandOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Expand");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Expand");
     auto x_dims = ctx->GetInputDim("X");
     auto expand_times = ctx->Attrs().Get<std::vector<int>>("expand_times");
 
@@ -38,11 +37,19 @@ class ExpandOp : public framework::OperatorWithKernel {
       expand_times = std::vector<int>(x_dims.size(), -1);
     }
 
-    PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dims.size()), expand_times.size(),
-                      "The number of Attr(expand_times)'s value must be equal "
-                      "to the rank of Input(X).");
-    PADDLE_ENFORCE_LE(x_dims.size(), 6,
-                      "The rank of Input(X) must not be greater than 6.");
+    PADDLE_ENFORCE_EQ(
+        static_cast<size_t>(x_dims.size()), expand_times.size(),
+        platform::errors::InvalidArgument(
+            "The number of elements (%d) of 'expand_times' for "
+            "Op(expand) must be equal to the number of dimensions "
+            "(%d) of the input.",
+            expand_times.size(), static_cast<size_t>(x_dims.size())));
+    PADDLE_ENFORCE_LE(
+        x_dims.size(), 6,
+        platform::errors::InvalidArgument(
+            "The number of dimensions of the input for Op(expand) "
+            "must not be greater than 6, but the value received is %d.",
+            x_dims.size()));
 
     std::vector<int64_t> out_shape(x_dims.size());
     for (size_t i = 0; i < expand_times.size(); ++i) {
@@ -51,7 +58,10 @@ class ExpandOp : public framework::OperatorWithKernel {
       } else {
         PADDLE_ENFORCE_GT(
             expand_times[i], 0,
-            "The element of Attr(expand_times) must greater than 0.");
+            platform::errors::InvalidArgument(
+                "The %uth element of 'expand_times' for Op(expand) must be "
+                "greater than 0, but the value given is %d.",
+                i, expand_times[i]));
         out_shape[i] = x_dims[i] * expand_times[i];
       }
     }
@@ -139,9 +149,9 @@ class ExpandGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "ExpandGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> expand_times =
@@ -153,8 +163,10 @@ class ExpandGradOp : public framework::OperatorWithKernel {
     if (!ctx->IsRuntime() && x_dims[0] < 0) {
       PADDLE_ENFORCE_EQ(
           x_dims[0], out_dims[0],
-          "The first dimension size of Input(Out@GRAD) should be "
-          "equal to the crroresponding dimension size of Input(X)");
+          platform::errors::InvalidArgument(
+              "The first dimension size (%d) of Input(Out@GRAD) should be "
+              "equal to the crroresponding dimension size (%d) of Input(X)",
+              out_dims[0], x_dims[0]));
       start_pos = 1u;
     }
 
@@ -165,9 +177,11 @@ class ExpandGradOp : public framework::OperatorWithKernel {
         if (ctx->IsRuntime()) {
           PADDLE_ENFORCE_EQ(
               x_dims[i] * expand_times[i], out_dims[i],
-              "Each dimension size of Input(Out@GRAD) should be "
-              "equal to multiplication of crroresponding dimension "
-              "size of Input(X) and Attr(expand_times) value.");
+              platform::errors::InvalidArgument(
+                  "The %uth dimension size (%d) of Input(Out@GRAD) should be "
+                  "equal to the multiplication of the crroresponding dimension "
+                  "sizes of Input(X) (%d) and expand_times (%d).",
+                  i, out_dims[i], x_dims[i], expand_times[i]));
         }
       }
     }
@@ -203,8 +217,7 @@ class ExpandGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("expand_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
@@ -212,11 +225,30 @@ class ExpandGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("expand_times_tensor", this->Input("expand_times_tensor"));
     op->SetInput("ExpandTimes", this->Input("ExpandTimes"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ExpandGradNoNeedBufVarsInferer, "X");
+template <typename T>
+class ExpandDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
+    op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    if (this->HasInput("expand_times_tensor")) {
+      op->SetInput("expand_times_tensor", this->Input("expand_times_tensor"));
+    }
+    if (this->HasInput("ExpandTimes")) {
+      op->SetInput("ExpandTimes", this->Input("ExpandTimes"));
+    }
+    op->SetAttrMap(this->Attrs());
+    op->SetType("expand");
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ExpandGradNoNeedBufVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -226,6 +258,8 @@ REGISTER_OPERATOR(expand, ops::ExpandOp, ops::ExpandOpMaker,
                   ops::ExpandGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(expand_grad, ops::ExpandGradOp,
+                  ops::ExpandDoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ExpandDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ExpandGradNoNeedBufVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>,

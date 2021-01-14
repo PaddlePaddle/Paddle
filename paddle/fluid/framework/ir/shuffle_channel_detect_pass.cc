@@ -14,8 +14,8 @@
 
 #include <string>
 
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/shuffle_channel_detect_pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -47,7 +47,9 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
                      Graph* g) {
     GET_NODES;
 
-    PADDLE_ENFORCE(subgraph.count(x));
+    PADDLE_ENFORCE_GT(
+        subgraph.count(x), 0,
+        platform::errors::NotFound("Detector did not find input X."));
     auto* input_node = subgraph.at(x);
     auto reshape1_desc = reshape1_op->Op();
     auto reshape2_desc = reshape2_op->Op();
@@ -55,9 +57,9 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
     std::string output_name = reshape2_out->Name();
 
     auto reshape1_shape =
-        boost::get<std::vector<int>>(reshape1_desc->GetAttr("shape"));
+        BOOST_GET_CONST(std::vector<int>, reshape1_desc->GetAttr("shape"));
     auto reshape2_shape =
-        boost::get<std::vector<int>>(reshape2_desc->GetAttr("shape"));
+        BOOST_GET_CONST(std::vector<int>, reshape2_desc->GetAttr("shape"));
 
     int i_c = reshape1_shape[2];
     int o_c = reshape2_shape[1];
@@ -80,6 +82,9 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(graph, {reshape1_op, reshape1_out, transpose_op,
                                  transpose_out, reshape2_op});
+    LOG_FIRST_N(WARNING, 1)
+        << "There is fluid.layers.shuffle_channel API already, maybe you can "
+           "use it instead of (reshape + transpose + reshape)";
   };
 
   gpd(graph, handler);
@@ -91,3 +96,8 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(shuffle_channel_detect_pass,
               paddle::framework::ir::ShuffleChannelDetectPass);
+REGISTER_PASS_CAPABILITY(shuffle_channel_detect_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("reshape2", 0)
+            .EQ("transpose2", 0));

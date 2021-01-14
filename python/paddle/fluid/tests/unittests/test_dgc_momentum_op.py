@@ -34,16 +34,19 @@ class TestDGCMomentumOp1(unittest.TestCase):
 
         self.op_type = "dgc_momentum"
         self.dtype = np.float32
+        nranks_val = 2
 
         param = np.random.random((123, 321)).astype(self.dtype)
         grad = np.random.random((123, 321)).astype(self.dtype)
         velocity = np.zeros((123, 321)).astype(self.dtype)
         learning_rate = np.array([0.001]).astype(self.dtype)
         current_step = np.full((1), step).astype("float32")
+        nranks = np.full((1), nranks_val).astype("float32")
         mu = 0.0001
         use_nesterov = False
         rampup_begin_step = 10.0
 
+        # get tensor
         self.param_name, self.param_tensor = self.get_tensor('Param', param)
         self.grad_name, self.grad_tensor = self.get_tensor('Grad', grad)
         self.velocity_name, self.velocity_tensor = self.get_tensor('Velocity',
@@ -52,6 +55,8 @@ class TestDGCMomentumOp1(unittest.TestCase):
             'LearningRate', learning_rate)
         self.current_step_name, self.current_step_tensor = self.get_tensor(
             'current_step', current_step, core.CPUPlace())
+        self.nranks_name, self.nranks_tensor = self.get_tensor('nranks', nranks,
+                                                               core.CPUPlace())
 
         self.kwargs = {
             # inputs
@@ -60,6 +65,7 @@ class TestDGCMomentumOp1(unittest.TestCase):
             'Velocity': self.velocity_name,
             'LearningRate': self.learning_rate_name,
             'current_step': self.current_step_name,
+            'nranks': self.nranks_name,
 
             # attrs
             'mu': mu,
@@ -68,17 +74,18 @@ class TestDGCMomentumOp1(unittest.TestCase):
 
             # outputs
             'ParamOut': self.param_name,
-            'VelocityOut': self.velocity_name
+            'VelocityOut': self.velocity_name,
+            'Grad_out': self.grad_name,
         }
 
-        velocity_out = mu * velocity + grad
+        velocity_out = mu * velocity + grad / nranks
         if use_nesterov:
             param_out = param - grad * learning_rate - \
                         velocity_out * mu * learning_rate
         else:
             param_out = param - learning_rate * velocity_out
 
-        sgd_out = param - learning_rate * grad
+        sgd_out = param - learning_rate * grad / nranks
 
         self.outputs = {
             'ParamOut': param_out,

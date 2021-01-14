@@ -27,6 +27,7 @@ add_subdirectory(fleet)
 add_subdirectory(io)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
+proto_library(heter_service_proto SRCS heter_service.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
   data_feed_proto)
@@ -56,6 +57,8 @@ else()
   cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor dlpack_tensor)
 endif()
 
+cc_test(copy_same_tensor_test SRCS copy_same_tensor_test.cc DEPS tensor)
+
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 if(WITH_GPU)
@@ -83,6 +86,9 @@ endif()
 cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
 cc_library(scope SRCS scope.cc DEPS glog threadpool xxhash var_type_traits)
+cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope)
+cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)
+
 cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 cc_test(variable_test SRCS variable_test.cc DEPS tensor var_type_traits)
@@ -113,18 +119,30 @@ cc_test(data_layout_transform_test SRCS data_layout_transform_test.cc DEPS data_
 cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor
         framework_proto selected_rows data_device_transform data_type_transform data_layout_transform)
 
-cc_library(attribute SRCS attribute.cc DEPS framework_proto boost)
+cc_library(attribute SRCS attribute.cc DEPS framework_proto boost enforce)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
 device_context)
+
+cc_library(op_version_proto SRCS op_version_proto.cc DEPS framework_proto boost)
+
+cc_library(op_version_registry SRCS op_version_registry.cc DEPS op_version_proto framework_proto boost)
+cc_test(op_version_registry_test SRCS op_version_registry_test.cc DEPS op_version_registry)
+
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute glog)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
-cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
+cc_library(no_need_buffer_vars_inference SRCS no_need_buffer_vars_inference.cc DEPS attribute device_context)
+cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto no_need_buffer_vars_inference)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
+
+cc_test(no_need_buffer_vars_inference_test SRCS no_need_buffer_vars_inference_test.cc DEPS no_need_buffer_vars_inference layer)
 
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
+
+cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_vars_inference)
+
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
-    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op_registry device_context)
@@ -137,72 +155,122 @@ cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 
 cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
+cc_test(op_call_stack_test SRCS op_call_stack_test.cc DEPS op_call_stack)
 
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
-py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
-py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
+if(WITH_PYTHON)
+  py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
+  py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
+  py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
-add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
-add_dependencies(framework_py_proto framework_py_proto_init)
-if (NOT WIN32)
-  add_custom_command(TARGET framework_py_proto POST_BUILD
+  add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
+  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto)
+  if (NOT WIN32)
+    add_custom_command(TARGET framework_py_proto POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+      COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
+      COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-else(NOT WIN32)
-  string(REPLACE "/" "\\" proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
-  add_custom_command(TARGET framework_py_proto POST_BUILD
+  else(NOT WIN32)
+    string(REPLACE "/" "\\" proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
+    string(REPLACE "/" "\\" fleet_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
+    add_custom_command(TARGET framework_py_proto POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+	  COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+	  COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
           COMMAND copy /Y *.py ${proto_dstpath}
+	  COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
           COMMENT "Copy generated python proto into directory paddle/fluid/proto."
+	  COMMENT "Copy generated python proto into directory paddle/distributed/fleet/proto."
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-endif(NOT WIN32)
+  endif(NOT WIN32)
+endif()
 
 cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
 cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
 cc_library(variable_helper SRCS variable_helper.cc DEPS lod_tensor)
 
-cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
-
-if(WITH_NGRAPH)
-  set(NGRAPH_EXE_DEPS ngraph_engine)
-else()
-  set(NGRAPH_EXE_DEPS)
-endif()
+cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry denormal device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
 
 cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
 if(WITH_DISTRIBUTE)
+  if(WITH_PSLIB)
+    cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
+    dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+    heterxpu_trainer.cc
+    data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
+    heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+    pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+    device_context scope framework_proto trainer_desc_proto glog fs shell
+    fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
+    lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
+    graph_to_program_pass variable_helper data_feed_proto timer monitor
+    heter_service_proto pslib_brpc)
+    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  elseif(WITH_PSCORE)
+    cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
+            dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+            heterxpu_trainer.cc
+            data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
+            heterbox_worker.cc heterbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+            pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+            device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
+            lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
+            graph_to_program_pass variable_helper timer monitor heter_service_proto fleet)
+    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(multi_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(hogwild_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  else()
+    cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
+            dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+            heterxpu_trainer.cc
+            data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
+            heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+            pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+            device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
+            lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
+            graph_to_program_pass variable_helper timer monitor)
+  endif()
+elseif(WITH_PSLIB)
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
+  heterxpu_trainer.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
+  heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
-  device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper lodtensor_printer
-  lod_rank_table feed_fetch_method sendrecvop_rpc collective_helper ${GLOB_DISTRIBUTE_DEPS}
-  graph_to_program_pass variable_helper data_feed_proto ${NGRAPH_EXE_DEPS} timer)
-set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
-set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
+  lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
+  graph_to_program_pass variable_helper timer monitor pslib_brpc )
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
+  heterxpu_trainer.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
+  heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
-  device_context scope framework_proto data_feed_proto trainer_desc_proto glog
-  lod_rank_table fs shell fleet_wrapper lodtensor_printer feed_fetch_method
-  graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS} timer)
-  cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
+  device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
+  lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
+  graph_to_program_pass variable_helper timer monitor)
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_helper conditional_block_op_helper)
 
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor async_ssa_graph_executor
-        graph build_strategy
+        graph build_strategy collective_helper
         fast_threaded_ssa_graph_executor variable_helper)
 
+cc_library(executor_cache SRCS executor_cache.cc DEPS executor)
+cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
+    conditional_block_op executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
@@ -229,6 +297,7 @@ cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatib
 
 cc_library(save_load_util SRCS save_load_util DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
+cc_library(generator SRCS generator.cc DEPS enforce place)
 
 # Get the current working branch
 execute_process(
@@ -251,15 +320,13 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto)
-if(WIN32)
-  sep_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
-else(WIN32)
-  cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
-endif(WIN32)
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer)
 
+cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 cc_library(paddle_framework_shared
-    SHARED SRCS executor.cc operator.cc ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
+    SHARED SRCS executor.cc operator.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc
     DEPS ${FLUID_FRAMEWORK_MODULES})
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 set_target_properties(paddle_framework_shared PROPERTIES OUTPUT_NAME paddle_framework)
@@ -281,4 +348,7 @@ if(APPLE)
   set(FLUID_FRAMEWORK_SHARED_LIB
       ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.dylib
       CACHE INTERNAL "Fluid framework lib")
+endif()
+if(WITH_TESTING AND TEST selected_rows_test)
+  set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
 endif()

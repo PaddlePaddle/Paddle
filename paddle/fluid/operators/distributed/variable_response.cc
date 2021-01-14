@@ -51,7 +51,7 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
       }
       // This log is useful to see how long a internal block size is of rpc.
       VLOG(7) << "copy " << size_to_write << " data to CUDAPlace";
-      memory::Copy(boost::get<platform::CUDAPlace>(place),
+      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place),
                    reinterpret_cast<void*>(p), cpu, data, size_to_write,
                    gpu_dev_ctx.stream());
       p += size_to_write;
@@ -61,7 +61,36 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
     }
     gpu_dev_ctx.Wait();
 #else
-    PADDLE_THROW("Unexpected branch");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Unexpected branch, please compile with PADDLE_WITH_CUDA"));
+#endif
+    return true;
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+    auto& xpu_dev_ctx = static_cast<const platform::XPUDeviceContext&>(dev_ctx);
+    platform::CPUPlace cpu;
+    char* p = reinterpret_cast<char*>(dest);
+    while (total_written < length) {
+      if (!input->GetDirectBufferPointer(&data, &size_to_write)) {
+        return false;
+      }
+
+      if (total_written + size_to_write > length) {
+        size_to_write = length - total_written;
+      }
+
+      memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place),
+                   reinterpret_cast<void*>(p), cpu, data, size_to_write);
+      p += size_to_write;
+      total_written += size_to_write;
+      input->Skip(size_to_write);
+    }
+    xpu_dev_ctx.Wait();
+#else
+    PADDLE_ENFORCE_NOT_NULL(
+        nullptr,
+        platform::errors::Unimplemented(
+            "Not supported XPU, please compile with option WITH_XPU=ON."));
 #endif
     return true;
   }
@@ -119,7 +148,11 @@ bool VariableResponse::CopyLodTensorData(
   VLOG(6) << "Tensor.memory_size = " << tensor->memory_size()
           << ", Buffer Size = " << length << ", dims:" << dims
           << ", numel:" << tensor->numel();
-  PADDLE_ENFORCE_GE(tensor->memory_size(), static_cast<unsigned int>(length));
+  PADDLE_ENFORCE_GE(
+      tensor->memory_size(), static_cast<unsigned int>(length),
+      platform::errors::InvalidArgument(
+          "The memory size of tensor: %s should greater than length: %s",
+          tensor->memory_size(), length));
   return ReadRaw(input, ctx, tensor->place(), tensor_data, length);
 }
 
@@ -143,7 +176,12 @@ bool VariableResponse::CopySelectRowsTensorData(
   PADDLE_ENFORCE_EQ(
       static_cast<size_t>(tensor->numel()),
       length / framework::SizeOfType(paddle::operators::distributed::ToVarType(
-                   meta_.data_type())));
+                   meta_.data_type())),
+      platform::errors::InvalidArgument(
+          "length: %s should equal to memory size of tensor: %s", length,
+          tensor->numel() *
+              framework::SizeOfType(paddle::operators::distributed::ToVarType(
+                  meta_.data_type()))));
   void* tensor_data = tensor->mutable_data(
       ctx.GetPlace(),
       paddle::operators::distributed::ToVarType(meta_.data_type()));
@@ -175,11 +213,12 @@ bool VariableResponse::CopySelectRowsData(
 bool VariableResponse::ProcSerializedField(
     int tag, ::google::protobuf::io::CodedInputStream* input,
     int64_t num_bytes) {
-  PADDLE_ENFORCE((meta_.type() == sendrecv::SELECTED_ROWS ||
-                  meta_.type() == sendrecv::LOD_TENSOR ||
-                  meta_.type() == sendrecv::NCCL_ID) &&
-                     meta_.varname() != "",
-                 "meta info should be got first!");
+  PADDLE_ENFORCE(
+      (meta_.type() == sendrecv::SELECTED_ROWS ||
+       meta_.type() == sendrecv::LOD_TENSOR ||
+       meta_.type() == sendrecv::NCCL_ID) &&
+          meta_.varname() != "",
+      platform::errors::PreconditionNotMet("meta info should be got first!"));
 
   if (meta_.type() == sendrecv::NCCL_ID) {
 #ifdef PADDLE_WITH_CUDA
@@ -193,7 +232,8 @@ bool VariableResponse::ProcSerializedField(
     }
     return true;
 #else
-    PADDLE_THROW("Not compiled with CUDA!");
+    PADDLE_THROW(
+        platform::errors::PreconditionNotMet("Please compiled with CUDA!"));
     return false;
 #endif
   }
@@ -202,7 +242,9 @@ bool VariableResponse::ProcSerializedField(
           << ", type:" << meta_.type() << std::endl;
   framework::DDim dims = GetDims(meta_.dims());
   if (meta_.type() == sendrecv::LOD_TENSOR) {
-    PADDLE_ENFORCE(meta_.lod_size() >= 0, "lod info should be got first!");
+    PADDLE_ENFORCE_GE(
+        meta_.lod_size(), 0,
+        platform::errors::PreconditionNotMet("lod info should be got first!"));
     if (!CopyLodTensorData(input, *dev_ctx_, dims, num_bytes)) {
       return false;
     }
@@ -217,7 +259,9 @@ bool VariableResponse::ProcSerializedField(
     return true;
   }
 
-  PADDLE_ENFORCE("not supported var types:", meta_.varname(), meta_.type());
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "The type: %s of var: %s is not supported", meta_.type(),
+      meta_.varname()));
 
   return false;
 }

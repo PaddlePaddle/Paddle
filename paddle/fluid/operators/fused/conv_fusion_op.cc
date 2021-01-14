@@ -28,7 +28,7 @@ namespace operators {
 //         x is Input,
 //         z is ResidualData,
 //         bias is Bias
-// When `split_channels` is set, y will be splitted into multiple outputs,
+// When `split_channels` is set, y will be split into multiple outputs,
 // each output has split_channels[i] number of channels.
 class Conv2DFusionOpMaker : public Conv2DOpMaker {
  protected:
@@ -59,40 +59,68 @@ class Conv2DFusionOpMaker : public Conv2DOpMaker {
   }
 };
 
-class Conv2DFusionOpInferShape : public framework::InferShapeBase {
+class Conv2DFusionOp : public operators::ConvOp {
  public:
-  void operator()(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "Input(Input) of ConvOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), true,
-                      "Input(Filter) of ConvOp should not be null.");
+  using operators::ConvOp::ConvOp;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Conv2DFusion");
+    OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "Conv2DFusion");
+
     auto in_dims = ctx->GetInputDim("Input");
-    auto filter_dims = ctx->GetInputDim("Filter");
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(), 4U,
+        platform::errors::InvalidArgument(
+            "The input's dimension of Operator(Conv2DFusion) is expected "
+            "to be 4. But received: input's dimension = %u, shape = [%s].",
+            in_dims.size(), in_dims));
 
-    std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
-    std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    std::vector<int> dilations =
-        ctx->Attrs().Get<std::vector<int>>("dilations");
+    // In some case, attribute data_format is "AnyLayout".
+    std::string data_format = ctx->Attrs().Get<std::string>("data_format");
+    PADDLE_ENFORCE_NE(
+        data_format, "NHWC",
+        platform::errors::PermissionDenied(
+            "Operator(Conv2DFusion) only supports data format of "
+            "channel first (NCHW) now. But recieved: data_format = '%s'.",
+            data_format));
 
-    std::vector<int64_t> oshape({in_dims[0], filter_dims[0]});
-    for (size_t i = 0; i < strides.size(); ++i) {
-      oshape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
-                                      dilations[i], paddings[i], strides[i]));
-    }
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
-                      "Output(Output) of ConvOp should not be null.");
-    ctx->SetOutputDim("Output", framework::make_ddim(oshape));
-    std::vector<int> channels =
+    std::vector<int64_t> output_shape = ComputeOutputShape(ctx);
+    ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+    ctx->ShareLoD("Input", "Output");
+
+    std::vector<int> split_channels =
         ctx->Attrs().Get<std::vector<int>>("split_channels");
-    if (channels.size()) {
-      PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"), true,
-                        "Output(Outputs) of ConvOp should not be null.");
-      std::vector<framework::DDim> oshapes;
-      oshapes.reserve(channels.size());
-      for (size_t i = 0; i < channels.size(); ++i) {
-        oshapes.push_back({oshape[0], channels[i], oshape[2], oshape[3]});
+    if (split_channels.size()) {
+      OP_INOUT_CHECK(ctx->HasOutputs("Outputs"), "Output", "Outputs",
+                     "Conv2DFusion");
+      PADDLE_ENFORCE_EQ(
+          ctx->Outputs("Outputs").size(), split_channels.size(),
+          platform::errors::InvalidArgument(
+              "The number of Output(Outputs) of operator 'Conv2DFusion' is "
+              "expected to be equal to the length of Attr(split_channels). But "
+              "reiceved: the number of Output(Outputs) = %u; the length of "
+              "Attr(split_channels) = %u, the content = [%s].",
+              ctx->Outputs("Outputs").size(), split_channels.size(),
+              framework::make_ddim(split_channels)));
+
+      int split_channels_sum = 0;
+      std::vector<framework::DDim> output_shapes(split_channels.size());
+      for (size_t i = 0; i < split_channels.size(); ++i) {
+        split_channels_sum += split_channels[i];
+        output_shapes[i] =
+            framework::make_ddim({output_shape[0], split_channels[i],
+                                  output_shape[2], output_shape[3]});
       }
-      ctx->SetOutputsDim("Outputs", oshapes);
+      PADDLE_ENFORCE_EQ(
+          split_channels_sum, output_shape[1],
+          platform::errors::InvalidArgument(
+              "The sum of Attr(split_channels) is expected to be equal to the "
+              "total output channels. But recieved: the sum of "
+              "Attr(split_channels) = %d, the total output channels = %d.",
+              split_channels_sum, output_shape[1]));
+
+      ctx->SetOutputsDim("Outputs", output_shapes);
     }
   }
 };
@@ -104,7 +132,7 @@ class Conv2DFusionOpInferShape : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    conv2d_fusion, ops::ConvOp, ops::Conv2DFusionOpMaker,
-    ops::Conv2DFusionOpInferShape, ops::ConvOpInferVarType,
+    conv2d_fusion, ops::Conv2DFusionOp, ops::Conv2DFusionOpMaker,
+    ops::ConvOpInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

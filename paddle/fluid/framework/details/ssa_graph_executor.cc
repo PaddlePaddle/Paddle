@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
 
+#include "paddle/fluid/framework/details/fetch_async_op_handle.h"
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -23,9 +25,12 @@ void ClearFetchOp(ir::Graph* graph, std::vector<OpHandleBase*>* fetch_ops) {
   if (fetch_ops->empty()) return;
 
   for (auto& op : *fetch_ops) {
-    PADDLE_ENFORCE_NOT_NULL(
-        dynamic_cast<FetchOpHandle*>(op),
-        "The input ops of ClearFetchOp function should be FetchOpHandle.");
+    PADDLE_ENFORCE_EQ(dynamic_cast<FetchOpHandle*>(op) != nullptr ||
+                          dynamic_cast<FetchAsyncOpHandle*>(op) != nullptr,
+                      true,
+                      platform::errors::PreconditionNotMet(
+                          "The input ops of ClearFetchOp function should be "
+                          "FetchOpHandle or FetchAsyncOpHandle."));
     for (auto& out_var : op->Node()->outputs) {
       graph->RemoveNode(out_var);
     }

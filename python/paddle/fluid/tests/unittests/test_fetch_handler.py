@@ -17,31 +17,48 @@ from __future__ import print_function
 import time
 import unittest
 import numpy as np
+from paddle.fluid.framework import Program
 
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
 
 class TestFetchHandler(unittest.TestCase):
+    @unittest.skip(reason="Skip unstable ci")
     def test_fetch_handler(self):
         place = core.CPUPlace()
         scope = core.Scope()
 
         table = np.random.random((3, 10)).astype("float32")
 
+        prog = Program()
+        block = prog.current_block()
+        var_emb = block.create_var(name='emb', type=core.VarDesc.VarType.FP32)
+        var_emb3 = block.create_var(name='emb3', type=core.VarDesc.VarType.FP32)
+
         class FH(fluid.executor.FetchHandler):
-            def handler(self, fetch_target_vars):
-                assert len(fetch_target_vars) == 1
+            def handler(self, fetch_dict):
+                assert len(fetch_dict) == 1
 
         table_var = scope.var('emb').get_tensor()
         table_var.set(table, place)
-
-        fh = FH(['emb'], period_secs=2, return_np=True)
+        fh = FH(var_dict={'emb': var_emb}, period_secs=2)
         fm = fluid.trainer_factory.FetchHandlerMonitor(scope, fh)
 
         fm.start()
-        time.sleep(10)
+        time.sleep(3)
         fm.stop()
+
+        default_fh = fluid.executor.FetchHandler(
+            var_dict={'emb': var_emb,
+                      'emb2': None,
+                      'emb3': var_emb3},
+            period_secs=1)
+        default_fm = fluid.trainer_factory.FetchHandlerMonitor(scope,
+                                                               default_fh)
+        default_fm.start()
+        time.sleep(5)
+        default_fm.stop()
 
 
 if __name__ == "__main__":

@@ -14,18 +14,17 @@ limitations under the License. */
 #pragma once
 
 #include <curand.h>
-
 #include <mutex>  // NOLINT
-#include "paddle/fluid/platform/port.h"
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 extern std::once_flag curand_dso_flag;
 extern void *curand_dso_handle;
-#ifdef PADDLE_USE_DSO
+
 #define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                             \
   struct DynLoad__##__name {                                                 \
     template <typename... Args>                                              \
@@ -39,16 +38,6 @@ extern void *curand_dso_handle;
     }                                                                        \
   };                                                                         \
   extern DynLoad__##__name __name
-#else
-#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name) \
-  struct DynLoad__##__name {                     \
-    template <typename... Args>                  \
-    curandStatus_t operator()(Args... args) {    \
-      return ::__name(args...);                  \
-    }                                            \
-  };                                             \
-  extern DynLoad__##__name __name
-#endif
 
 #define CURAND_RAND_ROUTINE_EACH(__macro)      \
   __macro(curandCreateGenerator);              \

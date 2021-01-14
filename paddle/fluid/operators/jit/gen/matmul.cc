@@ -13,9 +13,10 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen/matmul.h"
+
 #include <stddef.h>  // offsetof
 #include <memory>
-#include <vector>
+
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -28,7 +29,11 @@ void MatMulJitCode::genCode() {
   preCode();
   int block, rest;
   const auto groups = packed_groups(n_, k_, &block, &rest);
-  PADDLE_ENFORCE_GT(groups.front(), 0);
+  PADDLE_ENFORCE_GT(
+      groups.front(), 0,
+      platform::errors::InvalidArgument("The number of rest registers should "
+                                        "be larger than 0. But it is %d.",
+                                        groups.front()));
 
   const int block_len = sizeof(float) * block;
   const int x_reg_idx = (block == ZMM_FLOAT_BLOCK ? 32 : 16) - 1;
@@ -41,7 +46,7 @@ void MatMulJitCode::genCode() {
   for (size_t g = 0; g < groups.size(); ++g) {
     size_t x_offset = 0;
     size_t wgt_offset_tmp = 0;
-    for (int i = 0; i < g; ++i) {
+    for (size_t i = 0; i < g; ++i) {
       wgt_offset_tmp += groups[i] * block_len;
     }
     for (int k = 0; k < k_; ++k) {
@@ -117,9 +122,21 @@ class MatMulCreator : public JitCodeCreator<matmul_attr_t> {
   }
   std::unique_ptr<GenBase> CreateJitCode(
       const matmul_attr_t& attr) const override {
-    PADDLE_ENFORCE_GT(attr.m, 0);
-    PADDLE_ENFORCE_GT(attr.n, 0);
-    PADDLE_ENFORCE_GT(attr.k, 0);
+    PADDLE_ENFORCE_GT(
+        attr.m, 0, platform::errors::InvalidArgument(
+                       "The attribute m (first matrix's row) of MatMul should "
+                       "be larger than 0. But it is %d.",
+                       attr.m));
+    PADDLE_ENFORCE_GT(
+        attr.n, 0, platform::errors::InvalidArgument(
+                       "The attribute n (first matrix's col) of MatMul should "
+                       "be larger than 0. But it is %d.",
+                       attr.n));
+    PADDLE_ENFORCE_GT(
+        attr.k, 0, platform::errors::InvalidArgument(
+                       "The attribute k (second matrix's col) of MatMul should "
+                       "be larger than 0. But it is %d.",
+                       attr.k));
     return make_unique<MatMulJitCode>(attr, CodeSize(attr));
   }
 };

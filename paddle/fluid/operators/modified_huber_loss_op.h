@@ -29,10 +29,12 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 template <typename T>
 struct CheckLabelValue {
   HOSTDEVICE T operator()(const T& val) const {
-    PADDLE_ENFORCE(val == static_cast<T>(0) || val == static_cast<T>(1),
-                   "LabelValue of modified_huber_loss_op expected to be 0 "
-                   "or 1, but got %ld. Please check input value.",
-                   val);
+    PADDLE_ENFORCE(
+        val == static_cast<T>(0) || val == static_cast<T>(1),
+        platform::errors::InvalidArgument(
+            "Input(label) value of modified_huber_loss_op expected to be 0 "
+            "or 1, but got %ld. Please check label value.",
+            val));
   }
 };
 

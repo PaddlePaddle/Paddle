@@ -18,6 +18,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -49,7 +50,9 @@ class ConditionalOp : public framework::OperatorBase {
         xs.begin(), xs.end(), retv.begin(),
         [&scope](const std::string &var_name) -> const framework::LoDTensor * {
           auto *var = scope.FindVar(var_name);
-          PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", var_name);
+          PADDLE_ENFORCE_NOT_NULL(
+              var, platform::errors::InvalidArgument("Cannot find variable %s",
+                                                     var_name));
           return &var->Get<framework::LoDTensor>();
         });
     return retv;
@@ -57,15 +60,17 @@ class ConditionalOp : public framework::OperatorBase {
 
   bool ScalarCondition(
       const std::vector<const framework::LoDTensor *> &ips) const {
-    if (!(ips.size() == 1UL && ips[0]->IsInitialized())) {
-      PADDLE_THROW("should have one initialized input as condition");
-    }
+    PADDLE_ENFORCE_EQ(
+        ips.size() == 1UL && ips[0]->IsInitialized(), true,
+        platform::errors::InvalidArgument(
+            "condition should have one initialized input as condition"));
 
-    PADDLE_ENFORCE(ips[0]->type() == framework::proto::VarType::BOOL &&
-                       ips[0]->numel() == 1,
-                   "condition input's data type should be bool, "
-                   "numel should be 1, actual numel is %d",
-                   ips[0]->numel());
+    PADDLE_ENFORCE_EQ(ips[0]->type() == framework::proto::VarType::BOOL &&
+                          ips[0]->numel() == 1,
+                      true, platform::errors::InvalidArgument(
+                                "condition input's data type should be bool, "
+                                "numel should be 1, actual numel is %d",
+                                ips[0]->numel()));
     bool res = false;
     if (platform::is_gpu_place(ips[0]->place())) {
 #ifdef PADDLE_WITH_CUDA

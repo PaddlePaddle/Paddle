@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-
+import paddle.fluid as fluid
 from op_test import OpTest
 
 
@@ -24,7 +24,7 @@ class TestFlattenOp(OpTest):
     def setUp(self):
         self.op_type = "flatten2"
         self.init_test_case()
-        self.inputs = {"X": np.random.random(self.in_shape).astype("float32")}
+        self.inputs = {"X": np.random.random(self.in_shape).astype("float64")}
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
@@ -38,9 +38,9 @@ class TestFlattenOp(OpTest):
         self.check_grad(["X"], "Out")
 
     def init_test_case(self):
-        self.in_shape = (3, 2, 2, 5)
+        self.in_shape = (3, 2, 4, 5)
         self.axis = 1
-        self.new_shape = (3, 20)
+        self.new_shape = (3, 40)
 
     def init_attrs(self):
         self.attrs = {"axis": self.axis}
@@ -48,15 +48,15 @@ class TestFlattenOp(OpTest):
 
 class TestFlattenOp(TestFlattenOp):
     def init_test_case(self):
-        self.in_shape = (3, 2, 2, 3)
+        self.in_shape = (3, 2, 5, 4)
         self.axis = 0
-        self.new_shape = (1, 36)
+        self.new_shape = (1, 120)
 
 
 class TestFlattenOpWithDefaultAxis(TestFlattenOp):
     def init_test_case(self):
-        self.in_shape = (3, 2, 2, 3)
-        self.new_shape = (3, 12)
+        self.in_shape = (10, 2, 2, 3)
+        self.new_shape = (10, 12)
 
     def init_attrs(self):
         self.attrs = {}
@@ -67,6 +67,26 @@ class TestFlattenOpSixDims(TestFlattenOp):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.axis = 4
         self.new_shape = (36, 16)
+
+
+class TestFlatten2OpError(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input_data = np.random.random((3, 2, 4, 5)).astype("float64")
+
+        def test_Variable():
+            # the input type must be Variable
+            fluid.layers.flatten(input_data, axis=1)
+
+        self.assertRaises(TypeError, test_Variable)
+
+        def test_type():
+            # dtype must be float32, float64, int8, int32, int64.
+            x2 = fluid.layers.data(
+                name='x2', shape=[3, 2, 4, 5], dtype='float16')
+            fluid.layers.flatten(x2, axis=1)
+
+        self.assertRaises(TypeError, test_type)
 
 
 if __name__ == "__main__":

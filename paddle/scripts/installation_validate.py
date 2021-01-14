@@ -15,4 +15,5 @@
 import paddle.fluid as fluid
 import paddle as pd
 
+fluid.install_check.run_check()
 print(pd.__version__)

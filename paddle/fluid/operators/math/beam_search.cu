@@ -394,12 +394,16 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
                 end_id, is_accumulated, num_used_threads));
       }
     } else {
-      LOG(FATAL) << "Not implemented.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Not implemented other number of sequences yet."));
     }
 
     context.Wait();
     if (!framework::CheckLoD(selected_lod)) {
-      PADDLE_THROW("lod %s is not right", framework::LoDToString(selected_lod));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "lod %s is not right in"
+          " beam_search, please check your code.",
+          framework::LoDToString(selected_lod)));
     }
 
     selected_ids->set_lod(selected_lod);

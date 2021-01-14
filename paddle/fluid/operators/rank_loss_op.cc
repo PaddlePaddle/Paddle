@@ -13,8 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/rank_loss_op.h"
-#include <memory>
+
 #include <string>
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -27,55 +41,87 @@ class RankLossOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true,
-                      "Input(Label) shouldn't be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Left"), true,
-                      "Input(Left) shouldn't be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Right"), true,
-                      "Input(Right) shouldn't be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "RankLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Left"), "Input", "Left", "RankLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Right"), "Input", "Right", "RankLoss");
 
     auto label_dims = ctx->GetInputDim("Label");
     auto left_dims = ctx->GetInputDim("Left");
     auto right_dims = ctx->GetInputDim("Right");
     // check label_dims valid
-    PADDLE_ENFORCE_GE(label_dims.size(), 1,
-                      "The dimension size of Input(Label) must be greater than "
-                      "or equal to 1.");
+    PADDLE_ENFORCE_GE(
+        label_dims.size(), 1,
+        platform::errors::InvalidArgument(
+            "The dimension size of Input(Label) must be greater than "
+            "or equal to 1, but received %d.",
+            label_dims.size()));
     PADDLE_ENFORCE_LE(
         label_dims.size(), 2,
-        "The dimension size of Input(Label) must be less than or equal to 2.");
+        platform::errors::InvalidArgument("The dimension size of Input(Label) "
+                                          "must be less than or equal to 2, "
+                                          "but received %d.",
+                                          label_dims.size()));
     if (label_dims.size() == 2U) {
-      PADDLE_ENFORCE_EQ(label_dims[1], 1,
-                        "The last dimension of Input(Label) must be 1.");
+      PADDLE_ENFORCE_EQ(
+          label_dims[1], 1,
+          platform::errors::InvalidArgument(
+              "The last dimension of Input(Label) must be 1, but received %d.",
+              label_dims[1]));
     }
     // check left_dims valid
-    PADDLE_ENFORCE_GE(left_dims.size(), 1,
-                      "The dimension size of Input(Left) must be greater than "
-                      "or equal to 1.");
+    PADDLE_ENFORCE_GE(
+        left_dims.size(), 1,
+        platform::errors::InvalidArgument(
+            "The dimension size of Input(Left) must be greater than "
+            "or equal to 1, but received %d.",
+            left_dims.size()));
     PADDLE_ENFORCE_LE(
         left_dims.size(), 2,
-        "The dimension size of Input(Left) must be less than or equal to 2.");
+        platform::errors::InvalidArgument("The dimension size of Input(Left) "
+                                          "must be less than or equal to 2, "
+                                          "but received %d.",
+                                          left_dims.size()));
     if (left_dims.size() == 2U) {
-      PADDLE_ENFORCE_EQ(left_dims[1], 1,
-                        "The last dimension of Input(Left) must be 1.");
+      PADDLE_ENFORCE_EQ(
+          left_dims[1], 1,
+          platform::errors::InvalidArgument(
+              "The last dimension of Input(Left) must be 1, but received %d.",
+              left_dims[1]));
     }
     // check right_dims valid
-    PADDLE_ENFORCE_GE(right_dims.size(), 1,
-                      "The dimension size of Input(Right) must be greater than "
-                      "or equal to 1.");
+    PADDLE_ENFORCE_GE(
+        right_dims.size(), 1,
+        platform::errors::InvalidArgument(
+            "The dimension size of Input(Right) must be greater than "
+            "or equal to 1, but received %d.",
+            right_dims.size()));
     PADDLE_ENFORCE_LE(
         right_dims.size(), 2,
-        "The dimension size of Input(Right) must be less than or equal to 2.");
+        platform::errors::InvalidArgument("The dimension size of Input(Right) "
+                                          "must be less than or equal to 2, "
+                                          "but received %d.",
+                                          right_dims.size()));
     if (right_dims.size() == 2U) {
-      PADDLE_ENFORCE_EQ(right_dims[1], 1,
-                        "The last dimension of Input(Right) must be 1.");
+      PADDLE_ENFORCE_EQ(
+          right_dims[1], 1,
+          platform::errors::InvalidArgument(
+              "The last dimension of Input(Right) must be 1, but received %d.",
+              right_dims[1]));
     }
-    PADDLE_ENFORCE_EQ(label_dims[0], left_dims[0],
-                      "The first dimension of Input(Label) and Input(Left) "
-                      "must have the same value.");
-    PADDLE_ENFORCE_EQ(label_dims[0], right_dims[0],
-                      "The first dimension of Input(Label) and Input(Right) "
-                      "must have the same value.");
+    PADDLE_ENFORCE_EQ(
+        label_dims[0], left_dims[0],
+        platform::errors::InvalidArgument(
+            "The first dimension of Input(Label) and Input(Left) "
+            "must have the same value. But received Label.dims[0]=%d, "
+            "Left.dims[0]=%d.",
+            label_dims[0], left_dims[0]));
+    PADDLE_ENFORCE_EQ(
+        label_dims[0], right_dims[0],
+        platform::errors::InvalidArgument(
+            "The first dimension of Input(Label) and Input(Right) "
+            "must have the same value. But received Label.dims[0]=%d, "
+            "Right.dims[0]=%d.",
+            label_dims[0], right_dims[0]));
     ctx->SetOutputDim("Out", label_dims);
   }
 };
@@ -133,14 +179,12 @@ class RankLossGradOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true,
-                      "Input(Label) shouldn't be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Left"), true,
-                      "Input(Left) shouldn't be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Right"), true,
-                      "Input(Right) shouldn't be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) shouldn't be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "RankLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Left"), "Input", "Left", "RankLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Right"), "Input", "Right", "RankLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "RankLossGrad");
+
     auto left_dims = ctx->GetInputDim("Left");
     auto right_dims = ctx->GetInputDim("Right");
     auto left_grad_name = framework::GradVarName("Left");
@@ -162,8 +206,7 @@ class RankLossGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("rank_loss_grad");
     op->SetInput("Label", this->Input("Label"));
     op->SetInput("Left", this->Input("Left"));
@@ -172,7 +215,6 @@ class RankLossGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Left"), this->InputGrad("Left"));
     op->SetOutput(framework::GradVarName("Right"), this->InputGrad("Right"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

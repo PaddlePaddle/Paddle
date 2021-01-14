@@ -13,12 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
+
 #include <functional>
 #include <map>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
+
+namespace paddle {
+namespace framework {
+namespace details {
+class ComputationOpHandle;
+class ShareTensorBufferOpHandle;
+}  // namespace details
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -66,9 +72,14 @@ bool MemoryReusePass::TryReuseVar(details::VarHandle *in_var,
                                   details::VarHandle *out_var) const {
   auto *op =
       dynamic_cast<details::ComputationOpHandle *>(out_var->GeneratedOp());
-  PADDLE_ENFORCE_NOT_NULL(op);
+  PADDLE_ENFORCE_NOT_NULL(
+      op,
+      platform::errors::InvalidArgument(
+          "Var(%s) have no GeneratedOp, or it's op is not ComputationOpHandle.",
+          out_var->Name()));
   if (IsVarPairReusable(*in_var, *out_var)) {
     AddReuseVar(op, in_var, out_var);
+    UpdateLastLiveOpOfVar(op, in_var, out_var);
     return true;
   } else {
     return false;
@@ -91,10 +102,13 @@ VarDesc *MemoryReusePass::GetVarDesc(const details::VarHandle &var) const {
   size_t scope_idx = var.scope_idx();
   auto iter = var_descs_[scope_idx].find(var_name);
   if (iter == var_descs_[scope_idx].end()) {
-    PADDLE_ENFORCE((*all_vars_)[scope_idx].count(var_name),
-                   "Variable %s not found", var_name);
+    PADDLE_ENFORCE_NE(
+        (*all_vars_)[scope_idx].count(var_name), 0,
+        platform::errors::NotFound("Variable %s not found.", var_name));
     auto *desc = TryGetLatestVarDesc((*all_vars_)[scope_idx].at(var_name));
-    PADDLE_ENFORCE_NOT_NULL(desc);
+    PADDLE_ENFORCE_NOT_NULL(
+        desc,
+        platform::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
     var_descs_[scope_idx].emplace(var_name, desc);
     return desc;
   } else {
@@ -119,7 +133,9 @@ void MemoryReusePass::CollectShareTensorBufferOpHandles() const {
     if (share_buffer_op != nullptr) {
       auto *compute_op =
           details::GetUniquePendingComputationOpHandle(share_buffer_op);
-      PADDLE_ENFORCE(ops_.count(compute_op) == 0);
+      PADDLE_ENFORCE_EQ(
+          ops_.count(compute_op), 0,
+          platform::errors::AlreadyExists("Compute op already exists."));
       ops_.emplace(compute_op, share_buffer_op);
     }
   }
@@ -227,8 +243,11 @@ bool MemoryReusePass::IsInVarReusable(const details::VarHandle &in_var) const {
  */
 bool MemoryReusePass::IsOutVarReusable(
     const details::VarHandle &out_var) const {
-  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<const details::ComputationOpHandle *>(
-      out_var.GeneratedOp()));
+  PADDLE_ENFORCE_NOT_NULL(
+      dynamic_cast<const details::ComputationOpHandle *>(out_var.GeneratedOp()),
+      platform::errors::InvalidArgument(
+          "Var(%s) have no GeneratedOp, or it's op is not ComputationOpHandle.",
+          out_var.Name()));
   const auto out_name = out_var.Name();
   if (out_name == kEmptyVarName) {
     return false;
@@ -236,9 +255,10 @@ bool MemoryReusePass::IsOutVarReusable(
 
   // out_var must be the first version!!!
   auto out_var_iter = (*all_vars_)[out_var.scope_idx()].find(out_name);
-  PADDLE_ENFORCE(out_var_iter != (*all_vars_)[out_var.scope_idx()].end() &&
-                     !out_var_iter->second.empty(),
-                 "Cannot find variable %s", out_name);
+  PADDLE_ENFORCE_EQ(
+      (out_var_iter != (*all_vars_)[out_var.scope_idx()].end() &&
+       !out_var_iter->second.empty()),
+      true, platform::errors::NotFound("Cannot find variable %s.", out_name));
 
   if (out_var_iter->second[0] != &out_var) {
     return false;
@@ -282,7 +302,11 @@ bool MemoryReusePass::IsVarPairReusable(
     const details::VarHandle &in_var, const details::VarHandle &out_var) const {
   auto *op =
       dynamic_cast<const details::ComputationOpHandle *>(out_var.GeneratedOp());
-  PADDLE_ENFORCE_NOT_NULL(op);
+  PADDLE_ENFORCE_NOT_NULL(
+      op,
+      platform::errors::InvalidArgument(
+          "Var(%s) have no GeneratedOp, or it's op is not ComputationOpHandle.",
+          out_var.Name()));
 
   const auto in_name = in_var.Name();
   if (in_name == out_var.Name()) {
@@ -307,9 +331,12 @@ bool MemoryReusePass::IsVarPairReusable(
 
 void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
                                   details::VarHandle *in_var,
-                                  details::VarHandle *out_var) const {
-  PADDLE_ENFORCE((*var_infos_)[op->GetScopeIdx()].count(in_var->Name()) > 0,
-                 "%s does not in mem-opt var infos", in_var->Name());
+                                  details::VarHandle *out_var,
+                                  bool share_dims) const {
+  PADDLE_ENFORCE_GT(
+      (*var_infos_)[op->GetScopeIdx()].count(in_var->Name()), 0,
+      platform::errors::NotFound("Var(%s) does not in mem opt var infos.",
+                                 in_var->Name()));
 
   if (ops_.count(op) == 0) {
     InsertShareTensorBufferOpHandleToGraph(op);
@@ -325,13 +352,15 @@ void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
     share_buffer_op->AddInput(in_var);
   }
 
+  if (share_dims) {
+    share_buffer_op->SetShareDims(true);
+  }
+
   share_buffer_op->AddReuseVarPair(
       (*var_infos_)[op->GetScopeIdx()].at(in_var->Name()).get(),
       out_var->Name());
   reused_in_var_names_[op->GetScopeIdx()].insert(in_var->Name());
   reused_out_var_names_[op->GetScopeIdx()].insert(out_var->Name());
-
-  UpdateLastLiveOpOfVar(op, in_var, out_var);
 }
 
 // 1. Set last living op of in_var to be any last living op of out_var
@@ -349,7 +378,10 @@ void MemoryReusePass::UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
   if (out_var_op_iter == (*last_live_ops_of_vars_)[scope_idx].end()) {
     last_live_op_of_in_var = op;
   } else {
-    PADDLE_ENFORCE(!out_var_op_iter->second.ops().empty());
+    PADDLE_ENFORCE_EQ(
+        out_var_op_iter->second.ops().empty(), false,
+        platform::errors::InvalidArgument(
+            "Var(%s)'s last live op should not empty.", out_var->Name()));
     last_live_op_of_in_var = *(out_var_op_iter->second.ops().begin());
   }
 
@@ -359,8 +391,9 @@ void MemoryReusePass::UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
   last_live_ops_of_in_var->insert(last_live_op_of_in_var);
 
   auto in_var_info_iter = (*var_infos_)[scope_idx].find(in_var->Name());
-  PADDLE_ENFORCE(in_var_info_iter != (*var_infos_)[scope_idx].end(),
-                 "Cannot find variable %s", in_var->Name());
+  PADDLE_ENFORCE_NE(
+      in_var_info_iter, (*var_infos_)[scope_idx].end(),
+      platform::errors::NotFound("Cannot find variable %s.", in_var->Name()));
 
   in_var_info_iter->second->SetRefCnt(1);
 }

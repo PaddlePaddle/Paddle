@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
@@ -25,10 +25,25 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
+class TestDygraphEmbeddingAPIError(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            dict_size = 20
+            layer = fluid.dygraph.nn.Embedding(
+                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
+            # the input must be Variable.
+            x0 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, layer, x0)
+            # the input dtype must be int64
+            data_t = fluid.data(name='word', shape=[1], dtype='int32')
+            self.assertRaises(TypeError, layer, data_t)
+
+
 class TestLookupTableOp(OpTest):
     def setUp(self):
         self.op_type = "lookup_table_v2"
-        table = np.random.random((17, 31)).astype("float32")
+        table = np.random.random((17, 31)).astype("float64")
         ids = np.random.randint(0, 17, 4).astype("int64")
         self.inputs = {'W': table, 'Ids': ids}
         self.outputs = {'Out': table[ids]}
@@ -43,8 +58,8 @@ class TestLookupTableOp(OpTest):
 class TestLookupTableOpWithTensorIds(OpTest):
     def setUp(self):
         self.op_type = "lookup_table_v2"
-        table = np.random.random((17, 31)).astype("float32")
-        ids = np.random.randint(low=0, high=17, size=(2, 4, 5)).astype("int64")
+        table = np.random.random((17, 31)).astype("float64")
+        ids = np.random.randint(low=0, high=17, size=(2, 4, 5)).astype("int32")
         self.inputs = {'W': table, 'Ids': ids}
         self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
 
@@ -55,6 +70,10 @@ class TestLookupTableOpWithTensorIds(OpTest):
         self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
 
 
+@skip_check_grad_ci(
+    reason="Since paddings are not trainable and fixed in forward,"
+    "the gradient of paddings makes no sense and we don't "
+    "test the gradient here.")
 class TestLookupTableOpWithPadding(TestLookupTableOp):
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
@@ -63,12 +82,11 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
         self.attrs = {'padding_idx': int(padding_idx)}
         self.check_output()
 
-    def test_check_grad(self):
-        # Since paddings are not trainable and fixed in forward, the gradient of
-        # paddings makes no sense and we don't test the gradient here.
-        pass
 
-
+@skip_check_grad_ci(
+    reason="Since paddings are not trainable and fixed in forward,"
+    "the gradient of paddings makes no sense and we don't "
+    "test the gradient here.")
 class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
     def test_check_output(self):
         ids = self.inputs['Ids']
@@ -78,16 +96,11 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
         self.check_output()
 
-    def test_check_grad(self):
-        # Since paddings are not trainable and fixed in forward, the gradient of
-        # paddings makes no sense and we don't test the gradient here.
-        pass
 
-
-class TestLookupTableWIsSelectedRows(OpTest):
+class TestLookupTableWIsSelectedRows(unittest.TestCase):
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
-        ids_array = np.array([0, 4, 3, 5]).astype("int64")
+        ids_array = np.array([0, 4, 3, 5]).astype("int32")
         ids_tensor.set(ids_array, place)
         return ids_array
 
@@ -214,7 +227,7 @@ class TestLookupTableApi(unittest.TestCase):
                       return_numpy=False)
 
 
-class TestEmbedOpError(OpTest):
+class TestEmbedOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.randint(0, 10, (4, 6)).astype("int64")

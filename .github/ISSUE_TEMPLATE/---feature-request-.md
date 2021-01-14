@@ -10,6 +10,7 @@ about: 您可以提出您的建议。 You could use this template for reporting 
 1）PaddlePaddle版本：请提供您的PaddlePaddle版本号，例如1.1
 2）CPU/GPU：您是否使用GPU进行训练，如是，请提供您的CUDA和cuDNN版本号
 3）系统环境：请您描述系统类型、版本，例如Mac OS 10.14
+注：您可以通过执行[summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py)获取以上信息。
 - 复现信息：如为报错，请给出复现环境、复现步骤
 - 建议描述：请您详细描述，您认为需优化的功能
 
@@ -21,6 +22,7 @@ Please make sure that this is a feature request.
 -CPU: including CPUMKL/OpenBlas/MKLDNN version
 -GPU: including CUDA/CUDNN version
 -OS Platform (eg.Mac OS 10.14)
+Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py). 
 **To Reproduce**
 Steps to reproduce the behavior
 **Describe the feature and the current behavior/state.**

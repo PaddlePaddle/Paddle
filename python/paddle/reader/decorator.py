@@ -32,6 +32,21 @@ import random
 import zlib
 import paddle.compat as cpt
 
+# On macOS, the 'spawn' start method is now the default in Python3.8 multiprocessing,
+# Paddle is currently unable to solve this, so forces the process to start using 
+# the 'fork' start method.
+#
+# TODO: This solution is not good, because the fork start method could lead to 
+# crashes of the subprocess. Figure out how to make 'spawn' work.
+#
+# For more details, please refer to
+# https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
+# https://bugs.python.org/issue33725
+if sys.version_info >= (3, 8) and sys.platform == 'darwin':
+    fork_context = multiprocessing.get_context('fork')
+else:
+    fork_context = multiprocessing
+
 
 def cache(reader):
     """
@@ -47,6 +62,22 @@ def cache(reader):
 
     Returns:
         generator: a decorated reader object which yields data from cached memory.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            def reader():
+                for i in range(3):
+                    yield i
+            
+            # All data is cached into memory
+            cached_reader = paddle.io.cache(reader)
+            
+            # Output: 0 1 2
+            for i in cached_reader():
+                print(i)
     """
     all_data = tuple(reader())
 
@@ -151,7 +182,8 @@ def shuffle(reader, buf_size):
 def chain(*readers):
     """
     Use the input data readers to create a chained data reader. The new created reader
-    chains the outputs of input readers together as its output.
+    chains the outputs of input readers together as its output, and it do not change
+    the format of the outputs.
 
     **Note**:
         ``paddle.reader.chain`` is the alias of ``paddle.fluid.io.chain``, and
@@ -162,7 +194,7 @@ def chain(*readers):
     [10, 10, 10],
     [20, 20, 20].
     The chained reader will output:
-    [[0, 0, 0], [10, 10, 10], [20, 20, 20]].
+    [0, 0, 0], [10, 10, 10], [20, 20, 20].
 
     Args:
         readers(list): input data readers.
@@ -280,12 +312,28 @@ def buffered(reader, size):
     buffer. Reading from the buffered data reader will proceed as long
     as the buffer is not empty.
 
-    :param reader: the data reader to read from.
-    :type reader: callable
-    :param size: max buffer size.
-    :type size: int
+    Args:
+        reader(generator): the data reader to read from.
+        size(int): max buffer size.
 
-    :returns: the buffered data reader.
+    Returns:
+        generator: the buffered data reader.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            def reader():
+                for i in range(3):
+                    yield i
+            
+            # Create a buffered reader, and the buffer size is 2.
+            buffered_reader = paddle.io.buffered(reader, 2)
+            
+            # Output: 0 1 2
+            for i in buffered_reader():
+                print(i)
     """
 
     class EndSignal():
@@ -457,12 +505,12 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     """
     This API use python ``multiprocessing`` to read data from ``readers`` parallelly,
     and then ``multiprocess.Queue`` or ``multiprocess.Pipe`` is used to merge 
-    these data. A seperate process will be created for each reader in the 
+    these data. A separate process will be created for each reader in the 
     ``readers`` list, please guarantee every reader can work independently 
     to avoid conflicts in parallel environment.
     
 
-    ``Multiprocess.Queue`` require the rw access right to /dev/shm, and it's not suppported 
+    ``Multiprocess.Queue`` require the rw access right to /dev/shm, and it's not supported 
     in some platforms.
 
     Parameters:
@@ -535,6 +583,10 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
 
     """
 
+    if sys.platform == 'win32':
+        raise NotImplementedError(
+            "The multiprocess_reader method is not supported on windows.")
+
     try:
         import ujson as json
     except Exception as e:
@@ -555,9 +607,9 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
             six.reraise(*sys.exc_info())
 
     def queue_reader():
-        queue = multiprocessing.Queue(queue_size)
+        queue = fork_context.Queue(queue_size)
         for reader in readers:
-            p = multiprocessing.Process(
+            p = fork_context.Process(
                 target=_read_into_queue, args=(reader, queue))
             p.start()
 
@@ -588,9 +640,9 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     def pipe_reader():
         conns = []
         for reader in readers:
-            parent_conn, child_conn = multiprocessing.Pipe()
+            parent_conn, child_conn = fork_context.Pipe()
             conns.append(parent_conn)
-            p = multiprocessing.Process(
+            p = fork_context.Process(
                 target=_read_into_pipe, args=(reader, child_conn))
             p.start()
 

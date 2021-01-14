@@ -1,6 +1,6 @@
-# INT8 MKL-DNN quantization
+# INT8 MKL-DNN post-training quantization
 
-This document describes how to use Paddle inference Engine to convert the FP32 models to INT8 models. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show the accuracy and performance results of the quantized models, including 7 image classification models: GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16, VGG19, and 1 object detection model Mobilenet-SSD.
+This document describes how to use Paddle inference Engine to convert the FP32 models to INT8 models using INT8 MKL-DNN post-training quantization. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show the accuracy and performance results of the quantized models, including 7 image classification models: GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16, VGG19, and 1 object detection model Mobilenet-SSD.
 
 ## 0. Install PaddlePaddle
 
@@ -8,7 +8,6 @@ Follow PaddlePaddle [installation instruction](https://github.com/PaddlePaddle/m
 
 ```bash
 cmake ..  -DWITH_TESTING=ON -WITH_FLUID_ONLY=ON -DWITH_GPU=OFF -DWITH_MKL=ON -DWITH_MKLDNN=ON -DWITH_INFERENCE_API_TEST=ON -DON_INFER=ON
-
 ```
 
 Note: MKL-DNN and MKL are required.
@@ -19,7 +18,7 @@ For reference, please examine the code of unit test enclosed in [analyzer_int8_i
 
 * ### Create Analysis config
 
-INT8 quantization is one of the optimizations in analysis config. More information about analysis config can be found [here](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/deploy/inference/native_infer_en.md#upgrade-performance-based-on-contribanalysisconfig-prerelease)
+INT8 quantization is one of the optimizations in analysis config. More information about analysis config can be found [here](https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_guide/inference_deployment/inference/native_infer_en.html#a-name-use-analysisconfig-to-manage-inference-configurations-use-analysisconfig-to-manage-inference-configurations-a)
 
 * ### Create quantize config by analysis config
 
@@ -40,39 +39,56 @@ We provide the results of accuracy and performance measured on Intel(R) Xeon(R) 
 
 >**I. Top-1 Accuracy on Intel(R) Xeon(R) Gold 6271**
 
-| Model        | FP32 Accuracy   | INT8 Accuracy   | Accuracy Diff(FP32-INT8)   |
-| :----------: | :-------------: | :------------:  | :--------------:           |
-| GoogleNet    |  70.50%         |  70.08%         |   0.42%                    |
-| MobileNet-V1 |  70.78%         |  70.41%         |   0.37%                    |
-| MobileNet-V2 |  71.90%         |  71.34%         |   0.56%                    |
-| ResNet-101   |  77.50%         |  77.43%         |   0.07%                    |
-| ResNet-50    |  76.63%         |  76.57%         |   0.06%                    |
-| VGG16        |  72.08%         |  72.05%         |   0.03%                    |
-| VGG19        |  72.57%         |  72.57%         |   0.00%                    |
+|    Model     | FP32 Accuracy | INT8 Accuracy | Accuracy Diff(INT8-FP32) |
+|:------------:|:-------------:|:-------------:|:------------------------:|
+|  GoogleNet   |    70.50%     |    70.08%     |          -0.42%          |
+| MobileNet-V1 |    70.78%     |    70.41%     |          -0.37%          |
+| MobileNet-V2 |    71.90%     |    71.34%     |          -0.56%          |
+|  ResNet-101  |    77.50%     |    77.43%     |          -0.07%          |
+|  ResNet-50   |    76.63%     |    76.57%     |          -0.06%          |
+|    VGG16     |    72.08%     |    72.05%     |          -0.03%          |
+|    VGG19     |    72.57%     |    72.57%     |          0.00%           |
 
 >**II. Throughput on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core)**
 
-| Model        | FP32 Throughput(images/s)  | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
-| :-----------:| :------------:             | :------------:            | :------------:  |
-| GoogleNet    |    32.76                   |    67.43                  |   2.06          |
-| MobileNet-V1 |    73.96                   |   218.82                  |   2.96          |
-| MobileNet-V2 |    87.94                   |   193.70                  |   2.20          |
-| ResNet-101   |     7.17                   |    26.37                  |   3.42          |
-| ResNet-50    |    13.26                   |    48.72                  |   3.67          |
-| VGG16        |     3.47                   |    10.10                  |   2.91          |
-| VGG19        |     2.82                   |     8.68                  |   3.07          |
-
+|    Model     | FP32 Throughput(images/s) | INT8 Throughput(images/s) | Ratio(INT8/FP32) |
+|:------------:|:-------------------------:|:-------------------------:|:----------------:|
+|  GoogleNet   |           32.53           |           68.32           |       2.13       |
+| MobileNet-V1 |           73.98           |          224.91           |       3.04       |
+| MobileNet-V2 |           86.59           |          204.91           |       2.37       |
+|  ResNet-101  |           7.15            |           26.73           |       3.74       |
+|  ResNet-50   |           13.15           |           49.48           |       3.76       |
+|    VGG16     |           3.34            |           10.11           |       3.03       |
+|    VGG19     |           2.83            |           8.68            |       3.07       |
 
 * ## Prepare dataset
 
-Run the following commands to download and preprocess the ILSVRC2012 Validation dataset.
+* Download and preprocess the full ILSVRC2012 Validation dataset.
 
 ```bash
-cd /PATH/TO/PADDLE/build
-python ../paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
+cd /PATH/TO/PADDLE
+python paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
 ```
 
-Then the ILSVRC2012 Validation dataset will be preprocessed and saved by default in `~/.cache/paddle/dataset/int8/download/int8_full_val.bin`
+Then the ILSVRC2012 Validation dataset binary file is saved by default in `$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin`
+
+* Prepare user local dataset.
+
+```bash
+cd /PATH/TO/PADDLE/
+python paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py --local --data_dir=/PATH/TO/USER/DATASET --output_file=/PATH/TO/OUTPUT/BINARY
+```
+
+Available options in the above command and their descriptions are as follows:
+- **No parameters set:** The script will download the ILSVRC2012_img_val data from server and convert it into a binary file.
+- **local:** Once set, the script will process user local data.
+- **data_dir:** Path to user local dataset. Default value: None.
+- **label_list:** Path to image_label list file. Default value: `val_list.txt`.
+- **output_file:** Path to the generated binary file. Default value: `imagenet_small.bin`.
+- **data_dim:** The length and width of the preprocessed image. The default value: 224.
+
+The user dataset preprocessed binary file by default is saved in `imagenet_small.bin`.
+
 
 * ## Commands to reproduce image classification benchmark
 
@@ -95,44 +111,44 @@ MODEL_NAME=googlenet, mobilenetv1, mobilenetv2, resnet101, resnet50, vgg16, vgg1
 
 ## 3. Accuracy and Performance benchmark for Object Detection models
 
->**I. mAP on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core):**
+>**I. mAP on Intel(R) Xeon(R) Gold 6271 (batch size 100 on single core):**
 
-| Model        | FP32 Accuracy   | INT8 Accuracy   | Accuracy Diff(FP32-INT8)   |
-| :----------: | :-------------: | :------------:  | :--------------:           |
-| Mobilenet-SSD| 73.80%         |  73.17%         |   0.63%                    |
+|     Model     | FP32 Accuracy | INT8 Accuracy | Accuracy Diff(INT8-FP32) |
+|:-------------:|:-------------:|:-------------:|:------------------------:|
+| Mobilenet-SSD |    73.80%     |    73.17%     |          -0.63           |
 
->**II. Throughput on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core)**
+>**II. Throughput on Intel(R) Xeon(R) Gold 6271 (batch size 100 on single core)**
 
-| Model        | FP32 Throughput(images/s)  | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
-| :-----------:| :------------:             | :------------:            | :------------:  |
-| Mobilenet-SSD    |    37.8180       | 115.0604 |3.04 |
+|     Model     | FP32 Throughput(images/s) | INT8 Throughput(images/s) | Ratio(INT8/FP32) |
+|:-------------:|:-------------------------:|:-------------------------:|:----------------:|
+| Mobilenet-ssd |           37.94           |          114.94           |       3.03       |
 
 * ## Prepare dataset
 
-* Run the following commands to download and preprocess the Pascal VOC2007 test set.
+* Download and preprocess the full Pascal VOC2007 test set.
   
 ```bash
-cd /PATH/TO/PADDLE/build
-python ./paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --choice=VOC_test_2007 \\
+cd /PATH/TO/PADDLE
+python paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py
 ```
 
-Then the Pascal VOC2007 test set will be preprocessed and saved by default in `~/.cache/paddle/dataset/pascalvoc/pascalvoc_full.bin`
+The Pascal VOC2007 test set binary file is saved by default in `$HOME/.cache/paddle/dataset/pascalvoc/pascalvoc_full.bin`
 
-* Run the following commands to prepare your own dataset.
+* Prepare user local dataset.
 
 ```bash
-cd /PATH/TO/PADDLE/build
-python ./paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --choice=local \\
-                                         --data_dir=./third_party/inference_demo/int8v2/pascalvoc_small \\
-                                         --img_annotation_list=test_100.txt \\
-                                         --label_file=label_list \\
-                                         --output_file=pascalvoc_small.bin \\
-                                         --resize_h=300 \\
-                                         --resize_w=300 \\
-                                         --mean_value=[127.5, 127.5, 127.5] \\
-                                         --ap_version=11point \\
+cd /PATH/TO/PADDLE
+python paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --local --data_dir=/PATH/TO/USER/DATASET --img_annotation_list=/PATH/TO/ANNOTATION/LIST --label_file=/PATH/TO/LABEL/FILE --output_file=/PATH/TO/OUTPUT/FILE
 ```
-Then the user dataset will be preprocessed and saved by default in `/PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/pascalvoc_small/pascalvoc_small.bin`
+Available options in the above command and their descriptions are as follows:
+- **No parameters set:** The script will download the full pascalvoc test dataset and preprocess and convert it into a binary file.
+- **local:** Once set, the script will process user local data.
+- **data_dir:** Path to user local dataset. Default value: None.
+- **img_annotation_list:** Path to img_annotation list file. Default value: `test_100.txt`.
+- **label_file:** Path to labels list. Default value: `label_list`.
+- **output_file:** Path to generated binary file. Default value: `pascalvoc_small.bin`.
+
+The user dataset preprocessed binary file by default is saved in `pascalvoc_small.bin`.
 
 * ## Commands to reproduce object detection benchmark
 

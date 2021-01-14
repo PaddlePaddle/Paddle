@@ -15,11 +15,18 @@
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/transform.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -57,7 +64,11 @@ class OverflowKernel : public framework::OpKernel<T> {
       auto& in = ctx.Input<framework::SelectedRows>("X")->value();
       functor(in, out);
     } else {
-      PADDLE_THROW("Unsupported input type.");
+      PADDLE_ENFORCE_EQ(
+          true, false,
+          platform::errors::InvalidArgument(
+              "The input type mismatch, the type of Input(X) must be Tensor or "
+              "SelectedRows, please check your input."));
     }
   }
 };

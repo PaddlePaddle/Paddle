@@ -20,6 +20,7 @@ class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
     def initParameter(self):
         self.use_cuda = True
         self.fuse_all_optimizer_ops = True
+        self.fuse_all_reduce_ops = False
 
     def test_multi_card_fetch_var(self):
         self.check_multi_card_fetch_var()
@@ -28,10 +29,11 @@ class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
         self.check_single_card_fetch_var()
 
 
-class CPUAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
+class CPUInplaceTestWithFuseOptimizationOps(InplaceTestBase):
     def initParameter(self):
         self.use_cuda = False
         self.fuse_all_optimizer_ops = True
+        self.fuse_all_reduce_ops = False
 
     def test_multi_card_fetch_var(self):
         self.check_multi_card_fetch_var()

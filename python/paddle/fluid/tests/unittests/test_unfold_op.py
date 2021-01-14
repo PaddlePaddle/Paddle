@@ -38,7 +38,7 @@ class TestUnfoldOp(OpTest):
             self.batch_size, self.input_channels, self.input_height,
             self.input_width
         ]
-        self.x = np.random.rand(*input_shape).astype(np.float32)
+        self.x = np.random.rand(*input_shape).astype(np.float64)
 
     def calc_unfold(self):
         output_shape = [0] * 3
@@ -52,7 +52,7 @@ class TestUnfoldOp(OpTest):
         out_width = int((self.input_width + self.paddings[1] + self.paddings[3]
                          - dkernel_w) / self.strides[1]) + 1
         output_shape[2] = out_height * out_width
-        output = np.zeros(output_shape).astype(np.float32)
+        output = np.zeros(output_shape).astype(np.float64)
         ############ calculate output ##############
         for i in range(output_shape[0]):
             for j in range(output_shape[1]):

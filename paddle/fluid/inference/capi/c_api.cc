@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/capi/c_api.h"
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api_internal.h"
+#include "paddle/fluid/inference/capi/paddle_c_api.h"
+#include "paddle/fluid/platform/enforce.h"
 
+using paddle::ConvertToACPrecision;
 using paddle::ConvertToPaddleDType;
 using paddle::ConvertToPDDataType;
-using paddle::ConvertToACPrecision;
 
 extern "C" {
 
@@ -34,27 +35,37 @@ void PD_DeletePaddleBuf(PD_PaddleBuf* buf) {
 }
 
 void PD_PaddleBufResize(PD_PaddleBuf* buf, size_t length) {
-  PADDLE_ENFORCE_NOT_NULL(buf);
+  PADDLE_ENFORCE_NOT_NULL(buf,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of Buffer shouldn't be nullptr"));
   buf->buf.Resize(length);
 }
 
 void PD_PaddleBufReset(PD_PaddleBuf* buf, void* data, size_t length) {
-  PADDLE_ENFORCE_NOT_NULL(buf);
+  PADDLE_ENFORCE_NOT_NULL(buf,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of Buffer shouldn't be nullptr"));
   buf->buf.Reset(data, length);
 }
 
 bool PD_PaddleBufEmpty(PD_PaddleBuf* buf) {
-  PADDLE_ENFORCE_NOT_NULL(buf);
+  PADDLE_ENFORCE_NOT_NULL(buf,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of Buffer shouldn't be nullptr"));
   return buf->buf.empty();
 }
 
 void* PD_PaddleBufData(PD_PaddleBuf* buf) {
-  PADDLE_ENFORCE_NOT_NULL(buf);
+  PADDLE_ENFORCE_NOT_NULL(buf,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of Buffer shouldn't be nullptr"));
   return buf->buf.data();
 }
 
 size_t PD_PaddleBufLength(PD_PaddleBuf* buf) {
-  PADDLE_ENFORCE_NOT_NULL(buf);
+  PADDLE_ENFORCE_NOT_NULL(buf,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of Buffer shouldn't be nullptr"));
   return buf->buf.length();
 }
 

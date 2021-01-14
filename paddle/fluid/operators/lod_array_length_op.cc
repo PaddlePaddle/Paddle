@@ -12,8 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -60,8 +72,9 @@ CPU and the length of LoDTensorArray should be used as control variables.
 class LoDArrayLengthInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"));
-    PADDLE_ENFORCE(context->HasOutput("Out"));
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "LDArrayLength");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out",
+                   "LoDArrayLength");
     context->SetOutputDim("Out", {1});
   }
 };

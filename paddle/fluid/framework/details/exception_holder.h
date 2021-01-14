@@ -15,9 +15,11 @@
 #pragma once
 
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 
 #include "glog/logging.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -29,14 +31,16 @@ class ExceptionHolder {
   void Catch(std::exception_ptr eptr) {
     try {
       std::rethrow_exception(eptr);
+    } catch (memory::allocation::BadAlloc& exp) {
+      Catch(exp);
     } catch (platform::EOFException& exp) {
       Catch(exp);
     } catch (platform::EnforceNotMet& exp) {
       Catch(exp);
     } catch (std::exception& ex) {
-      LOG(FATAL) << "std::exception caught, " << ex.what();
+      Catch(ex);
     } catch (...) {
-      LOG(FATAL) << "Unknown exception caught";
+      LOG(FATAL) << "Unknown exception caught.";
     }
   }
 
@@ -56,6 +60,15 @@ class ExceptionHolder {
       }
       case kEOF: {
         auto e = *static_cast<platform::EOFException*>(exception_.get());
+        throw e;
+      }
+      case kBadAlloc: {
+        auto e = *static_cast<paddle::memory::allocation::BadAlloc*>(
+            exception_.get());
+        throw e;
+      }
+      case kBaseException: {
+        auto e = *static_cast<std::exception*>(exception_.get());
         throw e;
       }
     }
@@ -78,6 +91,12 @@ class ExceptionHolder {
       case kEOF: {
         return "EOF";
       }
+      case kBadAlloc: {
+        return "BadAlloc";
+      }
+      case kBaseException: {
+        return "BaseException";
+      }
     }
     return "unknown";
   }
@@ -88,10 +107,31 @@ class ExceptionHolder {
     type_ = kNone;
   }
 
+  // NOTE: currently in PE, multiple exceptions may occured  in multiple
+  // threads, and the exception that occur later will overwrite that
+  // occur earlier, but what we want should be the first triggered exception.
+  // However, EOF exception is lower priority exception and can be overwritten,
+  // but other exceptions should not be prioritized.
   void Catch(const platform::EnforceNotMet& exp) {
     std::lock_guard<std::mutex> lock(mu_);
-    exception_.reset(new platform::EnforceNotMet(exp));
-    type_ = kEnforceNotMet;
+    if (exception_.get() == nullptr || type_ == kEOF) {
+      exception_.reset(new platform::EnforceNotMet(exp));
+      type_ = kEnforceNotMet;
+    } else {
+      VLOG(2) << "Non-first exception is discarded, the error message is"
+              << exception_->what();
+    }
+  }
+
+  void Catch(const memory::allocation::BadAlloc& exp) {
+    std::lock_guard<std::mutex> lock(mu_);
+    if (exception_.get() == nullptr || type_ == kEOF) {
+      exception_.reset(new paddle::memory::allocation::BadAlloc(exp));
+      type_ = kBadAlloc;
+    } else {
+      VLOG(2) << "Non-first exception is discarded, the error message is"
+              << exception_->what();
+    }
   }
 
   void Catch(const platform::EOFException& exp) {
@@ -100,10 +140,24 @@ class ExceptionHolder {
     if (exception_.get() == nullptr) {
       exception_.reset(new platform::EOFException(exp));
       type_ = kEOF;
+    } else {
+      VLOG(2) << "EOFException is skip, the error message of EOFException is "
+              << exception_->what();
     }
   }
 
-  enum ExceptionType { kNone, kEnforceNotMet, kEOF };
+  void Catch(const std::exception& exp) {
+    std::lock_guard<std::mutex> lock(mu_);
+    if (exception_.get() == nullptr || type_ == kEOF) {
+      exception_.reset(new std::exception(exp));
+      type_ = kBaseException;
+    } else {
+      VLOG(2) << "Non-first exception is discarded, the error message is"
+              << exception_->what();
+    }
+  }
+
+  enum ExceptionType { kNone, kEnforceNotMet, kEOF, kBadAlloc, kBaseException };
   ExceptionType type_{kNone};
 
   std::unique_ptr<std::exception> exception_;

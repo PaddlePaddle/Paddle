@@ -29,12 +29,14 @@ inline int CalcOutputSize(int input_size, int filter_size, int dilation,
                           int padding1, int padding2, int stride) {
   const int dkernel = dilation * (filter_size - 1) + 1;
   int output_size = (input_size + padding1 + padding2 - dkernel) / stride + 1;
-  PADDLE_ENFORCE(output_size > 0,
-                 "Due to the settings of padding(%d, %d), filter_size(%d), "
-                 "dilation(%d) and "
-                 "stride(%d), the output size is less than 0, please check "
-                 "again. Input_size:%d",
-                 padding1, padding2, filter_size, dilation, stride, input_size);
+  PADDLE_ENFORCE_GT(
+      output_size, 0UL,
+      platform::errors::InvalidArgument(
+          "Due to the settings of padding(%d, %d), filter_size(%d), "
+          "dilation(%d) and "
+          "stride(%d), the output size is less than 0, please check "
+          "again. Input_size:%d",
+          padding1, padding2, filter_size, dilation, stride, input_size));
 
   return output_size;
 }

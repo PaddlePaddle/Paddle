@@ -24,26 +24,30 @@ template <typename T>
 class ScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "This kernel only runs on GPU device."));
     auto *X = ctx.Input<Tensor>("X");
     auto *Ids = ctx.Input<Tensor>("Ids");
     auto *Updates = ctx.Input<Tensor>("Updates");
     auto *Out = ctx.Output<Tensor>("Out");
     bool overwrite = ctx.Attr<bool>("overwrite");
 
-    Out->ShareDataWith(*X);
+    framework::TensorCopy(*X, ctx.GetPlace(), Out);
     // use template class to support int32_t and int64_t
     const auto &index_type = Ids->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(
         index_type_match, true,
-        "scatter_op Index holds the wrong type, it holds %s, but desires to be "
-        "%s or %s",
-        paddle::framework::DataTypeToString(index_type),
-        paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
-        paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
+        platform::errors::InvalidArgument(
+            "scatter_op Index holds the wrong type, it holds [%s],"
+            "but desires to be [%s] or [%s].",
+            paddle::framework::DataTypeToString(index_type),
+            paddle::framework::DataTypeToString(
+                framework::proto::VarType::INT32),
+            paddle::framework::DataTypeToString(
+                framework::proto::VarType::INT64)));
     if (index_type == framework::proto::VarType::INT32) {
       GPUScatterAssign<T, int32_t>(ctx, *Updates, *Ids, Out, overwrite);
     } else {
@@ -56,8 +60,9 @@ template <typename T>
 class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "This kernel only runs on GPU device."));
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
     auto *Ids = ctx.Input<Tensor>("Ids");
@@ -74,12 +79,14 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
                               index_type == framework::proto::VarType::INT64;
       PADDLE_ENFORCE_EQ(
           index_type_match, true,
-          "scatter_op Index holds the wrong type, it holds %s, but desires to "
-          "be %s or %s",
-          paddle::framework::DataTypeToString(index_type),
-          paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
-          paddle::framework::DataTypeToString(
-              framework::proto::VarType::INT64));
+          platform::errors::InvalidArgument(
+              "scatter_op Index holds the wrong type, it holds [%s], "
+              "but desires to be [%s] or [%s]",
+              paddle::framework::DataTypeToString(index_type),
+              paddle::framework::DataTypeToString(
+                  framework::proto::VarType::INT32),
+              paddle::framework::DataTypeToString(
+                  framework::proto::VarType::INT64)));
       // Gradient by Gather: dUpdates = dO[Ids]
       if (index_type == framework::proto::VarType::INT32) {
         GPUGather<T, int32_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
@@ -94,5 +101,9 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(scatter, ops::ScatterOpCUDAKernel<float>);
-REGISTER_OP_CUDA_KERNEL(scatter_grad, ops::ScatterGradOpCUDAKernel<float>);
+REGISTER_OP_CUDA_KERNEL(scatter, ops::ScatterOpCUDAKernel<float>,
+                        ops::ScatterOpCUDAKernel<double>,
+                        ops::ScatterOpCUDAKernel<int>,
+                        ops::ScatterOpCUDAKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(scatter_grad, ops::ScatterGradOpCUDAKernel<float>,
+                        ops::ScatterGradOpCUDAKernel<double>);

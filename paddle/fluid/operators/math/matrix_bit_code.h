@@ -27,6 +27,9 @@ limitations under the License. */
 
 #if defined(_WIN32)
 #include <intrin.h>
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>
 #endif  // _WIN32
 
@@ -98,15 +101,15 @@ inline int clz(const T& value) {
   }
 }
 
-inline size_t FindLastSet(size_t x) { return sizeof(size_t) * 8 - clz(x); }
+inline size_t FindLastSet(size_t x) { return 1 + sizeof(size_t) * 8 - clz(x); }
 #endif  // !_WIN32
 class SimpleCode {
  public:
   SimpleCode(size_t code, size_t num_classes, const int64_t* ids)
       : c_(static_cast<size_t>(ids[code]) + num_classes) {}
   /**
-   * Here the id of root shoud be 1 rather than 0, thus the encoding of class c
-   * is `c + num_classes` and all siblings can get the same weight indice using
+   * Here the id of root should be 1 rather than 0, thus the encoding of class c
+   * is `c + num_classes` and all siblings can get the same weight index using
    * prefixes.
    * Weight index is the prefixes of encoding, thus leave out the right most
    * bit in calc_index.
@@ -133,7 +136,7 @@ class CustomCode {
   }
   /**
    * Here the id of root should be 1 rather than 0, thus the encoding of class c
-   * is `c + num_classes` and all siblings can get the same weight indice using
+   * is `c + num_classes` and all siblings can get the same weight index using
    * prefixes.
    * Weight index is the prefixes of encoding, thus leave out the right most
    * bit in calc_index.

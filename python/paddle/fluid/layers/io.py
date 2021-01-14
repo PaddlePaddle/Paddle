@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-from ..wrapped_decorator import signature_safe_contextmanager
 import multiprocessing
 import os
 import six
@@ -29,7 +28,11 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
     default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
+
 import logging
+from ..data_feeder import check_dtype, check_type
+from paddle.fluid.framework import static_only
+from ..framework import _get_paddle_place, _current_expected_place, _set_expected_place
 
 __all__ = [
     'data', 'read_file', 'double_buffer', 'py_reader',
@@ -37,6 +40,7 @@ __all__ = [
 ]
 
 
+@static_only
 def data(name,
          shape,
          append_batch_size=True,
@@ -54,15 +58,25 @@ def data(name,
         :code:`paddle.fluid.layers.data` is deprecated as it will be removed in 
         a later version. Please use :code:`paddle.fluid.data` .
 
-        The :code:`paddle.fluid.layers.data` set shape and dtype at compile time
-        but does NOT check the shape or the dtype of feeded data, this
-        :code:`paddle.fluid.data` checks the shape and the dtype of data feeded 
+        This :code:`paddle.fluid.layers.data` set shape and dtype at compile
+        time but does NOT check the shape or the dtype of fed data, the
+        :code:`paddle.fluid.data` checks the shape and the dtype of data fed 
         by Executor or ParallelExecutor during run time.
+
+        To feed variable size inputs, users can feed variable size inputs
+        directly to this :code:`paddle.fluid.layers.data` and PaddlePaddle will
+        fit the size accordingly. Or set -1 on the variable dimension when using
+        :code:`paddle.fluid.data` .
+
+        The default :code:`stop_gradient` attribute of the Variable created by
+        this API is true, which means the gradient won't be passed backward
+        through the data Varaible. Set :code:`var.stop_gradient = False` If
+        user would like to pass backward gradient.
 
     Args:
        name(str): The name/alias of the variable, see :ref:`api_guide_Name`
             for more details.
-       shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
+       shape(list|tuple): Tuple declaring the shape. If :code:`append_batch_size` is
             True and there is no -1 inside :code:`shape`, it should be 
             considered as the shape of the each sample. Otherwise, it should
             be considered as the shape of the batched data.  
@@ -96,6 +110,10 @@ def data(name,
           data = fluid.layers.data(name='x', shape=[784], dtype='float32')
     """
     helper = LayerHelper('data', **locals())
+
+    check_type(name, 'name', (six.binary_type, six.text_type), 'data')
+    check_type(shape, 'shape', (list, tuple), 'data')
+
     shape = list(shape)
     for i in six.moves.range(len(shape)):
         if shape[i] is None:
@@ -216,6 +234,8 @@ class ListenAndServ(object):
         return parent_block
 
     def complete_op(self):
+        from ..incubate.fleet.parameter_server.mode import DistributedMode
+
         main_program = self.helper.main_program
         current_block = main_program.current_block()
         parent_block = self.parent_block()
@@ -230,7 +250,8 @@ class ListenAndServ(object):
                 'optimize_blocks': [
                     current_block
                 ],  # did not support multiple optimize blocks in layers
-                'sync_mode': True,  # did not support async now in layers
+                'distributed_mode':
+                DistributedMode.SYNC,  # did not support async now in layers
                 'grad_to_block_id': [""]
             })
 
@@ -241,7 +262,7 @@ def Send(endpoints, send_vars, dummy_output=None, sync=True):
     side when server have finished running server side program.
 
     Args:
-        endpoints (str): comma seperated IP:PORT pairs in the order
+        endpoints (str): comma separated IP:PORT pairs in the order
                    of send_vars to send
         send_vars (list): variables to send to server
         sync (bool): whether to wait the request finish
@@ -284,7 +305,7 @@ def Recv(endpoints, get_vars, dummy_input=None, sync=True):
     Receive variables from server side
 
     Args:
-        endpoints (str): comma seperated IP:PORT pairs in the order
+        endpoints (str): comma separated IP:PORT pairs in the order
                    of send_vars to send
         get_vars (list): vars to get from server after send completes.
         sync (bool): whether to wait the request finish
@@ -375,7 +396,6 @@ def _py_reader(capacity,
                name=None,
                use_double_buffer=True,
                feed_list=None):
-
     if feed_list is not None:
         if not isinstance(feed_list, list):
             raise TypeError("feed_list should be a list of Variable"
@@ -417,7 +437,7 @@ def _py_reader(capacity,
         double_buffer_name = "_".join([name, "double_buffer"])
 
     var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity)
+    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, False)
 
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=reader_name)
@@ -455,8 +475,11 @@ def _py_reader(capacity,
     reader.exited = False
 
     def start_provide_thread(func):
-        def __provider_thread__():
+        def __provider_thread__(legacy_expected_place):
             try:
+                # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
+                _set_expected_place(legacy_expected_place)
+
                 for tensors in func():
                     array = core.LoDTensorArray()
                     for item in tensors:
@@ -478,7 +501,8 @@ def _py_reader(capacity,
                 logging.warn('Your decorated reader has raised an exception!')
                 six.reraise(*sys.exc_info())
 
-        reader.thread = threading.Thread(target=__provider_thread__)
+        reader.thread = threading.Thread(
+            target=__provider_thread__, args=(_current_expected_place(), ))
         reader.thread.daemon = True
         reader.thread.start()
 
@@ -541,6 +565,8 @@ def py_reader(capacity,
               name=None,
               use_double_buffer=True):
     """
+	:api_attr: Static Graph
+
     Create a Python reader for data feeding in Python
 
     This operator returns a Reader Variable.
@@ -591,7 +617,7 @@ def py_reader(capacity,
          import paddle.dataset.mnist as mnist
 
          def network(image, label):
-             # user defined network, here a softmax regresssion example
+             # user defined network, here a softmax regession example
              predict = fluid.layers.fc(input=image, size=10, act='softmax')
              return fluid.layers.cross_entropy(input=predict, label=label)
 
@@ -708,6 +734,8 @@ def create_py_reader_by_data(capacity,
                              name=None,
                              use_double_buffer=True):
     """
+	:api_attr: Static Graph
+
     The OP creates a Python reader for data feeding in Python, it is similar
     to :ref:`api_fluid_layers_py_reader` except that it can read data from
     the list of feed variables.
@@ -748,7 +776,7 @@ def create_py_reader_by_data(capacity,
           reader.decorate_paddle_reader(
               paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5), buf_size=500))
           img, label = fluid.layers.read_file(reader)
-          loss = network(img, label) # The definition of custom network and the loss funtion
+          loss = network(img, label) # The definition of custom network and the loss function
 
           place = fluid.CUDAPlace(0) if USE_CUDA else fluid.CPUPlace()
           exe = fluid.Executor(place)
@@ -819,7 +847,8 @@ def double_buffer(reader, place=None, name=None):
 
     Args:
         reader (Variable): The Reader Variable need to be wrapped.
-        place (Place, optional): The place of target data, such as CPU, GPU, and if use GPU, it's necessary to point out which card is involved. Default is the sample place of executor perform.
+        place (Place|str, optional): The place of target data, such as CPU, GPU, and if use GPU, it's necessary to point out which card is involved. Default is the sample place of executor perform.
+            if ``place`` is string, It can be ``cpu``, ``gpu:x``, where ``x`` is the ndex of the GPUs. 
         name (str, optional): Variable name. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None. 
 
     Returns:
@@ -838,13 +867,16 @@ def double_buffer(reader, place=None, name=None):
     """
     attrs = dict()
     if place is not None:
-        attrs['place'] = str(place).upper()
+        attrs['place'] = str(_get_paddle_place(place)).upper()
+
     return __create_unshared_decorated_reader__(
         'create_double_buffer_reader', reader, attrs, name=name)
 
 
 def read_file(reader):
     """
+	:api_attr: Static Graph
+
     Execute the given reader and get data via it.
 
     A reader is also a Variable. It can be a raw reader generated by
@@ -905,4 +937,4 @@ def load(out, file_path, load_as_fp16=None):
     attrs = {"file_path": file_path}
     if load_as_fp16 is not None:
         attrs['load_as_fp16'] = load_as_fp16
-    helper.append_op(type="load", inputs={}, output={"Out": out}, attrs=attrs)
+    helper.append_op(type="load", inputs={}, outputs={"Out": out}, attrs=attrs)

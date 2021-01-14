@@ -24,50 +24,34 @@ class TestInferenceApi(unittest.TestCase):
     def test_inference_api(self):
         tensor32 = np.random.randint(10, 20, size=[20, 2]).astype('int32')
         paddletensor32 = PaddleTensor(tensor32)
-        value32 = np.array(paddletensor32.data.int32_data()).reshape(*[20, 2])
         dtype32 = paddletensor32.dtype
-        self.assertEqual(value32.all(), tensor32.all())
         self.assertEqual(dtype32, PaddleDType.INT32)
         self.assertEqual(
-            type(paddletensor32.data.tolist('int32')), type(tensor32.tolist()))
-        self.assertEqual(
             paddletensor32.data.tolist('int32'), tensor32.ravel().tolist())
-        self.assertEqual(type(paddletensor32.as_ndarray()), type(tensor32))
         paddletensor32.data.reset(tensor32)
-        self.assertEqual(paddletensor32.as_ndarray().all(), tensor32.all())
+        self.assertEqual(paddletensor32.as_ndarray().ravel().tolist(),
+                         tensor32.ravel().tolist())
 
         tensor64 = np.random.randint(10, 20, size=[20, 2]).astype('int64')
         paddletensor64 = PaddleTensor(tensor64)
-        value64 = np.array(paddletensor64.data.int64_data()).reshape(*[20, 2])
         dtype64 = paddletensor64.dtype
-        self.assertEqual(value64.all(), tensor64.all())
         self.assertEqual(dtype64, PaddleDType.INT64)
         self.assertEqual(
-            type(paddletensor64.data.tolist('int64')), type(tensor64.tolist()))
-        self.assertEqual(
             paddletensor64.data.tolist('int64'), tensor64.ravel().tolist())
-        self.assertEqual(type(paddletensor64.as_ndarray()), type(tensor64))
         paddletensor64.data.reset(tensor64)
-        self.assertEqual(paddletensor64.as_ndarray().all(), tensor64.all())
+        self.assertEqual(paddletensor64.as_ndarray().ravel().tolist(),
+                         tensor64.ravel().tolist())
 
         tensor_float = np.random.randn(20, 2).astype('float32')
         paddletensor_float = PaddleTensor(tensor_float)
-        value_float = np.array(paddletensor_float.data.float_data()).reshape(
-            *[20, 2])
         dtype_float = paddletensor_float.dtype
-        self.assertEqual(value_float.all(), tensor_float.all())
         self.assertEqual(dtype_float, PaddleDType.FLOAT32)
-        self.assertEqual(
-            type(paddletensor_float.data.tolist('float32')),
-            type(tensor_float.tolist()))
         self.assertEqual(
             paddletensor_float.data.tolist('float32'),
             tensor_float.ravel().tolist())
-        self.assertEqual(
-            type(paddletensor_float.as_ndarray()), type(tensor_float))
         paddletensor_float.data.reset(tensor_float)
-        self.assertEqual(paddletensor_float.as_ndarray().all(),
-                         tensor_float.all())
+        self.assertEqual(paddletensor_float.as_ndarray().ravel().tolist(),
+                         tensor_float.ravel().tolist())
 
 
 if __name__ == '__main__':

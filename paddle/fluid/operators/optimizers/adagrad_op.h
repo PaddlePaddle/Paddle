@@ -47,11 +47,12 @@ class AdagradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
-                   "but the received is %s",
-                   ctx.Inputs("Param").front(),
-                   framework::ToTypeName(param_var->Type()));
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+                          "but the received is %s",
+                          ctx.InputNames("Param").front(),
+                          framework::ToTypeName(param_var->Type())));
 
     auto *param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
     auto *moment_out_tensor = ctx.Output<framework::Tensor>("MomentOut");
@@ -89,10 +90,14 @@ class AdagradOpKernel : public framework::OpKernel<T> {
       }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto *param_tensor = ctx.Input<framework::Tensor>("Param");
-      PADDLE_ENFORCE_EQ(param_tensor, param_out_tensor);
+      PADDLE_ENFORCE_EQ(param_tensor, param_out_tensor,
+                        platform::errors::InvalidArgument(
+                            "the input tensor not euqal with output tensor"));
 
       auto *moment_tensor = ctx.Input<framework::Tensor>("Moment");
-      PADDLE_ENFORCE_EQ(moment_tensor, moment_out_tensor);
+      PADDLE_ENFORCE_EQ(moment_tensor, moment_out_tensor,
+                        platform::errors::InvalidArgument(
+                            "the input moment not eual with output moment"));
 
       SparseAdagradFunctor<DeviceContext, T> functor;
       functor(ctx.template device_context<DeviceContext>(),
@@ -100,7 +105,8 @@ class AdagradOpKernel : public framework::OpKernel<T> {
               *ctx.Input<framework::Tensor>("LearningRate"), epsilon,
               moment_out_tensor, param_out_tensor);
     } else {
-      PADDLE_THROW("Unsupported Variable Type of Grad");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported Variable Type of Grad"));
     }
   }
 };

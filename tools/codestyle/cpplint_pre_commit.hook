@@ -16,7 +16,7 @@ else
 fi
 # The trick to remove deleted files: https://stackoverflow.com/a/2413151
 for file in $files; do
-    if [[ $file =~ ^(patches/grpc/.*) ]]; then
+    if [[ $file =~ ^(patches/.*) ]]; then
         continue;
     else
         cpplint --filter=-readability/fn_size $file;

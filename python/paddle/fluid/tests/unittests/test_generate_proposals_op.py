@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import sys
 import math
+import paddle
 import paddle.fluid as fluid
 from op_test import OpTest
 from test_multiclass_nms_op import nms
@@ -34,18 +35,18 @@ def generate_proposals_in_python(scores, bbox_deltas, im_info, anchors,
 
     rpn_rois = []
     rpn_roi_probs = []
-    lod = []
+    rois_num = []
     num_images = scores.shape[0]
     for img_idx in range(num_images):
         img_i_boxes, img_i_probs = proposal_for_one_image(
             im_info[img_idx, :], all_anchors, variances,
             bbox_deltas[img_idx, :, :, :], scores[img_idx, :, :, :],
             pre_nms_topN, post_nms_topN, nms_thresh, min_size, eta)
-        lod.append(img_i_probs.shape[0])
+        rois_num.append(img_i_probs.shape[0])
         rpn_rois.append(img_i_boxes)
         rpn_roi_probs.append(img_i_probs)
 
-    return rpn_rois, rpn_roi_probs, lod
+    return rpn_rois, rpn_roi_probs, rois_num
 
 
 def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
@@ -74,7 +75,7 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
     else:
         # Avoid sorting possibly large arrays;
         # First partition to get top K unsorted
-        # and then sort just thoes
+        # and then sort just those
         inds = np.argpartition(-scores.squeeze(), pre_nms_topN)[:pre_nms_topN]
         order = np.argsort(-scores[inds].squeeze())
         order = inds[order]
@@ -87,6 +88,10 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
     proposals = clip_tiled_boxes(proposals, im_info[:2])
     # remove predicted boxes with height or width < min_size
     keep = filter_boxes(proposals, min_size, im_info)
+    if len(keep) == 0:
+        proposals = np.zeros((1, 4)).astype('float32')
+        scores = np.zeros((1, 1)).astype('float32')
+        return proposals, scores
     proposals = proposals[keep, :]
     scores = scores[keep, :]
 
@@ -280,8 +285,8 @@ class TestGenerateProposalsOp(OpTest):
         }
 
         self.outputs = {
-            'RpnRois': (self.rpn_rois[0], [self.lod]),
-            'RpnRoiProbs': (self.rpn_roi_probs[0], [self.lod])
+            'RpnRois': (self.rpn_rois[0], [self.rois_num]),
+            'RpnRoiProbs': (self.rpn_roi_probs[0], [self.rois_num]),
         }
 
     def test_check_output(self):
@@ -320,11 +325,51 @@ class TestGenerateProposalsOp(OpTest):
             (batch_size, num_anchors * 4, layer_h, layer_w)).astype('float32')
 
     def init_test_output(self):
-        self.rpn_rois, self.rpn_roi_probs, self.lod = generate_proposals_in_python(
+        self.rpn_rois, self.rpn_roi_probs, self.rois_num = generate_proposals_in_python(
             self.scores, self.bbox_deltas, self.im_info, self.anchors,
             self.variances, self.pre_nms_topN, self.post_nms_topN,
             self.nms_thresh, self.min_size, self.eta)
 
 
+class TestGenerateProposalsOutLodOp(TestGenerateProposalsOp):
+    def set_data(self):
+        self.init_test_params()
+        self.init_test_input()
+        self.init_test_output()
+        self.inputs = {
+            'Scores': self.scores,
+            'BboxDeltas': self.bbox_deltas,
+            'ImInfo': self.im_info.astype(np.float32),
+            'Anchors': self.anchors,
+            'Variances': self.variances
+        }
+
+        self.attrs = {
+            'pre_nms_topN': self.pre_nms_topN,
+            'post_nms_topN': self.post_nms_topN,
+            'nms_thresh': self.nms_thresh,
+            'min_size': self.min_size,
+            'eta': self.eta,
+            'return_rois_num': True
+        }
+
+        self.outputs = {
+            'RpnRois': (self.rpn_rois[0], [self.rois_num]),
+            'RpnRoiProbs': (self.rpn_roi_probs[0], [self.rois_num]),
+            'RpnRoisNum': (np.asarray(
+                self.rois_num, dtype=np.int32))
+        }
+
+
+class TestGenerateProposalsOpNoBoxLeft(TestGenerateProposalsOp):
+    def init_test_params(self):
+        self.pre_nms_topN = 12000  # train 12000, test 2000
+        self.post_nms_topN = 5000  # train 6000, test 1000
+        self.nms_thresh = 0.7
+        self.min_size = 1000.0
+        self.eta = 1.
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

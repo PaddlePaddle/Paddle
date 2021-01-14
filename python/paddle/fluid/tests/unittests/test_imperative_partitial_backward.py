@@ -24,29 +24,30 @@ class TestImperativePartitialBackward(unittest.TestCase):
         with fluid.dygraph.guard():
             x = np.random.randn(2, 4, 5).astype("float32")
             x = fluid.dygraph.to_variable(x)
-            fc1 = fluid.dygraph.FC("fc1", 10, num_flatten_dims=2)
-            fc2 = fluid.dygraph.FC("fc2", 10, num_flatten_dims=2)
+            linear1 = fluid.dygraph.Linear(5, 10)
+            linear2 = fluid.dygraph.Linear(5, 10)
 
-            y = fc1(x[:, :2])
-            z = fc2(x[:, 2:])
+            y = linear1(x[:, :2])
+            z = linear2(x[:, 2:])
             loss = fluid.layers.reduce_mean(y)
             loss.backward()
 
-            for param in fc1.parameters():
-                self.assertIsNotNone(param._ivar._grad_ivar())
+            for param in linear1.parameters():
+                self.assertIsNotNone(param._grad_ivar())
 
-            for param in fc2.parameters():
-                self.assertIsNone(param._ivar._grad_ivar())
+            for param in linear2.parameters():
+                self.assertIsNone(param._grad_ivar())
 
-            optimizer = fluid.optimizer.AdamOptimizer()
+            optimizer = fluid.optimizer.AdamOptimizer(parameter_list=(
+                linear1.parameters() + linear2.parameters()))
             _, params_grads = optimizer.minimize(loss)
 
             self.assertListEqual(
-                sorted([p.name for p in fc1.parameters()]),
+                sorted([p.name for p in linear1.parameters()]),
                 sorted([p_g[0].name for p_g in params_grads]))
 
-            fc1.clear_gradients()
-            fc2.clear_gradients()
+            linear1.clear_gradients()
+            linear2.clear_gradients()
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
+import paddle.fluid as fluid
 
 
 class TestRandomCropOp(OpTest):
@@ -43,6 +44,31 @@ class TestRandomCropOp(OpTest):
         for ins in out[:]:
             is_equal = [(ins == res).all() for res in self.possible_res]
             self.assertIn(True, is_equal)
+
+
+class TestRandomCropOpError(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_x_type():
+                input_data = np.random.random(2, 3, 256, 256).astype("float32")
+                fluid.layers.random_crop(input_data)
+
+            self.assertRaises(TypeError, test_x_type)
+
+            def test_x_dtype():
+                x2 = fluid.layers.data(
+                    name='x2', shape=[None, 3, 256, 256], dtype='float16')
+                fluid.layers.random_crop(x2)
+
+            self.assertRaises(TypeError, test_x_dtype)
+
+            def test_shape_type():
+                x3 = fluid.layers.data(
+                    name='x3', shape=[None, 3, 256, 256], dtype='float32')
+                fluid.layers.random_crop(x3, shape=1)
+
+            self.assertRaises(TypeError, test_shape_type)
 
 
 if __name__ == "__main__":

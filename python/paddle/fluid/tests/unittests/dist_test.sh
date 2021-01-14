@@ -22,7 +22,15 @@ rm -f ${name}_*.log
 # start the unit test
 run_time=$(( $TEST_TIMEOUT - 10 ))
 echo "run_time: ${run_time}"
-timeout -s SIGKILL ${run_time} python -u ${name}.py > ${name}_run.log 2>&1
+
+if [[ ${WITH_COVERAGE} == "ON" ]]; then
+    PYTHON_EXEC="python -u -m coverage run --branch -p "
+else
+    PYTHON_EXEC="python -u "
+fi
+
+timeout -s SIGKILL ${run_time} ${PYTHON_EXEC} ${name}.py > ${name}_run.log 2>&1
+
 exit_code=$?
 if [[ $exit_code -eq 0 ]]; then
     exit 0
@@ -53,7 +61,14 @@ for i in {1..2}; do
     fi
 done
 
+echo "dist space:"
+df -h
+
 #display /tmp/files
+echo "ls /tmp/paddle.*"
 ls -l /tmp/paddle.*
+
+echo "ls -l ./"
+ls -l ./
 
 exit 1

@@ -23,12 +23,14 @@ class CAllGatherOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AllGather");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Input", "Out", "AllGather");
     int nranks = ctx->Attrs().Get<int>("nranks");
-    PADDLE_ENFORCE_GE(nranks, 2, "nranks should be >=2");
+    PADDLE_ENFORCE_GE(nranks, 2, platform::errors::InvalidArgument(
+                                     "The value of nranks should be >=2."));
     framework::DDim dim = ctx->GetInputDim("X");
     dim[0] = dim[0] * nranks;
+    if (dim[0] < 0) dim[0] = -1;
     ctx->SetOutputDim("Out", dim);
   }
 };
@@ -61,13 +63,11 @@ class CAllGatherOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> retv(new T());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("c_reducescatter");
     retv->SetInput("X", this->OutputGrad("Out"));
     retv->SetOutput("Out", this->InputGrad("X"));
     retv->SetAttrMap(this->Attrs());
-    return retv;
   }
 };
 

@@ -16,6 +16,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 class RNNMemoryHelperOp : public framework::OperatorBase {
  public:
@@ -30,15 +41,15 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
                const platform::Place &dev_place) const override {
     auto mem_var_name = Input("X");
     auto *mem_var = scope.FindVar(mem_var_name);
-    PADDLE_ENFORCE(mem_var != nullptr,
-                   "Cannot find mem_var in scope, mem_var_name is %s",
-                   mem_var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        mem_var, platform::errors::NotFound("Cannot find mem_var: %s in scope.",
+                                            mem_var_name));
 
     auto out_name = this->Output("Out");
     auto *out_var = scope.FindVar(out_name);
-    PADDLE_ENFORCE(out_var != nullptr,
-                   "Cannot find out_var in scope, out_var_name is %s",
-                   out_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var, platform::errors::NotFound("Cannot find out_var: %s in scope.",
+                                            out_name));
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
@@ -53,10 +64,9 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
 class RNNMemoryHelperOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of rnn_memory_helper op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output of rnn_memory_helper op should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "RNNMemoryHelper");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "RNNMemoryHelper");
+
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -91,10 +101,10 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 
     auto in_grad_var_name = Output(framework::GradVarName("X"));
     auto *in_grad_var = scope.FindVar(in_grad_var_name);
-
-    PADDLE_ENFORCE(in_grad_var != nullptr,
-                   "Cannot find in_grad_var in scope, name is %s",
-                   in_grad_var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        in_grad_var,
+        platform::errors::NotFound("Cannot find in_grad_var: %s in scope.",
+                                   in_grad_var_name));
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
@@ -143,11 +153,9 @@ class RNNMemoryHelperGradOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
-    PADDLE_ENFORCE(ctx->HasOutput(x_grad_name),
-                   "Gradient of Input(X) in rnn_memory_helper_grad of should "
-                   "not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of rnn_memory_helper_grad of should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "RNNMemoryHelperGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
+                   "RNNMemoryHelperGrad");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ x_grad_name);
   }

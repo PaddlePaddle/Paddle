@@ -20,6 +20,7 @@ from scipy.special import logit
 from scipy.special import expit
 from op_test import OpTest
 
+import paddle
 from paddle.fluid import core
 
 
@@ -77,9 +78,11 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     ignore_thresh = attrs['ignore_thresh']
     downsample_ratio = attrs['downsample_ratio']
     use_label_smooth = attrs['use_label_smooth']
+    scale_x_y = attrs['scale_x_y']
+    bias_x_y = -0.5 * (scale_x_y - 1.)
     input_size = downsample_ratio * h
     x = x.reshape((n, mask_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
-    loss = np.zeros((n)).astype('float32')
+    loss = np.zeros((n)).astype('float64')
 
     smooth_weight = min(1.0 / class_num, 1.0 / 40)
     label_pos = 1.0 - smooth_weight if use_label_smooth else 1.0
@@ -88,8 +91,10 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     pred_box = x[:, :, :, :, :4].copy()
     grid_x = np.tile(np.arange(w).reshape((1, w)), (h, 1))
     grid_y = np.tile(np.arange(h).reshape((h, 1)), (1, w))
-    pred_box[:, :, :, :, 0] = (grid_x + sigmoid(pred_box[:, :, :, :, 0])) / w
-    pred_box[:, :, :, :, 1] = (grid_y + sigmoid(pred_box[:, :, :, :, 1])) / h
+    pred_box[:, :, :, :, 0] = (
+        grid_x + sigmoid(pred_box[:, :, :, :, 0]) * scale_x_y + bias_x_y) / w
+    pred_box[:, :, :, :, 1] = (
+        grid_y + sigmoid(pred_box[:, :, :, :, 1]) * scale_x_y + bias_x_y) / h
 
     mask_anchors = []
     for m in anchor_mask:
@@ -103,7 +108,7 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
 
     pred_box = pred_box.reshape((n, -1, 4))
     pred_obj = x[:, :, :, :, 4].reshape((n, -1))
-    objness = np.zeros(pred_box.shape[:2]).astype('float32')
+    objness = np.zeros(pred_box.shape[:2]).astype('float64')
     ious = batch_xywh_box_iou(pred_box, gtbox)
     ious_max = np.max(ious, axis=-1)
     objness = np.where(ious_max > ignore_thresh, -np.ones_like(objness),
@@ -158,7 +163,7 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
             elif objness[i, j] == 0:
                 loss[i] += sce(pred_obj[i, j], 0.0)
 
-    return (loss, objness.reshape((n, mask_num, h, w)).astype('float32'), \
+    return (loss, objness.reshape((n, mask_num, h, w)).astype('float64'), \
             gt_matches.astype('int32'))
 
 
@@ -166,8 +171,8 @@ class TestYolov3LossOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'yolov3_loss'
-        x = logit(np.random.uniform(0, 1, self.x_shape).astype('float32'))
-        gtbox = np.random.random(size=self.gtbox_shape).astype('float32')
+        x = logit(np.random.uniform(0, 1, self.x_shape).astype('float64'))
+        gtbox = np.random.random(size=self.gtbox_shape).astype('float64')
         gtlabel = np.random.randint(0, self.class_num, self.gtbox_shape[:2])
         gtmask = np.random.randint(0, 2, self.gtbox_shape[:2])
         gtbox = gtbox * gtmask[:, :, np.newaxis]
@@ -180,17 +185,18 @@ class TestYolov3LossOp(OpTest):
             "ignore_thresh": self.ignore_thresh,
             "downsample_ratio": self.downsample_ratio,
             "use_label_smooth": self.use_label_smooth,
+            "scale_x_y": self.scale_x_y,
         }
 
         self.inputs = {
             'X': x,
-            'GTBox': gtbox.astype('float32'),
+            'GTBox': gtbox.astype('float64'),
             'GTLabel': gtlabel.astype('int32'),
         }
 
-        gtscore = np.ones(self.gtbox_shape[:2]).astype('float32')
+        gtscore = np.ones(self.gtbox_shape[:2]).astype('float64')
         if self.gtscore:
-            gtscore = np.random.random(self.gtbox_shape[:2]).astype('float32')
+            gtscore = np.random.random(self.gtbox_shape[:2]).astype('float64')
             self.inputs['GTScore'] = gtscore
 
         loss, objness, gt_matches = YOLOv3Loss(x, gtbox, gtlabel, gtscore,
@@ -222,6 +228,7 @@ class TestYolov3LossOp(OpTest):
         self.gtbox_shape = (3, 5, 4)
         self.gtscore = True
         self.use_label_smooth = True
+        self.scale_x_y = 1.
 
 
 class TestYolov3LossWithoutLabelSmooth(TestYolov3LossOp):
@@ -238,6 +245,7 @@ class TestYolov3LossWithoutLabelSmooth(TestYolov3LossOp):
         self.gtbox_shape = (3, 5, 4)
         self.gtscore = True
         self.use_label_smooth = False
+        self.scale_x_y = 1.
 
 
 class TestYolov3LossNoGTScore(TestYolov3LossOp):
@@ -254,6 +262,85 @@ class TestYolov3LossNoGTScore(TestYolov3LossOp):
         self.gtbox_shape = (3, 5, 4)
         self.gtscore = False
         self.use_label_smooth = True
+        self.scale_x_y = 1.
+
+
+class TestYolov3LossWithScaleXY(TestYolov3LossOp):
+    def initTestCase(self):
+        self.anchors = [
+            10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198,
+            373, 326
+        ]
+        self.anchor_mask = [0, 1, 2]
+        self.class_num = 5
+        self.ignore_thresh = 0.7
+        self.downsample_ratio = 32
+        self.x_shape = (3, len(self.anchor_mask) * (5 + self.class_num), 5, 5)
+        self.gtbox_shape = (3, 5, 4)
+        self.gtscore = True
+        self.use_label_smooth = True
+        self.scale_x_y = 1.2
+
+
+class TestYolov3LossDygraph(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = np.random.random([2, 14, 8, 8]).astype('float32')
+        gt_box = np.random.random([2, 10, 4]).astype('float32')
+        gt_label = np.random.random([2, 10]).astype('int32')
+
+        x = paddle.to_tensor(x)
+        gt_box = paddle.to_tensor(gt_box)
+        gt_label = paddle.to_tensor(gt_label)
+
+        loss = paddle.vision.ops.yolo_loss(
+            x,
+            gt_box=gt_box,
+            gt_label=gt_label,
+            anchors=[10, 13, 16, 30],
+            anchor_mask=[0, 1],
+            class_num=2,
+            ignore_thresh=0.7,
+            downsample_ratio=8,
+            use_label_smooth=True,
+            scale_x_y=1.)
+        assert loss is not None
+        paddle.enable_static()
+
+
+class TestYolov3LossStatic(unittest.TestCase):
+    def test_static(self):
+        x = paddle.static.data('x', [2, 14, 8, 8], 'float32')
+        gt_box = paddle.static.data('gt_box', [2, 10, 4], 'float32')
+        gt_label = paddle.static.data('gt_label', [2, 10], 'int32')
+        gt_score = paddle.static.data('gt_score', [2, 10], 'float32')
+
+        loss = paddle.vision.ops.yolo_loss(
+            x,
+            gt_box=gt_box,
+            gt_label=gt_label,
+            anchors=[10, 13, 16, 30],
+            anchor_mask=[0, 1],
+            class_num=2,
+            ignore_thresh=0.7,
+            downsample_ratio=8,
+            gt_score=gt_score,
+            use_label_smooth=True,
+            scale_x_y=1.)
+        assert loss is not None
+
+        loss = paddle.vision.ops.yolo_loss(
+            x,
+            gt_box=gt_box,
+            gt_label=gt_label,
+            anchors=[10, 13, 16, 30],
+            anchor_mask=[0, 1],
+            class_num=2,
+            ignore_thresh=0.7,
+            downsample_ratio=8,
+            use_label_smooth=True,
+            scale_x_y=1.)
+        assert loss is not None
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "glog/logging.h"
 #include "paddle/fluid/operators/jit/gen/jitcode.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -32,7 +33,8 @@ class SeqPoolJitCode : public JitCode {
       : JitCode(code_size, code_ptr), w_(attr.w), type_(attr.type) {
     if (!(type_ == SeqPoolType::kSum || type_ == SeqPoolType::kAvg ||
           type_ == SeqPoolType::kSqrt)) {
-      LOG(FATAL) << "Only supported pool type: sum, avg and sqrt.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Only supports sum, average and sqrt pool type."));
     }
     fp_h_[0] = 1.f;
     this->genCode();
@@ -125,8 +127,13 @@ class SeqPoolJitCode : public JitCode {
         vmovss(xmm_t(reg_idx + max_num_regs), ptr[reg_ptr_src_i]);
         reg_idx++;
       }
-      PADDLE_ENFORCE_EQ(reg_idx, rest_used_num_regs,
-                        "All heights should use same regs");
+      PADDLE_ENFORCE_EQ(
+          reg_idx, rest_used_num_regs,
+          platform::errors::InvalidArgument(
+              "All heights of SeqPool should use the same number of registers."
+              "It equals to the numbr of rest registers. But use %d registers "
+              "and the numbr of rest registers is %d.",
+              reg_idx, rest_used_num_regs));
       for (int i = 0; i < reg_idx; ++i) {
         vaddps(xmm_t(i), xmm_t(i), xmm_t(i + max_num_regs));
       }

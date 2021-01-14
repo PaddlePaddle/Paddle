@@ -17,12 +17,15 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 '''
  test case for s8 * s8
 '''
 
 
+@skip_check_grad_ci(
+    reason="mul_mkldnn_op does not implement grad operator, check_grad is not required."
+)
 class TestMKLDNNMulOpS8S8(OpTest):
     def setUp(self):
         self.op_type = "mul"
@@ -52,11 +55,11 @@ class TestMKLDNNMulOpS8S8(OpTest):
 
         # limit random range inside |-127, 127| to avoid overflow on SKL
         if self.srctype == np.int8:
-            A_data = np.random.randint(-127, 127, (2, 5)).astype(np.int8)
+            A_data = np.random.randint(-127, 127, (20, 5)).astype(np.int8)
         else:
-            A_data = np.random.randint(0, 127, (2, 5)).astype(np.uint8)
+            A_data = np.random.randint(0, 127, (20, 5)).astype(np.uint8)
 
-        B_data = np.random.uniform(-127, 127, (5, 3)).astype(np.float32)
+        B_data = np.random.uniform(-127, 127, (5, 20)).astype(np.float32)
 
         quant_B = np.round(B_data * self.scale_y[0]).astype(np.int)
         output = np.dot(A_data, quant_B)
@@ -73,16 +76,9 @@ class TestMKLDNNMulOpS8S8(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), atol=0)
-
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ingore_x(self):
-        pass
-
-    def test_check_grad_ingore_y(self):
-        pass
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output_with_place(
+            core.CPUPlace(), atol=0, check_dygraph=False)
 
 
 '''

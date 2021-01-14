@@ -61,12 +61,10 @@ class GCN(fluid.Layer):
 
 class TestDygraphGNN(unittest.TestCase):
     def test_gnn_float32(self):
-        seed = 90
-
+        paddle.seed(90)
+        paddle.framework.random._manual_program_seed(90)
         startup = fluid.Program()
-        startup.random_seed = seed
         main = fluid.Program()
-        main.random_seed = seed
 
         scope = fluid.core.Scope()
         with new_program_scope(main=main, startup=startup, scope=scope):
@@ -114,8 +112,8 @@ class TestDygraphGNN(unittest.TestCase):
                 scope.find_var(model.gc.weight.name).get_tensor())
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(90)
+            paddle.framework.random._manual_program_seed(90)
 
             features = np.ones([1, 100, 50], dtype=np.float32)
             # Use selected rows when it's supported.
@@ -131,7 +129,8 @@ class TestDygraphGNN(unittest.TestCase):
                                                            to_variable(labels))
             loss = fluid.layers.reduce_sum(loss)
             loss.backward()
-            adam = AdamOptimizer(learning_rate=1e-3)
+            adam = AdamOptimizer(
+                learning_rate=1e-3, parameter_list=model.parameters())
 
             adam.minimize(loss)
             model.clear_gradients()
@@ -139,8 +138,8 @@ class TestDygraphGNN(unittest.TestCase):
             model_gc_weight_value = model.gc.weight.numpy()
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(90)
+            paddle.framework.random._manual_program_seed(90)
 
             features2 = np.ones([1, 100, 50], dtype=np.float32)
             # Use selected rows when it's supported.
@@ -156,7 +155,8 @@ class TestDygraphGNN(unittest.TestCase):
                 logits2, to_variable(labels2))
             loss2 = fluid.layers.reduce_sum(loss2)
             loss2.backward()
-            adam2 = AdamOptimizer(learning_rate=1e-3)
+            adam2 = AdamOptimizer(
+                learning_rate=1e-3, parameter_list=model2.parameters())
             adam2.minimize(loss2)
             model2.clear_gradients()
             loss2_value = loss2.numpy()

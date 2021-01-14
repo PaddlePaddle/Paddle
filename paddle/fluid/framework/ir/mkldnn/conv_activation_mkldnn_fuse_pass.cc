@@ -13,16 +13,27 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
-#include <string>
+
 #include <vector>
+
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
+class Graph;
+
 void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph, "graph cannot be nullptr.");
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("conv_activation_mkldnn_fuse", graph);
 
   GraphPatternDetector gpd;
@@ -58,8 +69,13 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
     // MKLDNN ops use alpha and beta as activation parameters but paddle ops are
     // not generalized
     if (activation_type() == "relu6") {
+      desc->SetAttr(
+          "fuse_alpha",
+          BOOST_GET_CONST(float, activation->Op()->GetAttr("threshold")));
+    } else if (activation_type() == "swish") {
+      // paddle uses beta but mkldnn uses alpha for swish
       desc->SetAttr("fuse_alpha",
-                    boost::get<float>(activation->Op()->GetAttr("threshold")));
+                    activation->Op()->GetAttrIfExists<float>("beta"));
     } else {
       desc->SetAttr("fuse_alpha",
                     activation->Op()->GetAttrIfExists<float>("alpha"));
@@ -70,7 +86,8 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
     GraphSafeRemoveNodes(graph, {activation, conv_out});
 
     PADDLE_ENFORCE_GT(subgraph.count(conv_input), 0UL,
-                      "subgraph has to contain conv_input node.");
+                      platform::errors::InvalidArgument(
+                          "Subgraph has to contain conv input node."));
     IR_NODE_LINK_TO(conv, activation_out);
     found_conv_activation_count++;
   };
@@ -89,9 +106,32 @@ REGISTER_PASS(conv_activation_mkldnn_fuse_pass,
 
 REGISTER_PASS(conv_relu_mkldnn_fuse_pass,
               paddle::framework::ir::ConvActivationFusePass);
+REGISTER_PASS_CAPABILITY(conv_relu_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("relu", 0));
 
 REGISTER_PASS(conv_leaky_relu_mkldnn_fuse_pass,
               paddle::framework::ir::Conv2DLeakyReLUFusePass);
+REGISTER_PASS_CAPABILITY(conv_leaky_relu_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .LE("leaky_relu", 1));
 
 REGISTER_PASS(conv_relu6_mkldnn_fuse_pass,
               paddle::framework::ir::Conv2DReLU6FusePass);
+REGISTER_PASS_CAPABILITY(conv_relu6_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("relu6", 0));
+
+REGISTER_PASS(conv_swish_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DSwishFusePass);
+REGISTER_PASS_CAPABILITY(conv_swish_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("swish", 0));

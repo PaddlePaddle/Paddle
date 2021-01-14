@@ -31,9 +31,7 @@ limitations under the License. */
     break;                             \
   }
 #define REP_EXPAND_AS_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_AS_TEMPLATE, ~)
-#define COND(n)                                               \
-  BOOST_PP_GREATER_EQUAL(BOOST_PP_DIV(n, MAX_RANK_SUPPORTED), \
-                         BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
+#define COND(n) BOOST_PP_GREATER_EQUAL(n, BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
 #define EXPAND_AS_GRAD_CASE(n)                                       \
   case n: {                                                          \
     ExpandAsBackward<n>(context, reshape_dims_vec, reduce_dims_vec); \
@@ -63,7 +61,10 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     switch (rank) {
       REP_EXPAND_AS_TEMPLATE(MAX_RANK_SUPPORTED)
       default:
-        PADDLE_THROW("Only support tensor with rank being between 1 and 6.");
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Only support tensor with rank being between 1 and 6. But received "
+            "tensor X's rank = %d.",
+            rank));
     }
   }
 
@@ -79,13 +80,19 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     auto x_dims = in0->dims();
     auto y_dims = target_tensor->dims();
     for (int i = 0; i < y_dims.size(); ++i) {
-      PADDLE_ENFORCE_NE(x_dims[i], 0, "X(input) should not have 0 dim");
+      PADDLE_ENFORCE_NE(
+          x_dims[i], 0UL,
+          platform::errors::InvalidArgument(
+              "X(input) should not have 0 dim. But received x_dims[%d] = 0.",
+              i));
       bcast_dims[i] = y_dims[i] / x_dims[i];
       bcast_dims_remainder += y_dims[i] % x_dims[i];
     }
-    PADDLE_ENFORCE_EQ(bcast_dims_remainder, 0,
-                      "X(input) could not be broadcast together with remapped "
-                      "shape(expand tensor's shape)");
+    PADDLE_ENFORCE_EQ(
+        bcast_dims_remainder, 0UL,
+        platform::errors::InvalidArgument(
+            "X(input) could not be broadcast together with remapped "
+            "shape(expand tensor's shape)"));
     framework::DDim out_dims(in_dims);
     for (size_t i = 0; i < bcast_dims.size(); ++i) {
       out_dims[i] *= bcast_dims[i];
@@ -116,23 +123,20 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
     std::vector<int> reshape_dims_vec;
     std::vector<int> reduce_dims_vec;
     for (size_t i = 0; i < bcast_dims.size(); ++i) {
-      if (bcast_dims[i] == 1) {
-        reshape_dims_vec.push_back(x_dims[i]);
-      } else {
-        if (x_dims[i] == 1) {
-          reduce_dims_vec.push_back(reshape_dims_vec.size());
-          reshape_dims_vec.push_back(bcast_dims[i]);
-        } else {
-          reduce_dims_vec.push_back(reshape_dims_vec.size());
-          reshape_dims_vec.push_back(bcast_dims[i]);
-          reshape_dims_vec.push_back(x_dims[i]);
-        }
+      reduce_dims_vec.push_back(reshape_dims_vec.size());
+      reshape_dims_vec.push_back(bcast_dims[i]);
+      reshape_dims_vec.push_back(x_dims[i]);
+    }
+    int dims = reduce_dims_vec.size();
+    bool just_copy = true;
+    for (size_t i = 0; i < bcast_dims.size(); i++) {
+      if (bcast_dims[i] != 1) {
+        just_copy = false;
+        break;
       }
     }
-    int dims = reshape_dims_vec.size() * MAX_RANK_SUPPORTED +
-               reduce_dims_vec.size() - MAX_RANK_SUPPORTED - 1;
     // no need reduce, just copy
-    if (reduce_dims_vec.size() == 0) {
+    if (just_copy) {
       auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
       auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
@@ -140,9 +144,12 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
                             out0);
     } else {
       switch (dims) {
-        REP_EXPAND_AS_GRAD_TEMPLATE(72)
+        REP_EXPAND_AS_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
         default:
-          PADDLE_THROW("Only support tensor with rank being between 1 and 6.");
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Only support tensor with rank being between 1 and 6. But "
+              "received tensor's rank = %d.",
+              dims));
       }
     }
   }
@@ -152,23 +159,17 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
   void ExpandAsBackward(const framework::ExecutionContext& context,
                         const std::vector<int>& reshape_dims_vec,
                         const std::vector<int>& reduce_dims_vec) const {
-    size_t reshape_size = Dims / MAX_RANK_SUPPORTED + 1;
-    size_t reduce_size = Dims % MAX_RANK_SUPPORTED + 1;
-    PADDLE_ENFORCE_EQ(reshape_size, reshape_dims_vec.size(),
-                      "Inconsistent size between template Dims and "
-                      "reshape dimensions.");
-    PADDLE_ENFORCE_EQ(reduce_size, reduce_dims_vec.size(),
-                      "Inconsistent size between template Dims and "
-                      "reduce dimensions.");
+    size_t reshape_size = reshape_dims_vec.size();
+    size_t reduce_size = reduce_dims_vec.size();
     auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
-    Eigen::DSizes<int, Dims / MAX_RANK_SUPPORTED + 1> reshape_dims;
+    Eigen::DSizes<int, Dims * 2> reshape_dims;
     for (size_t i = 0; i < reshape_size; ++i) {
       reshape_dims[i] = reshape_dims_vec[i];
     }
-    Eigen::DSizes<int, Dims % MAX_RANK_SUPPORTED + 1> reduce_dims;
+    Eigen::DSizes<int, Dims> reduce_dims;
     for (size_t i = 0; i < reduce_size; ++i) {
       reduce_dims[i] = reduce_dims_vec[i];
     }

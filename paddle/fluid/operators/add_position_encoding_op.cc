@@ -23,11 +23,9 @@ class AddPositionEncodingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "X(Input) of add_position_encoding_op should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Out(Output) of add_position_encoding_op should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AddPositionEncoding");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "AddPositionEncoding");
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
@@ -71,12 +69,18 @@ class AddPositionEncodingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("alpha", "The scale of Original Embedding.")
         .SetDefault(1.0f)
         .AddCustomChecker([](const float& alpha) {
-          PADDLE_ENFORCE(alpha >= 0.0f, "'alpha' must be above 0.0.");
+          PADDLE_ENFORCE_GE(
+              alpha, 0.0f,
+              platform::errors::InvalidArgument(
+                  "Attribute 'alpha' must be greater than or equal to 0.0."));
         });
     AddAttr<float>("beta", "The scale of Position Embedding.")
         .SetDefault(1.0f)
         .AddCustomChecker([](const float& beta) {
-          PADDLE_ENFORCE(beta >= 0.0f, "'beta' must be between 0.0.");
+          PADDLE_ENFORCE_GE(
+              beta, 0.0f,
+              platform::errors::InvalidArgument(
+                  "Attribute 'beta' must be greater than or equal to 0.0."));
         });
     AddComment(R"DOC(
     Add Position Encoding Operator.
@@ -93,13 +97,11 @@ class AddPositionEncodingGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("add_position_encoding_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

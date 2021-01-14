@@ -21,6 +21,18 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+std::string InsertIndentationIntoEachLine(const std::string &str) {
+  std::ostringstream sout;
+  size_t start_pos = 0;
+  size_t end_pos = 0;
+  while ((end_pos = str.find_first_of("\n", start_pos)) != std::string::npos) {
+    sout << "    " << str.substr(start_pos, end_pos - start_pos + 1);
+    start_pos = end_pos + 1;
+  }
+  sout << "    " << str.substr(start_pos, end_pos - start_pos + 1);
+  return sout.str();
+}
+
 void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
                          platform::EnforceNotMet *exception) {
   if (attrs.count("sub_block") != 0) {
@@ -30,36 +42,45 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   const std::vector<std::string> *callstack = nullptr;
   auto iter = attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
-    callstack = &boost::get<std::vector<std::string>>(iter->second);
+    callstack = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
     if (callstack->empty()) callstack = nullptr;
   }
 
   std::ostringstream sout;
-  std::ostringstream sout_py_trace;
   // Step 1. Construct python call stack string
   if (callstack) {
-    sout_py_trace << "\n------------------------------------------\n";
-    sout_py_trace << "Python Call Stacks (More useful to users):";
-    sout_py_trace << "\n------------------------------------------\n";
+    if (FLAGS_call_stack_level > 1) {
+      sout << "\n\n  Compile Traceback (most recent call last):";
+    } else {
+      sout << "In user code:\n";
+    }
     for (auto &line : *callstack) {
-      sout_py_trace << line;
+      sout << "\n  " << line;
     }
   }
-  // Step 2. Insert python traceback into err_str_
-  std::size_t found = exception->err_str_.rfind(
-      "\n----------------------\nError Message "
-      "Summary:\n----------------------\n");
-  if (found != std::string::npos) {
-    exception->err_str_.insert(found, sout_py_trace.str());
+  VLOG(1) << exception->error_str();
+  // Step 2. Construct final call stack & append error op name
+  if (FLAGS_call_stack_level > 1) {
+    sout << exception->what();
   } else {
-    exception->err_str_.append(sout_py_trace.str());
+    // If callstack exists, use err_str_ instead sub_err_str_
+    if (callstack) {
+      sout << "\n\n";
+      sout << InsertIndentationIntoEachLine(exception->error_str());
+    } else {
+      sout << exception->simple_error_str();
+    }
   }
-  // Step 3. Construct final call stack & append error op name
-  sout << exception->err_str_;
-  if (callstack) {
-    sout << "  [operator < " << type << " > error]";
-  }
-  exception->err_str_ = sout.str();
+  sout << "  [operator < " << type << " > error]";
+  exception->set_error_str(sout.str());
+}
+
+void AppendErrorOpHint(const std::string &type,
+                       platform::EnforceNotMet *exception) {
+  std::ostringstream sout;
+  sout << exception->what();
+  sout << "  [operator < " << type << " > error]";
+  exception->set_error_str(sout.str());
 }
 
 }  // namespace framework

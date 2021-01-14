@@ -27,8 +27,9 @@ template <typename T>
 class ScatterNdAddOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                      "This kernel only runs on CPU.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
     auto *X = ctx.Input<Tensor>("X");
     auto *Ids = ctx.Input<Tensor>("Index");
     auto *Updates = ctx.Input<Tensor>("Updates");
@@ -39,12 +40,15 @@ class ScatterNdAddOpKernel : public framework::OpKernel<T> {
     const auto &index_type = Ids->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(
-        index_type_match, true,
-        "Index holds the wrong type, it holds %s, but desires to be %s or %s",
-        paddle::framework::DataTypeToString(index_type),
-        paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
-        paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
+    PADDLE_ENFORCE_EQ(index_type_match, true,
+                      platform::errors::InvalidArgument(
+                          "Index holds the wrong type, it holds [%s], but "
+                          "desires to be [%s] or [%s].",
+                          paddle::framework::DataTypeToString(index_type),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT32),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT64)));
 
     if (index_type == framework::proto::VarType::INT32) {
       ScatterNdAdd<T, int32_t>(ctx, *Updates, *Ids, Out);
@@ -58,8 +62,9 @@ template <typename T>
 class ScatterNdAddGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                      "This kernel only runs on CPU.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
     auto *Ids = ctx.Input<Tensor>("Index");

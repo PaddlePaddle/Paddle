@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/simplify_with_basic_ops_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -30,6 +29,8 @@ namespace ir {
  * - remove dropout_op (upscale_in_train) or
  *   replace dropout_op with scale_op (downgrade_in_infer) when is_test is true
  */
+class Graph;
+
 void SimplifyWithBasicOpsPass::ApplyImpl(Graph* graph) const {
   VLOG(3) << "Simplify the Graph with basic ops.";
   std::unordered_set<const Node*> del_node_set;
@@ -53,10 +54,10 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
   // dropout_op is INT.
   if (dropout_op_desc->HasAttr("is_test")) {
     if (dropout_op_desc->GetAttrType("is_test") == proto::AttrType::BOOLEAN) {
-      is_test = boost::get<bool>(dropout_op_desc->GetAttr("is_test"));
+      is_test = BOOST_GET_CONST(bool, dropout_op_desc->GetAttr("is_test"));
     } else if (dropout_op_desc->GetAttrType("is_test") ==
                proto::AttrType::INT) {
-      is_test = boost::get<int>(dropout_op_desc->GetAttr("is_test")) == 0
+      is_test = BOOST_GET_CONST(int, dropout_op_desc->GetAttr("is_test")) == 0
                     ? false
                     : true;
     }
@@ -74,12 +75,14 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
   if (dropout_op_desc->HasAttr("dropout_implementation")) {
     if (dropout_op_desc->GetAttrType("dropout_implementation") ==
         proto::AttrType::BOOLEAN) {
-      upscale_in_train =
-          boost::get<bool>(dropout_op_desc->GetAttr("dropout_implementation"));
+      upscale_in_train = BOOST_GET_CONST(
+          bool, dropout_op_desc->GetAttr("dropout_implementation"));
     } else if (dropout_op_desc->GetAttrType("dropout_implementation") ==
                proto::AttrType::STRING) {
-      upscale_in_train = boost::get<std::string>(dropout_op_desc->GetAttr(
-                             "dropout_implementation")) == "upscale_in_train";
+      upscale_in_train =
+          BOOST_GET_CONST(std::string,
+                          dropout_op_desc->GetAttr("dropout_implementation")) ==
+          "upscale_in_train";
     }
   }
 
@@ -129,7 +132,7 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
     //  \|/
     // dropout_x -> scale_op -> dropout_out -> next_op -> next_out
     float scale =
-        1.0f - boost::get<float>(dropout_op_desc->GetAttr("dropout_prob"));
+        1.0f - BOOST_GET_CONST(float, dropout_op_desc->GetAttr("dropout_prob"));
 
     framework::OpDesc new_op_desc;
     new_op_desc.SetType("scale");

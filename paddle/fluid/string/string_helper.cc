@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/string/string_helper.h"
+
 #include <ctype.h>
 #include <stdio.h>
 #include <cstring>
 #include <string>
-#include <vector>
-#include "boost/lexical_cast.hpp"
+
 #include "glog/logging.h"
 
 namespace paddle {
@@ -59,6 +59,19 @@ std::string trim_spaces(const std::string& str) {
   }
 
   return std::string(p, len);
+}
+
+std::string erase_spaces(const std::string& str) {
+  std::string result;
+  result.reserve(str.size());
+  const char* p = str.c_str();
+  while (*p != 0) {
+    if (!isspace(*p)) {
+      result.append(p, 1);
+    }
+    ++p;
+  }
+  return result;
 }
 
 inline int str_to_float(const char* str, float* v) {

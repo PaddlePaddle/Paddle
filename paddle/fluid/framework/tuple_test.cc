@@ -11,11 +11,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <sstream>
-#include <vector>
-
-#include "gtest/gtest.h"
 #include "paddle/fluid/framework/tuple.h"
+#include "gtest/gtest.h"
 
 TEST(Tuple, Make) {
   std::vector<paddle::framework::ElementVar> element_type;
@@ -25,9 +22,9 @@ TEST(Tuple, Make) {
 
   paddle::framework::Tuple* tuple = paddle::framework::make_tuple(element_type);
 
-  EXPECT_EQ(boost::get<int>(tuple->get(0)), 12);
-  EXPECT_EQ(boost::get<float>(tuple->get(1)), 12.0f);
-  EXPECT_EQ(boost::get<std::string>(tuple->get(2)), "ElementVar");
+  EXPECT_EQ(BOOST_GET(int, tuple->get(0)), 12);
+  EXPECT_EQ(BOOST_GET(float, tuple->get(1)), 12.0f);
+  EXPECT_EQ(BOOST_GET(std::string, tuple->get(2)), "ElementVar");
 
   delete tuple;
 }

@@ -65,7 +65,7 @@ TEST(IsTestPass, basic) {
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       auto* op = node->Op();
-      auto op_name = boost::get<std::string>(op->GetAttr("name"));
+      auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
       if (op_name == "bn") {
         ASSERT_EQ(op->Type(), "sync_batch_norm");
       }

@@ -25,24 +25,48 @@ namespace memory {
 namespace allocation {
 bool CUDAAllocator::IsAllocThreadSafe() const { return true; }
 void CUDAAllocator::FreeImpl(Allocation* allocation) {
-  platform::CUDADeviceGuard guard(place_.device);
-  PADDLE_ENFORCE_EQ(boost::get<platform::CUDAPlace>(allocation->place()),
-                    place_);
-  PADDLE_ENFORCE(cudaFree(allocation->ptr()));
+  PADDLE_ENFORCE_EQ(
+      BOOST_GET_CONST(platform::CUDAPlace, allocation->place()), place_,
+      platform::errors::PermissionDenied(
+          "GPU memory is freed in incorrect device. This may be a bug"));
+  platform::RecordedCudaFree(allocation->ptr(), allocation->size(),
+                             place_.device);
   delete allocation;
 }
 
 Allocation* CUDAAllocator::AllocateImpl(size_t size) {
-  platform::CUDADeviceGuard guard(place_.device);
+  std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
+
   void* ptr;
-  auto status = cudaMalloc(&ptr, size);
-  if (UNLIKELY(status != cudaSuccess)) {
-    PADDLE_ENFORCE_NE(cudaGetLastError(), cudaSuccess);
-    PADDLE_THROW_BAD_ALLOC("Cannot allocate %d on GPU %d, cuda status %d, %s",
-                           size, place_.device, status,
-                           cudaGetErrorString(status));
+  auto result = platform::RecordedCudaMalloc(&ptr, size, place_.device);
+  if (LIKELY(result == cudaSuccess)) {
+    return new Allocation(ptr, size, platform::Place(place_));
   }
-  return new Allocation(ptr, size, platform::Place(place_));
+
+  size_t avail, total, actual_avail, actual_total;
+  bool is_limited = platform::RecordedCudaMemGetInfo(
+      &avail, &total, &actual_avail, &actual_total, place_.device);
+
+  std::string err_msg;
+  if (is_limited) {
+    auto limit_size = (total >> 20);
+    err_msg = string::Sprintf(
+        "Or set environment variable `FLAGS_gpu_memory_limit_mb` to a larger "
+        "value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the maximum "
+        "GPU memory usage is limited to %d MB.\n"
+        "   The command is `export FLAGS_gpu_memory_limit_mb=xxx`.",
+        limit_size, limit_size);
+  }
+
+  PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
+      "\n\nOut of memory error on GPU %d. "
+      "Cannot allocate %s memory on GPU %d, "
+      "available memory is only %s.\n\n"
+      "Please check whether there is any other process using GPU %d.\n"
+      "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
+      "2. If no, please decrease the batch size of your model. %s\n\n",
+      place_.device, string::HumanReadableSize(size), place_.device,
+      string::HumanReadableSize(avail), place_.device, err_msg));
 }
 
 }  // namespace allocation

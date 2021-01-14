@@ -42,8 +42,13 @@ void SetNumThreads(int num_threads) {
   int real_num_threads = num_threads > 1 ? num_threads : 1;
   platform::dynload::MKL_Set_Num_Threads(real_num_threads);
   omp_set_num_threads(real_num_threads);
+#elif defined(PADDLE_USE_REFERENCE_CBLAS)
+  // cblas not support multi-thread
+  return;
 #else
-  PADDLE_ENFORCE(false, "To be implemented.");
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "This library (except OPENBLAS, MKLML) is not supported yet, so the"
+      "number of threads cannot be set."));
 #endif
 }
 

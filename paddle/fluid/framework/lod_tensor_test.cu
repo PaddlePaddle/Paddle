@@ -22,14 +22,11 @@
 #include "paddle/fluid/platform/place.h"
 
 __global__ void test(size_t* a, int size) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;
-       i += blockDim.x * gridDim.x) {
-    a[i] *= 2;
-  }
+  CUDA_KERNEL_LOOP(i, size) { a[i] *= 2; }
 }
 
 TEST(LoD, data) {
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
 
   paddle::framework::LoD lod{{0, 1, 2}};
   lod.push_back({0, 2, 4, 5});
@@ -45,7 +42,7 @@ TEST(LoD, data) {
 }
 
 TEST(LoDTensor, LoDInGPU) {
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
 
   paddle::framework::LoDTensor lod_tensor;
   paddle::platform::CUDAPlace place(0);

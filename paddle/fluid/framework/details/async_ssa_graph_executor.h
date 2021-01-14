@@ -42,10 +42,11 @@ class AsyncSSAGraphExecutor : public SSAGraphExecutor {
   ~AsyncSSAGraphExecutor() final = default;
   const ir::Graph &Graph() const override { return *graphs_[0]; }
 
-  FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
+                      bool return_merged) override;
 
  private:
-  void StartOffPythonTrainLoop();
+  void StartOffPythonTrainLoop(bool return_merged);
   void HandleException();
 
  private:

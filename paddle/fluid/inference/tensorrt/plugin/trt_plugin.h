@@ -16,10 +16,12 @@
 
 #include <NvInfer.h>
 #include <cstring>
+#include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -40,7 +42,7 @@ typedef std::function<PluginTensorRT*(void)> PluginConstructFunc;
 
 class PluginTensorRT : public nvinfer1::IPluginExt {
  public:
-  PluginTensorRT() {}
+  PluginTensorRT() : with_fp16_(false) {}
   // It was used for TensorRT deserialization.
   // It should not be called by users.
   PluginTensorRT(const void* serialized_data, size_t length) {}
@@ -110,7 +112,94 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
   nvinfer1::PluginFormat data_format_;
 
   std::vector<nvinfer1::ITensor*> inputs_;
+  bool with_fp16_;
 };
+
+#if IS_TRT_VERSION_GE(6000)
+class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
+ public:
+  DynamicPluginTensorRT() : with_fp16_(false) {}
+  DynamicPluginTensorRT(const void* serialized_data, size_t length) {}
+
+  // The Func in IPluginExt or IpluginExtV2
+  virtual const char* getPluginVersion() const { return "1"; }
+  virtual const char* getPluginType() const = 0;
+  int getNbOutputs() const { return 1; }
+  int initialize() override { return 0; }
+  void terminate() override{};
+
+  virtual size_t getSerializationSize() const = 0;
+  virtual void serialize(void* buffer) const = 0;
+
+  // The Func in IPluginV2
+  nvinfer1::IPluginV2DynamicExt* clone() const = 0;
+  virtual nvinfer1::DimsExprs getOutputDimensions(
+      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder) = 0;  // NOLINT
+
+  virtual bool supportsFormatCombination(
+      int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
+      int nb_outputs) = 0;
+
+  virtual void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
+                               int nb_inputs,
+                               const nvinfer1::DynamicPluginTensorDesc* out,
+                               int nb_outputs) = 0;
+
+  size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
+                          int nb_inputs,
+                          const nvinfer1::PluginTensorDesc* outputs,
+                          int nb_outputs) const override {
+    return 0;
+  }
+
+  virtual int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
+                      const nvinfer1::PluginTensorDesc* output_desc,
+                      const void* const* inputs, void* const* outputs,
+                      void* workspace, cudaStream_t stream) = 0;
+
+  virtual nvinfer1::DataType getOutputDataType(
+      int index, const nvinfer1::DataType* input_types,
+      int nb_inputs) const = 0;
+  void setPluginNamespace(const char* plugin_namespace) override {
+    name_space_ = plugin_namespace;
+  }
+  const char* getPluginNamespace() const override {
+    return name_space_.c_str();
+  }
+  virtual void destroy() = 0;
+
+ protected:
+  void deserializeBase(void const*& serial_data,  // NOLINT
+                       size_t& serial_length);    // NOLINT
+  size_t getBaseSerializationSize() const;
+  void serializeBase(void*& buffer) const;  // NOLINT
+  bool with_fp16_;
+
+ private:
+  std::string name_space_;
+  std::string plugin_base_;
+};
+
+template <typename T>
+class TrtPluginRegistrarV2 {
+ public:
+  TrtPluginRegistrarV2() {
+    static auto func_ptr = GetPluginRegistry();
+    if (func_ptr != nullptr) {
+      func_ptr->registerCreator(creator, "");
+    }
+  }
+
+ private:
+  T creator;
+};
+
+#define REGISTER_TRT_PLUGIN_V2(name)                                     \
+  static paddle::inference::tensorrt::plugin::TrtPluginRegistrarV2<name> \
+      plugin_registrar_##name {}
+
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

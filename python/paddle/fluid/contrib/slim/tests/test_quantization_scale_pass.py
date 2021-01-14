@@ -22,42 +22,40 @@ import paddle
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
-from paddle.fluid.contrib.slim.quantization import ScaleForTrainingPass
-from paddle.fluid.contrib.slim.quantization import ScaleForInferencePass
+from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass
+from paddle.fluid.contrib.slim.quantization import OutScaleForInferencePass
 from paddle.fluid.contrib.slim.quantization import AddQuantDequantPass
 from paddle.fluid import core
+
+paddle.enable_static()
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["CPU_NUM"] = "1"
 
 
-def residual_block(img, label, num=1):
-    def conv_bn_layer(input,
-                      ch_out,
-                      filter_size,
-                      stride,
-                      padding,
-                      act='relu',
-                      bias_attr=False):
-        tmp = fluid.layers.conv2d(
-            input=input,
-            filter_size=filter_size,
-            num_filters=ch_out,
-            stride=stride,
-            padding=padding,
-            act=None,
-            bias_attr=bias_attr)
-        return fluid.layers.batch_norm(input=tmp, act=act)
-
-    hidden = img
-    for _ in six.moves.xrange(num):
-        conv = conv_bn_layer(hidden, 20, 3, 1, 1, act=None, bias_attr=True)
-        short = conv_bn_layer(hidden, 20, 1, 1, 0, act=None)
-        hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
-    fc = fluid.layers.fc(input=hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=fc, label=label)
-    loss = fluid.layers.mean(loss)
-    return loss
+def conv_net(img, label):
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+        input=img,
+        filter_size=5,
+        num_filters=20,
+        pool_size=2,
+        pool_stride=2,
+        pool_type='max',
+        act="relu")
+    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+        input=conv_pool_1,
+        filter_size=5,
+        num_filters=50,
+        pool_size=2,
+        pool_stride=2,
+        pool_type='avg',
+        act="relu")
+    hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
+    prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    avg_loss = fluid.layers.mean(loss)
+    return avg_loss
 
 
 class TestQuantizationScalePass(unittest.TestCase):
@@ -76,7 +74,7 @@ class TestQuantizationScalePass(unittest.TestCase):
                         name='image', shape=[1, 28, 28], dtype='float32')
                     label = fluid.layers.data(
                         name='label', shape=[1], dtype='int64')
-                    loss = residual_block(img, label, 1)
+                    loss = conv_net(img, label)
                     if not is_test:
                         opt = fluid.optimizer.Adam(learning_rate=0.0001)
                         opt.minimize(loss)
@@ -112,7 +110,7 @@ class TestQuantizationScalePass(unittest.TestCase):
         add_quant_dequant_pass.apply(main_graph)
         add_quant_dequant_pass.apply(test_graph)
 
-        scale_training_pass = ScaleForTrainingPass(scope=scope, place=place)
+        scale_training_pass = OutScaleForTrainingPass(scope=scope, place=place)
         scale_training_pass.apply(main_graph)
 
         dev_name = '_gpu' if use_cuda else '_cpu'
@@ -131,6 +129,7 @@ class TestQuantizationScalePass(unittest.TestCase):
         build_strategy = fluid.BuildStrategy()
         build_strategy.memory_optimize = False
         build_strategy.enable_inplace = False
+        build_strategy.fuse_all_reduce_ops = False
         binary = fluid.CompiledProgram(main_graph.graph).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy)
         iters = 5
@@ -150,7 +149,7 @@ class TestQuantizationScalePass(unittest.TestCase):
                 if not for_ci:
                     print('{}: {}'.format('loss' + dev_name, loss_v))
 
-        scale_inference_pass = ScaleForInferencePass(scope=scope)
+        scale_inference_pass = OutScaleForInferencePass(scope=scope)
         scale_inference_pass.apply(test_graph)
 
         # Freeze graph for inference, but the weight of fc/conv is still float type.

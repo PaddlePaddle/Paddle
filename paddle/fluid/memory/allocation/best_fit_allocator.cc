@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include <cmath>
-#include <list>
-#include <map>
-#include <string>
 
 namespace paddle {
 namespace memory {
@@ -61,8 +58,13 @@ BestFitAllocator::ListIt BestFitAllocator::SplitChunk(size_t request_size,
   auto to_split_it = bin_iterator->second;
   free_chunks_[free_chunk_offset].erase(bin_iterator);
 
-  PADDLE_ENFORCE(to_split_it->is_free);
-  PADDLE_ENFORCE_GE(to_split_it->size_, request_size);
+  PADDLE_ENFORCE_EQ(to_split_it->is_free, true,
+                    platform::errors::PreconditionNotMet(
+                        "The memory chunk to split is not free"));
+  PADDLE_ENFORCE_GE(to_split_it->size_, request_size,
+                    platform::errors::PreconditionNotMet(
+                        "The size of memory chunk to split is "
+                        "not larger than size of request memory"));
 
   auto remaining_size = to_split_it->size_ - request_size;
   details::Chunk to_use;
@@ -99,7 +101,9 @@ void BestFitAllocator::EraseFreeNode(const ListIt& it) {
   while (map_it->second != it && map_it != free_map.end()) {
     ++map_it;
   }
-  PADDLE_ENFORCE(map_it != free_map.end());
+  PADDLE_ENFORCE_NE(
+      map_it, free_map.end(),
+      platform::errors::NotFound("The node to erase is not found in map"));
   free_map.erase(map_it);
 }
 size_t BestFitAllocator::NumFreeChunks() const {
@@ -111,10 +115,14 @@ size_t BestFitAllocator::NumFreeChunks() const {
 }
 void BestFitAllocator::FreeImpl(Allocation* allocation) {
   auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation);
-  PADDLE_ENFORCE_NOT_NULL(bf_allocation,
-                          "The input allocation is not BestFitAllocation.");
+  PADDLE_ENFORCE_NOT_NULL(
+      bf_allocation,
+      platform::errors::InvalidArgument(
+          "The input allocation is not type of BestFitAllocation."));
   auto chunk_it = bf_allocation->ChunkIterator();
-  PADDLE_ENFORCE(!chunk_it->is_free);
+  PADDLE_ENFORCE_EQ(chunk_it->is_free, false,
+                    platform::errors::PreconditionNotMet(
+                        "The chunk of allocation to free is freed already"));
   chunk_it->is_free = true;
   if (chunk_it != chunks_.begin()) {
     auto prev_it = chunk_it;
@@ -150,8 +158,8 @@ Allocation* BestFitAllocator::AllocateImpl(size_t size) {
     }
   }
   if (UNLIKELY(highest_set_bit == free_chunks_.size())) {
-    PADDLE_THROW_BAD_ALLOC("Cannot allocate %d, All fragments size is %d", size,
-                           FreeSize());
+    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
+        "Cannot allocate %d, All fragments size is %d.", size, FreeSize()));
   }
   auto chunk_it = SplitChunk(size, highest_set_bit, map_it);
   return new BestFitAllocation(this, chunk_it);

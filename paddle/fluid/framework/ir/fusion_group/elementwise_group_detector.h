@@ -14,35 +14,35 @@ limitations under the License. */
 
 #pragma once
 
-#include <string>
-#include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/ir/fusion_group/subgraph.h"
+
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
 namespace ir {
 namespace fusion_group {
 
-struct ElementwiseGroupDetector {
+class GroupDetector {
+ protected:
+  bool CheckPrecondition(const Node* n);
+};
+
+class ElementwiseGroupDetector : GroupDetector {
  public:
-  int operator()(Node* n);
-
-  SubGraph GetSubgraph() const { return subgraph_; }
+  std::vector<std::vector<Node*>> operator()(Graph* graph);
 
  private:
-  bool IsElementwiseOp(Node* n);
-  bool IsInputOfElementwiseOp(Node* n, std::string name = "");
-  bool IsOutputOfElementwiseOp(Node* n);
-
-  void Insert(Node* n);
-  int Search(Node* n, std::vector<Node*> except_nodes = {});
-
- private:
-  std::string name_;
-  int num_operations_{0};
-  SubGraph subgraph_;
+  bool IsElementwiseOp(const Node* n);
 };
 
 }  // namespace fusion_group

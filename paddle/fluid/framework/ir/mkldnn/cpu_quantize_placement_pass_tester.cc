@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_placement_pass.h"
 
 #include <gtest/gtest.h>
-#include <boost/logic/tribool.hpp>
+#include "paddle/fluid/platform/mkldnn_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -24,13 +24,11 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           boost::tribool use_quantizer) {
+           const std::string& mkldnn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
 
   op->SetType(type);
-
-  if (!boost::indeterminate(use_quantizer))
-    op->SetAttr("use_quantizer", use_quantizer);
+  op->SetAttr("mkldnn_data_type", mkldnn_data_type);
 
   if (type == "conv2d") {
     op->SetAttr("name", name);
@@ -50,7 +48,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
   op->SetOutput("Out", {outputs[0]});
 }
 
-// operator                      use_quantizer
+// operator                      mkldnn_data_type
 // ---------------------------------------
 // (a,b)->concat->c              none
 // (c,weights,bias)->conv->f     false
@@ -71,19 +69,19 @@ ProgramDesc BuildProgramDesc() {
     }
   }
 
-  SetOp(&prog, "concat", "concat1", {"a", "b"}, {"c"}, boost::indeterminate);
-  SetOp(&prog, "conv2d", "conv1", {"c", "weights", "bias"}, {"f"}, false);
-  SetOp(&prog, "relu", "relu1", {"f"}, {"g"}, boost::indeterminate);
-  SetOp(&prog, "pool2d", "pool1", {"g"}, {"h"}, false);
-  SetOp(&prog, "conv2d", "conv2", {"h", "weights2", "bias2"}, {"k"}, false);
-  SetOp(&prog, "pool2d", "pool2", {"k"}, {"l"}, false);
+  SetOp(&prog, "concat", "concat1", {"a", "b"}, {"c"}, "float32");
+  SetOp(&prog, "conv2d", "conv1", {"c", "weights", "bias"}, {"f"}, "float32");
+  SetOp(&prog, "relu", "relu1", {"f"}, {"g"}, "float32");
+  SetOp(&prog, "pool2d", "pool1", {"g"}, {"h"}, "float32");
+  SetOp(&prog, "conv2d", "conv2", {"h", "weights2", "bias2"}, {"k"}, "float32");
+  SetOp(&prog, "pool2d", "pool2", {"k"}, {"l"}, "float32");
 
   return prog;
 }
 
 void MainTest(std::initializer_list<std::string> quantize_enabled_op_types,
               std::initializer_list<int> quantize_excluded_op_ids,
-              unsigned expected_use_quantizer_true_count) {
+              unsigned expected_int8_data_type_count) {
   auto prog = BuildProgramDesc();
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
@@ -96,19 +94,34 @@ void MainTest(std::initializer_list<std::string> quantize_enabled_op_types,
 
   graph.reset(pass->Apply(graph.release()));
 
-  unsigned use_quantizer_true_count = 0;
+  unsigned int8_data_type_count = 0;
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
-      auto* op = node->Op();
-      if (op->HasAttr("use_quantizer") &&
-          boost::get<bool>(op->GetAttr("use_quantizer"))) {
-        ++use_quantizer_true_count;
+      if (platform::HasOpINT8DataType(node->Op())) {
+        ++int8_data_type_count;
       }
     }
   }
 
-  EXPECT_EQ(use_quantizer_true_count, expected_use_quantizer_true_count);
+  EXPECT_EQ(int8_data_type_count, expected_int8_data_type_count);
+}
+
+void DefaultAttrTest(unsigned expected_int8_data_type_count) {
+  auto prog = BuildProgramDesc();
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  auto pass = PassRegistry::Instance().Get("cpu_quantize_placement_pass");
+  graph.reset(pass->Apply(graph.release()));
+
+  unsigned int8_data_type_count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      if (platform::HasOpINT8DataType(node->Op())) {
+        ++int8_data_type_count;
+      }
+    }
+  }
+  EXPECT_EQ(int8_data_type_count, expected_int8_data_type_count);
 }
 
 TEST(QuantizerPlacementPass, enabled_pool) { MainTest({"pool2d"}, {}, 2); }
@@ -117,9 +130,14 @@ TEST(QuantizerPlacementPass, enabled_conv_excluded_one) {
   MainTest({"conv2d"}, {4}, 1);
 }
 
-TEST(QuantizerPlacementPass, excluded_none) {
-  // 2 conv + 2 pool
-  MainTest({}, {}, 4);
+TEST(QuantizerPlacementPass, empty_list) {
+  // all operators quantized
+  MainTest({}, {}, 6);
+}
+
+TEST(QuantizerPlacementPass, default_attr_value) {
+  //  all operators quantized
+  DefaultAttrTest(6);
 }
 
 }  // namespace ir

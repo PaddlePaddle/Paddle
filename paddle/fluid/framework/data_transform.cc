@@ -18,6 +18,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -42,23 +48,27 @@ void TransformData(const OpKernelType &expected_kernel_type,
 
   // do layout transform
   if (NeedTransformLayout(lout, lin)) {
+#ifdef PADDLE_WITH_MKLDNN
     if (lin == DataLayout::kMKLDNN || lout == DataLayout::kMKLDNN) {
-      PADDLE_ENFORCE(
-          !(lin == DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN),
-          "No layout transform needed between two MKLDNN OPKernels");
+      PADDLE_ENFORCE_EQ(
+          !(lin == DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN), true,
+          platform::errors::PreconditionNotMet(
+              "No layout transform needed between two MKLDNN OPKernels."));
 
       if (lin != DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN) {
-#ifdef PADDLE_WITH_MKLDNN
         // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
         // Just set layout/format. No real transform occur
 
         auto out_format = platform::MKLDNNFormatForSize(in.dims().size(),
                                                         ToMKLDNNFormat(lin));
-
         out.ShareDataWith(input_tensor);
+        // For NHWC data we need reshape of tensors as MKL-DNN
+        // is expecting NHWC dims description order
+        platform::MatchShapeToLayout(&out, lin, lout);
+        paddle::platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+            lin);
         out.set_layout(DataLayout::kMKLDNN);
         out.set_format(out_format);
-#endif
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
@@ -69,6 +79,10 @@ void TransformData(const OpKernelType &expected_kernel_type,
       // Case3 - transfrom between Non-MKLDNN OPKernels
       TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
     }
+#else
+    // Case3 - transfrom between Non-MKLDNN OPKernels
+    TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+#endif
     transformed = true;
     PassTensorData(&out, &in);
   }
@@ -88,7 +102,10 @@ void TransformData(const OpKernelType &expected_kernel_type,
     PassTensorData(&out, &in);
   }
 
-  PADDLE_ENFORCE(transformed, "No transform is applied, please check!");
+  PADDLE_ENFORCE_EQ(
+      transformed, true,
+      platform::errors::PreconditionNotMet(
+          "No transform is applied for the data needs to be transformed."));
   // get output data
   output_tensor->ShareDataWith(in);
 }
@@ -100,6 +117,9 @@ void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
     auto *tran_lod_tensor = out_var->GetMutable<LoDTensor>();
     tran_lod_tensor->set_lod(in_lod_tensor.lod());
     tran_lod_tensor->set_layout(in_lod_tensor.layout());
+#ifdef PADDLE_WITH_MKLDNN
+    tran_lod_tensor->set_format(in_lod_tensor.format());
+#endif
     tran_lod_tensor->ShareDataWith(tensor);
   } else if (in_var.IsType<SelectedRows>()) {
     auto &in_selected_rows = in_var.Get<SelectedRows>();
@@ -108,7 +128,10 @@ void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
     trans_selected_rows->set_rows(in_selected_rows.rows());
     trans_selected_rows->mutable_value()->ShareDataWith(tensor);
   } else {
-    PADDLE_THROW("unknown var type");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported variable type, only supports LoDTensor or SelectedRows, "
+        "but the input variable type is %s.",
+        ToTypeName(in_var.Type())));
   }
 }
 

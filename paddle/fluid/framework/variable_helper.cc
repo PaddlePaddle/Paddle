@@ -34,9 +34,9 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
     var->GetMutable<SelectedRows>();
   } else if (var_type == proto::VarType::FEED_MINIBATCH) {
-    var->GetMutable<FeedFetchList>();
+    var->GetMutable<FeedList>();
   } else if (var_type == proto::VarType::FETCH_LIST) {
-    var->GetMutable<FeedFetchList>();
+    var->GetMutable<FetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
     var->GetMutable<std::vector<framework::Scope *>>();
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
@@ -50,11 +50,11 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::RAW) {
     // GetMutable will be called in operator
   } else {
-    PADDLE_THROW(
+    PADDLE_THROW(platform::errors::Unavailable(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, RAW]",
-        var_type);
+        "LOD_RANK_TABLE, PLACE_LIST, READER, RAW].",
+        var_type));
   }
 }
 
@@ -76,8 +76,10 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
     auto *dst_t = tmp_grad_slr->mutable_value();
     framework::TensorCopy(src_t, cpu_place, dst_t);
   } else {
-    PADDLE_THROW("unknown var type to copy");
+    PADDLE_THROW(
+        platform::errors::Unavailable("Unknown variable type to copy."));
   }
 }
+
 }  // namespace framework
 }  // namespace paddle

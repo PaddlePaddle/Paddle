@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/logical_op.h"
+#include <algorithm>
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -24,12 +26,12 @@ class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     OpComment comment;
     AddInput("X", string::Sprintf("Left hand operand of %s operator. Must be "
-                                  "a LoDTensor or Tensor of type bool.",
+                                  "a Variable of type bool.",
                                   comment.type));
     AddInput("Y", string::Sprintf("Right hand operand of %s operator. Must be "
-                                  "a LoDTensor or Tensor of type bool.",
+                                  "a Variable of type bool.",
                                   comment.type));
-    AddOutput("Out", string::Sprintf("n-dim bool LoDTensor or Tensor"));
+    AddOutput("Out", string::Sprintf("n-dim bool Variable"));
     AddComment(string::Sprintf(R"DOC(%s Operator
 
 It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
@@ -57,45 +59,6 @@ Each element of Out is calculated by %s
   }
 };
 
-template <typename OpComment>
-class BinaryLogicalOpInferShape : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext *context) const override {
-    OpComment comment;
-    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
-                      "Input(X) of %s operator must not be null", comment.type);
-    PADDLE_ENFORCE_EQ(context->HasInput("Y"), true,
-                      "Input(Y) of %s operator must not be null", comment.type);
-    auto dim_x = context->GetInputDim("X");
-    auto dim_y = context->GetInputDim("Y");
-
-    int product_x = framework::product(dim_x);
-    int product_y = framework::product(dim_y);
-    bool check = context->IsRuntime() || (product_x >= 0 && product_y >= 0);
-    if (check) {
-      PADDLE_ENFORCE_EQ(
-          product_x, product_y,
-          "The number of elements in X and Y should be same, %d != %d",
-          product_x, product_y);
-    }
-
-    context->SetOutputDim("Out", context->GetInputDim("X"));
-    context->ShareLoD("X", "Out");
-  }
-};
-
-template <typename OpComment>
-class UnaryLogicalOpInferShape : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext *context) const override {
-    OpComment comment;
-    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
-                      "Input(X) of %s operator must not be null", comment.type);
-    context->SetOutputDim("Out", context->GetInputDim("X"));
-    context->ShareLoD("X", "Out");
-  }
-};
-
 class LogicalOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -110,6 +73,49 @@ class LogicalOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename OpComment>
+class UnaryLogicalOp : public LogicalOp {
+ public:
+  using LogicalOp::LogicalOp;
+
+ protected:
+  void InferShape(framework::InferShapeContext *context) const override {
+    OpComment comment;
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", comment.type);
+    context->SetOutputDim("Out", context->GetInputDim("X"));
+    context->ShareLoD("X", "Out");
+  }
+};
+
+template <typename OpComment>
+class BinaryLogicalOp : public LogicalOp {
+ public:
+  using LogicalOp::LogicalOp;
+
+ protected:
+  void InferShape(framework::InferShapeContext *context) const override {
+    OpComment comment;
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", comment.type);
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", comment.type);
+    auto dim_x = context->GetInputDim("X");
+    auto dim_y = context->GetInputDim("Y");
+    if (dim_x == dim_y) {
+      context->SetOutputDim("Out", dim_x);
+    } else {
+      int max_dim = std::max(dim_x.size(), dim_y.size());
+      int axis = std::abs(dim_x.size() - dim_y.size());
+      std::vector<int> x_dims_array(max_dim);
+      std::vector<int> y_dims_array(max_dim);
+      std::vector<int> out_dims_array(max_dim);
+      GetBroadcastDimsArrays(dim_x, dim_y, x_dims_array.data(),
+                             y_dims_array.data(), out_dims_array.data(),
+                             max_dim, axis);
+      context->SetOutputDim("Out", framework::make_ddim(out_dims_array));
+    }
+    context->ShareLoD("X", "Out");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -121,9 +127,8 @@ class LogicalOp : public framework::OperatorWithKernel {
   char _##op_type##Comment::type[]{#op_type};                              \
   char _##op_type##Comment::equation[]{_equation};                         \
   REGISTER_OPERATOR(                                                       \
-      op_type, ::paddle::operators::LogicalOp,                             \
+      op_type, ::paddle::operators::BinaryLogicalOp<_##op_type##Comment>,  \
       ::paddle::operators::BinaryLogicalOpProtoMaker<_##op_type##Comment>, \
-      ::paddle::operators::BinaryLogicalOpInferShape<_##op_type##Comment>, \
       ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
       ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
@@ -135,9 +140,8 @@ class LogicalOp : public framework::OperatorWithKernel {
   char _##op_type##Comment::type[]{#op_type};                             \
   char _##op_type##Comment::equation[]{_equation};                        \
   REGISTER_OPERATOR(                                                      \
-      op_type, ::paddle::operators::LogicalOp,                            \
+      op_type, ::paddle::operators::UnaryLogicalOp<_##op_type##Comment>,  \
       ::paddle::operators::UnaryLogicalOpProtoMaker<_##op_type##Comment>, \
-      ::paddle::operators::UnaryLogicalOpInferShape<_##op_type##Comment>, \
       ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
       ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 

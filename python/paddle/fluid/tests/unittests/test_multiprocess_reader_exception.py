@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
-from paddle.fluid.io import multiprocess_reader
+from paddle.reader import multiprocess_reader
 import unittest
 import numpy as np
 import six
@@ -77,7 +78,7 @@ class TestMultiprocessReaderException(unittest.TestCase):
                     reader.decorate_sample_generator(
                         decorated_reader,
                         batch_size=batch_size,
-                        places=fluid.cuda_places())
+                        places=fluid.cuda_places(0))
                 else:
                     reader.decorate_sample_generator(
                         decorated_reader,
@@ -97,7 +98,7 @@ class TestMultiprocessReaderException(unittest.TestCase):
                             exe.run(feed=data, fetch_list=[image_p_1])
                             num += 1
                         self.assertEquals(num, batch_num)
-                    except fluid.core.EnforceNotMet as ex:
+                    except SystemError as ex:
                         self.assertEquals(num, 0)
                         raise ReaderException()
             else:
@@ -112,7 +113,7 @@ class TestMultiprocessReaderException(unittest.TestCase):
                         reader.reset()
                         self.assertFalse(self.raise_exception)
                         self.assertEquals(num, batch_num)
-                    except fluid.core.EnforceNotMet as ex:
+                    except SystemError as ex:
                         self.assertTrue(self.raise_exception)
                         self.assertEquals(num, 0)
                         raise ReaderException()
@@ -151,4 +152,5 @@ class TestCase3(TestMultiprocessReaderException):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

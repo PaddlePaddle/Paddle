@@ -17,32 +17,29 @@ limitations under the License. */
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
+#include <algorithm>
 #include <string>
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/dynload/curand.h"
 #include "paddle/fluid/platform/float16.h"
+
 namespace paddle {
 namespace operators {
 
 template <typename T, typename MaskType>
-__global__ void RandomGenerator(const size_t n, const int seed,
+__global__ void RandomGenerator(const size_t n, uint64_t seed,
                                 const float dropout_prob, const T* src,
                                 MaskType* mask_data, T* dst,
-                                bool is_upscale_in_train) {
+                                bool is_upscale_in_train, uint64_t increment) {
   curandStatePhilox4_32_10_t state;
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  int step_size = 0;
+  curand_init(seed, idx, increment, &state);
 
   MaskType mask;
   T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
     T s = src[idx];
-    if (step_size == 0) {
-      curand_init(seed, idx, idx, &state);
-      step_size = blockDim.x * gridDim.x;
-    } else {
-      curand_init(seed, idx, step_size, &state);
-    }
     if (curand_uniform(&state) < dropout_prob) {
       mask = 0;
       dest = 0;
@@ -59,6 +56,52 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   }
 }
 
+template <typename T, typename MaskType, int VecSize>
+__global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
+                                          const float dropout_prob,
+                                          const T* src, MaskType* mask_data,
+                                          T* dst, bool is_upscale_in_train,
+                                          uint64_t increment) {
+  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, idx, increment, &state);
+
+  MaskType mask;
+  T dest;
+  using LoadT = AlignedVector<T, VecSize>;
+  using MaskLoadT = AlignedVector<MaskType, VecSize>;
+  T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
+  for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
+    T src_vec[VecSize];
+    LoadT* value = reinterpret_cast<LoadT*>(&src_vec);
+    *value = *reinterpret_cast<const LoadT*>(&src[i]);
+    float4 rand = curand_uniform4(&state);
+
+    T dest_vec[VecSize];
+    MaskType mask_vec[VecSize];
+
+#pragma unroll
+    for (int ii = 0; ii < VecSize; ii++) {
+      if ((&rand.x)[ii] < dropout_prob) {
+        dest_vec[ii] = 0;
+        mask_vec[ii] = 0;
+      } else {
+        if (is_upscale_in_train) {
+          dest_vec[ii] = src_vec[ii] * factor;
+        } else {
+          dest_vec[ii] = src_vec[ii];
+        }
+        mask_vec[ii] = 1;
+      }
+    }
+
+    *(reinterpret_cast<LoadT*>(&dst[i])) =
+        *reinterpret_cast<LoadT*>(&dest_vec[0]);
+    *(reinterpret_cast<MaskLoadT*>(&mask_data[i])) =
+        *reinterpret_cast<MaskLoadT*>(&mask_vec[0]);
+  }
+}
+
 // It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
@@ -67,6 +110,8 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
+    auto* seed =
+        context.HasInput("Seed") ? context.Input<Tensor>("Seed") : nullptr;
     auto* y = context.Output<Tensor>("Out");
     y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
@@ -93,15 +138,61 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
         return;
       }
 
-      std::random_device rnd;
-      int seed =
-          context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+      const auto& dev_ctx = context.cuda_device_context();
+      platform::GpuLaunchConfig config =
+          platform::GetGpuLaunchConfig1D(dev_ctx, size);
 
-      int threads = 512;
-      int grid = (x_numel + threads - 1) / threads;
-      RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
-          size, seed, dropout_prob, x_data, mask_data, y_data,
-          upscale_in_train);
+      // increment is used to set the args(offset) of curand_init, which defines
+      // offset in subsequence.
+      // The detail:
+      // https://docs.nvidia.com/cuda/curand/device-api-overview.html
+      // Increment should be at least the number of curand() random numbers used
+      // in each thread to avoid the random number generated this time being the
+      // same as the previous calls.
+      uint64_t seed_data;
+      uint64_t increment;
+      int vec_size = VectorizedSize<T>(x_data);
+      auto offset = ((x_numel - 1) / (config.block_per_grid.x *
+                                      config.thread_per_block.x * vec_size) +
+                     1) *
+                    vec_size;
+      int device_id = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace())
+                          .GetDeviceId();
+      auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
+
+      if (seed && platform::is_gpu_place(seed->place())) {
+        framework::Tensor seed_cpu_tensor;
+        TensorCopySync(*seed, platform::CPUPlace(), &seed_cpu_tensor);
+        seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
+        increment = offset;
+      } else if (gen_cuda->GetIsInitPy() && (!context.Attr<bool>("fix_seed"))) {
+        auto seed_offset = gen_cuda->IncrementOffset(offset);
+        seed_data = seed_offset.first;
+        increment = seed_offset.second;
+      } else {
+        if (seed) {
+          seed_data = *(seed->data<int>());
+        } else {
+          std::random_device rnd;
+          seed_data = context.Attr<bool>("fix_seed") ? context.Attr<int>("seed")
+                                                     : rnd();
+        }
+        increment = offset;
+      }
+
+      if (vec_size == 4 && size % 4 == 0) {
+        VectorizedRandomGenerator<
+            T, uint8_t,
+            4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+            size, seed_data, dropout_prob, x_data, mask_data, y_data,
+            upscale_in_train, increment);
+      } else {
+        RandomGenerator<T, uint8_t><<<config.block_per_grid,
+                                      config.thread_per_block, 0, stream>>>(
+            size, seed_data, dropout_prob, x_data, mask_data, y_data,
+            upscale_in_train, increment);
+      }
+
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);

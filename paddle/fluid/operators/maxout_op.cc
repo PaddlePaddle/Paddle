@@ -72,16 +72,38 @@ class MaxOutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of MaxoutOpshould not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of MaxoutOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "maxout");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "maxout");
+
     auto in_x_dims = ctx->GetInputDim("X");
     int groups = ctx->Attrs().Get<int>("groups");
     int axis = ctx->Attrs().Get<int>("axis");
     // check groups > 1
-    PADDLE_ENFORCE_GT(groups, 1,
-                      "Attr(groups) of Op(maxout) should be larger than 1.");
+    PADDLE_ENFORCE_GT(groups, 1, platform::errors::InvalidArgument(
+                                     "Attr(groups) of Op(maxout) should be "
+                                     "larger than 1. But received %d.",
+                                     groups));
+    PADDLE_ENFORCE_EQ(
+        axis == 1 || axis == -1 || axis == 3, true,
+        platform::errors::InvalidArgument(
+            "axis only supported 1, -1 or 3, but recevied axis is: %d", axis));
+    PADDLE_ENFORCE_EQ(in_x_dims.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "x's dims should be 4, but received x's dims is: %d",
+                          in_x_dims.size()));
+
+    if (axis < 0) {
+      axis += in_x_dims.size();
+    }
+    PADDLE_ENFORCE_EQ(
+        in_x_dims[axis] % groups, 0,
+        platform::errors::InvalidArgument(
+            "The number of input channels for Op(maxout) "
+            "should be divisible by Attr(groups). But received: the "
+            "input's channels is [%d], the shape of input is [%s], "
+            "the Attr(groups) is [%d], the Attr(axis) is [%d]. The "
+            "error may come from wrong Attr(groups) or Attr(axis) setting.",
+            in_x_dims[axis], in_x_dims, groups, axis));
     std::vector<int64_t> output_shape(
         {in_x_dims[0], in_x_dims[1], in_x_dims[2], in_x_dims[3]});
     output_shape[axis] = in_x_dims[axis] / groups;
@@ -93,10 +115,9 @@ class MaxOutOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of MaxOutOpGrad must not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(Grad@X) of MaxOutOpGrad should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "maxout_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   "X@Grad", "maxout_grad");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
@@ -110,7 +131,9 @@ REGISTER_OPERATOR(
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(maxout_grad, ops::MaxOutOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    maxout, ops::MaxOutKernel<paddle::platform::CPUDeviceContext, float>);
+    maxout, ops::MaxOutKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MaxOutKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     maxout_grad,
-    ops::MaxOutGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::MaxOutGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MaxOutGradKernel<paddle::platform::CPUDeviceContext, double>);

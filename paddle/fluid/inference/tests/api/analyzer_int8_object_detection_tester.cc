@@ -27,7 +27,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchIrOptim(true);
   cfg->SwitchSpecifyInputNames(false);
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
   cfg->EnableMKLDNN();
 }
 
@@ -50,7 +50,7 @@ template <typename T>
 class TensorReader {
  public:
   TensorReader(std::ifstream &file, size_t beginning_offset, std::string name)
-      : file_(file), position(beginning_offset), name_(name) {}
+      : file_(file), position_(beginning_offset), name_(name) {}
 
   PaddleTensor NextBatch(std::vector<int> shape, std::vector<size_t> lod) {
     int numel =
@@ -64,9 +64,9 @@ class TensorReader {
       tensor.lod.clear();
       tensor.lod.push_back(lod);
     }
-    file_.seekg(position);
+    file_.seekg(position_);
     file_.read(reinterpret_cast<char *>(tensor.data.data()), numel * sizeof(T));
-    position = file_.tellg();
+    position_ = file_.tellg();
     if (file_.eof()) LOG(ERROR) << name_ << ": reached end of stream";
     if (file_.fail())
       throw std::runtime_error(name_ + ": failed reading file.");
@@ -75,7 +75,7 @@ class TensorReader {
 
  protected:
   std::ifstream &file_;
-  size_t position;
+  size_t position_;
   std::string name_;
 };
 
@@ -146,8 +146,9 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
   auto iterations = test_data.size();
   PADDLE_ENFORCE_LE(
       static_cast<size_t>(num_images), iterations * test_data_batch_size,
-      "The requested quantization warmup data size " +
-          std::to_string(num_images) + " is bigger than all test data size.");
+      paddle::platform::errors::Fatal(
+          "The requested quantization warmup data size " +
+          std::to_string(num_images) + " is bigger than all test data size."));
 
   PaddleTensor images;
   images.name = "image";
@@ -237,8 +238,9 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
   }
   PADDLE_ENFORCE_EQ(
       static_cast<size_t>(num_objects), static_cast<size_t>(objects_accum),
-      "The requested num of objects " + std::to_string(num_objects) +
-          " is the same as objects_accum.");
+      paddle::platform::errors::Fatal("The requested num of objects " +
+                                      std::to_string(num_objects) +
+                                      " is the same as objects_accum."));
 
   auto warmup_data = std::make_shared<std::vector<PaddleTensor>>(4);
   (*warmup_data)[0] = std::move(images);
@@ -269,7 +271,7 @@ TEST(Analyzer_int8_mobilenet_ssd, quantization) {
   q_cfg.EnableMkldnnQuantizer();
   q_cfg.mkldnn_quantizer_config();
   std::unordered_set<std::string> quantize_operators(
-      {"conv2d", "depthwise_conv2d", "prior_box"});
+      {"conv2d", "depthwise_conv2d", "prior_box", "transpose2", "reshape2"});
   q_cfg.mkldnn_quantizer_config()->SetEnabledOpTypes(quantize_operators);
   q_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
   q_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(FLAGS_warmup_batch_size);

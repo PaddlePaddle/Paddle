@@ -147,8 +147,10 @@ class LayerHelper(LayerHelperBase):
 
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')
-        if 'use_mkldnn' in self.kwargs:
-            act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
+        use_mkldnn = self.kwargs.get(
+            'use_mkldnn', core.globals().get("FLAGS_use_mkldnn", False))
+        if use_mkldnn:
+            act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
 
         tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)

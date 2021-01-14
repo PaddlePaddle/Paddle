@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace platform {
@@ -51,7 +50,7 @@ void Communicator::InitAll(const std::vector<int>& gpus) {
   for (size_t i = 0; i < gpus.size(); ++i) {
     (*comm_id_map)[gpus[i]] = i;
   }
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_CUDA_SUCCESS(
       dynload::ncclCommInitAll(global_comms->data(), gpus.size(), gpus.data()));
   inited = true;
 }

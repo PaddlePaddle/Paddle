@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/io/fs.h"
+
 #include <memory>
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -127,7 +130,8 @@ std::shared_ptr<FILE> localfs_open_write(std::string path,
 int64_t localfs_file_size(const std::string& path) {
   struct stat buf;
   if (0 != stat(path.c_str(), &buf)) {
-    LOG(FATAL) << "file stat not zero";
+    PADDLE_THROW(platform::errors::External(
+        "Failed to get file status via stat function."));
     return -1;
   }
   return (int64_t)buf.st_size;
@@ -196,6 +200,13 @@ void localfs_mkdir(const std::string& path) {
   shell_execute(string::format_string("mkdir -p %s", path.c_str()));
 }
 
+void localfs_mv(const std::string& src, const std::string& dest) {
+  if (src == "" || dest == "") {
+    return;
+  }
+  shell_execute(string::format_string("mv %s %s", src.c_str(), dest.c_str()));
+}
+
 static size_t& hdfs_buffer_size_internal() {
   static size_t x = 0;
   return x;
@@ -214,14 +225,30 @@ const std::string& hdfs_command() { return hdfs_command_internal(); }
 
 void hdfs_set_command(const std::string& x) { hdfs_command_internal() = x; }
 
+static std::string& customized_download_cmd_internal() {
+  static std::string x = "";
+  return x;
+}
+
+const std::string& download_cmd() { return customized_download_cmd_internal(); }
+
+void set_download_command(const std::string& x) {
+  customized_download_cmd_internal() = x;
+}
+
 std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
                                      const std::string& converter) {
   if (fs_end_with_internal(path, ".gz")) {
     path = string::format_string("%s -text \"%s\"", hdfs_command().c_str(),
                                  path.c_str());
   } else {
+    const std::string file_path = path;
     path = string::format_string("%s -cat \"%s\"", hdfs_command().c_str(),
-                                 path.c_str());
+                                 file_path.c_str());
+    if (download_cmd() != "") {  // use customized download command
+      path = string::format_string("%s \"%s\"", download_cmd().c_str(),
+                                   file_path.c_str());
+    }
   }
 
   bool is_pipe = true;
@@ -314,6 +341,14 @@ void hdfs_mkdir(const std::string& path) {
                                       hdfs_command().c_str(), path.c_str()));
 }
 
+void hdfs_mv(const std::string& src, const std::string& dest) {
+  if (src == "" || dest == "") {
+    return;
+  }
+  shell_execute(string::format_string(
+      "%s -mv %s %s; true", hdfs_command().c_str(), src.c_str(), dest.c_str()));
+}
+
 int fs_select_internal(const std::string& path) {
   if (fs_begin_with_internal(path, "hdfs:")) {
     return 1;
@@ -334,7 +369,9 @@ std::shared_ptr<FILE> fs_open_read(const std::string& path, int* err_no,
       return hdfs_open_read(path, err_no, converter);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 
   return {};
@@ -350,7 +387,9 @@ std::shared_ptr<FILE> fs_open_write(const std::string& path, int* err_no,
       return hdfs_open_write(path, err_no, converter);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 
   return {};
@@ -366,7 +405,9 @@ std::shared_ptr<FILE> fs_open(const std::string& path, const std::string& mode,
     return fs_open_write(path, err_no, converter);
   }
 
-  LOG(FATAL) << "Unknown mode: " << mode;
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Unsupport file open mode: %s. Only supports 'r', 'rb', 'w' or 'wb'.",
+      mode));
   return {};
 }
 
@@ -376,7 +417,8 @@ int64_t fs_file_size(const std::string& path) {
       return localfs_file_size(path);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system."));
   }
 
   return 0;
@@ -391,7 +433,9 @@ void fs_remove(const std::string& path) {
       return hdfs_remove(path);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 }
 
@@ -404,7 +448,9 @@ std::vector<std::string> fs_list(const std::string& path) {
       return hdfs_list(path);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 
   return {};
@@ -419,7 +465,9 @@ std::string fs_tail(const std::string& path) {
       return hdfs_tail(path);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 
   return "";
@@ -434,7 +482,9 @@ bool fs_exists(const std::string& path) {
       return hdfs_exists(path);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 
   return false;
@@ -449,8 +499,24 @@ void fs_mkdir(const std::string& path) {
       return hdfs_mkdir(path);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 }
+
+void fs_mv(const std::string& src, const std::string& dest) {
+  int s = fs_select_internal(src);
+  int d = fs_select_internal(dest);
+  CHECK_EQ(s, d);
+  switch (s) {
+    case 0:
+      return localfs_mv(src, dest);
+
+    case 1:
+      return hdfs_mv(src, dest);
+  }
+}
+
 }  // end namespace framework
 }  // end namespace paddle

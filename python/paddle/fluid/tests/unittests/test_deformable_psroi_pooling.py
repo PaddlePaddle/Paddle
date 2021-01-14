@@ -16,6 +16,9 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid import Program, program_guard
 
 
 def set_input(input, rois, trans):
@@ -249,14 +252,14 @@ class TestDeformablePSROIPoolOp(OpTest):
         for bno in range(self.batch_size):
             self.rois_lod[0].append(bno + 1)
             for i in range(bno + 1):
-                x_1 = np.random.random_integers(
+                x_1 = np.random.randint(
                     0, self.width // self.spatial_scale - self.pooled_width)
-                y_1 = np.random.random_integers(
+                y_1 = np.random.randint(
                     0, self.height // self.spatial_scale - self.pooled_height)
-                x_2 = np.random.random_integers(
-                    x_1 + self.pooled_width, self.width // self.spatial_scale)
-                y_2 = np.random.random_integers(
-                    y_1 + self.pooled_height, self.height // self.spatial_scale)
+                x_2 = np.random.randint(x_1 + self.pooled_width,
+                                        self.width // self.spatial_scale)
+                y_2 = np.random.randint(y_1 + self.pooled_height,
+                                        self.height // self.spatial_scale)
                 roi = [bno, x_1, y_1, x_2, y_2]
                 rois.append(roi)
         self.rois_num = len(rois)
@@ -363,6 +366,135 @@ class TestDeformablePSROIPoolOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['Input'], 'Output')
+
+
+class TestDeformablePSROIPoolOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input1 = fluid.data(
+                name="input1", shape=[2, 192, 64, 64], dtype='float32')
+            rois1 = fluid.data(
+                name="rois1", shape=[-1, 4], dtype='float32', lod_level=1)
+            trans1 = fluid.data(
+                name="trans1", shape=[2, 384, 64, 64], dtype='float32')
+
+            # The `input` must be Variable and the data type of `input` Tensor must be one of float32 and float64.
+            def test_input_type():
+                fluid.layers.deformable_roi_pooling(
+                    input=[3, 4],
+                    rois=rois1,
+                    trans=trans1,
+                    pooled_height=8,
+                    pooled_width=8,
+                    part_size=(8, 8),
+                    sample_per_part=4,
+                    position_sensitive=True)
+
+            self.assertRaises(TypeError, test_input_type)
+
+            def test_input_tensor_dtype():
+                input2 = fluid.data(
+                    name="input2", shape=[2, 192, 64, 64], dtype='int32')
+                fluid.layers.deformable_roi_pooling(
+                    input=input2,
+                    rois=rois1,
+                    trans=trans1,
+                    pooled_height=8,
+                    pooled_width=8,
+                    part_size=(8, 8),
+                    sample_per_part=4,
+                    position_sensitive=True)
+
+            self.assertRaises(TypeError, test_input_tensor_dtype)
+
+            # The `rois` must be Variable and the data type of `rois` Tensor must be one of float32 and float64.
+            def test_rois_type():
+                fluid.layers.deformable_roi_pooling(
+                    input=input1,
+                    rois=2,
+                    trans=trans1,
+                    pooled_height=8,
+                    pooled_width=8,
+                    part_size=(8, 8),
+                    sample_per_part=4,
+                    position_sensitive=True)
+
+            self.assertRaises(TypeError, test_rois_type)
+
+            def test_rois_tensor_dtype():
+                rois2 = fluid.data(
+                    name="rois2", shape=[-1, 4], dtype='int32', lod_level=1)
+                fluid.layers.deformable_roi_pooling(
+                    input=input1,
+                    rois=rois2,
+                    trans=trans1,
+                    pooled_height=8,
+                    pooled_width=8,
+                    part_size=(8, 8),
+                    sample_per_part=4,
+                    position_sensitive=True)
+
+            self.assertRaises(TypeError, test_rois_tensor_dtype)
+
+            # The `trans` must be Variable and the data type of `trans` Tensor must be one of float32 and float64.
+            def test_trans_type():
+                fluid.layers.deformable_roi_pooling(
+                    input=input1,
+                    rois=rois1,
+                    trans=[2],
+                    pooled_height=8,
+                    pooled_width=8,
+                    part_size=(8, 8),
+                    sample_per_part=4,
+                    position_sensitive=True)
+
+            self.assertRaises(TypeError, test_trans_type)
+
+            def test_trans_tensor_dtype():
+                trans2 = fluid.data(
+                    name="trans2", shape=[2, 384, 64, 64], dtype='int32')
+                fluid.layers.deformable_roi_pooling(
+                    input=input1,
+                    rois=rois1,
+                    trans=trans2,
+                    pooled_height=8,
+                    pooled_width=8,
+                    part_size=(8, 8),
+                    sample_per_part=4,
+                    position_sensitive=True)
+
+            self.assertRaises(TypeError, test_trans_tensor_dtype)
+
+            # The `group_size` must be one of list and tuple.
+            # Each element must be int.
+            def test_group_size_type():
+                fluid.layers.deformable_roi_pooling(
+                    input=input1,
+                    rois=rois1,
+                    trans=trans1,
+                    group_size=1,
+                    pooled_height=8,
+                    pooled_width=8,
+                    part_size=(8, 8),
+                    sample_per_part=4,
+                    position_sensitive=True)
+
+            self.assertRaises(TypeError, test_group_size_type)
+
+            # The `part_size` must be one of list, tuple and None.
+            # Each element must be int.
+            def test_part_size_type():
+                fluid.layers.deformable_roi_pooling(
+                    input=input1,
+                    rois=rois1,
+                    trans=trans1,
+                    pooled_height=8,
+                    pooled_width=8,
+                    part_size=8,
+                    sample_per_part=4,
+                    position_sensitive=True)
+
+            self.assertRaises(TypeError, test_part_size_type)
 
 
 if __name__ == '__main__':

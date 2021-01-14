@@ -23,36 +23,53 @@ namespace operators {
 
 void FusionSeqConvEltAddReluOp::InferShape(
     framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"),
-                 "Input(X) of FusionSeqConvEltAddReluOp should not be null.");
-  PADDLE_ENFORCE(
-      ctx->HasInput("Filter"),
-      "Input(Filter) of FusionSeqConvEltAddReluOp should not be null.");
-  PADDLE_ENFORCE(
-      ctx->HasInput("Bias"),
-      "Input(Bias) of FusionSeqConvEltAddReluOp should not be null.");
-  PADDLE_ENFORCE(
-      ctx->HasOutput("Out"),
-      "Output(Out) of FusionSeqConvEltAddReluOp should not be null.");
-  PADDLE_ENFORCE(
-      ctx->HasOutput("ColMat"),
-      "Output(ColMat) of FusionSeqConvEltAddReluOp should not be null.");
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                 "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter",
+                 "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias",
+                 "fusion_seqconv_eltadd_relu");
+
+  OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                 "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(ctx->HasOutput("ColMat"), "Output", "ColMat",
+                 "fusion_seqconv_eltadd_relu");
 
   auto x_dims = ctx->GetInputDim("X");
   auto w_dims = ctx->GetInputDim("Filter");
   int context_length = ctx->Attrs().Get<int>("contextLength");
-  PADDLE_ENFORCE(
-      ctx->Attrs().Get<int>("contextStride") == 1,
-      "Currently, FusionSeqConvEltAddReluOp only supports contextStride=1.");
-  PADDLE_ENFORCE(x_dims.size() == 2 && w_dims.size() == 2,
-                 "Input(X, Filter) should be 2-D tensor.");
-  PADDLE_ENFORCE(x_dims.size() == 2 && w_dims.size() == 2,
-                 "Input(X, Filter) should be 2-D tensor.");
-  PADDLE_ENFORCE(w_dims[0] == context_length * x_dims[1],
-                 "Filter's height should be context_length * "
-                 "input_hidden_size .");
-  PADDLE_ENFORCE_GT(context_length + ctx->Attrs().Get<int>("contextStart"), 0,
-                    "contextStart size should be smaller than contextLength.");
+  PADDLE_ENFORCE_EQ(ctx->Attrs().Get<int>("contextStride"), 1,
+                    platform::errors::InvalidArgument(
+                        "Currently, FusionSeqConvEltAddReluOp only supports "
+                        "contextStride=1, but received value is: %d.",
+                        ctx->Attrs().Get<int>("contextStride")));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(), 2,
+      platform::errors::InvalidArgument(
+          "Input(X) should be 2-D tensor, but reveiced value is: %d.",
+          x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(), 2,
+      platform::errors::InvalidArgument(
+          "Filter should be 2-D tensor, but reveiced value is: %d.",
+          w_dims.size()));
+
+  PADDLE_ENFORCE_EQ(w_dims[0], context_length * x_dims[1],
+                    platform::errors::InvalidArgument(
+                        "Filter's height should be equal to context_length * "
+                        "input_hidden_size, but received Filter height is: %d,"
+                        "context_length is: %d, input_hidden_size is: %d.",
+                        w_dims[0], context_length, x_dims[1]));
+
+  PADDLE_ENFORCE_GT(
+      context_length + ctx->Attrs().Get<int>("contextStart"), 0,
+      platform::errors::InvalidArgument(
+          "contextStart size should be smaller than contextLength, "
+          "but received context_length is: %d, contextStart is: "
+          "%d.",
+          context_length, ctx->Attrs().Get<int>("contextStart")));
 
   ctx->SetOutputDim("Out", {x_dims[0], w_dims[1]});
   ctx->SetOutputDim("ColMat", {x_dims[0], w_dims[0]});
@@ -130,10 +147,17 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
     auto x_lod = x->lod();
     auto x_dims = x->dims();
     auto w_dims = w->dims();
-    PADDLE_ENFORCE_EQ(b->numel(), w_dims[1],
-                      "bias size should be equal to output feature size.");
-    PADDLE_ENFORCE_EQ(x_lod.size(), 1UL,
-                      "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(
+        b->numel(), w_dims[1],
+        platform::errors::InvalidArgument(
+            "bias size should be equal to weights feature size, but received "
+            "bias size is: %d, weights feature size is: %d.",
+            b->numel(), w_dims[1]));
+    PADDLE_ENFORCE_EQ(
+        x_lod.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Only support one level sequence now, but received value is: %d.",
+            x_lod.size()));
 
     const T* x_data = x->data<T>();
     const T* w_data = w->data<T>();
@@ -168,6 +192,9 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
           copy_size += src_mat_w_sz;
         }
         // fill data
+        if (context_start > 0) {
+          src_data += context_start * src_mat_w;
+        }
         for (int j = 0; j < seq_len - up_pad - down_pad; ++j) {
           std::memcpy(dst_data, src_data, copy_size);
           dst_data += col_mat_w;
@@ -177,13 +204,15 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
         std::memset(dst_data, 0, down_pad * col_mat_w_sz);
         copy_size -= src_mat_w_sz;
         for (int j = 0; j < down_pad; ++j) {
+          if (copy_size < 0) {
+            copy_size = 0;
+          }
           std::memcpy(dst_data, src_data, copy_size);
           dst_data += col_mat_w;
           src_data += src_mat_w;
           copy_size -= src_mat_w_sz;
         }
       } else {
-        PADDLE_ENFORCE_GE(context_length, up_pad + down_pad + 1);
         std::memset(dst_data, 0, seq_len * col_mat_w_sz);
         dst_data = dst_data + up_pad * src_mat_w;
         int zero_sz = up_pad * src_mat_w_sz;
@@ -197,9 +226,15 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
         // from bottom
         dst_data = col_data + ed * col_mat_w;
         src_data = x_data + st * src_mat_w;
+        if (context_start > 0) {
+          src_data += context_start * src_mat_w;
+        }
         zero_sz = down_pad * src_mat_w_sz;
         for (int j = 1; j <= std::min(down_pad, seq_len); ++j) {
           int copy_size = std::min(cur_src_sz, col_mat_w_sz - zero_sz);
+          if (copy_size < 0) {
+            copy_size = 0;
+          }
           std::memcpy(dst_data - (zero_sz + copy_size) / sizeof(T),
                       src_data + std::max(seq_len - j - up_pad, 0) * src_mat_w,
                       copy_size);

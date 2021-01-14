@@ -20,7 +20,6 @@ limitations under the License. */
 
 extern "C" {
 #include "math/bloomfilter.h"
-// void* memcpy1(void* dst, void* src, uint32_t length);
 }
 
 namespace paddle {
@@ -60,7 +59,12 @@ class PyramidHashOpMaker : public framework::OpProtoAndCheckerMaker {
         .EqualGreaterThan(0);
     AddAttr<int>("seed", "seed").SetDefault(0).EqualGreaterThan(0);
     AddAttr<float>("lr", "learning rate").SetDefault(0.0).EqualGreaterThan(0.0);
-
+    AddAttr<std::string>(
+        "distribute_update_vars",
+        "['PyramidHash_emb_0','Filter']"
+        "Decided which params should be updated in distribute training. "
+        "Used in Distribute Transpiler to create a trainer/server program.")
+        .SetDefault("");
     AddOutput("Out", "Out (Tensor, default Tensor<float>) Output variable");
     AddOutput("DropPos", "Out (Tensor, Tensor<int>) Output variable");
     AddOutput("X_Temp_Out", "Out (Tensor, Tensor<int>) Output variable")
@@ -80,52 +84,111 @@ class PyramidHashOP : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "X(Input) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "W(Input) should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) of PyramidHashOP is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("W"), true,
+        platform::errors::NotFound("Input(W) of PyramidHashOP is not found."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Out(Output) should not be null.");
+                      platform::errors::NotFound(
+                          "Output(Out) of PyramidHashOP is not found."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("DropPos"), true,
-                      "DropPos(TMP Output) should not be null.");
+                      platform::errors::NotFound(
+                          "Output(DropPos) of PyramidHashOP is not found."));
 
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "The rank of X(Input) should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(X) of PyramidHashOP is invalid. "
+                          "It should be 2, but got %d",
+                          x_dims.size()));
 
     auto w_dims = ctx->GetInputDim("W");
-    PADDLE_ENFORCE_EQ(w_dims.size(), 2, "W should be 2-D tensor");
+    PADDLE_ENFORCE_EQ(w_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(W) of PyramidHashOP is invalid. "
+                          "It should be 2, but got %d",
+                          w_dims.size()));
 
     int space_len = ctx->Attrs().Get<int>("space_len");
     int rand_len = ctx->Attrs().Get<int>("rand_len");
 
-    PADDLE_ENFORCE_EQ(w_dims[0], space_len + rand_len,
-                      "w_dims[0] should be equal to (space_len + rand_len)");
-    PADDLE_ENFORCE_EQ(w_dims[1], 1, "w_dims[1] should be equal to 1");
+    PADDLE_ENFORCE_EQ(
+        w_dims[0], space_len + rand_len,
+        platform::errors::InvalidArgument(
+            "The first dimension of Input(W) of PyramidHashOP is invalid. "
+            "It should be space_len + rand_len, but now %d != %d + %d",
+            w_dims[0], space_len, rand_len));
+    PADDLE_ENFORCE_EQ(
+        w_dims[1], 1,
+        platform::errors::InvalidArgument(
+            "The second dimension of Input(W) of PyramidHashOP is invalid."
+            " It should be 1, but got %d",
+            w_dims[1]));
 
     int num_emb = ctx->Attrs().Get<int>("num_emb");
-    PADDLE_ENFORCE_EQ(num_emb % rand_len, 0,
-                      "random length should mod embedding size");
+    PADDLE_ENFORCE_EQ(
+        num_emb % rand_len, 0,
+        platform::errors::InvalidArgument(
+            "The PyramidHashOP's Attr(num_emb) should mod Attr(rand_len), "
+            "but num_emb is %d, rand_len is %d",
+            num_emb, rand_len));
 
     int white_list_len = ctx->Attrs().Get<int>("white_list_len");
     if (white_list_len > 0) {
       PADDLE_ENFORCE_EQ(
           ctx->HasInput("WhiteList"), true,
-          "WhiteList(Input) should not be null when white_list_len > 0");
+          platform::errors::NotFound("Input(WhiteList) of PyramidHashOP is not "
+                                     "found but white_list_len > 0."));
       auto wl_dims = ctx->GetInputDim("WhiteList");
-      PADDLE_ENFORCE_EQ(wl_dims.size(), 2, "WhiteList should be 2-D tensor");
+      PADDLE_ENFORCE_EQ(
+          wl_dims.size(), 2,
+          platform::errors::InvalidArgument(
+              "The rank of Input(WhiteList) of PyramidHashOP is invalid."
+              " It should be 2, but got %d",
+              wl_dims.size()));
       PADDLE_ENFORCE_EQ(wl_dims[0], white_list_len,
-                        "wl_dims[0] should be equal to white_list_len");
-      PADDLE_ENFORCE_EQ(wl_dims[1], 1, "wl_dims[1] should be equal to 1");
+                        platform::errors::InvalidArgument(
+                            "The first dimension of Input(WhiteList) of "
+                            "PyramidHashOP is invalid."
+                            " It should be equal to Attr(white_list_len) "
+                            ", but first dimension is %d, white_list_len is %d",
+                            wl_dims[0], white_list_len));
+      PADDLE_ENFORCE_EQ(wl_dims[1], 1,
+                        platform::errors::InvalidArgument(
+                            "The second dimension of Input(WhiteList) of "
+                            "PyramidHashOP is invalid."
+                            " It should be 1, but got %d",
+                            wl_dims[1]));
     }
 
     int black_list_len = ctx->Attrs().Get<int>("black_list_len");
     if (black_list_len > 0) {
       PADDLE_ENFORCE_EQ(
           ctx->HasInput("BlackList"), true,
-          "BlackList(Input) should not be null when black_list_len > 0");
+          platform::errors::NotFound("Input(BlackList) of PyramidHashOP is not "
+                                     "found but black_list_len > 0."));
       auto bl_dims = ctx->GetInputDim("BlackList");
-      PADDLE_ENFORCE_EQ(bl_dims.size(), 2, "BlackList should be 2-D tensor");
+      PADDLE_ENFORCE_EQ(
+          bl_dims.size(), 2,
+          platform::errors::InvalidArgument(
+              "The rank of Input(BlackList) of PyramidHashOP is invalid."
+              " It should be 2, but got %d",
+              bl_dims.size()));
       PADDLE_ENFORCE_EQ(bl_dims[0], black_list_len,
-                        "bl_dims[0] should be equal to black_list_len");
-      PADDLE_ENFORCE_EQ(bl_dims[1], 1, "bl_dims[1] should be equal to 1");
+                        platform::errors::InvalidArgument(
+                            "The first dimension of Input(BlackList) of "
+                            "PyramidHashOP is invalid."
+                            " It should be equal to Attr(black_list_len)"
+                            ", but first dimension is %d, black_list_len is %d",
+                            bl_dims[0], black_list_len));
+      PADDLE_ENFORCE_EQ(bl_dims[1], 1,
+                        platform::errors::InvalidArgument(
+                            "The second dimension of Input(BlackList) of "
+                            "PyramidHashOP is invalid."
+                            " It should be 1, but got %d",
+                            bl_dims[1]));
     }
 
     if (ctx->IsRuntime()) {
@@ -150,22 +213,35 @@ template <typename DeviceContext, typename T>
 class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
  public:
   bool should_use_term(math::bloomfilter* _filter,
-                       math::bloomfilter* _black_filter, const T* word_repr,
+                       math::bloomfilter* _black_filter, const float* word_repr,
                        int len) const {
     return (!_filter ||
-            1 == math::bloomfilter_get(_filter, word_repr, len * sizeof(T))) &&
+            1 == math::bloomfilter_get(_filter, word_repr,
+                                       len * sizeof(float))) &&
            (!_black_filter ||
             0 == math::bloomfilter_get(_black_filter, word_repr,
-                                       len * sizeof(T)));
+                                       len * sizeof(float)));
   }
 
-  void hash_embedding_ff(const T* hash_id, int len, T* top_pos,
+  void hash_embedding_ff(const float* hash_id, int len, T* top_pos,
                          const T* weights, int _num_emb, int _rand_len,
                          int _space_len) const {
-    for (unsigned int j = 0; j != _num_emb; j += _rand_len) {
-      unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-      memcpy(top_pos + j, const_cast<float*>(weights + pos),
+    unsigned int pos1 = XXH32(hash_id, len * sizeof(float), 0) % _space_len;
+    unsigned int pos2 =
+        XXH32(hash_id, len * sizeof(float), _rand_len) % _space_len;
+
+    for (int j = 0; j != _num_emb; j += _rand_len) {
+      if (j + _rand_len < _num_emb) {
+        __builtin_prefetch(weights + pos2);
+        __builtin_prefetch(top_pos + j + _rand_len);
+      }
+
+      unsigned int pos3 =
+          XXH32(hash_id, len * sizeof(float), j + 2 * _rand_len) % _space_len;
+      memcpy(top_pos + j, const_cast<T*>(weights + pos1),
              _rand_len * sizeof(T));
+      pos1 = pos2;
+      pos2 = pos3;
     }
   }
 
@@ -193,8 +269,8 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     const auto* bottom_data_ori = bottom->data<int32_t>();
     auto* buff = ctx.Output<LoDTensor>("X_Temp_Out");
     buff->Resize(framework::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
-    T* bottom_data = buff->mutable_data<T>(ctx.GetPlace());
-    for (size_t i = 0; i < bottom->dims()[0]; i++) {
+    float* bottom_data = buff->mutable_data<float>(ctx.GetPlace());
+    for (int i = 0; i < bottom->dims()[0]; i++) {
       bottom_data[i] = bottom_data_ori[i];
     }
 
@@ -208,14 +284,22 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     math::bloomfilter* _black_filter = NULL;
     if (use_filter) {
       if (white_list_len != 0) {
-        _filter = (math::bloomfilter*)_blobs_1->data<T>();
-        PADDLE_ENFORCE_EQ(math::bloomfilter_check(_filter), 1,
-                          "white filter not load");
+        _filter = (math::bloomfilter*)_blobs_1->data<float>();
+        PADDLE_ENFORCE_EQ(
+            math::bloomfilter_check(_filter), 1,
+            platform::errors::PreconditionNotMet(
+                "The white filter is not loaded successfully, please make sure "
+                "'white_list_len': %d is valid for Input(WhiteList).",
+                white_list_len));
       }
       if (black_list_len != 0) {
-        _black_filter = (math::bloomfilter*)_blobs_2->data<T>();
-        PADDLE_ENFORCE_EQ(math::bloomfilter_check(_black_filter), 1,
-                          "black filter not load");
+        _black_filter = (math::bloomfilter*)_blobs_2->data<float>();
+        PADDLE_ENFORCE_EQ(
+            math::bloomfilter_check(_black_filter), 1,
+            platform::errors::PreconditionNotMet(
+                "The black filter is not loaded successfully, please make sure "
+                "'black_list_len': %d is valid for Input(BlackList).",
+                black_list_len));
       }
     }
 
@@ -227,7 +311,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     int* iter = drop_pos->mutable_data<int>(ctx.GetPlace());
     int* iter_end = iter;
 
-    for (int i = 0; i < top_offset.size() - 1; ++i) {
+    for (size_t i = 0; i < top_offset.size() - 1; ++i) {
       int w = offset[i + 1] - offset[i];
       int nsentense_with_pyramid = 0;
       if (w < 2) {
@@ -236,11 +320,11 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
         for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {
           for (int l = 0; l < w - ilayer; ++l) {
             if (should_use_term(_filter, _black_filter,
-                                (const T*)(bottom_data + offset[i] + l),
+                                (const float*)(bottom_data + offset[i] + l),
                                 ilayer + 1)) {
               if (_is_training != 0) {
                 unsigned int rand_val = rand_r(&_seed);
-                T rate = static_cast<T>(rand_val) / (RAND_MAX);
+                float rate = static_cast<float>(rand_val) / (RAND_MAX);
                 *(iter_end++) = (rate < _drop_out_percent ? 0 : 1);
               } else {
                 *(iter_end++) = 1;
@@ -273,7 +357,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
 
     iter = drop_pos->mutable_data<int>(ctx.GetPlace());
     int top_counter = 0;
-    for (int i = 0; i < offset.size() - 1; ++i) {
+    for (size_t i = 0; i < offset.size() - 1; ++i) {
       int w_drop = drop_pos_offset[i + 1] - drop_pos_offset[i];
       int w = offset[i + 1] - offset[i];
       if (w_drop == 0) {
@@ -296,7 +380,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
               // do nothing
             } else {
               auto* top_pos = top_data + top_counter++ * _num_emb;
-              hash_embedding_ff((const T*)(bottom_data + offset[i] + l),
+              hash_embedding_ff((const float*)(bottom_data + offset[i] + l),
                                 ilayer + 1, top_pos, weights, _num_emb,
                                 _rand_len, _space_len);
             }
@@ -307,9 +391,10 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     if (iter != iter_end) {
       exit(1);
     }
-    if (_is_training == 0) {
-      avx_axpy_noadd(top_data, top_data, top->dims()[0] * top->dims()[1],
-                     _drop_out_percent);
+    auto weight_type = _blobs_0->type();
+    if (_is_training == 0 && weight_type != framework::proto::VarType::INT8) {
+      axpy_noadd(top_data, top_data, top->dims()[0] * top->dims()[1],
+                 _drop_out_percent);
     }
   }
 };
@@ -319,13 +404,23 @@ class PyramidHashOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "Input(W) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound(
+                          "Input(X) of PyramidHashOpGrad is not found."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
+                      platform::errors::NotFound(
+                          "Input(W) of PyramidHashOpGrad is not found."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("DropPos"), true,
-                      "Input(DropPos) should not be null.");
+                      platform::errors::NotFound(
+                          "Input(DropPos) of PyramidHashOpGrad is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X_Temp_Out"), true,
+        platform::errors::NotFound(
+            "Input(X_Temp_Out) of PyramidHashOpGrad is not found."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")), true,
-        "Input(Out@GRAD) of PyramidHashGradOp should not be null.");
+        platform::errors::NotFound(
+            "Input(Out@Grad) of PyramidHashOpGrad is not found."));
   }
 
  protected:
@@ -342,18 +437,17 @@ class PyramidHashGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op_desc_ptr = new T();
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("pyramid_hash_grad");
     op_desc_ptr->SetInput("X", this->Input("X"));
     op_desc_ptr->SetInput("W", this->Input("W"));
     op_desc_ptr->SetInput("DropPos", this->Output("DropPos"));
+    op_desc_ptr->SetInput("X_Temp_Out", this->Output("X_Temp_Out"));
 
     op_desc_ptr->SetInput(framework::GradVarName("Out"),
                           this->OutputGrad("Out"));
     op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op_desc_ptr->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(op_desc_ptr);
   }
 };
 
@@ -363,9 +457,9 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
   void hash_embedding_bp(const T* hash_id, int len, const T* top_pos,
                          T* weights, T mlr, int _num_emb, int _rand_len,
                          int _space_len) const {
-    for (unsigned int j = 0; j != _num_emb; j += _rand_len) {
+    for (int j = 0; j != _num_emb; j += _rand_len) {
       unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-      avx_axpy(top_pos + j, weights + pos, _rand_len, mlr);
+      axpy(top_pos + j, weights + pos, _rand_len, mlr);
     }
   }
 
@@ -381,16 +475,11 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
     int _space_len = ctx.Attr<int>("space_len");
     int _pyramid_layer = ctx.Attr<int>("pyramid_layer");
 
-    const auto* bottom_data_ori = bottom->data<int32_t>();
-    Tensor buff;
-    buff.Resize(framework::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
-    T* bottom_data = buff.mutable_data<T>(ctx.GetPlace());
-    for (size_t i = 0; i < bottom->dims()[0]; i++) {
-      bottom_data[i] = bottom_data_ori[i];
-    }
+    auto* buff = ctx.Input<LoDTensor>("X_Temp_Out");
+    auto* bottom_data = buff->data<T>();
 
     int _slot_len = bottom->dims()[0];
-    if (_slot_len == bottom->lod()[0].size() - 1 &&
+    if (static_cast<size_t>(_slot_len) == bottom->lod()[0].size() - 1 &&
         std::count(bottom_data, bottom_data + _slot_len, -1) == _slot_len) {
       return;
     }
@@ -399,12 +488,13 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
     auto& drop_pos_offset = drop_pos->lod()[0];
 
     const auto* top_diff = top->data<T>();
+    // in-place update weight, so need const_cast
     T* weights = const_cast<T*>(_blobs->data<T>());
     T mlr = -1.0 * _lr;
 
     const int* iter = drop_pos->data<int>();
     int top_counter = 0;
-    for (int i = 0; i < offset.size() - 1; ++i) {
+    for (size_t i = 0; i < offset.size() - 1; ++i) {
       int w = offset[i + 1] - offset[i];
       int w_drop = drop_pos_offset[i + 1] - drop_pos_offset[i];
       if (w_drop == 0) {
@@ -442,7 +532,8 @@ REGISTER_OPERATOR(pyramid_hash, ops::PyramidHashOP, ops::PyramidHashOpMaker,
 REGISTER_OPERATOR(pyramid_hash_grad, ops::PyramidHashOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    pyramid_hash, ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, float>);
+    pyramid_hash, ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, float>,
+    ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, int8_t>);
 REGISTER_OP_CPU_KERNEL(
     pyramid_hash_grad,
     ops::CPUPyramidHashOPGradKernel<plt::CPUDeviceContext, float>);

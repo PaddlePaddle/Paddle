@@ -13,6 +13,7 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/operators/requantize_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -31,10 +32,12 @@ framework::OpKernelType ReQuantOp::GetExpectedKernelType(
 }
 
 void ReQuantOpMaker::Make() {
-  AddInput("Input", "input data");
-  AddOutput("Output", "output data");
-  AddAttr<float>("Scale_in", "scale in data").SetDefault({1.0f});
-  AddAttr<float>("Scale_out", "scale out data").SetDefault({1.0f});
+  AddInput("Input", "Input data");
+  AddOutput("Output", "Output data");
+  AddAttr<float>("Scale_in", "Scale in data").SetDefault({1.0f});
+  AddAttr<float>("Scale_out", "Scale out data").SetDefault({1.0f});
+  AddAttr<float>("Shift_in", "Shift in data").SetDefault({1.0f});
+  AddAttr<float>("Shift_out", "Shift out data").SetDefault({1.0f});
   AddComment(
       R"DOC(This op will re-quantize data from INT8 with scale_in to INT8 with scale_out)DOC");
 }
@@ -44,3 +47,12 @@ void ReQuantOpMaker::Make() {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(requantize, ops::ReQuantOp, ops::ReQuantOpMaker);
+
+REGISTER_OP_VERSION(requantize)
+    .AddCheckpoint(
+        R"ROC( Add new attributes [Shift_in, Shift_out])ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("Shift_in",
+                     "Provide quantization shift value for input data", 1.0f)
+            .NewAttr("Shift_out",
+                     "Provide quantization shift value for output data", 1.0f));

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import unittest
+import inspect
 
 from test_imperative_base import new_program_scope
 
@@ -28,7 +30,7 @@ class TestTracerMode(unittest.TestCase):
 
     @fluid.dygraph.no_grad
     def no_grad_func(self, a):
-        self.assertEqual(self.tracer._train_mode, False)
+        self.assertEqual(self.tracer._has_grad, False)
         return a
 
     @framework.dygraph_not_support
@@ -49,12 +51,22 @@ class TestTracerMode(unittest.TestCase):
             self.tracer._train_mode = self.init_mode
 
             self.assertEqual(self.no_grad_func(1), 1)
+            self.assertEqual(self.no_grad_func.__name__, "no_grad_func")
+
+            def need_no_grad_func(a, b=1):
+                return a + b
+
+            decorated_func = fluid.dygraph.no_grad(need_no_grad_func)
+            self.assertTrue(
+                str(inspect.getargspec(decorated_func)) ==
+                str(inspect.getargspec(need_no_grad_func)))
 
             self.assertEqual(self.tracer._train_mode, self.init_mode)
 
         with fluid.dygraph.guard():
             self.check_not_support_rlt(False)
 
+        paddle.enable_static()
         with new_program_scope():
             self.check_not_support_rlt(True)
 
@@ -62,6 +74,50 @@ class TestTracerMode(unittest.TestCase):
 class TestTracerMode2(TestTracerMode):
     def setUp(self):
         self.init_mode = False
+
+
+class TestNoGradClass(unittest.TestCase):
+    @paddle.no_grad()
+    def no_grad_func(self, a):
+        self.assertEqual(self.tracer._train_mode, True)
+        self.assertEqual(self.tracer._has_grad, False)
+        return a
+
+    def test_main(self):
+        paddle.disable_static()
+
+        self.tracer = framework._dygraph_tracer()
+        self.tracer._train_mode = True
+
+        self.assertEqual(self.no_grad_func(1), 1)
+        self.assertEqual(self.no_grad_func.__name__, "no_grad_func")
+
+        def need_no_grad_func(a, b=1):
+            return a + b
+
+        decorated_func = paddle.no_grad()(need_no_grad_func)
+        self.assertEqual(
+            str(inspect.getargspec(decorated_func)),
+            str(inspect.getargspec(need_no_grad_func)))
+
+        def test_gen():
+            for i in range(3):
+                yield i
+
+        a = 0
+        for i in test_gen():
+            a += i
+
+        @paddle.no_grad()
+        def test_wrapped_gen():
+            for i in range(3):
+                yield i
+
+        b = 0
+        for i in test_wrapped_gen():
+            b += i
+
+        self.assertEqual(a, b)
 
 
 if __name__ == '__main__':

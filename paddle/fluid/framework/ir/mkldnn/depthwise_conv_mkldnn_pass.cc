@@ -13,20 +13,27 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn/depthwise_conv_mkldnn_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-#define GET_NODE(id, pattern)                               \
-  PADDLE_ENFORCE(subgraph.count(pattern.RetrieveNode(#id)), \
-                 "pattern has no Node called %s", #id);     \
-  auto* id = subgraph.at(pattern.RetrieveNode(#id));        \
-  PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
+class Graph;
+
+#define GET_NODE(id, pattern)                                     \
+  PADDLE_ENFORCE_NE(subgraph.count(pattern.RetrieveNode(#id)), 0, \
+                    platform::errors::InvalidArgument(            \
+                        "Pattern has no Node called %s.", #id));  \
+  auto* id = subgraph.at(pattern.RetrieveNode(#id));              \
+  PADDLE_ENFORCE_NOT_NULL(                                        \
+      id, platform::errors::InvalidArgument("Subgraph has no node %s.", #id));
 
 void DepthwiseConvMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("depthwise_conv_mkldnn_pass", graph);
   GraphPatternDetector gpd;
 
@@ -54,3 +61,7 @@ void DepthwiseConvMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(depthwise_conv_mkldnn_pass,
               paddle::framework::ir::DepthwiseConvMKLDNNPass);
+REGISTER_PASS_CAPABILITY(depthwise_conv_mkldnn_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().LE(
+            "depthwise_conv2d", 1));

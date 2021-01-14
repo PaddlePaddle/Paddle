@@ -20,8 +20,8 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
+#include "paddle/fluid/inference/capi/paddle_c_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -67,8 +67,16 @@ void PD_run() {
   float* result = static_cast<float*>(PD_PaddleBufData(b));
   LOG(INFO) << *result;
   PD_DeletePaddleTensor(input);
-  int* size;
-  PD_GetPaddleTensorShape(out_data, &size);
+  int size;
+  const int* out_shape = PD_GetPaddleTensorShape(out_data, &size);
+  PADDLE_ENFORCE_EQ(size, 2, paddle::platform::errors::InvalidArgument(
+                                 "The Output shape's size is NOT match."));
+  std::vector<int> ref_outshape_size({9, 6});
+  for (int i = 0; i < 2; ++i) {
+    PADDLE_ENFORCE_EQ(out_shape[i], ref_outshape_size[i],
+                      paddle::platform::errors::InvalidArgument(
+                          "The Output shape's size is NOT match."));
+  }
   PD_DeletePaddleBuf(buf);
 }
 

@@ -91,7 +91,8 @@ class LSTMPKernel : public framework::OpKernel<T> {
     else if (act_type == math::detail::ActivationType::kReLU)
       ReluFunctor<T>()(d, x, y);
     else
-      PADDLE_THROW("unsupported activation type");
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("unsupported activation type"));
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -263,7 +264,8 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     else if (act_type == math::detail::ActivationType::kReLU)
       ReluGradFunctor<T>()(d, x, y, dy, dx);
     else
-      PADDLE_THROW("unsupported activation type");
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("unsupported activation type"));
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -327,7 +329,11 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     auto out_dims = cell_out->dims();
     framework::DDim proj_dims({in_dims[0], proj_weight->dims()[1]});
     int frame_size = static_cast<int>(in_dims[1] / 4);
-    PADDLE_ENFORCE_EQ(frame_size, out_dims[1]);
+    PADDLE_ENFORCE_EQ(frame_size, out_dims[1],
+                      platform::errors::InvalidArgument(
+                          "The second dimension of Input(Cell) should be %d, "
+                          "but received %d in LSTMP@Grad operator.",
+                          frame_size, out_dims[1]));
 
     math::LstmMetaValue<T> lstmp_value;
     if (bias && ctx.Attr<bool>("use_peepholes")) {

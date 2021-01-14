@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+
 #include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DECLARE_string(allocator_strategy);
@@ -32,7 +32,14 @@ static AllocatorStrategy GetStrategyFromFlag() {
     return AllocatorStrategy::kAutoGrowth;
   }
 
-  PADDLE_THROW("Unsupported allocator strategy: %s", FLAGS_allocator_strategy);
+  if (FLAGS_allocator_strategy == "thread_local") {
+    return AllocatorStrategy::kThreadLocal;
+  }
+
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Unsupported allocator strategy: %s, condicates are naive_best_fit, "
+      "auto_growth or thread_local.",
+      FLAGS_allocator_strategy));
 }
 
 AllocatorStrategy GetAllocatorStrategy() {

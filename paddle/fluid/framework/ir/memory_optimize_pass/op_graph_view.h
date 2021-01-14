@@ -18,7 +18,16 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/details/op_handle_base.h"
+
+namespace paddle {
+namespace framework {
+namespace details {
+class OpHandleBase;
+}  // namespace details
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -127,9 +136,13 @@ void OpGraphView::BreadthFirstVisit(Callback &&callback) const {
     }
   }
 
-  PADDLE_ENFORCE_EQ(num_calls, op_num, "There are unvisited ops");
-  PADDLE_ENFORCE_EQ(visited_ops.size(), op_num, "There are unvisited ops");
-  PADDLE_ENFORCE(op_deps.empty(), "There are unvisited ops");
+  PADDLE_ENFORCE_EQ(num_calls, op_num, platform::errors::InvalidArgument(
+                                           "There are unvisited ops."));
+  PADDLE_ENFORCE_EQ(
+      visited_ops.size(), op_num,
+      platform::errors::InvalidArgument("There are unvisited ops."));
+  PADDLE_ENFORCE_EQ(op_deps.empty(), true, platform::errors::InvalidArgument(
+                                               "There are unvisited ops."));
 }
 
 }  // namespace ir

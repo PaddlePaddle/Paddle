@@ -74,6 +74,6 @@ REGISTER_OPERATOR(
     paddle::operators::GaussianRandomBatchSizeLikeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    paddle::operators::BatchSizeLikeNoNeedBufferVarsInference);
+    paddle::operators::BatchSizeLikeNoNeedBufferVarsInferer);
 
 // Kernels are registered in gaussian_random_op.cc and gaussian_random_op.cu

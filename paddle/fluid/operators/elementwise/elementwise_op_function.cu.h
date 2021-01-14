@@ -32,9 +32,9 @@ limitations under the License. */
 #define __h2div h2div
 #endif
 
-#define DIV_ERROR_INFO                                             \
-  "InvalidArgumentError: Integer division by zero encountered in " \
-  "divide.Please check.\n"
+#define DIV_ERROR_INFO                                                     \
+  "InvalidArgumentError: Integer division by zero encountered in divide. " \
+  "Please check.\n"
 namespace paddle {
 namespace operators {
 
@@ -43,6 +43,12 @@ namespace operators {
   struct Func##Functor {                                           \
     inline HOSTDEVICE T operator()(const T& a, const T& b) const { \
       return a expr b;                                             \
+    }                                                              \
+  };                                                               \
+  template <typename T, class Enable = void>                       \
+  struct Inverse##Func##Functor {                                  \
+    inline HOSTDEVICE T operator()(const T& a, const T& b) const { \
+      return b expr a;                                             \
     }                                                              \
   };
 

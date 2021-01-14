@@ -19,6 +19,7 @@ limitations under the License. */
 #include <cuda.h>
 #include <mutex>  // NOLINT
 #include <type_traits>
+
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -36,42 +37,44 @@ extern void *cublas_dso_handle;
  *
  * note: default dynamic linked libs
  */
-#ifdef PADDLE_USE_DSO
 #define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)                             \
   struct DynLoad__##__name {                                                 \
-    using FUNC_TYPE = decltype(&::__name);                                   \
     template <typename... Args>                                              \
-    inline cublasStatus_t operator()(Args... args) {                         \
+    inline auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {  \
+      using cublas_func =                                                    \
+          decltype(::__name(std::declval<Args>()...)) (*)(Args...);          \
       std::call_once(cublas_dso_flag, []() {                                 \
         cublas_dso_handle = paddle::platform::dynload::GetCublasDsoHandle(); \
       });                                                                    \
       static void *p_##__name = dlsym(cublas_dso_handle, #__name);           \
-      return reinterpret_cast<FUNC_TYPE>(p_##__name)(args...);               \
+      return reinterpret_cast<cublas_func>(p_##__name)(args...);             \
     }                                                                        \
   };                                                                         \
   extern DynLoad__##__name __name
-#else
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)     \
-  struct DynLoad__##__name {                         \
-    template <typename... Args>                      \
-    inline cublasStatus_t operator()(Args... args) { \
-      return ::__name(args...);                      \
-    }                                                \
-  };                                                 \
-  extern DynLoad__##__name __name
-#endif
 
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
   __macro(cublasSaxpy_v2);                \
   __macro(cublasDaxpy_v2);                \
+  __macro(cublasCaxpy_v2);                \
+  __macro(cublasZaxpy_v2);                \
+  __macro(cublasSscal_v2);                \
+  __macro(cublasDscal_v2);                \
+  __macro(cublasScopy_v2);                \
+  __macro(cublasDcopy_v2);                \
   __macro(cublasSgemv_v2);                \
   __macro(cublasDgemv_v2);                \
+  __macro(cublasCgemv_v2);                \
+  __macro(cublasZgemv_v2);                \
   __macro(cublasSgemm_v2);                \
   __macro(cublasDgemm_v2);                \
+  __macro(cublasCgemm_v2);                \
+  __macro(cublasZgemm_v2);                \
   __macro(cublasHgemm);                   \
   __macro(cublasSgemmEx);                 \
   __macro(cublasSgeam);                   \
   __macro(cublasDgeam);                   \
+  __macro(cublasStrsm_v2);                \
+  __macro(cublasDtrsm_v2);                \
   __macro(cublasCreate_v2);               \
   __macro(cublasDestroy_v2);              \
   __macro(cublasSetStream_v2);            \
@@ -84,7 +87,9 @@ extern void *cublas_dso_handle;
   __macro(cublasSgetrfBatched);           \
   __macro(cublasSgetriBatched);           \
   __macro(cublasDgetrfBatched);           \
-  __macro(cublasDgetriBatched);
+  __macro(cublasDgetriBatched);           \
+  __macro(cublasSmatinvBatched);          \
+  __macro(cublasDmatinvBatched);
 
 CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 

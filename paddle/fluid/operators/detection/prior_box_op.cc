@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detection/prior_box_op.h"
 
+#include <string>
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -26,15 +28,26 @@ class PriorBoxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of PriorBoxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Image"),
-                   "Input(Image) of PriorBoxOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "PriorBoxOp");
+    OP_INOUT_CHECK(ctx->HasInput("Image"), "Input", "Image", "PriorBoxOp");
 
     auto image_dims = ctx->GetInputDim("Image");
     auto input_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE(image_dims.size() == 4, "The layout of image is NCHW.");
-    PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
+
+    PADDLE_ENFORCE_EQ(
+        image_dims.size(), 4,
+        platform::errors::InvalidArgument(
+            "The Input(Image) of Op(PriorBoxOp) should be a 4-D Tensor "
+            "and data format is NCHW. But received Image's dimensions = %d, "
+            "shape = [%s].",
+            image_dims.size(), image_dims));
+    PADDLE_ENFORCE_EQ(
+        input_dims.size(), 4,
+        platform::errors::InvalidArgument(
+            "The Input(Input) of Op(PriorBoxOp) should be a 4-D Tensor "
+            "and data format is NCHW. But received Input's dimensions = %d, "
+            "shape = [%s].",
+            input_dims.size(), input_dims));
 
     auto min_sizes = ctx->Attrs().Get<std::vector<float>>("min_sizes");
     auto max_sizes = ctx->Attrs().Get<std::vector<float>>("max_sizes");
@@ -47,13 +60,22 @@ class PriorBoxOp : public framework::OperatorWithKernel {
 
     size_t num_priors = aspect_ratios_vec.size() * min_sizes.size();
     if (max_sizes.size() > 0) {
-      PADDLE_ENFORCE_EQ(max_sizes.size(), min_sizes.size(),
-                        "The number of min_size and max_size must be equal.");
+      PADDLE_ENFORCE_EQ(
+          max_sizes.size(), min_sizes.size(),
+          platform::errors::InvalidArgument(
+              "The length of min_size and "
+              "max_size must be equal. But received: min_size's length is %d, "
+              "max_size's length is %d.",
+              min_sizes.size(), max_sizes.size()));
       num_priors += max_sizes.size();
       for (size_t i = 0; i < max_sizes.size(); ++i) {
-        PADDLE_ENFORCE_GT(max_sizes[i], min_sizes[i],
-                          "max_size[%d] must be greater than min_size[%d].", i,
-                          i);
+        PADDLE_ENFORCE_GT(
+            max_sizes[i], min_sizes[i],
+            platform::errors::InvalidArgument(
+                "max_size[%d] must be greater "
+                "than min_size[%d]. But received: max_size[%d] is %f, "
+                "min_size[%d] is %f.",
+                i, i, i, max_sizes[i], i, min_sizes[i]));
       }
     }
 
@@ -76,7 +98,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       auto input_image_type = ctx.Input<framework::Tensor>("Image")->type();
@@ -121,11 +143,16 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "(vector<float>) List of min sizes "
                                 "of generated prior boxes.")
         .AddCustomChecker([](const std::vector<float>& min_sizes) {
-          PADDLE_ENFORCE_GT(min_sizes.size(), 0,
-                            "Size of min_sizes must be at least 1.");
+          PADDLE_ENFORCE_GT(
+              min_sizes.size(), 0,
+              platform::errors::InvalidArgument("Size of min_sizes must be "
+                                                "at least 1."));
           for (size_t i = 0; i < min_sizes.size(); ++i) {
             PADDLE_ENFORCE_GT(min_sizes[i], 0.0,
-                              "min_sizes[%d] must be positive.", i);
+                              platform::errors::OutOfRange(
+                                  "min_sizes[%d] must be larger "
+                                  "than 0. But received: min_sizes[%d] is %f.",
+                                  i, i, min_sizes[i]));
           }
         });
     AddAttr<std::vector<float>>(
@@ -141,10 +168,16 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         "(vector<float>) List of variances to be encoded in prior boxes.")
         .AddCustomChecker([](const std::vector<float>& variances) {
           PADDLE_ENFORCE_EQ(variances.size(), 4,
-                            "Must and only provide 4 variance.");
+                            platform::errors::InvalidArgument(
+                                "The length of variance must "
+                                "be 4. But received: variances' length is %d.",
+                                variances.size()));
           for (size_t i = 0; i < variances.size(); ++i) {
             PADDLE_ENFORCE_GT(variances[i], 0.0,
-                              "variance[%d] must be greater than 0.", i);
+                              platform::errors::OutOfRange(
+                                  "variance[%d] must be greater "
+                                  "than 0. But received: variance[%d] = %f",
+                                  i, i, variances[i]));
           }
         });
     AddAttr<bool>("flip", "(bool) Whether to flip aspect ratios.")
@@ -156,13 +189,21 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Prior boxes step across width, 0.0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_w) {
-          PADDLE_ENFORCE_GE(step_w, 0.0, "step_w should be larger than 0.");
+          PADDLE_ENFORCE_GE(step_w, 0.0,
+                            platform::errors::InvalidArgument(
+                                "step_w should be larger "
+                                "than 0. But received: step_w = %f.",
+                                step_w));
         });
     AddAttr<float>("step_h",
                    "Prior boxes step across height, 0.0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_h) {
-          PADDLE_ENFORCE_GE(step_h, 0.0, "step_h should be larger than 0.");
+          PADDLE_ENFORCE_GE(step_h, 0.0,
+                            platform::errors::InvalidArgument(
+                                "step_h should be larger "
+                                "than 0. But received: step_h = %f.",
+                                step_h));
         });
 
     AddAttr<float>("offset",
@@ -179,12 +220,16 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    AddAttr<bool>("use_quantizer",
-                  "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
-                  "int8 kernel. "
-                  "Only used on CPU.")
+    AddAttr<bool>(
+        "use_quantizer",
+        "(bool, default false) "
+        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
     AddComment(R"DOC(
 Prior box operator
 Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.

@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -29,7 +29,7 @@ TEST(TensorRT, split_converter) {
   config.SetModel(model_dir);
   config.SwitchUseFeedFetchOps(false);
   config.EnableTensorRtEngine(1 << 20, batch_size, 1,
-                              AnalysisConfig::Precision::kFloat32, false);
+                              AnalysisConfig::Precision::kInt8, false, true);
 
   auto predictor = CreatePaddlePredictor(config);
 

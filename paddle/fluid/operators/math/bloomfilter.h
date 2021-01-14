@@ -101,46 +101,30 @@ void murmurhash3_x64_128(const void *key, const int len, const uint32_t seed,
   const uint8_t *tail = (const uint8_t *)(data + nblocks * 16);
   uint64_t nk1 = 0;
   uint64_t nk2 = 0;
-  // no break here!!!
-  switch (len & 15) {
-    case 15:
-      nk2 ^= ((uint64_t)tail[14]) << 48;
-    case 14:
-      nk2 ^= ((uint64_t)tail[13]) << 40;
-    case 13:
-      nk2 ^= ((uint64_t)tail[12]) << 32;
-    case 12:
-      nk2 ^= ((uint64_t)tail[11]) << 24;
-    case 11:
-      nk2 ^= ((uint64_t)tail[10]) << 16;
-    case 10:
-      nk2 ^= ((uint64_t)tail[9]) << 8;
-    case 9:
-      nk2 ^= ((uint64_t)tail[8]) << 0;
-      nk2 *= c2;
-      nk2 = ROTL64(nk2, 33);
-      nk2 *= c1;
-      h2 ^= nk2;
-    case 8:
-      nk1 ^= ((uint64_t)tail[7]) << 56;
-    case 7:
-      nk1 ^= ((uint64_t)tail[6]) << 48;
-    case 6:
-      nk1 ^= ((uint64_t)tail[5]) << 40;
-    case 5:
-      nk1 ^= ((uint64_t)tail[4]) << 32;
-    case 4:
-      nk1 ^= ((uint64_t)tail[3]) << 24;
-    case 3:
-      nk1 ^= ((uint64_t)tail[2]) << 16;
-    case 2:
-      nk1 ^= ((uint64_t)tail[1]) << 8;
-    case 1:
-      nk1 ^= ((uint64_t)tail[0]) << 0;
-      nk1 *= c1;
-      nk1 = ROTL64(nk1, 31);
-      nk1 *= c2;
-      h1 ^= nk1;
+
+  uint64_t tail0_64 = *(uint64_t *)(tail);     // NOLINT
+  uint64_t tail_64 = *(uint64_t *)(tail + 8);  // NOLINT
+  uint64_t mask0 = 0xffffffffffffffff;
+  uint64_t mask = 0x00ffffffffffffff;
+
+  int flag = len & 15;
+  if (flag && flag <= 8) {
+    tail0_64 &= (mask0 >> ((8 - flag) << 3));
+  } else if (flag > 8) {
+    tail_64 &= (mask >> ((15 - flag) << 3));
+    nk2 ^= tail_64;
+    nk2 *= c2;
+    nk2 = ROTL64(nk2, 33);
+    nk2 *= c1;
+    h2 ^= nk2;
+  }
+
+  if (flag) {
+    nk1 ^= tail0_64;
+    nk1 *= c1;
+    nk1 = ROTL64(nk1, 31);
+    nk1 *= c2;
+    h1 ^= nk1;
   }
 
   //----------
@@ -158,9 +142,7 @@ void murmurhash3_x64_128(const void *key, const int len, const uint32_t seed,
   h1 += h2;
   h2 += h1;
 
-  //  ((uint64_t *)out)[0] = h1;
   reinterpret_cast<uint64_t *>(out)[0] = h1;
-  //  ((uint64_t *)out)[1] = h2;
   reinterpret_cast<uint64_t *>(out)[1] = h2;
 }
 

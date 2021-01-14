@@ -15,6 +15,7 @@
 from __future__ import print_function
 import six
 from . import layers
+from .data_feeder import check_variable_and_dtype, convert_dtype
 
 __all__ = [
     "simple_img_conv_pool",
@@ -41,7 +42,9 @@ def simple_img_conv_pool(input,
                          bias_attr=None,
                          act=None,
                          use_cudnn=True):
-    """
+    r"""
+	:api_attr: Static Graph
+
     The simple_img_conv_pool api is composed of :ref:`api_fluid_layers_conv2d` and :ref:`api_fluid_layers_pool2d` .
 
     Args:
@@ -103,6 +106,8 @@ def simple_img_conv_pool(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             img = fluid.data(name='img', shape=[100, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.simple_img_conv_pool(input=img,
                                                         filter_size=5,
@@ -148,35 +153,37 @@ def img_conv_group(input,
                    pool_type="max",
                    use_cudnn=True):
     """
+	:api_attr: Static Graph
+
     The Image Convolution Group is composed of Convolution2d, BatchNorm, DropOut,
-    and Pool2d. According to the input arguments, img_conv_group will do serials of
+    and Pool2D. According to the input arguments, img_conv_group will do serials of
     computation for Input using Convolution2d, BatchNorm, DropOut, and pass the last
-    result to Pool2d.
+    result to Pool2D.
 
     Args:
         input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type of input is float32 or float64.
         conv_num_filter(list|tuple): Indicates the numbers of filter of this group.
-        pool_size (int|list|tuple): The pooling size of Pool2d Layer. If pool_size
+        pool_size (int|list|tuple): The pooling size of Pool2D Layer. If pool_size
             is a list or tuple, it must contain two integers, (pool_size_height, pool_size_width).
             Otherwise, the pool_size_height = pool_size_width = pool_size.
-        conv_padding (int|list|tuple): The padding size of the Conv2d Layer. If padding is
+        conv_padding (int|list|tuple): The padding size of the Conv2D Layer. If padding is
             a list or tuple, its length must be equal to the length of conv_num_filter.
-            Otherwise the conv_padding of all Conv2d Layers are the same. Default 1.
+            Otherwise the conv_padding of all Conv2D Layers are the same. Default 1.
         conv_filter_size (int|list|tuple): The filter size. If filter_size is a list or
             tuple, its length must be equal to the length of conv_num_filter.
-            Otherwise the conv_filter_size of all Conv2d Layers are the same. Default 3.
-        conv_act (str): Activation type for Conv2d Layer that is not followed by BatchNorm.
+            Otherwise the conv_filter_size of all Conv2D Layers are the same. Default 3.
+        conv_act (str): Activation type for Conv2D Layer that is not followed by BatchNorm.
             Default: None.
-        param_attr (ParamAttr): The parameters to the Conv2d Layer. Default: None
-        conv_with_batchnorm (bool|list): Indicates whether to use BatchNorm after Conv2d Layer.
+        param_attr (ParamAttr): The parameters to the Conv2D Layer. Default: None
+        conv_with_batchnorm (bool|list): Indicates whether to use BatchNorm after Conv2D Layer.
             If conv_with_batchnorm is a list, its length must be equal to the length of
             conv_num_filter. Otherwise, conv_with_batchnorm indicates whether all the
-            Conv2d Layer follows a BatchNorm. Default False.
+            Conv2D Layer follows a BatchNorm. Default False.
         conv_batchnorm_drop_rate (float|list): Indicates the drop_rate of Dropout Layer
             after BatchNorm. If conv_batchnorm_drop_rate is a list, its length must be
             equal to the length of conv_num_filter. Otherwise, drop_rate of all Dropout
             Layers is conv_batchnorm_drop_rate. Default 0.0.
-        pool_stride (int|list|tuple): The pooling stride of Pool2d layer. If pool_stride
+        pool_stride (int|list|tuple): The pooling stride of Pool2D layer. If pool_stride
             is a list or tuple, it must contain two integers, (pooling_stride_H,
             pooling_stride_W). Otherwise, the pooling_stride_H = pooling_stride_W = pool_stride.
             Default 1.
@@ -187,12 +194,15 @@ def img_conv_group(input,
 
     Return:
         A Variable holding Tensor representing the final result after serial computation using Convolution2d,
-        BatchNorm, DropOut, and Pool2d, whose data type is the same with input.
+        BatchNorm, DropOut, and Pool2D, whose data type is the same with input.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+            
             img = fluid.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
                                                   conv_padding=1,
@@ -234,7 +244,7 @@ def img_conv_group(input,
             use_cudnn=use_cudnn)
 
         if conv_with_batchnorm[i]:
-            tmp = layers.batch_norm(input=tmp, act=conv_act, in_place=True)
+            tmp = layers.batch_norm(input=tmp, act=conv_act)
             drop_rate = conv_batchnorm_drop_rate[i]
             if abs(drop_rate) > 1e-5:
                 tmp = layers.dropout(x=tmp, dropout_prob=drop_rate)
@@ -256,6 +266,8 @@ def sequence_conv_pool(input,
                        pool_type="max",
                        bias_attr=None):
     """
+	:api_attr: Static Graph
+
     **This api takes input as an LoDTensor. If input is a Tensor, please use** 
     :ref:`api_fluid_nets_simple_img_conv_pool` **instead**
 
@@ -293,6 +305,8 @@ def sequence_conv_pool(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             input_dim = 100 #len(word_dict)
             emb_dim = 128
             hid_dim = 512
@@ -304,6 +318,8 @@ def sequence_conv_pool(input,
                                                      act="tanh",
                                                      pool_type="sqrt")
     """
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'input')
     conv_out = layers.sequence_conv(
         input=input,
         num_filters=num_filters,
@@ -317,7 +333,9 @@ def sequence_conv_pool(input,
 
 
 def glu(input, dim=-1):
-    """
+    r"""
+	:api_attr: Static Graph
+
     The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` , 
     :ref:`api_fluid_layers_sigmoid`  and :ref:`api_fluid_layers_elementwise_mul` . 
     Specifically, GLU will plit the input into two equal-sized parts,
@@ -345,12 +363,16 @@ def glu(input, dim=-1):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+            
             data = fluid.data(
                 name="words", shape=[-1, 6, 3, 9], dtype="float32")
             # shape of output: [-1, 3, 3, 9]
             output = fluid.nets.glu(input=data, dim=1)
     """
-
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             "glu")
     a, b = layers.split(input, num_or_sections=2, dim=dim)
     act_b = layers.sigmoid(x=b)
     out = layers.elementwise_mul(x=a, y=act_b)
@@ -362,7 +384,9 @@ def scaled_dot_product_attention(queries,
                                  values,
                                  num_heads=1,
                                  dropout_rate=0.):
-    """
+    r"""
+	:api_attr: Static Graph
+
     This interface Multi-Head Attention using scaled dot product.
     Attention mechanism can be seen as mapping a query and a set of key-value
     pairs to an output. Multi-Head Attention performs attention using multi-head
@@ -397,7 +421,7 @@ def scaled_dot_product_attention(queries,
             where :math:`N` stands for batch size, :math:`L_k` for the sequence length
             of key, :math:`d_v \\times h` for the feature size of value, :math:`h` for head
             number. The data type should be the same as ``queries`` .
-        num_heads (int, optional): Indicate the number of head. If the numher
+        num_heads (int, optional): Indicate the number of head. If the number
             is 1, linear projection would not be performed on inputs. Default: 1.
         dropout_rate (float, optional): The rate to drop the attention weight.
             Default: 0.0, which means no dropout.
@@ -410,9 +434,10 @@ def scaled_dot_product_attention(queries,
             Multi-Head Attention.
 
     Raises:
-        ValueError: Inputs quries, keys and values should all be 3-D tensors.
+        TypeError: The dtype of inputs keys, values and queries should be the same.
+        ValueError: Inputs queries, keys and values should all be 3-D tensors.
         ValueError: The hidden size of queries and keys should be the same.
-        ValueError: The max sequence length in query batch and in key batch should be the same.
+        ValueError: The max sequence length in value batch and in key batch should be the same.
         ValueError: he hidden size of keys must be divisible by the number of attention heads.
         ValueError: he hidden size of values must be divisible by the number of attention heads.
 
@@ -420,24 +445,47 @@ def scaled_dot_product_attention(queries,
         .. code-block:: python
 
             import paddle.fluid as fluid
-
+            import paddle
+            paddle.enable_static()
+            
             queries = fluid.data(name="queries", shape=[3, 5, 9], dtype="float32")
             keys = fluid.data(name="keys", shape=[3, 6, 9], dtype="float32")
             values = fluid.data(name="values", shape=[3, 6, 10], dtype="float32")
             contexts = fluid.nets.scaled_dot_product_attention(queries, keys, values)
             contexts.shape  # [3, 5, 10]
     """
+    check_variable_and_dtype(queries, 'queries', ['float32', 'float64'],
+                             "scaled_dot_product_attention")
+    check_variable_and_dtype(keys, 'keys', ['float32', 'float64'],
+                             "scaled_dot_product_attention")
+    check_variable_and_dtype(values, 'values', ['float32', 'float64'],
+                             "scaled_dot_product_attention")
+
+    if not (queries.dtype == keys.dtype == values.dtype):
+        raise TypeError(
+            "The dtype of keys, values and queries should be the same."
+            "But received queries.dtype = %s, "
+            " keys.dtype = %s, values.dtype) = %s." %
+            (convert_dtype(queries.dtype), convert_dtype(keys.dtype),
+             convert_dtype(values.dtype)))
+
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
-            "Inputs quries, keys and values should all be 3-D tensors.")
+            "Inputs queries, keys and values should all be 3-D tensors."
+            "But received len(queries.shape) = %d, "
+            "len(keys.shape) = %d, len(values.shape) = %d." %
+            (len(queries.shape), len(keys.shape), len(values.shape)))
 
     if queries.shape[-1] != keys.shape[-1]:
         raise ValueError(
-            "The hidden size of queries and keys should be the same.")
+            "The hidden size of queries and keys should be the same."
+            "But received queries' hidden size = %d and keys' hidden size = %d."
+            % (queries.shape[-1], keys.shape[-1]))
     if keys.shape[-2] != values.shape[-2]:
         raise ValueError(
-            "The max sequence length in query batch and in key batch "
-            "should be the same.")
+            "The max sequence length in value batch and in key batch "
+            "should be the same. But received max sequence length in value batch "
+            "= %d, in key batch = %d." % (values.shape[-2], keys.shape[-2]))
     if keys.shape[-1] % num_heads != 0:
         raise ValueError("The hidden size of keys (%d) must be divisible "
                          "by the number of attention heads (%d)." %
@@ -474,7 +522,7 @@ def scaled_dot_product_attention(queries,
 
     def __split_heads(x, num_heads):
         """
-        Reshape the last dimension of inpunt tensor x so that it becomes two
+        Reshape the last dimension of input tensor x so that it becomes two
         dimensions.
 
         Args:
@@ -496,13 +544,13 @@ def scaled_dot_product_attention(queries,
             x=x,
             shape=list(x.shape[:-1]) + [num_heads, hidden_size // num_heads])
 
-        # permuate the dimensions into:
+        # permute the dimensions into:
         # [batch_size, num_heads, max_sequence_len, hidden_size_per_head]
         return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
         """
-        Reshape the last two dimensions of inpunt tensor x so that it becomes
+        Reshape the last two dimensions of input tensor x so that it becomes
         one dimension.
 
         Args:

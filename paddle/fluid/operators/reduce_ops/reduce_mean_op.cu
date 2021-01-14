@@ -66,6 +66,4 @@ class ReduceMeanKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_CUDA_KERNEL(reduce_mean, ops::ReduceMeanKernel<float>,
-                        ops::ReduceMeanKernel<double>,
-                        ops::ReduceMeanKernel<int>,
-                        ops::ReduceMeanKernel<int64_t>);
+                        ops::ReduceMeanKernel<double>);

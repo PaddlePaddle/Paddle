@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <math.h>
 #include <stdlib.h>
+
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
@@ -35,6 +36,7 @@ struct CosSimFunctor {
   inline HOSTDEVICE void operator()(size_t row_id) const {
     auto* x = x_ + cols_ * row_id;
     T xx = 0, xy = 0, yy = 0;
+    T eps = 1e-8;
     if (same_row) {
       auto* y = y_ + cols_ * row_id;
       T tep_x, tep_y;
@@ -42,9 +44,12 @@ struct CosSimFunctor {
         tep_x = x[i];
         tep_y = y[i];
         xx += tep_x * tep_x;
+
         yy += tep_y * tep_y;
         xy += tep_x * tep_y;
       }
+      xx = xx > eps ? xx : eps;
+      yy = yy > eps ? yy : eps;
       xx = sqrt(xx);
       yy = sqrt(yy);
       y_norm_[row_id] = yy;
@@ -59,6 +64,8 @@ struct CosSimFunctor {
         yy += tep_y * tep_y;
         xy += tep_x * tep_y;
       }
+      xx = xx > eps ? xx : eps;
+      yy = yy > eps ? yy : eps;
       xx = sqrt(xx);
       yy = sqrt(yy);
       if (row_id == 0) y_norm_[0] = yy;

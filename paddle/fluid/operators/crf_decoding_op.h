@@ -76,9 +76,16 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
       }
     } else {
       PADDLE_ENFORCE_EQ(emission_weights->NumLevels(), 1UL,
-                        "The Input(Emission) should be a sequence.");
+                        platform::errors::InvalidArgument(
+                            "The Input(Emission) should be a sequence with lod "
+                            "level 1. But received: lod level %u.",
+                            emission_weights->NumLevels()));
       auto lod = emission_weights->lod();
-      PADDLE_ENFORCE_GT(lod.size(), 0, "Input(Emission) must be a sequence.");
+      PADDLE_ENFORCE_GT(
+          lod.size(), 0,
+          platform::errors::InvalidArgument(
+              "Input(Emission) must be a sequence. But received: lod level %u.",
+              lod.size()));
       const size_t level = 0;
       const size_t seq_num = lod[level].size() - 1;
 
@@ -92,7 +99,10 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
       }
       if (label) {
         PADDLE_ENFORCE_EQ(label->NumLevels(), 1UL,
-                          "The Input(Label) should be a sequence.");
+                          platform::errors::InvalidArgument(
+                              "The Input(label) should be a sequence with lod "
+                              "level 1. But received: lod level %u.",
+                              label->NumLevels()));
         const int64_t* label_value = label->data<int64_t>();
         size_t numel = label->numel();
         for (size_t i = 0; i < numel; ++i) {

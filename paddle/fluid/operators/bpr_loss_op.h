@@ -28,7 +28,6 @@ using Tensor = framework::Tensor;
 template <typename T>
 struct TolerableValue {
   HOSTDEVICE T operator()(const T& x) const {
-    PADDLE_ENFORCE_EQ(std::is_floating_point<T>::value, true);
     const T kApproInf = 1e20;
     if (x == INFINITY) return kApproInf;
     if (x == -INFINITY) return -kApproInf;
@@ -62,8 +61,11 @@ class BprLossOpKernel : public framework::OpKernel<T> {
     const int64_t* label_data = labels->data<int64_t>();
     for (int i = 0; i < step_size; ++i) {
       int lbl_pos = label_data[i];
-      PADDLE_ENFORCE_GE(lbl_pos, 0);
-      PADDLE_ENFORCE_LT(lbl_pos, class_num);
+      PADDLE_ENFORCE_GE(lbl_pos, 0, platform::errors::InvalidArgument(
+                                        "label data %d is illegal.", lbl_pos));
+      PADDLE_ENFORCE_LT(lbl_pos, class_num,
+                        platform::errors::InvalidArgument(
+                            "label data %d is illegal.", lbl_pos));
       int index_pos = i * class_num + lbl_pos;
       T sum = static_cast<T>(0);
       for (int j = 0; j < class_num; j++) {
@@ -101,7 +103,7 @@ class BprLossGradientOpKernel : public framework::OpKernel<T> {
       }
       auto p_index = sample_id * num_classes + label_data[sample_id];
       for (size_t ni = 0; ni < num_classes; ni++) {
-        if (label_data[sample_id] == ni) continue;
+        if (label_data[sample_id] == static_cast<int>(ni)) continue;
         auto n_index = sample_id * num_classes + ni;
         auto grad_ = -dy_data[sample_id] /
                      ((num_classes - 1) *

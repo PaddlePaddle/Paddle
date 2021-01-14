@@ -22,6 +22,7 @@ import paddle.compat as cpt
 from op_test import OpTest
 from math import sqrt
 from math import floor
+from paddle import fluid
 
 
 def gt_e(a, b):
@@ -312,6 +313,43 @@ class TestROIPoolOp(OpTest):
         self.outputs['Out2InWeights'] = np.zeros(
             [np.product(self.outputs['Out'].shape), 4]).astype("float32")
         self.check_grad(['X'], 'Out')
+
+    def test_errors(self):
+        x = fluid.data(name='x', shape=[100, 256, 28, 28], dtype='float32')
+        rois = fluid.data(
+            name='rois', shape=[None, 8], lod_level=1, dtype='float32')
+
+        x_int = fluid.data(
+            name='x_int', shape=[100, 256, 28, 28], dtype='int32')
+        rois_int = fluid.data(
+            name='rois_int', shape=[None, 8], lod_level=1, dtype='int32')
+        x_tmp = [1, 2]
+        rois_tmp = [1, 2]
+
+        # type of intput and rois must be variable
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform,
+                          x_tmp, rois, 7, 7)
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois_tmp, 7, 7)
+
+        # dtype of intput and rois must be float32
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform,
+                          x_int, rois, 7, 7)
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois_int, 7, 7)
+
+        height = 7.5
+        width = 7.5
+        # type of transformed_height and transformed_width must be int
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois, height, 7)
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois, 7, width)
+
+        scale = int(2)
+        # type of spatial_scale must be float
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois, 7, 7, scale)
 
 
 if __name__ == '__main__':

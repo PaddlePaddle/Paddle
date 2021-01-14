@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
@@ -31,6 +32,11 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+class Dataset;
+class ProgramDesc;
+class Scope;
+class TrainerBase;
 
 struct ExecutorPrepareContext {
   ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
@@ -71,17 +77,23 @@ class Executor {
    * @param
    *  ProgramDesc
    *  Scope
+   *  block_id
+   *  create_local_scope
+   *  create_vars
+   *  skip_ref_cnt_vars
+   *  force_disable_gc
+   *  keep_kid_scopes
    */
   void Run(const ProgramDesc& prog, Scope* scope, int block_id,
            bool create_local_scope = true, bool create_vars = true,
            const std::vector<std::string>& skip_ref_cnt_vars =
                std::vector<std::string>(),
-           bool force_disable_gc = false);
+           bool force_disable_gc = false, bool keep_kid_scopes = false);
 
   // This API is very slow.
   void Run(const ProgramDesc& program, Scope* scope,
            std::map<std::string, const LoDTensor*>* feed_targets,
-           std::map<std::string, LoDTensor*>* fetch_targets,
+           std::map<std::string, FetchType*>* fetch_targets,
            bool create_local_scope = true, bool create_vars = true,
            const std::string& feed_holder_name = "feed",
            const std::string& fetch_holder_name = "fetch");
@@ -89,7 +101,7 @@ class Executor {
   // This API is very slow.
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           std::map<std::string, const LoDTensor*>* feed_targets,
-                          std::map<std::string, LoDTensor*>* fetch_targets,
+                          std::map<std::string, FetchType*>* fetch_targets,
                           bool create_local_scope = true,
                           bool create_vars = true,
                           const std::string& feed_holder_name = "feed",
@@ -109,6 +121,12 @@ class Executor {
 
   void CreateVariables(const ProgramDesc& pdesc, Scope* scope, int block_id);
 
+  void RunPartialPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
+                                 int64_t start_op_index, int64_t end_op_index,
+                                 bool create_local_scope = true,
+                                 bool create_vars = true,
+                                 bool keep_kids = false);
+
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,
                           bool create_vars = true, bool keep_kids = false);
@@ -119,6 +137,8 @@ class Executor {
       const ProgramDesc& main_program, const std::string& trainer_desc_str,
       Scope* scope, Dataset* dataset);
   void RunFromDataset(std::shared_ptr<TrainerBase> trainer);
+
+  void ReleaseTrainer(std::shared_ptr<TrainerBase> trainer);
 
   const platform::Place GetPlace() const { return place_; }
 

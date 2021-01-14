@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -28,7 +28,7 @@ template <typename T>
 class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
@@ -37,7 +37,10 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
-    PADDLE_ENFORCE_EQ(nranks, comm->nranks());
+    PADDLE_ENFORCE_EQ(
+        nranks, comm->nranks(),
+        platform::errors::InvalidArgument("nranks: %s should equal to %s",
+                                          nranks, comm->nranks()));
 
     framework::DDim out_dims = in->dims();
     out_dims[0] *= nranks;
@@ -59,7 +62,8 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
         send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
         comm->comm(), stream));
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU."));
 #endif
   }
 };

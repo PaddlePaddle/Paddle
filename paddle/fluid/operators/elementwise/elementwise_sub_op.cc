@@ -13,9 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
-#include <memory>
+
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -75,8 +91,7 @@ class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_sub_grad_grad");
     op->SetInput("Y", this->Input("Y"));
     op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
@@ -86,39 +101,47 @@ class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
 
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    return op;
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_sub, Sub);
 REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_sub, Sub);
 
+namespace ops = paddle::operators;
+
 REGISTER_OPERATOR(
-    elementwise_sub_grad, ops::ElementwiseOpExplicitGrad,
-    ops::ElementwiseGradOpInplace, ops::ElementwiseGradNoBufVarsInference,
+    elementwise_sub_grad, ops::ElementwiseOpGrad,
+    ops::ElementwiseGradOpInplaceInferer, ops::ElementwiseGradNoBufVarsInferer,
     ops::ElementwiseSubDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseSubDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(elementwise_sub_grad_grad,
                   ops::ElementwiseOpDoubleGradWithoutDXDY,
-                  ops::ElementwiseDoubleGradOpInplace,
-                  ops::ElementwiseDoubleGradNoBufVarsInference);
+                  ops::ElementwiseDoubleGradOpInplaceInferer,
+                  ops::ElementwiseDoubleGradNoBufVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub,
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex64>,
+    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub_grad,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex64>,
+    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub_grad_grad,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
@@ -128,4 +151,17 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int>,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>);
+                                        int64_t>,
+    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex64>,
+    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex128>);
+
+REGISTER_OP_VERSION(elementwise_sub)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_sub for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_sub.",
+            1.0f));

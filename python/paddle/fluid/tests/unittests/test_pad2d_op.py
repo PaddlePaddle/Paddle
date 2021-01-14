@@ -15,6 +15,8 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestPad2dOp(OpTest):
@@ -23,14 +25,15 @@ class TestPad2dOp(OpTest):
         self.variable_paddings = False
         self.initTestCase()
         self.op_type = "pad2d"
-        self.inputs = {'X': np.random.random(self.shape).astype("float32"), }
+        self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {}
         if self.variable_paddings:
             self.attrs['paddings'] = []
             self.inputs['Paddings'] = np.array(self.paddings).flatten().astype(
                 "int32")
         else:
-            self.attrs['paddings'] = np.array(self.paddings).flatten()
+            self.attrs['paddings'] = np.array(self.paddings).flatten().astype(
+                "int32")
         self.attrs['pad_value'] = self.pad_value
         self.attrs['mode'] = self.mode
         self.attrs['data_format'] = self.data_format
@@ -53,10 +56,10 @@ class TestPad2dOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.006)
+        self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
-        self.shape = (2, 3, 4, 4)
+        self.shape = (2, 3, 4, 5)
         self.paddings = [0, 1, 2, 3]
         self.mode = "constant"
         self.data_format = "NCHW"
@@ -65,7 +68,7 @@ class TestPad2dOp(OpTest):
 
 class TestCase1(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 3, 4, 4)
+        self.shape = (2, 3, 4, 5)
         self.paddings = [0, 1, 2, 3]
         self.mode = "reflect"
         self.data_format = "NCHW"
@@ -73,7 +76,7 @@ class TestCase1(TestPad2dOp):
 
 class TestCase2(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 3, 4, 4)
+        self.shape = (2, 3, 4, 5)
         self.paddings = [0, 1, 2, 3]
         self.mode = "edge"
         self.data_format = "NCHW"
@@ -81,7 +84,7 @@ class TestCase2(TestPad2dOp):
 
 class TestCase3(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 4, 4, 2)
+        self.shape = (2, 4, 4, 4)
         self.paddings = [0, 1, 2, 3]
         self.mode = "reflect"
         self.data_format = "NHWC"
@@ -89,7 +92,7 @@ class TestCase3(TestPad2dOp):
 
 class TestCase4(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 4, 4, 2)
+        self.shape = (2, 4, 4, 4)
         self.paddings = [0, 1, 2, 3]
         self.mode = "edge"
         self.data_format = "NHWC"
@@ -97,7 +100,7 @@ class TestCase4(TestPad2dOp):
 
 class TestCase5(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 4, 4, 2)
+        self.shape = (2, 4, 4, 4)
         self.paddings = [0, 1, 2, 3]
         self.mode = "constant"
         self.pad_value = 1.2
@@ -106,7 +109,7 @@ class TestCase5(TestPad2dOp):
 
 class TestCase6(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 4, 4, 2)
+        self.shape = (2, 4, 4, 4)
         self.paddings = [0, 1, 2, 3]
         self.mode = "constant"
         self.pad_value = 1.2
@@ -116,11 +119,26 @@ class TestCase6(TestPad2dOp):
 
 class TestCase7(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 3, 4, 4)
+        self.shape = (2, 3, 4, 5)
         self.paddings = [0, 1, 2, 3]
         self.mode = "reflect"
         self.data_format = "NCHW"
         self.variable_paddings = True
+
+
+class TestPad2dOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = np.random.random((2, 2, 2, 2)).astype("float32")
+
+            def test_Variable():
+                fluid.layers.pad2d(input=input_data, paddings=[1, 1, 1, 1])
+
+            self.assertRaises(TypeError, test_Variable)
+
+            data = fluid.data(
+                name='data', shape=[None, 3, 20, 20], dtype='float16')
+            fluid.layers.pad2d(input=data, paddings=[1, 1, 1, 1])
 
 
 if __name__ == '__main__':

@@ -35,7 +35,8 @@ else:
 #  str and bytes related functions
 def to_text(obj, encoding='utf-8', inplace=False):
     """
-      All string in PaddlePaddle should be represented as a literal string.
+    All string in PaddlePaddle should be represented as a literal string.
+    
     This function will convert object to a literal string without any encoding.
     Especially, if the object type is a list or set container, we will iterate
     all items in the object and convert them to literal string.
@@ -53,6 +54,17 @@ def to_text(obj, encoding='utf-8', inplace=False):
 
     Returns:
         Decoded result of obj
+    
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            data = "paddlepaddle"
+            data = paddle.compat.to_text(data)
+            # paddlepaddle
+
     """
     if obj is None:
         return obj
@@ -119,7 +131,8 @@ def _to_text(obj, encoding):
 
 def to_bytes(obj, encoding='utf-8', inplace=False):
     """
-      All string in PaddlePaddle should be represented as a literal string.
+    All string in PaddlePaddle should be represented as a literal string.
+    
     This function will convert object to a bytes with specific encoding.
     Especially, if the object type is a list or set container, we will iterate
     all items in the object and convert them to bytes.
@@ -138,6 +151,17 @@ def to_bytes(obj, encoding='utf-8', inplace=False):
 
     Returns:
         Decoded result of obj
+    
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            data = "paddlepaddle"
+            data = paddle.compat.to_bytes(data)
+            # b'paddlepaddle'
+
     """
     if obj is None:
         return obj
@@ -202,7 +226,7 @@ def round(x, d=0):
     """
     if six.PY3:
         # The official walkaround of round in Python3 is incorrect
-        # we implement accroding this answer: https://www.techforgeek.info/round_python.html
+        # we implement according this answer: https://www.techforgeek.info/round_python.html
         if x > 0.0:
             p = 10**d
             return float(math.floor((x * p) + math.copysign(0.5, x))) / p

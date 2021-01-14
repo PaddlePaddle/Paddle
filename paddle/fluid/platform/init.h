@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
+#include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <vector>
@@ -20,18 +21,44 @@ limitations under the License. */
 #include "glog/logging.h"
 
 namespace paddle {
+namespace platform {
+
+void ParseCommandLineFlags(int argc, char** argv, bool remove);
+
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 
-void InitGflags(std::vector<std::string> argv);
+bool InitGflags(std::vector<std::string> argv);
 
-void InitGLOG(const std::string &prog_name);
+void InitGLOG(const std::string& prog_name);
 
-void InitDevices(bool init_p2p);
+void InitDevices();
 
-void InitDevices(bool init_p2p, const std::vector<int> devices);
+void InitDevices(const std::vector<int> devices);
 
 #ifndef _WIN32
-void SignalHandle(const char *data, int size);
+class SignalMessageDumper {
+ public:
+  ~SignalMessageDumper() {}
+  SignalMessageDumper(const SignalMessageDumper& o) = delete;
+  const SignalMessageDumper& operator=(const SignalMessageDumper& o) = delete;
+
+  static SignalMessageDumper& Instance() {
+    static SignalMessageDumper instance;
+    return instance;
+  }
+
+  std::shared_ptr<std::ostringstream> Get() { return dumper_; }
+
+ private:
+  SignalMessageDumper() : dumper_(new std::ostringstream()) {}
+  std::shared_ptr<std::ostringstream> dumper_;
+};
+
+void SignalHandle(const char* data, int size);
 #endif
 
 }  // namespace framework

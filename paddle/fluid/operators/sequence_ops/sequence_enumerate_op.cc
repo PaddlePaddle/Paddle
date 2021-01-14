@@ -22,12 +22,8 @@ class SequenceEnumerateOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasInput("X"),
-        "Input(X) of SequecceEnumerate operator should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Output(X) of SequenceEnumerate operator should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceEnumerate");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SequenceEnumerate");
 
     const auto x_dims = ctx->GetInputDim("X");
     const auto win_size = ctx->Attrs().Get<int>("win_size");
@@ -47,8 +43,11 @@ class SequenceEnumerateOpMaker : public framework::OpProtoAndCheckerMaker {
               "Output LoDTensor of SequenceEnumerate operator.");
     AddAttr<int>("win_size", "(int) The enumerate sequence window size.")
         .AddCustomChecker([](const int& win_size) {
-          PADDLE_ENFORCE(win_size >= 2,
-                         "The window size should be not less than 2.");
+          PADDLE_ENFORCE_GE(win_size, 2,
+                            platform::errors::InvalidArgument(
+                                "The window size should be not less than 2."
+                                "Received window size is %d",
+                                win_size));
         });
     AddAttr<int>("pad_value", "(int) The enumerate sequence padding value.")
         .SetDefault(0);

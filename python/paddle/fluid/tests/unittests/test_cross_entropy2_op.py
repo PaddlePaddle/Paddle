@@ -20,7 +20,7 @@ import six
 
 class CrossEntropy2OpTestBase(OpTest):
     def initParameters(self):
-        return [32, 64], 'float32', -100, False
+        return [32, 64], 'float64', -100, False
 
     def calc_output(self, logits, label, ignore_index):
         ret = np.zeros(shape=label.shape, dtype=logits.dtype)
@@ -78,17 +78,17 @@ class CrossEntropy2OpTest2RemoveLastDim(CrossEntropy2OpTestBase):
 
 class CrossEntropy2OpTest3(CrossEntropy2OpTestBase):
     def initParameters(self):
-        return [4, 8, 16, 32], 'float32', -100, False
+        return [4, 8, 16, 32], 'float64', -100, False
 
 
 class CrossEntropy2OpTest3RemoveLastDim(CrossEntropy2OpTestBase):
     def initParameters(self):
-        return [4, 8, 16, 32], 'float32', -100, True
+        return [4, 8, 16, 32], 'float64', -100, True
 
 
 class CrossEntropy2OpTest4(CrossEntropy2OpTestBase):
     def initParameters(self):
-        return [4, 8, 16, 32], 'float32', 3, False
+        return [4, 8, 16, 32], 'float64', 3, False
 
 
 if __name__ == '__main__':

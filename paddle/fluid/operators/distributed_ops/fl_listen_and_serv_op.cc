@@ -71,7 +71,9 @@ static void FlParallelExecuteBlocks(
                 << "pointer: " << prepared[run_block].get();
         executor->RunPreparedContext(prepared[run_block].get(), scope);
       } catch (const std::exception &e) {
-        LOG(FATAL) << "run sub program:" << idx << " error " << e.what();
+        PADDLE_THROW(platform::errors::Fatal(
+            "Run %d-th sub program failed. The exception is:\n%s.", idx,
+            e.what()));
       }
     }));
   }
@@ -106,7 +108,8 @@ void FlListenAndServOp::RunSyncLoop(framework::Executor *executor,
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(num_blocks, 2,
-                    "server program should have at least 2 blocks");
+                    platform::errors::InvalidArgument(
+                        "server program should have at least 2 blocks"));
 
   // Prepare all the server block
   std::vector<int> optimize_blocks_list;
@@ -190,7 +193,8 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
   auto fan_in = Attr<int>("Fanin");
   auto inputs = Inputs("X");
 
-  PADDLE_ENFORCE_EQ(!rpc_service_, true, "rpc_service_ must null");
+  PADDLE_ENFORCE_EQ(!rpc_service_, true, platform::errors::InvalidArgument(
+                                             "rpc_service_ must null"));
   std::string endpoint = Attr<std::string>("endpoint");
 
   VLOG(4) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
@@ -199,9 +203,9 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
   request_send_handler_.reset(
-      new distributed::RequestSendHandler(sync_mode, false));
+      new distributed::RequestSendHandler(!sync_mode, false));
   request_get_handler_.reset(
-      new distributed::RequestGetHandler(sync_mode, false));
+      new distributed::RequestGetHandler(!sync_mode, false));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(),
@@ -213,7 +217,8 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(
       optimize_blocks.size(), 1,
-      "optimize blocks should be 1 at least on the pserver side.");
+      platform::errors::InvalidArgument(
+          "optimize blocks should be 1 at least on the pserver side."));
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
 

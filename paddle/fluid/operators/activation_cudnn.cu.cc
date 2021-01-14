@@ -31,8 +31,8 @@ class CudnnActivationKernel
     ExtractActivationTensor(context, X, Out);
     ActivationDescriptor act_desc;
     TensorDescriptor x_desc, out_desc;
-    x_desc.set(detail::Ref(X));
-    out_desc.set(detail::Ref(Out));
+    x_desc.set(GET_DATA_SAFELY(X, "Input", "X", "CudnnActivation"));
+    out_desc.set(GET_DATA_SAFELY(Out, "Output", "Out", "CudnnActivation");
   }
 };
 

@@ -17,10 +17,10 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/framework/trainer.h"
-
 namespace paddle {
 namespace framework {
+
+class TrainerBase;
 
 typedef std::shared_ptr<TrainerBase> (*CreatetrainerFunction)();
 typedef std::unordered_map<std::string, CreatetrainerFunction> trainerMap;
@@ -63,7 +63,15 @@ std::shared_ptr<TrainerBase> TrainerFactory::CreateTrainer(
 
 REGISTER_TRAINER_CLASS(MultiTrainer);
 REGISTER_TRAINER_CLASS(DistMultiTrainer);
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
+    (defined PADDLE_WITH_PSLIB)
+REGISTER_TRAINER_CLASS(HeterXpuTrainer);
+REGISTER_TRAINER_CLASS(HeterBoxTrainer);
+#endif
+#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+REGISTER_TRAINER_CLASS(PSGPUTrainer);
+#endif
+#if defined(PADDLE_WITH_NCCL)
 REGISTER_TRAINER_CLASS(PipelineTrainer);
 #endif
 }  // namespace framework

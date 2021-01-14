@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.layers.device import get_places
 from decorator_helper import prog_scope
 import unittest
@@ -22,12 +23,25 @@ import unittest
 
 class TestGetPlaces(unittest.TestCase):
     @prog_scope()
-    def test_get_places(self):
+    def check_get_cpu_places(self):
         places = get_places()
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
         exe.run(fluid.default_main_program())
         self.assertEqual(places.type, fluid.core.VarDesc.VarType.PLACE_LIST)
+
+    @prog_scope()
+    def check_get_gpu_places(self):
+        places = get_places(device_type='CUDA')
+        gpu = fluid.CUDAPlace(0)
+        exe = fluid.Executor(gpu)
+        exe.run(fluid.default_main_program())
+        self.assertEqual(places.type, fluid.core.VarDesc.VarType.PLACE_LIST)
+
+    def test_main(self):
+        if core.is_compiled_with_cuda():
+            self.check_get_gpu_places()
+        self.check_get_cpu_places()
 
 
 if __name__ == '__main__':

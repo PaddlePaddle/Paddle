@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "glog/logging.h"
 #include "paddle/fluid/operators/jit/gen/jitcode.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -33,7 +34,8 @@ class EmbSeqPoolJitCode : public JitCode {
         tbl_w_(attr.table_width),
         type_(attr.pool_type) {
     if (type_ != SeqPoolType::kSum) {
-      LOG(FATAL) << "Only support sum pool yet ";
+      PADDLE_THROW(
+          platform::errors::Unimplemented("Only supports sum pool yet."));
     }
     this->genCode();
   }

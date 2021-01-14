@@ -47,6 +47,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // Dim [batch size, embedding size]
     auto* x1 = context.Input<LoDTensor>("Ins");
     bool is_x1_lod = context.Attr<bool>("is_lod");
+    int64_t out_val_if_empty = context.Attr<int64_t>("out_val_if_empty");
     // X2 is ins tag list
     // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
     auto* x2 = context.Input<LoDTensor>("Ins_tag");
@@ -67,7 +68,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     auto x2_lods = x2->lod()[0];
     Vector<size_t> x1_lods(1, 0);
     if (!is_x1_lod) {
-      for (size_t i = 0; i < x1->dims()[0]; i++) {
+      for (int i = 0; i < x1->dims()[0]; i++) {
         x1_lods.push_back(i + 1);
       }
     } else {
@@ -129,13 +130,13 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
       out_lod_info.push_back(out_lods);
       out->set_lod(out_lod_info);
       memset(out_data, 0, out->numel() * sizeof(T));
-      for (size_t i = 0; i < loss_weight->numel(); i++) {
+      for (int i = 0; i < loss_weight->numel(); i++) {
         loss_weight_data[i] = 1;
       }
 
       for (size_t i = 0; i < out_lods.size() - 1; i++) {
         size_t pos = out_lods[i];
-        for (size_t k = map_data[i * 3 + 1];
+        for (int k = map_data[i * 3 + 1];
              k < map_data[i * 3 + 1] + map_data[i * 3 + 2]; k++) {
           memcpy(out_data + pos * x1_embed_size, x1_data + k * x1_embed_size,
                  x1_embed_size * sizeof(T));
@@ -157,7 +158,15 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
       std::vector<Vector<size_t>> out_lod_info;
       out_lod_info.push_back(out_lods);
       out->set_lod(out_lod_info);
-      memset(out_data, 0, out->numel() * sizeof(T));
+      for (int64_t oi = 0; oi < out->numel(); ++oi) {
+        if (std::is_same<T, int32_t>::value) {
+          out_data[oi] = (int32_t)out_val_if_empty;
+        } else if (std::is_same<T, int64_t>::value) {
+          out_data[oi] = (int64_t)out_val_if_empty;
+        } else {
+          out_data[oi] = static_cast<double>(out_val_if_empty);
+        }
+      }
       loss_weight_data[0] = 0;
     }
   }
@@ -184,11 +193,11 @@ class FilterByInstagGradKernel : public framework::OpKernel<T> {
     memset(x1_grad_data, 0, x1->dims()[0] * x1->dims()[1] * sizeof(T));
     if (loss_weight->numel() != 1 || loss_weight_data[0] != 0) {
       auto output_dims = output_grad->dims();
-      for (size_t i = 0; i < mmap->dims()[0]; i++) {
+      for (int i = 0; i < mmap->dims()[0]; i++) {
         int src_ln = mmap_data[i * 3], dst_ln = mmap_data[i * 3 + 1];
         int line_cnt = mmap_data[i * 3 + 2];
-        for (size_t l = 0; l < line_cnt; l++) {
-          for (size_t j = 0; j < output_dims[1]; j++) {
+        for (int l = 0; l < line_cnt; l++) {
+          for (int j = 0; j < output_dims[1]; j++) {
             x1_grad_data[(dst_ln + l) * output_dims[1] + j] =
                 output_grad_data[(src_ln + l) * output_dims[1] + j];
           }

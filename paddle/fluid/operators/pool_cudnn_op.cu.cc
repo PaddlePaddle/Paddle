@@ -45,8 +45,10 @@ template <typename T>
 class PoolCUDNNOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::InvalidArgument("Pool operator CUDA kernel must use "
+                                          "CUDAPlace rather than CPUPlace."));
 
     const Tensor *input = ctx.Input<Tensor>("X");
     Tensor *output = ctx.Output<Tensor>("Out");
@@ -72,8 +74,8 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     }
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                   data_dims, strides, ksize);
-    if (data_dims.size() * 2 == paddings.size()) {
-      for (size_t i = 0; i < data_dims.size(); ++i) {
+    if (data_dims.size() * 2 == static_cast<int>(paddings.size())) {
+      for (int i = 0; i < data_dims.size(); ++i) {
         paddings.erase(paddings.begin() + i + 1);
       }
     }
@@ -156,7 +158,7 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     auto handle = ctx.cuda_device_context().cudnn_handle();
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
 
-    CUDNN_ENFORCE(platform::dynload::cudnnPoolingForward(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnPoolingForward(
         handle, cudnn_pool_desc, &alpha, cudnn_input_desc,
         tranformed_input_data, &beta, cudnn_output_desc,
         tranformed_output_data));
@@ -175,8 +177,10 @@ template <typename T>
 class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::InvalidArgument("Pool operator CUDA kernel must use "
+                                          "CUDAPlace rather than CPUPlace."));
 
     const Tensor *input = ctx.Input<Tensor>("X");
     const Tensor *output = ctx.Input<Tensor>("Out");
@@ -205,8 +209,8 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
     }
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                   data_dims, strides, ksize);
-    if (data_dims.size() * 2 == paddings.size()) {
-      for (size_t i = 0; i < data_dims.size(); ++i) {
+    if (data_dims.size() * 2 == static_cast<int>(paddings.size())) {
+      for (int i = 0; i < data_dims.size(); ++i) {
         paddings.erase(paddings.begin() + i + 1);
       }
     }
@@ -312,7 +316,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       T *input_grad_data = transformed_input_grad.mutable_data<T>(
           transformed_input_grad.dims(), ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.
-      CUDNN_ENFORCE(platform::dynload::cudnnPoolingBackward(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnPoolingBackward(
           handle, cudnn_pool_desc, &alpha, cudnn_output_desc, output_data,
           cudnn_output_desc, output_grad_data, cudnn_input_desc, input_data,
           &beta, cudnn_input_desc, input_grad_data));

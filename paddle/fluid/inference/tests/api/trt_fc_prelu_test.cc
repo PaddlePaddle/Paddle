@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -51,6 +51,7 @@ TEST(ZeroCopyTensor, uint8) {
   input_t->Reshape({batch_size, length});
   input_t->copy_from_cpu(input);
   input_t->type();
+  input_t->mutable_data<uint8_t>(PaddlePlace::kGPU);
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
 }

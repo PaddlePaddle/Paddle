@@ -24,6 +24,8 @@ from paddle.fluid.framework import switch_main_program
 from paddle.fluid.framework import Program
 import numpy as np
 from simple_nets import simple_fc_net, init_data
+from paddle.fluid import compiler, Program, program_guard
+from op_test import OpTest
 
 
 class TestPrintOpCPU(unittest.TestCase):
@@ -78,6 +80,26 @@ class TestPrintOpCPU(unittest.TestCase):
         outs = exe.run(feed={'x': self.x_tensor},
                        fetch_list=[loss],
                        return_numpy=False)
+
+    def test_no_summarize(self):
+        switch_main_program(Program())
+        printed = self.build_network(True, summarize=-1, print_phase='forward')
+        exe = Executor(self.place)
+        outs = exe.run(feed={'x': self.x_tensor},
+                       fetch_list=[printed],
+                       return_numpy=False)
+
+
+class TestPrintOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of Print_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.Print, x1)
+            # The input dtype of Print_op must be float32, float64, int32_t, int64_t or bool.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="float16")
+            self.assertRaises(TypeError, fluid.layers.Print, x2)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

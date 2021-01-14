@@ -24,7 +24,10 @@ namespace ir {
 class SSAGraghBuilderWithChecker : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override {
-    PADDLE_ENFORCE(IsValidGraph(graph));
+    PADDLE_ENFORCE_EQ(
+        IsValidGraph(graph), true,
+        platform::errors::InvalidArgument(
+            "In SSAGraghBuilderWithChecker, invalid Graph input."));
   }
 
   bool IsValidGraph(const ir::Graph *graph) const {

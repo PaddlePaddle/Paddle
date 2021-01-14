@@ -17,11 +17,12 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
-class TestRunTimeException(OpTest):
+class TestRunTimeException(unittest.TestCase):
     def test_run_time_exception(self):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -36,12 +37,12 @@ class TestRunTimeException(OpTest):
             x = np.random.random(size=(10)).astype('int64')
             exe.run(train_program, feed={"label": x})
 
-        self.assertRaises(core.EnforceNotMet, _run_program)
+        self.assertRaises(ValueError, _run_program)
 
 
-class TestCompileTimeException(OpTest):
+class TestCompileTimeException(unittest.TestCase):
     def test_compile_time_exception(self):
-        self.assertRaises(core.EnforceNotMet, self.build_model)
+        self.assertRaises(ValueError, self.build_model)
 
     def build_model(self):
         train_program = fluid.Program()
@@ -53,4 +54,5 @@ class TestCompileTimeException(OpTest):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

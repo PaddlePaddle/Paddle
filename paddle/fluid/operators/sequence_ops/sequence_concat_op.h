@@ -18,7 +18,6 @@
 #include <vector>
 #include "boost/optional.hpp"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 
 namespace paddle {
@@ -47,31 +46,52 @@ inline framework::LoD ConcatLoD(const Container &xs,
   lod.emplace_back(result);
   return lod;
 }
+
+template <typename T, typename... ARGS>
+inline std::vector<std::reference_wrapper<T>> GetDataVectorSafely(
+    const std::vector<T *> &vec, ARGS &&... args) {
+  std::vector<std::reference_wrapper<T>> result;
+  result.reserve(vec.size());
+  for (auto *ptr : vec) {
+    PADDLE_ENFORCE_NOT_NULL(ptr, platform::errors::InvalidArgument(
+                                     "The input variable X contains nullptr."));
+    result.emplace_back(*ptr);
+  }
+  return result;
+}
 }  // namespace detail
 
 template <typename DeviceContext, typename T>
 class SeqConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto xs = detail::VectorRef(context.MultiInput<framework::LoDTensor>("X"),
-                                "Cannot find multiple input X");
-    auto &out = detail::Ref(context.Output<framework::LoDTensor>("Out"),
-                            "Cannot find output");
+    auto xs = detail::GetDataVectorSafely(
+        context.MultiInput<framework::LoDTensor>("X"));
+    auto &out = *context.Output<framework::LoDTensor>("Out");
 
     size_t lod_size = 0;
     for (auto &x : xs) {
       if (lod_size == 0) {
         PADDLE_ENFORCE_EQ(x.get().lod().empty(), false,
-                          "Input(X) Tensor of SequenceConcatOp does not "
-                          "contain LoD information.");
+                          platform::errors::NotFound(
+                              "Input(X) Tensor of SequenceConcatOp does not "
+                              "contain LoD information."));
         lod_size = x.get().lod()[0].size();
       } else {
-        PADDLE_ENFORCE_EQ(
-            lod_size, x.get().lod()[0].size(),
-            "The number of sequence must be same between each input");
+        PADDLE_ENFORCE_EQ(lod_size, x.get().lod()[0].size(),
+                          platform::errors::InvalidArgument(
+                              "The lod size of each input must be the same, "
+                              "But the lod size of input we received is %d, "
+                              "the first input is %d",
+                              x.get().lod()[0].size(), lod_size));
       }
     }
-    PADDLE_ENFORCE_NE(lod_size, 0, "Each input must have sequence information");
+    PADDLE_ENFORCE_NE(
+        lod_size, 0,
+        platform::errors::InvalidArgument(
+            "Each input must have sequence lod information. But we "
+            "received input lod size is %d",
+            lod_size));
 
     std::vector<framework::Tensor> x_in_order;
     out.set_lod(detail::ConcatLoD(xs, &x_in_order));
@@ -89,7 +109,12 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
     auto xs = context.MultiInput<framework::LoDTensor>("X");
     auto dxs =
         context.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
-    PADDLE_ENFORCE_EQ(xs.size(), dxs.size());
+    PADDLE_ENFORCE_EQ(xs.size(), dxs.size(),
+                      platform::errors::InvalidArgument(
+                          "The rank of Input X and Output Grad X must be "
+                          "same, But the rank of Input X we received is %d, "
+                          "the rank of Output Grad X is %d",
+                          xs.size(), dxs.size()));
     for (size_t i = 0; i < dxs.size(); ++i) {
       if (dxs[i] != nullptr) {
         dxs[i]->set_lod(xs[i]->lod());
@@ -141,9 +166,9 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
 
     math::SplitFunctor<DeviceContext, T> functor;
     functor(context.template device_context<DeviceContext>(),
-            detail::Ref(
+            GET_DATA_SAFELY(
                 context.Input<framework::Tensor>(framework::GradVarName("Out")),
-                "Sequence Concat OG must be set"),
+                "Input", framework::GradVarName("Out"), "SeqConcatGrad"),
             sliced_x_ptr, 0, &sliced_dx_ptr);
   }
 };

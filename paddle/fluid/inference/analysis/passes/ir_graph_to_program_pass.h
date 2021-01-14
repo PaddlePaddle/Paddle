@@ -14,11 +14,14 @@
 
 #pragma once
 
+#include <string>
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+struct Argument;
 
 class IrGraphToProgramPass : public AnalysisPass {
  public:

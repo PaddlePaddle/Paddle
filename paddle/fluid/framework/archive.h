@@ -32,6 +32,7 @@
 #include <valarray>
 #include <vector>
 #include "paddle/fluid/framework/expect.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -43,7 +44,10 @@ class ArchiveBase {
 
   // Archive is not copyable. But to allow move capture by function objects,
   // check it at runtime rather than at compile time.
-  ArchiveBase(const ArchiveBase&) { LOG(FATAL) << "Not supported"; }
+  ArchiveBase(const ArchiveBase&) {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "ArchiveBase class does not support copy construction."));
+  }
 
   ArchiveBase(ArchiveBase&& other)
       : buffer_(other.buffer_),
@@ -62,7 +66,8 @@ class ArchiveBase {
 
  public:
   ArchiveBase& operator=(const ArchiveBase&) {
-    LOG(FATAL) << "Not supported";
+    PADDLE_THROW(platform::errors::Unavailable(
+        "ArchiveBase class does not support assignment construction."));
     return *this;
   }
 
