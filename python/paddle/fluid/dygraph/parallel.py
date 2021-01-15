@@ -471,7 +471,8 @@ class DataParallel(layers.Layer):
         find_unused_vars = True
 
         # TODO(shenliang03) Solve the problem of inconsistent arrival order of each card
-        reject_rebuld_group = bool(os.getenv("PADDLE_REJECT_REBUILD_GROUP", 1))
+        reject_rebuld_group = int(os.getenv("PADDLE_REJECT_REBUILD_GROUP",
+                                            1)) != 0
 
         self._reducer = core.Reducer(
             trainable_parameters,
