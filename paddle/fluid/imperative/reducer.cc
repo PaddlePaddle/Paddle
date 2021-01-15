@@ -94,7 +94,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
                  const std::vector<bool> &is_sparse_gradient,
                  std::shared_ptr<imperative::ParallelContext> parallel_ctx,
                  const std::vector<size_t> &group_size_limits,
-                 bool find_unused_vars)
+                 bool find_unused_vars, bool reject_rebuld_group)
     : vars_(vars),
       group_indices_(group_indices),
       is_sparse_gradient_(is_sparse_gradient),
@@ -102,6 +102,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       group_size_limits_(group_size_limits),
       find_unused_vars_(find_unused_vars) {
   VLOG(3) << "Start construct the Reducer ...";
+  has_rebuilt_group_ = reject_rebuld_group;
   nrings_ = parallel_ctx->GetNRings();
   // initialize groups
   InitializeGroups(group_indices);

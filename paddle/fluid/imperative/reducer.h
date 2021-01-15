@@ -165,11 +165,12 @@ class Reducer {
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
       std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-      const std::vector<size_t>& group_size_limits, bool find_unused_vars) {
+      const std::vector<size_t>& group_size_limits, bool find_unused_vars,
+      bool reject_rebuld_group) {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::imperative::Reducer(
           vars, group_indices, is_sparse_gradient, parallel_ctx,
-          group_size_limits, find_unused_vars));
+          group_size_limits, find_unused_vars, reject_rebuld_group));
     }
     return s_instance_;
   }

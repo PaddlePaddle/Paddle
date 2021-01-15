@@ -1387,16 +1387,17 @@ void BindImperative(py::module *m_ptr) {
 
   py::class_<imperative::Reducer, std::shared_ptr<imperative::Reducer>>(
       m, "Reducer", R"DOC()DOC")
-      .def(py::init([](
-          const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
-          const std::vector<std::vector<size_t>> &group_indices,
-          const std::vector<bool> &is_sparse_gradient,
-          std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-          const std::vector<size_t> &group_size_limits, bool find_unused_vars) {
-        return imperative::Reducer::SetInstance(
-            vars, group_indices, is_sparse_gradient, parallel_ctx,
-            group_size_limits, find_unused_vars);
-      }))
+      .def(py::init(
+          [](const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
+             const std::vector<std::vector<size_t>> &group_indices,
+             const std::vector<bool> &is_sparse_gradient,
+             std::shared_ptr<imperative::ParallelContext> parallel_ctx,
+             const std::vector<size_t> &group_size_limits,
+             bool find_unused_vars, bool reject_rebuld_group) {
+            return imperative::Reducer::SetInstance(
+                vars, group_indices, is_sparse_gradient, parallel_ctx,
+                group_size_limits, find_unused_vars, reject_rebuld_group);
+          }))
       .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
            py::arg("vars"), py::call_guard<py::gil_scoped_release>());
 
