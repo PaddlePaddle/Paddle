@@ -19,8 +19,13 @@ limitations under the License. */
 
 #include <map>
 #include <memory>
+<<<<<<< HEAD
 #include <vector>
 #include <string>
+=======
+#include <string>
+#include <vector>
+>>>>>>> 6dd52c5b255f7399188818a29991f5d375cd175d
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -37,6 +42,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
+=======
+// typedef std::vector<std::string> AscendGraphDesc;
+>>>>>>> 6dd52c5b255f7399188818a29991f5d375cd175d
 typedef ge::Graph AscendGraphDesc;
 
 class AscendInstance {
@@ -65,26 +74,28 @@ class AscendInstance {
 
   void InitGlobalResouces() {
 	  LOG(INFO) << "Begin InitGlobalResouces";
-	  ss_ = new ge::Session(GetDefaultInitSessionOptions());
-	  if (ss_ == nullptr){
-		  LOG(FATAL) << "new session error:" << ss_;
+	  session_ = new ge::Session(GetDefaultInitSessionOptions());
+	  if (session_ == nullptr){
+		  LOG(FATAL) << "new session error:" << session_;
 	  }
 	  LOG(INFO) << "End InitGlobalResouces";
   }
 
   static std::shared_ptr<AscendInstance> GetInstance() {
     if (nullptr == ascend_instance_) {
-      VLOG(0) << "Initialize AscendInstance";
       ascend_instance_.reset(new paddle::framework::AscendInstance());
+      VLOG(1) << "Initialize AscendInstance Done";
     }
     return ascend_instance_;
   }
 
   void AddAscendSubgraph(int graph_idx, const AscendGraphDesc &graph) {
-    ge::Status status = ss_->AddGraph(graph_idx, graph);
-    PADDLE_ENFORCE_EQ(
-        status, ge::SUCCESS,
-        paddle::platform::errors::PreconditionNotMet("AddGraph failed"));
+    ge::Status status = session_->AddGraph(graph_idx, graph);
+    PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Calling addGraph of graph engine failed, please "
+                          "check Ascend Log."));
+    VLOG(1) << "AddAscendSubgraph " << graph_idx << " Done";
   }
 
   ge::DataType VarTypeToGeType(proto::VarType::Type type) {
@@ -158,7 +169,11 @@ class AscendInstance {
 
     // Run Graph
     std::vector<ge::Tensor> ge_outputs;
+<<<<<<< HEAD
     ge::Status status = ss_->RunGraph(graph_idx, ge_inputs, ge_outputs);
+=======
+    ge::Status status = session_->RunGraph(graph_idx, ge_inputs, ge_outputs);
+>>>>>>> 6dd52c5b255f7399188818a29991f5d375cd175d
     PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
                       paddle::platform::errors::PreconditionNotMet(
                           "Calling RunGraph of graph engine failed, please "
@@ -185,7 +200,7 @@ class AscendInstance {
   }
 
  protected:
-  ge::Session *ss_ = nullptr;
+  std::shared_ptr<ge::Session> session_;
 
  private:
   static std::shared_ptr<AscendInstance> ascend_instance_;

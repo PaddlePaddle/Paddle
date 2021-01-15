@@ -228,7 +228,7 @@ def mae(abserr, total_ins_num, scope=None, util=None):
 
     Args:
         abserr(numpy.array|Variable|string): abserr in output of fluid.contrib.layers.ctr_metric_bundle
-        total_ins_num(int|float): total train/infer instance count
+        total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
     Returns:
@@ -253,6 +253,11 @@ def mae(abserr, total_ins_num, scope=None, util=None):
         abserr = np.array(scope.find_var(abserr.name).get_tensor())
     elif isinstance(abserr, str):
         abserr = np.array(scope.find_var(abserr).get_tensor())
+    if isinstance(total_ins_num, Variable):
+        total_ins_num = np.array(
+            scope.find_var(total_ins_num.name).get_tensor())
+    elif isinstance(total_ins_num, str):
+        total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
 
     old_metric_shape = np.array(abserr.shape)
     abserr = abserr.reshape(-1)
@@ -260,8 +265,9 @@ def mae(abserr, total_ins_num, scope=None, util=None):
 
     global_metric = util.all_reduce(abserr, "sum")
     global_metric = global_metric.reshape(old_metric_shape)
+    global_total_num = util.all_reduce(total_ins_num, "sum")
 
-    mae_value = global_metric[0] / total_ins_num
+    mae_value = float(global_metric[0]) / float(global_total_num[0])
     return mae_value
 
 
@@ -271,7 +277,7 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
 
     Args:
         sqrerr(numpy.array|Variable|string): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
-        total_ins_num(int|float): total train/infer instance count
+        total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
     Returns:
@@ -296,14 +302,21 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
         sqrerr = np.array(scope.find_var(sqrerr.name).get_tensor())
     elif isinstance(sqrerr, str):
         sqrerr = np.array(scope.find_var(sqrerr).get_tensor())
+    if isinstance(total_ins_num, Variable):
+        total_ins_num = np.array(
+            scope.find_var(total_ins_num.name).get_tensor())
+    elif isinstance(total_ins_num, str):
+        total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
     old_metric_shape = np.array(sqrerr.shape)
     sqrerr = sqrerr.reshape(-1)
     global_metric = np.copy(sqrerr) * 0
 
     global_metric = util.all_reduce(sqrerr, "sum")
     global_metric = global_metric.reshape(old_metric_shape)
+    global_total_num = util.all_reduce(total_ins_num, "sum")
 
-    rmse_value = math.sqrt(global_metric[0] / total_ins_num)
+    rmse_value = math.sqrt(float(global_metric[0]) / float(global_total_num[0]))
+
     return rmse_value
 
 
@@ -313,7 +326,7 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
 
     Args:
         sqrerr(numpy.array|Variable|string): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
-        total_ins_num(int|float): total train/infer instance count
+        total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
     Returns:
@@ -338,14 +351,20 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
         sqrerr = np.array(scope.find_var(sqrerr.name).get_tensor())
     elif isinstance(sqrerr, str):
         sqrerr = np.array(scope.find_var(sqrerr).get_tensor())
+    if isinstance(total_ins_num, Variable):
+        total_ins_num = np.array(
+            scope.find_var(total_ins_num.name).get_tensor())
+    elif isinstance(total_ins_num, str):
+        total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
     old_metric_shape = np.array(sqrerr.shape)
     sqrerr = sqrerr.reshape(-1)
     global_metric = np.copy(sqrerr) * 0
 
     global_metric = util.all_reduce(sqrerr, "sum")
     global_metric = global_metric.reshape(old_metric_shape)
+    global_total_num = util.all_reduce(total_ins_num, "sum")
 
-    mse_value = global_metric[0] / total_ins_num
+    mse_value = float(global_metric[0]) / float(global_total_num[0])
     return mse_value
 
 
