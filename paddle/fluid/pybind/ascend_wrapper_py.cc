@@ -33,6 +33,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
+#include "paddle/fluid/platform/enforce.h"
 
 using namespace ge;  // NOLINT
 namespace py = pybind11;
@@ -51,9 +52,22 @@ void BindAscendWrapper(py::module *m) {
            py::call_guard<py::gil_scoped_release>());
 }  // end AscendWrapper
 
-Status ge_initialize(std::map<std::string, std::string> &options) {  // NOLINT
+std::map<ge::AscendString, ge::AscendString> convert_map(const std::map<std::string, std::string>& options){
+  std::map<ge::AscendString, ge::AscendString> rets;
+  for (auto &option : options) {
+    ge::AscendString key = option.first.c_str();
+    ge::AscendString val = option.second.c_str();
+    rets[key] = val;
+  }
+  return rets;
+}
+
+ge::Status ge_initialize(std::map<std::string, std::string> &options) {  // NOLINT
   py::gil_scoped_release release;
-  Status res = GEInitialize(options);
+  auto init_options=convert_map(options);
+  ge::Status res = ge::GEInitialize(init_options);
+  PADDLE_ENFORCE_EQ(res, 
+		  ge::SUCCESS, platform::errors::Fatal("ge init error:%d", res));
   py::gil_scoped_acquire acquire;
   return res;
 }
@@ -214,36 +228,34 @@ void BindAscendGraph(py::module *m) {
 
   // 类封装
   py::class_<Session>(*m, "GESession")
-      .def(py::init<const std::map<std::string, std::string> &>())
+      .def(py::init([](const std::map<std::string, std::string> & options) {
+        return std::unique_ptr<ge::Session>(new ge::Session(convert_map(options)));
+        }))
       .def("add_graph",
-           (Status (Session::*)(uint32_t, const Graph &)) & Session::AddGraph)
+           (ge::Status (Session::*)(uint32_t, const Graph &)) & Session::AddGraph)
       .def("add_graph",
-           (Status (Session::*)(uint32_t, const Graph &,
-                                const std::map<std::string, std::string> &)) &
-               Session::AddGraph)
+	   [](Session& ss, uint32_t index, const Graph & graph,
+                                const std::map<std::string, std::string> &options){
+                return ss.AddGraph(index, graph, convert_map(options));
+	   })
       .def("remove_graph", &Session::RemoveGraph)
       .def("run_graph",
            [](Session &ss, uint32_t graphId,
               const std::vector<Tensor> &inputs) -> py::tuple {
              std::vector<Tensor> outputs;
-             Status res = ss.RunGraph(graphId, inputs, outputs);
+	     ge::Status res = ss.RunGraph(graphId, inputs, outputs);
              return py::make_tuple(outputs, res);
            },
            py::call_guard<py::gil_scoped_release>())
       .def("build_graph", &Session::BuildGraph)
       .def("run_graph_async", &Session::RunGraphAsync)
-      .def("register_call_back_func",
-           (Status (Session::*)(  // NOLINT
-               const std::string &,
-               std::function<uint32_t(
-                   uint32_t graph_id,
-                   const std::map<std::string, ge::Tensor> &params_list)>)) &
-               Session::RegisterCallBackFunc)
+      .def("register_call_back_func", 
+		      static_cast<ge::Status (ge::Session::*)(const char*, const ge::session::pCallBackFunc&)>(&ge::Session::RegisterCallBackFunc))
       .def("is_graph_need_rebuild", &Session::IsGraphNeedRebuild);
 
   py::class_<Graph>(*m, "GEGraph")
       .def(py::init<>())
-      .def(py::init<const std::string &>())
+      .def(py::init<const char *>())
       .def("set_inputs", &Graph::SetInputs)
       .def("set_outputs", (Graph & (Graph::*)(const std::vector<Operator> &)) &
                               Graph::SetOutputs)
@@ -253,110 +265,121 @@ void BindAscendGraph(py::module *m) {
                Graph::SetOutputs)
       .def("set_outputs",
            (Graph &
-            (Graph::*)(const std::vector<std::pair<ge::Operator, std::string>>
+            (Graph::*)(const std::vector<std::pair<ge::Operator, ge::AscendString>>
                            &)) &
                Graph::SetOutputs)
       .def("set_targets", &Graph::SetTargets)
       .def("is_valid", &Graph::IsValid)
       .def("add_op", &Graph::AddOp)
       .def("find_op_by_name",
-           [](Graph &graph, const std::string &name) -> py::tuple {
+           [](Graph &graph, const char* name) -> py::tuple {
              ge::Operator op;
              graphStatus status = graph.FindOpByName(name, op);
              return py::make_tuple(op, status);
            })
       .def("find_op_by_type",
-           [](Graph &graph, const std::string &type) -> py::tuple {
+           [](Graph &graph, const char * type) -> py::tuple {
              std::vector<ge::Operator> ops;
              graphStatus status = graph.FindOpByType(type, ops);
              return py::make_tuple(ops, status);
            })
       .def("get_all_op_name",
            [](Graph &graph) -> py::tuple {
-             std::vector<std::string> op_name;
+             std::vector<ge::AscendString> op_name;
              graphStatus status = graph.GetAllOpName(op_name);
              return py::make_tuple(op_name, status);
            })
-      .def("save_to_file", &Graph::SaveToFile)
-      .def("load_from_file", &Graph::LoadFromFile)
-      .def("get_name", &Graph::GetName)
+      .def("save_to_file", static_cast<ge::graphStatus (ge::Graph::*)(const char *) const>(&ge::Graph::SaveToFile))
+      .def("load_from_file", static_cast<ge::graphStatus (ge::Graph::*)(const char*)>(&Graph::LoadFromFile))
+      .def("get_name", static_cast<ge::graphStatus (ge::Graph::*)(ge::AscendString&) const>(&Graph::GetName))
       .def("set_need_iteration", &Graph::SetNeedIteration);
 
   py::class_<Operator>(*m, "GEOperator")
       .def(py::init<>())
-      .def(py::init<const std::string &>())
-      .def(py::init<const std::string &, const std::string &>())
+      .def(py::init<const char *>())
+      .def(py::init<const char*, const char *>())
       .def("is_empty", &Operator::IsEmpty)
-      .def("get_name", &Operator::GetName)
-      .def("get_op_type", &Operator::GetOpType)
+      .def("get_name", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(ge::AscendString&) const>(&Operator::GetName))
+      .def("get_op_type", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(ge::AscendString&) const>(&Operator::GetOpType))
       .def("set_input",
-           (Operator & (Operator::*)(const std::string &, const Operator &)) &
+           (Operator & (Operator::*)(const char*, const Operator &)) &
                Operator::SetInput)
       .def("set_input",
-           (Operator & (Operator::*)(const std::string &, const Operator &,
-                                     const std::string &)) &
+           (Operator & (Operator::*)(const char *, const Operator &,
+                                     const char *)) &
                Operator::SetInput)
-      .def("set_input", (Operator & (Operator::*)(const std::string &,
+      .def("set_input", (Operator & (Operator::*)(const char *,
                                                   const Operator &, uint32_t)) &
                             Operator::SetInput)
       .def("add_control_input", &Operator::AddControlInput)
       .def("get_input_const_data",
-           [](Operator &op, const std::string &dst_name) -> py::tuple {
+           [](Operator &op, const char* dst_name) -> py::tuple {
              Tensor data;
              graphStatus res = op.GetInputConstData(dst_name, data);
              return py::make_tuple(data, res);
            })
       .def("get_input_desc",
-           (TensorDesc (Operator::*)(const std::string &) const) &
-               Operator::GetInputDesc)
+		      (TensorDesc (Operator::*)(uint32_t) const) & Operator::GetInputDesc)
       .def("get_input_desc",
-           (TensorDesc (Operator::*)(uint32_t) const) & Operator::GetInputDesc)
-      .def("get_dynamic_output_num", &Operator::GetDynamicOutputNum)
-      .def("get_dynamic_input_num", &Operator::GetDynamicInputNum)
+           [](Operator& op, const std::string& name){
+	   	return op.GetInputDescByName(name.c_str());
+           })
+      .def("get_dynamic_output_num", static_cast<int (ge::Operator::*)(const char*) const>(&Operator::GetDynamicOutputNum))
+      .def("get_dynamic_input_num", static_cast<int (ge::Operator::*)(const char*) const>(&Operator::GetDynamicInputNum))
       .def("try_get_input_desc",
-           [](Operator &op, const std::string &name) -> py::tuple {
+           [](Operator &op, const char* name) -> py::tuple {
              TensorDesc tensor_desc;
              graphStatus status = op.TryGetInputDesc(name, tensor_desc);
              return py::make_tuple(tensor_desc, status);
            })
-      .def("update_input_desc", &Operator::UpdateInputDesc)
+      .def("update_input_desc", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(const char*, const TensorDesc&)>(&Operator::UpdateInputDesc))
       .def("get_output_desc",
-           (TensorDesc (Operator::*)(const std::string &) const) &
-               Operator::GetOutputDesc)
+           [](Operator& op, const std::string& name) {
+	   	return op.GetOutputDescByName(name.c_str());
+           })
       .def("get_output_desc",
            (TensorDesc (Operator::*)(uint32_t) const) & Operator::GetOutputDesc)
-      .def("update_output_desc", &Operator::UpdateOutputDesc)
-      .def("get_dynamic_input_desc", &Operator::GetDynamicInputDesc)
-      .def("update_dynamic_input_desc", &Operator::UpdateDynamicInputDesc)
-      .def("get_dynamic_output_desc", &Operator::GetDynamicOutputDesc)
-      .def("update_dynamic_output_desc", &Operator::UpdateDynamicOutputDesc)
+      .def("update_output_desc", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(const char*, const TensorDesc&)>(&Operator::UpdateOutputDesc))
+      .def("get_dynamic_input_desc", 
+		      static_cast<ge::TensorDesc (ge::Operator::*)(const char*, uint32_t) const>(&Operator::GetDynamicInputDesc))
+      .def("update_dynamic_input_desc", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(const char*, uint32_t, const TensorDesc&)>(&Operator::UpdateDynamicInputDesc))
+      .def("get_dynamic_output_desc", 
+		      static_cast<ge::TensorDesc (ge::Operator::*)(const char*, uint32_t) const>(&Operator::GetDynamicOutputDesc))
+      .def("update_dynamic_output_desc", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(const char*, uint32_t, const TensorDesc&)>(&Operator::UpdateDynamicOutputDesc))
       .def("infer_shape_and_type", &Operator::InferShapeAndType)
       .def("set_inference_context", &Operator::SetInferenceContext)
       .def("get_inference_context", &Operator::GetInferenceContext)
       .def("verify_all_attr", &Operator::VerifyAllAttr)
       .def("get_inputs_size", &Operator::GetInputsSize)
       .def("get_outputs_size", &Operator::GetOutputsSize)
-      .def("get_all_attr_names_and_types", &Operator::GetAllAttrNamesAndTypes)
+      .def("get_all_attr_names_and_types", 
+		      static_cast<ge::graphStatus (ge::Operator::*)(std::map<ge::AscendString, ge::AscendString>&) const>(&Operator::GetAllAttrNamesAndTypes))
       .def("set_attr_int64",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char* name,
               int64_t value) -> Operator & {
              int64_t tar = (int64_t)value;
              return op.SetAttr(name, tar);
            })
       .def("set_attr_int32",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char* name,
               int32_t value) -> Operator & {
              int32_t tar = (int32_t)value;
              return op.SetAttr(name, tar);
            })
       .def("set_attr_uint32",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char* name,
               uint32_t value) -> Operator & {
              uint32_t tar = (uint32_t)value;
              return op.SetAttr(name, tar);
            })
       .def("set_attr_vec_int64",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char* name,
               const std::vector<int64_t> &value) -> Operator & {
              int len = value.size();
              std::vector<int64_t> tar;
@@ -368,7 +391,7 @@ void BindAscendGraph(py::module *m) {
              return op.SetAttr(name, tar);
            })
       .def("set_attr_vec_int32",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char * name,
               const std::vector<int32_t> &value) -> Operator & {
              int len = value.size();
              std::vector<int32_t> tar;
@@ -380,7 +403,7 @@ void BindAscendGraph(py::module *m) {
              return op.SetAttr(name, tar);
            })
       .def("set_attr_vec_uint32",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char* name,
               const std::vector<uint32_t> &value) -> Operator & {
              int len = value.size();
              std::vector<uint32_t> tar;
@@ -392,21 +415,21 @@ void BindAscendGraph(py::module *m) {
              return op.SetAttr(name, tar);
            })
       .def("set_attr_list_int64",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char* name,
               std::initializer_list<int64_t> &attrValue) -> Operator & {
              return op.SetAttr(name, std::move(attrValue));
            })
       .def("set_attr_attrvalue",
-           [](Operator &op, const std::string &name, AttrValue &attrValue)
+           [](Operator &op, const char* name, AttrValue &attrValue)
                -> Operator & { return op.SetAttr(name, std::move(attrValue)); })
       .def(
           "set_attr_float",
-          [](Operator &op, const std::string &name, float value) -> Operator & {
+          [](Operator &op, const char* name, float value) -> Operator & {
             float tar = static_cast<float>(value);
             return op.SetAttr(name, tar);
           })
       .def("set_attr_vec_float",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char* name,
               const std::vector<float> &value) -> Operator & {
              int len = value.size();
              std::vector<float> tar;
@@ -417,22 +440,22 @@ void BindAscendGraph(py::module *m) {
              }
              return op.SetAttr(name, tar);
            })
-      .def("set_attr_string", (Operator & (Operator::*)(const std::string &,
-                                                        const std::string &)) &
+      .def("set_attr_string", (Operator & (Operator::*)(const char*,
+                                                        const char*)) &
                                   Operator::SetAttr)
       .def("set_attr_vec_string",
-           (Operator & (Operator::*)(const std::string &,
-                                     const std::vector<std::string> &)) &
+           (Operator & (Operator::*)(const char*,
+                                     const std::vector<ge::AscendString> &)) &
                Operator::SetAttr)
       .def("set_attr_bool",
-           [](Operator &op, const std::string &name, bool value) -> Operator & {
+           [](Operator &op, const char* name, bool value) -> Operator & {
              if (value)
                return op.SetAttr(name, true);
              else
                return op.SetAttr(name, false);
            })
       .def("set_attr_vec_bool",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char* name,
               const std::vector<bool> &value) -> Operator & {
              int len = value.size();
              std::vector<bool> tar;
@@ -445,14 +468,14 @@ void BindAscendGraph(py::module *m) {
              return op.SetAttr(name, tar);
            })
       .def("set_attr_tensor",
-           (Operator & (Operator::*)(const std::string &, const Tensor &)) &
+           (Operator & (Operator::*)(const char* , const Tensor &)) &
                Operator::SetAttr)
       .def("set_attr_vec_tensor",
            (Operator &
-            (Operator::*)(const std::string &, const std::vector<Tensor> &)) &
+            (Operator::*)(const char *, const std::vector<Tensor> &)) &
                Operator::SetAttr)
       .def("set_attr_vec_uint8",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char* name,
               const std::vector<uint8_t> &value) -> Operator & {
              int len = value.size();
              std::vector<uint8_t> tar;
@@ -465,11 +488,11 @@ void BindAscendGraph(py::module *m) {
            })
       .def("set_attr_vec_vec_int64",
            (Operator &
-            (Operator::*)(const std::string &,
+            (Operator::*)(const char*,
                           const std::vector<std::vector<int64_t>> &)) &
                Operator::SetAttr)
       .def("set_attr_vec_dtype",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char* name,
               const std::vector<DataType> &value) -> Operator & {
              int len = value.size();
              std::vector<ge::DataType> tar;
@@ -481,14 +504,14 @@ void BindAscendGraph(py::module *m) {
              return op.SetAttr(name, tar);
            })
       .def("set_attr_dtype",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char* name,
               const DataType &value) -> Operator & {
              ge::DataType tar = (ge::DataType)value;
              return op.SetAttr(name, tar);
            })
 
       .def("get_attr",
-           [](Operator &op, const std::string &name,
+           [](Operator &op, const char* name,
               AttrType type) -> py::tuple {
              graphStatus res = -1;
              switch (type) {
@@ -538,12 +561,12 @@ void BindAscendGraph(py::module *m) {
                  return py::make_tuple(o_av, res);
                } break;
                case AT_STRING: {
-                 std::string s_av;
+                 ge::AscendString s_av;
                  res = op.GetAttr(name, s_av);
                  return py::make_tuple(s_av, res);
                } break;
                case AT_LIST_STRING: {
-                 std::vector<std::string> v_s_av;
+                 std::vector<ge::AscendString> v_s_av;
                  res = op.GetAttr(name, v_s_av);
                  return py::make_tuple(v_s_av, res);
                } break;
@@ -594,11 +617,11 @@ void BindAscendGraph(py::module *m) {
            })
       .def("break_connect", &Operator::BreakConnect)
       .def("get_subgraph_names_count", &Operator::GetSubgraphNamesCount)
-      .def("get_subgraph_names", &Operator::GetSubgraphNames)
-      .def("get_subgraph_builder", &Operator::GetSubgraphBuilder)
-      .def("get_subgraph", &Operator::GetSubgraph)
-      .def("get_dynamic_subgraph_builder", &Operator::GetDynamicSubgraphBuilder)
-      .def("get_dynamic_subgraph", &Operator::GetDynamicSubgraph);
+      .def("get_subgraph_names", static_cast<ge::graphStatus (ge::Operator::*)(std::vector<ge::AscendString> &) const>(&Operator::GetSubgraphNames))
+      .def("get_subgraph_builder", static_cast<ge::SubgraphBuilder (ge::Operator::*)(const char*) const>(&Operator::GetSubgraphBuilder))
+      .def("get_subgraph", static_cast<ge::Graph (ge::Operator::*)(const char*) const>(&Operator::GetSubgraph))
+      .def("get_dynamic_subgraph_builder", static_cast<ge::SubgraphBuilder (ge::Operator::*)(const char*, uint32_t) const>(&Operator::GetDynamicSubgraphBuilder))
+      .def("get_dynamic_subgraph", static_cast<ge::Graph (ge::Operator::*)(const char*, uint32_t) const>(&Operator::GetDynamicSubgraph));
 
   py::class_<Tensor>(*m, "GETensor")
       .def(py::init<>())
@@ -614,9 +637,9 @@ void BindAscendGraph(py::module *m) {
       .def("set_data",
            (graphStatus (Tensor::*)(const uint8_t *, size_t)) & Tensor::SetData)
       .def("set_data",
-           (graphStatus (Tensor::*)(const std::string &)) & Tensor::SetData)
+           (graphStatus (Tensor::*)(const char*)) & Tensor::SetData)
       .def("set_data",
-           (graphStatus (Tensor::*)(const std::vector<std::string> &)) &
+           (graphStatus (Tensor::*)(const std::vector<ge::AscendString> &)) &
                Tensor::SetData)
 
       .def("get_data",
@@ -639,7 +662,7 @@ void BindAscendGraph(py::module *m) {
            py::arg("format") = FORMAT_ND, py::arg("dt") = DT_FLOAT)
       .def(py::init<const TensorDesc &>())
       .def("update",
-           (void (TensorDesc::*)(Shape, Format, DataType)) & TensorDesc::Update,
+           (void (TensorDesc::*)(const Shape&, Format, DataType)) & TensorDesc::Update,
            py::arg("shape"), py::arg("format") = FORMAT_ND,
            py::arg("dt") = DT_FLOAT)
       .def("set_shape", &TensorDesc::SetShape)
@@ -660,8 +683,8 @@ void BindAscendGraph(py::module *m) {
       .def("get_origin_format", &TensorDesc::GetOriginFormat)
       .def("set_data_type", &TensorDesc::SetDataType)
       .def("get_data_type", &TensorDesc::GetDataType)
-      .def("set_name", &TensorDesc::SetName)
-      .def("get_name", &TensorDesc::GetName)
+      .def("set_name", static_cast<void (ge::TensorDesc::*)(const char*)>(&TensorDesc::SetName))
+      .def("get_name", static_cast<ge::graphStatus (ge::TensorDesc::*)(ge::AscendString&)>(&TensorDesc::GetName))
       .def("set_size", &TensorDesc::SetSize)
       .def("get_size", &TensorDesc::GetSize)
       .def("set_real_dim_cnt", &TensorDesc::SetRealDimCnt)
@@ -679,14 +702,16 @@ void BindAscendGraph(py::module *m) {
   py::class_<AttrValue>(*m, "GEAttrValue").def(py::init<>());
 
   py::class_<OperatorFactory>(*m, "GEOperatorFactory")
-      .def("create_operator", &OperatorFactory::CreateOperator)
+      .def_static("create_operator", 
+		      static_cast<ge::Operator (*)(const char*, const char*)>(&ge::OperatorFactory::CreateOperator))
       .def("get_ops_type_list",
            []() -> py::tuple {
-             std::vector<std::string> all_ops;
+             std::vector<ge::AscendString> all_ops;
              graphStatus status = OperatorFactory::GetOpsTypeList(all_ops);
              return py::make_tuple(all_ops, status);
            })
-      .def("is_exist_op", &OperatorFactory::IsExistOp);
+      .def_static("is_exist_op", 
+		      static_cast<bool (*)(const char*)>(&OperatorFactory::IsExistOp));
 }
 
 }  // end namespace pybind

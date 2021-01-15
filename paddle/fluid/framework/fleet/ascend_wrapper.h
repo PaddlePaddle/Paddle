@@ -37,7 +37,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// typedef std::vector<std::string> AscendGraphDesc;
 typedef ge::Graph AscendGraphDesc;
 
 class AscendInstance {
@@ -45,17 +44,31 @@ class AscendInstance {
   virtual ~AscendInstance() {}
   AscendInstance() {}
 
-  std::map<std::string, std::string> GetDefaultInitSessionOptions() {
-    std::map<std::string, std::string> init_options;
-    init_options["a"] = "b";
-    init_options["ge.trainFlag"] = "1";
-    return init_options;
+  std::map<ge::AscendString, ge::AscendString> GetDefaultInitOptions() {
+	  std::map<ge::AscendString, ge::AscendString> init_options;
+	  init_options["ge.exec.deviceId"] = "0";
+	  init_options["ge.graphRunMode"] = "1";
+	  return init_options;
   }
 
-  // add other parameters here to init
+  std::map<ge::AscendString, ge::AscendString> GetDefaultInitSessionOptions() {
+	  std::map<ge::AscendString, ge::AscendString> init_options;
+	  init_options["a"] = "b";
+	  init_options["ge.trainFlag"] = "1";
+	  return init_options;
+  }
+
+  ge::Status InitGEForUT(){
+	return ge::GEInitialize(GetDefaultInitOptions());
+  }
+
   void InitGlobalResouces() {
-    session_.reset(new ge::Session(GetDefaultInitSessionOptions()));
-    VLOG(1) << "InitGlobalResouces Done";
+	  LOG(INFO) << "Begin InitGlobalResouces";
+      session_.reset(new ge::Session(GetDefaultInitSessionOptions()));
+	  if (session_ == nullptr){
+		  LOG(FATAL) << "new session error:" << session_;
+	  }
+	  LOG(INFO) << "End InitGlobalResouces";
   }
 
   static std::shared_ptr<AscendInstance> GetInstance() {
