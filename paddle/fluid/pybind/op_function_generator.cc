@@ -89,6 +89,8 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"momentum", {"ParamOut", "VelocityOut"}},
     {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
+    {"lamb",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
