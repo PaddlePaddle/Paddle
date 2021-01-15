@@ -94,7 +94,7 @@ class Reducer {
       std::shared_ptr<imperative::ParallelContext> parallel_ctx,
       const std::vector<size_t>& group_size_limits, bool find_unused_vars);
 
-  virtual ~Reducer() = default;
+  virtual ~Reducer() {}
 
   void InitializeGroups(const std::vector<std::vector<size_t>>& group_indices);
 

@@ -149,16 +149,6 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
         "Paddle can't concat grad tensors since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
-  } else if (platform::is_xpu_place(place)) {
-#ifdef PADDLE_WITH_XPU_BKCL
-    ConcatTensorsWithType(
-        static_cast<const platform::XPUDeviceContext &>(context),
-        dense_tensors_, &dense_contents_, dtype_);
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't concat grad tensors since it's not compiled with BKCL,"
-        "Please recompile or reinstall Paddle with BKCL support."));
-#endif
   } else if (platform::is_cpu_place(place)) {
     ConcatTensorsWithType(
         static_cast<const platform::CPUDeviceContext &>(context),
@@ -180,16 +170,6 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't split grad tensor since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
-#endif
-  } else if (platform::is_xpu_place(place)) {
-#ifdef PADDLE_WITH_XPU_BKCL
-    SplitTensorsWithType(
-        static_cast<const platform::XPUDeviceContext &>(context),
-        &dense_contents_, &dense_tensors_, dtype_);
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't split grad tensor since it's not compiled with BKCL,"
-        "Please recompile or reinstall Paddle with BKCL support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
     SplitTensorsWithType(
