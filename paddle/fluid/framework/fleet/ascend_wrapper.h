@@ -43,7 +43,6 @@ class AscendInstance {
  public:
   virtual ~AscendInstance() {}
   AscendInstance() {}
-  // need to expose pybind function
 
   std::map<ge::AscendString, ge::AscendString> GetDefaultInitOptions() {
 	  std::map<ge::AscendString, ge::AscendString> init_options;
