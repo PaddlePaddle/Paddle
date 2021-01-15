@@ -244,12 +244,12 @@ __global__ void CommonForwardBroadcastCUDAKernel(const int *x_strides_array,
     int x_index = 0;
     int y_index = 0;
     int out_index_quotient = out_index;
-    int remainder = 0;
 
 #pragma unroll(4)
     for (int i = max_dim - 1; i >= 0; --i) {
-      remainder = out_index_quotient % out_dims_array[i];
-      out_index_quotient /= out_dims_array[i];
+      int q = out_index_quotient / out_dims_array[i];
+      int remainder = out_index_quotient - q * out_dims_array[i];
+      out_index_quotient = q;
       x_index += remainder * x_strides_array[i];
       y_index += remainder * y_strides_array[i];
     }
