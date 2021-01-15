@@ -1226,7 +1226,7 @@ def cross_entropy(input,
             weight_gather = core.ops.gather_nd(
                 weight, label)  #trans weight from class to sample, shape:N
             input_shape = list(label.shape)
-            weight_gather_reshape, _ = reshape(weight_gather, shape=input_shape)
+            weight_gather_reshape = reshape(weight_gather, shape=input_shape)
             out = core.ops.elementwise_mul(out, weight_gather_reshape)
 
         if reduction == "sum":
