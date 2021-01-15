@@ -64,7 +64,7 @@ class AscendInstance {
 
   void InitGlobalResouces() {
 	  LOG(INFO) << "Begin InitGlobalResouces";
-	  session_ = new ge::Session(GetDefaultInitSessionOptions());
+      session_.reset(new ge::Session(GetDefaultInitSessionOptions()));
 	  if (session_ == nullptr){
 		  LOG(FATAL) << "new session error:" << session_;
 	  }
