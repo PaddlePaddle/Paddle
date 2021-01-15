@@ -1393,10 +1393,10 @@ void BindImperative(py::module *m_ptr) {
              const std::vector<bool> &is_sparse_gradient,
              std::shared_ptr<imperative::ParallelContext> parallel_ctx,
              const std::vector<size_t> &group_size_limits,
-             bool find_unused_vars, bool reject_rebuld_group) {
+             bool find_unused_vars, bool use_rebuild_group) {
             return imperative::Reducer::SetInstance(
                 vars, group_indices, is_sparse_gradient, parallel_ctx,
-                group_size_limits, find_unused_vars, reject_rebuld_group);
+                group_size_limits, find_unused_vars, use_rebuild_group);
           }))
       .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
            py::arg("vars"), py::call_guard<py::gil_scoped_release>());
