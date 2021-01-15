@@ -630,9 +630,12 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse_multi_node(int gpu_num,
 
   int uniq_len = len;
   merge_grad(gpu_num, d_keys, d_grads, len, uniq_len);
+  
   uniq_len = gather_one_node_grad(gpu_num, d_keys, d_grads, uniq_len);
+  
   uniq_len = gather_multi_node_grad(gpu_num, storage_[gpu_num].local_keys, storage_[gpu_num].local_grads, uniq_len);
-
+  
+  update_one_table(gpu_num, storage_[gpu_num].local_keys, storage_[gpu_num].local_grads, uniq_len, sgd);
 }
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -648,6 +651,7 @@ int HeterComm<KeyType, ValType, GradType>::gather_one_node_grad(int gpu_num,
   auto stream = resource_->local_stream(gpu_num, 0);
   int max_size = 0;
 
+  ncclComm_t nccl_inner_comm = nccl_inner_comms_[gpu_num];
   // alloc for size
   int h_node_len[total_gpu];
   auto d_node_len_mem = memory::AllocShared(place, total_gpu * sizeof(int));
@@ -658,10 +662,10 @@ int HeterComm<KeyType, ValType, GradType>::gather_one_node_grad(int gpu_num,
              cudaMemcpyHostToDevice);
   
   // allgather grad len
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclGroupStart());
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclAllGather((const void* )(d_node_len + gpu_num), (void*)d_node_len,
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather((const void* )(d_node_len + gpu_num), (void*)d_node_len,
                         1, ncclInt, nccl_inner_comm, stream));
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclGroupEnd());
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
   cudaMemcpy(h_node_len, d_node_len, sizeof(int) * total_gpu,
              cudaMemcpyDeviceToHost);
@@ -674,19 +678,19 @@ int HeterComm<KeyType, ValType, GradType>::gather_one_node_grad(int gpu_num,
   storage.alloc(max_size * total_gpu);
 
   // allgather keys and grads
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclGroupStart());
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclAllGather(d_keys,
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(d_keys,
         storage.all_keys,
         max_size,
         ncclUint64,
         nccl_inner_comm, stream));
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclAllGather(d_grads,
-        storage.all_grad,
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(d_grads,
+        storage.all_grads,
         max_size * sizeof(GradType),
         ncclUint8,
         nccl_inner_comm, stream));
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclGroupEnd());
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
  
   int h_left[total_gpu];
@@ -726,17 +730,16 @@ int HeterComm<KeyType, ValType, GradType>::gather_multi_node_grad(int gpu_num,
                                                         KeyType* d_keys,
                                                         GradType* d_grads,
                                                         int len) {
-  int node_size = 10; 
   int dev_id = resource_->dev_id(gpu_num);
   auto& storage = storage_[gpu_num];
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(gpu_num, 0);
   int max_size = 0;
-
+  ncclComm_t nccl_inter_comm = nccl_inter_comms_[gpu_num];
   // alloc for size
-  int h_node_len[node_size];
-  auto d_node_len_mem = memory::AllocShared(place, node_size * sizeof(int));
+  int h_node_len[node_size_];
+  auto d_node_len_mem = memory::AllocShared(place, node_size_ * sizeof(int));
   int* d_node_len = reinterpret_cast<int*>(d_node_len_mem->ptr());
   h_node_len[0] = len;
   
@@ -744,39 +747,39 @@ int HeterComm<KeyType, ValType, GradType>::gather_multi_node_grad(int gpu_num,
              cudaMemcpyHostToDevice);
   
   // allgather grad len
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclGroupStart());
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclAllGather(d_node_len, d_node_len,
-                        1, ncclInt, nccl_inner_comm, stream));
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclGroupEnd());
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(d_node_len, d_node_len,
+                        1, ncclInt, nccl_inter_comm, stream));
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-  cudaMemcpy(h_node_len, d_node_len, sizeof(int) * node_size,
+  cudaMemcpy(h_node_len, d_node_len, sizeof(int) * node_size_,
              cudaMemcpyDeviceToHost);
 
-  for (int i = 0; i < node_size; ++i) {
+  for (int i = 0; i < node_size_; ++i) {
     if (h_node_len[i] > max_size) {
       max_size = h_node_len[i];
     }
   }
-  storage.alloc(max_size * node_size);
+  storage.alloc(max_size * node_size_);
 
   // allgather keys and grads
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclGroupStart());
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclAllGather(d_keys,
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(d_keys,
         storage.all_keys,
         max_size,
         ncclUint64,
-        nccl_inner_comm, stream));
+        nccl_inter_comm, stream));
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclAllGather(d_grads,
-        storage.all_grad,
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(d_grads,
+        storage.all_grads,
         max_size * sizeof(GradType),
         ncclUint8,
-        nccl_inner_comm, stream));
-  PADDLE_ENFORCE_CUDA_SUCCESS(ncclGroupEnd());
+        nccl_inter_comm, stream));
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
   
   int merge_num = 0;
-  for (int i = 0; i < node_size; ++i) {
+  for (int i = 0; i < node_size_; ++i) {
     int index = i * max_size;
     cudaMemcpyAsync(storage.local_keys + merge_num, storage.all_keys + index, h_node_len[i],
                     cudaMemcpyDefault, stream);

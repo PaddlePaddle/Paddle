@@ -25,6 +25,11 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#ifdef PADDLE_WITH_GLOO
+#include <gloo/broadcast.h>
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
+#include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
@@ -75,12 +80,55 @@ class PSGPUWrapper {
 
   void BuildGPUPS(const uint64_t table_id, int feature_dim,
                   std::shared_ptr<HeterContext> context);
+  
   void InitializeGPU(const std::vector<int>& dev_ids) {
-    if (s_instance_ != NULL) {
+    if (s_instance_ != NULL && is_initialized_ == false) {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
+      is_initialized_ = true;
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
       keys_tensor.resize(resource_->total_gpu());
+      if (multi_node_) {
+        int dev_size = dev_ids.size();
+        // init inner comm
+        inner_comms_.resize(dev_size);
+        inter_ncclids_.resize(dev_size);
+        VLOG(3) << "resize";
+        platform::dynload::ncclCommInitAll(&(inner_comms_[0]), dev_size, &dev_ids[0]);
+        VLOG(3) << "after init all";
+        // init inter comm
+#ifdef PADDLE_WITH_GLOO
+        inter_comms_.resize(dev_size);
+        auto gloo = paddle::framework::GlooWrapper::GetInstance();
+        VLOG(3) << "get gloo";
+        if (gloo->Rank() == 0) {
+          for (int i = 0; i < dev_size; ++i) {
+            platform::dynload::ncclGetUniqueId(&inter_ncclids_[i]);
+          }
+        }
+        VLOG(3) << "get id";
+        
+        PADDLE_ENFORCE_EQ(
+            gloo->IsInitialized(), true,
+            platform::errors::PreconditionNotMet(
+                "You must initialize the gloo environment first to use it."));
+        gloo::BroadcastOptions opts(gloo->GetContext());
+        opts.setOutput(&inter_ncclids_[0], dev_size);
+        opts.setRoot(0);
+        gloo::broadcast(opts);
+        VLOG(3) << "bcast";
+        
+        for (int i = 0; i < dev_size; ++i) {
+          platform::dynload::ncclCommInitRank(&inter_comms_[i], gloo->Size(),
+                              inter_ncclids_[i], gloo->Rank());
+        }
+        node_size_ = gloo->Size();
+        VLOG(1) << "init size, size = " << node_size_;
+#else
+        PADDLE_THROW(platform::errors::Unavailable(
+            "heter ps need compile with GLOO"));
+#endif
+      }
     }
   }
   // PSGPUWrapper singleton
@@ -108,7 +156,11 @@ class PSGPUWrapper {
   std::shared_ptr<HeterPsResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
   std::vector<int> slot_vector_;
-
+  int multi_node_{1};
+  int node_size_;
+  std::vector<ncclComm_t> inner_comms_;
+  std::vector<ncclComm_t> inter_comms_;
+  std::vector<ncclUniqueId> inter_ncclids_;
  protected:
   static bool is_initialized_;
 };
