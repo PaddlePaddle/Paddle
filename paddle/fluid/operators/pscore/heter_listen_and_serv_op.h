@@ -46,8 +46,8 @@ class DeviceContext;
 namespace paddle {
 namespace operators {
 
-using MultiVarMsg = ::paddle::MultiVariableMessage;
-using VarMsg = ::paddle::VariableMessage;
+using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
+using VarMsg = ::paddle::distributed::VariableMessage;
 
 template <class TKey, class TValue>
 class DoubleFindMap : public std::unordered_map<TKey, TValue> {

@@ -288,12 +288,14 @@ void SetTensorFromPyArrayT(
 #endif
   } else {
 #ifdef PADDLE_WITH_CUDA
-    auto dst = self->mutable_data<T>(place);
-    if (paddle::platform::is_cuda_pinned_place(place)) {
-      std::memcpy(dst, array.data(), array.nbytes());
-    } else if (paddle::platform::is_gpu_place(place)) {
+    if (paddle::platform::is_gpu_place(place)) {
+      // TODO(zhiqiu): set SetDeviceId before calling cuda APIs.
+      auto dst = self->mutable_data<T>(place);
       paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
                                       cudaMemcpyHostToDevice);
+    } else if (paddle::platform::is_cuda_pinned_place(place)) {
+      auto dst = self->mutable_data<T>(place);
+      std::memcpy(dst, array.data(), array.nbytes());
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Incompatible place type: Tensor.set() supports "

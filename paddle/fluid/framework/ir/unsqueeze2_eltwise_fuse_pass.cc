@@ -131,4 +131,4 @@ REGISTER_PASS_CAPABILITY(unsqueeze2_eltwise_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("unsqueeze2", 0)
-            .EQ("elementwise_mul", 0));
+            .LE("elementwise_mul", 1));

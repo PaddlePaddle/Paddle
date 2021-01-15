@@ -24,6 +24,7 @@ import threading
 import numpy as np
 import multiprocessing
 from collections import namedtuple
+from paddle.fluid.framework import _set_expected_place, _current_expected_place
 
 # NOTE: queue has a different name in python2 and python3
 if six.PY2:
@@ -297,12 +298,20 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._need_check_feed, self._places, self._use_buffer_reader, True,
             self._pin_memory)
 
-        self._thread = threading.Thread(target=self._thread_loop)
+        self._thread = threading.Thread(
+            target=self._thread_loop, args=(_current_expected_place(), ))
         self._thread.daemon = True
         self._thread.start()
 
-    def _thread_loop(self):
+    def _thread_loop(self, legacy_expected_place):
         try:
+            #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
+            # and it will call platform::SetDeviceId() in c++ internally.
+            # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
+            # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
+            # APIs in this thread.
+            _set_expected_place(legacy_expected_place)
+
             for indices in self._sampler_iter:
                 # read data from dataset in mini-batch
                 batch = self._dataset_fetcher.fetch(indices)
@@ -563,7 +572,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._pin_memory)
 
         self._thread_done_event = threading.Event()
-        self._thread = threading.Thread(target=self._thread_loop)
+        self._thread = threading.Thread(
+            target=self._thread_loop, args=(_current_expected_place(), ))
         self._thread.daemon = True
         self._thread.start()
 
@@ -603,7 +613,14 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._blocking_queue.kill()
         logging.error("DataLoader reader thread raised an exception!")
 
-    def _thread_loop(self):
+    def _thread_loop(self, legacy_expected_place):
+        #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
+        # and it will call platform::SetDeviceId() in c++ internally.
+        # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
+        # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
+        # APIs in this thread.
+        _set_expected_place(legacy_expected_place)
+
         while not self._thread_done_event.is_set():
             batch = self._get_data()
             if not self._thread_done_event.is_set():

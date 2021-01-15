@@ -213,4 +213,4 @@ REGISTER_OP_VERSION(gaussian_random)
             .ModifyAttr(
                 "shape",
                 "Add the default value of shape, the default value is {}.",
-                {}));
+                std::vector<int64_t>{}));
