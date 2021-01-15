@@ -1809,8 +1809,11 @@ def save(program, model_path):
     parameter_list = list(filter(is_parameter, program.list_vars()))
     param_dict = {p.name: get_tensor(p) for p in parameter_list}
     param_dict = _unpack_saved_dict(param_dict)
+    pickle_bytes = pickle.dumps(param_dict, protocol=2)
     with open(model_path + ".pdparams", 'wb') as f:
-        pickle.dump(param_dict, f, protocol=2)
+        max_bytes = 2**30
+        for i in range(0, len(pickle_bytes), max_bytes):
+            f.write(pickle_bytes[i:i + max_bytes])
 
     optimizer_var_list = list(
         filter(is_belong_to_optimizer, program.list_vars()))
