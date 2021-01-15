@@ -258,6 +258,10 @@ if(WITH_AMD_GPU)
     include(hip)
 endif(WITH_AMD_GPU)
 
+if(WITH_NV_JETSON)
+    set(WITH_ARM ON CACHE STRING "Set WITH_ARM=ON when compiling WITH_NV_JETSON=ON." FORCE)
+endif()
+
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
