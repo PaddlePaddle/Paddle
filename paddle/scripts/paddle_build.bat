@@ -260,7 +260,7 @@ echo    ========================================
 echo    Step 2. Buile Paddle ...
 echo    ========================================
 
-for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*9/10
+for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*2/3
 set build_times=1
 :build_tp
 echo Build third_party the %build_times% time:

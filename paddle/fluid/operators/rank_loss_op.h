@@ -65,7 +65,8 @@ class RankLossGradKernel : public framework::OpKernel<T> {
     if (d_left_t) {
       d_left_t->mutable_data<T>(ctx.GetPlace());
       auto d_left = framework::EigenVector<T>::Flatten(*d_left_t);
-      d_left.device(dev) = d_out * (1.0f / (1.0f + (right - left).exp()) - label);
+      d_left.device(dev) =
+          d_out * (1.0f / (1.0f + (right - left).exp()) - label);
     }
     // compute d_right
     if (d_right_t) {
