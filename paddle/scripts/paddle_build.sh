@@ -1827,6 +1827,7 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
+        sleep 1000h
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
