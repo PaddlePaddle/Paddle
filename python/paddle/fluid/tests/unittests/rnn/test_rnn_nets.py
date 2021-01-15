@@ -342,7 +342,7 @@ class TestLSTMWithSeqs(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         paddle.set_device("cpu")
-        self.lstm = paddle.nn.LSTM(16, 32, 1)
+        self.lstm = paddle.nn.LSTM(16, 32, 1, dropout=0.1)
         self.optimizer = paddle.optimizer.SGD(learning_rate=0.00001)
 
     def test_lstm1(self):
