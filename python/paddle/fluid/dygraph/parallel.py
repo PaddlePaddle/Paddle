@@ -469,12 +469,16 @@ class DataParallel(layers.Layer):
         # TODO(shenliang03) "find_unused_vars" interface will be exposed in the future 
         # to handle control flow to process unused parameters
         find_unused_vars = True
+
+        # TODO(shenliang03) Solve the problem of inconsistent arrival order of each card
+        reject_rebuld_group = bool(os.getenv("PADDLE_REJECT_REBUILD_GROUP", 1))
+
         self._reducer = core.Reducer(
             trainable_parameters,
             list(reversed(self.group_indices)), is_sparse_gradient,
             parallel_helper.__parallel_ctx__clz__,
             [self.last_comm_buffer_size, self.comm_buffer_size],
-            find_unused_vars)
+            find_unused_vars, reject_rebuld_group)
 
     def _find_varbase(self, obj):
         if isinstance(obj, core.VarBase):
