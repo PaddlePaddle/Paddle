@@ -68,7 +68,7 @@ void Communicator::init_gflag(const std::string &gflags) {
   }
   int params_cnt = flags.size();
   char **params_ptr = &(flags_ptr[0]);
-  ::google::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
 }
 
 std::once_flag Communicator::init_flag_;
