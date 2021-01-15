@@ -324,7 +324,7 @@ void BindAscendGraph(py::module *m) {
 		      (TensorDesc (Operator::*)(uint32_t) const) & Operator::GetInputDesc)
       .def("get_input_desc",
            [](Operator& op, const std::string& name){
-	   	return op.GetInputDesc(name.c_str(), name.length());
+	   	return op.GetInputDesc(name);
            })
       .def("get_dynamic_output_num", static_cast<int (ge::Operator::*)(const char*) const>(&Operator::GetDynamicOutputNum))
       .def("get_dynamic_input_num", static_cast<int (ge::Operator::*)(const char*) const>(&Operator::GetDynamicInputNum))
@@ -338,7 +338,7 @@ void BindAscendGraph(py::module *m) {
 		      static_cast<ge::graphStatus (ge::Operator::*)(const char*, const TensorDesc&)>(&Operator::UpdateInputDesc))
       .def("get_output_desc",
            [](Operator& op, const std::string& name) {
-	   	return op.GetOutputDesc(name.c_str(), name.length());
+	   	return op.GetOutputDesc(name);
            })
       .def("get_output_desc",
            (TensorDesc (Operator::*)(uint32_t) const) & Operator::GetOutputDesc)
