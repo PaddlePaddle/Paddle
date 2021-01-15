@@ -19,6 +19,7 @@ import collections
 import pickle
 import six
 import warnings
+import sys
 
 import paddle
 
@@ -261,11 +262,17 @@ def save(obj, path):
     # TODO(chenweihang): supports save other object
     saved_obj = _build_saved_state_dict(obj)
     saved_obj = _unpack_saved_dict(saved_obj)
-    pickle_bytes = pickle.dumps(saved_obj, protocol=2)
-    with open(path, 'wb') as f:
-        max_bytes = 2**30
-        for i in range(0, len(pickle_bytes), max_bytes):
-            f.write(pickle_bytes[i:i + max_bytes])
+
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
+    if sys.platform == 'darwin':
+        pickle_bytes = pickle.dumps(saved_obj, protocol=2)
+        with open(path, 'wb') as f:
+            max_bytes = 2**30
+            for i in range(0, len(pickle_bytes), max_bytes):
+                f.write(pickle_bytes[i:i + max_bytes])
+    else:
+        with open(path, 'wb') as f:
+            pickle.dump(saved_obj, f, protocol=2)
 
 
 def load(path, **configs):
