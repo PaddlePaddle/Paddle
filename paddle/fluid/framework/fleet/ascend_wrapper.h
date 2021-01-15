@@ -19,13 +19,8 @@ limitations under the License. */
 
 #include <map>
 #include <memory>
-<<<<<<< HEAD
-#include <vector>
-#include <string>
-=======
 #include <string>
 #include <vector>
->>>>>>> 6dd52c5b255f7399188818a29991f5d375cd175d
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -42,10 +37,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-<<<<<<< HEAD
-=======
-// typedef std::vector<std::string> AscendGraphDesc;
->>>>>>> 6dd52c5b255f7399188818a29991f5d375cd175d
 typedef ge::Graph AscendGraphDesc;
 
 class AscendInstance {
@@ -169,11 +160,7 @@ class AscendInstance {
 
     // Run Graph
     std::vector<ge::Tensor> ge_outputs;
-<<<<<<< HEAD
-    ge::Status status = ss_->RunGraph(graph_idx, ge_inputs, ge_outputs);
-=======
     ge::Status status = session_->RunGraph(graph_idx, ge_inputs, ge_outputs);
->>>>>>> 6dd52c5b255f7399188818a29991f5d375cd175d
     PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
                       paddle::platform::errors::PreconditionNotMet(
                           "Calling RunGraph of graph engine failed, please "
