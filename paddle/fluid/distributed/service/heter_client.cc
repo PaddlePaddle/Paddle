@@ -122,7 +122,7 @@ void HeterClient::SendAndRecvAsync(
   cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
   distributed::MultiVarMsg request, response;
   auto& request_io_buffer = cntl.request_attachment();
-  ::paddle::PsService_Stub stub(xpu_channels_[num].get());
+  ::paddle::distributed::PsService_Stub stub(xpu_channels_[num].get());
   distributed::SerializeToMultiVarMsgAndIOBuf(
       message_name_val, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
       &request, &request_io_buffer);
@@ -164,7 +164,7 @@ std::future<int32_t> HeterClient::SendCmd(
     for (const auto& param : params) {
       closure->request(i)->add_params(param);
     }
-    ::paddle::PsService_Stub rpc_stub(xpu_channels_[i].get());
+    ::paddle::distributed::PsService_Stub rpc_stub(xpu_channels_[i].get());
     closure->cntl(i)->set_timeout_ms(
         FLAGS_pserver_timeout_ms);  // cmd msg don't limit timeout for save/load
     rpc_stub.service(closure->cntl(i), closure->request(i),

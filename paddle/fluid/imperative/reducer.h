@@ -18,14 +18,18 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <queue>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/string/string_helper.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/imperative/all_reduce.h"
@@ -121,7 +125,7 @@ class Reducer {
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
       std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-      const std::vector<size_t>& group_size_limits);
+      const std::vector<size_t>& group_size_limits, bool find_unused_vars);
 
   virtual ~Reducer() {}
 
@@ -130,13 +134,18 @@ class Reducer {
   void InitializeDenseGroups(const std::vector<size_t>& variable_indices_,
                              Group* p_group);
 
-  void PrepareForBackward();
+  void PrepareDeps(const std::unordered_set<GradOpNode*>& init_nodes);
 
-  void AddDistHook(VariableWrapper* var_warpper, size_t var_index);
+  void PrepareForBackward(
+      const std::vector<std::shared_ptr<imperative::VarBase>>& outputs);
 
-  void MarkDenseVarReady(size_t var_index, VariableWrapper* var_warpper);
+  void AddDistHook(size_t var_index);
 
-  void MarkSparseVarReady(size_t var_index, VariableWrapper* var_warpper);
+  // void MarkDenseVarReady(size_t var_index);
+
+  // void MarkSparseVarReady(size_t var_index);
+
+  void MarkVarReady(const size_t var_index, const bool is_used_var);
 
   void MarkGroupReady(size_t group_index);
 
@@ -148,17 +157,19 @@ class Reducer {
 
   void CreateGroupEvents(int group_num);
 
+  inline bool NeedRebuildGroup() { return !has_rebuilt_group_; }
+
   // Reducer Singleton
   static std::shared_ptr<Reducer> SetInstance(
       const std::vector<std::shared_ptr<imperative::VarBase>>& vars,
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
       std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-      const std::vector<size_t>& group_size_limits) {
+      const std::vector<size_t>& group_size_limits, bool find_unused_vars) {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::imperative::Reducer(
           vars, group_indices, is_sparse_gradient, parallel_ctx,
-          group_size_limits));
+          group_size_limits, find_unused_vars));
     }
     return s_instance_;
   }
@@ -194,6 +205,14 @@ class Reducer {
   std::vector<std::shared_ptr<imperative::VarBase>> rebuild_vars_;
   std::vector<int64_t> rebuild_var_indices_;
   const std::vector<size_t> group_size_limits_;
+
+  // Following variables are to help unused vars
+  std::unordered_map<GradOpNode*, size_t> node_deps_;
+  std::unordered_map<VariableWrapper*, size_t> var_index_map_;
+  std::vector<size_t> unused_vars_;
+  bool has_marked_unused_vars_{false};
+  bool find_unused_vars_{false};
+  bool all_group_ready_{false};
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
