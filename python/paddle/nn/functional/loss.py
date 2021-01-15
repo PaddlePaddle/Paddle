@@ -796,14 +796,14 @@ def nll_loss(input,
     c = input_shape[1]
     if in_dygraph_mode():
         if input_dims != 2 and input_dims != 4:
-            input, _ = core.ops.reshape2(input, 'shape', [n, c, 1, -1])
-            label, _ = core.ops.reshape2(label, 'shape', [n, 1, -1])
+            input, _ = core.ops.reshape2(input, None, 'shape', [n, c, 1, -1])
+            label, _ = core.ops.reshape2(label, None, 'shape', [n, 1, -1])
             out_shape = [n] + input_shape[2:]
         out, total_weight = core.ops.nll_loss(input, label, weight,
                                               'ignore_index', ignore_index,
                                               'reduction', reduction)
         if input_dims != 2 and input_dims != 4 and reduction == 'none':
-            out, _ = core.ops.reshape2(out, 'shape', out_shape)
+            out, _ = core.ops.reshape2(out, None, 'shape', out_shape)
         return out
 
     helper = LayerHelper('nll_loss', **locals())
