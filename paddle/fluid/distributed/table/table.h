@@ -127,7 +127,7 @@ class Table {
   float *_global_lr = nullptr;
   std::shared_ptr<ValueAccessor> _value_accesor;
 };
-REGISTER_REGISTERER(Table);
+REGISTER_PSCORE_REGISTERER(Table);
 
 class TableManager {
  public:
