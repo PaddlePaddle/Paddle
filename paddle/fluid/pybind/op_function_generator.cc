@@ -485,7 +485,6 @@ int main(int argc, char* argv[]) {
 
 #ifdef PADDLE_WITH_ASCEND
   ge::GEFinalize();
-  //sleep(300);
 #endif
   return 0;
 }
