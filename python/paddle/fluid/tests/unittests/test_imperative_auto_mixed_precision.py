@@ -398,8 +398,8 @@ class TestLayerNormFp16(unittest.TestCase):
         if fluid.is_compiled_with_cuda():
             with fluid.dygraph.guard(fluid.CUDAPlace(0)):
                 x = paddle.rand([2, 2, 2, 3])
-                layer_norm = paddle.nn.LayerNorm(x_data.shape[1:])
-                with paddle.amp.auto_cast(custom_white_list='layer_norm'):
+                layer_norm = paddle.nn.LayerNorm(x.shape[1:])
+                with paddle.amp.auto_cast(custom_white_list=['layer_norm']):
                     out = layer_norm(x)
 
                 self.assertTrue(out.dtype == fluid.core.VarDesc.VarType.FP16)

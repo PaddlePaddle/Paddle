@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -35,12 +36,27 @@ AmpOperators& AmpOperators::Instance() {
   return instance;
 }
 
-std::shared_ptr<std::unordered_set<std::string>> AmpOperators::GetAllowOps() {
+std::shared_ptr<std::unordered_set<std::string>>
+AmpOperators::GetMutableAllowOps() {
   return allow_ops_;
 }
 
-std::shared_ptr<std::unordered_set<std::string>> AmpOperators::GetBlockOps() {
+std::shared_ptr<std::unordered_set<std::string>>
+AmpOperators::GetMutableBlockOps() {
   return block_ops_;
+}
+
+std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
+  os << "allow ops: ";
+  auto allow_ops = ops.GetMutableAllowOps();
+  std::copy((*allow_ops).begin(), (*allow_ops).end(),
+            std::ostream_iterator<std::string>(os, " "));
+  os << "; ";
+  os << "block ops: ";
+  auto block_ops = ops.GetMutableBlockOps();
+  std::copy((*block_ops).begin(), (*block_ops).end(),
+            std::ostream_iterator<std::string>(os, " "));
+  return os;
 }
 
 inline std::string GetDtypeStr(
@@ -116,7 +132,7 @@ static inline framework::proto::VarType::Type GetPromoteType(
 NameVarBaseMap AutoCastInputs(const std::string& op_type,
                               const NameVarBaseMap& ins) {
   NameVarBaseMap new_ins(ins);
-  if (AmpOperators::Instance().GetAllowOps()->count(op_type)) {
+  if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
     for (auto& pair : new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
       if ((op_type == "batch_norm" || op_type == "layer_norm") &&
@@ -131,7 +147,7 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
       }
     }
     return new_ins;
-  } else if (AmpOperators::Instance().GetBlockOps()->count(op_type)) {
+  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
     for (auto& pair : new_ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float";
