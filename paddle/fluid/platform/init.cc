@@ -55,7 +55,7 @@ namespace paddle {
 namespace platform {
 
 void ParseCommandLineFlags(int argc, char **argv, bool remove) {
-  google::ParseCommandLineFlags(&argc, &argv, remove);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, remove);
 }
 
 }  // namespace platform
@@ -93,7 +93,7 @@ bool InitGflags(std::vector<std::string> args) {
             << ", Init commandline: " << line;
 
     char **arr = argv.data();
-    google::ParseCommandLineFlags(&argc, &arr, true);
+    ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &arr, true);
     successed = true;
 
     VLOG(1) << "After Parse: argc is " << argc;
