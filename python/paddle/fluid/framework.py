@@ -5660,15 +5660,15 @@ def _get_var(name, program=None):
 @signature_safe_contextmanager
 def _dygraph_guard(tracer):
     global _dygraph_tracer_
-    tmp_trace = _dygraph_tracer_
+    tmp_tracer = _dygraph_tracer_
     _dygraph_tracer_ = tracer
     core._switch_tracer(tracer)
 
     try:
         yield
     finally:
-        core._switch_tracer(tmp_trace)
-        _dygraph_tracer_ = tmp_trace
+        core._switch_tracer(tmp_tracer)
+        _dygraph_tracer_ = tmp_tracer
 
 
 @signature_safe_contextmanager
@@ -5677,10 +5677,13 @@ def _dygraph_place_guard(place):
     tmp_place = _global_expected_place_
     _global_expected_place_ = place
 
+    _set_dygraph_tracer_expected_place(place)
+
     try:
         yield
     finally:
         _global_expected_place_ = tmp_place
+        _set_dygraph_tracer_expected_place(tmp_place)
 
 
 def load_op_library(lib_filename):
