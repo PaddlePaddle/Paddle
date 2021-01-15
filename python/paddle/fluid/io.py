@@ -1716,7 +1716,7 @@ def _unpack_saved_dict(saved_obj):
     unpack_infor = {}
     for key, value in saved_obj.items():
         if isinstance(value, np.ndarray):
-            MAX_NUMBER_OF_ELEMENT = int((2**31 - 1) / value.dtype.itemsize)
+            MAX_NUMBER_OF_ELEMENT = int((2**30 - 1) / value.dtype.itemsize)
             num_element = np.prod(value.shape)
             if num_element > MAX_NUMBER_OF_ELEMENT:
                 unpack_infor[key] = {}
