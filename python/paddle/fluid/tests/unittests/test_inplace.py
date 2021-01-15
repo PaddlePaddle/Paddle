@@ -30,7 +30,7 @@ class TestInplace(unittest.TestCase):
             var[0] = 1.1
             self.assertEqual(var.inplace_version, 1)
 
-            paddle.nn.functional.assign(paddle.ones(shape=[3]), var)
+            paddle.assign(paddle.ones(shape=[3]), var)
 
             # NOTE(liym27): assign(input, output) is an inplace operation for output.
             # There is inplace-related processing for api assign, var.inplace_version should be 2 not 1.

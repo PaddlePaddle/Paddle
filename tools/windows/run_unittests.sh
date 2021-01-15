@@ -64,7 +64,6 @@ diable_wingpu_test="^test_gradient_clip$|\
 ^test_dataloader_early_reset$|\
 ^test_decoupled_py_reader_data_check$|\
 ^test_fleet_base_single$|\
-^test_fuse_elewise_add_act_pass$|\
 ^test_fuse_optimizer_pass$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
@@ -82,7 +81,6 @@ diable_wingpu_test="^test_gradient_clip$|\
 ^test_rnn_op$|\
 ^test_simple_rnn_op$|\
 ^test_lstm_cudnn_op$|\
-^test_conv2d_int8_mkldnn_op$|\
 ^test_crypto$|\
 ^test_program_prune_backward$|\
 ^test_imperative_ocr_attention_model$|\
@@ -206,4 +204,64 @@ long_time_test="^best_fit_allocator_test$|\
 export FLAGS_call_stack_level=2
 export FLAGS_fraction_of_gpu_memory_to_use=0.92
 export CUDA_VISIBLE_DEVICES=0
-ctest -E "$disable_ut_quickly|$diable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release --repeat until-pass:4 after-timeout:4
+
+UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
+echo "Windows 1 card TestCases count is $num"
+output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
+eight_parallel_job=$(echo $output | cut -d ";" -f 1)
+tetrad_parallel_jog=$(echo $output | cut -d ";" -f 2)
+non_parallel_job=$(echo $output | cut -d ";" -f 3)
+
+non_parallel_job_1=$(echo $non_parallel_job | cut -d "," -f 1)
+non_parallel_job_2=$(echo $non_parallel_job | cut -d "," -f 2)
+
+failed_test_lists=''
+tmp_dir=`mktemp -d`
+function collect_failed_tests() {
+    for file in `ls $tmp_dir`; do
+        grep -q 'The following tests FAILED:' $tmp_dir/$file
+        exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            failuretest=''
+        else
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            failed_test_lists="${failed_test_lists}
+            ${failuretest}"
+        fi
+    done
+}
+
+function run_unittest() {
+    test_case=$1
+    parallel_job=$2
+    if [ "$2" == "" ]; then
+        parallel_job=1
+    else
+        parallel_job=$2
+    fi
+    echo "************************************************************************"
+    echo "********These unittests run $parallel_job job each time with 1 GPU**********"
+    echo "************************************************************************"
+    export CUDA_VISIBLE_DEVICES=0
+    tmpfile=$tmp_dir/$RANDOM
+    (ctest -R "$test_case" -E "$disable_ut_quickly|$diable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job --repeat until-pass:4 after-timeout:4 | tee $tmpfile ) &
+    wait;
+}
+
+set +e
+run_unittest $eight_parallel_job 8
+run_unittest $tetrad_parallel_jog 4
+run_unittest $non_parallel_job_1
+run_unittest $non_parallel_job_2
+collect_failed_tests
+set -e
+rm -f $tmp_dir/*
+if [[ "$failed_test_lists" != "" ]]; then
+    echo "========================================"
+    echo "Summary Failed Tests... "
+    echo "========================================"
+    echo "The following tests FAILED: "
+    echo "${failed_test_lists}"
+    exit 8
+fi

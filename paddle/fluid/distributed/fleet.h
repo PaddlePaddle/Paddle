@@ -198,6 +198,10 @@ class FleetWrapper {
   // mode = 1, save delta feature, which means save diff
   void SaveModelOneTable(const uint64_t table_id, const std::string& path,
                          const int mode);
+
+  // recv table from server and save it in LodTensor
+  void RecvAndSaveTable(const uint64_t table_id, const std::string& path);
+
   // clear all models, release their memory
   void ClearModel();
   // clear one table

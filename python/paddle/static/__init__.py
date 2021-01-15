@@ -14,13 +14,39 @@
 
 # TODO: import framework api under this directory 
 __all__ = [
-    'append_backward', 'gradients', 'Executor', 'global_scope', 'scope_guard',
-    'BuildStrategy', 'CompiledProgram', 'Print', 'py_func', 'ExecutionStrategy',
-    'name_scope', 'ParallelExecutor', 'program_guard', 'WeightNormParamAttr',
-    'default_main_program', 'default_startup_program', 'Program', 'data',
-    'InputSpec', 'save', 'load', 'save_inference_model', 'load_inference_model',
-    'load_program_state', 'set_program_state', 'cpu_places', 'cuda_places',
-    'xpu_places', 'Variable'
+    'append_backward',
+    'gradients',
+    'Executor',
+    'global_scope',
+    'scope_guard',
+    'BuildStrategy',
+    'CompiledProgram',
+    'Print',
+    'py_func',
+    'ExecutionStrategy',
+    'name_scope',
+    'ParallelExecutor',
+    'program_guard',
+    'WeightNormParamAttr',
+    'default_main_program',
+    'default_startup_program',
+    'Program',
+    'data',
+    'InputSpec',
+    'save',
+    'load',
+    'save_inference_model',
+    'load_inference_model',
+    'load_program_state',
+    'set_program_state',
+    'cpu_places',
+    'cuda_places',
+    'xpu_places',
+    'Variable',
+    'load_vars',
+    'save_vars',
+    'auc',
+    'accuracy',
 ]
 
 from . import nn
@@ -61,5 +87,11 @@ from ..fluid.io import save  #DEFINE_ALIAS
 from ..fluid.io import load  #DEFINE_ALIAS
 from ..fluid.io import load_program_state  #DEFINE_ALIAS
 from ..fluid.io import set_program_state  #DEFINE_ALIAS
+
+from ..fluid.io import load_vars  #DEFINE_ALIAS
+from ..fluid.io import save_vars  #DEFINE_ALIAS
+
 from ..fluid.layers import create_parameter  #DEFINE_ALIAS
 from ..fluid.layers import create_global_var  #DEFINE_ALIAS
+from ..fluid.layers.metric_op import auc  #DEFINE_ALIAS
+from ..fluid.layers.metric_op import accuracy  #DEFINE_ALIAS
