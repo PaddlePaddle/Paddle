@@ -3014,9 +3014,9 @@ class LambOptimizer(AdamOptimizer):
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
-            :ref:`api_fluid_clip_GradientClipByValue` ). If you want better convergence, it is recommended
-            to use :ref:`api_fluid_clip_GradientClipByGlobalNorm` . Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` , :ref:`api_paddle_fluid_clip_ClipGradByNorm` ,
+            :ref:`api_paddle_fluid_clip_ClipGradByValue` ). If you want better convergence, it is recommended
+            to use :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` . Default None, meaning there is no gradient clipping.
         exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
             decay when **exclude_from_weight_decay_fn(parameter)** returns true. 
             Default None.
