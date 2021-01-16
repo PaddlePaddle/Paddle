@@ -28,7 +28,7 @@ from . import framework
 from . import layers
 from . import unique_name
 from .backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
-from .clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops, ClipGradByGlobalNorm
+from .clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
@@ -3015,7 +3015,8 @@ class LambOptimizer(AdamOptimizer):
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default is :ref:`api_fluid_clip_GradientClipByGlobalNorm` .
+            :ref:`api_fluid_clip_GradientClipByValue` ). If you want better convergence, it is recommended
+            to use :ref:`api_fluid_clip_GradientClipByGlobalNorm` . Default None, meaning there is no gradient clipping.
         exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
             decay when **exclude_from_weight_decay_fn(parameter)** returns true. 
             Default None.
@@ -3040,7 +3041,6 @@ class LambOptimizer(AdamOptimizer):
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
-    # these two not used in op temporarily
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
 
@@ -3072,8 +3072,6 @@ class LambOptimizer(AdamOptimizer):
         self.type = "lamb"
         self._weight_decay = lamb_weight_decay
         self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
-        if self._grad_clip is None:
-            self._grad_clip = ClipGradByGlobalNorm(clip_norm=1.0)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -3110,7 +3108,7 @@ class LambOptimizer(AdamOptimizer):
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad),
+                "LearningRate": lr,
                 "Moment1": moment1,
                 "Moment2": moment2,
                 "Beta1Pow": beta1_pow_acc,

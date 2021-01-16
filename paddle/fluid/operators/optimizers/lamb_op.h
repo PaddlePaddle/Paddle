@@ -27,7 +27,72 @@ namespace operators {
 namespace scatter = paddle::operators::math::scatter;
 
 template <typename T>
-struct LambMomentUpdateFunctor {
+struct LambMomentREGUpdateFunctor {
+  T weight_decay_;
+  T beta1_;
+  T beta2_;
+  T epsilon_;
+
+  T beta1_pow_;
+  T* beta1_pow_out_;
+  T beta2_pow_;
+  T* beta2_pow_out_;
+  const T* moment1_;
+  T* moment1_out_;
+  const T* moment2_;
+  T* moment2_out_;
+  const T* grad_;
+  const T* param_;
+  T* trust_ratio_div_;
+
+  LambMomentREGUpdateFunctor(T weight_decay, T beta1, T beta2, T epsilon,
+                             T beta1_pow, T* beta1_pow_out, T beta2_pow,
+                             T* beta2_pow_out, const T* mom1, T* mom1_out,
+                             const T* mom2, T* mom2_out, const T* grad,
+                             const T* param, T* trust_ratio_div)
+      : weight_decay_(weight_decay),
+        beta1_(beta1),
+        beta2_(beta2),
+        epsilon_(epsilon),
+        beta1_pow_(beta1_pow),
+        beta1_pow_out_(beta1_pow_out),
+        beta2_pow_(beta2_pow),
+        beta2_pow_out_(beta2_pow_out),
+        moment1_(mom1),
+        moment1_out_(mom1_out),
+        moment2_(mom2),
+        moment2_out_(mom2_out),
+        grad_(grad),
+        param_(param),
+        trust_ratio_div_(trust_ratio_div) {}
+
+  inline HOSTDEVICE void operator()(size_t i) const {
+    T g = grad_[i];
+    T mom1 = moment1_[i];
+    T mom2 = moment2_[i];
+    T beta1_pow = beta1_pow_;
+    T beta2_pow = beta2_pow_;
+    T p = param_[i];
+
+    mom1 = beta1_ * mom1 + (1 - beta1_) * g;
+    mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
+
+    moment1_out_[i] = mom1;
+    moment2_out_[i] = mom2;
+
+    T mom1_unbiased = mom1 / (1 - beta1_pow);
+    T mom2_unbiased = mom2 / (1 - beta2_pow);
+    trust_ratio_div_[i] =
+        mom1_unbiased / (sqrt(mom2_unbiased) + epsilon_) + weight_decay_ * p;
+    if (beta1_pow_out_ && beta2_pow_out_) {
+      beta1_pow_out_[0] = beta1_pow * beta1_;
+      beta2_pow_out_[0] = beta2_pow * beta2_;
+    }
+  }
+};
+
+template <typename T>
+struct LambMomentMENUpdateFunctor {
   T weight_decay_;
   T beta1_;
   T beta2_;
@@ -45,11 +110,12 @@ struct LambMomentUpdateFunctor {
   const T* param_;
   T* trust_ratio_div_;
 
-  LambMomentUpdateFunctor(T weight_decay, T beta1, T beta2, T epsilon,
-                          const T* beta1_pow, T* beta1_pow_out,
-                          const T* beta2_pow, T* beta2_pow_out, const T* mom1,
-                          T* mom1_out, const T* mom2, T* mom2_out,
-                          const T* grad, const T* param, T* trust_ratio_div)
+  LambMomentMENUpdateFunctor(T weight_decay, T beta1, T beta2, T epsilon,
+                             const T* beta1_pow, T* beta1_pow_out,
+                             const T* beta2_pow, T* beta2_pow_out,
+                             const T* mom1, T* mom1_out, const T* mom2,
+                             T* mom2_out, const T* grad, const T* param,
+                             T* trust_ratio_div)
       : weight_decay_(weight_decay),
         beta1_(beta1),
         beta2_(beta2),
@@ -92,7 +158,88 @@ struct LambMomentUpdateFunctor {
 };
 
 template <typename T>
-struct SparseLambMomentUpdateFunctor {
+struct SparseLambMomentREGUpdateFunctor {
+  T weight_decay_;
+  T beta1_;
+  T beta2_;
+  T epsilon_;
+
+  T beta1_pow_;
+  T* beta1_pow_out_;
+  T beta2_pow_;
+  T* beta2_pow_out_;
+  const T* moment1_;
+  T* moment1_out_;
+  const T* moment2_;
+  T* moment2_out_;
+  const T* grad_;
+  const T* param_;
+  T* trust_ratio_div_;
+
+  const int64_t* rows_;
+  int64_t row_numel_;
+  int64_t row_count_;
+
+  SparseLambMomentREGUpdateFunctor(T weight_decay, T beta1, T beta2, T epsilon,
+                                   T beta1_pow, T* beta1_pow_out, T beta2_pow,
+                                   T* beta2_pow_out, const T* mom1, T* mom1_out,
+                                   const T* mom2, T* mom2_out, const T* grad,
+                                   const T* param, T* trust_ratio_div,
+                                   const int64_t* rows, int64_t row_numel,
+                                   int64_t row_count)
+      : weight_decay_(weight_decay),
+        beta1_(beta1),
+        beta2_(beta2),
+        epsilon_(epsilon),
+        beta1_pow_(beta1_pow),
+        beta1_pow_out_(beta1_pow_out),
+        beta2_pow_(beta2_pow),
+        beta2_pow_out_(beta2_pow_out),
+        moment1_(mom1),
+        moment1_out_(mom1_out),
+        moment2_(mom2),
+        moment2_out_(mom2_out),
+        grad_(grad),
+        param_(param),
+        trust_ratio_div_(trust_ratio_div),
+        rows_(rows),
+        row_numel_(row_numel),
+        row_count_(row_count) {}
+
+  inline HOSTDEVICE void update(size_t i, T g) const {
+    // The following code is same as dense
+    T mom1 = moment1_[i];
+    T mom2 = moment2_[i];
+    T beta1_pow = beta1_pow_;
+    T beta2_pow = beta2_pow_;
+    T p = param_[i];
+
+    mom1 = beta1_ * mom1 + (1 - beta1_) * g;
+    mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
+
+    moment1_out_[i] = mom1;
+    moment2_out_[i] = mom2;
+
+    T mom1_unbiased = mom1 / (1 - beta1_pow);
+    T mom2_unbiased = mom2 / (1 - beta2_pow);
+    trust_ratio_div_[i] =
+        mom1_unbiased / (sqrt(mom2_unbiased) + epsilon_) + weight_decay_ * p;
+    if (beta1_pow_out_ && beta1_pow_out_) {
+      beta1_pow_out_[0] = beta1_pow * beta1_;
+      beta2_pow_out_[0] = beta2_pow * beta2_;
+    }
+  }
+
+  inline HOSTDEVICE void operator()(size_t i) const {
+    auto row_idx =
+        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+    T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_] : 0;
+    update(i, g);
+  }
+};
+
+template <typename T>
+struct SparseLambMomentMENUpdateFunctor {
   T weight_decay_;
   T beta1_;
   T beta2_;
@@ -114,13 +261,13 @@ struct SparseLambMomentUpdateFunctor {
   int64_t row_numel_;
   int64_t row_count_;
 
-  SparseLambMomentUpdateFunctor(T weight_decay, T beta1, T beta2, T epsilon,
-                                const T* beta1_pow, T* beta1_pow_out,
-                                const T* beta2_pow, T* beta2_pow_out,
-                                const T* mom1, T* mom1_out, const T* mom2,
-                                T* mom2_out, const T* grad, const T* param,
-                                T* trust_ratio_div, const int64_t* rows,
-                                int64_t row_numel, int64_t row_count)
+  SparseLambMomentMENUpdateFunctor(T weight_decay, T beta1, T beta2, T epsilon,
+                                   const T* beta1_pow, T* beta1_pow_out,
+                                   const T* beta2_pow, T* beta2_pow_out,
+                                   const T* mom1, T* mom1_out, const T* mom2,
+                                   T* mom2_out, const T* grad, const T* param,
+                                   T* trust_ratio_div, const int64_t* rows,
+                                   int64_t row_numel, int64_t row_count)
       : weight_decay_(weight_decay),
         beta1_(beta1),
         beta2_(beta2),
@@ -257,13 +404,10 @@ class LambOpKernel : public framework::OpKernel<T> {
       if (platform::is_gpu_place(ctx.GetPlace()) &&
           beta1_pow.place() == platform::CPUPlace() &&
           beta2_pow.place() == platform::CPUPlace()) {
-        LoDTensor beta1_pow_gpu, beta2_pow_gpu;
-        framework::TensorCopy(beta1_pow, platform::CUDAPlace(), &beta1_pow_gpu);
-        framework::TensorCopy(beta2_pow, platform::CUDAPlace(), &beta2_pow_gpu);
-        LambMomentUpdateFunctor<T> moment_update_functor(
-            weight_decay, beta1, beta2, epsilon,
-            beta1_pow_gpu.template data<T>(), nullptr,
-            beta2_pow_gpu.template data<T>(), nullptr, mom1.template data<T>(),
+        LambMomentREGUpdateFunctor<T> moment_update_functor(
+            weight_decay, beta1, beta2, epsilon, *beta1_pow.template data<T>(),
+            nullptr, *beta2_pow.template data<T>(), nullptr,
+            mom1.template data<T>(),
             mom1_out.template mutable_data<T>(ctx.GetPlace()),
             mom2.template data<T>(),
             mom2_out.template mutable_data<T>(ctx.GetPlace()),
@@ -275,7 +419,7 @@ class LambOpKernel : public framework::OpKernel<T> {
         beta2_pow_out.template mutable_data<T>(platform::CPUPlace())[0] =
             beta2 * beta2_pow.template data<T>()[0];
       } else {
-        LambMomentUpdateFunctor<T> moment_update_functor(
+        LambMomentMENUpdateFunctor<T> moment_update_functor(
             weight_decay, beta1, beta2, epsilon, beta1_pow.template data<T>(),
             beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
             beta2_pow.template data<T>(),
@@ -325,13 +469,10 @@ class LambOpKernel : public framework::OpKernel<T> {
       if (platform::is_gpu_place(ctx.GetPlace()) &&
           beta1_pow.place() == platform::CPUPlace() &&
           beta2_pow.place() == platform::CPUPlace()) {
-        LoDTensor beta1_pow_gpu, beta2_pow_gpu;
-        framework::TensorCopy(beta1_pow, platform::CUDAPlace(), &beta1_pow_gpu);
-        framework::TensorCopy(beta2_pow, platform::CUDAPlace(), &beta2_pow_gpu);
-        SparseLambMomentUpdateFunctor<T> moment_update_functor(
-            weight_decay, beta1, beta2, epsilon,
-            beta1_pow_gpu.template data<T>(), nullptr,
-            beta2_pow_gpu.template data<T>(), nullptr, mom1.template data<T>(),
+        SparseLambMomentREGUpdateFunctor<T> moment_update_functor(
+            weight_decay, beta1, beta2, epsilon, *beta1_pow.template data<T>(),
+            nullptr, *beta2_pow.template data<T>(), nullptr,
+            mom1.template data<T>(),
             mom1_out.template mutable_data<T>(ctx.GetPlace()),
             mom2.template data<T>(),
             mom2_out.template mutable_data<T>(ctx.GetPlace()), grad_data,
@@ -343,7 +484,7 @@ class LambOpKernel : public framework::OpKernel<T> {
         beta2_pow_out.template mutable_data<T>(platform::CPUPlace())[0] =
             beta2 * beta2_pow.template data<T>()[0];
       } else {
-        SparseLambMomentUpdateFunctor<T> moment_update_functor(
+        SparseLambMomentMENUpdateFunctor<T> moment_update_functor(
             weight_decay, beta1, beta2, epsilon, beta1_pow.template data<T>(),
             beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
             beta2_pow.template data<T>(),

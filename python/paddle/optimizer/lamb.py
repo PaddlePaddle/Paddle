@@ -13,11 +13,9 @@
 # limitations under the License.
 
 from .optimizer import Optimizer
-from ..fluid import core, clip
+from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
-from ..fluid.regularizer import append_regularization_ops
-from ..fluid.clip import append_gradient_clip_ops
 
 __all__ = ["Lamb"]
 
@@ -66,7 +64,8 @@ class Lamb(Optimizer):
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default is :ref:`api_fluid_clip_GradientClipByGlobalNorm` .
+            :ref:`api_fluid_clip_GradientClipByValue` ). If you want better convergence, it is recommended
+            to use :ref:`api_fluid_clip_GradientClipByGlobalNorm` . Default None, meaning there is no gradient clipping.
         name(str|None): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
     Examples:
@@ -87,7 +86,6 @@ class Lamb(Optimizer):
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
-    # these two not used in op temporarily
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
 
@@ -117,8 +115,6 @@ class Lamb(Optimizer):
         self._epsilon = epsilon
         self._lamb_weight_decay = lamb_weight_decay
         self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
-        if self._grad_clip is None:
-            self._grad_clip = clip.ClipGradByGlobalNorm(clip_norm=1.0)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -194,10 +190,12 @@ class Lamb(Optimizer):
             "epsilon": self._epsilon,
             "weight_decay": weight_decay
         }
+
         lamb_op = block.append_op(
             type=self.type,
             inputs=inputs,
             outputs=outputs,
             attrs=attrs,
             stop_gradient=True)
+
         return lamb_op
