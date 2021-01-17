@@ -37,7 +37,6 @@ struct ParallelStrategy {
   int local_rank_{0};
   std::vector<std::string> trainer_endpoints_{};
   std::string current_endpoint_{""};
-  // TODO(shenliang03): support multi stream communication
   int nrings_{1};
 };
 

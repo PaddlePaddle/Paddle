@@ -100,6 +100,14 @@ paddle::platform::DeviceContext *NCCLParallelContext::GetDeviceContext(
 }
 
 void NCCLParallelContext::WaitCompute(int ring_id) {
+  PADDLE_ENFORCE_GE(ring_id, 0, platform::errors::OutOfRange(
+                                    "ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_LT(ring_id, compute_events_.size(),
+                    platform::errors::OutOfRange(
+                        "ring id must < compute events size,"
+                        "but got ring id = %d, compute events size = %d",
+                        ring_id, compute_events_.size()));
+
   auto compute_stream = static_cast<platform::CUDADeviceContext *>(
                             platform::DeviceContextPool::Instance().Get(place_))
                             ->stream();
@@ -113,6 +121,14 @@ void NCCLParallelContext::WaitCompute(int ring_id) {
 }
 
 void NCCLParallelContext::WaitComm(int ring_id) {
+  PADDLE_ENFORCE_GE(ring_id, 0, platform::errors::OutOfRange(
+                                    "ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_LT(ring_id, comm_events_.size(),
+                    platform::errors::OutOfRange(
+                        "ring id must < comm events size,"
+                        "but got ring id = %d, comm events size = %d",
+                        ring_id, comm_events_.size()));
+
   auto compute_stream = static_cast<platform::CUDADeviceContext *>(
                             platform::DeviceContextPool::Instance().Get(place_))
                             ->stream();
