@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(cudnn_deterministic);
 DECLARE_uint64(conv_workspace_size_limit);
@@ -65,8 +64,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     bool exhaustive_search =
         FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
     bool deterministic = FLAGS_cudnn_deterministic;
-    auto exhaustive_deterministic = exhaustive_search && deterministic;
-    PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
+    PADDLE_ENFORCE_EQ(exhaustive_search && deterministic, false,
                       platform::errors::InvalidArgument(
                           "Cann't set exhaustive_search True and "
                           "FLAGS_cudnn_deterministic True at same time."));
@@ -351,8 +349,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     bool exhaustive_search =
         FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
     bool deterministic = FLAGS_cudnn_deterministic;
-    auto exhaustive_deterministic = exhaustive_search && deterministic;
-    PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
+    PADDLE_ENFORCE_EQ(exhaustive_search && deterministic, false,
                       platform::errors::InvalidArgument(
                           "Cann't set exhaustive_search True and "
                           "FLAGS_cudnn_deterministic True at same time."));
@@ -762,8 +759,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     bool exhaustive_search =
         FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
     bool deterministic = FLAGS_cudnn_deterministic;
-    auto exhaustive_deterministic = exhaustive_search && deterministic;
-    PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
+    PADDLE_ENFORCE_EQ(exhaustive_search && deterministic, false,
                       platform::errors::InvalidArgument(
                           "Cann't set exhaustive_search True and "
                           "FLAGS_cudnn_deterministic True at same time."));
