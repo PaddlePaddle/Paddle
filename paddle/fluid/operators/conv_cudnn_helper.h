@@ -510,10 +510,10 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     std::string event_name =
         exhaustive_search ? "choose_filter_algo_search" : "choose_filter_algo";
     platform::RecordEvent record_event(event_name);
+
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
-    size_t workspace_size = 0;
-    bool has_got_workspace_size = true;
+    algo_t algo;
 
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -534,49 +534,49 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     }
 #endif
 
-    algo_t algo;
     if (!exhaustive_search && !deterministic) {
+      auto FindAlgorithmHeuristic = [&]() {
+        algo_t returned_algo;
+        size_t workspace_size = 0;
+
 #if CUDNN_VERSION >= 7001
-      using perf_t = cudnnConvolutionBwdFilterAlgoPerf_t;
-      int perf_count;
-      int best_algo_idx = 0;
-      std::unique_ptr<perf_t[]> perf_results(
-          new perf_t[kNUM_CUDNN_BWD_FILTER_ALGS]);
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm_v7(
-              args.handle, args.idesc.desc(), args.odesc.desc(),
-              args.cdesc.desc(), args.wdesc.desc(), kNUM_CUDNN_BWD_FILTER_ALGS,
-              &perf_count, perf_results.get()));
-      algo = (perf_results.get())[best_algo_idx].algo;
-      workspace_size = GetWorkspaceSize(args, algo);
-      if (workspace_size > workspace_size_limit) {
-        workspace_size = workspace_size_limit;
-#if CUDNN_VERSION >= 8000
-        // cudnnGetConvolutionBackwardFilterAlgorithm is removed in CUDNN-8
-        ChooseAlgoByWorkspace<perf_t, algo_t>(perf_results.get(),
-                                              kNUM_CUDNN_BWD_FILTER_ALGS,
-                                              workspace_size_limit, &algo);
-#else
-        VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
-                   "the workspace size request("
-                << workspace_size << ") exceeds the limit("
-                << workspace_size_limit << ")";
+        using perf_t = cudnnConvolutionBwdFilterAlgoPerf_t;
+        int perf_count;
+        std::unique_ptr<perf_t[]> perf_results(
+            new perf_t[kNUM_CUDNN_BWD_FILTER_ALGS]);
         PADDLE_ENFORCE_CUDA_SUCCESS(
-            platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
+            platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm_v7(
                 args.handle, args.idesc.desc(), args.odesc.desc(),
                 args.cdesc.desc(), args.wdesc.desc(),
-                CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
-                workspace_size_limit, &algo));
-#endif
-      }
+                kNUM_CUDNN_BWD_FILTER_ALGS, &perf_count, perf_results.get()));
+        returned_algo = (perf_results.get())[0].algo;
+        workspace_size = GetWorkspaceSize(args, returned_algo);
+#endif  // CUDNN_VERSION >= 7001
+
+        if (workspace_size > workspace_size_limit) {
+#if CUDNN_VERSION >= 8000
+          // cudnnGetConvolutionBackwardFilterAlgorithm is removed in CUDNN-8
+          ChooseAlgoByWorkspace<perf_t, algo_t>(
+              perf_results.get(), kNUM_CUDNN_BWD_FILTER_ALGS,
+              workspace_size_limit, &returned_algo);
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
-              args.handle, args.idesc.desc(), args.odesc.desc(),
-              args.cdesc.desc(), args.wdesc.desc(),
-              CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
-              workspace_size_limit, &algo));
+          VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
+                     "the workspace size request("
+                  << workspace_size << ") exceeds the limit("
+                  << workspace_size_limit << ")";
+          PADDLE_ENFORCE_CUDA_SUCCESS(
+              platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
+                  args.handle, args.idesc.desc(), args.odesc.desc(),
+                  args.cdesc.desc(), args.wdesc.desc(),
+                  CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
+                  workspace_size_limit, &returned_algo));
 #endif
+        }
+
+        return returned_algo;
+      };
+
+      algo = FindAlgorithmHeuristic();
     } else if (deterministic) {
       return CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
     } else {
