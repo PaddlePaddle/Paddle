@@ -1232,7 +1232,7 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
             path = os.path.join("test_static_save_load_large_param",
                                 "static_save")
             paddle.fluid.save(prog, path)
-            # # set var to zero
+            # set var to zero
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     ten = fluid.global_scope().find_var(var.name).get_tensor()
