@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
+#include "paddle/fluid/platform/profiler.h"
+
 namespace paddle {
 namespace operators {
 
@@ -201,12 +203,15 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic,
                      const framework::ExecutionContext& ctx) {
+    std::string event_name =
+        exhaustive_search ? "choose_algo_search" : "choose_algo";
+    platform::RecordEvent record_event(event_name);
+
     auto dtype = platform::CudnnDataType<T>::type;
-    bool has_got_workspace_size = true;
+    algo_t algo;
+    //    bool has_got_workspace_size = true;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
-    size_t workspace_size = 0;
-    algo_t algo;
 
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -220,57 +225,65 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
       VLOG(5) << "use cudnn_tensor_op_math";
     } else if (dtype == CUDNN_DATA_FLOAT && !args.cdesc.allow_tf32_) {
 #if CUDA_VERSION >= 11000
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
-                                                         CUDNN_FMA_MATH));
+//      PADDLE_ENFORCE_CUDA_SUCCESS(
+//          platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
+//                                                         CUDNN_FMA_MATH));
 #endif  // CUDA_VERSION >= 11000
     }
 #endif
 
     if (!exhaustive && !deterministic) {
-#if CUDNN_VERSION >= 7001
-      int perf_count;
-      int best_algo_idx = 0;
-      std::unique_ptr<perf_t[]> perf_results(new perf_t[kNUM_CUDNN_FWD_ALGS]);
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
-              args.handle, args.idesc.desc(), args.wdesc.desc(),
-              args.cdesc.desc(), args.odesc.desc(), kNUM_CUDNN_FWD_ALGS,
-              &perf_count, perf_results.get()));
-      algo = (perf_results.get())[best_algo_idx].algo;
-      workspace_size = GetWorkspaceSize(args, algo);
+      auto FindArgprithmHeuristic = [&]() {
+        algo_t algo;
+        size_t workspace_size = 0;
+        bool found_right_algo = false;
 
-      if (workspace_size > workspace_size_limit) {
+#if CUDNN_VERSION >= 7001
+        int perf_count;
+        std::unique_ptr<perf_t[]> perf_results(new perf_t[kNUM_CUDNN_FWD_ALGS]);
+        {
+          platform::RecordEvent record_event("find_forward_algo_v7");
+          PADDLE_ENFORCE_CUDA_SUCCESS(
+              platform::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
+                  args.handle, args.idesc.desc(), args.wdesc.desc(),
+                  args.cdesc.desc(), args.odesc.desc(), kNUM_CUDNN_FWD_ALGS,
+                  &perf_count, perf_results.get()));
+          algo = (perf_results.get())[0].algo;
+          workspace_size = GetWorkspaceSize(args, algo);
+        }
+#endif
+
+        if (workspace_size > workspace_size_limit) {
+          platform::RecordEvent record_event("find_forward_algo");
 #if CUDNN_VERSION >= 8000
-        // cudnnGetConvolutionForwardAlgorithm is removed in CUDNN-8
-        ChooseAlgoByWorkspace<perf_t, algo_t>(perf_results.get(),
-                                              kNUM_CUDNN_FWD_ALGS,
-                                              workspace_size_limit, &algo);
+          // cudnnGetConvolutionForwardAlgorithm is removed in CUDNN-8
+          ChooseAlgoByWorkspace<perf_t, algo_t>(perf_results.get(),
+                                                kNUM_CUDNN_FWD_ALGS,
+                                                workspace_size_limit, &algo);
 #else
-        VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
-                   "the workspace size request("
-                << workspace_size << ") exceeds the limit("
-                << workspace_size_limit << ")";
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            platform::dynload::cudnnGetConvolutionForwardAlgorithm(
-                args.handle, args.idesc.desc(), args.wdesc.desc(),
-                args.cdesc.desc(), args.odesc.desc(),
-                CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-                workspace_size_limit, &algo));
+          VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
+                     "the workspace size request("
+                  << workspace_size << ") exceeds the limit("
+                  << workspace_size_limit << ")";
+          PADDLE_ENFORCE_CUDA_SUCCESS(
+              platform::dynload::cudnnGetConvolutionForwardAlgorithm(
+                  args.handle, args.idesc.desc(), args.wdesc.desc(),
+                  args.cdesc.desc(), args.odesc.desc(),
+                  CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+                  workspace_size_limit, &algo));
 #endif
-      }
-#else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnGetConvolutionForwardAlgorithm(
-              args.handle, args.idesc.desc(), args.wdesc.desc(),
-              args.cdesc.desc(), args.odesc.desc(),
-              CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-              workspace_size_limit, &algo));
-#endif
+        }
+
+        return algo;
+      };
+
+      algo = FindArgprithmHeuristic();
       VLOG(3) << "choose algo " << algo;
     } else if (deterministic) {
+      platform::RecordEvent record_event("find_forward_algo_deterministic");
       algo = static_cast<cudnnConvolutionFwdAlgo_t>(1);
     } else {
+      platform::RecordEvent record_event("find_forward_algo_cache");
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
@@ -313,7 +326,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
             return perf_stat[0].algo;
           });
     }
-    VLOG(3) << "choose algo " << algo;
+    //    LOG(INFO) << "choose algo " << algo;
     return algo;
   }
 
@@ -336,6 +349,9 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic,
                      const framework::ExecutionContext& ctx) {
+    std::string event_name =
+        exhaustive_search ? "choose_data_algo_search" : "choose_data_algo";
+    platform::RecordEvent record_event(event_name);
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
@@ -486,6 +502,9 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic,
                      const framework::ExecutionContext& ctx) {
+    std::string event_name =
+        exhaustive_search ? "choose_filter_algo_search" : "choose_filter_algo";
+    platform::RecordEvent record_event(event_name);
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     size_t workspace_size = 0;
