@@ -19,6 +19,7 @@ set -e
 function test_launch_ps(){
     server_port_0=${PADDLE_DIST_UT_PORT}
     server_port_1=$(( PADDLE_DIST_UT_PORT + 1 ))
+    echo "server_port_0:${server_port_0} server_port_1=${server_port_1}"
     python -m paddle.distributed.fleet.launch --server_num=2 --worker_num=2 fleet_ps_training.py 2> ut.elog
     if grep -q "server are killed" ut.elog; then
         echo "test pserver launch succeed"
