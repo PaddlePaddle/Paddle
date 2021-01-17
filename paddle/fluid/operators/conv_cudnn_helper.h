@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -202,10 +201,6 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
   static AlgoT Find(const ConvArgs& args, bool exhaustive_search,
                     bool deterministic,
                     const framework::ExecutionContext& ctx) {
-    std::string event_name =
-        exhaustive_search ? "choose_algo_search" : "choose_algo";
-    platform::RecordEvent record_event(event_name);
-
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
@@ -360,10 +355,6 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
   static AlgoT Find(const ConvArgs& args, bool exhaustive_search,
                     bool deterministic,
                     const framework::ExecutionContext& ctx) {
-    std::string event_name =
-        exhaustive_search ? "choose_data_algo_search" : "choose_data_algo";
-    platform::RecordEvent record_event(event_name);
-
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
@@ -540,10 +531,6 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   static AlgoT Find(const ConvArgs& args, bool exhaustive_search,
                     bool deterministic,
                     const framework::ExecutionContext& ctx) {
-    std::string event_name =
-        exhaustive_search ? "choose_filter_algo_search" : "choose_filter_algo";
-    platform::RecordEvent record_event(event_name);
-
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     AlgoT algo;
