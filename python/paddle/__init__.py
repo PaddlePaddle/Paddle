@@ -113,19 +113,23 @@ from .tensor.manipulation import flatten  #DEFINE_ALIAS
 from .tensor.manipulation import gather  #DEFINE_ALIAS
 from .tensor.manipulation import gather_nd  #DEFINE_ALIAS
 from .tensor.manipulation import reshape  #DEFINE_ALIAS
+from .tensor.manipulation import reshape_  #DEFINE_ALIAS
 from .tensor.manipulation import flip as reverse  #DEFINE_ALIAS
 from .tensor.manipulation import scatter  #DEFINE_ALIAS
+from .tensor.manipulation import scatter_  #DEFINE_ALIAS
 from .tensor.manipulation import scatter_nd_add  #DEFINE_ALIAS
 from .tensor.manipulation import scatter_nd  #DEFINE_ALIAS
 from .tensor.manipulation import shard_index  #DEFINE_ALIAS
 from .tensor.manipulation import slice  #DEFINE_ALIAS
 from .tensor.manipulation import split  #DEFINE_ALIAS
 from .tensor.manipulation import squeeze  #DEFINE_ALIAS
+from .tensor.manipulation import squeeze_  #DEFINE_ALIAS
 from .tensor.manipulation import stack  #DEFINE_ALIAS
 from .tensor.manipulation import strided_slice  #DEFINE_ALIAS
 from .tensor.manipulation import transpose  #DEFINE_ALIAS
 from .tensor.manipulation import unique  #DEFINE_ALIAS
 from .tensor.manipulation import unsqueeze  #DEFINE_ALIAS
+from .tensor.manipulation import unsqueeze_  #DEFINE_ALIAS
 from .tensor.manipulation import unstack  #DEFINE_ALIAS
 from .tensor.manipulation import flip  #DEFINE_ALIAS
 from .tensor.manipulation import unbind  #DEFINE_ALIAS
@@ -172,6 +176,7 @@ from .tensor.math import square  #DEFINE_ALIAS
 from .tensor.math import stanh  #DEFINE_ALIAS
 from .tensor.math import sum  #DEFINE_ALIAS
 from .tensor.math import tanh  #DEFINE_ALIAS
+from .tensor.math import tanh_  #DEFINE_ALIAS
 from .tensor.math import add_n  #DEFINE_ALIAS
 from .tensor.math import max  #DEFINE_ALIAS
 from .tensor.math import maximum  #DEFINE_ALIAS

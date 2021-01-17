@@ -1895,6 +1895,12 @@ def load(program, model_path, executor=None, var_list=None):
             raise ValueError(
                 "executor is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
             )
+
+        if var_list is not None:
+            var_list_names = [var.name for var in var_list]
+        else:
+            var_list_names = None
+
         if os.path.isdir(model_path):
             binary_file_set = set()
             for root, dirs, files in os.walk(model_path, topdown=False):
@@ -1905,7 +1911,8 @@ def load(program, model_path, executor=None, var_list=None):
             loaded_var_list = []
             for var in program_var_list:
                 var_path = os.path.join(model_path, var.name).replace("\\", "/")
-                if var_path in binary_file_set:
+                load_condition = var_list_names is None or var.name in var_list_names
+                if var_path in binary_file_set and load_condition:
                     loaded_var_list.append(var)
                     binary_file_set.remove(var_path)
             if len(binary_file_set) > 0:
