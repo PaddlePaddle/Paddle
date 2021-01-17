@@ -264,7 +264,8 @@ def save(obj, path):
     saved_obj = _unpack_saved_dict(saved_obj)
 
     # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
-    if sys.platform == 'darwin':
+    if sys.platform == 'darwin' and sys.version_info.major == 3 and (
+            sys.version_info.minor == 5 or sys.version_info.minor == 6):
         pickle_bytes = pickle.dumps(saved_obj, protocol=2)
         with open(path, 'wb') as f:
             max_bytes = 2**30

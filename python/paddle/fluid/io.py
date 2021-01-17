@@ -1812,7 +1812,8 @@ def save(program, model_path):
     param_dict = _unpack_saved_dict(param_dict)
 
     # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
-    if sys.platform == 'darwin':
+    if sys.platform == 'darwin' and sys.version_info.major == 3 and (
+            sys.version_info.minor == 5 or sys.version_info.minor == 6):
         pickle_bytes = pickle.dumps(param_dict, protocol=2)
         with open(model_path + ".pdparams", 'wb') as f:
             max_bytes = 2**30
