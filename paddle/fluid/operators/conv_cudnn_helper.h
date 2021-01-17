@@ -245,10 +245,9 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                << args.s << ", args.p" << args.p << ", args.d" << args.d;
 
       if (!exhaustive) {
-        auto FindArgprithmHeuristic = [&]() {
+        auto FindAlgorithmHeuristic = [&]() {
           algo_t returned_algo;
           size_t workspace_size = 0;
-          bool found_right_algo = false;
 
 #if CUDNN_VERSION >= 7001
           int perf_count;
@@ -261,7 +260,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                   &perf_count, perf_results.get()));
           returned_algo = (perf_results.get())[0].algo;
           workspace_size = GetWorkspaceSize(args, returned_algo);
-#endif
+#endif  // CUDNN_VERSION >= 7001
 
           if (workspace_size > workspace_size_limit) {
 #if CUDNN_VERSION >= 8000
@@ -269,7 +268,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
             ChooseAlgoByWorkspace<perf_t, algo_t>(
                 perf_results.get(), kNUM_CUDNN_FWD_ALGS, workspace_size_limit,
                 &returned_algo);
-#else
+#else   // CUDNN_VERSION >= 8000
             VLOG(1)
                 << "Fallback to non-v7 method to find conv algorithm becasue "
                    "the workspace size request("
@@ -281,14 +280,14 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                     args.cdesc.desc(), args.odesc.desc(),
                     CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
                     workspace_size_limit, &returned_algo));
-#endif
+#endif  // CUDNN_VERSION >= 8000
           }
           return returned_algo;
         };
 
         algo = algo_cache.GetAlgorithm(
             x_dims, w_dims, args.s, args.p, args.d, 0,
-            static_cast<int64_t>(args.cudnn_dtype), FindArgprithmHeuristic);
+            static_cast<int64_t>(args.cudnn_dtype), FindAlgorithmHeuristic);
       } else {
         auto& dev_ctx =
             ctx.template device_context<platform::CUDADeviceContext>();
@@ -349,12 +348,13 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     std::string event_name =
         exhaustive_search ? "choose_data_algo_search" : "choose_data_algo";
     platform::RecordEvent record_event(event_name);
+
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
-    size_t workspace_size = 0;
-    bool has_got_workspace_size = true;
+    //    bool has_got_workspace_size = true;
     algo_t algo;
+
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
@@ -375,60 +375,63 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
 #endif
 
     if (!exhaustive && !deterministic) {
+      auto FindAlgorithmHeuristic = [&]() {
+        algo_t returned_algo;
+        size_t workspace_size = 0;
+
 #if CUDNN_VERSION >= 7001
-      int perf_count;
-      int best_algo_idx = 0;
-      std::unique_ptr<perf_t[]> perf_results(
-          new perf_t[kNUM_CUDNN_BWD_DATA_ALGS]);
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm_v7(
-              args.handle, args.wdesc.desc(), args.odesc.desc(),
-              args.cdesc.desc(), args.idesc.desc(), kNUM_CUDNN_BWD_DATA_ALGS,
-              &perf_count, perf_results.get()));
-      algo = (perf_results.get())[best_algo_idx].algo;
+        int perf_count;
+        int best_algo_idx = 0;
+        std::unique_ptr<perf_t[]> perf_results(
+            new perf_t[kNUM_CUDNN_BWD_DATA_ALGS]);
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm_v7(
+                args.handle, args.wdesc.desc(), args.odesc.desc(),
+                args.cdesc.desc(), args.idesc.desc(), kNUM_CUDNN_BWD_DATA_ALGS,
+                &perf_count, perf_results.get()));
+        returned_algo = (perf_results.get())[best_algo_idx].algo;
 
 #if CUDNN_VERSION < 7500
-      int stride_dim = args.x->dims().size() - 2;
-      bool blacklist = std::any_of(args.s.begin(), args.s.begin() + stride_dim,
-                                   [=](int n) { return n != 1; });
-      if (blacklist && (static_cast<cudnnConvolutionBwdDataAlgo_t>(
-                            perf_results[best_algo_idx].algo) ==
-                            CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING ||
-                        static_cast<cudnnConvolutionBwdDataAlgo_t>(
-                            perf_results[best_algo_idx].algo) ==
-                            CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT)) {
-        algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
-      }
-#endif
-      workspace_size = GetWorkspaceSize(args, algo);
-      if (workspace_size > workspace_size_limit) {
-        has_got_workspace_size = false;
+        int stride_dim = args.x->dims().size() - 2;
+        bool blacklist =
+            std::any_of(args.s.begin(), args.s.begin() + stride_dim,
+                        [=](int n) { return n != 1; });
+        if (blacklist && (static_cast<cudnnConvolutionBwdDataAlgo_t>(
+                              perf_results[best_algo_idx].algo) ==
+                              CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING ||
+                          static_cast<cudnnConvolutionBwdDataAlgo_t>(
+                              perf_results[best_algo_idx].algo) ==
+                              CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT)) {
+          returned_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+        }
+#endif  // CUDNN_VERSION < 7500
+        workspace_size = GetWorkspaceSize(args, returned_algo);
+#endif  // CUDNN_VERSION >= 7001
+
+        if (workspace_size > workspace_size_limit) {
 #if CUDNN_VERSION >= 8000
-        // cudnnGetConvolutionBackwardDataAlgorithm is removed in CUDNN-8
-        ChooseAlgoByWorkspace<perf_t, algo_t>(perf_results.get(),
-                                              kNUM_CUDNN_BWD_DATA_ALGS,
-                                              workspace_size_limit, &algo);
-#else
-        VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
-                   "the workspace size request("
-                << workspace_size << ") exceeds the limit("
-                << workspace_size_limit << ")";
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
-                args.handle, args.wdesc.desc(), args.odesc.desc(),
-                args.cdesc.desc(), args.idesc.desc(),
-                CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
-                workspace_size_limit, &algo));
-#endif
-      }
-#else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
-              args.handle, args.wdesc.desc(), args.odesc.desc(),
-              args.cdesc.desc(), args.idesc.desc(),
-              CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
-              workspace_size_limit, &algo));
-#endif
+          // cudnnGetConvolutionBackwardDataAlgorithm is removed in CUDNN-8
+          ChooseAlgoByWorkspace<perf_t, algo_t>(
+              perf_results.get(), kNUM_CUDNN_BWD_DATA_ALGS,
+              workspace_size_limit, &returned_algo);
+#else   // CUDNN_VERSION >= 8000
+          VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
+                     "the workspace size request("
+                  << workspace_size << ") exceeds the limit("
+                  << workspace_size_limit << ")";
+          PADDLE_ENFORCE_CUDA_SUCCESS(
+              platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
+                  args.handle, args.wdesc.desc(), args.odesc.desc(),
+                  args.cdesc.desc(), args.idesc.desc(),
+                  CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
+                  workspace_size_limit, &returned_algo));
+#endif  // CUDNN_VERSION >= 8000
+        }
+
+        return returned_algo;
+      };
+
+      algo = FindAlgorithmHeuristic();
     } else if (deterministic) {
       return CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
     } else {
