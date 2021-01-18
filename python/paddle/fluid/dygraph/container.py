@@ -80,7 +80,7 @@ class Sequential(Layer):
         
         Examples:
             .. code-block:: python
-             pass
+                pass
              
         """
         if isinstance(idx, str):
@@ -98,14 +98,14 @@ class Sequential(Layer):
 
         Examples:
             .. code-block:: python
-             pass
+                pass
              
         """      
         if isinstance(idx, str):
-            return setattr(self, str(idx), layer)
+            setattr(self, str(idx), layer)
         else:
             key = list(self._sub_layers.keys())[self._get_abs_index(idx)]
-            return setattr(self, key, layer)
+            setattr(self, key, layer)
 
     def __delitem__(self, idx):
         """del 
@@ -115,7 +115,7 @@ class Sequential(Layer):
         
         Examples:
             .. code-block:: python
-             pass
+                pass
              
         """
         if isinstance(idx, slice):
