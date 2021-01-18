@@ -293,8 +293,8 @@ void SetTensorFromPyArrayT(
     if (paddle::platform::is_cuda_pinned_place(place)) {
       std::memcpy(dst, array.data(), array.nbytes());
     } else if (paddle::platform::is_gpu_place(place)) {
-      paddle::memory::Copy(platform::CUDAPlace(), dst, platform::CPUPlace(),
-                           array.data(), array.nbytes());
+      paddle::memory::Copy(place, dst, platform::CPUPlace(), array.data(),
+                           array.nbytes());
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Incompatible place type: Tensor.set() supports "
@@ -705,8 +705,9 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
-    paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(),
-                         platform::CUDAPlace(), tensor_buf_ptr, copy_bytes);
+    auto p = BOOST_GET_CONST(platform::CUDAPlace, tensor.place());
+    paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
+                         tensor_buf_ptr, copy_bytes);
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
