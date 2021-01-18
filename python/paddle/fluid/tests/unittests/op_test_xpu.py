@@ -296,7 +296,7 @@ class XPUOpTest(OpTest):
             no_grad_set=no_grad_set)
         self._assert_is_close(a1, a2, inputs_to_check, 0.00000001,
                               "Gradient Check On two xpu")
-        self._assert_is_close(a1, a3, inputs_to_check, 0.001,
+        self._assert_is_close(a1, a3, inputs_to_check, max_relative_error,
                               "Gradient Check On cpu & xpu")
 
     def get_grad_with_place(self,
