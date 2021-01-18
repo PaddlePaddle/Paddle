@@ -49,6 +49,7 @@ class AlgorithmsCache {
                int64_t cudnn_dtype);
 
   std::unordered_map<int64_t, TAlgorithm> hash_;
+  int capacity_{65536};
   int search_times_;
   std::mutex cache_mutex;
 };
@@ -79,6 +80,9 @@ TAlgorithm AlgorithmsCache<TAlgorithm>::GetAlgorithm(
   if (!have_found) {
     ret = gen_func();
     std::lock_guard<std::mutex> lock(cache_mutex);
+    if (hash_.size() >= capacity_) {
+      hash_.erase(hash_.begin());
+    }
     hash_[seed] = ret;
   }
 
