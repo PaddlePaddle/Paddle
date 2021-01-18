@@ -2983,6 +2983,10 @@ class LambOptimizer(AdamOptimizer):
 
         v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2
 
+        m_t &= \\frac{m_t}{\\beta_1^t}
+
+        v_t &= \\frac{v_t}{\\beta_2^t}
+
         r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon}
 
         w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
@@ -3010,8 +3014,9 @@ class LambOptimizer(AdamOptimizer):
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` , :ref:`api_paddle_fluid_clip_ClipGradByNorm` ,
+            :ref:`api_paddle_fluid_clip_ClipGradByValue` ). If you want better convergence, it is recommended
+            to use :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` . Default None, meaning there is no gradient clipping.
         exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
             decay when **exclude_from_weight_decay_fn(parameter)** returns true. 
             Default None.
@@ -3036,7 +3041,6 @@ class LambOptimizer(AdamOptimizer):
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
-    # these two not used in op temporarily
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
 
@@ -3087,6 +3091,16 @@ class LambOptimizer(AdamOptimizer):
             weight_decay = 0.0
         else:
             weight_decay = self._weight_decay
+        lr = self._create_param_lr(param_and_grad)
+
+        if framework.in_dygraph_mode():
+            _, _, _, _, _ = core.ops.lamb(
+                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
+                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
+                moment2, beta1_pow_acc, beta2_pow_acc, 'beta1', self._beta1,
+                'beta2', self._beta2, 'epsilon', self._epsilon, 'weight_decay',
+                weight_decay)
+            return None
 
         # create the lamb optimize op
         lamb_op = block.append_op(
@@ -3094,7 +3108,7 @@ class LambOptimizer(AdamOptimizer):
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad),
+                "LearningRate": lr,
                 "Moment1": moment1,
                 "Moment2": moment2,
                 "Beta1Pow": beta1_pow_acc,
@@ -3103,7 +3117,9 @@ class LambOptimizer(AdamOptimizer):
             outputs={
                 "ParamOut": param_and_grad[0],
                 "Moment1Out": moment1,
-                "Moment2Out": moment2
+                "Moment2Out": moment2,
+                "Beta1PowOut": beta1_pow_acc,
+                "Beta2PowOut": beta2_pow_acc
             },
             attrs={
                 "beta1": self._beta1,
@@ -4764,7 +4780,7 @@ class RecomputeOptimizer(Optimizer):
         return
 
     def _insert_async_memcpy_op(self, insert_idx, src_varname, dst_varname,
-                                op_role, kind):
+                                op_role, dst_place_type):
         OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
         self.block._insert_op_without_sync(
             insert_idx,
@@ -4773,8 +4789,10 @@ class RecomputeOptimizer(Optimizer):
             outputs={
                 'Out': [self._main_program.global_block().var(dst_varname)]
             },
-            attrs={"dst_place_type": int(kind),
-                   OP_ROLE_KEY: op_role})
+            attrs={
+                "dst_place_type": int(dst_place_type),
+                OP_ROLE_KEY: op_role
+            })
 
     def _insert_fetch_op(self, idx, varname):
         assert varname in self.checkpoint_name2pinned_name, "Try to fetch {} from Pinned Memory, but it is NOT a checkpoint".format(
@@ -4782,13 +4800,13 @@ class RecomputeOptimizer(Optimizer):
 
         pinned_varname = self.checkpoint_name2pinned_name[varname]
         fetch_varname = self.checkpoint_name2fetch_name[varname]
-        self._insert_async_memcpy_op(idx, pinned_varname, fetch_varname, 1, 2)
+        self._insert_async_memcpy_op(idx, pinned_varname, fetch_varname, 1, 1)
 
     def _insert_offload_op(self, idx, varname):
         assert varname in self.checkpoint_name2pinned_name, "Try to offload {} to Pinned Memory, but it is NOT a checkpoint".format(
             varname)
         pinned_varname = self.checkpoint_name2pinned_name[varname]
-        self._insert_async_memcpy_op(idx, varname, pinned_varname, 0, 3)
+        self._insert_async_memcpy_op(idx, varname, pinned_varname, 0, 2)
 
     def _insert_sync_op(self, op_idx, checkpoint_name):
         # single stream offload no need sync 

@@ -26,7 +26,7 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
-class OneHotXPUKernel : public framework::OpKernel<T> {
+class OneHotV2XPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
@@ -42,8 +42,7 @@ class OneHotXPUKernel : public framework::OpKernel<T> {
       } else {
         depth = depth_data[0];
       }
-      auto in_dims = in->dims();
-      framework::DDim out_dims(in_dims);
+      auto out_dims = out->dims();
       out_dims[out_dims.size() - 1] = depth;
       out->Resize(out_dims);
     }
@@ -52,7 +51,7 @@ class OneHotXPUKernel : public framework::OpKernel<T> {
     int len = in->numel();
     int ret = xpu::one_hot<T>(dev_ctx.x_context(), in->data<T>(),
                               out->mutable_data<float>(context.GetPlace()), len,
-                              depth);
+                              depth, 1.0, 0.0);
 
     PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                       platform::errors::External(
@@ -66,6 +65,6 @@ class OneHotXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    one_hot, ops::OneHotXPUKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::OneHotXPUKernel<paddle::platform::XPUDeviceContext, int64_t>);
+    one_hot_v2, ops::OneHotV2XPUKernel<paddle::platform::XPUDeviceContext, int>,
+    ops::OneHotV2XPUKernel<paddle::platform::XPUDeviceContext, int64_t>);
 #endif
