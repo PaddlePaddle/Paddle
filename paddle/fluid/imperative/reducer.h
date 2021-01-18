@@ -142,10 +142,6 @@ class Reducer {
 
   void AddDistHook(size_t var_index);
 
-  // void MarkDenseVarReady(size_t var_index);
-
-  // void MarkSparseVarReady(size_t var_index);
-
   void MarkVarReady(const size_t var_index, const bool is_used_var);
 
   void MarkGroupReady(size_t group_index);
