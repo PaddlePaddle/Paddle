@@ -93,6 +93,39 @@ class ParallelExecutor {
                                     const ExecutionStrategy &exec_strategy,
                                     const BuildStrategy &build_strategy) const;
 
+  void InitExecutorPrivateMemberInfo(const ExecutionStrategy &exec_strategy,
+                                     const BuildStrategy &build_strategy,
+                                     size_t device_count, ir::Graph *graph);
+
+  void CreateLocalScopes(Scope *global_scope,
+                         const std::vector<Scope *> &local_scopes,
+                         bool create_new);
+
+  std::unordered_map<Scope *, Scope *> CreateLocalExecScopes(
+      const std::vector<Scope *> &local_scopes, bool create_new);
+
+  std::vector<ir::Graph *> CloneGraphToMultiDevices(ir::Graph *graph);
+
+  void PrepareNCCLCommunicator(Scope *global_scope);
+
+  std::vector<ir::Graph *> CompileGraphWithBuildStrategy(
+      ir::Graph *graph, std::vector<ir::Graph *> *graphs,
+      const std::string &loss_var_name);
+
+  void CreateVariableInfos(std::vector<details::VariableInfo> *var_infos,
+                           ir::Graph *graph);
+
+  std::vector<ir::Graph *> CreateSSAGraphExecutor(
+      const ExecutionStrategy &exec_strategy,
+      std::vector<ir::Graph *> *async_graphs, ir::Graph *graph);
+
+  void ReSetOpScopeMaOfGraphs(
+      const std::vector<ir::Graph *> &final_graphs,
+      const std::unordered_map<Scope *, Scope *> &scope_map);
+
+  void SetReaderOpDeviceInfoOfGraphs(
+      const std::vector<ir::Graph *> &final_graphs);
+
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
 };
