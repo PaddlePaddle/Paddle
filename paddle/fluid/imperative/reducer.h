@@ -29,6 +29,7 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/string_helper.h"
 
 #if defined(PADDLE_WITH_NCCL)

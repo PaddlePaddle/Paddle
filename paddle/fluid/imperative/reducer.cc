@@ -435,8 +435,12 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
       group_tensor.ShareDataWith(*tensor).Resize(
           {static_cast<int64_t>(length)});
     } else {
-      group_tensor.Resize({static_cast<int64_t>(length)});
-      group_tensor.mutable_data(place_, group.dtype_);
+      if (!group_tensor.IsInitialized()) {
+        auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+        group_tensor.Resize({static_cast<int64_t>(length)});
+        group_tensor.mutable_data(place_, group.dtype_);
+        operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
+      }
     }
   } else {
     // process sparse group
