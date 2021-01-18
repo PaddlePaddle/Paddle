@@ -22,20 +22,36 @@ package paddle.framework.proto;
 // that supports old versions following the version and compatibility policy.
 message Version { optional int64 version = 1 [ default = 0 ]; }
 
+// enum AttrType {
+//    INT = 0;
+//    FLOAT = 1;
+//    STRING = 2;
+//    INTS = 3;
+//    FLOATS = 4;
+//    STRINGS = 5;
+//    BOOLEAN = 6;
+//    BOOLEANS = 7;
+//    BLOCK = 8;
+//    LONG = 9;
+//    BLOCKS = 10;
+//    LONGS = 11;
+//    FLOAT64S = 12;
+//}
+
 enum AttrType {
   INT = 0;
   FLOAT = 1;
   STRING = 2;
   INTS = 3;
-  FLOATS = 4;
-  STRINGS = 5;
-  BOOLEAN = 6;
-  BOOLEANS = 7;
-  BLOCK = 8;
-  LONG = 9;
-  BLOCKS = 10;
-  LONGS = 11;
-  FLOAT64S = 12;
+  FLOAT64S = 4;
+  FLOATS = 5;
+  STRINGS = 6;
+  BOOLEAN = 7;
+  BOOLEANS = 8;
+  BLOCK = 9;
+  LONG = 10;
+  BLOCKS = 11;
+  LONGS = 12;
 }
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
