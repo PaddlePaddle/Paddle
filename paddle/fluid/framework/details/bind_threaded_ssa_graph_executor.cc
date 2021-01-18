@@ -118,8 +118,7 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
   exception_.Clear();
 
   InsertFetchOps(fetch_tensors, &fetches, &fetched_vars, op_deps.get(),
-                 &fetch_ops, &ready_fetch_ops);
-
+                 &fetch_ops, &ready_fetch_ops, return_merged);
   for (auto cur_op : bootstrap_ops_) {
     ready_ops->Push(cur_op);
   }
@@ -131,6 +130,7 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
 
   platform::XPUPlace cur_place;
   std::size_t cur_count = 0;
+
   while (cur_count < op_deps_.size()) {
     cur_count++;
     auto cur_op = ready_ops->Pop();
@@ -141,19 +141,15 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
       break;
     }
     auto dev_ctxes_ = cur_op->DeviceContext();
-    if (dev_ctxes_.size() > 1) {
+    if (cur_op->IsMultiDeviceTransfer()) {
       RunMultiDeviceOpAsync(cur_op, op_deps.get(), ready_ops);
       continue;
-    } else if (dev_ctxes_.size() == 1) {
+    } else {
       cur_place =
           BOOST_GET_CONST(platform::XPUPlace, dev_ctxes_.begin()->first);
-    } else {
-      cur_place = BOOST_GET_CONST(
-          platform::XPUPlace,
-          dynamic_cast<ComputationOpHandle *>(cur_op)->GetPlace());
+      int cur_index = place_to_index_[cur_place.device];
+      RunOpAsyncMainStream(cur_op, op_deps.get(), ready_ops, cur_index);
     }
-    int cur_index = place_to_index_[cur_place.device];
-    RunOpAsyncMainStream(cur_op, op_deps.get(), ready_ops, cur_index);
   }
   while (exec_op_count_ < op_deps_.size()) {
   }
@@ -171,7 +167,7 @@ void BindThreadedSSAGraphExecutor::InsertFetchOps(
     std::unordered_map<std::string, std::vector<VarHandleBase *>> *fetched_vars,
     std::unordered_map<OpHandleBase *, struct RunningItem> *op_deps,
     std::vector<OpHandleBase *> *fetch_ops,
-    std::vector<OpHandleBase *> *ready_fetch_ops) {
+    std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged) {
   std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
                                                    fetch_tensors.end());
   for (auto &fetch_var_name : fetch_tensor_set) {
@@ -206,7 +202,7 @@ void BindThreadedSSAGraphExecutor::InsertFetchOps(
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
     auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_,
-                                 &local_exec_scopes_, true);
+                                 &local_exec_scopes_, return_merged);
     fetch_ops->emplace_back(op);
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

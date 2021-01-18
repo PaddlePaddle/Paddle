@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 
 #pragma once
 #include <ThreadPool.h>
-#include <semaphore.h>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -33,8 +32,6 @@ namespace details {
 struct RunningItem {
   std::atomic<int> dep_num;
   OpHandleBase *op;
-  std::vector<std::shared_ptr<sem_t>> signals;
-  std::vector<std::shared_ptr<sem_t>> waits;
 };
 
 class OpHandleBase;
@@ -101,7 +98,7 @@ class BindThreadedSSAGraphExecutor : public SSAGraphExecutor {
           *fetched_vars,
       std::unordered_map<OpHandleBase *, struct RunningItem> *op_deps,
       std::vector<OpHandleBase *> *fetch_ops,
-      std::vector<OpHandleBase *> *ready_fetch_ops);
+      std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged);
 };
 }  // namespace details
 }  // namespace framework
