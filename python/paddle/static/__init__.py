@@ -46,6 +46,7 @@ from ..fluid.compiler import CompiledProgram  #DEFINE_ALIAS
 from ..fluid.compiler import ExecutionStrategy  #DEFINE_ALIAS
 from ..fluid.framework import default_main_program  #DEFINE_ALIAS
 from ..fluid.framework import default_startup_program  #DEFINE_ALIAS
+from ..fluid.framework import device_guard  #DEFINE_ALIAS
 from ..fluid.framework import Program  #DEFINE_ALIAS
 from ..fluid.framework import name_scope  #DEFINE_ALIAS
 from ..fluid.framework import program_guard  #DEFINE_ALIAS

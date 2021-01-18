@@ -52,9 +52,9 @@ class TestDeviceGuard(unittest.TestCase):
             data2 = paddle.full(
                 shape=[1, 3, 5, 5], fill_value=0.5, dtype='float32')
             shape = paddle.shape(data2)
-            with paddle.device_guard("cpu"):
+            with paddle.static.device_guard("cpu"):
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
-                with paddle.device_guard("gpu"):
+                with paddle.static.device_guard("gpu"):
                     out = fluid.layers.crop_tensor(data1, shape=shape)
         # check if the device attr is set correctly
         all_ops = main_program.global_block().ops
@@ -76,9 +76,9 @@ class TestDeviceGuard(unittest.TestCase):
             data2 = paddle.full(
                 shape=[1, 3, 5, 5], fill_value=0.5, dtype='float32')
             shape = paddle.shape(data2)
-            with paddle.device_guard("cpu"):
+            with paddle.static.device_guard("cpu"):
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
-                with paddle.device_guard("gpu:1"):
+                with paddle.static.device_guard("gpu:1"):
                     out = fluid.layers.crop_tensor(data1, shape=shape)
         # check if the device attr is set correctly
         all_ops = main_program.global_block().ops
@@ -107,7 +107,7 @@ class TestDeviceGuard(unittest.TestCase):
                 198, 373, 326
             ]
             anchor_mask = [0, 1, 2]
-            with paddle.device_guard("gpu"):
+            with paddle.static.device_guard("gpu"):
                 # yolov3_loss only has cpu kernel, so its cpu kernel will be executed
                 loss = fluid.layers.yolov3_loss(
                     x=x,
@@ -132,7 +132,7 @@ class TestDeviceGuard(unittest.TestCase):
 
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
-                with paddle.device_guard("cpu"):
+                with paddle.static.device_guard("cpu"):
                     while_op = fluid.layers.While(cond=cond)
                     with while_op.block():
                         i = paddle.increment(x=i, value=1)
@@ -152,11 +152,11 @@ class TestDeviceGuard(unittest.TestCase):
 
     def test_error(self):
         def device_attr():
-            with paddle.device_guard("cpu1"):
+            with paddle.static.device_guard("cpu1"):
                 out = paddle.full(shape=[1], fill_value=0.2, dtype='float32')
 
         def device_attr2():
-            with paddle.device_guard("cpu:1"):
+            with paddle.static.device_guard("cpu:1"):
                 out = paddle.full(shape=[1], fill_value=0.2, dtype='float32')
 
         self.assertRaises(ValueError, device_attr)
@@ -173,7 +173,7 @@ class TestDeviceGuard(unittest.TestCase):
                 name="label", shape=[4, 1], dtype="int64")
             fc1 = paddle.static.nn.fc(x=data1, size=10)
             fc2 = paddle.static.nn.fc(x=fc1, size=10)
-            with paddle.device_guard("gpu"):
+            with paddle.static.device_guard("gpu"):
                 out = paddle.nn.functional.softmax_with_cross_entropy(
                     logits=fc1 + fc2, label=label)
                 loss = paddle.mean(out)

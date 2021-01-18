@@ -5711,10 +5711,10 @@ def device_guard(device=None):
             data2 = paddle.full(shape=[1, 3, 64], fill_value=0.5, dtype='float32')
             shape = paddle.shape(data2)
 
-            with paddle.device_guard("cpu"):
+            with paddle.static.device_guard("cpu"):
                 # Ops created here will be placed on CPUPlace
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
-            with paddle.device_guard('gpu'):
+            with paddle.static.device_guard('gpu'):
                 # if GPU is supported, OPs created here will be placed on CUDAPlace(0), otherwise on CPUPlace
                 out = paddle.reshape(data1, shape=shape)
 
