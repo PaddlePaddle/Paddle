@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 #include <queue>
 
+
 #ifdef PADDLE_WITH_PSLIB
 namespace paddle {
 namespace framework {
@@ -249,108 +250,56 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest_all(
     if (src_val) {
       need_copy_val = 1;
     }
-    std::queue<Node> que;
-    std::queue<int> que_gpu;
-    std::queue<Node> que_sync;
-    std::queue<int> que_sync_gpu;
-    /*
-      拷贝树：
-      0->1->5
-      0->2->3->7
-      0->2->6
-      0->4
-      总体： 层次并行拷贝
-      1. 第一层 1 2 4 拷贝，再同步一次； 1(copy,sync) 2(copy,sync) 2(copy,sync) 2 (copy,sync)
-      2. 第二层 5 3 6 拷贝，再同步一次； 3(copy,sync)
-      3. 第三层 7 拷贝，再同步一次；
-    */
-    for (int d = 0; d < max_depth; d++){
-      
-      auto* scr_key_shard = src_key;
-      auto* src_val_shard = src_val;
-      VLOG(0) << "src_key" <<  (void*)src_key << "   h_left[0]:" << h_left[0];
-      for (int i = 0; i < gpu_num; i++) {
-        if (h_left[i] == -1 || h_right[i] == -1) {
-          continue;
-        }
-        int size = path_[start_index][i].nodes_.size();
-        
-        if (size == d + 1) {
-          VLOG(1) << "walk_to_dest start:" << start_index << " depth:" << d << "jingguo:" << path_[start_index][i].nodes_[d].gpu_num << " to :" << i << "  size:" << size;
-          que.push(path_[start_index][i].nodes_[d]);
-          que_gpu.push(i);
-          
-        } else if (size > d + 1){
-          VLOG(1) << "walk_to_dest start:" << start_index << " depth:" << d << "jingguo:" << path_[start_index][i].nodes_[d].gpu_num << " to :" << i << "  size:" << size;
-          que_sync.push(path_[start_index][i].nodes_[d]);
-          que_sync_gpu.push(i);
-        }
+    std::queue<CopyTask> que;
+    // auto* scr_key_shard = src_key;
+    // auto* src_val_shard = src_val;
+    VLOG(0) << "src_key" <<  (void*)src_key << "   h_left[0]:" << h_left[0];
+    for (int i = 0; i < gpu_num; i++) {
+      if (h_left[i] == -1 || h_right[i] == -1) {
+        continue;
       }
-      // async memcopy
-      int que_size = que.size();
-      for (int k = 0; k < que_size; k++){
-        Node &tmp_node = que.front();
-        int end_index = que_gpu.front();
-        que.push(tmp_node);
-        que.pop();
-        que_gpu.push(end_index);
-        que_gpu.pop();
-        VLOG(1)<< "async memcopy:" << tmp_node.gpu_num << "  to:" << end_index;
-        if (d == 0) {
-          scr_key_shard = src_key + h_left[end_index];
-          src_val_shard = src_val + h_left[end_index];
-          VLOG(1) << "src_key + h_left[" << end_index << "] = " << (void*)scr_key_shard;
-        } else {
-          scr_key_shard = path_[start_index][end_index].nodes_[d-1].key_storage;
-          src_val_shard = path_[start_index][end_index].nodes_[d-1].val_storage;
-          VLOG(1) << "d:" << d << " scr_key_shard:" << (void*)scr_key_shard;
-        }
-        cudaMemcpyAsync(tmp_node.key_storage, scr_key_shard, tmp_node.key_bytes_len,
-                        cudaMemcpyDefault, tmp_node.in_stream);
-        if (need_copy_val) {
-          cudaMemcpyAsync(tmp_node.val_storage, src_val_shard, tmp_node.val_bytes_len,
-                          cudaMemcpyDefault, tmp_node.in_stream);
-        }
-      }
-      // sync
-      while(!que.empty()) {
-        Node &tmp_node = que.front();
-        int end_index = que_gpu.front();
-        que.pop();
-        que_gpu.pop();
-        if (tmp_node.sync) {
-          cudaStreamSynchronize(tmp_node.in_stream);
-        }
-      }
-      // sync memcocy
-      while(!que_sync.empty()) {
-        Node &tmp_node = que_sync.front();
-        int end_index = que_sync_gpu.front();
-        que_sync.pop();
-        que_sync_gpu.pop();
-        VLOG(1)<< "sync memcopy:" << tmp_node.gpu_num << "  to:" << end_index;
-        if (d == 0) {
-          scr_key_shard = src_key + h_left[end_index];
-          src_val_shard = src_val + h_left[end_index];
-          VLOG(1) << "src_key + h_left[" << end_index << "] = " << (void*)scr_key_shard;
-        } else {
-          scr_key_shard = path_[start_index][end_index].nodes_[d-1].key_storage;
-          src_val_shard = path_[start_index][end_index].nodes_[d-1].val_storage;
-          VLOG(1) << "d:" << d << " scr_key_shard:" << (void*)scr_key_shard;
-        }
-        cudaMemcpyAsync(tmp_node.key_storage, scr_key_shard, tmp_node.key_bytes_len,
-                        cudaMemcpyDefault, tmp_node.in_stream);
-        if (need_copy_val) {
-          cudaMemcpyAsync(tmp_node.val_storage, src_val_shard, tmp_node.val_bytes_len,
-                          cudaMemcpyDefault, tmp_node.in_stream);
-        }
-        if (tmp_node.sync) {
-          cudaStreamSynchronize(tmp_node.in_stream);
-        }
+      int size = path_[start_index][i].nodes_.size();
+      auto &node = path_[start_index][i].nodes_[0];
+      CopyTask t(&path_[start_index][i], 0);
+      que.push(t);
+      // que.push(std::initializer_list<std::pair<Path*, int>>({&path_[start_index][i],0}));
+      // que.push({&path_[start_index][i],0});
+      // scr_key_shard = src_key + h_left[i];
+      // src_val_shard = src_val + h_left[i];
+      // VLOG(1) << "src_key + h_left[" << i << "] = " << (void*)scr_key_shard;
+      cudaMemcpyAsync(node.key_storage, src_key + h_left[i], node.key_bytes_len,
+                      cudaMemcpyDefault, node.in_stream);
+      if (need_copy_val) {
+        cudaMemcpyAsync(node.val_storage, src_val + h_left[i], node.val_bytes_len,
+                        cudaMemcpyDefault, node.in_stream);
       }
     }
-    std::queue<Node>().swap(que);
-    std::queue<Node>().swap(que_sync);
+    while(!que.empty()) {
+      CopyTask &cur_task = que.front();
+      que.pop();
+      if (cur_task.path->nodes_[cur_task.step].sync) {
+        cudaStreamSynchronize(cur_task.path->nodes_[cur_task.step].in_stream);
+      }
+      if (cur_task.step != cur_task.path->nodes_.size() - 1){
+        int cur_step = cur_task.step;
+        CopyTask c(cur_task.path, cur_step + 1);
+        que.push(c);
+        // que.push(std::initializer_list<std::pair<Path*, int>>({&cur_task.path, cur_step + 1}));
+        // que.push({&cur_task.path, cur_step + 1});
+        // scr_key_shard = cur_task.path->nodes_[cur_step].key_storage;
+        // src_val_shard = cur_task.path->nodes_[cur_step].val_storage;
+        // VLOG(1) << " scr_key_shard:" << (void*)scr_key_shard;
+        VLOG(1) << "from " << cur_step << ":" <<cur_task.path->nodes_[cur_step].gpu_num << " to" << cur_step+1 << ":" << cur_task.path->nodes_[cur_step+1].gpu_num;
+        cudaMemcpyAsync(cur_task.path->nodes_[cur_step+1].key_storage, cur_task.path->nodes_[cur_step].key_storage,
+                        cur_task.path->nodes_[cur_step+1].key_bytes_len,
+                        cudaMemcpyDefault, cur_task.path->nodes_[cur_step+1].in_stream);
+        if (need_copy_val) {
+          cudaMemcpyAsync(cur_task.path->nodes_[cur_step+1].val_storage, cur_task.path->nodes_[cur_step].val_storage,
+                          cur_task.path->nodes_[cur_step+1].val_bytes_len, cudaMemcpyDefault, cur_task.path->nodes_[cur_step+1].in_stream);
+        } 
+      }
+    }
+    std::queue<CopyTask>().swap(que);
   }
 
 template <typename KeyType, typename ValType, typename GradType>
