@@ -14,7 +14,7 @@
 
 import copy
 
-__all__ = ["AutoMixedPrecisionLists"]
+__all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
 
 class AutoMixedPrecisionLists(object):
@@ -27,6 +27,7 @@ class AutoMixedPrecisionLists(object):
     Args:
         custom_white_list (set): Users' custom white list.
         custom_black_list (set): Users' custom black list.
+        custom_black_varnames (set): Users' custom black varibles' names.
     """
 
     def __init__(self,
@@ -284,3 +285,5 @@ unsupported_fp16_list = {
     'generate_proposal_labels',
     'generate_mask_labels',
 }
+
+CustomOpLists = AutoMixedPrecisionLists
