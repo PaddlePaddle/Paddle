@@ -197,7 +197,7 @@ class PSEnvironment {
 
 class PaddlePSEnvironment : public PSEnvironment {
  public:
-  explicit PaddlePSEnvironment() { trainers_ = 0; }  // NOLINT
+  explicit PaddlePSEnvironment() {}  // NOLINT
   virtual ~PaddlePSEnvironment() {}
 
   virtual int32_t set_ps_servers(uint64_t *host_sign_list, int node_num) {
