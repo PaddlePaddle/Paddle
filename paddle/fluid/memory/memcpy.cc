@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <cstring>  // for memcpy
 
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -186,13 +187,13 @@ void Copy<platform::XPUPlace, platform::XPUPlace>(platform::XPUPlace dst_place,
             ret));
     free(tmp);
   } else {
-    int ret = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_DEVICE_TO_DEVICE);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx = pool.GetByPlace(src_place);
+    dev_ctx->Wait();
+    int ret = xpu::memcpy_device(dev_ctx->x_context(), dst, src, num);
+    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS, platform::errors::External(
+                                            "XPU API return wrong value[%d %s]",
+                                            ret, XPUAPIErrorMsg[ret]));
   }
 }
 #endif
@@ -269,7 +270,7 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
   if (UNLIKELY(num == 0)) return;
 
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
-          << dst_place << " by thream(" << stream << ")";
+          << dst_place << " by stream(" << stream << ")";
   if (dst_place == src_place) {
     platform::SetDeviceId(src_place.device);
     if (stream) {

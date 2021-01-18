@@ -98,13 +98,19 @@ class TestSqueezeOpError(unittest.TestCase):
 
 
 class API_TestSqueeze(unittest.TestCase):
+    def setUp(self):
+        self.executed_api()
+
+    def executed_api(self):
+        self.squeeze = paddle.squeeze
+
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
             data1 = paddle.static.data(
                 'data1', shape=[-1, 1, 10], dtype='float64')
-            result_squeeze = paddle.squeeze(data1, axis=[1])
+            result_squeeze = self.squeeze(data1, axis=[1])
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             input1 = np.random.random([5, 1, 10]).astype('float64')
@@ -114,12 +120,23 @@ class API_TestSqueeze(unittest.TestCase):
             self.assertTrue(np.allclose(expected_result, result))
 
 
+class API_TestStaticSqueeze_(API_TestSqueeze):
+    def executed_api(self):
+        self.squeeze = paddle.squeeze_
+
+
 class API_TestDygraphSqueeze(unittest.TestCase):
+    def setUp(self):
+        self.executed_api()
+
+    def executed_api(self):
+        self.squeeze = paddle.squeeze
+
     def test_out(self):
         paddle.disable_static()
         input_1 = np.random.random([5, 1, 10]).astype("int32")
         input = paddle.to_tensor(input_1)
-        output = paddle.squeeze(input, axis=[1])
+        output = self.squeeze(input, axis=[1])
         out_np = output.numpy()
         expected_out = np.squeeze(input_1, axis=1)
         self.assertTrue(np.allclose(expected_out, out_np))
@@ -128,7 +145,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
         paddle.disable_static()
         input_1 = np.random.random([5, 1, 10]).astype("int8")
         input = paddle.to_tensor(input_1)
-        output = paddle.squeeze(input, axis=[1])
+        output = self.squeeze(input, axis=[1])
         out_np = output.numpy()
         expected_out = np.squeeze(input_1, axis=1)
         self.assertTrue(np.allclose(expected_out, out_np))
@@ -137,7 +154,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
         paddle.disable_static()
         input_1 = np.random.random([5, 1, 10]).astype("uint8")
         input = paddle.to_tensor(input_1)
-        output = paddle.squeeze(input, axis=[1])
+        output = self.squeeze(input, axis=[1])
         out_np = output.numpy()
         expected_out = np.squeeze(input_1, axis=1)
         self.assertTrue(np.allclose(expected_out, out_np))
@@ -146,7 +163,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
         paddle.disable_static()
         input_1 = np.random.random([5, 1, 10]).astype("int32")
         input = paddle.to_tensor(input_1)
-        output = paddle.squeeze(input, axis=1)
+        output = self.squeeze(input, axis=1)
         out_np = output.numpy()
         expected_out = np.squeeze(input_1, axis=1)
         self.assertTrue(np.allclose(expected_out, out_np))
@@ -155,10 +172,15 @@ class API_TestDygraphSqueeze(unittest.TestCase):
         paddle.disable_static()
         input_1 = np.random.random([5, 1, 10]).astype("int32")
         input = paddle.to_tensor(input_1)
-        output = paddle.squeeze(input, axis=(1, 2))
+        output = self.squeeze(input, axis=(1, 0))
         out_np = output.numpy()
         expected_out = np.squeeze(input_1, axis=1)
         self.assertTrue(np.allclose(expected_out, out_np))
+
+
+class API_TestDygraphSqueezeInplace(API_TestDygraphSqueeze):
+    def executed_api(self):
+        self.squeeze = paddle.squeeze_
 
 
 if __name__ == "__main__":

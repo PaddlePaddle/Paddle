@@ -15,7 +15,7 @@
 from __future__ import print_function
 import unittest
 import seresnext_net
-from seresnext_test_base import TestResnetBase
+from seresnext_test_base import TestResnetBase, DeviceType
 from functools import partial
 
 
@@ -30,7 +30,7 @@ class TestResnetGPU(TestResnetBase):
             optimizer=seresnext_net.optimizer,
             use_parallel_executor=False)
         self._compare_result_with_origin_model(
-            check_func, use_cuda=True, compare_seperately=False)
+            check_func, use_device=DeviceType.CUDA, compare_seperately=False)
 
 
 if __name__ == '__main__':

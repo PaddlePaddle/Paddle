@@ -1,7 +1,4 @@
-if (WITH_PSLIB)
-    return()
-endif()
-if(NOT WITH_DISTRIBUTE)
+if(NOT WITH_PSCORE)
     return()
 endif()
 
@@ -14,14 +11,9 @@ if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
             "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
 endif()
 
-
 add_subdirectory(table)
-add_subdirectory(test)
-
-# open it until CI support brpc
-return()
-
 add_subdirectory(service)
+add_subdirectory(test)
 
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 

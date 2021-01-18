@@ -29,10 +29,12 @@ class TestAdamWOp(unittest.TestCase):
             parameters=linear.parameters(),
             apply_decay_param_fun=lambda name: True,
             weight_decay=0.01)
-        out = linear(a)
-        out.backward()
-        adam.step()
-        adam.clear_gradients()
+
+        for _ in range(2):
+            out = linear(a)
+            out.backward()
+            adam.step()
+            adam.clear_gradients()
 
     def test_adamw_op_coverage(self):
         paddle.disable_static()

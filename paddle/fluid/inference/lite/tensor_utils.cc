@@ -195,10 +195,8 @@ void InitDstTensor(paddle::lite_api::Tensor* dst,
 
 void InitDstTensor(framework::LoDTensor* dst,
                    const paddle::lite_api::Tensor& src) {
-  constexpr framework::proto::VarType::Type dtype =
-      framework::proto::VarType_Type_FP32;
   dst->mutable_data(inference::lite::utils::GetNativePlace(src.target()),
-                    dtype);
+                    GetNativePrecisionType(src.precision()));
   SetLoD(dst->mutable_lod(), src.lod());
 }
 
@@ -254,17 +252,17 @@ void TensorDataShare(paddle::lite_api::Tensor* dst, framework::LoDTensor* src) {
 
 template <>
 void TensorDataShare(framework::LoDTensor* dst, paddle::lite_api::Tensor* src) {
-  constexpr framework::proto::VarType::Type dtype =
-      framework::proto::VarType_Type_FP32;
   void* src_raw_data =
-      GetLiteTensorDataPtr(src, GetLitePrecisionType(dtype), src->target());
-  size_t memory_size = GetLiteTensorNumel(*src) * sizeof(float);
+      GetLiteTensorDataPtr(src, src->precision(), src->target());
+  size_t memory_size =
+      GetLiteTensorNumel(*src) *
+      framework::SizeOfType(GetNativePrecisionType(src->precision()));
   std::shared_ptr<memory::allocation::Allocation> holder(
       new memory::allocation::Allocation(src_raw_data, memory_size,
                                          GetNativePlace(src->target())));
   dst->Resize(paddle::framework::make_ddim(src->shape()));
   SetLoD(dst->mutable_lod(), src->lod());
-  dst->ResetHolderWithType(holder, dtype);
+  dst->ResetHolderWithType(holder, GetNativePrecisionType(src->precision()));
 }
 
 }  // namespace utils

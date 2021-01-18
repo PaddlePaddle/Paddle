@@ -94,8 +94,10 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   }
 
   PADDLE_ENFORCE(
-      x->dims().size() == 2 || x->dims().size() == 3 || x->dims().size() == 4,
-      platform::errors::Unimplemented("Input dim must be with 2, 3 or 4"));
+      x->dims().size() >= 1 || x->dims().size() <= 6,
+      platform::errors::Unimplemented("Input dimension size can be 1, 2, 3, 4, "
+                                      "5, or 6, but now the dimension size is",
+                                      x->dims().size()));
 
   auto src_tz = framework::vectorize<int64_t>(x->dims());
 

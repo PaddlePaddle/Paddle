@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed/communicator.h"
 
-#include <gflags/gflags.h>
 #include <paddle/fluid/framework/program_desc.h>
 
 #include <algorithm>
@@ -23,6 +22,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <unordered_set>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor_util.h"
