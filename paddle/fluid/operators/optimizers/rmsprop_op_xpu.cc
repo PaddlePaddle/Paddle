@@ -130,6 +130,13 @@ class RmspropOpXPUKernel : public framework::OpKernel<T> {
                             "XPU kernel error of RmspropOp, error "
                             "message: NO_ENOUGH_WORKSPACE, XPU "
                             "has no enough memory."));
+    } else {
+      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                        platform::errors::ResourceExhausted(
+                            "XPU kernel error of RmspropOp, error "
+                            "message: OTHER "
+                            "XPU API returns error code: %d.",
+                            r));
     }
   }
 };
