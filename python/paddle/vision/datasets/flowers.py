@@ -49,7 +49,7 @@ class Flowers(Dataset):
         data_file(str): path to data file, can be set None if
             :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/flowers/
         label_file(str): path to label file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/flowers/
         setid_file(str): path to subset index file, can be set
             None if :attr:`download` is True. Default None
         mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
