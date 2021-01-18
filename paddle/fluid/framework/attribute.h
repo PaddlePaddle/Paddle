@@ -122,6 +122,10 @@ struct ExtractAttribute<std::vector<int64_t>> {
       std::vector<float> val = BOOST_GET_CONST(std::vector<float>, attr);
       std::vector<int64_t> vec(val.begin(), val.end());
       attr = vec;
+    } else if (attr.type() == typeid(std::vector<double>)) {  // NOLINT
+      std::vector<double> val = BOOST_GET_CONST(std::vector<double>, attr);
+      std::vector<int64_t> vec(val.begin(), val.end());
+      attr = vec;
     }
     std::vector<int64_t>* attr_value = nullptr;
     try {
@@ -166,26 +170,26 @@ struct ExtractAttribute<float> {
 };
 
 template <>
-struct ExtractAttribute<std::vector<double>> {
+struct ExtractAttribute<std::vector<float>> {
   explicit ExtractAttribute(const std::string& attr_name)
       : attr_name_(attr_name) {}
 
-  std::vector<double>* operator()(Attribute& attr) const {
+  std::vector<float>* operator()(Attribute& attr) const {
     if (attr.type() == typeid(std::vector<int>)) {  // NOLINT
       std::vector<int> val = BOOST_GET_CONST(std::vector<int>, attr);
-      std::vector<double> vec(val.begin(), val.end());
+      std::vector<float> vec(val.begin(), val.end());
       attr = vec;
-    } else if (attr.type() == typeid(std::vector<float>)) {  // NOLINT
-      std::vector<float> val = BOOST_GET_CONST(std::vector<float>, attr);
-      std::vector<double> vec(val.begin(), val.end());
+    } else if (attr.type() == typeid(std::vector<double>)) {  // NOLINT
+      std::vector<double> val = BOOST_GET_CONST(std::vector<double>, attr);
+      std::vector<float> vec(val.begin(), val.end());
       attr = vec;
     }
-    std::vector<double>* attr_value = nullptr;
+    std::vector<float>* attr_value = nullptr;
     try {
-      attr_value = &boost::get<std::vector<double>>(attr);
+      attr_value = &boost::get<std::vector<float>>(attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Cannot get attribute (%s) by type std::vector<double>, its type is "
+          "Cannot get attribute (%s) by type std::vector<float>, its type is "
           "%s.",
           attr_name_, paddle::platform::demangle(attr.type().name())));
     }
@@ -194,6 +198,36 @@ struct ExtractAttribute<std::vector<double>> {
 
   const std::string& attr_name_;
 };
+// template <>
+// struct ExtractAttribute<std::vector<double>> {
+//  explicit ExtractAttribute(const std::string& attr_name)
+//      : attr_name_(attr_name) {}
+//
+//  std::vector<double>* operator()(Attribute& attr) const {
+//    if (attr.type() == typeid(std::vector<int>)) {  // NOLINT
+//      std::vector<int> val = BOOST_GET_CONST(std::vector<int>, attr);
+//      std::vector<double> vec(val.begin(), val.end());
+//      attr = vec;
+//    } else if (attr.type() == typeid(std::vector<float>)) {  // NOLINT
+//      std::vector<float> val = BOOST_GET_CONST(std::vector<float>, attr);
+//      std::vector<double> vec(val.begin(), val.end());
+//      attr = vec;
+//    }
+//    std::vector<double>* attr_value = nullptr;
+//    try {
+//      attr_value = &boost::get<std::vector<double>>(attr);
+//    } catch (boost::bad_get& bad_get) {
+//      PADDLE_THROW(platform::errors::InvalidArgument(
+//          "Cannot get attribute (%s) by type std::vector<double>, its type is
+//          "
+//          "%s.",
+//          attr_name_, paddle::platform::demangle(attr.type().name())));
+//    }
+//    return attr_value;
+//  }
+//
+//  const std::string& attr_name_;
+//};
 template <typename T>
 inline proto::AttrType AttrTypeID() {
   Attribute tmp = T();
