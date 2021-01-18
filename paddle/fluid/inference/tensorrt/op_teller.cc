@@ -105,6 +105,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "stack",
       "transpose2",
       "transpose",
+      "flatten2",
+      "flatten",
   };
 };
 
@@ -139,6 +141,16 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
         if (!with_dynamic_shape && axis[0] != 0) return false;
         if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      }
+    }
+    if (op_type == "flatten2" || op_type == "flatten") {
+      // flatten doesn't support dynamic shape currently
+      if (!desc.HasAttr("axis")) {
+        return false;
+      } else {
+        if (with_dynamic_shape) return false;
+        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        if (axis != 1) return false;
       }
     }
     if (op_type == "matmul") {

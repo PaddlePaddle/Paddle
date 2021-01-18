@@ -739,5 +739,31 @@ class TensorRTSubgraphPassTransposeTest(InferencePassTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
+class TensorRTSubgraphPassFlattenTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32")
+            flatten_out = self.append_flatten(data)
+            out = fluid.layers.batch_norm(flatten_out, is_test=True)
+        self.feeds = {
+            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassFlattenTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+
+    def append_flatten(self, data):
+        return fluid.layers.flatten(data, axis=1)
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
 if __name__ == "__main__":
     unittest.main()

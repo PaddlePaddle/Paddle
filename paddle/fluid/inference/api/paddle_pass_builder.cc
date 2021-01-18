@@ -74,11 +74,10 @@ const std::vector<std::string> kTRTSubgraphPasses({
   "conv_affine_channel_fuse_pass",  //
       "adaptive_pool2d_convert_global_pass",
       "conv_eltwiseadd_affine_channel_fuse_pass",  //
-      "transpose_flatten_concat_fuse_pass",
-      "shuffle_channel_detect_pass",          //
-      "quant_conv2d_dequant_fuse_pass",       //
-      "delete_quant_dequant_op_pass",         //
-      "delete_quant_dequant_filter_op_pass",  //
+      "shuffle_channel_detect_pass",               //
+      "quant_conv2d_dequant_fuse_pass",            //
+      "delete_quant_dequant_op_pass",              //
+      "delete_quant_dequant_filter_op_pass",       //
       // "fc_fuse_pass",                                 //
       "simplify_with_basic_ops_pass",           //
       "embedding_eltwise_layernorm_fuse_pass",  //
@@ -99,6 +98,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "conv_elementwise_add_act_fuse_pass",   //
       "conv_elementwise_add2_act_fuse_pass",  //
 #endif                                        //
+      "transpose_flatten_concat_fuse_pass",   //
 });
 
 const std::vector<std::string> kLiteSubgraphPasses({
