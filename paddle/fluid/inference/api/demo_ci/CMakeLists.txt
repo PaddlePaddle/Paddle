@@ -133,7 +133,15 @@ endif()
 
 if(WITH_STATIC_LIB)
   set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+  if(WIN32)
+    set(GFLAGS_DEPS gflags_static)
+  else()
+    set(GFLAGS_DEPS gflags)
+  endif()
 else()
+  # The dynamic library already contains the Gflags interfaces
+  # and should not be statically linked at the same time.
+  set(GFLAGS_DEPS "")
   if(WIN32)
     set(DEPS ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
   else()
@@ -145,12 +153,12 @@ if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags protobuf  xxhash
+      glog ${GFLAGS_DEPS} protobuf xxhash
       ${EXTERNAL_LIB})
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags_static libprotobuf  xxhash ${EXTERNAL_LIB})
+      glog ${GFLAGS_DEPS} libprotobuf xxhash ${EXTERNAL_LIB})
   set(DEPS ${DEPS} shlwapi.lib)
 endif(NOT WIN32)
 

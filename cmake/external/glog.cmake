@@ -42,9 +42,14 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
     "${GLOG_DOWNLOAD_CMD}"
-    DEPENDS         gflags
     PREFIX          ${GLOG_PREFIX_DIR}
     SOURCE_DIR      ${GLOG_SOURCE_DIR}
+    # If we explicitly leave the `UPDATE_COMMAND` of the ExternalProject_Add
+    # function in CMakeLists blank, it will cause another parameter GIT_TAG
+    # to be modified without triggering incremental compilation, and the
+    # third-party library version changes cannot be incorporated.
+    # reference: https://cmake.org/cmake/help/latest/module/ExternalProject.html
+    UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_CXX_FLAGS=${GLOG_CMAKE_CXX_FLAGS}
