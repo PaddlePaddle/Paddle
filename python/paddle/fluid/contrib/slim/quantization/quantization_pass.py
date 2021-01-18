@@ -120,6 +120,7 @@ _op_real_in_out_name = {
     "hard_swish": [["X"], ["Out"]],
     "hard_sigmoid": [["X"], ["Out"]],
     "gru": [["Input", "Weight"], ["Hidden"]],
+    "lstm": [["Input", "Weight"], ["Hidden"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
@@ -142,6 +143,21 @@ def _get_op_input_var_names(op):
         else:
             var_names.append(var_name)
     return var_names
+
+
+def _get_input_name_index(op, input_var_name):
+    """Get the input name and index of the var_name in the op"""
+    assert isinstance(op, (IrNode, Operator)), \
+        "The input op should be IrNode or Operator."
+    op_name = op.name() if isinstance(op, IrNode) \
+        else op.type
+    res = None
+    for argname in _op_real_in_out_name[op_name][0]:
+        var_names = op.input(argname)
+        for index, name in enumerate(var_names):
+            if name == input_var_name:
+                res = (argname, index)
+    return res
 
 
 def _get_op_output_var_names(op):
