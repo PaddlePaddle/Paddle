@@ -2173,6 +2173,7 @@ def load_program_state(model_path, var_list=None):
     with open(parameter_file_name, 'rb') as f:
         para_dict = pickle.load(f) if six.PY2 else pickle.load(
             f, encoding='latin1')
+    para_dict = _pack_loaded_dict(para_dict)
 
     opt_file_name = model_prefix + ".pdopt"
     if os.path.exists(opt_file_name):
@@ -2224,6 +2225,7 @@ def set_program_state(program, state_dict):
 
             static.set_program_state(prog, program_state)
     """
+    state_dict = _pack_loaded_dict(state_dict)
     parameter_list = list(filter(is_persistable, program.list_vars()))
 
     used_para_list = {}

@@ -1251,6 +1251,25 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, base_t))
 
+            # set var to zero
+            for var in prog.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    ten = fluid.global_scope().find_var(var.name).get_tensor()
+                    ten.set(np.zeros_like(np.array(ten)), place)
+
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    self.assertTrue(np.sum(np.abs(new_t)) == 0)
+
+            program_state = fluid.load_program_state(path)
+            fluid.set_program_state(prog, program_state)
+            for var in prog.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    base_t = base_map[var.name]
+                    self.assertTrue(np.array_equal(new_t, base_t))
+
 
 class TestProgramStateOldSaveSingleModel(unittest.TestCase):
     def test_ptb_rnn_cpu_float32(self):
