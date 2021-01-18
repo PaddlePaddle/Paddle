@@ -27,13 +27,6 @@ class AlgorithmsCache {
  public:
   AlgorithmsCache() : search_times_(0) { hash_.clear(); }
 
-  TAlgorithm Find(const std::vector<int64_t>& dims1,
-                  const std::vector<int64_t>& dims2,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  const std::vector<int>& dilations, int algorithm_flags,
-                  int64_t cudnn_dtype);
-
   // Caches the best algorithm for a given combination of tensor dimensions
   //  and compute data type. cudnn_dtype set for different data type.
   TAlgorithm GetAlgorithm(const std::vector<int64_t>& dims1,
@@ -59,26 +52,6 @@ class AlgorithmsCache {
   int search_times_;
   std::mutex cache_mutex;
 };
-
-template <typename TAlgorithm>
-TAlgorithm AlgorithmsCache<TAlgorithm>::Find(const std::vector<int64_t>& dims1,
-                                             const std::vector<int64_t>& dims2,
-                                             const std::vector<int>& strides,
-                                             const std::vector<int>& paddings,
-                                             const std::vector<int>& dilations,
-                                             int algorithm_flags,
-                                             int64_t cudnn_dtype) {
-  int64_t seed = Seed(dims1, dims2, strides, paddings, dilations,
-                      algorithm_flags, cudnn_dtype);
-  if (seed != 0) {
-    std::lock_guard<std::mutex> lock(cache_mutex);
-    auto it = hash_.find(seed);
-    if (it != hash_.end()) {
-      return it->second;
-    }
-  }
-  return TAlgorithm();
-}
 
 template <typename TAlgorithm>
 TAlgorithm AlgorithmsCache<TAlgorithm>::GetAlgorithm(
