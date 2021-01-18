@@ -459,6 +459,16 @@ void FleetWrapper::SaveModelOneTable(const uint64_t table_id,
   }
 }
 
+void FleetWrapper::RecvAndSaveTable(const uint64_t table_id,
+                                    const std::string& path) {
+  auto* communicator = Communicator::GetInstance();
+  auto ret = communicator->_worker_ptr->recv_and_save_table(table_id, path);
+  if (ret != 0) {
+    LOG(ERROR) << "save model of table id: " << table_id
+               << ", to path: " << path << " failed";
+  }
+}
+
 void FleetWrapper::PrintTableStat(const uint64_t table_id) {
   auto* communicator = Communicator::GetInstance();
   auto ret = communicator->_worker_ptr->print_table_stat(table_id);

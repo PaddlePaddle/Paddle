@@ -56,9 +56,9 @@ std::shared_ptr<Cipher> CipherFactory::CreateCipher(
 }
 
 }  // namespace framework
-#ifdef PADDLE_ON_INFERENCE
+
 std::shared_ptr<framework::Cipher> MakeCipher(const std::string& config_file) {
   return framework::CipherFactory::CreateCipher(config_file);
 }
-#endif
+
 }  // namespace paddle

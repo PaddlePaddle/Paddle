@@ -960,9 +960,10 @@ class RNNCPUKernel : public framework::OpKernel<T> {
     if (has_seq_length) {
       sequence_length = ctx.Input<Tensor>("SequenceLength");
     }
-    if (!dropout_mask->IsInitialized()) {
-      dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
+    if (dropout_mask->IsInitialized()) {
+      if (dropout_mask->numel() != output->numel()) dropout_mask->clear();
     }
+    dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
 
     // init the output and allocate the memory
     output->mutable_data<T>(ctx.GetPlace());

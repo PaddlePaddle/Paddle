@@ -101,6 +101,14 @@ class Reshape2MatmulFusePass : public FusePassBase {
   void ApplyImpl(Graph* graph) const override;
 };
 
+class Flatten2MatmulFusePass : public FusePassBase {
+ public:
+  virtual ~Flatten2MatmulFusePass() {}
+
+ protected:
+  void ApplyImpl(Graph* graph) const override;
+};
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
