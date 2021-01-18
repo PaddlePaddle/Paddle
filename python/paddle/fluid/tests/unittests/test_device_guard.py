@@ -133,10 +133,10 @@ class TestDeviceGuard(unittest.TestCase):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 with paddle.device_guard("cpu"):
-                    while_op = paddle.While(cond=cond)
+                    while_op = fluid.layers.While(cond=cond)
                     with while_op.block():
-                        i = paddle.increment(x=i, value=1, in_place=True)
-                        paddle.less_than(x=i, y=loop_len, cond=cond)
+                        i = paddle.increment(x=i, value=1)
+                        fluid.layers.less_than(x=i, y=loop_len, cond=cond)
 
         warning = "The Op(while) is not support to set device."
         warning_num = get_vaild_warning_num(warning, w)
@@ -162,42 +162,17 @@ class TestDeviceGuard(unittest.TestCase):
         self.assertRaises(ValueError, device_attr)
         self.assertRaises(ValueError, device_attr2)
 
-    def test_warning(self):
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program, startup_program):
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter("always")
-                with paddle.device_guard("gpu"):
-                    x = paddle.full(
-                        shape=[1],
-                        fill_value=3.0,
-                        dtype='float32',
-                        force_cpu=True)
-                    y = paddle.full(shape=[1], fill_value=4.0, dtype='float32')
-                    result = paddle.less_than(x=x, y=y, force_cpu=False)
-
-        warning = "\'device_guard\' has higher priority when they are used at the same time."
-        warning_num = get_vaild_warning_num(warning, w)
-        assert warning_num == 2
-
-        all_ops = main_program.global_block().ops
-        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
-        for op in all_ops:
-            self.assertEqual(op.desc.attr(device_attr_name), "gpu")
-
     # check if op_descs have op_device attr
     def test_op_descs_device_attr(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
             data1 = paddle.static.data(
-                name="data_1", shape=[2], dtype="float32")
-            data2 = paddle.static.data(
-                name="data_2", shape=[2], dtype="float32")
-            label = paddle.static.data(name="label", shape=[1], dtype="int64")
-            fc1 = paddle.static.nn.fc(input=data1, size=10)
-            fc2 = paddle.static.nn.fc(input=fc1, size=10)
+                name="data_1", shape=[4, 2], dtype="float32")
+            label = paddle.static.data(
+                name="label", shape=[4, 1], dtype="int64")
+            fc1 = paddle.static.nn.fc(x=data1, size=10)
+            fc2 = paddle.static.nn.fc(x=fc1, size=10)
             with paddle.device_guard("gpu"):
                 out = paddle.nn.functional.softmax_with_cross_entropy(
                     logits=fc1 + fc2, label=label)
