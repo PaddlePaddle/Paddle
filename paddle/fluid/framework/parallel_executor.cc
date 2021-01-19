@@ -27,7 +27,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
-#include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -168,12 +167,12 @@ class ParallelExecutorPrivate {
         nccl_id = new ncclUniqueId();
         PADDLE_ENFORCE_EQ(
             platform::dynload::ncclGetUniqueId(nccl_id), ncclSuccess,
-            platform::errors::PreconditionNotMet( "PaddlePaddle failed to get "
-                                                   "NCCL unique ID. It may due "
-                                                   "to your "
-                                                   "system settings or NCCL "
-                                                   "library error, please "
-                                                   "debug on NCCL"));
+            platform::errors::PreconditionNotMet("PaddlePaddle failed to get "
+                                                  "NCCL unique ID. It may due "
+                                                  "to your "
+                                                  "system settings or NCCL "
+                                                  "library error, please "
+                                                  "debug on NCCL"));
         VLOG(10) << "can't find nccl_id_var:" << var_name
                  << ", nccl_id:" << nccl_id;
       }
@@ -654,7 +653,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // Step 6. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
   std::vector<ir::Graph *> async_graphs =
-      CompileGraphWithBuildStrategy(graph, graphs, loss_var_name);
+      CompileGraphWithBuildStrategy(graph, &graphs, loss_var_name);
 
   // Step 7. Apply memory optimization pass
   graph = member_->ApplyMemoryOptimizePass(graph);
@@ -663,7 +662,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // Step 8. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
   std::vector<details::VariableInfo> var_infos;
-  CreateVariableInfos(var_infos, graph);
+  CreateVariableInfos(&var_infos, graph);
 
   // Step 9. Create local execution scopes
   std::unordered_map<Scope *, Scope *> scope_map =
@@ -671,7 +670,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   // Step 10. Create SSAGraph executor
   std::vector<ir::Graph *> final_graphs =
-      CreateSSAGraphExecutor(exec_strategy, async_graphs, graph);
+      CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
   if (!member_->build_strategy_.async_mode_) {
@@ -1244,7 +1243,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
   auto device_count = member_->places_.size();
   std::vector<ir::Graph *> async_graphs(device_count);
 
-  auto graphs = *device_graphs;
+  auto &graphs = *device_graphs;
 #if defined(PADDLE_WITH_NCCL)
   if (member_->build_strategy_.async_mode_) {
     PADDLE_ENFORCE_EQ(graphs.size(), device_count,

@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -41,6 +42,7 @@ namespace framework {
 
 class ParallelExecutorPrivate;
 
+using details::VariableInfo;
 using details::BuildStrategy;
 using details::ExecutionStrategy;
 namespace p = paddle::platform;
@@ -112,7 +114,7 @@ class ParallelExecutor {
       ir::Graph *graph, std::vector<ir::Graph *> *graphs,
       const std::string &loss_var_name);
 
-  void CreateVariableInfos(std::vector<details::VariableInfo> *var_infos,
+  void CreateVariableInfos(std::vector<VariableInfo> *var_infos,
                            ir::Graph *graph);
 
   std::vector<ir::Graph *> CreateSSAGraphExecutor(
