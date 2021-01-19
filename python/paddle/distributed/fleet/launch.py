@@ -298,14 +298,16 @@ def which_distributed_mode(args):
         )
 
     if fluid.core.is_compiled_with_cuda():
-        cuda_device_num = fluid.core.get_cuda_device_count()
+        accelerators = fluid.core.get_cuda_device_count()
+    if fluid.core.is_compiled_with_ascend():
+        accelerators = fluid.core.NPUDevice.get_device_count()
     else:
-        cuda_device_num = 0
+        accelerators = 0
 
     if len(has_ps_args) > 0:
         logger.info(
             "Run parameter-sever mode. pserver arguments:{}, cuda count:{}".
-            format(has_ps_args, cuda_device_num))
+            format(has_ps_args, accelerators))
         has_ps_heter_args = list(set(has_ps_args) & set(ps_heter_args))
         if len(has_ps_heter_args) > 0:
             return DistributeMode.PS_HETER
@@ -313,7 +315,7 @@ def which_distributed_mode(args):
             return DistributeMode.PS
     elif len(has_collective_args) > 0:
         logger.info("Run collective mode. gpu arguments:{}, cuda count:{}".
-                    format(has_collective_args, cuda_device_num))
+                    format(has_collective_args, accelerators))
         return DistributeMode.COLLECTIVE
     else:
         if not fluid.core.is_compiled_with_cuda():
