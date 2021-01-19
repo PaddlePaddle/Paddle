@@ -185,8 +185,9 @@ struct AbsGradFunctor {
 
 template <>
 struct AbsGradFunctor<paddle::platform::float16> {
-  AbsGradFunctor(const paddle::platform::float16* dout, const paddle::platform::float16* x, paddle::platform::float16* output,
-                 int64_t numel)
+  AbsGradFunctor(const paddle::platform::float16* dout,
+                 const paddle::platform::float16* x,
+                 paddle::platform::float16* output, int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -219,7 +220,9 @@ struct AbsGradGradFunctor {
 
 template <>
 struct AbsGradGradFunctor<paddle::platform::float16> {
-  AbsGradGradFunctor(const paddle::platform::float16* ddx, const paddle::platform::float16* x, paddle::platform::float16* output, int64_t numel)
+  AbsGradGradFunctor(const paddle::platform::float16* ddx,
+                     const paddle::platform::float16* x,
+                     paddle::platform::float16* output, int64_t numel)
       : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
