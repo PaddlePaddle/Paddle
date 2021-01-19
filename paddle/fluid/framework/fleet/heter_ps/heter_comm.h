@@ -100,12 +100,11 @@ class HeterComm {
   void create_storage(
       int start_index, int end_index, int keylen, int vallen,
       std::vector<std::shared_ptr<memory::Allocation>>& local_strorage);
-  void walk_to_src(int start_index, int end_index, char* src_val);
-  void walk_to_dest(int start_index, int end_index, char* src_key,
-                    char* src_val);
-  void walk_to_dest_all(int max_depth, int start_index, int gpu_num,
-                        int *h_left, int *h_right, char* src_key, 
-                        char* src_val);
+  void walk_to_dest(int max_depth, int start_index, int gpu_num,
+                        int *h_left, int *h_right, KeyType* src_key, 
+                        GradType* src_val);
+  void walk_to_src(int max_depth, int start_index, int gpu_num,
+                        int *h_left, int *h_right, ValType* src_val);
 
  private:
   using Table = HashTable<KeyType, ValType>;
