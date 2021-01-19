@@ -152,6 +152,8 @@ class AscendOptimizer(Optimizer):
                  no_grad_set=None):
         minimized = self.inner_opt.minimize(
             loss, startup_program=startup_program)
+        print(startup_program)
+        print(main_block.program)
 
         self.ascend_instance = core.AscendInstance()
 

@@ -32,6 +32,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#ifdef PADDLE_WITH_NCCL
+
 class GenNCCLIdOp : public framework::OperatorBase {
  public:
   GenNCCLIdOp(const std::string& type, const framework::VariableNameMap& inputs,
@@ -158,6 +160,21 @@ class GenNCCLIdOp : public framework::OperatorBase {
     }
   }
 };
+
+#else
+class GenNCCLIdOp : public framework::OperatorBase {
+ public:
+  GenNCCLIdOp(const std::string& type, const framework::VariableNameMap& inputs,
+              const framework::VariableNameMap& outputs,
+              const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override {
+  }
+};
+
+#endif
 
 class GenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
