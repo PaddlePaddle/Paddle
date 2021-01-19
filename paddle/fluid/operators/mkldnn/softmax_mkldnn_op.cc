@@ -112,8 +112,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     auto softmax_p = handler.AcquireForwardPrimitive();
 
-    auto& astream =
-        paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
     softmax_p->execute(astream, {{DNNL_ARG_SRC, *softmax_src_memory_p},
                                  {DNNL_ARG_DST, *softmax_dst_memory_p}});
     astream.wait();
