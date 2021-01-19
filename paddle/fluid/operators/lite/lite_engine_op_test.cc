@@ -99,7 +99,7 @@ TEST(LiteEngineOp, engine_op) {
   engine_op_desc.SetOutput("Ys", std::vector<std::string>({"out"}));
   std::string engine_key = "engine_0";
   engine_op_desc.SetAttr("engine_key", engine_key);
-  engine_op_desc.SetAttr("enable_int8", false);
+  engine_op_desc.SetAttr("precision", framework::proto::VarType_Type_FP32);
   engine_op_desc.SetAttr("use_gpu", true);
   engine_op_desc.SetAttr("zero_copy", true);
   engine_op_desc.SetBlockAttr("sub_block", &block_desc);

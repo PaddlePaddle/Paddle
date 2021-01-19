@@ -31,6 +31,7 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
+#include "paddle/fluid/inference/lite/tensor_utils.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 #include "paddle/fluid/inference/lite/engine.h"
@@ -241,7 +242,7 @@ void LiteSubgraphPass::SetUpEngine(
   };
 
   bool use_gpu = Get<bool>("use_gpu");
-  bool enable_int8 = Get<bool>("enable_int8");
+  auto precision = Get<framework::proto::VarType::Type>("precision");
   bool use_xpu = Get<bool>("use_xpu");
   int xpu_l3_workspace_size = Get<int>("xpu_l3_workspace_size");
   int cpu_math_library_num_threads = Get<int>("cpu_math_library_num_threads");
@@ -260,7 +261,7 @@ void LiteSubgraphPass::SetUpEngine(
   }
 
   paddle::lite_api::PrecisionType precision_type =
-      enable_int8 ? PRECISION(kInt8) : PRECISION(kFloat);
+      paddle::inference::lite::utils::GetLitePrecisionType(precision);
 
   serialize_params(&config.param, scope, repetitive_params);
   config.model = program->Proto()->SerializeAsString();
@@ -306,7 +307,8 @@ void LiteSubgraphPass::BuildOperator(
   op_desc->SetOutput("Ys", output_names);
   op_desc->SetType("lite_engine");
   op_desc->SetAttr("engine_key", unique_key);
-  op_desc->SetAttr("enable_int8", Get<bool>("enable_int8"));
+  op_desc->SetAttr("precision",
+                   Get<framework::proto::VarType::Type>("precision"));
   op_desc->SetAttr("use_gpu", Get<bool>("use_gpu"));
   op_desc->SetAttr("zero_copy", Get<bool>("zero_copy"));
 }

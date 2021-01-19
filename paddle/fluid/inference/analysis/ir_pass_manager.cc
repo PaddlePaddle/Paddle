@@ -150,14 +150,30 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new bool(argument->disable_trt_plugin_fp16()));
     }
     if (pass_name == "lite_subgraph_pass") {
-      bool enable_int8 =
-          argument->lite_precision_mode() == AnalysisConfig::Precision::kInt8;
+      switch (argument->lite_precision_mode()) {
+        case AnalysisConfig::Precision::kHalf:
+          pass->Set("precision", new framework::proto::VarType::Type{
+                                     framework::proto::VarType_Type_FP16});
+          break;
+        case AnalysisConfig::Precision::kInt8:
+          pass->Set("precision", new framework::proto::VarType::Type{
+                                     framework::proto::VarType_Type_INT8});
+          break;
+        case AnalysisConfig::Precision::kFloat32:
+          pass->Set("precision", new framework::proto::VarType::Type{
+                                     framework::proto::VarType_Type_FP32});
+          break;
+        default:
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The precision of lite mode is illegal. We need half, int8 or "
+              "float32, but received %d",
+              static_cast<int>(argument->lite_precision_mode())));
+      }
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("lite_ops_filter",
                 new std::vector<std::string>(argument->lite_ops_filter()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
-      pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       pass->Set("zero_copy", new bool(argument->lite_zero_copy()));
       pass->Set("use_xpu", new bool(argument->use_xpu()));

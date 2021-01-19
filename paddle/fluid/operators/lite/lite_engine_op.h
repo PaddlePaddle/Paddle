@@ -55,11 +55,7 @@ class LiteEngineOp : public framework::OperatorBase {
     engine_ =
         inference::Singleton<inference::lite::EngineManager>::Global().Get(
             Attr<std::string>("engine_key"));
-    if (Attr<bool>("enable_int8")) {
-      precision_ = framework::proto::VarType_Type_INT8;
-    } else {
-      precision_ = framework::proto::VarType_Type_FP32;
-    }
+    precision_ = Attr<framework::proto::VarType::Type>("precision");
     use_gpu_ = Attr<bool>("use_gpu");
     zero_copy_ = Attr<bool>("zero_copy");
   }

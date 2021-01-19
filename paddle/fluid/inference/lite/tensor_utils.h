@@ -41,6 +41,12 @@ void TensorCopy(DstTensor* dst, SrcTensor* src,
   }
 }
 
+paddle::lite_api::PrecisionType GetLitePrecisionType(
+    framework::proto::VarType::Type type);
+
+framework::proto::VarType::Type GetNativePrecisionType(
+    const paddle::lite_api::PrecisionType& type);
+
 }  // namespace utils
 }  // namespace lite
 }  // namespace inference
