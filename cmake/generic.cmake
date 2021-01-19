@@ -267,8 +267,9 @@ function(merge_static_libs TARGET_NAME)
 endfunction(merge_static_libs)
 
 function(check_coverage_opt TARGET_NAME SRCS)
-  if(WITH_COVERAGE)
-    if ("$ENV{PADDLE_GIT_DIFF_H_FILE}" STREQUAL "")
+  if(WITH_COVERAGE AND WITH_INCREMENTAL_COVERAGE)
+    # if pybind.cc add '-g -O0 -fprofile-arcs -ftest-coverage' only, some testcase will fail.
+    if ("$ENV{PADDLE_GIT_DIFF_H_FILE}" STREQUAL "" AND (NOT ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" MATCHES "pybind.cc")))
       if (NOT ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" STREQUAL ""))
         string(REPLACE "," ";" CC_FILE_LIST $ENV{PADDLE_GIT_DIFF_CC_FILE})
         set(use_coverage_opt FALSE)

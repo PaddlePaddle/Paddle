@@ -62,7 +62,15 @@ function(code_coverage _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
 endfunction()
 
 if(WITH_COVERAGE)
-    if (NOT ("$ENV{PADDLE_GIT_DIFF_H_FILE}" STREQUAL ""))
+    if (WITH_INCREMENTAL_COVERAGE)
+        # if *.h changed, generate coverage report totaly.
+        # if pybind.cc changed, generate coverage report totaly.
+        # Because if pybind.cc add '-g -O0 -fprofile-arcs -ftest-coverage' only, some testcase will fail.
+        if ( (NOT ("$ENV{PADDLE_GIT_DIFF_H_FILE}" STREQUAL "")) OR ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" MATCHES "pybind.cc") )
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
+        endif()
+    else()
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
     endif()
