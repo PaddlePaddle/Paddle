@@ -292,9 +292,8 @@ void SetTensorFromPyArrayT(
     if (paddle::platform::is_gpu_place(place)) {
       // TODO(zhiqiu): set SetDeviceId before calling cuda APIs.
       auto dst = self->mutable_data<T>(place);
-      auto p = BOOST_GET_CONST(platform::CUDAPlace, place);
-      paddle::memory::Copy(p, dst, platform::CPUPlace(), array.data(),
-                           array.nbytes(), nullptr);
+      paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
+                                      cudaMemcpyHostToDevice);
 
     } else if (paddle::platform::is_cuda_pinned_place(place)) {
       auto dst = self->mutable_data<T>(place);
