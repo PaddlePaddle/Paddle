@@ -52,7 +52,6 @@ class ReduceMaxGradXPUKernel : public framework::OpKernel<T> {
     const T* out_data = out->data<T>();
     const T* out_grad_data = out_grad->data<T>();
     auto* x_grad_data = x_grad->data<T>();
-
     const auto& input_dim_size = x->dims().size();
     std::vector<int> true_dims;
     for (size_t i = 0; i < dims.size(); ++i) {
@@ -62,7 +61,6 @@ class ReduceMaxGradXPUKernel : public framework::OpKernel<T> {
         true_dims.push_back(dims[i]);
       }
     }
-
     std::vector<int> ydims(input_dim_size);
     std::vector<int> xdims((input_dim_size));
     std::set<int> dims_set(true_dims.begin(), true_dims.end());
@@ -90,6 +88,7 @@ class ReduceMaxGradXPUKernel : public framework::OpKernel<T> {
         xpu_malloc(reinterpret_cast<void**>(&brocast2), x->numel() * sizeof(T)),
         XPU_SUCCESS,
         platform::errors::ResourceExhausted("XPU has no enough memory"));
+
     // step 1. brocast out and out_grad
     int r = xpu::broadcast<T>(dev_ctx.x_context(), out_data, brocast1, ydims,
                               xdims);

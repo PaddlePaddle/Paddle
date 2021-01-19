@@ -82,18 +82,16 @@ void XPUReduce(
   if (reduce_dims.size() == 0) {
     int r = xpu::copy<T>(dev_ctx.x_context(), x_data, y_data,
                          x->numel() * sizeof(T));
-    PADDLE_ENFORCE_EQ(
-        r == xpu::Error_t::SUCCESS, true,
-        platform::errors::External("XPU copy in reduce_sum op return "
-                                   "wrong value[%d %s].",
-                                   r, XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+                      platform::errors::External("XPU copy in reduce op return "
+                                                 "wrong value[%d %s].",
+                                                 r, XPUAPIErrorMsg[r]));
   } else {
     int r = func(dev_ctx.x_context(), x_data, y_data, xdims, reduce_dims);
-    PADDLE_ENFORCE_EQ(
-        r == xpu::Error_t::SUCCESS, true,
-        platform::errors::External("XPU reduce_max in reduce_sum op return"
-                                   " wrong value[%d %s].",
-                                   r, XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+                      platform::errors::External("XPU reduce op return"
+                                                 " wrong value[%d %s].",
+                                                 r, XPUAPIErrorMsg[r]));
   }
 }
 
