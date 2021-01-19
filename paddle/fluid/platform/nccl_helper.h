@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_NCCL
 #pragma once
 
+#ifdef PADDLE_WITH_NCCL
 #include <stdio.h>
 #include <memory>
 #include <string>
