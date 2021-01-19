@@ -219,13 +219,6 @@ $$out = \\frac{1}{\\sqrt{x}}$$
 
 )DOC";
 
-UNUSED constexpr char AbsDoc[] = R"DOC(
-Abs Operator.
-
-$$out = |x|$$
-
-)DOC";
-
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Operator. Computes ceil of x element-wise.
 
@@ -779,26 +772,6 @@ class ActivationOpDoubleGrad2 : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "DDX");
-  }
-};
-
-// AbsGrad: dx=dy if x >=0 else -dy
-// AbsDoubleGrad: ddy = ddx if x >=0 else -ddx
-template <typename T>
-class AbsDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("abs_grad_grad");
-    // input1: x
-    op->SetInput("X", this->Input("X"));
-    // input2: ddx
-    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
-    op->SetAttrMap(this->Attrs());
-    // output: ddy
-    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
   }
 };
 

@@ -167,35 +167,14 @@ struct AbsFunctor<paddle::platform::float16> {
   int64_t numel_;
 };
 
-template <typename T, typename Enable = void>
-struct AbsGradFunctor;
 template <typename T>
-struct AbsGradFunctor<T, math::DisableComplex<T>> {
-  AbsGradFunctor(const T* dout, const T* x, T* output, int64_t numel)
-      : dout_(dout), x_(x), output_(output), numel_(numel) {}
-
-  HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] > T(0)) {
-      output_[idx] = dout_[idx];
-    } else {
-      output_[idx] = -dout_[idx];
-    }
-  }
-
-  const T* dout_;
-  const T* x_;
-  T* output_;
-  int64_t numel_;
-};
-
-template <typename T>
-struct AbsGradFunctor<T, math::EnableComplex<T>> {
+struct AbsGradFunctor {
   AbsGradFunctor(const math::Real<T>* dout, const T* x, T* output,
                  int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    output_[idx] = T(dout_[idx], 0) * (x_[idx] / T(abs(x_[idx]), 0));
+    output_[idx] = T(dout_[idx]) * (x_[idx] / T(abs(x_[idx])));
   }
 
   const math::Real<T>* dout_;
@@ -204,16 +183,32 @@ struct AbsGradFunctor<T, math::EnableComplex<T>> {
   int64_t numel_;
 };
 
-template <typename T, typename Enable = void>
-struct AbsGradGradFunctor;
+template <>
+struct AbsGradFunctor<paddle::platform::float16> {
+  AbsGradFunctor(const paddle::platform::float16* dout, const paddle::platform::float16* x, paddle::platform::float16* output,
+                 int64_t numel)
+      : dout_(dout), x_(x), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] > paddle::platform::float16(0)) {
+      output_[idx] = dout_[idx];
+    } else {
+      output_[idx] = -dout_[idx];
+    }
+  }
+  const paddle::platform::float16* dout_;
+  const paddle::platform::float16* x_;
+  paddle::platform::float16* output_;
+  int64_t numel_;
+};
 
 template <typename T>
-struct AbsGradGradFunctor<T, math::EnableComplex<T>> {
+struct AbsGradGradFunctor {
   AbsGradGradFunctor(const T* ddx, const T* x, T* output, int64_t numel)
       : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    output_[idx] = T(ddx_[idx], 0) * x_[idx] / T(abs(x_[idx]));
+    output_[idx] = T(ddx_[idx]) * x_[idx] / T(abs(x_[idx]));
   }
 
   const T* ddx_;
@@ -222,22 +217,22 @@ struct AbsGradGradFunctor<T, math::EnableComplex<T>> {
   int64_t numel_;
 };
 
-template <typename T>
-struct AbsGradGradFunctor<T, math::DisableComplex<T>> {
-  AbsGradGradFunctor(const T* ddx, const T* x, T* output, int64_t numel)
+template <>
+struct AbsGradGradFunctor<paddle::platform::float16> {
+  AbsGradGradFunctor(const paddle::platform::float16* ddx, const paddle::platform::float16* x, paddle::platform::float16* output, int64_t numel)
       : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] > T(0)) {
+    if (x_[idx] > paddle::platform::float16(0)) {
       output_[idx] = ddx_[idx];
     } else {
       output_[idx] = -ddx_[idx];
     }
   }
 
-  const T* ddx_;
-  const T* x_;
-  T* output_;
+  const paddle::platform::float16* ddx_;
+  const paddle::platform::float16* x_;
+  paddle::platform::float16* output_;
   int64_t numel_;
 };
 
