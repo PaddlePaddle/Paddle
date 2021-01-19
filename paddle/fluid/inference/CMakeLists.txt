@@ -114,4 +114,10 @@ if(NOT APPLE AND NOT WIN32)
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake"
     DEPENDS paddle_fluid_shared)
   add_custom_target(check_symbol ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/.check_symbol")
+
+  add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/.strip_infer_static"
+    COMMAND objcopy --localize-symbols=${CMAKE_CURRENT_SOURCE_DIR}/strip_infer_static ${CMAKE_CURRENT_BINARY_DIR}/libpaddle_fluid.a ${CMAKE_CURRENT_BINARY_DIR}/libpaddle_fluid.a
+    DEPENDS paddle_fluid)
+  add_custom_target(strip_infer_static ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/.strip_infer_static")
 endif()

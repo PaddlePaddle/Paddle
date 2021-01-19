@@ -137,7 +137,7 @@ function(copy_part_of_thrid_party TARGET DST)
 endfunction()
 
 # inference library for only inference
-set(inference_lib_deps third_party paddle_fluid paddle_fluid_c paddle_fluid_shared paddle_fluid_c_shared)
+set(inference_lib_deps third_party strip_infer_static paddle_fluid paddle_fluid_c paddle_fluid_shared paddle_fluid_c_shared)
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
 
 
