@@ -130,6 +130,7 @@ cc_library(fuse_relu_depthwise_conv_pass SRCS fuse_relu_depthwise_conv_pass.cc D
 set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 
 cc_library(pass_builder SRCS pass_builder.cc DEPS pass)
+cc_library(pass_test_util SRCS pass_test_util.cc DEPS graph pass)
 
 cc_test(node_test SRCS node_test.cc DEPS node)
 cc_test(pass_test SRCS pass_test.cc DEPS graph pass graph_helper)
@@ -159,7 +160,6 @@ if(NOT WIN32)
     cc_test(test_sync_batch_norm_pass SRCS sync_batch_norm_pass_tester.cc DEPS sync_batch_norm_pass)
 endif()
 if (WITH_MKLDNN)
-    cc_library(pass_test_util SRCS mkldnn/pass_test_util.cc DEPS graph pass)
     cc_test(test_depthwise_conv_mkldnn_pass SRCS mkldnn/depthwise_conv_mkldnn_pass_tester.cc DEPS depthwise_conv_mkldnn_pass)
     cc_test(test_conv_bias_mkldnn_fuse_pass SRCS mkldnn/conv_bias_mkldnn_fuse_pass_tester.cc DEPS conv_bias_mkldnn_fuse_pass naive_executor)
     cc_test(test_conv_activation_mkldnn_fuse_pass SRCS mkldnn/conv_activation_mkldnn_fuse_pass_tester.cc DEPS conv_activation_mkldnn_fuse_pass)
