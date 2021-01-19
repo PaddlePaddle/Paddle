@@ -118,6 +118,13 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     )
 
     base_group.add_argument(
+        "--run_mode",
+        type=str,
+        default="collective",
+        help="run mode of job, can be:collective/ps/ps-heter"
+    )
+
+    base_group.add_argument(
         "--ascend_npus",
         type=str,
         default=None,
@@ -276,6 +283,16 @@ def launch_ps(args, distribute_mode):
 
 
 def which_distributed_mode(args):
+    if args.run_mode is not None:
+        assert args.run_mode in ["collective", "ps", "ps-heter"]
+
+    if args.run_mode == "collective":
+        return DistributeMode.COLLECTIVE
+    elif args.run_mode == "ps":
+        return DistributeMode.PS
+    elif args.run_mode == "ps-heter":
+        return DistributeMode.PS_HETER
+
     ps_args = [
         '--worker_num', '--server_num', '--heter_worker_num', '--servers',
         '--workers', '--heter_workers', '--http_port'
@@ -306,7 +323,7 @@ def which_distributed_mode(args):
 
     if len(has_ps_args) > 0:
         logger.info(
-            "Run parameter-sever mode. pserver arguments:{}, cuda count:{}".
+            "Run parameter-sever mode. pserver arguments:{}, accelerators count:{}".
             format(has_ps_args, accelerators))
         has_ps_heter_args = list(set(has_ps_args) & set(ps_heter_args))
         if len(has_ps_heter_args) > 0:

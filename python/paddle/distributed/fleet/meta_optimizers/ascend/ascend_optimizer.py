@@ -156,11 +156,13 @@ class AscendOptimizer(Optimizer):
         self.ascend_instance = core.AscendInstance()
 
         # Config about Graph Engine can be found in https://support.huaweicloud.com/
+        from paddle.distributed import fleet
         config = {
-            "ge.exec.deviceId": "0",
+            "ge.exec.deviceId": str(fleet.worker_index()),
             "ge.graphRunMode": "1",
             "ge.exec.precision_mode": "must_keep_origin_dtype"
         }
+        print(config)
         core.ge_initialize(config)
 
         # Init Session
