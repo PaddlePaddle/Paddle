@@ -16,7 +16,7 @@ namespace paddle {
 namespace platform {
 namespace ascend{
 
-int AscendNPU::GetDeviceCount() {
+int NPUDevice::GetDeviceCount() {
    uint32_t count = 0;
    aclError status = aclrtGetDeviceCount(&count);
    if(status != 0){

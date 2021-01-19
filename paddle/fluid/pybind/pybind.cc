@@ -67,7 +67,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
-#include "paddle/fluid/platform/ascend_npu_info.h"
 #endif
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
@@ -1448,15 +1447,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::CUDAPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
-  py::class_<AscendNPU>(m, "AscendNPU", R"DOC(
-    **Note**:
-    Examples:
-        .. code-block:: python
-          import paddle.fluid as fluid
-          device_count = fluid.get_device_count()
-        )DOC")
-      .def("get_device_count", &platform::ascend::GetDeviceCount);
-
+  
   py::class_<platform::XPUPlace>(m, "XPUPlace", R"DOC(
     **Note**:
     Examples:
@@ -2862,6 +2853,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_ASCEND
   BindAscendWrapper(&m);
   BindAscendGraph(&m);
+  BindAscendDevice(&m);
 #endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
