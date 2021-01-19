@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/device_tracer.h"
+#include "paddle/fluid/platform/dynload/nvtx.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler_helper.h"
@@ -51,6 +52,10 @@ double Event::CudaElapsedMs(const Event &e) const {
 }
 
 RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
+  if (g_enable_nvprof_hook) {
+    dynload::nvtxRangePushA(name.c_str());
+    is_pushed = true;
+  }
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
 
   // do some initialization
@@ -65,6 +70,9 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
 }
 
 RecordEvent::~RecordEvent() {
+  if (g_enable_nvprof_hook && is_pushed) {
+    dynload::nvtxRangePop();
+  }
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   // lock is not needed, the code below is thread-safe
   DeviceTracer *tracer = GetDeviceTracer();
@@ -298,6 +306,13 @@ void SetProfileListener() {
 }
 
 int64_t ListenerId() { return profiler_lister_id; }
+
+void NvprofEnableRecordEvent() {
+  SynchronizeAllDevice();
+  g_enable_nvprof_hook = true;
+}
+
+void NvprofDisableRecordEvent() { g_enable_nvprof_hook = false; }
 
 }  // namespace platform
 }  // namespace paddle
