@@ -389,5 +389,21 @@ class TestResnet(unittest.TestCase):
         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
 
 
+class TestLayerNormFp16(unittest.TestCase):
+    r''' layer_norm and batch_norm support mixed inputs, i.e., only input x is fp16
+    and other params are fp32.
+    '''
+
+    def test_layer_norm_fp16(self):
+        if fluid.is_compiled_with_cuda():
+            with fluid.dygraph.guard(fluid.CUDAPlace(0)):
+                x = paddle.rand([2, 2, 2, 3])
+                layer_norm = paddle.nn.LayerNorm(x.shape[1:])
+                with paddle.amp.auto_cast(custom_white_list=['layer_norm']):
+                    out = layer_norm(x)
+
+                self.assertTrue(out.dtype == fluid.core.VarDesc.VarType.FP16)
+
+
 if __name__ == '__main__':
     unittest.main()
