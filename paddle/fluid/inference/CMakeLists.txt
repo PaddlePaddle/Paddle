@@ -48,7 +48,7 @@ set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor
 if(WIN32 AND WITH_GPU)
   cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_API})
 else()
-  create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API})
+  create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API} gflags)
 endif()
 
 if(NOT APPLE)
@@ -114,10 +114,4 @@ if(NOT APPLE AND NOT WIN32)
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake"
     DEPENDS paddle_fluid_shared)
   add_custom_target(check_symbol ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/.check_symbol")
-
-  add_custom_command(
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/.strip_infer_static"
-    COMMAND objcopy --localize-symbols=${CMAKE_CURRENT_SOURCE_DIR}/strip_infer_static ${CMAKE_CURRENT_BINARY_DIR}/libpaddle_fluid.a ${CMAKE_CURRENT_BINARY_DIR}/libpaddle_fluid.a
-    DEPENDS paddle_fluid)
-  add_custom_target(strip_infer_static ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/.strip_infer_static")
 endif()
