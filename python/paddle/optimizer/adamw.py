@@ -173,7 +173,10 @@ class AdamW(Adam):
             [param, grad]), framework.name_scope('weight decay'):
             self._params_name.add(param.name)
 
-            # If it has been calculated, the result will be reused
+            # If it has been calculated, the result will be reused.
+            # NOTE(wangxi): In dygraph mode, apply_gradient will be executed
+            # every step, so need clear _lr_to_coeff every step,
+            # we do this in _create_optimization_pass
             decay_coeff = self._lr_to_coeff.get(learning_rate, None)
             if decay_coeff is None:
                 decay_coeff = 1.0 - learning_rate * self._coeff
@@ -185,6 +188,13 @@ class AdamW(Adam):
     def _append_optimize_op(self, block, param_and_grad):
         self._append_decoupled_weight_decay(block, param_and_grad)
         return super(AdamW, self)._append_optimize_op(block, param_and_grad)
+
+    def _create_optimization_pass(self, parameters_and_grads):
+        optimize_ops = super(
+            AdamW, self)._create_optimization_pass(parameters_and_grads)
+        # In dygraph mode, clear _lr_to_coeff after applied gradient
+        self._lr_to_coeff = dict()
+        return optimize_ops
 
     def __str__(self):
         return " ".join(["Weight Decay, params:", ",".join(self._params_name)])
