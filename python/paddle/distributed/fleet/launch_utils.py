@@ -137,7 +137,7 @@ class Trainer(object):
         self.rank = None
 
     def __str__(self):
-        return "gpu:{} endpoint:{} rank:{}".format(self.accelerators, self.endpoint,
+        return "accelerator:{} endpoint:{} rank:{}".format(self.accelerators, self.endpoint,
                                                    self.rank)
 
     def __eq__(self, t):
@@ -175,7 +175,7 @@ class Pod(object):
         self.device_mode = None
 
     def __str__(self):
-        return "rank:{} id:{} addr:{} port:{} visible_gpu:{} trainers:{} servers:{} \
+        return "rank:{} id:{} addr:{} port:{} visible_accelerator:{} trainers:{} servers:{} \
             workers:{} heter_workers:{}".format(
             self.rank, self.id, self.addr, self.port, self.accelerators, [
                 str(t) for t in self.trainers
@@ -232,12 +232,12 @@ class Pod(object):
     def rank(self):
         return self.rank
 
-    def get_visible_gpus(self):
+    def get_visible_accelerators(self):
         r = ""
         for g in self.accelerators:
             r += "{},".format(g)
 
-        assert r != "", "this pod {} can't see any gpus".format(self)
+        assert r != "", "this pod {} can't see any accelerators".format(self)
 
         r = r[:-1]
         return r
@@ -270,14 +270,15 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
         # when use paddlecloud, endpoints may > devices_per_proc(user_defined)
         assert len(cur_node_endpoints) >= len(
             devices_per_proc
-        ), "current trainer_endpoints size should be greater equal than selected_gpus size."
+        ), "current trainer_endpoints size should be greater equal than acclerators size."
         for i in range(len(devices_per_proc)):
             trainer = Trainer()
-            if device_mode == DeviceMode.GPU:
+            if device_mode == DeviceMode.GPU or device_mode == DeviceMode.ASCEND_NPU:
                 if isinstance(devices_per_proc[i], (list, tuple)):
                     trainer.accelerators.extend(devices_per_proc[i])
                 else:
                     trainer.accelerators.append(devices_per_proc[i])
+
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
