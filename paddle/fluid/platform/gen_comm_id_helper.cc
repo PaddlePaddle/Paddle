@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/gen_nccl_id_op_helper.h"
+#ifdef PADDLE_WITH_NCCL
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -31,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/string/split.h"
 
 namespace paddle {
-namespace operators {
+namespace platform {
 
 constexpr char COMM_HEAD[] = "_pd_gen_comm_id_";
 
@@ -257,26 +258,29 @@ static int ConnectAddr(const std::string& ep, const char* head) {
   return sock;
 }
 
-static void RecvNCCLID(int conn, ncclUniqueId* nccl_id) {
+template <typename CommUniqueId>
+static void RecvCommID(int conn, CommUniqueId* nccl_id) {
   char buffer[1024] = {0};
-  static_assert(NCCL_UNIQUE_ID_BYTES <= 1024,
+  static_assert(sizeof(CommUniqueId) <= 1024,
                 "nccl id bytes must <= buffer size");
 
-  CHECK_SYS_CALL(SocketRecv(conn, buffer, NCCL_UNIQUE_ID_BYTES), "recv ncc id");
-  memcpy(nccl_id, buffer, NCCL_UNIQUE_ID_BYTES);
+  CHECK_SYS_CALL(SocketRecv(conn, buffer, sizeof(CommUniqueId)),
+                 "recv comm unique id");
+  memcpy(nccl_id, buffer, sizeof(CommUniqueId));
 }
 
-static void SendNCCLID(int conn, ncclUniqueId* nccl_id) {
+template <typename CommUniqueId>
+static void SendCommID(int conn, CommUniqueId* nccl_id) {
   char buffer[1024] = {0};
-  memcpy(buffer, nccl_id, NCCL_UNIQUE_ID_BYTES);
+  memcpy(buffer, nccl_id, sizeof(CommUniqueId));
 
-  CHECK_SYS_CALL(SocketSend(conn, buffer, NCCL_UNIQUE_ID_BYTES),
-                 "send nccl id");
+  CHECK_SYS_CALL(SocketSend(conn, buffer, sizeof(CommUniqueId)),
+                 "send comm unique id");
 }
 
-void SendBroadCastNCCLID(std::vector<std::string> servers, int nccl_comm_num,
-                         std::function<std::string(size_t)> func,
-                         const framework::Scope& scope) {
+template <typename CommUniqueId>
+void SendBroadCastCommID(std::vector<std::string> servers,
+                         std::vector<CommUniqueId>* nccl_ids) {
   // connect with server
   std::vector<int> connects;
   for (auto server : servers) {
@@ -286,23 +290,13 @@ void SendBroadCastNCCLID(std::vector<std::string> servers, int nccl_comm_num,
   }
   VLOG(3) << "connecting completed...";
 
-  for (int i = 0; i < nccl_comm_num; ++i) {
-    std::string var_name = func(i);
-    auto var = scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable with name %s is not found",
-                                        var_name.c_str()));
-    auto nccl_id = var->GetMutable<ncclUniqueId>();
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGetUniqueId(nccl_id));
-
+  for (size_t i = 0; i < nccl_ids->size(); ++i) {
     int j = 0;
     for (auto conn : connects) {
-      VLOG(3) << "sending nccl_id_var: " << var_name << " to " << servers[j]
-              << " nccl_comm_no: " << i;
-      SendNCCLID(conn, nccl_id);
+      VLOG(3) << "sending comm_id to " << servers[j] << " nccl_comm_no: " << i;
+      SendCommID(conn, &(*nccl_ids)[i]);
       ++j;
     }
-    VLOG(3) << "sending completed...";
   }
 
   // close client
@@ -311,34 +305,43 @@ void SendBroadCastNCCLID(std::vector<std::string> servers, int nccl_comm_num,
   }
 }
 
-void RecvBroadCastNCCLID(std::string endpoint, int nccl_comm_num,
-                         std::function<std::string(size_t)> func,
-                         const framework::Scope& scope) {
+template <typename CommUniqueId>
+void RecvBroadCastCommID(std::string endpoint,
+                         std::vector<CommUniqueId>* nccl_ids) {
   int server = CreateListenSocket(endpoint);
-  RecvBroadCastNCCLID(server, endpoint, nccl_comm_num, func, scope);
+  RecvBroadCastCommID(server, endpoint, nccl_ids);
   CloseSocket(server);
 }
 
-void RecvBroadCastNCCLID(int server_fd, std::string endpoint, int nccl_comm_num,
-                         std::function<std::string(size_t)> func,
-                         const framework::Scope& scope) {
+template <typename CommUniqueId>
+void RecvBroadCastCommID(int server_fd, std::string endpoint,
+                         std::vector<CommUniqueId>* nccl_ids) {
   int client = SocketAccept(server_fd, COMM_HEAD);
 
-  for (int i = 0; i < nccl_comm_num; ++i) {
-    std::string var_name = func(i);
-    auto var = scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable with name %s is not found",
-                                        var_name.c_str()));
-    auto nccl_id = var->GetMutable<ncclUniqueId>();
-
-    VLOG(3) << "trainer: " << endpoint << " receiving nccl_id_var: " << var_name
-            << " from trainer 0, nccl_comm_no: " << i;
-    RecvNCCLID(client, nccl_id);
+  for (size_t i = 0; i < nccl_ids->size(); ++i) {
+    VLOG(3) << "trainer: " << endpoint
+            << " receiving comm_id from trainer 0, nccl_comm_no: " << i;
+    RecvCommID(client, &(*nccl_ids)[i]);
   }
+
   VLOG(3) << "receiving completed...";
   CloseSocket(client);
 }
 
-}  // namespace operators
+/// template instantiation
+#define INSTANT_TEMPLATE(Type)                                              \
+  template void SendBroadCastCommID<Type>(std::vector<std::string> servers, \
+                                          std::vector<Type> * nccl_ids);    \
+  template void RecvBroadCastCommID<Type>(std::string endpoint,             \
+                                          std::vector<Type> * nccl_ids);
+
+#ifdef PADDLE_WITH_NCCL
+INSTANT_TEMPLATE(ncclUniqueId)
+#endif
+#ifdef PADDLE_WITH_XPU_BKCL
+INSTANT_TEMPLATE(bkclUniqueId)
+#endif
+}  // namespace platform
 }  // namespace paddle
+
+#endif
