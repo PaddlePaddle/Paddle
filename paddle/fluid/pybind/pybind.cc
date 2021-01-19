@@ -67,6 +67,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
+#include "paddle/fluid/platform/ascend_npu_info.h"
 #endif
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
@@ -1447,7 +1448,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::CUDAPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
-  py::class_<platform::AscendNPU>(m, "AscendNPU", R"DOC(
+  py::class_<AscendNPU>(m, "AscendNPU", R"DOC(
     **Note**:
     Examples:
         .. code-block:: python

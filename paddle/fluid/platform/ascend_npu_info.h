@@ -16,8 +16,10 @@ namespace paddle {
 namespace platform {
 namespace ascend{
 
-//! Get the total number of XPU devices in system.
-int GetDeviceCount();
+class AscendNPU{
+    //! Get the total number of XPU devices in system.
+    static int GetDeviceCount();
+};
 
 }  // namespace ascend
 }  // namespace platform

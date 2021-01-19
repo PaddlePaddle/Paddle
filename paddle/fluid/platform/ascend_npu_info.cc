@@ -10,12 +10,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <glog/logging.h>
 #include "acl/acl_rt.h"
+#include "paddle/fluid/platform/ascend_npu_info.h"
 
 namespace paddle {
 namespace platform {
 namespace ascend{
 
-int GetDeviceCount() {
+int AscendNPU::GetDeviceCount() {
    uint32_t count = 0;
    aclError status = aclrtGetDeviceCount(&count);
    if(status != 0){
