@@ -121,6 +121,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     }
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 
+    /////////// origin
     // #if CUDNN_VERSION_MIN(7, 4, 0)
     //     if (FLAGS_cudnn_batchnorm_spatial_persistent) {
     //       mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
@@ -130,8 +131,28 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     // #else
     //     mode_ = CUDNN_BATCHNORM_SPATIAL;
     // #endif  // CUDNN_VERSION_MIN(7, 4, 0)
+
+    /////////// second try
+    //     bool training = !test_mode && !use_global_stats;
+    //     if (training && FLAGS_cudnn_batchnorm_spatial_persistent &&
+    //     data_layout == DataLayout::kNHWC) {
+    // #if CUDNN_VERSION >= 7400
+    //       mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+    // #else
+    //       mode_ = CUDNN_BATCHNORM_SPATIAL;
+    // #endif  // CUDNN_VERSION >= 7400
+    //     } /*else if (data_layout == DataLayout::kNCHW) {
+    //       mode_ = CUDNN_BATCHNORM_SPATIAL;
+    //     } */ else {
+    //       mode_ = CUDNN_BATCHNORM_SPATIAL;
+    //     }
+
+    /////////// third try
     bool training = !test_mode && !use_global_stats;
-    if (training && FLAGS_cudnn_batchnorm_spatial_persistent) {
+    auto dtype = platform::CudnnDataType<T>::type;
+    const bool training_half_precision =
+        (dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent);
+    if (training && training_half_precision) {
 #if CUDNN_VERSION >= 7400
       mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
 #else
