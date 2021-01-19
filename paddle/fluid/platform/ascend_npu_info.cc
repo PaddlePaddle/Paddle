@@ -16,7 +16,7 @@ namespace platform {
 namespace ascend{
 
 int GetDeviceCount() {
-   int count = 0;
+   uint32_t count = 0;
    aclError status = aclrtGetDeviceCount(&count);
    if(status != 0){
        LOG(ERROR) << "aclrtGetDeviceCount error code:" << status;
