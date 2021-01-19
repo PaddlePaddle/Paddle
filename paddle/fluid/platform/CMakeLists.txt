@@ -68,7 +68,7 @@ cc_library(xpu_info SRCS xpu_info.cc DEPS gflags glog enforce)
 endif()
 
 if(WITH_ASCEND)
-    cc_library(ascend_npu_info SRCS ascned_npu_info.cc DEPS gflags glog enforce)
+    cc_library(ascend_npu_info SRCS ascend_npu_info.cc DEPS gflags glog enforce)
 endif()
 
 add_subdirectory(dynload)

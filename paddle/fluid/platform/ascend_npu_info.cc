@@ -8,6 +8,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <glog/logging.h>
 #include "acl/acl_rt.h"
 
 namespace paddle {
@@ -16,7 +17,7 @@ namespace ascend{
 
 int GetDeviceCount() {
    int count = 0;
-   aclError status = aclrtGetDeviceCount();
+   aclError status = aclrtGetDeviceCount(&count);
    if(status != 0){
        LOG(ERROR) << "aclrtGetDeviceCount error code:" << status;
        return -1;

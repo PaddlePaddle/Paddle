@@ -1447,14 +1447,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::CUDAPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
-  py::class_<platform::XPUPlace>(m, "XPUPlace", R"DOC(
+  py::class_<platform::AscendNPU>(m, "AscendNPU", R"DOC(
     **Note**:
     Examples:
         .. code-block:: python
           import paddle.fluid as fluid
           device_count = fluid.get_device_count()
         )DOC")
-      .def("get_xpu_device_count", platform::GetAscendNPUDeviceCount);
+      .def("get_device_count", &platform::ascend::GetDeviceCount);
 
   py::class_<platform::XPUPlace>(m, "XPUPlace", R"DOC(
     **Note**:
