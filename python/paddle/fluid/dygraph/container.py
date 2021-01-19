@@ -73,7 +73,7 @@ class Sequential(Layer):
         return idx
 
     def __getitem__(self, idx):
-        r"""get 
+        """get 
         Support Operations: mm[1], mm[-1], mm[1:], mm['L1'], Where mm is sequential instance.
         
         Parameters: idx: Union[slice, int, str]
