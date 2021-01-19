@@ -215,13 +215,16 @@ void BasicEngine::PrepareGradAccumulators(
 void BasicEngine::PrepareDeps() {
   PADDLE_ENFORCE_EQ(
       node_deps_.empty(), true,
-      platform::errors::AlreadyExists("Op deps must be initialized."));
-  PADDLE_ENFORCE_EQ(
-      accumulators_.empty(), true,
-      platform::errors::AlreadyExists("Accumulators must be initialized."));
-  PADDLE_ENFORCE_EQ(
-      accumulators_with_grad_node_.empty(), true,
-      platform::errors::AlreadyExists("Accumulators must be initialized."));
+      platform::errors::AlreadyExists("Op deps are not empty before preparing "
+                                      "it for backward network execution."));
+  PADDLE_ENFORCE_EQ(accumulators_.empty(), true,
+                    platform::errors::AlreadyExists(
+                        "Accumulators are not empty before preparing it for "
+                        "backward network execution."));
+  PADDLE_ENFORCE_EQ(accumulators_with_grad_node_.empty(), true,
+                    platform::errors::AlreadyExists(
+                        "Accumulators with grad_node as the key are not empty "
+                        "before preparing it for backward network execution."));
 
   std::queue<GradOpNode*> q;
   std::unordered_set<GradOpNode*> visited;
