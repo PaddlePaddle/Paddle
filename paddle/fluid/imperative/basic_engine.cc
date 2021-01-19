@@ -328,9 +328,13 @@ void BasicEngine::Execute() {
                     "Cannot find gradient of variable %s", var->Name()));
           }
 
-          // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor
+          // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor,
+          // it should be orderly and not reapeated.
           if (var->IsLeafGrad()) {
-            leaf_accumulators_.insert(iter->second.get());
+            if (std::find(leaf_accumulators_.begin(), leaf_accumulators_.end(),
+                          iter->second.get()) == leaf_accumulators_.end()) {
+              leaf_accumulators_.push_back(iter->second.get());
+            }
 
             if (iter->second->HasInnerVar()) {
               var = iter->second->InnerVar();
