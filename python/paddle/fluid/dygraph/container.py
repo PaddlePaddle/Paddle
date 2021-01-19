@@ -73,16 +73,6 @@ class Sequential(Layer):
         return idx
 
     def __getitem__(self, idx):
-        """get 
-        Support Operations: mm[1], mm[-1], mm[1:], mm['L1'], Where mm is sequential instance.
-        
-        Parameters: idx: Union[slice, int, str]
-        
-        Examples:
-            .. code-block:: python
-                pass
-             
-        """
         if isinstance(idx, str):
             return self._sub_layers[idx]
         elif isinstance(idx, slice):
@@ -90,17 +80,7 @@ class Sequential(Layer):
         else:
             return self._sub_layers[str(self._get_abs_index(idx))]
 
-    def __setitem__(self, idx, layer):
-        """set
-        Support Operations: mm[1] = 'Layer Instance', mm['L1'] = 'Layer Instance'. Where mm is sequential instance
-        
-        Parameters: idx: Union[int, str]
-
-        Examples:
-            .. code-block:: python
-                pass
-             
-        """      
+    def __setitem__(self, idx, layer): 
         if isinstance(idx, str):
             setattr(self, str(idx), layer)
         else:
@@ -108,16 +88,6 @@ class Sequential(Layer):
             setattr(self, key, layer)
 
     def __delitem__(self, idx):
-        """del 
-        Support Operations: del mm[1], del mm[-1], del mm[1:], del mm['L1']. Wehre mm is sequential instance.
-        
-        Parameters: idx: Union[slice, int, str]
-        
-        Examples:
-            .. code-block:: python
-                pass
-             
-        """
         if isinstance(idx, slice):
             for key in list(self._sub_layers.keys())[idx]:
                 delattr(self, key)
