@@ -174,7 +174,11 @@ struct AbsGradFunctor {
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    output_[idx] = T(dout_[idx]) * (x_[idx] / T(abs(x_[idx])));
+    if (x_[idx] == T(0)) {
+      output_[idx] = T(0);
+    } else {
+      output_[idx] = T(dout_[idx]) * (x_[idx] / T(abs(x_[idx])));
+    }
   }
 
   const math::Real<T>* dout_;
@@ -191,6 +195,11 @@ struct AbsGradFunctor<paddle::platform::float16> {
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] == paddle::platform::float16(0)) {
+      output_[idx] = paddle::platform::float16(0);
+      return;
+    }
+
     if (x_[idx] > paddle::platform::float16(0)) {
       output_[idx] = dout_[idx];
     } else {
@@ -209,7 +218,11 @@ struct AbsGradGradFunctor {
       : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    output_[idx] = T(ddx_[idx]) * x_[idx] / T(abs(x_[idx]));
+    if (x_[idx] == T(0)) {
+      output_[idx] = T(0);
+    } else {
+      output_[idx] = T(ddx_[idx]) * x_[idx] / T(abs(x_[idx]));
+    }
   }
 
   const T* ddx_;
@@ -226,6 +239,11 @@ struct AbsGradGradFunctor<paddle::platform::float16> {
       : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] == paddle::platform::float16(0)) {
+      output_[idx] = paddle::platform::float16(0);
+      return;
+    }
+
     if (x_[idx] > paddle::platform::float16(0)) {
       output_[idx] = ddx_[idx];
     } else {
