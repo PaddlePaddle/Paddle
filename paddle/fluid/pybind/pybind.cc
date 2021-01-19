@@ -134,6 +134,14 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithAscend() {
+#ifndef PADDLE_WITH_ASCEND
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithXPU() {
 #ifndef PADDLE_WITH_XPU
   return false;
@@ -1444,6 +1452,15 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
           import paddle.fluid as fluid
+          device_count = fluid.get_device_count()
+        )DOC")
+      .def("get_xpu_device_count", platform::GetAscendNPUDeviceCount);
+
+  py::class_<platform::XPUPlace>(m, "XPUPlace", R"DOC(
+    **Note**:
+    Examples:
+        .. code-block:: python
+          import paddle.fluid as fluid
           xpu_place = fluid.XPUPlace(0)
         )DOC")
       .def("__init__",
@@ -1727,6 +1744,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices", []() { framework::InitDevices(); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("supports_bfloat16", SupportsBfloat16);

@@ -50,6 +50,7 @@ class DeviceMode():
     CPU = 0
     GPU = 1
     KUNLUN = 2
+    ASCEND_NPU = 3
     UNKNOWN = 3
 
 
@@ -555,6 +556,12 @@ def watch_local_trainers(procs, nranks):
     return alive
 
 
+def get_ascend_npus(npus):
+    ret = npus
+    if npus is None:
+        ret = [1,2,3,4,5,6,7,8]
+    return ret
+
 def get_gpus(gpus):
     if gpus is None:
         gpus_num = fluid.core.get_cuda_device_count()
@@ -585,15 +592,18 @@ def get_gpus(gpus):
 
 
 def get_device_mode():
-    #TODO(gongwb):Add XPU supported
-    if not fluid.core.is_compiled_with_cuda(
-    ) or fluid.core.get_cuda_device_count() <= 0:
-        print("launch train in CPU mode")
-        return DeviceMode.CPU
+    if fluid.core.is_compiled_with_ascend() and \
+            fluid.core.get_ascend_npu_device_count() > 0:
+        print("launch train in ascend npu mode!")
+        return DeviceMode.ASCEND_NPU
 
-    print("launch train in GPU mode")
-    return DeviceMode.GPU
+    if fluid.core.is_compiled_with_cuda() and \
+            fluid.core.get_cuda_device_count() > 0:
+            print("launch train in GPU mode!")
+            return DeviceMode.GPU
 
+    print("launch train in CPU mode!")
+    return DeviceMode.CPU
 
 def get_device_proc_info(args):
     # device_mode
@@ -613,6 +623,9 @@ def get_device_proc_info(args):
             ]
         else:
             devices_per_proc = gpus
+    elif device_mode == DeviceMode.ASCEND_NPU:
+        npus = get_ascend_npus(args.ascend_npus)
+        assert args.nproc_per_node is None, "ascend_npus "
     elif device_mode == DeviceMode.CPU:
         if args.nproc_per_node is None:
             devices_per_proc = [0]
