@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -84,7 +84,7 @@ class AscendIRParser(object):
                 name = e.name
             ge_out_operator.append(self.var2geop[name])
 
-        # (Debug) If you want to print back prop vars, append/assign the varname in ge_out_operator here, such as: 
+        # (Debug) If you want to print back prop vars, append/assign the varname in ge_out_operator here, such as:
         # if graph_name == "main":
         #     ge_out_operator.append(self.var2geop["reduce_sum_0.tmp_0@GRAD"])
 
@@ -159,7 +159,12 @@ class AscendOptimizer(Optimizer):
         config = {
             "ge.exec.deviceId": "0",
             "ge.graphRunMode": "1",
-            "ge.exec.precision_mode": "must_keep_origin_dtype"
+            "ge.exec.precision_mode": "must_keep_origin_dtype",
+            # if multi mode
+            "ge.exec.rankTableFile": "",
+            "ge.exec.rankId": "",
+            "ge.exec.isUseHcom": "1",
+            "ge.exec.deployMode": "0",
         }
         core.ge_initialize(config)
 
