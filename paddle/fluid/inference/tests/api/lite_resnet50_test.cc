@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-
 #include <cmath>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {

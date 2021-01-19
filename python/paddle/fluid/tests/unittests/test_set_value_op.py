@@ -102,7 +102,7 @@ class TestSetValueItemSlice4(TestSetValueApi):
 
 
 # 2. Test different type of value: int, float, numpy.ndarray, Tensor
-# 2.1 value is int32, int64, float32, bool
+# 2.1 value is int32, int64, float32, float64, bool
 
 
 def create_test_value_int32(parent):
@@ -165,6 +165,26 @@ create_test_value_fp32(TestSetValueItemSlice3)
 create_test_value_fp32(TestSetValueItemSlice4)
 
 
+def create_test_value_fp64(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            self.value = 2.0**127  # float32:[-2^128, 2^128)
+
+        def set_dtype(self):
+            self.dtype = "float64"
+
+    cls_name = "{0}_{1}".format(parent.__name__, "ValueFp64")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_fp64(TestSetValueItemInt)
+create_test_value_fp64(TestSetValueItemSlice)
+create_test_value_fp64(TestSetValueItemSlice2)
+create_test_value_fp64(TestSetValueItemSlice3)
+create_test_value_fp64(TestSetValueItemSlice4)
+
+
 def create_test_value_bool(parent):
     class TestValueInt(parent):
         def set_value(self):
@@ -185,7 +205,7 @@ create_test_value_bool(TestSetValueItemSlice3)
 create_test_value_bool(TestSetValueItemSlice4)
 
 
-# 2.2 value is numpy.array (int32, int64, float32, bool)
+# 2.2 value is numpy.array (int32, int64, float32, float64, bool)
 def create_test_value_numpy_int32(parent):
     class TestValueInt(parent):
         def set_value(self):
@@ -244,6 +264,26 @@ create_test_value_numpy_fp32(TestSetValueItemSlice)
 create_test_value_numpy_fp32(TestSetValueItemSlice2)
 create_test_value_numpy_fp32(TestSetValueItemSlice3)
 create_test_value_numpy_fp32(TestSetValueItemSlice4)
+
+
+def create_test_value_numpy_fp64(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            self.value = np.array([2**127]).astype("float64")
+
+        def set_dtype(self):
+            self.dtype = "float64"
+
+    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyFp64")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_numpy_fp64(TestSetValueItemInt)
+create_test_value_numpy_fp64(TestSetValueItemSlice)
+create_test_value_numpy_fp64(TestSetValueItemSlice2)
+create_test_value_numpy_fp64(TestSetValueItemSlice3)
+create_test_value_numpy_fp64(TestSetValueItemSlice4)
 
 
 def create_test_value_numpy_bool(parent):
@@ -451,7 +491,7 @@ class TestError(TestSetValueBase):
                 TypeError,
                 "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
         ):
-            y = paddle.ones(shape=self.shape, dtype="float64")
+            y = paddle.ones(shape=self.shape, dtype="float16")
             y[0] = 1
 
     def _step_error(self):

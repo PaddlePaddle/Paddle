@@ -74,6 +74,10 @@ namespace platform {
 bool allow_tf32_cublas = true;
 void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
 bool AllowTF32Cublas() { return allow_tf32_cublas; }
+
+bool allow_tf32_cudnn = true;
+void SetAllowTF32Cudnn(bool active) { allow_tf32_cudnn = active; }
+bool AllowTF32Cudnn() { return allow_tf32_cudnn; }
 #endif  // PADDLE_WITH_CUDA
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
@@ -168,7 +172,7 @@ Place CPUDeviceContext::GetPlace() const { return place_; }
 #ifdef PADDLE_WITH_XPU
 XPUDeviceContext::XPUDeviceContext() { context_ = xpu::create_context(); }
 
-XPUDeviceContext::~XPUDeviceContext() { xpu::destroy_context(context_); }
+XPUDeviceContext::~XPUDeviceContext() {}
 
 XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
   int dev_id = -1;
@@ -185,6 +189,13 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
                         "Baidu Kunlun Card is properly installed.",
                         ret));
   context_ = xpu::create_context();
+  void* l3ptr = nullptr;
+  int l3_size = 13.5 * 1024 * 1024;
+  xpu_malloc(static_cast<void**>(&l3ptr), l3_size, XPU_MEM_L3);
+  if (l3ptr != nullptr) {
+    context_->_l3_mgr.set(l3ptr, l3_size);
+    std::cout << "set l3 size " << l3_size << std::endl;
+  }
   ret = xpu_set_device(dev_id);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
@@ -200,7 +211,7 @@ void XPUDeviceContext::Wait() const {
                         "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
-  xpu_wait();
+  xpu_wait(context_->xpu_stream);
 }
 
 Place XPUDeviceContext::GetPlace() const { return place_; }

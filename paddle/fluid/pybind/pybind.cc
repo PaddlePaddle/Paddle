@@ -65,6 +65,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_ASCEND
+#include "paddle/fluid/pybind/ascend_wrapper_py.h"
+#endif
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -107,7 +110,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/crypto.h"
 #endif
 
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
@@ -1988,6 +1991,8 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUDA
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
   m.def("get_cublas_switch", platform::AllowTF32Cublas);
+  m.def("set_cudnn_switch", platform::SetAllowTF32Cudnn);
+  m.def("get_cudnn_switch", platform::AllowTF32Cudnn);
 #endif  // PADDLE_WITH_CUDA
 
   using VarQuantScale =
@@ -2835,11 +2840,15 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
+#ifdef PADDLE_WITH_ASCEND
+  BindAscendWrapper(&m);
+  BindAscendGraph(&m);
+#endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
 #endif
 
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
   BindDistFleetWrapper(&m);
   BindPSHost(&m);
   BindCommunicatorContext(&m);
