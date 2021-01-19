@@ -179,13 +179,13 @@ else(WIN32)
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/.strip_infer_static"
         COMMAND objcopy --localize-symbols=${CMAKE_BINARY_DIR}/paddle/fluid/inference/strip_infer_static
         ${CMAKE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.a
-        ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.a
+        ${CMAKE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.a
         DEPENDS paddle_fluid)
     add_custom_target(strip_infer_static ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/.strip_infer_static")
     add_dependencies(inference_lib_dist strip_infer_static)
-    set(paddle_fluid_shared_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.so)
+    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
     copy(inference_lib_dist
-                SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_shared_lib}
+                SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
                 DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 endif(WIN32)
 
