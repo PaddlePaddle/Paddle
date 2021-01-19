@@ -312,7 +312,7 @@ def which_distributed_mode(args):
         else:
             return DistributeMode.PS
     elif len(has_collective_args) > 0:
-        logger.info("Run collective gpu mode. gpu arguments:{}, cuda count:{}".
+        logger.info("Run collective mode. gpu arguments:{}, cuda count:{}".
                     format(has_collective_args, cuda_device_num))
         return DistributeMode.COLLECTIVE
     else:

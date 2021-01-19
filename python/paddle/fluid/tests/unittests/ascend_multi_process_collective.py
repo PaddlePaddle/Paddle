@@ -17,7 +17,7 @@ import sys
 import time
 
 def train(prefix):
-    selected_acclerators = os.getenv("FLAGS_selected_accelerators")
+    selected_accelerators = os.getenv("FLAGS_selected_accelerators")
     trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
     worker_endpoints_env = os.getenv("PADDLE_TRAINER_ENDPOINTS")
     current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")

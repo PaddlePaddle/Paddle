@@ -17,9 +17,9 @@ import paddle
 from paddle.distributed.utils import get_cluster, logger, get_gpus, get_cluster_from_args
 
 
-def get_cloud_cluster(args_node_ips, args_node_ip, args_port, selected_gpus):
+def get_cloud_cluster(args_node_ips, args_node_ip, args_port, selected_accelerators):
     """
-    args_node_ips:string, args_node_ip:string, args_port: int, selected_gpus:list
+    args_node_ips:string, args_node_ip:string, args_port: int, selected_accelerators:list
     """
     #you can automatically get ip info while using paddlecloud multi nodes mode.
     node_ips = os.getenv("PADDLE_TRAINERS")
@@ -90,7 +90,7 @@ paddlecloud environment.".format(args_node_ips, node_ips))
                  .format(node_ips, node_ip, node_rank, trainer_endpoints))
 
     cluster, pod = get_cluster(node_ips, node_ip, trainer_endpoints,
-                               selected_gpus)
+                               selected_accelerators)
     return cluster, cluster.pods[node_rank]
 
 
