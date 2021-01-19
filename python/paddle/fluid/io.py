@@ -22,6 +22,7 @@ import logging
 import pickle
 import contextlib
 from functools import reduce
+import sys
 
 import numpy as np
 import math
@@ -1715,7 +1716,7 @@ def _unpack_saved_dict(saved_obj):
     unpack_infor = {}
     for key, value in saved_obj.items():
         if isinstance(value, np.ndarray):
-            MAX_NUMBER_OF_ELEMENT = 2**22
+            MAX_NUMBER_OF_ELEMENT = int((2**30 - 1) / value.dtype.itemsize)
             num_element = np.prod(value.shape)
             if num_element > MAX_NUMBER_OF_ELEMENT:
                 unpack_infor[key] = {}
@@ -1809,8 +1810,18 @@ def save(program, model_path):
     parameter_list = list(filter(is_parameter, program.list_vars()))
     param_dict = {p.name: get_tensor(p) for p in parameter_list}
     param_dict = _unpack_saved_dict(param_dict)
-    with open(model_path + ".pdparams", 'wb') as f:
-        pickle.dump(param_dict, f, protocol=2)
+
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
+    if sys.platform == 'darwin' and sys.version_info.major == 3 and (
+            sys.version_info.minor == 5 or sys.version_info.minor == 6):
+        pickle_bytes = pickle.dumps(param_dict, protocol=2)
+        with open(model_path + ".pdparams", 'wb') as f:
+            max_bytes = 2**30
+            for i in range(0, len(pickle_bytes), max_bytes):
+                f.write(pickle_bytes[i:i + max_bytes])
+    else:
+        with open(model_path + ".pdparams", 'wb') as f:
+            pickle.dump(param_dict, f, protocol=2)
 
     optimizer_var_list = list(
         filter(is_belong_to_optimizer, program.list_vars()))
@@ -2169,6 +2180,7 @@ def load_program_state(model_path, var_list=None):
     with open(parameter_file_name, 'rb') as f:
         para_dict = pickle.load(f) if six.PY2 else pickle.load(
             f, encoding='latin1')
+    para_dict = _pack_loaded_dict(para_dict)
 
     opt_file_name = model_prefix + ".pdopt"
     if os.path.exists(opt_file_name):
@@ -2220,6 +2232,7 @@ def set_program_state(program, state_dict):
 
             static.set_program_state(prog, program_state)
     """
+    state_dict = _pack_loaded_dict(state_dict)
     parameter_list = list(filter(is_persistable, program.list_vars()))
 
     used_para_list = {}
