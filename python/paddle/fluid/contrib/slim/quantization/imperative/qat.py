@@ -419,6 +419,7 @@ class ImperativeCalcOutScale(object):
         ops_list = [key for key, _ in self._out_scale_dict.items()]
         op_count = 0
         conv_count = 0
+
         for block in inference_program.blocks:
             for op in block.ops:
                 if op.type in _op_real_in_out_name:
