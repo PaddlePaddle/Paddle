@@ -17,8 +17,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
-
 #include "Eigen/Dense"
+
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
@@ -80,8 +80,8 @@ inline size_t get_sparse_shard(uint32_t shard_num, uint32_t server_num,
 
 void DownpourPsClientService::service(
     ::google::protobuf::RpcController *controller,
-    const ::paddle::PsRequestMessage *request,
-    ::paddle::PsResponseMessage *response, ::google::protobuf::Closure *done) {
+    const PsRequestMessage *request, PsResponseMessage *response,
+    ::google::protobuf::Closure *done) {
   brpc::ClosureGuard done_guard(done);
   int ret = _client->handle_client2client_msg(
       request->cmd_id(), request->client_id(), request->data());

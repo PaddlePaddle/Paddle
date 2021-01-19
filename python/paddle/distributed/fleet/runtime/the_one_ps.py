@@ -30,6 +30,9 @@ def conv_indent(indent):
     return "".join([" "] * indent)
 
 
+PSERVER_SAVE_SUFFIX = "_txt"
+
+
 class Accessor:
     def __init__(self):
         self.accessor_class = ""
@@ -165,11 +168,7 @@ class CommonAccessor:
                     shape = self.get_shard(total_dims, pserver_num, pserver_id)
             dims.append(shape)
 
-            if formal_name == "Param":
-                initializer = "uniform_random&0&-1.0&1.0"
-            else:
-                initializer = self.get_initializer_attr(param.name,
-                                                        startup_program)
+            initializer = self.get_initializer_attr(param.name, startup_program)
             initializers.append(initializer)
 
         for (attr_varname, type_) in attr_varnames:
@@ -268,7 +267,7 @@ class Service:
     def __init__(self):
         self.server_class = "BrpcPsServer"
         self.client_class = "BrpcPsClient"
-        self.service_class = "PsService"
+        self.service_class = "BrpcPsService"
         self.start_server_port = 0
         self.server_thread_num = 12
 
@@ -743,6 +742,7 @@ class TheOnePSRuntime(RuntimeBase):
         role_id = self.compiled_strategy.get_role_id()
         endpoints = self.compiled_strategy.get_ps_endpoints()
         is_sync = self.compiled_strategy.is_sync_mode()
+        trainers = self.compiled_strategy.get_trainers()
 
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
@@ -758,7 +758,7 @@ class TheOnePSRuntime(RuntimeBase):
             string_hosts.append(pshost.serialize_to_string())
 
         self._server = fluid.core.DistFleetWrapper()
-        self._server.init_server(proto_txt, string_hosts, role_id,
+        self._server.init_server(proto_txt, string_hosts, role_id, trainers,
                                  self._server_sub_program)
 
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
@@ -793,9 +793,9 @@ class TheOnePSRuntime(RuntimeBase):
         begin = time.time()
         for var_name in load_varnames:
             table_id = sparse_table_maps[var_name]
-            path = os.path.join(dirname, var_name,
+            path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
                                 "{}.block{}.txt".format(var_name, pserver_id))
-            meta = os.path.join(dirname, var_name,
+            meta = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
                                 "{}.block{}.meta".format(var_name, pserver_id))
             self._server.load_sparse(path, meta, table_id)
         end = time.time()

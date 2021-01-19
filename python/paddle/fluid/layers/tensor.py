@@ -228,6 +228,7 @@ def cast(x, dtype):
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
         out = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return out
 
     check_variable_and_dtype(
         x, 'x',
@@ -1669,7 +1670,7 @@ def eye(num_rows,
         expand_times = batch_shape + [1, 1]
         if in_dygraph_mode():
             out = core.ops.reshape(out, 'shape', re_shape)
-            return core.ops.expand(out, 'expand_times', expand_times)
+            return core.ops.expand(out, None, 'expand_times', expand_times)
 
         if not isinstance(batch_shape, list):
             raise TypeError("batch_shape should be a list")

@@ -161,6 +161,10 @@ class PSEnvironment {
     return {};
   }
 
+  virtual void set_trainers(int trainers) { trainers_ = trainers; }
+
+  virtual int get_trainers() { return trainers_; }
+
  protected:
   //注册一个host
   virtual int32_t registe_ps_host(const std::string &ip, uint32_t port,
@@ -178,16 +182,10 @@ class PSEnvironment {
       host_list.push_back(host);
       sign_set.insert(rank);
     }
-    // if (sign_set.count(host.serialize_to_uint64()) > 0) {
-    //   LOG(WARNING) << "ps-host :" << host.ip << ":" << host.port
-    //                << ", rank:" << host.rank
-    //                << " already register, ignore register";
-    // } else {
-    //   host_list.push_back(host);
-    //   sign_set.insert(host.serialize_to_uint64());
-    // }
     return 0;
   }
+
+  int trainers_ = 0;
 
   std::vector<PSHost> _ps_client_list;
   std::unordered_set<uint64_t> _ps_client_sign_set;  // for unique filter
@@ -198,7 +196,7 @@ class PSEnvironment {
 
 class PaddlePSEnvironment : public PSEnvironment {
  public:
-  explicit PaddlePSEnvironment() {}
+  explicit PaddlePSEnvironment() { trainers_ = 0; }  // NOLINT
   virtual ~PaddlePSEnvironment() {}
 
   virtual int32_t set_ps_servers(uint64_t *host_sign_list, int node_num) {

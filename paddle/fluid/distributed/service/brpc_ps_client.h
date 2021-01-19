@@ -40,8 +40,8 @@ class DownpourPsClientService : public PsService {
     return 0;
   }
   virtual void service(::google::protobuf::RpcController *controller,
-                       const ::paddle::PsRequestMessage *request,
-                       ::paddle::PsResponseMessage *response,
+                       const PsRequestMessage *request,
+                       PsResponseMessage *response,
                        ::google::protobuf::Closure *done) override;
 
  protected:
