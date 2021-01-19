@@ -123,7 +123,7 @@ class ReduceMaxGradXPUKernel : public framework::OpKernel<T> {
                        x_grad_data, xdims, xdims);
     PADDLE_ENFORCE_EQ(
         r == xpu::Error_t::SUCCESS, true,
-        platform::errors::External("XPU select in reduce_sum_grad op return"
+        platform::errors::External("XPU select in reduce_max_grad op return"
                                    " wrong value[%d %s].",
                                    r, XPUAPIErrorMsg[r]));
 
