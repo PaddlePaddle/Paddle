@@ -530,6 +530,7 @@ class MKLDNNDeviceContextThreadLocals {
     mkldnn::stream cur_stream;
 
     Body();
+    ~Body();
     void set_cur_mkldnn_session_id(size_t sid);
     size_t get_cur_mkldnn_session_id(void);
     void set_cur_input_shape_str(std::string input_shape_str);

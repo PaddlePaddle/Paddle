@@ -464,6 +464,21 @@ MKLDNNDeviceContextThreadLocals::Body::Body()
   cur_paddle_data_layout = paddle::framework::DataLayout::kNCHW;
 }
 
+// When Thread finish we clear oneDNN cache
+// This is needed when we have one executor used by many threads
+// e.g. test_analyzer_detect. Thread ID is not part of caching key
+// (for naive executor) so we need to clear cache when one thread finish
+// and other is to start inference
+// TODO(jczaja): Ideally it would be good to clear only part of cache
+// related to thread that is to be terminated
+MKLDNNDeviceContextThreadLocals::Body::~Body() {
+  auto cpu_place = paddle::platform::CPUPlace();
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::MKLDNNDeviceContext* dev_ctx =
+      (platform::MKLDNNDeviceContext*)pool.Get(cpu_place);
+  dev_ctx->ResetBlobMap();
+}
+
 void MKLDNNDeviceContextThreadLocals::Body::set_cur_mkldnn_session_id(
     size_t sid) {
   cur_mkldnn_session_id = sid;
