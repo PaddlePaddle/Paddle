@@ -136,11 +136,6 @@ class AbsDoubleGradOp : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(AbsOpInplaceInferer, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(AbsGradOpInplaceInferer,
-                           {framework::GradVarName("Out"),
-                            framework::GradVarName("X")});
-
 }  // namespace operators
 }  // namespace paddle
 
