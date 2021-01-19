@@ -18,10 +18,12 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/device_tracer.h"
-#include "paddle/fluid/platform/dynload/nvtx.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler_helper.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/dynload/nvtx.h"
+#endif
 
 DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
 
@@ -52,10 +54,12 @@ double Event::CudaElapsedMs(const Event &e) const {
 }
 
 RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
+#ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
     dynload::nvtxRangePushA(name.c_str());
     is_pushed = true;
   }
+#endif
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
 
   // do some initialization
@@ -70,9 +74,11 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
 }
 
 RecordEvent::~RecordEvent() {
+#ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook && is_pushed) {
     dynload::nvtxRangePop();
   }
+#endif
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   // lock is not needed, the code below is thread-safe
   DeviceTracer *tracer = GetDeviceTracer();
