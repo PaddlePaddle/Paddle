@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,6 +17,7 @@ from paddle.fluid.optimizer import Optimizer
 import paddle.fluid.core as core
 import numpy as np
 import ascend_parser
+import os
 
 
 class AscendIRParser(object):
@@ -84,7 +85,7 @@ class AscendIRParser(object):
                 name = e.name
             ge_out_operator.append(self.var2geop[name])
 
-        # (Debug) If you want to print back prop vars, append/assign the varname in ge_out_operator here, such as: 
+        # (Debug) If you want to print back prop vars, append/assign the varname in ge_out_operator here, such as:
         # if graph_name == "main":
         #     ge_out_operator.append(self.var2geop["reduce_sum_0.tmp_0@GRAD"])
 
@@ -138,7 +139,7 @@ class AscendOptimizer(Optimizer):
         dist_strategy.ascend = False
         dist_strategy.ascend_configs = {}
 
-    def _get_input_varlist(program):
+    def _get_input_varlist(self, program):
         ret_list = []
         for var in program.list_vars():
             if var.is_data or var.persistable:
@@ -157,11 +158,17 @@ class AscendOptimizer(Optimizer):
 
         # Config about Graph Engine can be found in https://support.huaweicloud.com/
         config = {
-            "ge.exec.deviceId": "0",
+            "ge.exec.deviceId": os.getenv("RANK_ID"),
             "ge.graphRunMode": "1",
-            "ge.exec.precision_mode": "must_keep_origin_dtype"
+            "ge.exec.precision_mode": "must_keep_origin_dtype",
+            # if multi mode
+            "ge.exec.rankTableFile": os.getenv("RANK_TABLE_FILE"),
+            "ge.exec.rankId": os.getenv("RANK_ID"),
+            "ge.exec.isUseHcom": "1",
+            "ge.exec.deployMode": "0",
         }
         core.ge_initialize(config)
+        print("finished initialization")
 
         # Init Session
         self.ascend_instance.init_global_resources()
@@ -169,9 +176,15 @@ class AscendOptimizer(Optimizer):
         main_block = loss.block
         self.parser = AscendIRParser()
 
-        input_varlist = _get_input_varlist(main_block.program)
+        print("startup program:", startup_program)
+        print("main program:", main_block.program)
+
+        input_varlist = self._get_input_varlist(main_block.program)
         startup_graph, main_graph = self.parser.parse_program(
             startup_program, main_block.program, input_varlist, self.fetch_list)
+
+        print("startup graph:" , startup_graph)
+        print("main graph:" , main_graph)
 
         self.ascend_instance.add_ascend_subgraph(0, startup_graph)
         self.ascend_instance.add_ascend_subgraph(1, main_graph)

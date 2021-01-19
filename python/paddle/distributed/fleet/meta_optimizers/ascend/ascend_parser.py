@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,14 +25,23 @@ registerd_op = {
     "softmax_with_cross_entropy": "SoftmaxWithCrossEntropyParser",
     "shape": "ShapeParser",
     "fill_constant": "FillConstantParser",
-    "reduce_sum": "ReduceSumParser",
+    #"reduce_sum": "ReduceSumParser",
+    "reduce_sum": "AllReduceParser",
     "reduce_sum_grad": "ReduceSumGradParser",
     "matmul_grad": "MatMulGradParser",
     "mul_grad": "MulGradParser",
     "relu_grad": "ReluGradParser",
     "softmax_with_cross_entropy_grad": "SoftmaxWithCrossEntropyGradParser",
     "truncated_gaussian_random": "TruncatedNormalParser",
-    "sgd": "SGDParser"
+    "sgd": "SGDParser",
+    "allgather": "AllGatherParser",
+    "allreduce": "AllReduceParser",
+    "broadcast": "BroadcastParser",
+    "reducescatter": "ReduceScatterParser",
+    "send": "SendParser",
+    "receive": "ReceiveParser",
+    "scale": "ScaleParser",
+    "reshape2": "ReshapeParser",
 }
 global_cnt = -1
 global_input_cnt = -1
@@ -527,3 +536,180 @@ class TruncatedNormalParser(AscendParserBase):
                 "self.op.output('Out')[0] is not persistable in truncated_noraml"
             )
             return [truncated_normal], [[0]]  #[assign]
+
+
+class AllGatherParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(AllGatherParser, self).__init__(graph, var2geop)
+        self.parser_name = "allgather"
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        rank_size = self.op.attr("rank_size")
+        group = self.op.attr("group")
+
+        allgather = core.GEOperatorFactory.create_operator(
+            "allgather" + self._accumulated_op_id(), "HcomAllGather").set_input(
+                "x", x, 0).set_attr_int32(
+                    "rank_size", rank_size).set_attr_string("group", group)
+        return [allgather], [[0]]
+
+
+class AllReduceParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(AllReduceParser, self).__init__(graph, var2geop)
+        #self.parser_name = "allreduce"
+        self.parser_name = "reduce_sum"
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        reduction = "sum" #self.op.attr("reduction")
+        group = "hccl_world_group" #self.op.attr("group")
+        fusion = 0 #self.op.attr("fusion")
+        fusion_id = 0 #self.op.attr("fusion_id")
+
+        allreduce = core.GEOperatorFactory.create_operator(
+            "allreduce" + self._accumulated_op_id(), "HcomAllReduce").set_input(
+                "x", x, 0).set_attr_string(
+                    "reduction", reduction).set_attr_string("group", group)
+        if fusion is not None:
+            allreduce.set_attr_int32("fusion", fusion)
+
+        if fusion_id is not None:
+            allreduce.set_attr_int32("fusion_id", fusion_id)
+        return [allreduce], [[0]]
+
+
+class BroadcastParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(BroadcastParser, self).__init__(graph, var2geop)
+        self.parser_name = "broadcast"
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        root_rank = self.op.attr("root_rank")
+        group = self.op.attr("group")
+
+        broadcast = core.GEOperatorFactory.create_operator(
+            "broadcast" + self._accumulated_op_id(), "HcomBroadcast").set_input(
+                "x", x, 0).set_attr_int32(
+                    "root_rank", root_rank).set_attr_string("group", group)
+        return [broadcast], [[0]]
+
+
+class ReduceScatterParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(ReduceScatterParser, self).__init__(graph, var2geop)
+        self.parser_name = "reduce_scatter"
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        reduction = self.op.attr("reduction")
+        group = self.op.attr("group")
+        rank_size = self.op.attr("rank_size")
+
+        reduce_scatter = core.GEOperatorFactory.create_operator(
+            "reducescatter" + self._accumulated_op_id(), "HcomReduceScatter").set_input(
+                "x", x, 0).set_attr_string(
+                    "reduction", reduction).set_attr_string(
+                        "group", group).set_attr_int32("rank_size", rank_size)
+        return [reduce_scatter], [[0]]
+
+
+class SendParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(SendParser, self).__init__(graph, var2geop)
+        self.parser_name = "send"
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        sr_tag = self.op.attr("sr_tag")
+        dest_rank = self.op.attr("dest_rank")
+        group = self.op.attr("group")
+
+        send = core.GEOperatorFactory.create_operator(
+            "send" + self._accumulated_op_id(), "HcomSend").set_input(
+                "x", x, 0).set_attr_int32(
+                    "sr_tag", sr_tag).set_attr_int32(
+                        "dest_rank", dest_rank).set_attr_string("group", group)
+        return [send], [[0]]
+
+
+class ReceiveParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(ReceiveParser, self).__init__(graph, var2geop)
+        self.parser_name = "receive"
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        sr_tag = self.op.attr("sr_tag")
+        src_rank = self.op.attr("src_rank")
+        group = self.op.attr("group")
+        shape = self.op.attr("shape")
+        dtype = self.op.attr("dtype")
+
+        receive = core.GEOperatorFactory.create_operator(
+            "receive" + self._accumulated_op_id(), "HcomReceive").set_input(
+                "x", x, 0).set_attr_int32(
+                    "sr_tag", sr_tag).set_attr_int32(
+                        "src_rank", src_rank).set_attr_string(
+                            "group", group).set_attr_vec_int32(
+                                "shape", shape).set_attr_int32("dtype", dtype)
+        return [receive], [[0]]
+
+class ScaleParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(ScaleParser, self).__init__(graph, var2geop)
+        self.parser_name = "scale"
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        scale = self.op.attr(
+            "scale")  #self.get_ge_input(self.op.input_arg_names[1])
+        bias = self.op.attr("bias")
+        bias_after_scale = self.op.attr("bias_after_scale")
+        if bias_after_scale:
+            scale_value = core.GEOperatorFactory.create_operator(
+                "scale" + self._accumulated_op_id(), "Power").set_input(
+                    "x", x).set_attr_float("power", 1.0).set_attr_float(
+                        "scale", scale).set_attr_float("shift", bias)
+        else:
+            x_add_bias = core.GEOperatorFactory.create_operator(
+                "adds" + self._accumulated_op_id(), "Adds").set_input(
+                    "x", x).set_attr_float("value",
+                                           bias)  #set_input("x2", bias)
+            scale_value = core.GEOperatorFactory.create_operator(
+                "scale" + self._accumulated_op_id(), "Power").set_input(
+                    "x", x_add_bias).set_attr_float(
+                        "power", 1.0).set_attr_float(
+                            "scale", scale).set_attr_float("shift", 0.0)
+            #tensor_zeros = core.GEOperatorFactory.create_operator("zeroslike" + self.getid(), "ZerosLike").set_input("x", x)
+            #bias_ = self.create_ge_tensor([1], 5, bias)     
+            #const_bias = core.GEOperatorFactory.create_operator("const" + self.getid(), "Const").set_attr_tensor("value", tensor_bias)
+        return [scale_value], [[0]]
+
+
+class ReshapeParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(ReshapeParser, self).__init__(graph, var2geop)
+        self.parser_name = "reshape2"
+
+    def _apply(self):
+        print("swbuf:", self.op.input_arg_names)
+        shape = self.op.attr("shape")
+        axis = 0
+        if shape[0] == -1:
+            axis = 1
+            shape = shape[1:]
+        print("shape: ", shape)
+        data_x1_shape = self._get_ge_input(self.op.input_arg_names[0])
+        tensor = self._create_ge_tensor([len(shape)], 2, shape)
+        const_shape = core.GEOperatorFactory.create_operator(
+            "shape" + self._accumulated_op_id(), "Const").set_attr_tensor(
+                "value", tensor)
+        reshape = core.GEOperatorFactory.create_operator(
+            "reshape" + self._accumulated_op_id(), "Reshape").set_input(
+                "x", data_x1_shape).set_input(
+                    "shape", const_shape).set_attr_int32("axis", axis)
+
+        return [reshape, reshape], [[0], [1]]
