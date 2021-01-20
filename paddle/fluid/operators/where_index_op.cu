@@ -37,7 +37,7 @@ __global__ void KeGetTrueIndex(int64_t *out_ptr, const T *cond_data,
                                const int64_t rank, int64_t *true_num) {
   const int tid = threadIdx.x;
   __shared__ int64_t s_num[BLOCKDIM + 1];
-  s_num[tid] = s_num[BLOCKDIM] = 0;
+  s_num[tid + 1] = 0;
   const int64_t cond_block = (numel + BLOCKDIM - 1) / BLOCKDIM;
   const int64_t t_beg = tid * cond_block;
   const int64_t t_over = min(numel, t_beg + cond_block);
@@ -45,7 +45,7 @@ __global__ void KeGetTrueIndex(int64_t *out_ptr, const T *cond_data,
   if (tid < BLOCKDIM && t_beg < numel) {
     // first: each thread counting true condition number
     int64_t t_num = 0;
-    for (int i = t_beg; i < t_over; i++) {
+    for (int64_t i = t_beg; i < t_over; i++) {
       if (CheckTrue<T>()(cond_data[i])) t_num++;
     }
     s_num[tid + 1] = t_num;
@@ -63,12 +63,15 @@ __global__ void KeGetTrueIndex(int64_t *out_ptr, const T *cond_data,
 
     // third: each thread set true index
     int64_t idx = s_num[tid];
-    for (int i = t_beg; i < t_over; i++) {
+    for (int64_t i = t_beg; i < t_over; i++) {
       if (CheckTrue<T>()(cond_data[i])) {
-        int index = i;
+        int64_t index = i;
         for (int j = 0; j < rank; j++) {
-          out_ptr[idx * rank + j] = index / ptr_stride[j];
-          index -= out_ptr[idx * rank + j] * ptr_stride[j];
+          int64_t stride_val = ptr_stride[j];
+          int64_t out_val = index / stride_val;
+
+          out_ptr[idx * rank + j] = out_val;
+          index -= out_val * stride_val;
         }
         idx++;
       }
