@@ -52,8 +52,7 @@ requirements:
         self.requirement_run = r"""
   run:
     - requests>=2.20.0
-    - numpy>=1.13, <=1.16.4 ; python_version<"3.5"
-    - numpy>=1.13 ; python_version>="3.5"
+    - numpy>=1.13
     - protobuf>=3.1.0
     - gast==0.3.3
     - Pillow
@@ -65,8 +64,7 @@ requirements:
         self.requirement_run_windows = r"""
   run:
     - requests>=2.20.0
-    - numpy>=1.13, <=1.16.4 ; python_version<"3.5"
-    - numpy>=1.13, <=1.19.3 ; python_version>="3.5"
+    - numpy>=1.13
     - protobuf>=3.1.0
     - gast==0.3.3
     - Pillow
@@ -94,14 +92,13 @@ about:
         self.blt_const = r""" 
 """
 
-        self.python27 = r"    - python>=2.7, <3.0"
         self.python35 = r"    - python>=3.5, <3.6"
         self.python36 = r"    - python>=3.6, <3.7"
         self.python37 = r"    - python>=3.7, <3.8"
         self.python38 = r"    - python>=3.8, <3.9"
 
         self.python_version = [
-            self.python27, self.python35, self.python36, self.python37,
+            self.python35, self.python36, self.python37,
             self.python38
         ]
 
@@ -123,33 +120,29 @@ about:
     """
         self.cuda110 = r"""
     - cudatoolkit>=11.0, <11.1
-    - cudnn>=7.6, <7.7
     """
         self.cuda_info = [(self.cuda90, "cuda9.0", ".post90"),
                           (self.cuda100, "cuda10.0", ".post100"),
                           (self.cuda101, "cuda10.1", ".post101"),
                           (self.cuda102, "cuda10.2", ""),
                           (self.cuda110, "cuda11.0", ".post110")]
-        self.py_str = ["py27", "py35", "py36", "py37", "py38"]
+        self.py_str = ["py35", "py36", "py37", "py38"]
         self.pip_end = ".whl --no-deps"
         self.pip_prefix_linux = "pip install /package/paddlepaddle"
         self.pip_prefix_windows = r"pip install C:\package\paddlepaddle"
         self.pip_gpu = "_gpu-"
         self.pip_cpu = "-"
         self.mac_pip = [
-            "-cp27-cp27m-macosx_10_6_intel", "-cp35-cp35m-macosx_10_6_intel",
-            "-cp36-cp36m-macosx_10_6_intel", "-cp37-cp37m-macosx_10_6_intel",
-            "-cp38-cp38-macosx_10_14_x86_64"
+            "-cp35-cp35m-macosx_10_6_intel", "-cp36-cp36m-macosx_10_6_intel",
+            "-cp37-cp37m-macosx_10_6_intel", "-cp38-cp38-macosx_10_14_x86_64"
         ]
         self.linux_pip = [
-            "-cp27-cp27mu-manylinux_x86_64", "-cp35-cp35m-manylinux_x86_64",
-            "-cp36-cp36m-manylinux_x86_64", "-cp37-cp37m-manylinux_x86_64",
-            "-cp38-cp38-manylinux_x86_64"
+            "-cp35-cp35m-manylinux_x86_64", "-cp36-cp36m-manylinux_x86_64",
+            "-cp37-cp37m-manylinux_x86_64", "-cp38-cp38-manylinux_x86_64"
         ]
         self.windows_pip = [
-            "-cp27-cp27m-win_amd64", "-cp35-cp35m-win_amd64",
-            "-cp36-cp36m-win_amd64", "-cp37-cp37m-win_amd64",
-            "-cp38-cp38-win_amd64"
+            "-cp35-cp35m-win_amd64", "-cp36-cp36m-win_amd64", 
+            "-cp37-cp37m-win_amd64", "-cp38-cp38-win_amd64"
         ]
 
 
@@ -224,12 +217,7 @@ package:
     requirement = var.requirement_build + python_str + var.requirement_run_windows + python_str
     meta_build = var.build + build_name_str
     meta_str = package_str + meta_build + requirement
-    if (python_str == var.python27 or python_str == var.python35):
-        meta_str = meta_str + """
-    - matplotlib<=2.2.4"""
-    else:
-        meta_str = meta_str + """
-    - matplotlib"""
+    
     if not (cuda_str == None):
         meta_str = meta_str + cuda_str
 
