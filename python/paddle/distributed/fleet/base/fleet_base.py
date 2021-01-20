@@ -1019,8 +1019,8 @@ class Fleet(object):
                     run_example_code()       
         """
         # imitate target optimizer retrieval
-        return self.user_defined_optimizer.amp_init(
-            place, scope=None, test_program=None, use_fp16_test=False)
+        return self.user_defined_optimizer.amp_init(place, scope, test_program,
+                                                    use_fp16_test)
 
     def _final_strategy(self):
         if "valid_strategy" not in self._context:
