@@ -218,9 +218,9 @@ class SAdam : public SparseOptimizer {
 class SAdagrad : public SparseOptimizer {
  public:
   explicit SAdagrad(const std::vector<std::string>& value_names,
-                 const std::vector<int>& value_dims,
-                 const std::vector<int>& value_offsets,
-                 const std::unordered_map<std::string, int>& value_idx)
+                    const std::vector<int>& value_dims,
+                    const std::vector<int>& value_offsets,
+                    const std::unordered_map<std::string, int>& value_idx)
       : SparseOptimizer(value_names, value_dims, value_offsets, value_idx) {
     auto idx = value_idx.at("Param");
     param_offset = value_offsets.at(idx);

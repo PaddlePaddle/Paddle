@@ -188,7 +188,7 @@ class DAdam : public DenseOptimizer {
 class DAdagrad : public DenseOptimizer {
  public:
   explicit DAdagrad(const CommonAccessorParameter& accessor,
-                 std::vector<std::vector<float>>* values) {
+                    std::vector<std::vector<float>>* values) {
     auto& names = accessor.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
       if (names[x] == "LearningRate") {
