@@ -22,6 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/bind_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
@@ -167,7 +168,9 @@ class ParallelExecutorPrivate {
         nccl_id = new ncclUniqueId();
         PADDLE_ENFORCE_EQ(
             platform::dynload::ncclGetUniqueId(nccl_id), ncclSuccess,
-            platform::errors::PreconditionNotMet("Get NCCL unique ID failed."));
+            platform::errors::PreconditionNotMet(
+                "PaddlePaddle failed to get NCCL unique ID. It may due to your "
+                "system settings or NCCL library error, please debug on NCCL"));
         VLOG(10) << "can't find nccl_id_var:" << var_name
                  << ", nccl_id:" << nccl_id;
       }
@@ -847,6 +850,17 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   }
 
+  if (graph->Has(details::kFusedVars)) {
+    auto &fused_vars = graph->Get<details::FusedVars>(details::kFusedVars);
+    for (auto &fused_var : fused_vars) {
+      var_infos.emplace_back();
+      var_infos.back() = fused_var.second;
+
+      member_->is_persistable_.emplace(fused_var.first,
+                                       fused_var.second.persistable_);
+    }
+  }
+
   std::unordered_map<Scope *, Scope *> scope_map;
   for (auto *scope : member_->local_scopes_) {
     auto &local_exec_scope = scope->NewScope();
@@ -920,10 +934,23 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
             exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
             member_->places_, graph));
       } else {
-        VLOG(3) << "use FastThreadedSSAGraphExecutor";
-        member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-            exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
-            member_->places_, graph));
+        if (member_->use_device_ == p::kXPU) {
+#if defined(PADDLE_WITH_XPU)
+          VLOG(3) << "use BindThreadedSSAGraphExecutor";
+          member_->executor_.reset(new details::BindThreadedSSAGraphExecutor(
+              exec_strategy, member_->local_scopes_,
+              member_->local_exec_scopes_, member_->places_, graph));
+#else
+          PADDLE_THROW(platform::errors::PermissionDenied(
+              "Paddle can't use XPU device since it's not compiled with XPU,"
+              "Please recompile or reinstall Paddle with XPU support."));
+#endif
+        } else {
+          VLOG(3) << "use FastThreadedSSAGraphExecutor";
+          member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+              exec_strategy, member_->local_scopes_,
+              member_->local_exec_scopes_, member_->places_, graph));
+        }
       }
       final_graphs.emplace_back(graph);
     }

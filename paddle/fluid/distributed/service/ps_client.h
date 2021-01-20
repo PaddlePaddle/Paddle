@@ -28,6 +28,9 @@
 namespace paddle {
 namespace distributed {
 
+using paddle::distributed::PsRequestMessage;
+using paddle::distributed::PsResponseMessage;
+
 typedef std::function<void(void *)> PSClientCallBack;
 class PSClientClosure : public google::protobuf::Closure {
  public:
@@ -131,6 +134,14 @@ class PSClient {
                                               std::vector<uint64_t> *keys,
                                               int pserver_idx) = 0;
 
+  virtual std::future<int32_t> push_global_step(int table_id,
+                                                int64_t *total_send_data,
+                                                void *done) = 0;
+
+  // recv table from server and save it in LodTensor
+  virtual int32_t recv_and_save_table(const uint64_t table_id,
+                                      const std::string &path) = 0;
+
   virtual void finalize_worker() = 0;
   // client to client, 消息发送
   virtual std::future<int32_t> send_client2client_msg(int msg_type,
@@ -198,7 +209,7 @@ class PSClient {
   std::unordered_map<int32_t, MsgHandlerFunc>
       _msg_handler_map;  //处理client2client消息
 };
-REGISTER_REGISTERER(PSClient);
+REGISTER_PSCORE_REGISTERER(PSClient);
 
 class PSClientFactory {
  public:

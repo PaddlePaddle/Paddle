@@ -1598,7 +1598,7 @@ struct ELUGradGradFunctor : public BaseActivationFunctor<T> {
       auto dout = framework::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(dOut, "Output", "DOut", "ELUGradGrad"));
       dx.device(*d) = ddx * dout * static_cast<T>(alpha) * x.exp() *
-                      (x < static_cast<T>(0)).template cast<T>();
+                      (x <= static_cast<T>(0)).template cast<T>();
     }
 
     if (ddOut) {

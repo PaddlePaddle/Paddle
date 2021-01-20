@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/hooks.h"
+#include "paddle/fluid/imperative/op_base.h"
 
 namespace paddle {
 namespace imperative {
@@ -241,9 +242,10 @@ class VariableWrapper {
   void SetGradVar(const std::shared_ptr<VariableWrapper>& var) {
     auto shared_var = grad_var_.lock();
     if (shared_var != var) {
-      PADDLE_ENFORCE_EQ(shared_var, nullptr,
-                        platform::errors::PermissionDenied(
-                            "Cannot set gradient var wrapper twice"));
+      PADDLE_ENFORCE_EQ(
+          shared_var, nullptr,
+          platform::errors::PermissionDenied(
+              "Cannot set gradient variable wrapper twice for %s", name_));
       grad_var_ = var;
     }
   }
@@ -256,9 +258,16 @@ class VariableWrapper {
 
     auto shared_node = grad_node_.lock();
     if (shared_node != grad_node) {
-      PADDLE_ENFORCE_EQ(
-          shared_node, nullptr,
-          platform::errors::PermissionDenied("Cannot set gradient op twice"));
+      if (grad_node->InplaceGradNameMap().empty()) {
+        // grad_node doesn't have Inplace message
+        PADDLE_ENFORCE_EQ(
+            shared_node, nullptr,
+            platform::errors::PermissionDenied(
+                "Cannot set gradient op twice unless using Inplace Strategy."));
+      } else if (shared_node) {
+        VLOG(3) << "The gradient op of Var (" << Name()
+                << ") has been set twice. Because Inplace Strategy is used.";
+      }
       grad_node_ = grad_node;
     }
   }

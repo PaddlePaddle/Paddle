@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -23,6 +22,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"

@@ -35,8 +35,8 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-using MultiVarMsg = ::paddle::MultiVariableMessage;
-using VarMsg = ::paddle::VariableMessage;
+using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
+using VarMsg = ::paddle::distributed::VariableMessage;
 
 typedef std::function<void(void*)> HeterRpcCallbackFunc;
 

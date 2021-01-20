@@ -143,6 +143,7 @@ packages=['paddle',
           'paddle.reader',
           'paddle.distributed',
           'paddle.incubate',
+          'paddle.incubate.optimizer',
           'paddle.distributed.fleet',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.meta_optimizers',
@@ -277,6 +278,12 @@ else:
         # copy the openblas.dll
         shutil.copy('${OPENBLAS_SHARED_LIB}', libs_path)
         package_data['paddle.libs'] += ['openblas' + ext_name]
+    elif os.name == 'posix' and platform.machine() == 'aarch64' and '${OPENBLAS_LIB}'.endswith('so'):
+        # copy the libopenblas.so on linux+aarch64
+        # special: core_noavx.so depends on 'libopenblas.so.0', not 'libopenblas.so'
+        if os.path.exists('${OPENBLAS_LIB}' + '.0'):
+            shutil.copy('${OPENBLAS_LIB}' + '.0', libs_path)
+            package_data['paddle.libs'] += ['libopenblas.so.0']
 
 if '${WITH_LITE}' == 'ON':
     shutil.copy('${LITE_SHARED_LIB}', libs_path)
@@ -303,7 +310,8 @@ if '${WITH_MKLDNN}' == 'ON':
     shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
     if os.name != 'nt':
         shutil.copy('${MKLDNN_SHARED_LIB_1}', libs_path)
-        package_data['paddle.libs']+=['libmkldnn.so.0', 'libdnnl.so.1']
+        shutil.copy('${MKLDNN_SHARED_LIB_2}', libs_path)
+        package_data['paddle.libs']+=['libmkldnn.so.0', 'libdnnl.so.1', 'libdnnl.so.2']
     else:
         package_data['paddle.libs']+=['mkldnn.dll']
 
@@ -349,10 +357,8 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             command = "install_name_tool -id \"@loader_path/../libs/\" ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
         else:
             command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
-        # The dynamic library compiled under aarch64 is greater than 64M,
-        # and an oversize error will be reported when using patchelf.
         # The sw_64 not suppot patchelf, so we just disable that.
-        if platform.machine() != 'aarch64' and platform.machine() != 'sw_64' and platform.machine() != 'mips64':
+        if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
           if os.system(command) != 0:
               raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
 

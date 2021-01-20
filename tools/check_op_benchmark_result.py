@@ -121,7 +121,29 @@ def compare_benchmark_result(case_name, develop_result, pr_result,
             check_results["accuracy"].append(case_name)
 
 
-def summary_results(check_results):
+def update_api_info_file(fail_case_list, api_info_file):
+    """Update api info file to auto retry benchmark test.
+    """
+    check_path_exists(api_info_file)
+
+    # set of case names for performance check failures
+    fail_case_set = set(map(lambda x: x.rsplit('_', 1)[0], fail_case_list))
+
+    # list of api infos for performance check failures
+    api_info_list = list()
+    with open(api_info_file) as f:
+        for line in f:
+            case = line.split(',')[0]
+            if case in fail_case_set:
+                api_info_list.append(line)
+
+    # update api info file
+    with open(api_info_file, 'w') as f:
+        for api_info_line in api_info_list:
+            f.write(api_info_line)
+
+
+def summary_results(check_results, api_info_file):
     """Summary results and return exit code.
     """
     for case_name in check_results["speed"]:
@@ -130,6 +152,9 @@ def summary_results(check_results):
     for case_name in check_results["accuracy"]:
         logging.error("Check accuracy result with case \"%s\" failed." %
                       case_name)
+
+    if len(check_results["speed"]) and api_info_file:
+        update_api_info_file(check_results["speed"], api_info_file)
 
     if len(check_results["speed"]) or len(check_results["accuracy"]):
         return 8
@@ -155,6 +180,11 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help="Specify the benchmark result directory of PR branch.")
+    parser.add_argument(
+        "--api_info_file",
+        type=str,
+        required=False,
+        help="Specify the api info to run benchmark test.")
     args = parser.parse_args()
 
     check_results = dict(accuracy=list(), speed=list())
@@ -172,4 +202,4 @@ if __name__ == "__main__":
         compare_benchmark_result(case_name, develop_result, pr_result,
                                  check_results)
 
-    exit(summary_results(check_results))
+    exit(summary_results(check_results, args.api_info_file))

@@ -20,6 +20,7 @@ limitations under the License. */
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 
+#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
@@ -160,7 +161,7 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
   }
   VLOG(5) << "Init Tensor as: / name: " << name
           << " / persistable: " << persistable << " / zero_copy: " << zero_copy
-          << " / stop_gradient: " << stop_gradient;
+          << " / stop_gradient: " << stop_gradient << " / at " << place;
   new (self) imperative::VarBase(name);
   self->SetPersistable(persistable);
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
@@ -174,8 +175,8 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
 
 static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
                                                const py::array &array) {
-  VLOG(4) << "Init VarBase from numpy: ";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
+  VLOG(4) << "Init VarBase from numpy at " << place;
   InitTensorForVarBase(self, array, place);
 }
 
@@ -322,6 +323,7 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
           std::string(Py_TYPE(r->start)->tp_name)));
     }
     if (*start < 0) *start += length;
+    *start = std::max(*start, static_cast<Py_ssize_t>(0));
   }
   if (r->stop == Py_None) {
     *stop = *step < 0 ? -1 : length;
@@ -335,6 +337,7 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
           std::string(Py_TYPE(r->stop)->tp_name)));
     }
     if (*stop < 0) *stop += length;
+    *stop = std::min(*stop, length);
   }
   if (*stop > length) return -1;
   if (*start >= length) return -1;
@@ -380,7 +383,7 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
       int start = static_cast<int>(PyLong_AsLong(slice_item));
       auto s_t = start;
       start = start < 0 ? start + dim_len : start;
-      if (start >= dim_len) {
+      if (start >= dim_len || start < 0) {
         std::string str_error_message =
             "The starting index " + std::to_string(s_t) +
             " of slice is out of bounds in tensor " + std::to_string(dim) +
@@ -1057,21 +1060,52 @@ void BindImperative(py::module *m_ptr) {
        )DOC")
       .def("copy_", &imperative::VarBase::CopyFrom)
       .def("_copy_to",
-           [](const imperative::VarBase &self, const platform::CPUPlace &place,
-              bool blocking) { return self.NewVarBase(place, blocking); },
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CPUPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             // Note(zhiqiu): Since NewVarBase may use GpuCopyAsync to
+             // copy data from the tensor of self to the tensor of new varbase,
+             // we need to ensure that the varbase self is not destructed until
+             // the GpuCopyAsync is completed. Otherwise, the memory may be
+             // freed
+             // when varbase self is destructed.
+             // To do that, we increase the reference count of self by 1 and
+             // add a cuda event to wait the GpuCopyAsync's completion.
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
            py::return_value_policy::copy)
       .def("_copy_to",
-           [](const imperative::VarBase &self,
-              const platform::CUDAPinnedPlace &place,
-              bool blocking) { return self.NewVarBase(place, blocking); },
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CUDAPinnedPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
            py::return_value_policy::copy)
       .def("_copy_to",
-           [](const imperative::VarBase &self, const platform::XPUPlace &place,
-              bool blocking) { return self.NewVarBase(place, blocking); },
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::XPUPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
            py::return_value_policy::copy)
       .def("_copy_to",
-           [](const imperative::VarBase &self, const platform::CUDAPlace &place,
-              bool blocking) { return self.NewVarBase(place, blocking); },
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CUDAPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
            py::return_value_policy::copy)
       .def("value", [](imperative::VarBase &self) { return self.MutableVar(); },
            py::return_value_policy::reference)
@@ -1172,15 +1206,44 @@ void BindImperative(py::module *m_ptr) {
             if (py::isinstance<platform::CUDAPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPlace *>();
               self.SetExpectedPlace(*p);
+
+// NOTE(zhiqiu): When switching cuda place, we need to set the
+// cuda device id.
+// Otherwise, some cuda API may be launched at other cuda place,
+// which may cost hundreds of MB of GPU memory due to the cuda
+// lib.
+#ifdef PADDLE_WITH_CUDA
+              platform::SetDeviceId(p->device);
+#endif
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
             } else if (py::isinstance<platform::XPUPlace>(obj)) {
               auto p = obj.cast<platform::XPUPlace *>();
               self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
             } else if (py::isinstance<platform::CPUPlace>(obj)) {
               auto p = obj.cast<platform::CPUPlace *>();
               self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
             } else if (py::isinstance<platform::CUDAPinnedPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPinnedPlace *>();
               self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
+            } else if (py::isinstance<platform::Place>(obj)) {
+              auto p = obj.cast<platform::Place *>();
+              self.SetExpectedPlace(*p);
+              if (platform::is_gpu_place(*p)) {
+// NOTE(zhiqu): same as obj is CUDAPlace.
+#ifdef PADDLE_WITH_CUDA
+                platform::SetDeviceId(
+                    BOOST_GET_CONST(platform::CUDAPlace, *p).device);
+#endif
+              }
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
@@ -1194,27 +1257,30 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::reference)
       .def("_generate_unique_name", &imperative::Tracer::GenerateUniqueName,
            py::arg("key") = "dygraph_tmp")
-      .def(
-          "_set_amp_op_list",
-          [](imperative::Tracer &self,
-             std::unordered_set<std::string> &allow_ops,
-             std::unordered_set<std::string> &block_ops) {
-            // NOTE(zhiqiu): The automatic conversion in pybind11 between
-            // c++
-            // STL and python set/list/dict involve a copy operation that
-            // prevents pass-by-reference semantics, so it is ok to swap.
-            // The reaseon why not directly pass
-            // std::shared_ptr<std::unordered_set<std::string>>
-            // is that pybind11 forbid shared_ptr<T> where T is not custom
-            // type.
-            imperative::AmpOperators::Instance().GetAllowOps()->swap(allow_ops);
-            imperative::AmpOperators::Instance().GetBlockOps()->swap(block_ops);
-          })
+      .def("_set_amp_op_list",
+           [](imperative::Tracer &self,
+              std::unordered_set<std::string> &allow_ops,
+              std::unordered_set<std::string> &block_ops) {
+             // NOTE(zhiqiu): The automatic conversion in pybind11 between
+             // c++
+             // STL and python set/list/dict involve a copy operation that
+             // prevents pass-by-reference semantics, so it is ok to swap.
+             // The reaseon why not directly pass
+             // std::shared_ptr<std::unordered_set<std::string>>
+             // is that pybind11 forbid shared_ptr<T> where T is not custom
+             // type.
+             imperative::AmpOperators::Instance().GetMutableAllowOps()->swap(
+                 allow_ops);
+             imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
+                 block_ops);
+             VLOG(4) << "AMP operators changed, "
+                     << imperative::AmpOperators::Instance();
+           })
       .def("_get_amp_op_list",
            [](imperative::Tracer &self) {
              return std::make_tuple(
-                 *(imperative::AmpOperators::Instance().GetAllowOps()),
-                 *(imperative::AmpOperators::Instance().GetBlockOps()));
+                 *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
+                 *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
            })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
@@ -1324,18 +1390,18 @@ void BindImperative(py::module *m_ptr) {
 
   py::class_<imperative::Reducer, std::shared_ptr<imperative::Reducer>>(
       m, "Reducer", R"DOC()DOC")
-      .def(py::init(
-          [](const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
-             const std::vector<std::vector<size_t>> &group_indices,
-             const std::vector<bool> &is_sparse_gradient,
-             std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-             const std::vector<size_t> &group_size_limits) {
-            return imperative::Reducer::SetInstance(
-                vars, group_indices, is_sparse_gradient, parallel_ctx,
-                group_size_limits);
-          }))
+      .def(py::init([](
+          const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
+          const std::vector<std::vector<size_t>> &group_indices,
+          const std::vector<bool> &is_sparse_gradient,
+          std::shared_ptr<imperative::ParallelContext> parallel_ctx,
+          const std::vector<size_t> &group_size_limits, bool find_unused_vars) {
+        return imperative::Reducer::SetInstance(
+            vars, group_indices, is_sparse_gradient, parallel_ctx,
+            group_size_limits, find_unused_vars);
+      }))
       .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
-           py::call_guard<py::gil_scoped_release>());
+           py::arg("vars"), py::call_guard<py::gil_scoped_release>());
 
   m.def("assign_group_by_size", &imperative::AssignGroupBySize, py::arg("vars"),
         py::arg("is_sparse_gradient"),

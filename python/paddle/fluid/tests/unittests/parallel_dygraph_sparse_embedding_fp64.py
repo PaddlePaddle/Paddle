@@ -55,10 +55,18 @@ class SimpleNet(Layer):
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale))
+        self.tmp = self.create_parameter(
+            attr=paddle.ParamAttr(),
+            shape=[self.hidden_size, self.vocab_size],
+            dtype=dtype,
+            default_initializer=paddle.nn.initializer.Uniform(
+                low=-self.init_scale, high=self.init_scale))
 
     def forward(self, input, label):
         x_emb = self.embedding(input)
         fc = paddle.matmul(x_emb, self.softmax_weight)
+        # use detach to stop gradient
+        fc = fc.detach()
         fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, self.vocab_size])
         loss = paddle.nn.functional.softmax_with_cross_entropy(

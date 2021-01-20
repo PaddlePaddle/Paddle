@@ -14,166 +14,187 @@
 
 #pragma once
 
+#include <algorithm>
+#include <condition_variable>  // NOLINT
 #include <memory>
+#include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include <ThreadPool.h>
+#include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {
 
+#define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
+#define STEP_COUNTER "@PS_STEP_COUNTER@"
+
 class TensorTable : public Table {
  public:
-  TensorTable() : Table() {}
-
+  TensorTable() {}
   virtual ~TensorTable() {}
 
-  virtual int32_t initialize() { return 0; }
+  int32_t pull_dense(float *values, size_t num) override { return 0; }
 
-  virtual int32_t pull_dense(float *values, size_t num) override { return 0; };
+  int32_t push_dense(const float *values, size_t num) override { return 0; }
 
-  virtual int32_t push_dense(const float *values, size_t num) override {
+  int32_t pull_sparse(float *values, const uint64_t *keys,
+                      size_t num) override {
     return 0;
-  };
-
-  virtual void *get_shard(size_t shard_idx) override { return 0; }
-
-  virtual int32_t pull_sparse(float *values, const uint64_t *keys,
-                              size_t num) override {
+  }
+  int32_t push_sparse(const uint64_t *keys, const float *values,
+                      size_t num) override {
     return 0;
-  };
+  }
+  int32_t shrink() override { return 0; }
 
-  virtual int32_t push_sparse(const uint64_t *keys, const float *values,
-                              size_t num) override {
+  virtual void *get_shard(size_t shard_idx) { return 0; }
+
+  virtual int32_t initialize_shard() { return 0; };
+
+  virtual int32_t flush() { return 0; };
+
+  virtual int32_t load(const std::string &path, const std::string &param) {
     return 0;
-  };
-
-  virtual int32_t push_dense_param(const float *values, size_t num) {
+  }
+  virtual int32_t save(const std::string &path, const std::string &param) {
     return 0;
   }
 
-  virtual int32_t shrink() { return 0; }
+  virtual void clear(){};
 
-  virtual void clear() {}
+  virtual int32_t initialize() override { return 0; };
 
-  virtual int32_t flush() { return 0; }
-
-  //指定加载路径
-  virtual int32_t load(const std::string &path, const std::string &converter) {
+  virtual int32_t push_dense(const int64_t *values,
+                             const int32_t trainer_id) override {
     return 0;
-  }
-  //指定保存路径
-  virtual int32_t save(const std::string &path, const std::string &converter) {
-    return 0;
-  }
+  };
+
+  virtual int32_t set_program_env(
+      framework::Scope *scope, platform::Place place,
+      const std::vector<framework::ProgramDesc> *sub_program) override;
 
  protected:
-  virtual int32_t initialize_shard() { return 0; }
-
-  virtual int32_t initialize_tensor(paddle::framework::Scope *scope,
-                                    paddle::framework::ProgramDesc *program,
-                                    paddle::framework::Executor *executor) {
-    return 0;
-  }
-
-  std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
-
   framework::Executor *executor_;
   framework::Scope *scope_;
-  framework::ProgramDesc *program_;
-  std::unordered_map<std::string,
-                     std::shared_ptr<framework::ExecutorPrepareContext>>
-      *prepared_ctx_;
+  platform::Place place_ = platform::CPUPlace();
+  const std::vector<framework::ProgramDesc> *sub_program_;
+  paddle::distributed::TensorAccessorParameter program_config_;
+  std::shared_ptr<framework::ExecutorPrepareContext> exec_context_ = nullptr;
 };
 
 class DenseTensorTable : public TensorTable {
  public:
-  DenseTensorTable() : TensorTable() {}
-  ~DenseTensorTable() {}
-  virtual int32_t initialize();
+  DenseTensorTable() {}
+  virtual ~DenseTensorTable() {}
 
-  void *get_shard(size_t shard_idx) { return 0; }
-
-  int32_t pull_sparse(float *values, const uint64_t *keys, size_t num) {
+  int32_t pull_sparse(float *values, const uint64_t *keys,
+                      size_t num) override {
     return 0;
   }
-  int32_t push_sparse(const uint64_t *keys, const float *values, size_t num) {
+  int32_t push_sparse(const uint64_t *keys, const float *values,
+                      size_t num) override {
     return 0;
   }
-  int32_t shrink() { return 0; }
+  int32_t shrink() override { return 0; }
 
-  int32_t pull_dense(float *values, size_t num) override;
-  int32_t push_dense_param(const float *values, size_t num) override;
-  int32_t push_dense(const float *values, size_t num) override;
+  virtual void *get_shard(size_t shard_idx) { return 0; }
 
-  virtual void clear() {}
-  virtual int32_t flush() { return 0; }
-
-  //指定加载路径
-  virtual int32_t load(const std::string &path, const std::string &converter) {
-    return 0;
-  }
-  //指定保存路径
-  virtual int32_t save(const std::string &path, const std::string &converter) {
-    return 0;
-  }
-
- protected:
   virtual int32_t initialize_shard() { return 0; }
 
-  virtual int32_t initialize_tensor(paddle::framework::Scope *scope,
-                                    paddle::framework::ProgramDesc *program,
-                                    paddle::framework::Executor *executor);
+  virtual int32_t flush() { return 0; }
+
+  virtual void clear() {}
+
+  // Todo: Support program Load & Save
+  virtual int32_t load(const std::string &path, const std::string &param) {
+    return 0;
+  }
+  virtual int32_t save(const std::string &path, const std::string &param) {
+    return 0;
+  }
+
+  // Todo: Support pull dense
+  int32_t pull_dense(float *values, size_t num) override { return 0; }
+
+  /*----------------------------------------------------------------------*/
+
+  virtual int32_t initialize() override { return 0; }
+
+  int32_t push_dense(const float *values, size_t num) override { return 0; }
+
+  int32_t push_dense(const int64_t *values, const int32_t trainer_id) {
+    return 0;
+  }
 
  protected:
-  framework::Tensor _data;
-};
-//
-//// common sparse table [0, N) with out large scale
-// class SparseTensorTable : public TensorTable {
-//  void *get_shard(size_t shard_idx) { return 0; }
-//
-//  int32_t pull_sparse(float *values, const uint64_t *keys, size_t num)
-//  override;
-//  int32_t push_sparse(const uint64_t *keys, const float *values, size_t num)
-//  override ;
-//  int32_t shrink() { return 0; }
-//  void *get_shard(size_t shard_idx) { return 0; };
-//
-//  int32_t pull_dense(float *values, size_t num) { return 0; };
-//  int32_t push_dense_param(const float *values, size_t num) { return 0; };
-//  int32_t push_dense(const float *values, size_t num) { return 0; };
-//
-// protected:
-//  framework::Tensor _data;
-//};
+  virtual int32_t _run_program(const float *values, size_t num,
+                               const uint32_t trainer_id) {
+    return 0;
+  }
 
-//// for Large scale kv tensor  [0, int64] do not use specific optimizer
-// class KvTensorTable : public TensorTable {
-//  int32_t pull_dense(float *values, size_t num) { return 0; };
-//  int32_t push_dense_param(const float *values, size_t num) { return 0; };
-//  int32_t push_dense(const float *values, size_t num) { return 0; };
-//
-//  void *get_shard(size_t shard_idx) override;
-//  int32_t pull_sparse(float *values, const uint64_t *keys, size_t num)
-//  override;
-//  int32_t push_sparse(const uint64_t *keys, const float *values,
-//                      size_t num) override;
-//  int32_t shrink() override;
-//  void *get_shard(size_t shard_idx) override;
-//};
-//
-//// for Geo sparse handle
-// class GeoSparseTensorTable : public TensorTable {};
+  int startup_program_id_ = -1;
+  int main_program_id_ = -1;
+  std::string feed_var_name_ = "";
+  std::string fetch_var_name_ = "";
+};
+
+class GlobalStepTable : public DenseTensorTable {
+ public:
+  GlobalStepTable() {}
+  virtual ~GlobalStepTable() {}
+
+  int32_t pull_sparse(float *values, const uint64_t *keys,
+                      size_t num) override {
+    return 0;
+  }
+  int32_t push_sparse(const uint64_t *keys, const float *values,
+                      size_t num) override {
+    return 0;
+  }
+  int32_t shrink() override { return 0; }
+
+  virtual void *get_shard(size_t shard_idx) { return 0; }
+
+  virtual int32_t initialize_shard() { return 0; }
+
+  virtual int32_t flush() { return 0; }
+
+  virtual void clear() {}
+
+  virtual int32_t load(const std::string &path, const std::string &param) {
+    return 0;
+  }
+  virtual int32_t save(const std::string &path, const std::string &param) {
+    return 0;
+  }
+
+  int32_t pull_dense(float *values, size_t num) override { return 0; }
+
+  /*----------------------------------------------------------------------*/
+
+  int32_t initialize() override;
+
+  int32_t push_dense(const float *values, size_t num) override { return 0; }
+
+  int32_t push_dense(const int64_t *values, const int32_t trainer_id);
+
+  int32_t set_table_map(
+      std::unordered_map<uint32_t, std::shared_ptr<Table>> *table_map) override;
+
+ private:
+  virtual int32_t _run_program(const int64_t *values,
+                               const uint32_t trainer_id);
+
+ private:
+  std::unordered_map<int, int64_t> decay_counters_;
+  int32_t trainers_;
+};
+
 }  // namespace distributed
 }  // namespace paddle

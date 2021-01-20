@@ -39,6 +39,11 @@ set(PYBIND_SRCS
   compatible.cc
   generator_py.cc)
 
+if(WITH_ASCEND)
+  set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
+  set(PYBIND_SRCS ${PYBIND_SRCS} ascend_wrapper_py.cc)
+endif(WITH_ASCEND)
+
 if(WITH_GLOO)
   set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
   set(PYBIND_SRCS ${PYBIND_SRCS} gloo_context_py.cc)
@@ -49,7 +54,7 @@ if (WITH_CRYPTO)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
 endif (WITH_CRYPTO)
 
-if (WITH_DISTRIBUTE)
+if (WITH_PSCORE)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
   set_source_files_properties(fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   list(APPEND PYBIND_DEPS fleet communicator)
