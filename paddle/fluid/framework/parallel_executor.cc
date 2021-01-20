@@ -1420,15 +1420,15 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
 void ParallelExecutor::ReSetOpScopeMaOfGraphs(
     const std::vector<ir::Graph *> &final_graphs,
     const std::unordered_map<Scope *, Scope *> &scope_map) {
-  size_t device_count = member_->places_.size();
-  PADDLE_ENFORCE_EQ(final_graphs.size(), device_count,
-                    platform::errors::PreconditionNotMet(
-                        "final_graphs.size() shoule be %d, but received %d",
-                        device_count, final_graphs.size()));
+  PADDLE_ENFORCE_GE(
+      final_graphs.size(), 1,
+      platform::errors::PreconditionNotMet(
+          "final_graphs shoule contain at least one graph, but received %d",
+          final_graphs.size()));
 
   PADDLE_ENFORCE_GT(scope_map.size(), 0,
                     platform::errors::PreconditionNotMet(
-                        "scope_map.size() shoule contains at least one "
+                        "scope_map shoule contain at least one "
                         "element, but received %d",
                         scope_map.size()));
   for (auto *g : final_graphs) {
