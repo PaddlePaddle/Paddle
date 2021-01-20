@@ -273,7 +273,6 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
             devices_per_proc
         ), "current trainer_endpoints size should be greater equal than acclerators size."
         for i in range(len(devices_per_proc)):
-
             trainer = Trainer()
             if device_mode == DeviceMode.GPU or device_mode == DeviceMode.ASCEND_NPU:
                 if isinstance(devices_per_proc[i], (list, tuple)):
