@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
-
+#ifndef _WIN32
 #include <cuda.h>
 #include <nvToolsExt.h>
 #include <mutex>  // NOLINT
@@ -50,3 +50,4 @@ NVTX_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NVTX_WRAP);
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
+#endif

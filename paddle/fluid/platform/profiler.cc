@@ -54,11 +54,13 @@ double Event::CudaElapsedMs(const Event &e) const {
 }
 
 RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
+#ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
     dynload::nvtxRangePushA(name.c_str());
     is_pushed = true;
   }
+#endif
 #endif
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
 
@@ -74,10 +76,12 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
 }
 
 RecordEvent::~RecordEvent() {
+#ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook && is_pushed) {
     dynload::nvtxRangePop();
   }
+#endif
 #endif
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   // lock is not needed, the code below is thread-safe
