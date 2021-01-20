@@ -16,7 +16,7 @@ from paddle.fluid import unique_name, core
 import paddle.fluid as fluid
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper
-from paddle.distributed.fleet.meta_optimizers.common import is_backward_op
+from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op
 from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import MetaOptimizerBase
 from paddle.distributed.fleet.meta_optimizers.sharding.shard import Shard, ProgramSegment
 from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import FP16Utils
@@ -343,6 +343,14 @@ class ShardingOptimizer(MetaOptimizerBase):
                 if program_deps.should_remove_op(idx):
                     program_deps.remove_op(idx)
 
+        block._sync_with_cpp()
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if op.type == 'concat' and is_optimizer_op(op):
+                # remove inputs that not on this card
+                reserved_x = []
+                for var_name in op.desc.input("X"):
+                    if block.has_var(var_name): reserved_x.append(var_name)
+                op.desc.set_input('X', reserved_x)
         block._sync_with_cpp()
         return
 
