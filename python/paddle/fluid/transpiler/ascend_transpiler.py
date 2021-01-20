@@ -48,7 +48,7 @@ class AscendTranspiler(collective.Collective):
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
                     block._insert_op(
-                        offset,
+                        offset + 1,
                         type='allreduce',
                         inputs={'X': grad},
                         outputs={'Out': grad},

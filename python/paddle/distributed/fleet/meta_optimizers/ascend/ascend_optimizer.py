@@ -145,6 +145,7 @@ class AscendOptimizer(Optimizer):
             from paddle.fluid.transpiler import ascend_transpiler
             t = ascend_transpiler.AscendTranspiler(startup_program, loss.block.program)
             t.transpile()
+            print(loss.block.program)
 
         # Config about Graph Engine can be found in https://support.huaweicloud.com/
         config = {
