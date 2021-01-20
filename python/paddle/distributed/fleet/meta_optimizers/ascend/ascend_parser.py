@@ -29,6 +29,8 @@ registerd_op = {
     "reduce_sum_grad": "ReduceSumGradParser",
     "matmul_grad": "MatMulGradParser",
     "mul_grad": "MulGradParser",
+    "reshape2": "ReshapeParser",
+    "scale": "ScaleParser",
     "relu_grad": "ReluGradParser",
     "softmax_with_cross_entropy_grad": "SoftmaxWithCrossEntropyGradParser",
     "truncated_gaussian_random": "TruncatedNormalParser",
@@ -60,13 +62,11 @@ class AscendHelper(object):
         }
 
     def dtype2ge(self, dtype):
-        assert dtype in self.dtype2ge_map, "dtype[%d] is not supported %d" % (
-            dtype)
+        assert dtype in self.dtype2ge_map, "dtype[%d] is not supported %d" % (dtype)
         return self.dtype2ge_map[dtype]
 
     def dtype2np(self, index):
-        assert index in self.dtype2np_map, "index[%d] is not supported %d" % (
-            dtype)
+        assert index in self.dtype2np_map, "index[%d] is not supported %d" % (dtype)
         return self.dtype2np_map[index]
 
 
@@ -91,8 +91,7 @@ class AscendParserBase(object):
         self.ascend_helper = AscendHelper()
 
     def _get_ge_input(self, input_var_name):
-        assert input_var_name in self.var2geop, "var %s not created before" % (
-            input_var_name)
+        assert input_var_name in self.var2geop, "var %s not created before" % (input_var_name)
         return self.var2geop[input_var_name]
 
     def update_output(self, geop_list, index_list):
@@ -113,8 +112,7 @@ class AscendParserBase(object):
                 for i in range(len(arguments)):
                     print("assgin index_list[%d][%d] to %s" %
                           (output_id, i, arguments[i]))
-                    self.var2geop[arguments[i]] = geop_list[index_list[
-                        output_id][i]]
+                    self.var2geop[arguments[i]] = geop_list[index_list[output_id][i]]
 
         for geop in geop_list:
             self.graph.add_op(geop)
@@ -478,15 +476,11 @@ class TruncatedNormalParser(AscendParserBase):
             "const" + self._accumulated_op_id(), "Const").set_attr_tensor(
                 "value", tensor3)
 
-        tensor4 = self._create_ge_tensor([1], dtype, mean - 2 * std)
-        min_tensor = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor(
-                "value", tensor4)
+        tensor4 = self._create_ge_tensor([1], dtype, mean-2*std)
+        min_tensor = core.GEOperatorFactory.create_operator("const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor4)
 
-        tensor5 = self._create_ge_tensor([1], dtype, mean + 2 * std)
-        max_tensor = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor(
-                "value", tensor5)
+        tensor5 = self._create_ge_tensor([1], dtype, mean+2*std)
+        max_tensor = core.GEOperatorFactory.create_operator("const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor5)
 
         self._mark_as_input(shape_tensor)
         self._mark_as_input(mean_tensor)
@@ -527,3 +521,43 @@ class TruncatedNormalParser(AscendParserBase):
                 "self.op.output('Out')[0] is not persistable in truncated_noraml"
             )
             return [truncated_normal], [[0]]  #[assign]
+
+class ScaleParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(ScaleParser, self).__init__(graph, var2geop)
+        self.parser_name = "scale"
+
+    def _apply(self): 
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        scale = self.op.attr("scale") #self.get_ge_input(self.op.input_arg_names[1])
+        bias = self.op.attr("bias")
+        bias_after_scale = self.op.attr("bias_after_scale")
+        if bias_after_scale:
+            scale_value = core.GEOperatorFactory.create_operator("scale" + self._accumulated_op_id(), "Power").set_input("x", x).set_attr_float("power", 1.0).set_attr_float("scale", scale).set_attr_float("shift", bias)
+        else:
+            x_add_bias = core.GEOperatorFactory.create_operator("adds" + self._accumulated_op_id(), "Adds").set_input("x", x).set_attr_float("value", bias) #set_input("x2", bias)
+            scale_value = core.GEOperatorFactory.create_operator("scale" + self._accumulated_op_id(), "Power").set_input("x", x_add_bias).set_attr_float("power", 1.0).set_attr_float("scale", scale).set_attr_float("shift", 0.0) 
+            #tensor_zeros = core.GEOperatorFactory.create_operator("zeroslike" + self.getid(), "ZerosLike").set_input("x", x)
+            #bias_ = self.create_ge_tensor([1], 5, bias)     
+            #const_bias = core.GEOperatorFactory.create_operator("const" + self.getid(), "Const").set_attr_tensor("value", tensor_bias)
+        return [scale_value],[[0]]
+
+class ReshapeParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(ReshapeParser, self).__init__(graph, var2geop)
+        self.parser_name = "reshape2"
+
+    def _apply(self):
+        print("swbuf:", self.op.input_arg_names)
+        shape = self.op.attr("shape")
+        axis = 0
+        if shape[0] == -1:
+            axis = 1
+            shape = shape[1:]
+        print("shape: ", shape)
+        data_x1_shape = self._get_ge_input(self.op.input_arg_names[0])
+        tensor = self._create_ge_tensor([len(shape)], 2, shape)
+        const_shape = core.GEOperatorFactory.create_operator("shape" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor)
+        reshape = core.GEOperatorFactory.create_operator("reshape" + self._accumulated_op_id(), "Reshape").set_input("x", data_x1_shape).set_input("shape", const_shape).set_attr_int32("axis", axis)
+        
+        return [reshape, reshape], [[0],[1]]

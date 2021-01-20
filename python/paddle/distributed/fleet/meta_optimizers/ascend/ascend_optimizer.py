@@ -27,37 +27,25 @@ class AscendIRParser(object):
         ret_map = {}
         ge_in_operator = []
         for id, var in enumerate(input_varlist):
-            if var.is_data:  # input data
-                ge_input = core.GEOperatorFactory.create_operator(
-                    var.name, "Data").set_attr_int32("index", id)
+            if var.is_data: # input data
+                ge_input = core.GEOperatorFactory.create_operator(var.name, "Data").set_attr_int32("index", id)
                 ret_map[var.name] = ge_input
                 ge_in_operator.append(ge_input)
-            else:  # param, learning ...
-                ge_input = core.GEOperatorFactory.create_operator(var.name,
-                                                                  "Variable")
-                ge_input.update_output_desc("y",
-                                            core.GETensorDesc(
-                                                core.GEShape(var.shape),
-                                                core.GEFormat.FORMAT_ND,
-                                                core.GEDataType.DT_FLOAT))
+            else: # param, learning ...
+                ge_input = core.GEOperatorFactory.create_operator(var.name, "Variable")
+                ge_input.update_output_desc("y", core.GETensorDesc(core.GEShape(var.shape), core.GEFormat.FORMAT_ND, core.GEDataType.DT_FLOAT))
                 ret_map[var.name] = ge_input
         return ge_in_operator, ret_map
 
     def parse_op(self, op):
         if op.type in ascend_parser.registerd_op:
             print("Op[%s] has been registered, begin to parse it" % (op.type))
-            op_parser = self.parser_factory.create_parse(
-                ascend_parser.registerd_op[op.type])
+            op_parser = self.parser_factory.create_parse(ascend_parser.registerd_op[op.type])
             op_parser.apply(op)
         else:
-            print("Op[%s] has not been registered, so we have to skip it" %
-                  (op.type))
+            print("Op[%s] has not been registered, so we have to skip it" % (op.type))
 
-    def _parse_program(self,
-                       graph_name,
-                       program,
-                       input_varlist=[],
-                       fetch_list=[]):
+    def _parse_program(self, graph_name, program, input_varlist=[], fetch_list=[]):
         begin_graph_idx = self.graph_idx
         ge_in_operator = []
         ge_out_operator = []
@@ -72,8 +60,7 @@ class AscendIRParser(object):
 
         ge_in_operator, self.var2geop = self._construct_input_map(input_varlist)
 
-        self.parser_factory = ascend_parser.AscendParserFactory(graph,
-                                                                self.var2geop)
+        self.parser_factory = ascend_parser.AscendParserFactory(graph, self.var2geop)
         for i, curop in list(enumerate(block.ops)):
             self.parse_op(curop)
 
@@ -110,11 +97,9 @@ class AscendIRParser(object):
         self.graph_idx += 1
         return graph
 
-    def parse_program(self, startup_program, main_program, input_varlist,
-                      fetch_list):
+    def parse_program(self, startup_program, main_program, input_varlist, fetch_list):
         startup_graph = self._parse_program("startup", startup_program)
-        main_graph = self._parse_program("main", main_program, input_varlist,
-                                         fetch_list)
+        main_graph = self._parse_program("main", main_program, input_varlist, fetch_list)
         return startup_graph, main_graph
 
 
@@ -138,7 +123,7 @@ class AscendOptimizer(Optimizer):
         dist_strategy.ascend = False
         dist_strategy.ascend_configs = {}
 
-    def _get_input_varlist(program):
+    def _get_input_varlist(self, program):
         ret_list = []
         for var in program.list_vars():
             if var.is_data or var.persistable:
@@ -151,18 +136,15 @@ class AscendOptimizer(Optimizer):
                  parameter_list=None,
                  no_grad_set=None,
                  auto_dp=False):
-        minimized = self.inner_opt.minimize(
-            loss, startup_program=startup_program)
+        minimized = self.inner_opt.minimize(loss, startup_program=startup_program)
 
         self.ascend_instance = core.AscendInstance()
 
         from paddle.distributed import fleet
         if auto_dp and fleet.worker_num() > 1:
-            from paddle.distributed.fleet.meta_optimizers.ascend import ascend_transpiler
+            from paddle.fluid.transpiler import ascend_transpiler
             t = ascend_transpiler.AscendTranspiler(startup_program, loss.block.program)
             t.transpile()
-        print(startup_program)
-        print(main_block.program)
 
         # Config about Graph Engine can be found in https://support.huaweicloud.com/
         config = {
@@ -179,7 +161,7 @@ class AscendOptimizer(Optimizer):
         main_block = loss.block
         self.parser = AscendIRParser()
 
-        input_varlist = _get_input_varlist(main_block.program)
+        input_varlist = self._get_input_varlist(main_block.program)
         startup_graph, main_graph = self.parser.parse_program(
             startup_program, main_block.program, input_varlist, self.fetch_list)
 
