@@ -79,16 +79,44 @@ class ShardingOptimizer(MetaOptimizerBase):
             "fuse_broadcast_MB"]
         self.hybrid_dp = self.user_defined_strategy.sharding_configs[
             "hybrid_dp"]
+        self.use_pipeline = self.user_defined_strategy.sharding_configs[
+            "use_pipeline"]
 
         if self.inner_opt is None:
             raise ValueError(
                 "self.inner_opt of ShardingOptimizer should not be None.")
-        optimize_ops, params_grads = self.inner_opt.minimize(
-            loss, startup_program, parameter_list, no_grad_set)
+        if self.use_pipeline:
+            pp_optimizer = fluid.optimizer.PipelineOptimizer(self.inner_opt)
+            main_program = loss.block.program
+            main_program._pipeline_opt = dict()
+            pp_rank = self.role_maker._worker_index(
+            ) // self.user_defined_strategy.sharding_configs[
+                'sharding_group_size'] % 2
+            main_program._pipeline_opt['local_rank'] = pp_rank
+            main_program._pipeline_opt['ring_id'] = 1
+            optimize_ops, params_grads, program_list = pp_optimizer.minimize(
+                loss, startup_program, parameter_list, no_grad_set)
+            self.pipeline_nodes = len(program_list)
+        else:
+            optimize_ops, params_grads = self.inner_opt.minimize(
+                loss, startup_program, parameter_list, no_grad_set)
 
         if startup_program is None:
             startup_program = default_startup_program()
-        main_block = loss.block
+        if self.use_pipeline:
+            startup_program = startup_program._pipeline_opt['startup_program']
+            #main_program = main_program._pipeline_opt['section_program']['program']
+            main_program = program_list[pp_rank]['program']
+            main_block = main_program.global_block()
+            new_params_grads = []
+            for param, grad in params_grads:
+                if main_block.has_var(param.name):
+                    new_params_grads.append((param, grad))
+            params_grads = new_params_grads
+            print("params_grads:", params_grads)
+
+        else:
+            main_block = loss.block
         startup_block = startup_program.global_block()
         self._main_program = main_block.program
         self._startup_program = startup_program
@@ -112,10 +140,13 @@ class ShardingOptimizer(MetaOptimizerBase):
         # step5: remove unneeded ops and vars from block
         self._prune_main_program(main_block)
         self._prune_startup_program(startup_block)
+        with open("main_sharding_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(main_program))
 
         # check op dependecy
         check_broadcast(main_block)
-        check_allreduce_sum(main_block, self._shard, self.dp_ring_id)
+        #check_allreduce_sum(main_block, self._shard, self.dp_ring_id)
         self._wait()
         return optimize_ops, params_grads
 
@@ -139,6 +170,11 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._collective_helper._init_communicator(
                 self._startup_program, self.current_endpoint,
                 self.dp_group_endpoints, self.dp_rank, self.dp_ring_id, True)
+        # pp
+        if self.use_pipeline:
+            self._collective_helper._init_communicator(
+                self._startup_program, self.current_endpoint,
+                self.pp_group_endpoints, self.pp_rank, self.pp_ring_id, True)
 
         startup_block = self._startup_program.global_block()
         startup_block._sync_with_cpp()
@@ -205,8 +241,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                     for i in range(0, len(op_role_var), 2):
                         param, reduced_grad = op_role_var[i], op_role_var[i + 1]
                         segment._allreduce_vars.append(reduced_grad)
-                        assert (
-                            reduced_grad not in self._reduced_grads_to_param)
+                        #assert (
+                        #    reduced_grad not in self._reduced_grads_to_param)
                         self._reduced_grads_to_param[reduced_grad] = param
 
             # find cast op
@@ -264,8 +300,13 @@ class ShardingOptimizer(MetaOptimizerBase):
         # Prune
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type in [
-                    "c_allreduce_sum", "c_sync_comm_stream",
-                    "c_calc_comm_stream", "c_gen_nccl_id", "c_comm_init"
+                    "c_allreduce_sum",
+                    "c_sync_comm_stream",
+                    "c_calc_comm_stream",
+                    "c_gen_nccl_id",
+                    "c_comm_init",
+                    'send_v2',
+                    'recv_v2',
             ]:
                 pass
             elif op.type == "conditional_block":
@@ -485,19 +526,52 @@ class ShardingOptimizer(MetaOptimizerBase):
                 self.global_word_size,
                 self.sharding_group_size,
                 self.dp_group_size)
+            self.pp_ring_id = -1
+            self.pp_rank = -1
+            self.pp_group_size = None
+            self.pp_group_endpoints = None
 
             logging.info("Using Sharing&DP mode !")
         else:
-            self.sharding_ring_id = 0
-            self.sharding_rank = self.global_rank
-            self.sharding_group_size = self.role_maker._worker_num()
-            self.sharding_group_endpoints = self.endpoints
-            self.dp_ring_id = -1
-            self.dp_rank = -1
-            self.dp_group_size = None
-            self.dp_group_endpoints = None
+            if self.use_pipeline:
+                self.sharding_ring_id = 0
+                self.sharding_group_size = self.user_defined_strategy.sharding_configs[
+                    'sharding_group_size']
+                self.sharding_rank = self.global_rank % self.sharding_group_size
+                assert self.sharding_group_size * self.pipeline_nodes == self.role_maker._worker_num(
+                )
+                self.pp_ring_id = 1
+                self.pp_rank = self.global_rank // self.sharding_group_size
+                self.sharding_group_endpoints = [
+                    ep for idx, ep in enumerate(self.endpoints)
+                    if (idx // self.sharding_group_size) == self.pp_rank
+                ]
+                self.pp_group_size = self.pipeline_nodes
+                self.pp_group_endpoints = [
+                    ep for idx, ep in enumerate(self.endpoints)
+                    if (idx % self.sharding_group_size) == self.sharding_rank
+                ]
+                self.dp_ring_id = -1
+                self.dp_rank = -1
+                self.dp_group_size = None
+                self.dp_group_endpoints = None
 
-            logging.info("Using Sharing alone mode !")
+                logging.info("Using Sharing with pipeline !")
+            else:
+                self.sharding_ring_id = 0
+                self.sharding_rank = self.global_rank
+                self.sharding_group_size = self.role_maker._worker_num()
+                self.sharding_group_endpoints = self.endpoints
+                self.pp_ring_id = -1
+                self.pp_rank = -1
+                self.pp_group_size = None
+                self.pp_group_endpoints = None
+                self.dp_ring_id = -1
+                self.dp_rank = -1
+                self.dp_group_size = None
+                self.dp_group_endpoints = None
+
+                logging.info("Using Sharing alone mode !")
 
         logging.info("global word size: {}".format(self.global_word_size))
         logging.info("global rank: {}".format(self.global_rank))
