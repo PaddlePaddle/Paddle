@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <thrust/device_vector.h>
+#include <thrust/scan.h>
+#include <algorithm>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/where_index_op.h"
@@ -25,52 +26,100 @@ namespace operators {
 using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
-class CUDAWhereIndexKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* condition = context.Input<framework::Tensor>("Condition");
-    auto* out = context.Output<framework::Tensor>("Out");
+struct CheckTrue {
+  __host__ __device__ bool operator()(const T &val) {
+    return static_cast<bool>(val);
+  }
+};
+template <typename T>
+__global__ void KeGetTrueNum(const T *cond_data, const int64_t numel,
+                             int64_t *true_num_array) {
+  const int64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 
-    // TODO(zhoukunsheng): Should optimize to ensure GPU is faster than CPU.
-    framework::Tensor cond_cpu;
-    framework::TensorCopy(*condition, platform::CPUPlace(), &cond_cpu);
+  for (int64_t idx = tid; idx < numel; idx += gridDim.x * blockDim.x) {
+    true_num_array[idx] = CheckTrue<T>()(cond_data[idx]) ? 1 : 0;
+  }
+}
+template <typename T>
+__global__ void KeSetTrueIndex(int64_t *out_ptr, const T *cond_data,
+                               const int64_t numel, const int64_t *ptr_stride,
+                               const int64_t rank,
+                               const int64_t *true_num_array) {
+  const int64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 
-    const T* cond_data = cond_cpu.data<T>();
-    int64_t numel = cond_cpu.numel();
-    auto dims = cond_cpu.dims();
-    int rank = dims.size();
-
-    thrust::host_vector<int64_t> h_true_index;
-    for (int64_t i = 0; i < numel; i++) {
-      if (static_cast<bool>(cond_data[i])) {
-        h_true_index.push_back(i);
+  for (int64_t idx = tid; idx < numel; idx += gridDim.x * blockDim.x) {
+    if (CheckTrue<T>()(cond_data[idx])) {
+      int64_t index = idx;
+      int64_t true_index = true_num_array[idx] - 1;
+      for (int j = 0; j < rank; j++) {
+        int64_t out_index = index / ptr_stride[j];
+        out_ptr[true_index * rank + j] = out_index;
+        index -= out_index * ptr_stride[j];
       }
     }
-    thrust::device_vector<int64_t> d_true_index = h_true_index;
-    int64_t* ptr_true_index = thrust::raw_pointer_cast(d_true_index.data());
+  }
+}
 
-    size_t true_num = h_true_index.size();
+template <typename T>
+class CUDAWhereIndexKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &context) const override {
+    auto *condition = context.Input<framework::Tensor>("Condition");
+    auto *out = context.Output<framework::Tensor>("Out");
+    auto &dev_ctx = context.template device_context<CUDADeviceContext>();
 
-    out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), rank}));
+    const T *cond_data = condition->data<T>();
+    int64_t numel = condition->numel();
+    auto dims = condition->dims();
+    int rank = dims.size();
+
+    int64_t threads =
+        std::min(static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock()), numel);
+    int64_t need_grids = (numel + threads - 1) / threads;
+    int64_t grids = std::min(
+        static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize().x), need_grids);
+
+    int64_t tmp_mem_size = rank + numel;
+    auto d_tmp_mem = memory::Alloc(dev_ctx, tmp_mem_size * sizeof(int64_t));
+    auto h_tmp_mem =
+        memory::Alloc(platform::CPUPlace(), rank * sizeof(int64_t));
+
+    int64_t *ptr_stride = reinterpret_cast<int64_t *>(d_tmp_mem->ptr());
+    int64_t *ptr_true_num_array = ptr_stride + rank;
+
+    int64_t *h_stride = reinterpret_cast<int64_t *>(h_tmp_mem->ptr());
+
+    out->Resize(framework::make_ddim({static_cast<int64_t>(numel), rank}));
     auto out_ptr = out->mutable_data<int64_t>(context.GetPlace());
 
-    if (true_num == 0) {
-      return;
-    }
-
-    thrust::host_vector<int64_t> h_stride(rank, 0);
     h_stride[rank - 1] = 1;
     for (int i = rank - 2; i >= 0; i--) {
       h_stride[i] = h_stride[i + 1] * dims[i + 1];
     }
-    thrust::device_vector<int64_t> d_stride = h_stride;
-    int64_t* ptr_stride = thrust::raw_pointer_cast(d_stride.data());
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
+                 ptr_stride, platform::CPUPlace(), h_stride,
+                 rank * sizeof(int64_t), dev_ctx.stream());
 
-    auto& dev_ctx = context.template device_context<CUDADeviceContext>();
-    WhereIndexFunctor<int64_t> functor(ptr_true_index, true_num, ptr_stride,
-                                       rank, out_ptr);
-    platform::ForRange<CUDADeviceContext> for_range(dev_ctx, true_num);
-    for_range(functor);
+    KeGetTrueNum<T><<<grids, threads, 0, dev_ctx.stream()>>>(
+        cond_data, numel, ptr_true_num_array);
+    // TODO(jiangcheng): write prefix-sum kernel instead of
+    // thrust::inclusive_scan
+    thrust::inclusive_scan(thrust::device, ptr_true_num_array,
+                           ptr_true_num_array + numel, ptr_true_num_array);
+    KeSetTrueIndex<T><<<grids, threads, 0, dev_ctx.stream()>>>(
+        out_ptr, cond_data, numel, ptr_stride, rank, ptr_true_num_array);
+
+    int64_t true_num = 0;
+    memory::Copy(platform::CPUPlace(), &true_num,
+                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
+                 ptr_true_num_array + numel - 1, sizeof(int64_t),
+                 dev_ctx.stream());
+    dev_ctx.Wait();
+
+    out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), rank}));
+    if (true_num == 0) {
+      return;
+    }
   }
 };
 
