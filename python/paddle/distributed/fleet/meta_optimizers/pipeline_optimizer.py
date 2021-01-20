@@ -137,7 +137,6 @@ class PipelineOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(PipelineOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
-        # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = [
             "RecomputeOptimizer",
             "AMPOptimizer",
