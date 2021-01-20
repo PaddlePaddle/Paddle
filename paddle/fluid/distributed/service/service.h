@@ -40,6 +40,7 @@ class PSCore {
   virtual int init_server(
       const std::string& dist_desc,
       const std::vector<std::string>* host_sign_list, int node_num, int index,
+      int trainers,
       const std::vector<framework::ProgramDesc>& server_sub_program = {});
   virtual int init_worker(
       const std::string& dist_desc,

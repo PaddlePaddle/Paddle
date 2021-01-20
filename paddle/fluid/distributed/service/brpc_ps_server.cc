@@ -58,9 +58,11 @@ uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
 
   std::string ip_port = ip + ":" + std::to_string(port);
   VLOG(3) << "server of rank " << _rank << " starts at " << ip_port;
-  int num_threads = std::thread::hardware_concurrency();
   brpc::ServerOptions options;
-  options.num_threads = num_threads;
+
+  int num_threads = std::thread::hardware_concurrency();
+  auto trainers = _environment->get_trainers();
+  options.num_threads = trainers > num_threads ? trainers : num_threads;
 
   if (_server.Start(ip_port.c_str(), &options) != 0) {
     LOG(ERROR) << "BrpcPsServer start failed, ip_port=" << ip_port;
