@@ -43,6 +43,7 @@ class LSTMMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> 
             ){
 
     const bool is_INT8 = std::is_same<T, uint8_t>::value;
+    const bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
     if (!this->isCached()) {
       // oneDNN kernel has hardcoded activation functions
@@ -88,11 +89,19 @@ class LSTMMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> 
       const auto direction =
           is_reverse ? dnnl::rnn_direction::unidirectional_right2left
                      : dnnl::rnn_direction::unidirectional_left2right;
-
-      this->AcquireForwardPrimitiveDescriptor(
-          this->attr_, dnnl::prop_kind::forward_inference, direction, input_md, h0_md,
-          c0_md, weight_x_md, weight_h_md, bias_md, hidden_md, dnnl::memory::desc(),
-          dnnl::memory::desc());        // ??? 2 razu dnnl:memory::desc dla _iter?
+      if(!use_peepholes) {
+        this->AcquireForwardPrimitiveDescriptor(
+            this->attr_, dnnl::prop_kind::forward_inference, direction, input_md, h0_md,
+            c0_md, weight_x_md, weight_h_md, bias_md, hidden_md, dnnl::memory::desc(),
+            dnnl::memory::desc());
+      } else {
+        auto weight_peephole_md = MKLDNNMemDesc({L, D, 3, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldgo);
+        this->AcquireForwardPrimitiveDescriptor(
+            this->attr_, dnnl::prop_kind::forward_inference, direction, input_md, h0_md,
+            c0_md, weight_x_md, weight_h_md, weight_peephole_md, bias_md, hidden_md, dnnl::memory::desc(),
+            dnnl::memory::desc());
+      }
+        
     }
   }
 
@@ -185,6 +194,7 @@ class LSTMMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> 
       if (bias) {
         const float* user_bias_data =
             bias->data<float>();  // Bias in oneDNN is always float
+
         memcpy(bias_data, user_bias_data, sizeof(float) * this->G * this->OC);
 
         auto* char_bias_data = reinterpret_cast<char*>(bias_data);
@@ -196,6 +206,28 @@ class LSTMMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> 
       }
 
       this->dev_ctx_.SetBlob(bias_key, memory_p);
+    }
+    return memory_p;
+  }
+
+  std::shared_ptr<dnnl::memory> AcquirePeepholeWeights(const Tensor* bias) {
+    const std::string peepholes_key = this->memory_key_ + "@peepholes_weights";
+    auto memory_p = std::static_pointer_cast<dnnl::memory>(
+        this->dev_ctx_.GetBlob(peepholes_key));
+
+    if (!memory_p) {
+      auto user_md =
+          MKLDNNMemDesc({1, 1, 3, this->OC}, MKLDNNGetDataType<float>(),
+                        MKLDNNMemoryFormat::ldgo);
+      auto user_memory = dnnl::memory(user_md, this->engine_);
+      memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->weights_peephole_desc(),
+                                                this->engine_);
+      auto* peephole_weights_data = reinterpret_cast<float*>(memory_p->get_data_handle());
+
+      const float* user_bias_data = bias->data<float>();  // Bias in oneDNN is always float
+      memcpy(peephole_weights_data, user_bias_data + 4 * this->OC , sizeof(float) * 3 * this->OC);
+
+      this->dev_ctx_.SetBlob(peepholes_key, memory_p);
     }
     return memory_p;
   }
@@ -273,6 +305,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
                           : x_dims;
     // Get attributes
     const bool is_reverse = ctx.Attr<bool>("is_reverse");
+    const bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
     // Get tensor dimensions
     const auto x_mat_dims_vec = framework::vectorize(x_mat_dims);
@@ -307,7 +340,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
         handler.AcquireWeightHMemory(weight_h);
     auto bias_memory_p = handler.AcquireBiasMemory(bias);
     auto hidden_onednn_memory_p = handler.AcquireOutputMemory();
-    
+
     std::unordered_map<int, dnnl::memory> lstm_args = {
         {DNNL_ARG_SRC_LAYER, *input_memory_p},
         {DNNL_ARG_SRC_ITER, *h0_memory_p},
@@ -316,6 +349,12 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
         {DNNL_ARG_WEIGHTS_ITER, *weight_h_memory_p},
         {DNNL_ARG_BIAS, *bias_memory_p},
         {DNNL_ARG_DST_LAYER, *hidden_onednn_memory_p}};
+
+    if(use_peepholes) {
+      auto peephole_weight_p = handler.AcquirePeepholeWeights(bias);
+      std::pair<int, dnnl::memory> peepholes_weights(DNNL_ARG_WEIGHTS_PEEPHOLE, *peephole_weight_p);
+      lstm_args.insert(peepholes_weights);
+    }
 
     auto lstm_forward_p = handler.AcquireForwardPrimitive();
 

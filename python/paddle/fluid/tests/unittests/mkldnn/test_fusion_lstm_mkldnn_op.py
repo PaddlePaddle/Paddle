@@ -94,16 +94,16 @@ class TestFusionLSTMONEDNNOpBS1(TestFusionLSTMOp):
             self.attrs['use_seq'] = use_seq
             self.check_output(check_dygraph=False, no_check_set=["Cell"])
 
-#class TestFusionLSTMONEDNNOpPeepholesInit(TestFusionLSTMOp):
-#    def set_conf(self):
-#        self.use_peepholes = True
-#        self.has_initial_state = True
-#        self.use_mkldnn = True
+class TestFusionLSTMONEDNNOpPeepholesInit(TestFusionLSTMOp):
+    def set_conf(self):
+        self.use_peepholes = True
+        self.has_initial_state = True
+        self.use_mkldnn = True
 
-#    def test_check_output(self):
-#        for use_seq in {True, False}:
-#            self.attrs['use_seq'] = use_seq
-#            self.check_output(check_dygraph=False, no_check_set=["Cell"])
+    def test_check_output(self):
+        for use_seq in {True, False}:
+            self.attrs['use_seq'] = use_seq
+            self.check_output(check_dygraph=False, no_check_set=["Cell"])
 
 if __name__ == '__main__':
     from paddle import enable_static
