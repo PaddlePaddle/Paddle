@@ -53,5 +53,37 @@ class TestComplexAbsOp(OpTest):
             user_defined_grad_outputs=[self.grad_out])
 
 
+class TestComplexAbsOpZeroValues(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.op_type = "abs"
+        self.dtype = np.float64
+        self.shape = (2, 3, 4, 5)
+        self.init_input_output()
+        self.init_grad_input_output()
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+        self.outputs = {'Out': self.out}
+
+    def init_input_output(self):
+        self.x = np.zeros(self.shape).astype(self.dtype) + 1J * np.zeros(
+            self.shape).astype(self.dtype)
+        self.out = np.abs(self.x)
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones(self.shape, self.dtype)
+        self.grad_x = np.zeros(self.shape, self.dtype)
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out])
+
+
 if __name__ == '__main__':
     unittest.main()
