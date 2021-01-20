@@ -36,7 +36,7 @@ class LSTMMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> 
                    const Tensor* weight_h, const Tensor* h0, const Tensor* c0,
                    const bool is_reverse, const int64_t N, const int64_t Ti,
                    const int64_t IC, const int64_t OC,
-                   const std::string& unique_name)      // ??? h0, c0 itp chyba nie sa nigdzie uzywane ani tu ani wyzej
+                   const std::string& unique_name)
       : RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out>(
             ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, weight_h, h0,
             is_reverse, N, Ti, IC, OC, 4, ctx.InputName("X") + ctx.InputName("WeightH")
@@ -58,7 +58,7 @@ class LSTMMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> 
       PADDLE_ENFORCE_EQ(
           ctx.Attr<std::string>("candidate_activation"), "tanh",
           platform::errors::Unimplemented(
-              "oneDNN fusion_lstm supports only tanh a candidate activation."));        // ??? w tych 3 tez takie ograniczenia?
+              "oneDNN fusion_lstm supports only tanh a candidate activation."));
 
       // Weights for int8 kernel are of a type s8
       const auto weights_dt =
@@ -73,9 +73,9 @@ class LSTMMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> 
       auto input_md = MKLDNNMemDesc({Ti, N, IC}, MKLDNNGetDataType<T>(),
                                     MKLDNNMemoryFormat::tnc);
       auto weight_x_md =
-          MKLDNNMemDesc({L, D, IC, G, OC}, weights_dt, MKLDNNMemoryFormat::ldigo);    // ??? bylo any, jest ldigo
+          MKLDNNMemDesc({L, D, IC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
       auto weight_h_md =
-          MKLDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::ldigo);
+          MKLDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
       auto bias_md = MKLDNNMemDesc({L, D, G, OC}, MKLDNNGetDataType<float>(),
                                    MKLDNNMemoryFormat::ldgo);
       auto hidden_md = MKLDNNMemDesc({Ti, N, OC}, MKLDNNGetDataType<T_out>(),
@@ -106,15 +106,15 @@ class LSTMMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> 
   }
 
 // PaddlePaddle has different order of weights than oneDNN, so a reorder is needed
-// PaddlePaddle:  {c, i, f, o};
+// PaddlePaddle:  {c, i, f, o}
 // oneDNN:        {i, f, c, o}
-  void ReorderGates(char* weights, int64_t I){  // ldigo
-    size_t inner_block_size = sizeof(float) * this-> OC;
+  void ReorderGates(float* weights, int64_t I){
+    size_t inner_block_size = this->OC;
     size_t block_size = inner_block_size * this->G;
     for(size_t i = 0; i < (size_t)I; ++i){
       size_t offset = i * block_size;
 
-      char* base_pos = weights + offset;
+      float* base_pos = weights + offset;
       std::swap_ranges(base_pos, base_pos + inner_block_size, base_pos + inner_block_size);  // c <-> i 
       std::swap_ranges(base_pos + inner_block_size, base_pos + 2 * inner_block_size, base_pos + 2 * inner_block_size); // c <-> f
     }
@@ -136,8 +136,7 @@ class LSTMMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> 
       memcpy(weight_x_data, weight_x->data<float>(),
              sizeof(float) * this->IC * this->G * this->OC);
 
-      auto* char_weight_x_data = reinterpret_cast<char*>(weight_x_data);
-      ReorderGates(char_weight_x_data, this->IC);
+      ReorderGates(weight_x_data, this->IC);
 
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_layer_desc(), this->engine_);
@@ -167,8 +166,7 @@ class LSTMMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> 
       memcpy(weight_h_data, weight_h->data<float>(),
              sizeof(float) * this->OC * this->G * this->OC);
 
-      auto* char_weight_h_data = reinterpret_cast<char*>(weight_h_data);
-      ReorderGates(char_weight_h_data, this->OC);
+      ReorderGates(weight_h_data, this->OC);
   
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_iter_desc(), this->engine_);
@@ -197,8 +195,7 @@ class LSTMMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> 
 
         memcpy(bias_data, user_bias_data, sizeof(float) * this->G * this->OC);
 
-        auto* char_bias_data = reinterpret_cast<char*>(bias_data);
-        ReorderGates(char_bias_data, 1);
+        ReorderGates(bias_data, 1);
       } else {
         // oneDNN always need bias memory, if it's not provided in PP, let
         // oneDNN allocate memory and set it to 0
@@ -380,6 +377,4 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(fusion_lstm, MKLDNN, paddle::platform::CPUPlace,
-                   ops::FusionLSTMMKLDNNKernel<float>,
-                   ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>,
-                   ops::FusionLSTMMKLDNNKernel<uint8_t>);
+                   ops::FusionLSTMMKLDNNKernel<float>);

@@ -217,6 +217,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg>  {
   // Ti - Max sentence length
   // IC - Input Channels
   // OC - Output Channels
+  // G  - Number of gates
   const int64_t N, Ti, IC, OC, G;
 
   // Memory size of weights, bias and h0 does not depend

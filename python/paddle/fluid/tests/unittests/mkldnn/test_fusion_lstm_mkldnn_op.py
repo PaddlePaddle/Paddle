@@ -26,84 +26,53 @@ class TestFusionLSTMONEDNNOp(TestFusionLSTMOp):
             self.check_output(check_dygraph=False, no_check_set=["Cell"])
 
 
-class TestFusionLSTMONEDNNOpReverse(TestFusionLSTMOp):
+class TestFusionLSTMONEDNNOpReverse(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.is_reverse = True
         self.use_mkldnn = True
 
-    def test_check_output(self):
-        for use_seq in {True, False}:
-            self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False, no_check_set=["Cell"])
 
-
-class TestFusionLSTMONEDNNOpInitReverse(TestFusionLSTMOp):
+class TestFusionLSTMONEDNNOpInitReverse(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.has_initial_state = True
         self.is_reverse = True
         self.use_mkldnn = True
 
-    def test_check_output(self):
-        for use_seq in {True, False}:
-            self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False, no_check_set=["Cell"])
 
-
-class TestFusionLSTMONEDNNOpMD1(TestFusionLSTMOp):
+class TestFusionLSTMONEDNNOpMD1(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.M = 36
         self.D = 8
         self.use_mkldnn = True
 
-    def test_check_output(self):
-        for use_seq in {True, False}:
-            self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False, no_check_set=["Cell"])
 
-
-class TestFusionLSTMONEDNNOpMD2(TestFusionLSTMOp):
+class TestFusionLSTMONEDNNOpMD2(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.M = 8
         self.D = 8
         self.use_mkldnn = True
 
-    def test_check_output(self):
-        for use_seq in {True, False}:
-            self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False, no_check_set=["Cell"])
 
-class TestFusionLSTMONEDNNOpMD3(TestFusionLSTMOp):
+class TestFusionLSTMONEDNNOpMD3(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.M = 15
         self.D = 3
         self.use_mkldnn = True
 
-    def test_check_output(self):
-        for use_seq in {True, False}:
-            self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False, no_check_set=["Cell"])
 
-class TestFusionLSTMONEDNNOpBS1(TestFusionLSTMOp):
+class TestFusionLSTMONEDNNOpBS1(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.lod = [[3]]
         self.D = 16
         self.use_mkldnn = True
 
-    def test_check_output(self):
-        for use_seq in {True, False}:
-            self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False, no_check_set=["Cell"])
 
-class TestFusionLSTMONEDNNOpPeepholesInit(TestFusionLSTMOp):
+class TestFusionLSTMONEDNNOpPeepholesInit(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.use_peepholes = True
         self.has_initial_state = True
         self.use_mkldnn = True
 
-    def test_check_output(self):
-        for use_seq in {True, False}:
-            self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False, no_check_set=["Cell"])
 
 if __name__ == '__main__':
     from paddle import enable_static
