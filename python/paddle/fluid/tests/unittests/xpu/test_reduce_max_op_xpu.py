@@ -39,10 +39,6 @@ class TestXPUReduceMaxOp(XPUOpTest):
             'reduce_all': self.reduce_all
         }
         self.inputs = {'X': np.random.random(self.shape).astype("float32")}
-        print('##X:')
-        print(self.inputs['X'])
-        print('##X max:')
-        print(self.inputs['X'].max(axis=self.axis))
         if self.attrs['reduce_all']:
             self.outputs = {'Out': self.inputs['X'].max()}
         else:
