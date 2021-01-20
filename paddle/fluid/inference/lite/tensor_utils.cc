@@ -82,8 +82,8 @@ PrecisionType GetLitePrecisionType(framework::proto::VarType::Type type) {
       return PrecisionType::kFP16;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported precision type. Now only supports FP32, INT8, INT32 and "
-          "INT64."));
+          "Unsupported precision type. Now only supports FP16, FP32, INT8, "
+          "INT32 and INT64."))
       return PrecisionType::kUnk;
   }
 }
@@ -103,8 +103,8 @@ framework::proto::VarType::Type GetNativePrecisionType(
       return framework::proto::VarType_Type_FP16;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported precision type. Now only supports FP32, INT8, INT32 and "
-          "INT64."));
+          "Unsupported precision type. Now only supports FP16, FP32, INT8, "
+          "INT32 and INT64."));
       return static_cast<framework::proto::VarType::Type>(-1);
   }
 }
