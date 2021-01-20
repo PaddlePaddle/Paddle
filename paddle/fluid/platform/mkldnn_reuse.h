@@ -601,12 +601,15 @@ class ActivationMKLDNNHandler
                           const MKLDNNMemoryFormat fmt,
                           const platform::MKLDNNDeviceContext& dev_ctx,
                           platform::Place cpu_place,
-                          const std::string& unique_name)
+                          const std::string& unique_name, bool is_inplaced)
 
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, dims, "a", algorithm, unique_name)) {
+            is_inplaced
+                ? platform::CreateKey(dev_ctx, dims, "a", algorithm,
+                                      unique_name)
+                : platform::CreateKey(dev_ctx, dims, "a", unique_name)) {
     auto md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
 
     this->AcquireForwardPrimitiveDescriptor(mkldnn::prop_kind::forward_training,
@@ -624,7 +627,7 @@ class ActivationMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, dims, "a", algorithm, unique_name)) {
+            platform::CreateKey(dev_ctx, dims, "a", unique_name)) {
     auto diff_dst_md = platform::MKLDNNMemDesc(
         dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
     auto src_md =
@@ -813,7 +816,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
                           mkldnn_paddings[1]);
       }
 
-      ComputeAdaptivePoolParameters(ctx, src_tz, ksize, strides);
+      ComputeAdaptivePoolParameters(ctx, src_tz, &ksize, &strides);
 
       this->AcquireForwardPrimitiveDescriptor(
           is_test ? mkldnn::prop_kind::forward_inference
@@ -883,22 +886,22 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
 
   static void ComputeAdaptivePoolParameters(
       const paddle::framework::ExecutionContext& ctx,
-      const std::vector<int64_t>& src_tz, std::vector<int64_t>& ksize,
-      std::vector<int64_t>& strides) {
+      const std::vector<int64_t>& src_tz, std::vector<int64_t>* ksize,
+      std::vector<int64_t>* strides) {
     if (ctx.Attr<bool>("adaptive")) {
       // (jczaja): oneDNN is supporting only unchangable in size pool window
       PADDLE_ENFORCE_EQ(
-          src_tz[src_tz.size() - 1] % ksize[1], 0,
+          src_tz[src_tz.size() - 1] % ksize->at(1), 0,
           platform::errors::Unimplemented(
               "Input dim must be divisible by corressponding ksize dim."));
       PADDLE_ENFORCE_EQ(
-          src_tz[src_tz.size() - 2] % ksize[0], 0,
+          src_tz[src_tz.size() - 2] % ksize->at(0), 0,
           platform::errors::Unimplemented(
               "Input dim must be divisible by corressponding ksize dim."));
-      ksize[0] = src_tz[src_tz.size() - 2] / ksize[0];
-      ksize[1] = src_tz[src_tz.size() - 1] / ksize[1];
-      strides[0] = ksize[0];
-      strides[1] = ksize[1];
+      ksize->at(0) = src_tz[src_tz.size() - 2] / ksize->at(0);
+      ksize->at(1) = src_tz[src_tz.size() - 1] / ksize->at(1);
+      strides->at(0) = ksize->at(0);
+      strides->at(1) = ksize->at(1);
     }
   }
 
