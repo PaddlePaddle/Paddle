@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.framework as framework
-from paddle.fluid.optimizer import Optimizer
-import paddle.fluid.core as core
-import numpy as np
+from . impor collective
 
-
-class AscendTranspiler(object):
+class AscendTranspiler(collective.Collective):
     def __init__(self, startup_program, main_program):
         self._startup_program = startup_program
         self._main_program = main_program
