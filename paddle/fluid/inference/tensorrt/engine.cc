@@ -339,7 +339,7 @@ void TensorRTEngine::freshDeviceId() {
                     platform::errors::OutOfRange(
                         "Device id %d exceeds the current device count: %d.",
                         device_id_, count));
-  cudaSetDevice(device_id_);
+  platform::SetDeviceId(device_id_);
 }
 
 }  // namespace tensorrt

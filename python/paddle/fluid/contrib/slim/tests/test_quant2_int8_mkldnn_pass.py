@@ -180,16 +180,16 @@ class TestQuant2Int8MkldnnPass(unittest.TestCase):
                 _place=self.place,
                 _core=core,
                 _debug=False)
-            qpass._weight_scales["mul_output"] = self.mul_output_scale
+            qpass._weight_thresholds["mul_output"] = self.mul_output_scale
             param = self.scope.var("mul_weights").get_tensor()
             param.set(self.variables_mul["mul_weights"], self.place)
             qpass._dequantize_op_weights(graph, op_node, "Y", "Out")
 
             assert np.allclose(
                 self.scope.find_var("mul_weights").get_tensor(),
-                [[127, 63.5, 42.3333, 31.75, 25.4],
-                 [127, 63.5, 42.3333, 31.75, 25.4],
-                 [127, 63.5, 42.3333, 31.75, 25.4]])
+                [[1. / 127., 2. / 127., 3. / 127., 4. / 127., 5. / 127.],
+                 [1. / 127., 2. / 127., 3. / 127., 4. / 127., 5. / 127.],
+                 [1. / 127., 2. / 127., 3. / 127., 4. / 127., 5. / 127.]])
 
             param = self.scope.var("mul_weights").get_tensor()
             param.set(self.variables_mul["mul_weights_bad"], self.place)

@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -139,7 +139,7 @@ TEST(AnalysisPredictor, no_fp16) {
 TEST(AnalysisPredictor, fp16) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
   std::vector<float> result = {0.598, 0.219, 0.182};
-  trt_ernie(true, result, 3e-3);
+  trt_ernie(true, result, 4e-3);
 #endif
 }
 

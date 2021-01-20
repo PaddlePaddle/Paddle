@@ -4,7 +4,15 @@ endif()
 
 INCLUDE(ExternalProject)
 SET(XPU_PROJECT                 "extern_xpu")
-SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/xpu_2020_12_11.tar.gz" CACHE STRING "" FORCE)
+
+if (WITH_AARCH64)
+    SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/aarch64/xpu_2021_01_13.tar.gz" CACHE STRING "" FORCE)
+elseif(WITH_SUNWAY)
+    SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/sunway/xpu_2021_01_13.tar.gz" CACHE STRING "" FORCE)
+else()
+    SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/xpu_2021_01_13.tar.gz" CACHE STRING "" FORCE)
+endif()
+
 SET(XPU_SOURCE_DIR              "${THIRD_PARTY_PATH}/xpu")
 SET(XPU_DOWNLOAD_DIR            "${XPU_SOURCE_DIR}/src/${XPU_PROJECT}")
 SET(XPU_INSTALL_DIR             "${THIRD_PARTY_PATH}/install/xpu")
@@ -47,4 +55,18 @@ set_property(TARGET shared_xpuapi PROPERTY IMPORTED_LOCATION "${XPU_API_LIB}")
 generate_dummy_static_lib(LIB_NAME "xpulib" GENERATOR "xpu.cmake")
 
 TARGET_LINK_LIBRARIES(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
+
+if (WITH_XPU_BKCL)
+  MESSAGE(STATUS "Compile with XPU BKCL!")
+  ADD_DEFINITIONS(-DPADDLE_WITH_XPU_BKCL)
+
+  SET(XPU_BKCL_LIB_NAME         "libbkcl.so")
+  SET(XPU_BKCL_LIB              "${XPU_LIB_DIR}/${XPU_BKCL_LIB_NAME}")
+  SET(XPU_BKCL_INC_DIR          "${THIRD_PARTY_PATH}/install/xpu/include")
+  INCLUDE_DIRECTORIES(${XPU_BKCL_INC_DIR})
+  TARGET_LINK_LIBRARIES(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_BKCL_LIB})
+else(WITH_XPU_BKCL)
+  TARGET_LINK_LIBRARIES(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} )
+endif(WITH_XPU_BKCL)
+
 ADD_DEPENDENCIES(xpulib ${XPU_PROJECT})

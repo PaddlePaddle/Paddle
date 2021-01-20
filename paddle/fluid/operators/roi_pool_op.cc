@@ -229,6 +229,13 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_VERSION(roi_pool)
     .AddCheckpoint(
         R"ROC(
+              Incompatible upgrade of input [RpnRoisLod])ROC",
+        paddle::framework::compatible::OpVersionDesc().DeleteInput(
+            "RpnRoisLod",
+            "Delete RpnRoisLod due to incorrect input name and "
+            "it is not used in object detection models yet."))
+    .AddCheckpoint(
+        R"ROC(
               Upgrade roi_pool add a new input [RoisNum])ROC",
         paddle::framework::compatible::OpVersionDesc().NewInput(
             "RoisNum",

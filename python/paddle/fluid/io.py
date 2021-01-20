@@ -22,9 +22,10 @@ import logging
 import pickle
 import contextlib
 from functools import reduce
+import sys
 
 import numpy as np
-
+import math
 import paddle
 from paddle.fluid import layers
 from paddle.fluid.executor import Executor, global_scope
@@ -1710,6 +1711,52 @@ def _load_persistable_nodes(executor, dirname, graph):
     load_vars(executor=executor, dirname=dirname, vars=var_list)
 
 
+def _unpack_saved_dict(saved_obj):
+    temp_saved_obj = {}
+    unpack_infor = {}
+    for key, value in saved_obj.items():
+        if isinstance(value, np.ndarray):
+            MAX_NUMBER_OF_ELEMENT = int((2**30 - 1) / value.dtype.itemsize)
+            num_element = np.prod(value.shape)
+            if num_element > MAX_NUMBER_OF_ELEMENT:
+                unpack_infor[key] = {}
+                unpack_infor[key]["OriginShape"] = value.shape
+                unpack_infor[key]["slices"] = []
+                value = value.flatten()
+                for i in range(
+                        int(
+                            math.ceil(num_element * 1.0 /
+                                      MAX_NUMBER_OF_ELEMENT))):
+                    part_name = key + "@@." + str(i)
+                    unpack_infor[key]["slices"].append(part_name)
+                    temp_saved_obj[part_name] = value[
+                        i * MAX_NUMBER_OF_ELEMENT:MAX_NUMBER_OF_ELEMENT * (i + 1
+                                                                           )]
+
+    if unpack_infor:
+        for key, value in unpack_infor.items():
+            if key in saved_obj:
+                saved_obj.pop(key)
+                for part in value['slices']:
+                    saved_obj[part] = temp_saved_obj[part]
+        saved_obj['UnpackBigParamInfor@@'] = unpack_infor
+    return saved_obj
+
+
+def _pack_loaded_dict(load_obj):
+    unpack_info = 'UnpackBigParamInfor@@'
+    if unpack_info in load_obj:
+        removes = []
+        for key, value in load_obj[unpack_info].items():
+            slices = [load_obj[part] for part in value["slices"]]
+            load_obj[key] = np.concatenate(slices).reshape(value["OriginShape"])
+            removes += value["slices"]
+        for key in removes:
+            load_obj.pop(key)
+        load_obj.pop(unpack_info)
+    return load_obj
+
+
 @static_only
 def save(program, model_path):
     """
@@ -1762,8 +1809,19 @@ def save(program, model_path):
 
     parameter_list = list(filter(is_parameter, program.list_vars()))
     param_dict = {p.name: get_tensor(p) for p in parameter_list}
-    with open(model_path + ".pdparams", 'wb') as f:
-        pickle.dump(param_dict, f, protocol=2)
+    param_dict = _unpack_saved_dict(param_dict)
+
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
+    if sys.platform == 'darwin' and sys.version_info.major == 3 and (
+            sys.version_info.minor == 5 or sys.version_info.minor == 6):
+        pickle_bytes = pickle.dumps(param_dict, protocol=2)
+        with open(model_path + ".pdparams", 'wb') as f:
+            max_bytes = 2**30
+            for i in range(0, len(pickle_bytes), max_bytes):
+                f.write(pickle_bytes[i:i + max_bytes])
+    else:
+        with open(model_path + ".pdparams", 'wb') as f:
+            pickle.dump(param_dict, f, protocol=2)
 
     optimizer_var_list = list(
         filter(is_belong_to_optimizer, program.list_vars()))
@@ -1848,6 +1906,12 @@ def load(program, model_path, executor=None, var_list=None):
             raise ValueError(
                 "executor is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
             )
+
+        if var_list is not None:
+            var_list_names = [var.name for var in var_list]
+        else:
+            var_list_names = None
+
         if os.path.isdir(model_path):
             binary_file_set = set()
             for root, dirs, files in os.walk(model_path, topdown=False):
@@ -1858,7 +1922,8 @@ def load(program, model_path, executor=None, var_list=None):
             loaded_var_list = []
             for var in program_var_list:
                 var_path = os.path.join(model_path, var.name).replace("\\", "/")
-                if var_path in binary_file_set:
+                load_condition = var_list_names is None or var.name in var_list_names
+                if var_path in binary_file_set and load_condition:
                     loaded_var_list.append(var)
                     binary_file_set.remove(var_path)
             if len(binary_file_set) > 0:
@@ -1935,6 +2000,7 @@ def load(program, model_path, executor=None, var_list=None):
     with open(parameter_file_name, 'rb') as f:
         load_dict = pickle.load(f) if six.PY2 else pickle.load(
             f, encoding='latin1')
+        load_dict = _pack_loaded_dict(load_dict)
     for v in parameter_list:
         assert v.name in load_dict, \
             "Can not find [{}] in model file [{}]".format(
@@ -2114,6 +2180,7 @@ def load_program_state(model_path, var_list=None):
     with open(parameter_file_name, 'rb') as f:
         para_dict = pickle.load(f) if six.PY2 else pickle.load(
             f, encoding='latin1')
+    para_dict = _pack_loaded_dict(para_dict)
 
     opt_file_name = model_prefix + ".pdopt"
     if os.path.exists(opt_file_name):
@@ -2165,6 +2232,7 @@ def set_program_state(program, state_dict):
 
             static.set_program_state(prog, program_state)
     """
+    state_dict = _pack_loaded_dict(state_dict)
     parameter_list = list(filter(is_persistable, program.list_vars()))
 
     used_para_list = {}

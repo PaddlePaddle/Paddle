@@ -498,8 +498,14 @@ DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
  * If FLAGS_call_stack_level == 2, the python stack, c++ stack, and error
  * message summary will be shown.
  */
+#ifdef PADDLE_ON_INFERENCE
+static const int32_t kDefaultCallStackLevel = 2;
+#else
+static const int32_t kDefaultCallStackLevel = 1;
+#endif
+
 DEFINE_int32(
-    call_stack_level, 1,
+    call_stack_level, kDefaultCallStackLevel,
     "Determine the call stack to print when error or exeception happens."
     // TODO(zhiqiu): implement logic of FLAGS_call_stack_level==0
     // "If FLAGS_call_stack_level == 0, only the error message summary will be "

@@ -120,7 +120,10 @@ class Tensor {
   friend struct EigenVector;
 
  public:
-  Tensor() : type_(proto::VarType::FP32), offset_(0) {}
+  Tensor()
+      : type_(proto::VarType::FP32),
+        offset_(0),
+        inplace_version_counter_(std::make_shared<TensorInplaceVersion>(0)) {}
 
   explicit Tensor(const proto::VarType::Type&);
 
@@ -171,6 +174,9 @@ class Tensor {
   /*! The internal of two tensors share the same memory block. */
   Tensor& ShareDataWith(const Tensor& src);
 
+  /*! The internal of two tensors share the same inplace version counter. */
+  Tensor& ShareInplaceVersionCounterWith(const Tensor& src);
+
   /**
    * @brief  Return a sub-tensor of the given tensor.
    *
@@ -196,6 +202,24 @@ class Tensor {
             "Tensor not initialized yet when Tensor::type() is called."));
     return type_;
   }
+
+  /**
+   * [Add method get the saved type of tensor]
+   *
+   * After the introduction of complex number calculations, Ops that support
+   * complex number calculations generally support type promotion, such as
+   * x(float32) + y(complex64) = out(complex64), then the type of the grad
+   * tensor should be dout(complex64), dx(float32), dy (complex64), but the
+   * type of dx to be recognized to be float32 by the grad Op relay on the type
+   * of forward tensor x. But many of our ops have registered InplaceInferer,
+   * covering the tensor memory of x with out, so as to save storage.
+   *
+   * In this case, the dim and type information recorded by x still exist,
+   * but because x becomes an uninitialized tensor, The type of x record cannot
+   * be obtained with x.type(), but the type is still valid here, so we
+   * add saved_type(), This method SHOULD NOT be called by general scenarios.
+   */
+  proto::VarType::Type saved_type() const { return type_; }
 
   // memory size returns the holding memory size in byte.
   size_t memory_size() const;
@@ -232,8 +256,9 @@ class Tensor {
 
   void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
                            const proto::VarType::Type type);
+
   TensorInplaceVersion& InplaceVersionCounter() {
-    return inplace_version_counter_;
+    return *inplace_version_counter_;
   }
 
  private:
@@ -271,7 +296,7 @@ class Tensor {
    *          PlaceHolder::ptr_ and where the tensor data really begins.
    */
   size_t offset_;
-  TensorInplaceVersion inplace_version_counter_;
+  std::shared_ptr<TensorInplaceVersion> inplace_version_counter_;
 };
 
 }  // namespace framework

@@ -26,6 +26,7 @@ from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 import warnings
 import paddle
+import itertools
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -114,6 +115,11 @@ class ParallelEnv(object):
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
+        self._nrings = int(os.getenv("FLAGS_nccl_nrings", "1"))
+        assert self._nrings > 0, \
+            "nccl_nrings must be an integer greater than 0."
+        assert self._nrings < 9, \
+            "nccl_nrings should be less than 9, which is enough in most scenarios."
 
     @property
     def rank(self):
@@ -210,6 +216,25 @@ class ParallelEnv(object):
             # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
         """
         return self._trainer_endpoints
+
+    @property
+    def nrings(self):
+        """
+        Nrings of current trainer.
+
+        Its value is equal to the value of the environment variable ``FLAGS_nccl_nrings`` . The default value is 1.
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export FLAGS_nccl_nrings=1
+            import paddle.distributed as dist
+            
+            env = dist.ParallelEnv()
+            print("The nrings is %d" % env.nrings)
+            # the number of ring is 1
+        """
+        return self._nrings
 
     # [aliases] Compatible with old method names
     local_rank = rank
@@ -397,8 +422,8 @@ class DataParallel(layers.Layer):
         else:
             warnings.warn("The program will return to single-card operation. "
                           "Please check 1, whether you use spawn or fleetrun "
-                          "to start the program. 2. Whether it is a multi-card "
-                          "program. 3. Is the current environment multi-card.")
+                          "to start the program. 2, Whether it is a multi-card "
+                          "program. 3, Is the current environment multi-card.")
 
     def init_reducer(self):
         layers_param = []
@@ -424,7 +449,7 @@ class DataParallel(layers.Layer):
             if isinstance(sublayer, paddle.nn.layer.common.Embedding):
                 return sublayer._sparse
             # NOTE(shenliang03):This is for compatibility. If paddle.fluid.dygraph.Embedding 
-            # is removed in the future, the judgment will also be removed here.
+            # is removed in the future, the check will also be removed here.
             if isinstance(sublayer, paddle.fluid.dygraph.Embedding):
                 return sublayer._is_sparse
             return False
@@ -441,17 +466,32 @@ class DataParallel(layers.Layer):
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
+        # TODO(shenliang03) "find_unused_vars" interface will be exposed in the future 
+        # to handle control flow to process unused parameters
+        find_unused_vars = True
         self._reducer = core.Reducer(
             trainable_parameters,
             list(reversed(self.group_indices)), is_sparse_gradient,
             parallel_helper.__parallel_ctx__clz__,
-            [self.last_comm_buffer_size, self.comm_buffer_size])
+            [self.last_comm_buffer_size, self.comm_buffer_size],
+            find_unused_vars)
+
+    def _find_varbase(self, obj):
+        if isinstance(obj, core.VarBase):
+            return [obj]
+        if isinstance(obj, (list, tuple)):
+            return itertools.chain(*map(self._find_varbase, obj))
+        if isinstance(obj, dict):
+            return itertools.chain(*map(self._find_varbase, obj.values()))
+        return []
 
     def forward(self, *inputs, **kwargs):
+        outputs = self._layers(*inputs, **kwargs)
         if self._strategy.nranks > 1:
-            self._reducer.prepare_for_backward()
+            self._reducer.prepare_for_backward(
+                list(self._find_varbase(outputs)))
 
-        return self._layers(*inputs, **kwargs)
+        return outputs
 
     @deprecated(
         since="2.0.0", reason="This method does not need to be called anymore.")

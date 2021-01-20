@@ -32,6 +32,7 @@ from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
 from ..fluid.layers import shard_index  #DEFINE_ALIAS
 from ..fluid import layers
 import paddle
+import warnings
 
 __all__ = [
     'cast',
@@ -43,8 +44,10 @@ __all__ = [
     'gather',
     'gather_nd',
     'reshape',
+    'reshape_',
     'reverse',
     'scatter',
+    'scatter_',
     'scatter_nd_add',
     'scatter_nd',
     'shard_index',
@@ -52,17 +55,25 @@ __all__ = [
     'split',
     'chunk',
     'squeeze',
+    'squeeze_',
     'stack',
     'strided_slice',
     'transpose',
     'unique',
     'unsqueeze',
+    'unsqueeze_',
     'unstack',
     'flip',
     'unbind',
     'roll',
     'tile',
 ]
+
+
+def _print_warning_in_static_mode(api_name):
+    warnings.warn(
+        "In static mode, {}_() is the same as {}() and does not perform inplace operation.".
+        format(api_name, api_name))
 
 
 def concat(x, axis=0, name=None):
@@ -167,6 +178,10 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
     Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
 
+    Note that the output Tensor will share data with origin Tensor and doesn't have a 
+    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, please 
+    use `Tensor.clone` like ``flatten_clone_x = x.flatten().clone()``.
+
     For Example:
 
     .. code-block:: text
@@ -219,12 +234,16 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             import paddle
 
             image_shape=(2, 3, 4, 4)
-            
+
             x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
             img = paddle.reshape(x, image_shape)
-            
+
             out = paddle.flatten(img, start_axis=1, stop_axis=2)
             # out shape is [2, 12, 4]
+
+            # out shares data with img in dygraph mode
+            img[0, 0, 0, 0] = -1
+            print(out[0, 0, 0]) # [-1]
     """
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
@@ -284,6 +303,7 @@ def roll(x, shifts, axis=None, name=None):
 
     Examples:
         .. code-block:: python
+            
             import paddle
 
             x = paddle.to_tensor([[1.0, 2.0, 3.0],
@@ -478,6 +498,10 @@ def split(x, num_or_sections, axis=0, name=None):
 def squeeze(x, axis=None, name=None):
     """
     This OP will squeeze the dimension(s) of size 1 of input tensor x's shape. 
+    
+    Note that the output Tensor will share data with origin Tensor and doesn't have a 
+    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, 
+    please use `Tensor.clone` like ``squeeze_clone_x = x.squeeze().clone()``.
 
     If axis is provided, it will remove the dimension(s) by given axis that of size 1. 
     If the dimension of given axis is not of size 1, the dimension remain unchanged. 
@@ -535,7 +559,13 @@ def squeeze(x, axis=None, name=None):
             
             x = paddle.rand([5, 1, 10])
             output = paddle.squeeze(x, axis=1)
+
+            print(x.shape)  # [5, 1, 10]
             print(output.shape)  # [5, 10]
+
+            # output shares data with x in dygraph mode
+            x[0, 0, 0] = 10.
+            print(output[0, 0]) # [10.]
 
     """
     if axis is None:
@@ -546,6 +576,26 @@ def squeeze(x, axis=None, name=None):
         axis = list(axis)
 
     return layers.squeeze(x, axis, name)
+
+
+def squeeze_(x, axis=None, name=None):
+    """
+    Inplace version of ``squeeze`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_squeeze`.
+    """
+    if axis is None:
+        axis = []
+    elif isinstance(axis, int):
+        axis = [axis]
+    elif isinstance(axis, tuple):
+        axis = list(axis)
+
+    if in_dygraph_mode():
+        out, _ = core.ops.squeeze2_(x, 'axes', axis)
+        return out
+
+    _print_warning_in_static_mode("squeeze")
+    return squeeze(x, axis, name)
 
 
 def unique(x,
@@ -677,6 +727,10 @@ def unsqueeze(x, axis, name=None):
     required argument axis, a dimension or list of dimensions that will be inserted.
     Dimension indices in axis are as seen in the output tensor.
 
+    Note that the output Tensor will share data with origin Tensor and doesn't have a 
+    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, 
+    please use `Tensor.clone` like ``unsqueeze_clone_x = x.unsqueeze(-1).clone()``.
+
     Args:
         x (Tensor): The input Tensor to be unsqueezed. Supported data type: float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` . 
@@ -705,10 +759,38 @@ def unsqueeze(x, axis, name=None):
             axis = paddle.to_tensor([0, 1, 2])
             out3 = paddle.unsqueeze(x, axis=axis) 
             print(out3.shape)  # [1, 1, 1, 5, 10]
+
+            # out1, out2, out3 share data with x in dygraph mode
+            x[0, 0] = 10.
+            print(out1[0, 0, 0]) # [10.]
+            print(out2[0, 0, 0, 0]) # [10.]
+            print(out3[0, 0, 0, 0, 0]) # [10.]
             
     """
 
     return layers.unsqueeze(x, axis, name)
+
+
+def unsqueeze_(x, axis, name=None):
+    """
+    Inplace version of ``unsqueeze`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_unsqueeze`.
+    """
+    if in_dygraph_mode():
+        if isinstance(axis, int):
+            axis = [axis]
+        elif isinstance(axis, Variable):
+            axis = axis.numpy().tolist()
+        elif isinstance(axis, (list, tuple)):
+            axis = [
+                item.numpy().item(0) if isinstance(item, Variable) else item
+                for item in axis
+            ]
+        out, _ = core.ops.unsqueeze2_(x, 'axes', axis)
+        return out
+
+    _print_warning_in_static_mode("unsqueeze")
+    return unsqueeze(x, axis, name)
 
 
 def gather(x, index, axis=None, name=None):
@@ -935,6 +1017,18 @@ def scatter(x, index, updates, overwrite=True, name=None):
         attrs={'overwrite': overwrite},
         outputs={"Out": out})
     return out
+
+
+def scatter_(x, index, updates, overwrite=True, name=None):
+    """
+    Inplace version of ``scatter`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_scatter`.
+    """
+    if in_dygraph_mode():
+        return core.ops.scatter_(x, index, updates, 'overwrite', overwrite)
+
+    _print_warning_in_static_mode("scatter")
+    return scatter(x, index, updates, overwrite, name)
 
 
 def scatter_nd_add(x, index, updates, name=None):
@@ -1381,6 +1475,11 @@ def reshape(x, shape, name=None):
     """
     This operator changes the shape of ``x`` without changing its data.
 
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode. 
+    If you want to use the Tensor copy version, please use `Tensor.clone` like 
+    ``reshape_clone_x = x.reshape([-1]).clone()``.
+
     Some tricks exist when specifying the target shape.
 
     1. -1 means the value of this dimension is inferred from the total element
@@ -1429,18 +1528,48 @@ def reshape(x, shape, name=None):
 
             x = paddle.rand([2, 4, 6], dtype="float32")
             positive_four = paddle.full([1], 4, "int32")
+
             out = paddle.reshape(x, [-1, 0, 3, 2])
             print(out)
             # the shape is [2,4,3,2].
+
             out = paddle.reshape(x, shape=[positive_four, 12])
             print(out)
             # the shape of out_2 is [4, 12].
+
             shape_tensor = paddle.to_tensor(np.array([8, 6]).astype("int32"))
             out = paddle.reshape(x, shape=shape_tensor)
             print(out)
             # the shape is [8, 6].
+            # out shares data with x in dygraph mode
+            x[0, 0, 0] = 10.
+            print(out[0, 0])
+            # the value is [10.]
+
     """
     return paddle.fluid.layers.reshape(x=x, shape=shape, name=name)
+
+
+def reshape_(x, shape, name=None):
+    """
+    Inplace version of ``reshape`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_reshape`.
+    """
+    if in_dygraph_mode():
+        if isinstance(shape, (list, tuple)):
+            shape = [
+                item.numpy().item(0) if isinstance(item, Variable) else item
+                for item in shape
+            ]
+            out, _ = core.ops.reshape2_(x, None, 'shape', shape)
+            return out
+        elif isinstance(shape, Variable):
+            shape.stop_gradient = True
+            out, _ = core.ops.reshape2_(x, shape)
+            return out
+
+    _print_warning_in_static_mode("reshape")
+    return reshape(x, shape, name)
 
 
 def gather_nd(x, index, name=None):

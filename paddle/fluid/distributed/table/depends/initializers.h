@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include <gflags/gflags.h>
 #include <functional>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/framework/generator.h"
 
@@ -33,6 +33,18 @@ class Initializer {
   explicit Initializer(const std::vector<std::string> &attrs) {}
 
   virtual float GetValue() = 0;
+
+  virtual void GetValue(std::vector<float> *values, int numel) {
+    for (int x = 0; x < numel; ++x) {
+      values->push_back(GetValue());
+    }
+  }
+
+  virtual void GetValue(float *value, int numel) {
+    for (int x = 0; x < numel; ++x) {
+      value[x] = GetValue();
+    }
+  }
 
   virtual ~Initializer() {}
 
@@ -54,6 +66,11 @@ class UniformInitializer : public Initializer {
   }
 
   float GetValue() override { return dist_(*random_engine_); }
+  void GetValue(float *value, int numel) {
+    for (int x = 0; x < numel; ++x) {
+      value[x] = dist_(*random_engine_);
+    }
+  }
 
  private:
   float min_;
@@ -77,6 +94,11 @@ class GaussianInitializer : public Initializer {
   }
 
   float GetValue() override { return dist_(*random_engine_); }
+  void GetValue(float *value, int numel) {
+    for (int x = 0; x < numel; ++x) {
+      value[x] = dist_(*random_engine_);
+    }
+  }
 
  private:
   float std_;
@@ -94,6 +116,7 @@ class FillConstantInitializer : public Initializer {
   }
 
   float GetValue() override { return value_; }
+  void GetValue(float *value, int numel) { std::fill_n(value, numel, value_); }
 
  private:
   float value_;

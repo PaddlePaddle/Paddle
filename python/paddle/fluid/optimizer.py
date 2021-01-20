@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import six
+import os
 import logging
 from collections import defaultdict
 
@@ -39,6 +40,7 @@ from .dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpo
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
+from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 
@@ -106,8 +108,12 @@ class Optimizer(object):
         self.regularization = regularization
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
-        # the learning rate type should be inferenced from loss
+
         self._dtype = None
+        # Infer the dtype form parameter
+        if self._parameter_list:
+            self._dtype = self._parameter_list[0].dtype
+
         # each program should have a independent learning rate
         # program -> Variable(learning_rate)
         self._learning_rate_map = dict()
@@ -766,7 +772,10 @@ class Optimizer(object):
         else:
             act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
 
-        self._dtype = loss.dtype
+        # Infer dtype by loss if None
+        if self._dtype is None:
+            self._dtype = loss.dtype
+
         if framework.in_dygraph_mode():
             parameter_list = parameter_list if parameter_list \
                 else self._parameter_list
@@ -2974,6 +2983,10 @@ class LambOptimizer(AdamOptimizer):
 
         v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2
 
+        m_t &= \\frac{m_t}{\\beta_1^t}
+
+        v_t &= \\frac{v_t}{\\beta_2^t}
+
         r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon}
 
         w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
@@ -3001,8 +3014,9 @@ class LambOptimizer(AdamOptimizer):
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` , :ref:`api_paddle_fluid_clip_ClipGradByNorm` ,
+            :ref:`api_paddle_fluid_clip_ClipGradByValue` ). If you want better convergence, it is recommended
+            to use :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` . Default None, meaning there is no gradient clipping.
         exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
             decay when **exclude_from_weight_decay_fn(parameter)** returns true. 
             Default None.
@@ -3027,7 +3041,6 @@ class LambOptimizer(AdamOptimizer):
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
-    # these two not used in op temporarily
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
 
@@ -3078,6 +3091,16 @@ class LambOptimizer(AdamOptimizer):
             weight_decay = 0.0
         else:
             weight_decay = self._weight_decay
+        lr = self._create_param_lr(param_and_grad)
+
+        if framework.in_dygraph_mode():
+            _, _, _, _, _ = core.ops.lamb(
+                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
+                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
+                moment2, beta1_pow_acc, beta2_pow_acc, 'beta1', self._beta1,
+                'beta2', self._beta2, 'epsilon', self._epsilon, 'weight_decay',
+                weight_decay)
+            return None
 
         # create the lamb optimize op
         lamb_op = block.append_op(
@@ -3085,7 +3108,7 @@ class LambOptimizer(AdamOptimizer):
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad),
+                "LearningRate": lr,
                 "Moment1": moment1,
                 "Moment2": moment2,
                 "Beta1Pow": beta1_pow_acc,
@@ -3094,7 +3117,9 @@ class LambOptimizer(AdamOptimizer):
             outputs={
                 "ParamOut": param_and_grad[0],
                 "Moment1Out": moment1,
-                "Moment2Out": moment2
+                "Moment2Out": moment2,
+                "Beta1PowOut": beta1_pow_acc,
+                "Beta2PowOut": beta2_pow_acc
             },
             attrs={
                 "beta1": self._beta1,
@@ -3773,7 +3798,7 @@ class PipelineOptimizer(object):
         self._op_device_key = op_maker.kOpDeviceAttrName()
         self._param_device_map = None
 
-    def _create_vars(self, block, main_program):
+    def _create_vars(self, block, ori_block):
         # Create vars for block, copied from main_program's global block
         used_var_set = set()
         for op_idx in range(block.desc.op_size()):
@@ -3785,7 +3810,8 @@ class PipelineOptimizer(object):
                 if var in used_var_set or "_blocking_queue" in var:
                     continue
                 used_var_set.add(var)
-                source_var = main_program.block(0).var(str(var))
+                if block._find_var_recursive(str(var)): continue
+                source_var = ori_block._var_recursive(str(var))
                 if source_var.type == core.VarDesc.VarType.READER:
                     block.create_var(
                         name=var,
@@ -3840,45 +3866,65 @@ class PipelineOptimizer(object):
                     op_desc = op.desc
                     ap_op = program["program"].block(0).desc.append_op()
                     ap_op.copy_from(op_desc)
-                    ap_op._set_attr(self._op_device_key, "")
-            elif op.type == "create_py_reader" or op.type == "read":
+                    # ap_op._set_attr(self._op_device_key, "")
+            elif op.type == "create_py_reader" or op.type == "read" or op.type == "create_double_buffer_reader":
                 # Copy read related ops to all section to make them exit after each epoch.
                 for device in device_program_map.keys():
                     program = device_program_map[device]
                     op_desc = op.desc
                     ap_op = program["program"].block(0).desc.append_op()
                     ap_op.copy_from(op_desc)
-                    ap_op._set_attr(self._op_device_key, "")
             else:
                 program = device_program_map[device]
                 op_desc = op.desc
                 ap_op = program["program"].block(0).desc.append_op()
                 ap_op.copy_from(op_desc)
-                ap_op._set_attr(self._op_device_key, "")
 
-        for key in sorted(device_program_map.keys()):
+        for key in devices:
             program = device_program_map[key]
             program['program']._sync_with_cpp()
             programs.append(program)
 
         return programs
 
+    def _get_op_device_for_startup_program(self, var_name):
+        """
+        For adam optimizer, it will add accumulators and initialize them
+        with fill_constant, and force the op device to cpu. Hence, we should
+        get the real op_device attribute of the fill_constant as the device
+        where the corresponding parameters on.
+        """
+        assert "beta1_pow_acc" in var_name or "beta2_pow_acc" in var_name
+        param_name = var_name[0:var_name.index('_beta')]
+        device = self._param_device_map[param_name]
+        return device
+
     def _split_startup_program(self, startup_program, local_rank):
         block = startup_program.block(0)
         new_startup_program = Program()
         for op in block.ops:
             device = op.attr(self._op_device_key)
+            if device == "cpu":
+                assert op.type == "fill_constant", (
+                    "For ops in startup "
+                    "program that with the op_device attribute of cpu, "
+                    "they must be fill_constant.")
+                output_var = op.output_arg_names[0]
+                device = self._get_op_device_for_startup_program(output_var)
+
             if device:
-                device_index = int(device.split(":")[1])
+                device_index = int(device.split(':')[1])
             else:
-                device_index = None
-            if device_index is not None and device_index != local_rank: continue
+                # LR related ops
+                device = None
+            if device and device_index != local_rank: continue
             op_desc = op.desc
             ap_op = new_startup_program.block(0).desc.append_op()
             ap_op.copy_from(op_desc)
             ap_op._set_attr(self._op_device_key, "")
         new_startup_program._sync_with_cpp()
-        self._create_vars(new_startup_program.block(0), startup_program)
+        self._create_vars(
+            new_startup_program.block(0), startup_program.global_block())
         return new_startup_program
 
     def _find_post_op(self, ops, cur_op, var_name):
@@ -4093,6 +4139,8 @@ class PipelineOptimizer(object):
                 first_device = op.attr(self._op_device_key)
                 break
         assert first_device
+        first_device_type = first_device.split(":")[0]
+        assert first_device_type == "gpu"
 
         # set op_device attr for lr-related ops
         lrsched_role = int(self._op_role.LRSched)
@@ -4136,10 +4184,11 @@ class PipelineOptimizer(object):
             dev_spec = op.attr(self._op_device_key)
             assert dev_spec, ("op_device attribute for op "
                               "{} has not been set.".format(op.type))
+            dev_type = dev_spec.split(':')[0]
+            assert dev_type == "gpu", ("Now only gpu devices are supported "
+                                       "for pipeline parallelism.")
             if not dev_spec in device_specs:
                 device_specs.append(dev_spec)
-        sorted_device_specs = sorted(device_specs)
-        assert sorted_device_specs == device_specs
         return device_specs
 
     def _insert_sendrecv_ops_for_boundaries(self, block):
@@ -4216,6 +4265,7 @@ class PipelineOptimizer(object):
             device = self._param_device_map[param_name]
             if device != dev_spec: continue
             grad_name = self._append_grad_suffix(param_name)
+            if not main_block.has_var(grad_name): continue
             grad_var = main_block.vars[grad_name]
             main_block._insert_op(
                 index=0,
@@ -4297,6 +4347,7 @@ class PipelineOptimizer(object):
                     ap_op = new_sub_block.desc.append_op()
                     ap_op.copy_from(op_desc)
                 new_sub_block._sync_with_cpp()
+                self._create_vars(new_sub_block, origin_sub_block)
                 op._set_attr('sub_block:', new_sub_block)
 
     def _get_device_info(self, block):
@@ -4318,6 +4369,7 @@ class PipelineOptimizer(object):
             prog = prog_info['program']
             block = prog.block(0)
             for var_name in block.vars:
+                if var_name == "double_buffer_0": continue
                 var = block.var(var_name)
                 if not var.persistable: continue
                 if not var_name in var_info:
@@ -4413,30 +4465,33 @@ class PipelineOptimizer(object):
         self._add_default_opdevice_attr(main_block)
 
         device_specs = self._check_validation(main_block)
-        assert len(device_specs) > 1
+
+        def device_cmp(device1, device2):
+            dev1_id = int(device1.split(':')[1])
+            dev2_id = int(device2.split(':')[1])
+            if dev1_id < dev2_id:
+                return -1
+            elif dev1_id > dev2_id:
+                return 1
+            else:
+                return 0
+
+        sorted_device_spec = sorted(device_specs, key=cmp_to_key(device_cmp))
+        assert sorted_device_spec == device_specs, (
+            "With pipeline "
+            "parallelism, you must use gpu devices one after another "
+            "in the order of their ids.")
 
         # Step3: add send and recv ops between section boundaries
         self._insert_sendrecv_ops_for_boundaries(main_block)
-
-        place_list = []
-        place_id_list = []
-        for dev_spec in device_specs:
-            if dev_spec == "cpu":
-                place_list.append(core.CPUPlace())
-                place_id_list.append(-1)
-            elif "gpu" in dev_spec and ":" in dev_spec:
-                dev_index = dev_spec.split(":")[1]
-                place_list.append(core.CUDAPlace(int(dev_index)))
-                place_id_list.append(int(dev_index))
-            else:
-                raise ValueError("Unknown device type: %s", dev_spec)
 
         # Step4: split program into sections and add pairs of
         # send and recv ops for data var.
         main_program = main_block.program
         program_list = self._split_program(main_program, device_specs)
         for p in program_list:
-            self._create_vars(p["program"].block(0), main_program)
+            self._create_vars(p["program"].block(0),
+                              main_program.global_block())
         self._insert_sendrecv_for_data_var(main_block, program_list,
                                            startup_program, device_specs)
 
@@ -4452,7 +4507,13 @@ class PipelineOptimizer(object):
                 isinstance(main_program._pipeline_opt, dict) and
                 'local_rank' in main_program._pipeline_opt), \
                 "You must use pipeline with fleet"
-        local_rank = main_program._pipeline_opt['local_rank']
+        local_rank = main_program._pipeline_opt['local_rank'] % len(
+            device_specs)
+
+        place_list = []
+        for dev_spec in device_specs:
+            dev_index = dev_spec.split(":")[1]
+            place_list.append(core.CUDAPlace(local_rank))
 
         # Step7: Split startup program
         new_startup_program = self._split_startup_program(startup_program,
@@ -4466,21 +4527,18 @@ class PipelineOptimizer(object):
         self._accumulate_gradients(program_list[local_rank]['program']
                                    .global_block())
 
-        with open("startup_prog_%d" % local_rank, 'w') as f:
-            f.writelines(str(new_startup_program))
-        with open("main_prog_%d" % local_rank, 'w') as f:
-            f.writelines(str(program_list[local_rank]['program']))
-
         startup_program._pipeline_opt = {
             "startup_program": new_startup_program,
         }
+
+        place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
             "inner_parallelism": len(device_specs),
             "section_program": program_list[local_rank],
             "place": place_list[local_rank],
-            "place_id": place_id_list[local_rank],
+            "place_id": place_id,
             "sync_steps": -1,
             "num_microbatches": self._num_microbatches,
             "start_cpu_core_id": self._start_cpu_core_id,
@@ -4558,6 +4616,7 @@ class RecomputeOptimizer(Optimizer):
         self._checkpoints = None
         self._learning_rate = self._optimizer._learning_rate
         self._learning_rate_map = self._optimizer._learning_rate_map
+        self.enable_offload = False
 
     def _set_checkpoints(self, checkpoints):
         """
@@ -4572,6 +4631,10 @@ class RecomputeOptimizer(Optimizer):
                 isinstance(ckpt, six.string_types) or isinstance(ckpt, Variable)
             ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
+
+    # should enable offload before calling backward 
+    def _enable_offload(self):
+        self.enable_offload = True
 
     @framework.deprecate_stat_dict
     def load(self, state_dict):
@@ -4661,6 +4724,360 @@ class RecomputeOptimizer(Optimizer):
 
         return self._optimizer.apply_gradients(params_grads=params_grads)
 
+    def _creat_vars(self, varname):
+        pinned_var_name = unique_name.generate(varname + "@Pinned")
+        fetched_var_name = unique_name.generate(varname + "@Fetch")
+
+        pinned_var = self._main_program.global_block().create_var(
+            name=pinned_var_name,
+            shape=self.checkpoint_shape,
+            dtype=self._main_program.global_block().var(varname).dtype,
+            persistable=False,
+            stop_gradient=True)
+
+        fetch_var = self._main_program.global_block().create_var(
+            name=fetched_var_name,
+            shape=self.checkpoint_shape,
+            dtype=self._main_program.global_block().var(varname).dtype,
+            persistable=False,
+            stop_gradient=False)
+
+        return pinned_var_name, fetched_var_name
+
+    def _append_fill_constant_ops(self, startup_program):
+        """
+        add fill_constant_ops to the end of the prog
+
+        we should fill the pinned vars before runing the main_prog
+        to instantiate their tensor hold_, which could tell us whether 
+        the host memory could hold all the checkpoints from all the 
+        GPU devices in this node. 
+        """
+        op_role = 0
+        block = startup_program.global_block()
+        fill_constant_vars = self.checkpoint_name2pinned_name.values()
+        OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        for varname in fill_constant_vars:
+            var = self._main_program.global_block().var(varname)
+            # NOTE (JZ-LIANG) to pre-allocate the CUDAPinned MEM
+            pinned_var = block.create_var(
+                name=varname,
+                shape=self.checkpoint_shape,
+                dtype=self._main_program.global_block().var(var.name).dtype,
+                persistable=False,
+                stop_gradient=True)
+            block.append_op(
+                type='fill_constant',
+                outputs={'Out': varname},
+                attrs={
+                    "shape": var.shape,
+                    "dtype": var.dtype,
+                    "value": 0.0,
+                    "place_type": 2,
+                    OP_ROLE_KEY: op_role,
+                })
+
+        return
+
+    def _insert_async_memcpy_op(self, insert_idx, src_varname, dst_varname,
+                                op_role, dst_place_type):
+        OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        self.block._insert_op_without_sync(
+            insert_idx,
+            type='memcpy',
+            inputs={'X': [self._main_program.global_block().var(src_varname)]},
+            outputs={
+                'Out': [self._main_program.global_block().var(dst_varname)]
+            },
+            attrs={
+                "dst_place_type": int(dst_place_type),
+                OP_ROLE_KEY: op_role
+            })
+
+    def _insert_fetch_op(self, idx, varname):
+        assert varname in self.checkpoint_name2pinned_name, "Try to fetch {} from Pinned Memory, but it is NOT a checkpoint".format(
+            varname)
+
+        pinned_varname = self.checkpoint_name2pinned_name[varname]
+        fetch_varname = self.checkpoint_name2fetch_name[varname]
+        self._insert_async_memcpy_op(idx, pinned_varname, fetch_varname, 1, 1)
+
+    def _insert_offload_op(self, idx, varname):
+        assert varname in self.checkpoint_name2pinned_name, "Try to offload {} to Pinned Memory, but it is NOT a checkpoint".format(
+            varname)
+        pinned_varname = self.checkpoint_name2pinned_name[varname]
+        self._insert_async_memcpy_op(idx, varname, pinned_varname, 0, 2)
+
+    def _insert_sync_op(self, op_idx, checkpoint_name):
+        # single stream offload no need sync 
+        pass
+
+    def _record_fetch_op(self, idx):
+        assert len(self.un_fetch_checkpoint_names
+                   ) > 0, "Could NOT found checkpoint to fetch"
+        checkpoint_name = self.un_fetch_checkpoint_names.pop(-1)
+        logging.debug("Record fetch [{}]".format(checkpoint_name))
+        self.idx2insertions[idx] = ("fetch", checkpoint_name)
+
+        return checkpoint_name
+
+    def _record_offload_op(self, idx, checkpoint_name):
+        expected_checkpoint_name = self.un_offload_checkpoint_names.pop(0)
+        assert checkpoint_name == expected_checkpoint_name, "expected to offload [{}] but got [{}]".format(
+            expected_checkpoint_name, checkpoint_name)
+        logging.debug("Record offload [{}]".format(checkpoint_name))
+        self.idx2insertions[idx] = ("offload", checkpoint_name)
+
+    def _record_sync_op(self, idx, checkpoint_name):
+        assert checkpoint_name not in self.synced_checkpoints, "Try to sync the checkpoint [{}] twice".format(
+            checkpoint_name)
+        self.synced_checkpoints.add(checkpoint_name)
+        logging.debug("Record offload sync [{}]".format(checkpoint_name))
+        self.idx2insertions[idx] = ("sync", checkpoint_name)
+
+    def _parse_backward(self):
+
+        self.idx2insertions = {}
+        # don't offload the last checkpoints, to favor throughput        
+        self.un_fetch_checkpoint_names = self.sorted_checkpoint_names[:]
+        self.un_fetch_checkpoint_names.pop(-1)
+        need_fetch_checkpoint_names = self.un_fetch_checkpoint_names[:]
+        self.checkpoint_usage_count = {}
+        for checkpoint_name in self.un_fetch_checkpoint_names:
+            self.checkpoint_usage_count[checkpoint_name] = 0
+
+        self.bw_strart_op_idx = len(self.block.ops)
+        for idx, op in enumerate(self.block.ops):
+            if int(op.desc.attr("op_role")) == 1:
+                self.bw_strart_op_idx = idx
+                break
+
+        assert self.bw_strart_op_idx < len(
+            self.block.ops), "Could NOT found backword op in prog"
+
+        # fetch second to last checkpoint at the beginning of BW
+        fetched_checkpoint_varname = self._record_fetch_op(
+            self.bw_strart_op_idx)
+        last_last_fetch_checkpoint = None
+
+        for i, op in enumerate(self.block.ops[self.bw_strart_op_idx:]):
+            idx = self.bw_strart_op_idx + i
+            input_vars = op.desc.input_arg_names()
+
+            for input_var in input_vars:
+                if input_var in need_fetch_checkpoint_names:
+                    if input_var not in self.un_fetch_checkpoint_names:
+                        # fetch the  offloade checkpoint when the first usage of its previous one
+                        if self.checkpoint_usage_count[input_var] == 0:
+                            # TODO (JZ-LIANG) sync memcpy_stream if extra stream for memcpy
+                            second_to_last_fetch_checkpoint = fetched_checkpoint_varname
+                            # there is NO fetch ahead the first checkpoint 
+                            if input_var != self.sorted_checkpoint_names[0]:
+                                fetched_checkpoint_varname = self._record_fetch_op(
+                                    idx)
+
+                        # should check the current used checkpoint is ths last fetch one 
+                        assert second_to_last_fetch_checkpoint == input_var, "Current recompute segment should use [{}] BUT got [{}]".format(
+                            second_to_last_fetch_checkpoint, input_var)
+                        # rename
+                        self.block.ops[idx]._rename_input(
+                            input_var,
+                            self.checkpoint_name2fetch_name[input_var])
+                        self.checkpoint_usage_count[input_var] += 1
+                    else:
+                        raise ValueError(
+                            "use checkpoint [{}] before fetch in BW".format(
+                                input_var))
+
+        assert len(self.un_fetch_checkpoint_names
+                   ) == 0, "{} checkpoints have NOT been Recorded".format(
+                       self.un_fetch_checkpoint_names)
+
+    def _update_backward(self):
+        if len(self.idx2insertions) == 0:
+            return
+        total_op = len(self.block.ops)
+        for op_idx in reversed(range(self.bw_strart_op_idx, total_op)):
+            if op_idx in self.idx2insertions:
+                operation, checkpoint_name = self.idx2insertions[op_idx]
+                if operation == "fetch":
+                    self._insert_fetch_op(op_idx, checkpoint_name)
+                    logging.debug("Insert [{}] fetch op.".format(
+                        checkpoint_name))
+                    del self.idx2insertions[op_idx]
+                elif operation == "sync":
+                    self._insert_sync_op(op_idx, checkpoint_name)
+                    logging.debug("Sync [{}] fetch op.".format(checkpoint_name))
+        self.block._sync_with_cpp()
+        assert len(
+            self.idx2insertions) == 0, "{} checkpoints left un-Fecthed".format(
+                [ele[1] for ele in self.idx2insertions.values()])
+
+    def _parse_forward(self):
+
+        self.idx2insertions = {}
+        # don't offload the last checkpoints, faster, less memory saving       
+        self.un_offload_checkpoint_names = self.sorted_checkpoint_names[:]
+        last_checkpoint = self.un_offload_checkpoint_names.pop(-1)
+        need_offload_checkpoint_names = self.un_offload_checkpoint_names[:]
+        self.checkpoint_usage_count_and_idx = {}
+        for checkpoint_name in self.un_offload_checkpoint_names:
+            self.checkpoint_usage_count_and_idx[checkpoint_name] = {
+                'count': 0,
+                'idx': -1
+            }
+        self.synced_checkpoints = set()
+        self.fw_strart_op_idx = len(self.block.ops)
+        for idx, op in enumerate(self.block.ops):
+            if int(op.desc.attr("op_role")) == 0:
+                self.fw_strart_op_idx = idx
+                break
+
+        assert self.fw_strart_op_idx < len(
+            self.block.ops), "Could NOT found Forward op in prog"
+        last_offload_checkpoint = None
+
+        for i, op in enumerate(self.block.ops[self.fw_strart_op_idx:
+                                              self.bw_strart_op_idx]):
+
+            idx = self.fw_strart_op_idx + i
+            output_vars = op.desc.output_arg_names()
+            input_vars = op.desc.input_arg_names()
+
+            for output_var in output_vars:
+                if output_var in need_offload_checkpoint_names:
+                    assert len(
+                        output_vars
+                    ) == 1, "chekpoint should be the only Output of a certain op, but [{}] is from [{}]".format(
+                        output_var, op)
+
+                    if output_var in self.un_offload_checkpoint_names:
+                        # insert sync op if last checkpoint has not been sync
+                        if last_offload_checkpoint != None:
+                            if self.checkpoint_usage_count_and_idx[
+                                    last_offload_checkpoint]['count'] == 0:
+                                self._record_sync_op(idx,
+                                                     last_offload_checkpoint)
+                            else:
+                                last_usage_idx = self.checkpoint_usage_count_and_idx[
+                                    last_offload_checkpoint]['idx']
+                                assert last_usage_idx > 0, "last_usage_idx of checkpoint [{}] should large than 0".format(
+                                    last_offload_checkpoint)
+                                self._record_sync_op(last_usage_idx + 1,
+                                                     last_offload_checkpoint)
+                        # insert offload op after the checkpoint's generation op
+                        self._record_offload_op(idx + 1, output_var)
+                        last_offload_checkpoint = output_var
+                    else:
+                        raise ValueError(
+                            "There should be just ONE op that output checkpoint [{}]".
+                            format(output_var))
+                # need to sync the last need to offload checkpoint before the last checkpoint as output op
+                if output_var == last_checkpoint:
+                    assert len(
+                        output_vars
+                    ) == 1, "chekpoint should be the only Output of a certain op, but [{}] is from [{}]".format(
+                        output_var, op)
+                    assert last_offload_checkpoint == self.sorted_checkpoint_names[
+                        -2], "the last offload chekpoint before [{}] is suppose to be [{}], but got [{}]".format(
+                            last_checkpoint, self.sorted_checkpoint_names[-2],
+                            last_offload_checkpoint)
+                    # sync if last checkpoint has not been sync
+                    if self.checkpoint_usage_count_and_idx[
+                            last_offload_checkpoint]['idx'] == 0:
+                        self._record_sync_op(idx, last_offload_checkpoint)
+                    else:
+                        last_usage_idx = self.checkpoint_usage_count_and_idx[
+                            last_offload_checkpoint]['idx']
+                        assert last_usage_idx > 0, "last_usage_idx of checkpoint [{}] should large than 0".format(
+                            last_offload_checkpoint)
+                        self._record_sync_op(last_usage_idx + 1,
+                                             last_offload_checkpoint)
+            # record checkpoint usage  
+            for input_var in input_vars:
+                if input_var in need_offload_checkpoint_names:
+                    assert input_var not in self.synced_checkpoints, "checkpoint [{}] used after sync".format(
+                        input_var)
+                    self.checkpoint_usage_count_and_idx[input_var]['count'] += 1
+                    self.checkpoint_usage_count_and_idx[input_var]['idx'] = idx
+
+        assert len(self.un_offload_checkpoint_names
+                   ) == 0, "{} checkpoints have NOT been Recorded".format(
+                       self.un_fetch_checkpoint_names)
+        assert len(self.synced_checkpoints) == len(
+            need_offload_checkpoint_names
+        ), "{} checkpoints have NOT been Recorded".format(
+            set(need_offload_checkpoint_names) - set(self.synced_checkpoints))
+
+    def _update_forward(self):
+        if len(self.idx2insertions) == 0:
+            return
+        for op_idx in reversed(
+                range(self.fw_strart_op_idx, self.bw_strart_op_idx)):
+            if op_idx in self.idx2insertions:
+                operation, checkpoint_name = self.idx2insertions[op_idx]
+                if operation == "offload":
+                    self._insert_offload_op(op_idx, checkpoint_name)
+                    logging.debug("Insert [{}] offload op.".format(
+                        checkpoint_name))
+                    del self.idx2insertions[op_idx]
+                elif operation == "sync":
+                    self._insert_sync_op(op_idx, checkpoint_name)
+                    logging.debug("Insert [{}] offload_sync op.".format(
+                        checkpoint_name))
+                    del self.idx2insertions[op_idx]
+
+        self.block._sync_with_cpp()
+        assert len(self.idx2insertions
+                   ) == 0, "{} checkpoints left un-Offloaded".format(
+                       [ele[1] for ele in self.idx2insertions.values()])
+
+    def _check_offload_fetch(self):
+        # TODO(JZ-LIANG) the single stream offload need no sync
+        pass
+
+    def _offload(self, loss, startup_program=None):
+        """
+        core steps for recompute offload
+        1. create pinned vars and temp vars 
+        2. parse & update Forward pass: offload, sync
+        3. parse & update Backward pass: rename, fetch, sync
+        4. verify the correctness
+        """
+        self._main_program = loss.block.program
+        self.block = loss.block
+        if startup_program == None:
+            startup_program = fluid.default_startup_program()
+
+        with program_guard(self._main_program, startup_program):
+            assert len(self.checkpoint_shape) > 0, (
+                "checkpoints shape {} should be an non empty list like: [12, 512, 1024]".
+                format(self.checkpoint_shape))
+            assert all([ele > 0 for ele in self.checkpoint_shape]), (
+                "all ele in checkpoints shape {} should be a determined integer larger than 0".
+                format(self.checkpoint_shape))
+            self.checkpoint_name2pinned_name = dict()
+            self.checkpoint_name2fetch_name = dict()
+            for checkpoint_varname in self.sorted_checkpoint_names:
+                pinned_var_name, fetch_var_name = self._creat_vars(
+                    checkpoint_varname)
+                self.checkpoint_name2pinned_name[
+                    checkpoint_varname] = pinned_var_name
+                self.checkpoint_name2fetch_name[
+                    checkpoint_varname] = fetch_var_name
+            self._append_fill_constant_ops(startup_program)
+            # TODO (JZ-LIANG) to provide two offload stragtegy in future
+            # step 2. parse & update FW: rename, offload, sync
+            self._parse_backward()
+            self._update_backward()
+            # step 3. parse & update BW: rename, offload, sync
+            self._parse_forward()
+            self._update_forward()
+            # step 4. verify the correctness
+            self._check_offload_fetch()
+
+        return
+
     def backward(self,
                  loss,
                  startup_program=None,
@@ -4725,8 +5142,24 @@ class RecomputeOptimizer(Optimizer):
                 else:
                     checkpoint_vars.append(loss.block.var(ckpt))
 
-            params_grads = append_backward(
-                loss, parameter_list, no_grad_set, checkpoints=checkpoint_vars)
+            # allow return to non-recompute when checkpoints is empty
+            if len(checkpoint_vars) > 0:
+                params_grads, sorted_checkpoint_names = append_backward(
+                    loss,
+                    parameter_list,
+                    no_grad_set,
+                    checkpoints=checkpoint_vars)
+            else:
+                params_grads = append_backward(
+                    loss,
+                    parameter_list,
+                    no_grad_set,
+                    checkpoints=checkpoint_vars)
+
+        if self.enable_offload:
+            self.sorted_checkpoint_names = sorted_checkpoint_names
+            self._offload(loss, startup_program=startup_program)
+
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -5021,6 +5454,8 @@ class GradientMergeOptimizer(object):
             print("step=%d, cost=%f" % (i, cost_val[0]))
     """
 
+    GRAD_MERGE_COND_NAME = "grad_merge_cond_name"
+
     def __init__(self, inner_optimizer, k_steps=1, avg=True):
         if framework.in_dygraph_mode():
             raise Exception(
@@ -5036,6 +5471,7 @@ class GradientMergeOptimizer(object):
         self.k_steps = k_steps
         self.type = "gradient_merge"
         self.avg = avg
+        self._optimize_ops = None
 
     def _set_k_steps(self, k_steps):
         self.k_steps = k_steps
@@ -5043,12 +5479,12 @@ class GradientMergeOptimizer(object):
     def _set_avg(self, avg):
         self.avg = avg
 
-    def minimize(self,
+    def backward(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None):
-
+                 no_grad_set=None,
+                 callbacks=None):
         assert isinstance(loss, Variable), "The loss should be an Variable."
         assert (
             parameter_list is None
@@ -5059,26 +5495,142 @@ class GradientMergeOptimizer(object):
 
         params_grads = self.inner_optimizer.backward(
             loss, startup_program=startup_program)
+        return params_grads
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        program = loss.block.program
+        with program_guard(program, startup_program):
+            optimize_ops = self.apply_gradients(params_grads)
+        return optimize_ops
+
+    def _is_the_backward_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        if op_maker.kOpRoleVarAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(backward):
+            return True
+        return False
+
+    def _remove_op_role_var(self, param, grad):
+        op_maker = core.op_proto_and_checker_maker
+        op = grad.op
+        assert self._is_the_backward_op(op), \
+            'grad.op={} is not the backward op which produces the grad={}' \
+            .format(op, grad.name)
+
+        block = grad.block
+        var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
+        assert param.name in var_attr, \
+            'when using GradientMergeOptimizer, param={} must be in var_attr={}' \
+            .format(param.name, var_attr)
+        assert grad.name in var_attr, \
+            'when using GradientMergeOptimizer, grad={} must be in var_attr={}' \
+            .format(param.name, var_attr)
+
+        # remove (param, grad) from op_role_var
+        var_attr.remove(param.name)
+        var_attr.remove(grad.name)
+        if len(var_attr) > 1:
+            op._set_attr(op_maker.kOpRoleVarAttrName(), var_attr)
+        else:
+            op._remove_attr(op_maker.kOpRoleVarAttrName())
+
+    def _add_gm_op_role_var(self, op, param, grad, cond):
+        grad.op = op
+        op_maker = core.op_proto_and_checker_maker
+        backward = op_maker.OpRole.Backward
+
+        # NOTE(wangxi). When distributed, we will insert grad_merge_all_reduce_op_handle
+        # in multi_devices_graph_pass, which will allreduce(grad) if cond is True, else
+        # do nothing.
+        # In this way, the gradient can be merged first, and then communicate when the
+        # condition is met, reducing the number of communications to increase the
+        # speed.
+        op._set_attr(self.GRAD_MERGE_COND_NAME, cond.name)
+        op._set_attr(op_maker.kOpRoleAttrName(), backward)
+        op._set_attr(op_maker.kOpRoleVarAttrName(), [param.name, grad.name])
+
+    def _get_gm_cond_var(self, main_block):
+        # Add const var
+        k_step_var = layers.create_global_var(
+            name="gradient_merge_k",
+            shape=[1],
+            value=int(self.k_steps),
+            dtype='int32',
+            persistable=True,
+            force_cpu=True)
+
+        zero_var = layers.create_global_var(
+            name="gradient_merge_zero",
+            shape=[1],
+            value=int(0),
+            dtype='int32',
+            persistable=True,
+            force_cpu=True)
+
+        # Add step var & cond var
+        step_var = layers.create_global_var(
+            name="gradient_merge_step",
+            shape=[1],
+            value=int(0),
+            dtype='int32',
+            persistable=True,
+            force_cpu=True)
+
+        cond_var = layers.create_global_var(
+            name="gradient_merge_cond",
+            shape=[1],
+            value=bool(0),
+            dtype='bool',
+            persistable=True,
+            force_cpu=True)
+
+        with device_guard("cpu"):
+            # step_var = (step_var + 1) % k_step
+            layers.increment(x=step_var, value=1.0, in_place=True)
+            main_block.append_op(
+                type='elementwise_mod',
+                inputs={'X': step_var,
+                        'Y': k_step_var},
+                outputs={'Out': step_var},
+                attrs={'axis': -1,
+                       'use_mkldnn': False})
+
+            # cond_var = (step_var == 0)
+            main_block.append_op(
+                type='equal',
+                inputs={'X': step_var,
+                        'Y': zero_var},
+                outputs={'Out': cond_var})
+
+        return cond_var
+
+    def apply_gradients(self, params_grads):
+        main_program = default_main_program()
+        startup_program = default_startup_program()
+        main_block = main_program.global_block()
+        startup_block = startup_program.global_block()
+
+        cond = self._get_gm_cond_var(main_block)
 
         #TODO(mapingshuo) support sparse embedding
-        for k, v in params_grads:
+        # step1: remove grad.op's op_role_var
+        for param, grad in params_grads:
             assert (
-                v.type != core.VarDesc.VarType.SELECTED_ROWS
+                param.type != core.VarDesc.VarType.SELECTED_ROWS
             ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
 
+            self._remove_op_role_var(param, grad)
+
         param_to_grad = {k.name: v for (k, v) in params_grads}
-
-        # Get startup_program and main_program
-        if startup_program is None:
-            startup_program = default_startup_program()
-        main_block = loss.block
-
-        # add some vars to the main_program and startup_program
-        startup_block = startup_program.global_block()
         param_names = param_to_grad.keys()
         param_to_gradient_merge = {}
 
-        for param_name in param_names:
+        new_params_grads = []
+        # step2: create gradient_merge var and init with 0
+        # and update op_role_var
+        for param, grad in params_grads:
+            param_name = param.name
             param_var = main_block.var(param_name)
             assert (param_var is not None)
             gradient_merge_var = main_block.create_var(
@@ -5087,6 +5639,7 @@ class GradientMergeOptimizer(object):
                 dtype=param_var.dtype,
                 persistable=True)
             param_to_gradient_merge[param_name] = gradient_merge_var
+
             startup_gradient_merge_var = startup_block.create_var(
                 name=param_name + "@GRAD@GradientMerge",
                 shape=param_var.shape,
@@ -5101,92 +5654,75 @@ class GradientMergeOptimizer(object):
                     "value": float(0),
                 })
 
-        with framework.program_guard(main_block.program, startup_program):
-            # Add Var k to main prog and startup prog
-            gradient_merge_k = layers.create_global_var(
-                name="gradient_merge_k",
-                shape=[1],
-                value=int(self.k_steps),
-                dtype='int32',
-                persistable=True)
+            # grad_merge += grad
+            new_grad_op = main_block.append_op(
+                type="elementwise_add",
+                inputs={'X': grad,
+                        'Y': gradient_merge_var},
+                outputs={'Out': gradient_merge_var},
+                attrs={'axis': -1,
+                       'use_mkldnn': False})
+            self._add_gm_op_role_var(new_grad_op, param, gradient_merge_var,
+                                     cond)
+            new_params_grads.append([param, gradient_merge_var])
 
-            # Add Var step
-            gradient_merge_step = layers.create_global_var(
-                name="gradient_merge_step",
-                shape=[1],
-                value=int(0),
-                dtype='int32',
-                persistable=True)
-            layers.increment(x=gradient_merge_step, value=1.0, in_place=True)
+        def true_apply_gradient():
+            cur_block_idx = main_program.current_block_idx
+            cur_block = main_program.current_block()
 
-            # gradient merge
-            zero_var = layers.fill_constant(
-                shape=[1], dtype='float32', value=0.0)
-            one_var = layers.fill_constant(
-                shape=[1], dtype='float32', value=1.0)
+            # cur_block's forward_block & backward_block is itself
+            cur_block._set_forward_block_idx(cur_block_idx)
 
-            mod = layers.elementwise_mod(gradient_merge_step, gradient_merge_k)
-            with layers.control_flow.Switch() as switch:
-                with switch.case(mod != zero_var):
-                    # 1. update the gradient_merge_vars
-                    #  gradient_merge_vars += gradient_vars
-                    cur_block = main_block.program.current_block()
-                    for param_name in param_names:
-                        grad = param_to_grad[param_name]
-                        grad_merge = param_to_gradient_merge[param_name]
-                        cur_block.append_op(
-                            type="elementwise_add",
-                            inputs={'X': grad,
-                                    'Y': grad_merge},
-                            outputs={'Out': grad_merge},
-                            attrs={'axis': -1,
-                                   'use_mkldnn': False})
+            if self.avg:
+                for param, new_grad in new_params_grads:
+                    # grad /= k_steps
+                    cur_block.append_op(
+                        type='scale',
+                        inputs={'X': new_grad},
+                        outputs={'Out': new_grad},
+                        attrs={
+                            'scale': 1.0 / self.k_steps,
+                            'bias': 0.0,
+                            'bias_after_scale': False
+                        })
 
-                with switch.default():
-                    # 1. update the graient_vars
-                    #     gradient_vars += gradient_merge_vars
-                    cur_block_idx = main_block.program.current_block_idx
-                    cur_block = main_block.program.current_block()
-                    for param_name in param_names:
-                        grad = param_to_grad[param_name]
-                        grad_merge = param_to_gradient_merge[param_name]
-                        if self.avg:
-                            tmp_var = layers.elementwise_add(grad, grad_merge)
-                            cur_block.append_op(
-                                type='scale',
-                                inputs={'X': tmp_var},
-                                outputs={'Out': grad},
-                                attrs={
-                                    'scale': 1.0 / self.k_steps,
-                                    'bias': 0.0,
-                                    'bias_after_scale': False
-                                })
-                        else:
-                            cur_block.append_op(
-                                type="elementwise_add",
-                                inputs={'X': grad,
-                                        'Y': grad_merge},
-                                outputs={'Out': grad},
-                                attrs={'axis': -1,
-                                       'use_mkldnn': False})
+            for param, new_grad in new_params_grads:
+                # NOTE. regularization will append ops to grad.block,
+                # while new_grad's real block is global_block,
+                # but we want append regularization ops to cur_block,
+                # so we set new_grad.block = cur_block
+                new_grad.block = cur_block
 
-                    # 2. apply_optimize
-                    target_grad_block = main_block.program._create_block(
-                        parent_idx=cur_block.parent_idx)
-                    target_grad_block._set_forward_block_idx(cur_block_idx)
-                    main_block.program.current_block_idx = cur_block_idx
+            self._optimize_ops = self.inner_optimizer.apply_gradients(
+                new_params_grads)
 
-                    optimize_ops = self.inner_optimizer.apply_optimize(
-                        loss,
-                        startup_program=startup_program,
-                        params_grads=params_grads)
+            # clear gradient_merge_vars
+            for param, new_grad in new_params_grads:
+                layers.fill_constant(
+                    shape=new_grad.shape,
+                    dtype=new_grad.dtype,
+                    value=0.0,
+                    out=new_grad)
 
-                    # 3. clear gradient_merge_vars
-                    for param_name in param_names:
-                        grad_merge = param_to_gradient_merge[param_name]
-                        layers.fill_constant(
-                            shape=grad_merge.shape,
-                            dtype=grad_merge.dtype,
-                            value=0.0,
-                            out=grad_merge)
+        # step3. apply gradient
+        layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)
+
+        return self._optimize_ops
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        assert isinstance(loss, Variable), "The loss should be an Variable."
+
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
         return optimize_ops, params_grads
