@@ -56,8 +56,6 @@ class AMPOptimizer(MetaOptimizerBase):
         # add is_distributed to optimize amp, overlap communication and
         # computation by split the check_finite_and_unscale op.
         is_distributed = self.role_maker._worker_num() > 1
-        if self.user_defined_strategy.sharding:
-            is_distributed = True
         self.wrapped_opt._set_distributed(is_distributed)
 
     def _can_apply(self):
