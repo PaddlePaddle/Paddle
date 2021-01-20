@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.test_fusion_lstm_op import TestFusionLSTMOp
 
+
 class TestFusionLSTMONEDNNOp(TestFusionLSTMOp):
     def set_conf(self):
         self.use_mkldnn = True

@@ -26,7 +26,7 @@ using paddle::platform::MKLDNNMemDesc;
 using platform::to_void_cast;
 
 template <typename T, typename T_alg, typename T_out = T>
-class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg>  {
+class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
  public:
   RNNMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                    const platform::MKLDNNDeviceContext& dev_ctx,
@@ -43,7 +43,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg>  {
         Ti(Ti),
         IC(IC),
         OC(OC),
-        G(G){
+        G(G) {
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
     memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(

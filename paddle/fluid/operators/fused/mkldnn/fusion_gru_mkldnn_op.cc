@@ -39,9 +39,8 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
                    const std::string& unique_name)
       : RNNMKLDNNHandler<T, dnnl::gru_forward, T_out>(
             ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, weight_h, h0,
-            is_reverse, N, Ti, IC, OC, 3, ctx.InputName("X") + ctx.InputName("WeightH")
-            ){
-
+            is_reverse, N, Ti, IC, OC, 3,
+            ctx.InputName("X") + ctx.InputName("WeightH")) {
     const bool is_INT8 = std::is_same<T, uint8_t>::value;
 
     if (!this->isCached()) {
@@ -84,8 +83,9 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
                      : dnnl::rnn_direction::unidirectional_left2right;
 
       this->AcquireForwardPrimitiveDescriptor(
-          this->attr_, dnnl::prop_kind::forward_inference, direction, input_md, h0_md,
-          weight_x_md, weight_h_md, bias_md, hidden_md, dnnl::memory::desc());
+          this->attr_, dnnl::prop_kind::forward_inference, direction, input_md,
+          h0_md, weight_x_md, weight_h_md, bias_md, hidden_md,
+          dnnl::memory::desc());
     }
   }
 
@@ -97,8 +97,8 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
 
     if (!memory_p) {
       auto user_md =
-          MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC}, MKLDNNGetDataType<float>(),
-                        MKLDNNMemoryFormat::ldigo);
+          MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
+                        MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_x_data =
@@ -135,8 +135,8 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
 
     if (!memory_p) {
       auto user_md =
-          MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC}, MKLDNNGetDataType<float>(),
-                        MKLDNNMemoryFormat::ldigo);
+          MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
+                        MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       // Reorder weights_h from PP format [OC, 2OC] + [OC, OC] to
@@ -150,7 +150,8 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
 
       for (int64_t c = 0; c < this->OC; ++c) {
         memcpy(weight_h_data, src1_iter, 2 * this->OC * sizeof(float));
-        memcpy(weight_h_data + 2 * this->OC, src2_iter, this->OC * sizeof(float));
+        memcpy(weight_h_data + 2 * this->OC, src2_iter,
+               this->OC * sizeof(float));
 
         src1_iter += 2 * this->OC;
         src2_iter += this->OC;
@@ -210,7 +211,6 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
     return memory_p;
   }
 };
-
 
 template <typename T>
 class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
