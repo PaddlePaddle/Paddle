@@ -71,6 +71,7 @@ bool AllowTF32Cublas();
 void SetAllowTF32Cudnn(bool active);
 /*Get the global variable allow_tf32_cudnn value*/
 bool AllowTF32Cudnn();
+#endif  // PADDLE_WITH_CUDA
 
 enum DeviceType {
   CPU = 0,
@@ -81,8 +82,6 @@ enum DeviceType {
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
-
-#endif  // PADDLE_WITH_CUDA
 
 class DeviceContext {
  public:
