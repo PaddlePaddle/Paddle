@@ -1987,6 +1987,13 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("size_of_dtype", framework::SizeOfType);
 
+#ifdef PADDLE_WITH_CUDA
+  m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
+  m.def("get_cublas_switch", platform::AllowTF32Cublas);
+  m.def("set_cudnn_switch", platform::SetAllowTF32Cudnn);
+  m.def("get_cudnn_switch", platform::AllowTF32Cudnn);
+#endif  // PADDLE_WITH_CUDA
+
   using VarQuantScale =
       std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
 
