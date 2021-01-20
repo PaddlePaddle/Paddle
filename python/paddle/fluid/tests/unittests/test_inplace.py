@@ -312,6 +312,50 @@ class TestDygraphInplaceLeakyRelu(TestDygraphInplace):
         return paddle.nn.functional.leaky_relu_(var)
 
 
+class TestDygraphInplaceSoftmaxWithCrossEntropyForward(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.rand(64, 100)
+        label_numpy = np.random.rand(64, 1).astype("int64")
+        self.label_var = paddle.to_tensor(label_numpy)
+        self.dtype = "float32"
+
+    def non_inplace_api_processing(self, var):
+        return paddle.nn.functional.softmax_with_cross_entropy(
+            var, self.label_var, return_softmax=True)[1]
+
+    def inplace_api_processing(self, var):
+        return paddle.nn.functional.softmax_with_cross_entropy_(
+            var, self.label_var, return_softmax=True)[1]
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
+
+
+class TestDygraphInplaceSoftmaxWithCrossEntropyBackward(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.rand(64, 100)
+        label_numpy = np.random.rand(64, 1).astype("int64")
+        self.label_var = paddle.to_tensor(label_numpy)
+        self.dtype = "float32"
+
+    def non_inplace_api_processing(self, var):
+        return paddle.nn.functional.softmax_with_cross_entropy(
+            var, self.label_var, return_softmax=False)
+
+    def inplace_api_processing(self, var):
+        return paddle.nn.functional.softmax_with_cross_entropy_(
+            var, self.label_var, return_softmax=False)
+
+    def test_inplace_api(self):
+        pass
+
+    def test_forward_version(self):
+        pass
+
+
 class TestDygraphInplaceTanh(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         return paddle.tanh(var)

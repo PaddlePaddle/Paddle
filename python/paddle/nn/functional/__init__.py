@@ -149,6 +149,7 @@ from .loss import sigmoid_focal_loss  #DEFINE_ALIAS
 # from .loss import smooth_l1  #DEFINE_ALIAS
 from .loss import smooth_l1_loss  #DEFINE_ALIAS
 from .loss import softmax_with_cross_entropy  #DEFINE_ALIAS
+from .loss import softmax_with_cross_entropy_  #DEFINE_ALIAS
 from .loss import square_error_cost  #DEFINE_ALIAS
 # from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 from .loss import ctc_loss  #DEFINE_ALIAS
