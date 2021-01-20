@@ -288,6 +288,30 @@ class TestDygraphInplaceSoftmax(TestDygraphInplace):
         return paddle.nn.functional.softmax_(var)
 
 
+class TestDygraphInplaceRelu6(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.nn.functional.relu6(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.nn.functional.relu6_(var)
+
+
+class TestDygraphInplaceHardsigmoid(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.nn.functional.hardsigmoid(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.nn.functional.hardsigmoid_(var)
+
+
+class TestDygraphInplaceLeakyRelu(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.nn.functional.leaky_relu(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.nn.functional.leaky_relu_(var)
+
+
 class TestDygraphInplaceTanh(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         return paddle.tanh(var)

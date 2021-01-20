@@ -51,6 +51,18 @@
             "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
         },
         {
+            "name":"relu6_",
+            "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
+        },
+        {
+            "name":"hardsigmoid_",
+            "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
+        },
+        {
+            "name":"leaky_relu_",
+            "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
+        },
+        {
             "name":"tanh_",
             "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
         }
