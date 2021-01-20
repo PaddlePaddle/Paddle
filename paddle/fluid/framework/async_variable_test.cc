@@ -46,7 +46,7 @@ TEST(AsyncVariableTest, ThreadJoinEmplace) {
   AsyncVariable async_variable;
   std::thread check_thread =
       std::thread(emplace_async_variable, &async_variable);
-  check_thread.join();
+  check_thread.detach();
   float value = async_variable.Get<float>();
   EXPECT_EQ(value, 57.0f);
 }

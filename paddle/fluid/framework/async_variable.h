@@ -43,6 +43,12 @@ class AsyncVariable {
       std::unique_lock<std::mutex> lock(mutex_);
       cv_.wait(lock, [this] { return state_ == EnumState::kAvailable; });
     }
+    PADDLE_ENFORCE_EQ(
+        holder_->Type(), VarTypeTrait<T>::kId,
+        platform::errors::InvalidArgument("The AsyncVariable::Get type must be "
+                                          "%s, but the type it holds is %s.",
+                                          ToTypeName(VarTypeTrait<T>::kId),
+                                          ToTypeName(holder_->Type())));
     return *static_cast<const T*>(holder_->Ptr());
   }
 
@@ -75,12 +81,26 @@ class AsyncVariable {
       holder_.reset(new PlaceholderImpl<T>(arg));
     }
     cv_.notify_all();
-    return;
   }
 
   template <typename WaiterT>
   void AndThen(WaiterT&& waiter) {
     // TODO(zhhsplendid): Implement it.
+  }
+
+  void Clear() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    state_ = EnumState::kNotAvailable;
+    holder_.reset();
+  }
+
+  int Type() const {
+    if (state_ != EnumState::kAvailable) {
+      std::unique_lock<std::mutex> lock(mutex_);
+      cv_.wait(lock, [this] { return state_ == EnumState::kAvailable; });
+      return holder_->Type();
+    }
+    return holder_->Type();
   }
 
   ~AsyncVariable();

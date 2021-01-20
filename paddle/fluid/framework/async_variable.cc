@@ -21,10 +21,7 @@ namespace framework {
 AsyncVariable::AsyncVariable()
     : holder_(nullptr), state_(EnumState::kNotAvailable) {}
 
-AsyncVariable::~AsyncVariable() {
-  // TODO(zhhsplendid): consider memory optimization that delete/clear
-  // void* holder_. We can add type id to do that
-}
+AsyncVariable::~AsyncVariable() { Clear(); }
 
 }  // namespace framework
 }  // namespace paddle
