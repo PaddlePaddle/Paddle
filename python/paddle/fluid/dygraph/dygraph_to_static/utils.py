@@ -30,6 +30,12 @@ import numpy as np
 from paddle.fluid import unique_name
 from paddle.fluid.data_feeder import convert_dtype
 
+# Note(Aurelius): Do not forget the dot `.` to distinguish other
+# module such as paddlenlp.
+PADDLE_MODULE_PREFIX = 'paddle.'
+DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
+DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.fluid.dygraph.dygraph_to_static'
+
 
 class BaseNodeVisitor(gast.NodeVisitor):
     """
@@ -191,16 +197,21 @@ def is_api_in_module(node, module_prefix):
 def is_dygraph_api(node):
 
     # Note: A api in module dygraph_to_static is not a real dygraph api.
-    if is_api_in_module(node, "paddle.fluid.dygraph.dygraph_to_static"):
+    if is_api_in_module(node, DYGRAPH_TO_STATIC_MODULE_PREFIX):
         return False
 
     # TODO(liym27): A better way to determine whether it is a dygraph api.
     #  Consider the decorator @dygraph_only
-    return is_api_in_module(node, "paddle.fluid.dygraph")
+    return is_api_in_module(node, DYGRAPH_MODULE_PREFIX)
 
 
 def is_paddle_api(node):
-    return is_api_in_module(node, "paddle")
+    return is_api_in_module(node, PADDLE_MODULE_PREFIX)
+
+
+def is_paddle_func(func):
+    m = inspect.getmodule(func)
+    return m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
 
 
 # Is numpy_api cannot reuse is_api_in_module because of numpy module problem
@@ -1235,7 +1246,7 @@ def input_specs_compatible(src_input_specs, desired_input_specs):
     len_specs = len(src_input_specs)
     if len_specs != len(desired_input_specs):
         # NOTE(chenweihang): if the input_spec of jit.save is a subset of
-        # input_spec of to_static, also compatible 
+        # input_spec of to_static, also compatible
         for spec in src_input_specs:
             if spec not in desired_input_specs:
                 return False
