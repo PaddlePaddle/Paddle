@@ -54,6 +54,13 @@ class Variable {
     return holder_->Type();
   }
 
+  void NotifyAvailable() const {
+    if (holder_ == nullptr) {
+      VLOG(8) << "Warning: Calling NotifyAvailable on null AsyncVariable";
+    }
+    holder_->NotifyAvailable();
+  }
+
  private:
   // This method hides type T, so it doesn't appear as a template parameter of
   // Variable.

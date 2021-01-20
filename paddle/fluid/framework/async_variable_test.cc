@@ -42,7 +42,7 @@ void emplace_async_variable(AsyncVariable* async_variable) {
   async_variable->Emplace<float>(std::forward<float>(57.0f));
 }
 
-TEST(AsyncVariableTest, ThreadJoinEmplace) {
+TEST(AsyncVariableTest, ThreadDetachEmplace) {
   AsyncVariable async_variable;
   std::thread check_thread =
       std::thread(emplace_async_variable, &async_variable);

@@ -65,8 +65,13 @@ class AsyncVariable {
               "The Variable type must be %s, but the type it holds is %s.",
               ToTypeName(VarTypeTrait<T>::kId), ToTypeName(holder_->Type())));
     }
-    cv_.notify_all();
     return static_cast<T*>(holder_->Ptr());
+  }
+
+  void NotifyAvailable() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    state_ = AsyncState::kAvailable;
+    cv_.notify_all();
   }
 
   template <typename T>
