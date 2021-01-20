@@ -58,7 +58,7 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
     dynload::nvtxRangePushA(name.c_str());
-    is_pushed = true;
+    is_pushed_ = true;
   }
 #endif
 #endif
@@ -78,7 +78,7 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
 RecordEvent::~RecordEvent() {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
-  if (g_enable_nvprof_hook && is_pushed) {
+  if (g_enable_nvprof_hook && is_pushed_) {
     dynload::nvtxRangePop();
   }
 #endif

@@ -131,7 +131,7 @@ struct RecordEvent {
   ~RecordEvent();
 
   bool is_enabled_{false};
-  bool is_pushed{false};
+  bool is_pushed_{false};
   uint64_t start_ns_;
   // Event name
   std::string name_;
