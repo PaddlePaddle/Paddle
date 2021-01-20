@@ -30,8 +30,8 @@ export TRAINER_PORTS_NUM=2
 distributed_args="--ips=${cluster_node_ips} --ascend_npus=0,1 --log_dir=testlog"
 python -m paddle.distributed.fleet.launch ${distributed_args} ascend_multi_process_collective.py fleetlaunchascend
 
-str1="selected_acclerators:0 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790,127.0.0.2:35789,127.0.0.2:35790 trainers_num:4 current_endpoint:127.0.0.1:35789 trainer_id:0"
-str2="selected_acclerators:1 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790,127.0.0.2:35789,127.0.0.2:35790 trainers_num:4 current_endpoint:127.0.0.1:35790 trainer_id:1"
+str1="selected_accelerators:0 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790,127.0.0.2:35789,127.0.0.2:35790 trainers_num:4 current_endpoint:127.0.0.1:35789 trainer_id:0"
+str2="selected_accelerators:1 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790,127.0.0.2:35789,127.0.0.2:35790 trainers_num:4 current_endpoint:127.0.0.1:35790 trainer_id:1"
 file_0="multi_process_fleetlaunchascend.check_0.log"
 file_1="multi_process_fleetlaunchascend.check_1.log"
 
