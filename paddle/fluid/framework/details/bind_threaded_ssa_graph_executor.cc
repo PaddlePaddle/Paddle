@@ -101,7 +101,6 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();
 
-  std::unique_lock<std::mutex> lock(mutex_);
   error_state = 0;
   paddle::framework::FetchResultType fetches;
   if (return_merged) {
@@ -123,7 +122,7 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
   for (auto cur_op : ready_fetch_ops) {
     ready_ops->Push(cur_op);
   }
-
+  // Atomic variable, no need to lock
   exec_op_count_ = 0;
 
   platform::XPUPlace cur_place;
@@ -148,8 +147,10 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
       RunOpAsyncMainStream(cur_op, op_deps.get(), ready_ops, cur_index);
     }
   }
-
-  cv_.wait(lock, [&] { return exec_op_count_ >= op_deps_.size(); });
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [&] { return exec_op_count_ >= op_deps_.size(); });
+  }
   if (exception_.IsCaught()) {
     ExecutionFinal(&fetch_ops);
   }
@@ -254,6 +255,7 @@ void BindThreadedSSAGraphExecutor::RunMultiDeviceOpAsync(
       ready_ops->Push(nullptr);
       exception_.Catch(std::current_exception());
     }
+    // Atomic variable, no need to lock
     exec_op_count_++;
     cv_.notify_all();
   });
@@ -284,6 +286,7 @@ void BindThreadedSSAGraphExecutor::RunOpAsyncMainStream(
       ready_ops->Push(nullptr);
       exception_.Catch(std::current_exception());
     }
+    // Atomic variable, no need to lock
     exec_op_count_++;
     cv_.notify_all();
   });
