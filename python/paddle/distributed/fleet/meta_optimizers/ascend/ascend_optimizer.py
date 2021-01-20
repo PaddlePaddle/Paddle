@@ -16,7 +16,7 @@ import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Optimizer
 import paddle.fluid.core as core
 import numpy as np
-import ascend_parser
+from . import ascend_parser
 
 
 class AscendIRParser(object):
@@ -149,16 +149,22 @@ class AscendOptimizer(Optimizer):
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None):
+                 no_grad_set=None,
+                 auto_dp=False):
         minimized = self.inner_opt.minimize(
             loss, startup_program=startup_program)
-        print(startup_program)
-        print(main_block.program)
 
         self.ascend_instance = core.AscendInstance()
 
-        # Config about Graph Engine can be found in https://support.huaweicloud.com/
         from paddle.distributed import fleet
+        if auto_dp and fleet.worker_num() > 1:
+            from paddle.distributed.fleet.meta_optimizers.ascend import ascend_transpiler
+            t = ascend_transpiler.AscendTranspiler(startup_program, loss.block.program)
+            t.transpile()
+        print(startup_program)
+        print(main_block.program)
+
+        # Config about Graph Engine can be found in https://support.huaweicloud.com/
         config = {
             "ge.exec.deviceId": str(fleet.worker_index()),
             "ge.graphRunMode": "1",

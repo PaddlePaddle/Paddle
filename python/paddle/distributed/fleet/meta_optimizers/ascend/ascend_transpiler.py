@@ -16,7 +16,6 @@ import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Optimizer
 import paddle.fluid.core as core
 import numpy as np
-import ascend_parser
 
 
 class AscendTranspiler(object):
