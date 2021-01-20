@@ -270,6 +270,30 @@ list(REMOVE_ITEM TEST_OPS
 LIST(REMOVE_ITEM TEST_OPS test_auto_pruning)
 LIST(REMOVE_ITEM TEST_OPS test_filter_pruning)
 
+# only tests on singal GPU environment
+LIST(REMOVE_ITEM TEST_OPS test_imperative_qat_addquantdequant)
+
+py_test_modules(test_imperative_qat_addquantdequant MODULES test_imperative_qat_addquantdequant ENVS
+	CUDA_VISIBLE_DEVICES=0)
+	
+# fix
+if(WIN32)
+    SET(SINGLE_CARD_TEST_OPS
+        test_user_defined_quantization
+        test_quantization_scale_pass
+        test_quantization_pass
+        test_moving_average_abs_max_scale_op
+        test_imperative_qat_channelwise
+        test_imperative_qat
+        test_imperative_out_scale
+        test_graph)
+    LIST(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
+    foreach(src ${SINGLE_CARD_TEST_OPS})
+        py_test(${src} SRCS ${src}.py ENVS CUDA_VISIBLE_DEVICES=0)
+    endforeach()
+endif()
+
+
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
@@ -288,6 +312,7 @@ set_tests_properties(test_quantization_pass PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_qat_channelwise PROPERTIES TIMEOUT 120)
 set_tests_properties(test_user_defined_quantization PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_qat_addquantdequant PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 120)
 if(LINUX AND WITH_MKLDNN)
     set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT 120)
