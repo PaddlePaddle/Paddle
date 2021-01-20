@@ -133,6 +133,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward,
                      const std::map<std::string, std::string>& inplace_map) {
+  platform::RecordEvent op_type_record_event(type);
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for

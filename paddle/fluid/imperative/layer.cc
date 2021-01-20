@@ -206,6 +206,7 @@ void VarBase::ClearGradient() {
         grad_t->mutable_value()->clear();
       }
     } else {
+      platform::RecordEvent record_event("ClearGradient");
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {
