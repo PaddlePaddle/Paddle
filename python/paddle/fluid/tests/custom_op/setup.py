@@ -11,16 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 from setuptools import setup
 from cpp_extension import CppExtension, BuildExtension
+from setuptools import Extension
+
+file_dir = os.path.dirname(os.path.abspath(__file__))
 
 setup(
     name='relu_op_shared',
     ext_modules=[
         CppExtension(
-            name='relu_op_shared',
+            name='librelu2_op',
             sources=['relu_op.cc'],
-            extra_compile_tag=['-g'])
+            extra_compile_tag=['-g'],
+            extra_link_args=['-lpaddle_framework'],
+            no_python_abi_suffix=True,
+            output_dir=file_dir)
     ],
-    cmdclass={'build_ext': BuildExtension})
+    cmdclass={
+        'build_ext': BuildExtension.with_options(no_python_abi_suffix=True)
+    })
