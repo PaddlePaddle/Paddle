@@ -36,14 +36,17 @@ from .activation import gelu  #DEFINE_ALIAS
 from .activation import hardshrink  #DEFINE_ALIAS
 from .activation import hardtanh  #DEFINE_ALIAS
 from .activation import hardsigmoid  #DEFINE_ALIAS
+from .activation import hardsigmoid_  #DEFINE_ALIAS
 from .activation import hardswish  #DEFINE_ALIAS
 from .activation import leaky_relu  #DEFINE_ALIAS
+from .activation import leaky_relu_  #DEFINE_ALIAS
 from .activation import log_sigmoid  #DEFINE_ALIAS
 from .activation import maxout  #DEFINE_ALIAS
 from .activation import prelu  #DEFINE_ALIAS
 from .activation import relu  #DEFINE_ALIAS
 from .activation import relu_  #DEFINE_ALIAS
 from .activation import relu6  #DEFINE_ALIAS
+from .activation import relu6_  #DEFINE_ALIAS
 from .activation import selu  #DEFINE_ALIAS
 from .activation import sigmoid  #DEFINE_ALIAS
 # from .activation import soft_relu  #DEFINE_ALIAS
