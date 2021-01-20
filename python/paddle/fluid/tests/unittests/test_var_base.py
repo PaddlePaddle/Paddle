@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import six
+import copy
 
 import paddle
 import paddle.fluid as fluid
@@ -148,9 +149,30 @@ class TestVarBase(unittest.TestCase):
                     paddle.to_tensor([[1], [2, 3]], place=1)
 
         _test_place(core.CPUPlace())
+        _test_place("cpu")
         if core.is_compiled_with_cuda():
             _test_place(core.CUDAPinnedPlace())
+            _test_place("gpu_pinned")
             _test_place(core.CUDAPlace(0))
+            _test_place("gpu:0")
+
+    def test_to_tensor_change_place(self):
+        if core.is_compiled_with_cuda():
+            a_np = np.random.rand(1024, 1024)
+            with paddle.fluid.dygraph.guard(core.CPUPlace()):
+                a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
+                a = paddle.to_tensor(a)
+                self.assertEqual(a.place.__repr__(), "CPUPlace")
+
+            with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
+                a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
+                a = paddle.to_tensor(a)
+                self.assertEqual(a.place.__repr__(), "CUDAPlace(0)")
+
+            with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
+                a = paddle.to_tensor(a_np, place=paddle.CPUPlace())
+                a = paddle.to_tensor(a, place=paddle.CUDAPinnedPlace())
+                self.assertEqual(a.place.__repr__(), "CUDAPinnedPlace")
 
     def test_to_variable(self):
         with fluid.dygraph.guard():
@@ -264,6 +286,68 @@ class TestVarBase(unittest.TestCase):
             var.stop_gradient = False
             self.assertEqual(var.stop_gradient, False)
 
+    def test_deep_copy(self):
+        with fluid.dygraph.guard():
+            empty_var = core.VarBase()
+            empty_var_copy = copy.deepcopy(empty_var)
+            self.assertEqual(empty_var.stop_gradient,
+                             empty_var_copy.stop_gradient)
+            self.assertEqual(empty_var.persistable, empty_var_copy.persistable)
+            self.assertEqual(empty_var.type, empty_var_copy.type)
+            self.assertEqual(empty_var.dtype, empty_var_copy.dtype)
+
+            x = paddle.to_tensor([2.], stop_gradient=False)
+            y = paddle.to_tensor([3.], stop_gradient=False)
+            z = x * y
+            memo = {}
+            x_copy = copy.deepcopy(x, memo)
+            y_copy = copy.deepcopy(y, memo)
+
+            self.assertEqual(x_copy.stop_gradient, y_copy.stop_gradient)
+            self.assertEqual(x_copy.persistable, y_copy.persistable)
+            self.assertEqual(x_copy.type, y_copy.type)
+            self.assertEqual(x_copy.dtype, y_copy.dtype)
+            self.assertTrue(np.array_equal(x.numpy(), x_copy.numpy()))
+            self.assertTrue(np.array_equal(y.numpy(), y_copy.numpy()))
+
+            self.assertNotEqual(id(x), id(x_copy))
+            x_copy[:] = 5.
+            self.assertTrue(np.array_equal(x_copy.numpy(), [5.]))
+            self.assertTrue(np.array_equal(x.numpy(), [2.]))
+
+            with self.assertRaises(RuntimeError):
+                copy.deepcopy(z)
+
+            x_copy2 = copy.deepcopy(x, memo)
+            y_copy2 = copy.deepcopy(y, memo)
+            self.assertEqual(id(x_copy), id(x_copy2))
+            self.assertEqual(id(y_copy), id(y_copy2))
+
+            # test copy selected rows
+            x = core.VarBase(core.VarDesc.VarType.FP32, [3, 100],
+                             "selected_rows",
+                             core.VarDesc.VarType.SELECTED_ROWS, True)
+            selected_rows = x.value().get_selected_rows()
+            selected_rows.get_tensor().set(
+                np.random.rand(3, 100), core.CPUPlace())
+            selected_rows.set_height(10)
+            selected_rows.set_rows([3, 5, 7])
+            x_copy = copy.deepcopy(x)
+
+            self.assertEqual(x_copy.stop_gradient, x.stop_gradient)
+            self.assertEqual(x_copy.persistable, x.persistable)
+            self.assertEqual(x_copy.type, x.type)
+            self.assertEqual(x_copy.dtype, x.dtype)
+
+            copy_selected_rows = x_copy.value().get_selected_rows()
+            self.assertEqual(copy_selected_rows.height(),
+                             selected_rows.height())
+            self.assertEqual(copy_selected_rows.rows(), selected_rows.rows())
+            self.assertTrue(
+                np.array_equal(
+                    np.array(copy_selected_rows.get_tensor()),
+                    np.array(selected_rows.get_tensor())))
+
     # test some patched methods
     def test_set_value(self):
         with fluid.dygraph.guard():
@@ -350,10 +434,11 @@ class TestVarBase(unittest.TestCase):
         var13 = var[2:10, 2:, -2:-1]
         var14 = var[1:-1, 0:2, ::-1]
         var15 = var[::-1, ::-1, ::-1]
+        var16 = var[-4:4]
 
         vars = [
             var, var1, var2, var3, var4, var5, var6, var7, var8, var9, var10,
-            var11, var12, var13, var14, var15
+            var11, var12, var13, var14, var15, var16
         ]
         local_out = [var.numpy() for var in vars]
 
@@ -381,6 +466,7 @@ class TestVarBase(unittest.TestCase):
             np.array_equal(local_out[14], tensor_array[1:-1, 0:2, ::-1]))
         self.assertTrue(
             np.array_equal(local_out[15], tensor_array[::-1, ::-1, ::-1]))
+        self.assertTrue(np.array_equal(local_out[16], tensor_array[-4:4]))
 
     def _test_for_var(self):
         np_value = np.random.random((30, 100, 100)).astype('float32')
@@ -400,6 +486,9 @@ class TestVarBase(unittest.TestCase):
 
             with self.assertRaises(IndexError):
                 y = var[self.shape[0]]
+
+            with self.assertRaises(IndexError):
+                y = var[0 - self.shape[0] - 1]
 
     def test_var_base_to_np(self):
         with fluid.dygraph.guard():

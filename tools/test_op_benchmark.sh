@@ -27,8 +27,22 @@ declare -A CHANGE_OP_MAP
 # ops that benchmark repo has
 declare -A BENCHMARK_OP_MAP
 
+# searched header files
+declare -A INCLUDE_SEARCH_MAP
+
 function LOG {
   echo "[$0:${BASH_LINENO[0]}] $*" >&2
+}
+
+# Limit cu file directory
+function match_cu_file_directory {
+  local sub_dir cu_file_dir
+  cu_file_dir=$(dirname ${1})
+  for sub_dir in "" "/elementwise" "/reduce_ops"
+  do
+    [ "${cu_file_dir}" == "paddle/fluid/operators${sub_dir}" ] && return 0
+  done
+  return 1
 }
 
 # Load op files by header file
@@ -38,11 +52,15 @@ function load_CHANGE_OP_FILES_by_header_file {
   do
     if [[ "$change_file" =~ "_op.cu" ]]
     then
+      # match cu file directory limit
+      match_cu_file_directory $change_file || continue
       LOG "[INFO] Found \"${1}\" include by \"${change_file}\"."
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
     elif [[ "$change_file" =~ ".h" ]]
     then
+      [ -n "${INCLUDE_SEARCH_MAP[$change_file]}" ] && continue
       LOG "[INFO] Found \"${1}\" include by \"${change_file}\", keep searching."
+      INCLUDE_SEARCH_MAP[$change_file]="searched"
       load_CHANGE_OP_FILES_by_header_file $change_file
     fi
   done
@@ -50,7 +68,8 @@ function load_CHANGE_OP_FILES_by_header_file {
 
 # Load op files that PR changes
 function load_CHANGE_OP_FILES {
-  local change_file
+  local sub_dir change_file
+  # TODO(Avin0323): Need to filter the files added by the new OP.
   for change_file in $(git diff --name-only origin/develop)
   do
     # match directory limit
@@ -58,11 +77,14 @@ function load_CHANGE_OP_FILES {
     # match file name limit
     if [[ "$change_file" =~ "_op.cu" ]]
     then
+      # match cu file directory limit
+      match_cu_file_directory $change_file || continue
       LOG "[INFO] Found \"${change_file}\" changed."
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
     elif [[ "$change_file" =~ ".h" ]]
     then
       LOG "[INFO] Found \"${change_file}\" changed, keep searching."
+      INCLUDE_SEARCH_MAP[${change_file}]="searched"
       load_CHANGE_OP_FILES_by_header_file $change_file
     fi
   done
@@ -97,9 +119,12 @@ function load_CHANGE_OP_MAP {
         CHANGE_OP_MAP[${op_name}]="$change_file"
       done
     else
-      change_file_name=${change_file_name##*/}
-      LOG "[INFO] Load op: \"${change_file_name%_op*}\"."
-      CHANGE_OP_MAP[${change_file_name%_op*}]="$change_file"
+      op_name=${change_file_name##*/}
+      op_name=${op_name%_cudnn_op*}
+      op_name=${op_name%_op*}
+      [ -n "${SKIP_OP_MAP[$op_name]}" ] && continue
+      LOG "[INFO] Load op: \"${op_name}\"."
+      CHANGE_OP_MAP[${op_name}]="$change_file"
     fi
   done
 }
@@ -160,6 +185,8 @@ function run_op_benchmark_test {
   do
     echo "$api_info" >> $api_info_file
   done
+  # install tensorflow for testing accuary
+  pip install tensorflow==2.3.0 tensorflow-probability
   for branch_name in "develop" "test_pr"
   do
     git checkout $branch_name
@@ -174,11 +201,47 @@ function run_op_benchmark_test {
                                 $logs_dir \
                                 $VISIBLE_DEVICES \
                                 "gpu" \
-                                "speed" \
+                                "both" \
                                 $api_info_file \
                                 "paddle"
     popd > /dev/null
   done
+}
+
+# check benchmark result
+function check_op_benchmark_result {
+  local logs_dir api_info_file check_status_code
+  # default 3 times
+  [ -z "${RETRY_TIMES}" ] && RETRY_TIMES=3
+  logs_dir=$(pwd)/logs-test_pr
+  api_info_file=$(pwd)/api_info.txt
+  for retry_time in $(seq 0 ${RETRY_TIMES})
+  do
+    if [ $retry_time -gt 0 ]; then
+      # run op benchmark speed test
+      # there is no need to recompile and install paddle
+      LOG "[INFO] retry ${retry_time} times ..."
+      pushd benchmark/api > /dev/null
+      bash deploy/main_control.sh tests_v2 \
+                                  tests_v2/configs \
+                                  ${logs_dir} \
+                                  $VISIBLE_DEVICES \
+                                  "gpu" \
+                                  "speed" \
+                                  ${api_info_file} \
+                                  "paddle"
+      popd > /dev/null
+    fi
+    # check current result and update the file to benchmark test
+    python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
+        --develop_logs_dir $(pwd)/logs-develop \
+        --pr_logs_dir $(pwd)/logs-test_pr \
+        --api_info_file ${api_info_file}
+    check_status_code=$?
+    # TODO(Avin0323): retry only if the performance check fails
+    [ $check_status_code -eq 0 ] && break
+  done
+  return $check_status_code
 }
 
 # diff benchmakr result and miss op
@@ -187,9 +250,7 @@ function summary_problems {
   exit_code=0
   if [ ${#BENCHMARK_OP_MAP[*]} -ne 0 ]
   then
-    python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
-        --develop_logs_dir $(pwd)/logs-develop \
-        --pr_logs_dir $(pwd)/logs-test_pr
+    check_op_benchmark_result
     exit_code=$?
   fi
   for op_name in ${!CHANGE_OP_MAP[@]}
@@ -197,10 +258,14 @@ function summary_problems {
     if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
     then
       exit_code=8
-      LOG "[WARNING] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
+      LOG "[ERROR] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
     fi
   done
-  [ $exit_code -ne 0 ] && exit $exit_code
+  if [ $exit_code -ne 0 ]; then
+    LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
+    LOG "[INFO] Or you can apply for one RD (GaoWei8(Recommend), Xreki, luotao1) approval to pass this PR."
+    exit $exit_code
+  fi
 }
 
 function main {

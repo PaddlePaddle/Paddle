@@ -155,6 +155,30 @@ class TestDataParallelGroup(unittest.TestCase):
             var_list, [True, False, False, False, False, True], [200, 400])
         self.assertEqual([[0], [1], [2], [3], [4], [5]], res)
 
+    def test_construct_group8(self):
+        # one dtype & one limit capability & have tensor_indices
+        var_list = []
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
+        var_list.append(
+            self.create_varbase(core.VarDesc.VarType.FP32, [2, 100]))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 50]))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
+        res = core.assign_group_by_size(var_list, [False, False, False, False],
+                                        [400], [3, 0, 1, 2])
+        self.assertEqual([[3, 0], [1], [2]], res)
+
+    def test_construct_group9(self):
+        # one dtype & one limit capability & have tensor_indices
+        var_list = []
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
+        var_list.append(
+            self.create_varbase(core.VarDesc.VarType.FP32, [2, 1000]))
+        res = core.assign_group_by_size(var_list, [False, False, False, True],
+                                        [300], [1, 0, 2, 3])
+        self.assertEqual([[1, 0], [3], [2]], res)
+
 
 if __name__ == '__main__':
     unittest.main()

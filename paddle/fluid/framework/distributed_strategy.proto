@@ -22,10 +22,16 @@ enum Mode {
   HETER = 4; // support XPU and GPU computing server
 }
 
-message RecomputeConfig { repeated string checkpoints = 1; }
+message RecomputeConfig {
+  repeated string checkpoints = 1;
+  optional bool enable_offload = 2 [ default = false ];
+  repeated int32 checkpoint_shape = 3;
+}
 
 message ShardingConfig {
   optional float fuse_broadcast_MB = 1 [ default = 32.0 ];
+  optional bool hybrid_dp = 2 [ default = false ];
+  optional int32 sharding_group_size = 3 [ default = 8 ];
 }
 
 message AMPConfig {
@@ -83,6 +89,9 @@ message BuildStrategy {
   optional bool enable_inplace = 7 [ default = false ];
   optional bool enable_backward_optimizer_op_deps = 8 [ default = true ];
   optional bool cache_runtime_context = 9 [ default = false ];
+  optional bool fuse_bn_add_act_ops = 10 [ default = true ];
+  optional bool enable_auto_fusion = 11 [ default = false ];
+  optional bool enable_addto = 12 [ default = false ];
 }
 
 message ExecutionStrategy {
@@ -103,6 +112,7 @@ message AsyncConfig {
   optional bool runtime_split_send_recv = 8 [ default = false ];
   optional bool launch_barrier = 9 [ default = true ];
   optional string heter_worker_device_guard = 10 [ default = 'cpu' ];
+  optional int32 lr_decay_steps = 11 [ default = 10 ];
 }
 
 message PipelineConfig { optional int32 micro_batch = 1 [ default = 1 ]; }

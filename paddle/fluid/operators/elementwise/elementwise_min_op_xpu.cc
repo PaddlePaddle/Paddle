@@ -29,9 +29,10 @@ class ElementwiseMinXPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class ElementwiseMinGradXPUKernel : public framework::OpKernel<T> {
+class ElementwiseMinGradXPUKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
     XPUElementwiseGrad<T>(ctx, xpu::min_grad<T>, true);
   }
 };

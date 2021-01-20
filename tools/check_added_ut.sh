@@ -14,16 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set +e
+set -x
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+export CI_SKIP_CPP_TEST=OFF
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 CURDIR=`pwd`
 cd $PADDLE_ROOT
 cp $PADDLE_ROOT/paddle/scripts/paddle_build.sh $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
 CURBRANCH=`git rev-parse --abbrev-ref HEAD`
+echo $CURBRANCH
 git checkout -b prec_added_ut upstream/${BRANCH}
 mkdir prec_build
 cd prec_build
@@ -31,12 +34,15 @@ bash $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh cmake_gen_in_current_dir >p
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > /$PADDLE_ROOT/br-ut
 cd $PADDLE_ROOT/build
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > /$PADDLE_ROOT/pr-ut
-cd /$PADDLE_ROOT
-grep -F -x -v -f br-ut pr-ut > /$PADDLE_ROOT/added_ut
+cd $PADDLE_ROOT
+grep -F -x -v -f br-ut pr-ut > $PADDLE_ROOT/added_ut
+sort pr-ut |uniq -d > $PADDLE_ROOT/duplicate_ut
 echo "New-UT:"
-cat /$PADDLE_ROOT/added_ut
+cat $PADDLE_ROOT/added_ut
 rm -rf prec_build
-rm /$PADDLE_ROOT/br-ut /$PADDLE_ROOT/pr-ut $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
+rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
 git checkout $CURBRANCH
+echo $CURBRANCH
 git branch -D prec_added_ut
 cd $CURDIR
+export CI_SKIP_CPP_TEST=

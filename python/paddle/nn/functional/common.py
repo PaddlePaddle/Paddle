@@ -23,7 +23,6 @@ from ...fluid import dygraph_utils
 # from ...fluid import one_hot  #DEFINE_ALIAS
 # from ...fluid.layers import pad2d  #DEFINE_ALIAS
 from ...fluid.layers import unfold  #DEFINE_ALIAS
-from ...fluid.layers import assign  #DEFINE_ALIAS
 from ...fluid.layers import squeeze  #DEFINE_ALIAS
 from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
 from ...tensor import clip
@@ -53,7 +52,6 @@ __all__ = [
     'pad',
     'unfold',
     #       'bilinear_tensor_product',
-    'assign',
     'interpolate',
     'upsample',
     'bilinear',
@@ -887,6 +885,10 @@ def dropout(x,
             print(y_01)
 
     """
+    # fast return for p == 0
+    if p == 0:
+        return x
+
     if not isinstance(p, (float, int)):
         raise TypeError("p argument should be a number")
     if p < 0 or p > 1:
@@ -1272,6 +1274,9 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     x_dim = len(x.shape)
 
+    if mode == "constant" and isinstance(pad, list) and len(pad) == x_dim * 2:
+        return layers.pad(x, pad, pad_value=value)
+
     assert x_dim in [
         3, 4, 5
     ], "input tesor dimension must be in [3, 4, 5] but got {}".format(x_dim)
@@ -1286,9 +1291,6 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         x_dim, supported_format_map[x_dim], data_format)
 
     unsqueezed_dim = []
-
-    if mode == "constant" and isinstance(pad, list) and len(pad) == x_dim * 2:
-        return layers.pad(x, pad, pad_value=value)
 
     if isinstance(pad, Variable):
         if data_format in ["NCL", "NCHW", "NCDHW"]:

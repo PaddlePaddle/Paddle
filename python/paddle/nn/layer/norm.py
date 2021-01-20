@@ -107,6 +107,10 @@ class _InstanceNormBase(layers.Layer):
         return instance_norm(
             input, weight=self.scale, bias=self.bias, eps=self._epsilon)
 
+    def extra_repr(self):
+        return 'num_features={}, epsilon={}'.format(self.scale.shape[0],
+                                                    self._epsilon)
+
 
 class InstanceNorm1D(_InstanceNormBase):
     r"""
@@ -433,6 +437,10 @@ class GroupNorm(layers.Layer):
 
         return self._helper.append_activation(group_norm_out, None)
 
+    def extra_repr(self):
+        return 'num_groups={}, num_channels={}, epsilon={}'.format(
+            self._num_groups, self._num_channels, self._epsilon)
+
 
 class LayerNorm(layers.Layer):
     r"""
@@ -537,6 +545,10 @@ class LayerNorm(layers.Layer):
             bias=self.bias,
             epsilon=self._epsilon)
 
+    def extra_repr(self):
+        return 'normalized_shape={}, epsilon={}'.format(self._normalized_shape,
+                                                        self._epsilon)
+
 
 class _BatchNormBase(layers.Layer):
     """
@@ -550,11 +562,13 @@ class _BatchNormBase(layers.Layer):
                  weight_attr=None,
                  bias_attr=None,
                  data_format='NCHW',
+                 use_global_stats=None,
                  name=None):
         super(_BatchNormBase, self).__init__()
         self._num_features = num_features
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
+        self._use_global_stats = use_global_stats
 
         if get_default_dtype() == 'float16':
             set_default_dtype('float32')
@@ -642,14 +656,24 @@ class _BatchNormBase(layers.Layer):
             training=self.training,
             momentum=self._momentum,
             epsilon=self._epsilon,
-            data_format=self._data_format)
+            data_format=self._data_format,
+            use_global_stats=self._use_global_stats)
+
+    def extra_repr(self):
+        main_str = 'num_features={}, momentum={}, epsilon={}'.format(
+            self._num_features, self._momentum, self._epsilon)
+        if self._data_format is not 'NCHW':
+            main_str += ', data_format={}'.format(self._data_format)
+        if self._name is not None:
+            main_str += ', name={}'.format(self._name)
+        return main_str
 
 
 class BatchNorm1D(_BatchNormBase):
     r"""
     Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When track_running_stats = False, the :math:`\\mu_{\\beta}`
+    When use_global_stats = False, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
@@ -660,7 +684,7 @@ class BatchNorm1D(_BatchNormBase):
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
         \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
 
-    When track_running_stats = True, the :math:`\\mu_{\\beta}`
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
@@ -694,6 +718,7 @@ class BatchNorm1D(_BatchNormBase):
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Defalut "NCL".
+        use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -739,7 +764,7 @@ class BatchNorm2D(_BatchNormBase):
     r"""
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When track_running_stats = False, the :math:`\\mu_{\\beta}`
+    When use_global_stats = False, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
@@ -750,7 +775,7 @@ class BatchNorm2D(_BatchNormBase):
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
         \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
 
-    When track_running_stats = True, the :math:`\\mu_{\\beta}`
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
@@ -784,6 +809,7 @@ class BatchNorm2D(_BatchNormBase):
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
+        use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -827,7 +853,7 @@ class BatchNorm3D(_BatchNormBase):
     r"""
     Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When track_running_stats = False, the :math:`\\mu_{\\beta}`
+    When use_global_stats = False, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
@@ -838,7 +864,7 @@ class BatchNorm3D(_BatchNormBase):
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
         \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
 
-    When track_running_stats = True, the :math:`\\mu_{\\beta}`
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
@@ -872,6 +898,7 @@ class BatchNorm3D(_BatchNormBase):
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, the data format can be "NCDHW" or "NDHWC. Default: NCDHW.
+        use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -1115,7 +1142,7 @@ class SyncBatchNorm(_BatchNormBase):
             layer_output._mean = layer._mean
             layer_output._variance = layer._variance
 
-        for name, sublayer in layer.named_sublayers():
+        for name, sublayer in layer.named_children():
             layer_output.add_sublayer(name,
                                       cls.convert_sync_batchnorm(sublayer))
         del layer
@@ -1180,3 +1207,12 @@ class LocalResponseNorm(layers.Layer):
         out = F.local_response_norm(input, self.size, self.alpha, self.beta,
                                     self.k, self.data_format, self.name)
         return out
+
+    def extra_repr(self):
+        main_str = 'size={}, alpha={}, beta={}, k={}'.format(
+            self.size, self.alpha, self.beta, self.k)
+        if self.data_format is not 'NCHW':
+            main_str += ', data_format={}'.format(self.data_format)
+        if self.name is not None:
+            main_str += ', name={}'.format(self.name)
+        return main_str

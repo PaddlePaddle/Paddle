@@ -39,6 +39,7 @@ enum PaddleDType {
   INT64,
   INT32,
   UINT8,
+  INT8,
   // TODO(Superjomn) support more data types if needed.
 };
 
@@ -449,5 +450,8 @@ PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 PD_INFER_DECL std::string get_version();
 
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
+
+PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
+    const std::string& config_file);
 
 }  // namespace paddle

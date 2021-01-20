@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import to_tensor
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers.layer_function_generator import templatedoc
@@ -23,13 +22,10 @@ from ..framework import VarBase as Tensor
 
 # TODO: define logic functions of a tensor  
 from ..fluid.layers import is_empty  #DEFINE_ALIAS
-from ..fluid.layers import isfinite  #DEFINE_ALIAS
 from ..fluid.layers import logical_and  #DEFINE_ALIAS
 from ..fluid.layers import logical_not  #DEFINE_ALIAS
 from ..fluid.layers import logical_or  #DEFINE_ALIAS
 from ..fluid.layers import logical_xor  #DEFINE_ALIAS
-from ..fluid.layers import reduce_all  #DEFINE_ALIAS
-from ..fluid.layers import reduce_any  #DEFINE_ALIAS
 
 __all__ = [
     'equal',
@@ -37,7 +33,6 @@ __all__ = [
     'greater_equal',
     'greater_than',
     'is_empty',
-    'isfinite',
     'less_equal',
     'less_than',
     'logical_and',
@@ -141,10 +136,9 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if in_dygraph_mode():
-        rtol_tensor = to_tensor(rtol, dtype='float64')
-        atol_tensor = to_tensor(atol, dtype='float64')
-        return core.ops.allclose(x, y, rtol_tensor, atol_tensor, 'equal_nan',
-                                 equal_nan)
+        return core.ops.allclose(x, y, 'rtol',
+                                 str(rtol), 'atol',
+                                 str(atol), 'equal_nan', equal_nan)
 
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
     check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
@@ -153,26 +147,11 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     check_type(equal_nan, 'equal_nan', bool, 'allclose')
 
     helper = LayerHelper("allclose", **locals())
-    rtol_var = helper.create_global_variable(
-        name=fluid.unique_name.generate('rtol'),
-        persistable=True,
-        dtype='float64',
-        shape=[1])
-    helper.set_variable_initializer(
-        rtol_var, initializer=fluid.initializer.ConstantInitializer(rtol))
-    atol_var = helper.create_variable(
-        name=fluid.unique_name.generate('atol'),
-        persistable=True,
-        dtype='float64',
-        shape=[1])
-    helper.set_variable_initializer(
-        atol_var, initializer=fluid.initializer.ConstantInitializer(atol))
-
     out = helper.create_variable_for_type_inference(dtype='bool')
 
-    inputs = {'Input': x, 'Other': y, 'Rtol': rtol_var, 'Atol': atol_var}
+    inputs = {'Input': x, 'Other': y}
     outputs = {'Out': out}
-    attrs = {'equal_nan': equal_nan}
+    attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
     helper.append_op(
         type='allclose', inputs=inputs, outputs=outputs, attrs=attrs)
 

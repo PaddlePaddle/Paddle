@@ -21,6 +21,38 @@
         {
             "name":"xxxxx",
             "annotation":"not a real api, just for example"
+        },
+        {
+            "name":"squeeze_",
+            "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
+        },
+        {
+            "name":"unsqueeze_",
+            "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
+        },
+        {
+            "name":"reshape_",
+            "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
+        },
+        {
+            "name":"scatter_",
+            "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
+        },
+        {
+            "name":"elu_",
+            "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
+        },
+        {
+            "name":"relu_",
+            "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
+        },
+        {
+            "name":"softmax_",
+            "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
+        },
+        {
+            "name":"tanh_",
+            "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
         }
     ],
     "wlist_temp_api":[
@@ -413,7 +445,8 @@
         "CRFDecoding.forward",
         "SequenceTagging.forward",
         "XPUPlace",
-        "is_compiled_with_xpu"
+        "is_compiled_with_xpu",
+        "xpu_places"
     ],
     "gpu_not_white":[
         "deformable_conv",
