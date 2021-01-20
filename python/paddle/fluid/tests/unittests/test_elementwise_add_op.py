@@ -398,13 +398,19 @@ class TestElementwiseAddOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.elementwise_add, x2, y2)
 
 
-class TestAddOp(unittest.TestCase):
+class TestAddApi(unittest.TestCase):
+    def setUp(self):
+        self._executed_api()
+
+    def _executed_api(self):
+        self.add = paddle.add
+
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")
             y = fluid.data(name='y', shape=[2, 3], dtype='float32')
 
-            y_1 = paddle.add(x, y, name='add_res')
+            y_1 = self.add(x, y, name='add_res')
             self.assertEqual(('add_res' in y_1.name), True)
 
     def test_declarative(self):
@@ -418,7 +424,7 @@ class TestAddOp(unittest.TestCase):
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
             y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = paddle.add(x, y)
+            z = self.add(x, y)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -432,10 +438,15 @@ class TestAddOp(unittest.TestCase):
             np_y = np.array([1, 5, 2]).astype('float64')
             x = fluid.dygraph.to_variable(np_x)
             y = fluid.dygraph.to_variable(np_y)
-            z = paddle.add(x, y)
+            z = self.add(x, y)
             np_z = z.numpy()
             z_expected = np.array([3., 8., 6.])
             self.assertEqual((np_z == z_expected).all(), True)
+
+
+class TestAddInplaceApi(TestAddApi):
+    def _executed_api(self):
+        self.add = paddle.add_
 
 
 class TestComplexElementwiseAddOp(OpTest):

@@ -327,6 +327,8 @@ class TestDygraphInplaceSoftmaxWithCrossEntropyForward(TestDygraphInplace):
         return paddle.nn.functional.softmax_with_cross_entropy_(
             var, self.label_var, return_softmax=True)[1]
 
+    # grad_var of `Softmax` in non-inplace API is None.
+    # grad_var of `Softmax` in inplace API is grad_var of `Logits`.
     def test_backward_success_1(self):
         pass
 
@@ -362,6 +364,64 @@ class TestDygraphInplaceTanh(TestDygraphInplace):
 
     def inplace_api_processing(self, var):
         return paddle.tanh_(var)
+
+
+"""
+class TestDygraphInplaceAddN(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.add_n(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.add_n_(var)
+"""
+
+
+class TestDygraphInplaceClip(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.clip(var, 0.6, 1.5)
+
+    def inplace_api_processing(self, var):
+        return paddle.clip_(var, 0.6, 1.5)
+
+
+"""
+class TestDygraphInplaceLog(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.log(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.log_(var)
+"""
+
+
+class TestDygraphInplaceScale(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.scale(var, scale=2.0, bias=3.0)
+
+    def inplace_api_processing(self, var):
+        return paddle.scale_(var, scale=2.0, bias=3.0)
+
+
+class TestDygraphInplaceAdd(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.rand(2, 3, 4)
+        self.dtype = "float32"
+        input_var_numpy_2 = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.input_var_2 = paddle.to_tensor(input_var_numpy_2)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.add(var, self.input_var_2)
+
+    def inplace_api_processing(self, var):
+        return paddle.add_(var, self.input_var_2)
+
+
+class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
+    def non_inplace_api_processing(self, var):
+        return paddle.subtract(var, self.input_var_2)
+
+    def inplace_api_processing(self, var):
+        return paddle.subtract_(var, self.input_var_2)
 
 
 if __name__ == '__main__':

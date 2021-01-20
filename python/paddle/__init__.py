@@ -154,6 +154,7 @@ from .tensor.math import exp  #DEFINE_ALIAS
 from .tensor.math import floor  #DEFINE_ALIAS
 from .tensor.math import increment  #DEFINE_ALIAS
 from .tensor.math import log  #DEFINE_ALIAS
+from .tensor.math import log_  #DEFINE_ALIAS
 from .tensor.math import log2  #DEFINE_ALIAS
 from .tensor.math import log10  #DEFINE_ALIAS
 from .tensor.math import multiplex  #DEFINE_ALIAS
@@ -168,6 +169,7 @@ from .tensor.math import any  #DEFINE_ALIAS
 from .tensor.math import round  #DEFINE_ALIAS
 from .tensor.math import rsqrt  #DEFINE_ALIAS
 from .tensor.math import scale  #DEFINE_ALIAS
+from .tensor.math import scale_  #DEFINE_ALIAS
 from .tensor.math import sign  #DEFINE_ALIAS
 from .tensor.math import sin  #DEFINE_ALIAS
 from .tensor.math import sinh  #DEFINE_ALIAS
@@ -178,6 +180,7 @@ from .tensor.math import sum  #DEFINE_ALIAS
 from .tensor.math import tanh  #DEFINE_ALIAS
 from .tensor.math import tanh_  #DEFINE_ALIAS
 from .tensor.math import add_n  #DEFINE_ALIAS
+from .tensor.math import add_n_  #DEFINE_ALIAS
 from .tensor.math import max  #DEFINE_ALIAS
 from .tensor.math import maximum  #DEFINE_ALIAS
 from .tensor.math import min  #DEFINE_ALIAS
@@ -190,7 +193,9 @@ from .tensor.math import mod  #DEFINE_ALIAS
 from .tensor.math import floor_mod  #DEFINE_ALIAS
 from .tensor.math import multiply  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
+from .tensor.math import add_  #DEFINE_ALIAS
 from .tensor.math import subtract  #DEFINE_ALIAS
+from .tensor.math import subtract_  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
 from .tensor.math import logsumexp  #DEFINE_ALIAS
 from .tensor.math import inverse  #DEFINE_ALIAS
@@ -198,6 +203,7 @@ from .tensor.math import log1p  #DEFINE_ALIAS
 from .tensor.math import erf  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clip  #DEFINE_ALIAS
+from .tensor.math import clip_  #DEFINE_ALIAS
 from .tensor.math import trace  #DEFINE_ALIAS
 from .tensor.math import kron  #DEFINE_ALIAS
 from .tensor.math import isfinite  #DEFINE_ALIAS

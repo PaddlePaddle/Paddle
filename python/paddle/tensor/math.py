@@ -81,6 +81,7 @@ __all__ = [
         'floor',
         'increment',
         'log',
+        'log_',
         'log2',
         'log10',
         'logsumexp',
@@ -92,6 +93,7 @@ __all__ = [
         'round',
         'rsqrt',
         'scale',
+        'scale_',
         'sign',
         'sin',
         'sinh',
@@ -102,6 +104,7 @@ __all__ = [
         'tanh',
         'tanh_',
         'add_n',
+        'add_n_',
         'max',
         'maximum',
         'min',
@@ -114,7 +117,9 @@ __all__ = [
         'floor_mod',
         'multiply',
         'add',
+        'add_',
         'subtract',
+        'subtract_',
         'atan',
         'logsumexp',
         'inverse',
@@ -122,6 +127,7 @@ __all__ = [
         'erf',
         'addmm',
         'clip',
+        'clip_',
         'trace',
         'kron',
         'isfinite',
@@ -144,6 +150,34 @@ _supported_float_dtype_ = [
     VarDesc.VarType.FP32,
     VarDesc.VarType.FP64,
 ]
+
+
+def log_(x, name=None):
+    """
+    Inplace version of ``log`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_log`.
+    """
+    if in_dygraph_mode():
+        return core.ops.log_(x)
+
+    _print_warning_in_static_mode("log")
+    return log(x, name)
+
+
+def scale_(x, s=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
+    """
+    Inplace version of ``scale`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_scale`.
+    """
+    if in_dygraph_mode():
+        _scale = s.numpy().item(0) if isinstance(s, Variable) else s
+        return core.ops.scale_(x, 'scale',
+                             float(_scale), 'bias',
+                             float(bias), 'bias_after_scale', bias_after_scale)
+
+    _print_warning_in_static_mode("scale")
+    return scale(x, s, bias, bias_after_scale, act, name)
+
 
 def pow(x, y, name=None):
     """
@@ -292,6 +326,20 @@ def add(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+def add_(x, y, name=None):
+    """
+    Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_add`.
+    """
+    if in_dygraph_mode():
+        op_type = 'elementwise_add_'
+        axis = -1
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, op_name=op_type)
+    _print_warning_in_static_mode("elementwise_add")
+    return _elementwise_op(LayerHelper('elementwise_add', **locals()))
+
+
 def subtract(x, y, name=None):
     """
     Substract two tensors element-wise. The equation is:
@@ -351,6 +399,20 @@ def subtract(x, y, name=None):
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def subtract_(x, y, name=None):
+    """
+    Inplace version of ``subtract`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_subtract`.
+    """
+    if in_dygraph_mode():
+        axis = -1
+        act = None
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_sub_')
+    _print_warning_in_static_mode("elementwise_sub")
+    return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
 def divide(x, y, name=None):
@@ -870,6 +932,20 @@ def add_n(inputs, name=None):
         attrs={'use_mkldnn': False})
 
     return out
+
+
+def add_n_(inputs, name=None):
+    """
+    Inplace version of ``add_n`` API, the output Tensor will be inplaced with the first Tensor in input ``inputs``.
+    Please refer to :ref:`api_tensor_add_n`.
+    """
+    if in_dygraph_mode():
+        if isinstance(inputs, Variable):
+            inputs = [inputs]
+        return core.ops.sum_(inputs, 'use_mkldnn', False)
+
+    _print_warning_in_static_mode("add_n")
+    return add_n(inputs, name)
 
 
 def mm(input, mat2, name=None):
@@ -1550,6 +1626,27 @@ def clip(x, min=None, max=None, name=None):
         type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
 
     return output
+
+
+def clip_(x, min=None, max=None, name=None):
+    """
+    Inplace version of ``clip`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_clip`.
+    """
+    if in_dygraph_mode():
+        fmin = float(np.finfo(np.float32).min)
+        fmax = float(np.finfo(np.float32).max)
+        if isinstance(min, Variable):
+            min = min.numpy().item(0)
+        if isinstance(max, Variable):
+            max = max.numpy().item(0)
+        min = fmin if min is None else min
+        max = fmax if max is None else max
+        return core.ops.clip_(x, "min", min, "max", max)
+
+    _print_warning_in_static_mode("clip")
+    return clip(x, min, max, name)
+
 
 
 def trace(x, offset=0, axis1=0, axis2=1, name=None):
