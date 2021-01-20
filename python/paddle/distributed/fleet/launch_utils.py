@@ -266,18 +266,22 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
         pod.rank = node_rank
         pod.addr = ip
         pod.device_mode=device_mode
+
         cur_node_endpoints = trainer_endpoints[node_rank]
         # when use paddlecloud, endpoints may > devices_per_proc(user_defined)
         assert len(cur_node_endpoints) >= len(
             devices_per_proc
         ), "current trainer_endpoints size should be greater equal than acclerators size."
         for i in range(len(devices_per_proc)):
+
             trainer = Trainer()
             if device_mode == DeviceMode.GPU or device_mode == DeviceMode.ASCEND_NPU:
                 if isinstance(devices_per_proc[i], (list, tuple)):
                     trainer.accelerators.extend(devices_per_proc[i])
+                    pod.accelerators.extend(devices_per_proc[i])
                 else:
                     trainer.accelerators.append(devices_per_proc[i])
+                    pod.accelerators.append(devices_per_proc[i])
 
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
