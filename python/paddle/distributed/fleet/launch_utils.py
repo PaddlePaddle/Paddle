@@ -98,6 +98,13 @@ class Cluster(object):
                 r.append(t.endpoint)
         return r
 
+    def world_device_ids(self):
+        r = []
+        for pod in self.pods:
+            for t in pod.trainers:
+                r.append(t.accelerators)
+        return r
+
     def pods_endpoints(self):
         r = []
         for pod in self.pods:
@@ -452,6 +459,8 @@ def start_local_trainers(cluster,
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
+    ids=cluster.world_device_ids()
+    res = [':'.join(ele) for ele in ids]
     procs = []
     for idx, t in enumerate(pod.trainers):
         proc_env = {
@@ -459,7 +468,9 @@ def start_local_trainers(cluster,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
-            "PADDLE_RANK_IN_NODE": str(idx)
+            "PADDLE_RANK_IN_NODE": str(idx),
+            "PADDLE_LOCAL_DEVICE_IDS":",".join(t.accelerators),
+            "PADDLE_WORLD_DEVICE_IDS":",".join(res),
         }
 
         if len(t.accelerators) > 0 and pod.device_mode==DeviceMode.GPU:

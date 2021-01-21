@@ -23,9 +23,11 @@ def train(prefix):
     current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
     worker_endpoints = worker_endpoints_env
     trainers_num = len(worker_endpoints.split(','))
+    device_ids=os.getenv("PADDLE_WORLD_DEVICE_IDS")
+    current_device_id=os.getenv("PADDLE_LOCAL_DEVICE_IDS")
 
-    details = "selected_accelerators:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
-            .format(selected_accelerators, worker_endpoints, trainers_num, current_endpoint,trainer_id)
+    details = "selected_accelerators:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{} device_ids:{} device_id:{}"\
+            .format(selected_accelerators, worker_endpoints, trainers_num, current_endpoint,trainer_id,device_ids, current_device_id)
 
     print(details)
     with open("multi_process_{}.check_{}.log".format(prefix, trainer_id), "w") as f:

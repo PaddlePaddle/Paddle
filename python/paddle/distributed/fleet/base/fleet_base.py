@@ -291,8 +291,14 @@ class Fleet(object):
     def node_num(self):
         return self._role_maker._get_node_num()
 
-    def rank_in_node(self):
-        return self._role_maker._get_rank_in_node()
+    def local_rank(self):
+        return self._role_maker._get_local_rank()
+
+    def local_device_ids(self):
+        return self._role_maker._get_local_device_ids()
+
+    def world_device_ids(self):
+        return self._role_maker._get_world_device_ids()
 
     def is_worker(self):
         """

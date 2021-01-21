@@ -44,7 +44,13 @@ node_num=fleet.node_num
 rank=fleet.worker_index
 nranks=fleet.worker_num
 world_size=fleet.worker_num
-rank_in_node=fleet.rank_in_node
+# device id in current trainer
+local_device_ids=fleet.local_device_ids
+# device ids in world
+world_device_ids=fleet.world_device_ids
+# rank in node
+local_rank=fleet.local_rank
+rank_in_node=local_rank
 is_worker = fleet.is_worker
 worker_endpoints = fleet.worker_endpoints
 server_num = fleet.server_num
