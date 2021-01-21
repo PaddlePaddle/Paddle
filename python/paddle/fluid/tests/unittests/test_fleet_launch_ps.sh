@@ -55,7 +55,7 @@ function test_launch_ps_heter(){
     fi
 }
 
-if [[ ${WITH_GPU} == "OFF" ]]; then
+if [[ ${WITH_GPU} == "OFF" && ("${WITH_ROCM}x" == "x" || ${WITH_ROCM} == "OFF") ]]; then
     echo "in cpu test mode"
     test_launch_ps
     exit 0
