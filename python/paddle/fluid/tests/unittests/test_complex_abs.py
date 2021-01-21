@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.fluid.dygraph as dg
 from op_test import OpTest
 
 
@@ -83,6 +84,22 @@ class TestComplexAbsOpZeroValues(OpTest):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out])
+
+
+class TestAbs(unittest.TestCase):
+    def setUp(self):
+        self._dtypes = ["float32", "float64"]
+        self._places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            self._places.append(paddle.CUDAPlace(0))
+
+    def test_all_positive(self):
+        for dtype in self._dtypes:
+            x = 1 + 10 * np.random.random([13, 3, 3]).astype(dtype)
+            for place in self._places:
+                with dg.guard(place):
+                    y = paddle.abs(paddle.to_tensor(x))
+                    self.assertTrue(np.allclose(np.abs(x), y.numpy()))
 
 
 if __name__ == '__main__':
