@@ -15,6 +15,7 @@
 from . import collective
 from .. import core
 OpRole = core.op_proto_and_checker_maker.OpRole
+from paddle.distributed import fleet
 
 class AscendTranspiler(collective.Collective):
     def __init__(self, startup_program, main_program):
@@ -49,11 +50,20 @@ class AscendTranspiler(collective.Collective):
                     ring_id = (ring_id + 1) % self.nrings
                     block._insert_op(
                         offset + 1,
-                        type='allreduce',
+                        type='c_allreduce_sum',
                         inputs={'X': grad},
                         outputs={'Out': grad},
                         attrs={
                             'ring_id': ring_id,
+                            self.op_role_key: OpRole.Backward
+                        })
+                    block._insert_op(
+                        offset + 2,
+                        type='scale',
+                        inputs={'X': grad},
+                        outputs={'Out': grad},
+                        attrs={
+                            'scale': 1.0 / fleet.worker_num(),
                             self.op_role_key: OpRole.Backward
                         })
 
