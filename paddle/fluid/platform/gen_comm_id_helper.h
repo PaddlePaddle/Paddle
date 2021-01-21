@@ -14,35 +14,31 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef PADDLE_WITH_NCCL
 #include <functional>
 #include <string>
 #include <vector>
 
 namespace paddle {
-namespace framework {
-class Scope;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
-namespace operators {
+namespace platform {
 
 int CreateListenSocket(const std::string& ep);
 
 void CloseSocket(int fd);
 
-void SendBroadCastNCCLID(std::vector<std::string> servers, int nccl_comm_num,
-                         std::function<std::string(size_t)> func,
-                         const framework::Scope& scope);
+template <typename CommUniqueId>
+void SendBroadCastCommID(std::vector<std::string> servers,
+                         std::vector<CommUniqueId>* nccl_ids);
 
-// server listen on endpoint, then recv nccl id
-void RecvBroadCastNCCLID(std::string endpoint, int nccl_comm_num,
-                         std::function<std::string(size_t)> func,
-                         const framework::Scope& scope);
+template <typename CommUniqueId>
+void RecvBroadCastCommID(std::string endpoint,
+                         std::vector<CommUniqueId>* nccl_ids);
 
 // recv nccl id from socket
-void RecvBroadCastNCCLID(int server_fd, std::string endpoint, int nccl_comm_num,
-                         std::function<std::string(size_t)> func,
-                         const framework::Scope& scope);
-}  // namespace operators
+template <typename CommUniqueId>
+void RecvBroadCastCommID(int server_fd, std::string endpoint,
+                         std::vector<CommUniqueId>* nccl_ids);
+}  // namespace platform
 }  // namespace paddle
+
+#endif
