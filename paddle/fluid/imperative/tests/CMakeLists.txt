@@ -13,6 +13,6 @@ cc_test(test_prepare_op SRCS test_prepare_op.cc DEPS prepared_operator op_info s
 cc_test(test_tracer SRCS test_tracer.cc DEPS tracer layer proto_desc operator op_registry variable_helper mul_op reduce_sum_op elementwise_add_op memcpy)
 cc_test(test_hooks SRCS test_hooks.cc DEPS tracer basic_engine layer proto_desc operator op_registry variable_helper mul_op elementwise_add_op memcpy)
 
-if (WITH_NCCL)
+if (WITH_NCCL OR WITH_XPU_BKCL)
 cc_test(test_group SRCS test_group.cc DEPS reducer concat_and_split memcpy)
 endif()

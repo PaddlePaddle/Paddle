@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
+#include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -1377,16 +1378,10 @@ void BindImperative(py::module *m_ptr) {
       },
       py::call_guard<py::gil_scoped_release>());
 
-#if defined(PADDLE_WITH_NCCL)
+#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_XPU_BKCL)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
-  py::class_<imperative::NCCLParallelContext, imperative::ParallelContext,
-             std::shared_ptr<imperative::NCCLParallelContext>>(
-      m, "NCCLParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::CUDAPlace &>())
-      .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
 
   py::class_<imperative::Reducer, std::shared_ptr<imperative::Reducer>>(
       m, "Reducer", R"DOC()DOC")
@@ -1403,6 +1398,24 @@ void BindImperative(py::module *m_ptr) {
         py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
         py::arg("tensor_indices") = std::vector<int64_t>{},
         py::call_guard<py::gil_scoped_release>());
+#endif
+
+#if defined(PADDLE_WITH_NCCL)
+  py::class_<imperative::NCCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::NCCLParallelContext>>(
+      m, "NCCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::CUDAPlace &>())
+      .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+  py::class_<imperative::BKCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::BKCLParallelContext>>(
+      m, "BKCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::XPUPlace &>())
+      .def("init", [](imperative::BKCLParallelContext &self) { self.Init(); });
 #endif
 }
 

@@ -12,6 +12,11 @@ if (WITH_NCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
 endif()
 
+if (WITH_XPU_BKCL)
+  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+  set(PYBIND_DEPS ${PYBIND_DEPS} bkcl_context)
+endif()
+
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
   set(PYBIND_DEPS ${PYBIND_DEPS} mmap_allocator)
@@ -78,6 +83,10 @@ if(WITH_PYTHON)
   if(WITH_NCCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
   endif(WITH_NCCL)
+
+  if(WITH_XPU_BKCL)
+    list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
+  endif(WITH_XPU_BKCL)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})

@@ -108,9 +108,13 @@ class ParallelEnv(object):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
 
-        # imperative only support one gpu
-        selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
-        self._device_id = int(selected_gpus[0])
+        # imperative only support one gpu or xpu
+        if core.is_compiled_with_cuda():
+            selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
+            self._device_id = int(selected_gpus[0])
+        elif core.is_compiled_with_xpu():
+            selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
+            self._device_id = int(selected_xpus[0])
 
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")

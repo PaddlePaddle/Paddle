@@ -119,11 +119,101 @@ class SplitFunctor<platform::CPUDeviceContext, T> {
     }
   }
 };
+
+#ifdef PADDLE_WITH_XPU
+/*
+ * All tensors' dimension should be the same and the values of
+ * each dimension must be the same, except the axis dimension.
+ */
+template <typename T>
+class ConcatFunctor<platform::XPUDeviceContext, T> {
+ public:
+  void operator()(const platform::XPUDeviceContext& context,
+                  const std::vector<framework::Tensor>& input, int axis,
+                  framework::Tensor* output) {
+    int num = input.size();
+    auto input_dims = input[0].dims();
+
+    std::vector<std::vector<int>> xdims_list(num);
+    for (int i = 0; i < num; ++i) {
+      std::vector<int> tmp_dims(input_dims.size());
+      for (int j = 0; j < input_dims.size(); ++j) {
+        tmp_dims[j] = input[i].dims()[j];
+      }
+      xdims_list[i] = tmp_dims;
+    }
+
+    std::vector<const T*> ptrs;
+    for (int i = 0; i < num; ++i) {
+      ptrs.push_back(input[i].data<T>());
+    }
+
+    auto r = xpu::concat<T>(context.x_context(), ptrs, output->data<T>(),
+                            xdims_list, axis);
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External(
+            "XPU API return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            r));
+  }
+};
+
+template <typename T>
+class SplitFunctor<platform::XPUDeviceContext, T> {
+ public:
+  void operator()(const platform::XPUDeviceContext& context,
+                  const framework::Tensor& input,
+                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const int axis, std::vector<framework::Tensor*>* outputs) {
+    auto& ins = ref_inputs;
+
+    int num = ins.size();
+    auto input_dims = ins[0]->dims();
+    std::vector<int> split_list(num);
+    std::vector<int> xdims_list(input_dims.size());
+    int total_length = 0;
+    for (int i = 0; i < num; ++i) {
+      split_list[i] = ins[i]->dims()[axis];
+      total_length += ins[i]->dims()[axis];
+    }
+
+    for (int i = 0; i < input_dims.size(); ++i) {
+      if (i == axis) continue;
+      xdims_list[i] = input_dims[i];
+    }
+    xdims_list[axis] = total_length;
+
+    std::vector<T*> ptrs(num);
+    for (int i = 0; i < num; ++i) {
+      ptrs[i] = outputs->at(i)->data<T>();
+    }
+
+    auto r = xpu::split<T>(context.x_context(), input.data<T>(), ptrs,
+                           xdims_list, split_list, axis);
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External(
+            "XPU API return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            r));
+  }
+};
+#endif
+
 #define DEFINE_FUNCTOR(type)                                      \
   template class ConcatFunctor<platform::CPUDeviceContext, type>; \
   template class SplitFunctor<platform::CPUDeviceContext, type>;
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
+
+#ifdef PADDLE_WITH_XPU
+#define DEFINE_XPU_FUNCTOR(type)                                  \
+  template class ConcatFunctor<platform::XPUDeviceContext, type>; \
+  template class SplitFunctor<platform::XPUDeviceContext, type>;
+
+DEFINE_XPU_FUNCTOR(float)
+#endif
 
 }  // namespace math
 }  // namespace operators
