@@ -35,13 +35,13 @@ registerd_op = {
     "softmax_with_cross_entropy_grad": "SoftmaxWithCrossEntropyGradParser",
     "truncated_gaussian_random": "TruncatedNormalParser",
     "sgd": "SGDParser",
-    "allgather": "AllGatherParser",
+    "c_allgather": "AllGatherParser",
     "c_allreduce_sum": "AllReduceSumParser",
     "c_allreduce_max": "AllReduceMaxParser",
     "c_broadcast": "BroadcastParser",
-    "reducescatter": "ReduceScatterParser",
-    "send": "SendParser",
-    "receive": "ReceiveParser"
+    "c_reduce_scatter": "ReduceScatterParser",
+    "c_send": "SendParser",
+    "c_receive": "ReceiveParser"
 }
 global_cnt = -1
 global_input_cnt = -1
@@ -533,7 +533,7 @@ class TruncatedNormalParser(AscendParserBase):
 class AllGatherParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(AllGatherParser, self).__init__(graph, var2geop)
-        self.parser_name = "allgather"
+        self.parser_name = "c_allgather"
 
     def _apply(self):
         x = self._get_ge_input(self.op.input_arg_names[0])
@@ -542,7 +542,7 @@ class AllGatherParser(AscendParserBase):
 
         allgather = core.GEOperatorFactory.create_operator(
             "allgather" + self._accumulated_op_id(), "HcomAllGather").set_input(
-                "x", x, 0).set_attr_int32(
+                "x", x).set_attr_int32(
                     "rank_size", rank_size).set_attr_string("group", group)
         return [allgather], [[0]]
 
@@ -584,7 +584,7 @@ class AllReduceMaxParser(AllReduceParser):
 class BroadcastParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(BroadcastParser, self).__init__(graph, var2geop)
-        self.parser_name = "broadcast"
+        self.parser_name = "c_broadcast"
 
     def _apply(self):
         x = self._get_ge_input(self.op.input_arg_names[0])
@@ -593,7 +593,7 @@ class BroadcastParser(AscendParserBase):
 
         broadcast = core.GEOperatorFactory.create_operator(
             "broadcast" + self._accumulated_op_id(), "HcomBroadcast").set_input(
-                "x", x, 0).set_attr_int32(
+                "x", x).set_attr_int32(
                     "root_rank", root_rank).set_attr_string("group", group)
         return [broadcast], [[0]]
 
@@ -601,7 +601,7 @@ class BroadcastParser(AscendParserBase):
 class ReduceScatterParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(ReduceScatterParser, self).__init__(graph, var2geop)
-        self.parser_name = "reduce_scatter"
+        self.parser_name = "c_reduce_scatter"
 
     def _apply(self):
         x = self._get_ge_input(self.op.input_arg_names[0])
@@ -611,7 +611,7 @@ class ReduceScatterParser(AscendParserBase):
 
         reduce_scatter = core.GEOperatorFactory.create_operator(
             "reducescatter" + self._accumulated_op_id(), "HcomReduceScatter").set_input(
-                "x", x, 0).set_attr_string(
+                "x", x).set_attr_string(
                     "reduction", reduction).set_attr_string(
                         "group", group).set_attr_int32("rank_size", rank_size)
         return [reduce_scatter], [[0]]
@@ -620,7 +620,7 @@ class ReduceScatterParser(AscendParserBase):
 class SendParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(SendParser, self).__init__(graph, var2geop)
-        self.parser_name = "send"
+        self.parser_name = "c_send"
 
     def _apply(self):
         x = self._get_ge_input(self.op.input_arg_names[0])
@@ -630,7 +630,7 @@ class SendParser(AscendParserBase):
 
         send = core.GEOperatorFactory.create_operator(
             "send" + self._accumulated_op_id(), "HcomSend").set_input(
-                "x", x, 0).set_attr_int32(
+                "x", x).set_attr_int32(
                     "sr_tag", sr_tag).set_attr_int32(
                         "dest_rank", dest_rank).set_attr_string("group", group)
         return [send], [[0]]
@@ -639,7 +639,7 @@ class SendParser(AscendParserBase):
 class ReceiveParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(ReceiveParser, self).__init__(graph, var2geop)
-        self.parser_name = "receive"
+        self.parser_name = "c_receive"
 
     def _apply(self):
         x = self._get_ge_input(self.op.input_arg_names[0])
@@ -651,7 +651,7 @@ class ReceiveParser(AscendParserBase):
 
         receive = core.GEOperatorFactory.create_operator(
             "receive" + self._accumulated_op_id(), "HcomReceive").set_input(
-                "x", x, 0).set_attr_int32(
+                "x", x).set_attr_int32(
                     "sr_tag", sr_tag).set_attr_int32(
                         "src_rank", src_rank).set_attr_string(
                             "group", group).set_attr_vec_int32(
