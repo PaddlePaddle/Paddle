@@ -164,19 +164,19 @@ def log_(x, name=None):
     return log(x, name)
 
 
-def scale_(x, s=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
+def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     Inplace version of ``scale`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_scale`.
     """
     if in_dygraph_mode():
-        _scale = s.numpy().item(0) if isinstance(s, Variable) else s
+        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         return core.ops.scale_(x, 'scale',
                              float(_scale), 'bias',
                              float(bias), 'bias_after_scale', bias_after_scale)
 
     _print_warning_in_static_mode("scale")
-    return scale(x, s, bias, bias_after_scale, act, name)
+    return layers.scale(x, scale, bias, bias_after_scale, act, name)
 
 
 def pow(x, y, name=None):
