@@ -614,13 +614,18 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         return len(self._get_pserver_endpoints(
         )) if self._get_pserver_endpoints() is not None else 0
 
-    def _node_num(self):
+    def _get_node_num(self):
         """
         return the training node number
         """
         if not self._role_is_generated:
             self._generate_role()
         return self._nodes_num
+
+    def _get_rank_in_node(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._rank_in_node
 
     def _get_trainer_endpoints(self):
         """
@@ -782,6 +787,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._trainers_num = len(self._worker_endpoints)
         self._nodes_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
+        self._rank_in_node = os.getenv("PADDLE_RANK_IN_NODE")
 
     def _gloo_init(self):
         # PADDLE_WITH_GLOO 1: trainer barrier, 2: all barrier

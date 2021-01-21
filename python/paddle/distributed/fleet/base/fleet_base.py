@@ -288,6 +288,12 @@ class Fleet(object):
         """
         return self._role_maker._worker_num()
 
+    def node_num(self):
+        return self._role_maker._get_node_num()
+
+    def rank_in_node(self):
+        return self._role_maker._get_rank_in_node()
+
     def is_worker(self):
         """
         Check whether the node is an instance of worker.

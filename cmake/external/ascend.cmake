@@ -37,13 +37,18 @@ set(ATLAS_ACL_DIR ${ASCEND_DIR}/ascend-toolkit/latest/acllib/lib64)
 set(ATLAS_ATC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/atc/lib64)
 set(ATLAS_MS_RUNTIME_PATH ${ATLAS_RUNTIME_DIR} ${ATLAS_ACL_DIR} ${ATLAS_ATC_DIR})
 
-set(atlas_graph ${ATLAS_RUNTIME_DIR}/libgraph.so)
-set(atlas_ge_runner ${ATLAS_RUNTIME_DIR}/libge_runner.so)
+set(atlas_graph_lib ${ATLAS_RUNTIME_DIR}/libgraph.so)
+set(atlas_ge_runner_lib ${ATLAS_RUNTIME_DIR}/libge_runner.so)
+set(atlas_acl_lib ${ATLAS_RUNTIME_DIR}/libascendcl.so)
 INCLUDE_DIRECTORIES(${ATLAS_RUNTIME_INC_DIR})
 
 ADD_LIBRARY(ascend_ge SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET ascend_ge PROPERTY IMPORTED_LOCATION ${atlas_ge_runner})
+SET_PROPERTY(TARGET ascend_ge PROPERTY IMPORTED_LOCATION ${atlas_ge_runner_lib})
 
 ADD_LIBRARY(ascend_graph SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET ascend_graph PROPERTY IMPORTED_LOCATION ${atlas_graph})
-add_custom_target(extern_ascend DEPENDS ascend_ge ascend_graph)
+SET_PROPERTY(TARGET ascend_graph PROPERTY IMPORTED_LOCATION ${atlas_graph_lib})
+
+ADD_LIBRARY(atlas_acl SHARED IMPORTED GLOBAL)
+SET_PROPERTY(TARGET atlas_acl PROPERTY IMPORTED_LOCATION ${atlas_acl_lib})
+
+add_custom_target(extern_ascend DEPENDS ascend_ge ascend_graph atlas_acl)

@@ -33,6 +33,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
+#include "paddle/fluid/platform/ascend_npu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
 using namespace ge;  // NOLINT
@@ -95,6 +96,12 @@ enum AttrType {
   AT_LIST_NAMEATTR,
   AT_NAMEATTR
 };
+
+void BindAscendDevice(py::module* m) {
+    py::class_<platform::ascend::NPUDevice>(*m, "NPUDevice")
+        .def_static("get_device_count", 
+            static_cast<int (*)()>(&platform::ascend::NPUDevice::GetDeviceCount));
+}
 
 void BindAscendGraph(py::module *m) {
   m->def("ge_initialize", &ge_initialize, "GEInitialize");
@@ -712,6 +719,7 @@ void BindAscendGraph(py::module *m) {
            })
       .def_static("is_exist_op", 
 		      static_cast<bool (*)(const char*)>(&OperatorFactory::IsExistOp));
+
 }
 
 }  // end namespace pybind
