@@ -921,8 +921,8 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
              &i_d, &i_h, &i_w);
 
     int o_n, o_c, o_d, o_h, o_w;
-    GetNCDHW(transformed_dO.dims(), platform::CudnnDataLayout::kNCHW, &o_n, &o_c,
-             &o_d, &o_h, &o_w);
+    GetNCDHW(transformed_dO.dims(), platform::CudnnDataLayout::kNCHW, &o_n,
+             &o_c, &o_d, &o_h, &o_w);
 
     int group_offset_in =
         transformed_X.numel() / transformed_X.dims()[0] / groups;
