@@ -155,7 +155,7 @@ class AscendOptimizer(Optimizer):
             "ge.exec.precision_mode": "must_keep_origin_dtype",
             # if multi mode
             "ge.exec.rankTableFile": os.getenv("RANK_TABLE_FILE"),
-            "ge.exec.rankId": str(fleet.rank_in_node()),
+            "ge.exec.rankId": str(fleet.worker_index()),
             "ge.exec.isUseHcom": "1",
             "ge.exec.deployMode": "0",
         }
