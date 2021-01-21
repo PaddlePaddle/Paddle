@@ -150,7 +150,7 @@ class AscendOptimizer(Optimizer):
 
         # Config about Graph Engine can be found in https://support.huaweicloud.com/
         config = {
-            "ge.exec.deviceId": str(fleet.local_device_id()),
+            "ge.exec.deviceId": str(fleet.local_device_ids()),
             "ge.graphRunMode": "1",
             "ge.exec.precision_mode": "must_keep_origin_dtype",
             # if multi mode

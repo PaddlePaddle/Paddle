@@ -45,7 +45,7 @@ rank=fleet.worker_index
 nranks=fleet.worker_num
 world_size=fleet.worker_num
 # device id in current trainer
-local_device_id=fleet.local_device_id
+local_device_ids=fleet.local_device_ids
 # device ids in world
 world_device_ids=fleet.world_device_ids
 # rank in node

@@ -294,8 +294,8 @@ class Fleet(object):
     def local_rank(self):
         return self._role_maker._get_local_rank()
 
-    def local_device_id(self):
-        return self._role_maker._get_local_device_id()
+    def local_device_ids(self):
+        return self._role_maker._get_local_device_ids()
 
     def world_device_ids(self):
         return self._role_maker._get_world_device_ids()
