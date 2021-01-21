@@ -108,7 +108,7 @@ class DenseTable : public Table {
   int32_t push_dense_param(const float *values, size_t num) override {
     return 0;
   }
-  int32_t shrink() override { return 0; }
+  int32_t shrink(const std::string &param) override { return 0; }
 };
 
 class BarrierTable : public Table {
@@ -133,7 +133,7 @@ class BarrierTable : public Table {
   int32_t push_dense_param(const float *values, size_t num) override {
     return 0;
   }
-  int32_t shrink() override { return 0; }
+  int32_t shrink(const std::string &param) override { return 0; }
   virtual void clear(){};
   virtual int32_t flush() { return 0; };
   virtual int32_t load(const std::string &path, const std::string &param) {

@@ -62,7 +62,8 @@ void BindDistFleetWrapper(py::module* m) {
       .def("sparse_table_stat", &FleetWrapper::PrintTableStat)
       .def("stop_server", &FleetWrapper::StopServer)
       .def("stop_worker", &FleetWrapper::FinalizeWorker)
-      .def("barrier", &FleetWrapper::BarrierWithTable);
+      .def("barrier", &FleetWrapper::BarrierWithTable)
+      .def("shrink_sparse_table", &FleetWrapper::ShrinkSparseTable);
 }
 
 void BindPSHost(py::module* m) {

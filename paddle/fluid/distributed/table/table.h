@@ -90,7 +90,7 @@ class Table {
 
   virtual void clear() = 0;
   virtual int32_t flush() = 0;
-  virtual int32_t shrink() = 0;
+  virtual int32_t shrink(const std::string &param) = 0;
 
   //指定加载路径
   virtual int32_t load(const std::string &path,
