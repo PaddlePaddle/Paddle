@@ -254,8 +254,8 @@ class SAdagrad : public SparseOptimizer {
 
       blas.VCOPY(update_numel, update_values + x * update_numel, grad.data());
       blas.VCOPY(update_numel, update_values + x * update_numel, grad2.data());
+      
       blas.VSQUARE(update_numel, grad2.data(), grad2.data());
-
       blas.VADD(update_numel, moment, grad2.data(), moment);
       
       float* tmp_ = tmp.data();

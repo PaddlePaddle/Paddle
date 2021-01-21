@@ -220,7 +220,7 @@ class DAdagrad : public DenseOptimizer {
 
     blas.VSQUARE(update_numel, grad2.data(), grad2.data());
     blas.VADD(update_numel, moment + begin, grad2.data(), moment + begin);
-
+    
     float lr_ = (*global_learning_rate_) * (*learning_rate);
     float* tmp_ = tmp.data();
 
