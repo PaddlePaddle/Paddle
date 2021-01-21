@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Optimizer
 import paddle.fluid.core as core
@@ -151,7 +152,12 @@ class AscendOptimizer(Optimizer):
         config = {
             "ge.exec.deviceId": str(fleet.rank_in_node()),
             "ge.graphRunMode": "1",
-            "ge.exec.precision_mode": "must_keep_origin_dtype"
+            "ge.exec.precision_mode": "must_keep_origin_dtype",
+            # if multi mode
+            "ge.exec.rankTableFile": os.getenv("RANK_TABLE_FILE"),
+            "ge.exec.rankId": str(fleet.worker_index()),
+            "ge.exec.isUseHcom": "1",
+            "ge.exec.deployMode": "0",
         }
         print("ge_initialize config:", config)
         core.ge_initialize(config)
