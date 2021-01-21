@@ -294,11 +294,11 @@ class Fleet(object):
     def rank_in_node(self):
         return self._role_maker._get_rank_in_node()
 
-    def current_worker_device_id(self):
-        return self._role_maker._get_current_worker_device_id()
+    def current_worker_accelerator_id(self):
+        return self._role_maker._get_current_worker_accelerator_id()
 
-    def worker_device_ids(self):
-        return self._role_maker._get_worker_device_ids()
+    def worker_accelerator_ids(self):
+        return self._role_maker._get_worker_accelerator_ids()
 
     def is_worker(self):
         """

@@ -23,8 +23,8 @@ def train(prefix):
     current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
     worker_endpoints = worker_endpoints_env
     trainers_num = len(worker_endpoints.split(','))
-    device_ids=os.getenv("PADDLE_WORKER_DEVICE_IDS")
-    current_device_id=os.getenv("PADDLE_CURRENT_WORKER_DEVICE_ID")
+    device_ids=os.getenv("PADDLE_WORK_ACCLERATOR_IDS")
+    current_device_id=os.getenv("PADDLE_CURRENT_WORK_ACCLERATOR_ID")
 
     details = "selected_accelerators:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{} device_ids:{} device_id:{}"\
             .format(selected_accelerators, worker_endpoints, trainers_num, current_endpoint,trainer_id,device_ids, current_device_id)
