@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/place.h"
 #include "thrust/pair.h"
-#include <initializer_list>
 
 #ifdef PADDLE_WITH_PSLIB
 
@@ -100,10 +99,10 @@ class HeterComm {
   void create_storage(
       int start_index, int end_index, int keylen, int vallen,
       std::vector<std::shared_ptr<memory::Allocation>>& local_strorage);
-  void walk_to_dest(int max_depth, int start_index, int gpu_num,
+  void walk_to_dest(int start_index, int gpu_num,
                         int *h_left, int *h_right, KeyType* src_key, 
                         GradType* src_val);
-  void walk_to_src(int max_depth, int start_index, int gpu_num,
+  void walk_to_src(int start_index, int gpu_num,
                         int *h_left, int *h_right, ValType* src_val);
 
  private:

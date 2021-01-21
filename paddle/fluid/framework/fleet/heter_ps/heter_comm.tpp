@@ -181,9 +181,7 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-void HeterComm<KeyType, ValType, GradType>::walk_to_dest(
-                                                        int max_depth,
-                                                        int start_index,
+void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
                                                         int gpu_num,
                                                         int *h_left,
                                                         int *h_right,
@@ -202,11 +200,11 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(
       auto &node = path_[start_index][i].nodes_[0];
       CopyTask t(&path_[start_index][i], 0);
       que.push(t);
-      cudaMemcpyAsync(node.key_storage, reinterpret_cast<char*>(src_key + h_left[i]), node.key_bytes_len,
-                      cudaMemcpyDefault, node.in_stream);
+      cudaMemcpyAsync(node.key_storage, reinterpret_cast<char*>(src_key + h_left[i]),
+                      node.key_bytes_len, cudaMemcpyDefault, node.in_stream);
       if (need_copy_val) {
-        cudaMemcpyAsync(node.val_storage, reinterpret_cast<char*>(src_val + h_left[i]), node.val_bytes_len,
-                        cudaMemcpyDefault, node.in_stream);
+        cudaMemcpyAsync(node.val_storage, reinterpret_cast<char*>(src_val + h_left[i]),
+                        node.val_bytes_len, cudaMemcpyDefault, node.in_stream);
       }
     }
     while(!que.empty()) {
@@ -219,25 +217,26 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(
         int cur_step = cur_task.step;
         CopyTask c(cur_task.path, cur_step + 1);
         que.push(c);
-        cudaMemcpyAsync(cur_task.path->nodes_[cur_step+1].key_storage, cur_task.path->nodes_[cur_step].key_storage,
+        cudaMemcpyAsync(cur_task.path->nodes_[cur_step+1].key_storage,
+                        cur_task.path->nodes_[cur_step].key_storage,
                         cur_task.path->nodes_[cur_step+1].key_bytes_len,
                         cudaMemcpyDefault, cur_task.path->nodes_[cur_step+1].in_stream);
         if (need_copy_val) {
-          cudaMemcpyAsync(cur_task.path->nodes_[cur_step+1].val_storage, cur_task.path->nodes_[cur_step].val_storage,
-                          cur_task.path->nodes_[cur_step+1].val_bytes_len, cudaMemcpyDefault, cur_task.path->nodes_[cur_step+1].in_stream);
+          cudaMemcpyAsync(cur_task.path->nodes_[cur_step+1].val_storage,
+                          cur_task.path->nodes_[cur_step].val_storage,
+                          cur_task.path->nodes_[cur_step+1].val_bytes_len,
+                          cudaMemcpyDefault, cur_task.path->nodes_[cur_step+1].in_stream);
         } 
       }
     }
-    std::queue<CopyTask>().swap(que);
   }
 
 template <typename KeyType, typename ValType, typename GradType>
-void HeterComm<KeyType, ValType, GradType>::walk_to_src(int max_depth,
-                                                            int start_index,
-                                                            int gpu_num,
-                                                            int *h_left,
-                                                            int *h_right,
-                                                            ValType* src_val) {
+void HeterComm<KeyType, ValType, GradType>::walk_to_src(int start_index,
+                                                        int gpu_num,
+                                                        int *h_left,
+                                                        int *h_right,
+                                                        ValType* src_val) {
   std::queue<CopyTask> que;
   for (int i = 0; i < gpu_num; i++) {
     if (h_left[i] == -1 || h_right[i] == -1) {
@@ -246,13 +245,17 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_src(int max_depth,
     int cur_step = path_[start_index][i].nodes_.size() - 1;
     auto &node = path_[start_index][i].nodes_[cur_step];
     if(cur_step==0){
-      cudaMemcpyAsync(reinterpret_cast<char*>(src_val + h_left[i]), node.val_storage, node.val_bytes_len,
-                  cudaMemcpyDefault, node.out_stream);
+      cudaMemcpyAsync(reinterpret_cast<char*>(src_val + h_left[i]),
+                      node.val_storage, node.val_bytes_len,
+                      cudaMemcpyDefault, node.out_stream);
     } else {
       CopyTask t(&path_[start_index][i], cur_step-1);
       que.push(t);
-      cudaMemcpyAsync(path_[start_index][i].nodes_[cur_step-1].val_storage, node.val_storage, path_[start_index][i].nodes_[cur_step-1].val_bytes_len,
-                    cudaMemcpyDefault, path_[start_index][i].nodes_[cur_step-1].out_stream);
+      cudaMemcpyAsync(path_[start_index][i].nodes_[cur_step-1].val_storage,
+                      node.val_storage,
+                      path_[start_index][i].nodes_[cur_step-1].val_bytes_len,
+                      cudaMemcpyDefault,
+                      path_[start_index][i].nodes_[cur_step-1].out_stream);
     }
   }
   while(!que.empty()) {
@@ -265,15 +268,20 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_src(int max_depth,
     if (cur_step > 0) {
       CopyTask c(cur_task.path, cur_step - 1);
       que.push(c);
-      cudaMemcpyAsync(cur_task.path->nodes_[cur_step-1].val_storage, cur_task.path->nodes_[cur_step].val_storage, cur_task.path->nodes_[cur_step-1].val_bytes_len,
-                      cudaMemcpyDefault, cur_task.path->nodes_[cur_step-1].out_stream);
+      cudaMemcpyAsync(cur_task.path->nodes_[cur_step-1].val_storage,
+                      cur_task.path->nodes_[cur_step].val_storage,
+                      cur_task.path->nodes_[cur_step-1].val_bytes_len,
+                      cudaMemcpyDefault,
+                      cur_task.path->nodes_[cur_step-1].out_stream);
     }else if (cur_step == 0) {
       int end_index = cur_task.path->nodes_.back().gpu_num;
-      cudaMemcpyAsync(reinterpret_cast<char*>(src_val + h_left[end_index]), cur_task.path->nodes_[cur_step].val_storage, cur_task.path->nodes_[cur_step].val_bytes_len,
-                  cudaMemcpyDefault, cur_task.path->nodes_[cur_step].out_stream);
+      cudaMemcpyAsync(reinterpret_cast<char*>(src_val + h_left[end_index]),
+                      cur_task.path->nodes_[cur_step].val_storage,
+                      cur_task.path->nodes_[cur_step].val_bytes_len,
+                      cudaMemcpyDefault,
+                      cur_task.path->nodes_[cur_step].out_stream);
     }
   }
-  std::queue<CopyTask>().swap(que);
 }
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -506,11 +514,9 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     }
     create_storage(num, i, shard_len * sizeof(KeyType),
                    shard_len * sizeof(ValType), local_storage);
-    // BFS max depth
-    max_depth = std::max(max_depth, path_[num][i].nodes_.size());
   }
 
-  walk_to_dest(max_depth, num, total_gpu, h_left, h_right, d_shard_keys_ptr, NULL);
+  walk_to_dest(num, total_gpu, h_left, h_right, d_shard_keys_ptr, NULL);
 
   for (int i = 0; i < total_gpu; ++i) {
     if (h_left[i] == -1) {
@@ -527,7 +533,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     cudaStreamSynchronize(resource_->remote_stream(i));
   }
 
-  walk_to_src(max_depth, num, total_gpu, h_left, h_right, d_shard_vals_ptr);
+  walk_to_src(num, total_gpu, h_left, h_right, d_shard_vals_ptr);
 
   for (int i = 0; i < total_gpu; ++i) {
     auto& node = path_[num][i].nodes_.front();
@@ -603,11 +609,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
     }
     create_storage(gpu_num, i, shard_len * sizeof(KeyType),
                    shard_len * sizeof(GradType), local_storage);
-    // BFS max depth
-    max_depth = std::max(max_depth, path_[gpu_num][i].nodes_.size());
   }
 
-  walk_to_dest(max_depth, gpu_num, total_gpu, h_left, h_right, d_shard_keys_ptr, d_shard_grads_ptr);
+  walk_to_dest(gpu_num, total_gpu, h_left, h_right, d_shard_keys_ptr, d_shard_grads_ptr);
 
   for (int i = 0; i < total_gpu; ++i) {
     if (h_left[i] == -1 || h_right[i] == -1) {
