@@ -69,17 +69,40 @@ def tf32_on(self, tf32_precision=1e-5):
         self.precision = old_precision
 
 
-#Specify the precision
-#example:
-#@tf32_on_and_off(0.005)
-#def test_matmul(self):
-#    data1 = paddle.to_tensor(a)
-#    data2 = paddle.to_tensor(b)
-#    c = paddle.matmul(data1, data2)
-#    self.assertTrue(c, expected, self.precision)
-#
-#When its tf32 on-mode, assertTrue will compare with reduced precison
 def tf32_on_and_off(tf32_precision=1e-5):
+    """
+    Specify the precision manuelly and
+    assertTrue() will compare with reduced precison
+    when its tf32 on-mode,
+
+    Parameters:
+        tf32_precision(float): A lower precision
+
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+            default_precision=1e-6
+
+            @tf32_on_and_off(0.001)
+            def test_dygraph():
+                if core.is_compiled_with_cuda():
+                    place = fluid.CUDAPlace(0)
+                    with fluid.dygraph.guard(place):
+                        input_array1 = np.random.rand(8,8).astype("float32")
+                        input_array2 = np.random.rand(8,8).astype("float32")
+                        data1 = fluid.dygraph.to_variable(input_array1)
+                        data2 = fluid.dygraph.to_variable(input_array2)
+                        out = paddle.matmul(data1, data2)
+                        expected_result = np.matmul(input_array1, input_array2)
+
+                    self.assertTrue(np.allclose(expected_result, out.numpy(), default_precision))
+                else:
+                    pass
+    """
+
     def with_tf32_disabled(self, function_call):
         with tf32_off():
             function_call()
