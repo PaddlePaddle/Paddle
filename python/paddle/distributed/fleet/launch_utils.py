@@ -459,17 +459,17 @@ def start_local_trainers(cluster,
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
+    ids=cluster.worker_accelerator_ids()
+    res = [':'.join(ele) for ele in ids]
     procs = []
     for idx, t in enumerate(pod.trainers):
-        ids=cluster.worker_accelerator_ids()
-        res = [':'.join(ele) for ele in ids]
         proc_env = {
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "PADDLE_RANK_IN_NODE": str(idx),
-            "PADDLE_CURRENT_WORK_ACCLERATOR_ID":",".join(t.accelerators),
+            "PADDLE_CURRENT_WORK_ACCLERATOR_ID":":".join(t.accelerators),
             "PADDLE_WORK_ACCLERATOR_IDS":",".join(res),
         }
 
