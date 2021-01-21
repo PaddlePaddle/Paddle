@@ -94,8 +94,8 @@ function(copy_part_of_thrid_party TARGET DST)
                     DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
         else()
             copy(${TARGET}
-                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_SHARED_LIB_1}
-                    DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
+                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_SHARED_LIB_1} ${MKLDNN_SHARED_LIB_2}
+                    DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib)
         endif()
     endif()
 
@@ -320,6 +320,9 @@ function(version version_file)
     if(TENSORRT_FOUND)
         file(APPEND ${version_file}
                 "WITH_TENSORRT: ${TENSORRT_FOUND}\n" "TensorRT version: v${TENSORRT_MAJOR_VERSION}\n")
+    endif()
+    if(WITH_LITE)
+        file(APPEND ${version_file} "WITH_LITE: ${WITH_LITE}\n" "LITE_GIT_TAG: ${LITE_GIT_TAG}\n")
     endif()
     
 endfunction()

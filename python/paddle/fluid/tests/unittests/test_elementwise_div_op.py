@@ -261,5 +261,80 @@ class TestDivideOp(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
 
+class TestComplexElementwiseDivOp(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_div"
+        self.init_base_dtype()
+        self.init_input_output()
+        self.init_grad_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+        }
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_base_dtype(self):
+        self.dtype = np.float64
+
+    def init_input_output(self):
+        self.x = np.random.random(
+            (2, 3, 4, 5)).astype(self.dtype) + 1J * np.random.random(
+                (2, 3, 4, 5)).astype(self.dtype)
+        self.y = np.random.random(
+            (2, 3, 4, 5)).astype(self.dtype) + 1J * np.random.random(
+                (2, 3, 4, 5)).astype(self.dtype)
+        self.out = self.x / self.y
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((2, 3, 4, 5), self.dtype) + 1J * np.ones(
+            (2, 3, 4, 5), self.dtype)
+        self.grad_x = self.grad_out / np.conj(self.y)
+        self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[self.grad_x, self.grad_y],
+            user_defined_grad_outputs=[self.grad_out])
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[self.grad_y],
+            user_defined_grad_outputs=[self.grad_out])
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out])
+
+
+class TestRealComplexElementwiseDivOp(TestComplexElementwiseDivOp):
+    def init_input_output(self):
+        self.x = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.y = np.random.random(
+            (2, 3, 4, 5)).astype(self.dtype) + 1J * np.random.random(
+                (2, 3, 4, 5)).astype(self.dtype)
+        self.out = self.x / self.y
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((2, 3, 4, 5), self.dtype) + 1J * np.ones(
+            (2, 3, 4, 5), self.dtype)
+        self.grad_x = np.real(self.grad_out / np.conj(self.y))
+        self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

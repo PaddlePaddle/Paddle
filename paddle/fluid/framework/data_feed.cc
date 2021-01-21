@@ -661,7 +661,7 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
@@ -717,7 +717,7 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
@@ -955,7 +955,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
@@ -968,7 +968,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             if (fabs(feasign) < 1e-6 && !use_slots_is_dense_[i]) {
               continue;
             }
-            FeatureKey f;
+            FeatureFeasign f;
             f.float_feasign_ = feasign;
             instance->float_feasigns_.push_back(FeatureItem(f, idx));
           }
@@ -980,7 +980,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             if (feasign == 0 && !use_slots_is_dense_[i]) {
               continue;
             }
-            FeatureKey f;
+            FeatureFeasign f;
             f.uint64_feasign_ = feasign;
             instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
           }
@@ -1026,7 +1026,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
@@ -1038,7 +1038,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
             if (fabs(feasign) < 1e-6) {
               continue;
             }
-            FeatureKey f;
+            FeatureFeasign f;
             f.float_feasign_ = feasign;
             instance->float_feasigns_.push_back(FeatureItem(f, idx));
           }
@@ -1048,7 +1048,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
             if (feasign == 0) {
               continue;
             }
-            FeatureKey f;
+            FeatureFeasign f;
             f.uint64_feasign_ = feasign;
             instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
           }

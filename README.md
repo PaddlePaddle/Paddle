@@ -16,7 +16,7 @@ English | [简体中文](./README_cn.md)
 Welcome to the PaddlePaddle GitHub.
 
 PaddlePaddle, as the only independent R&D deep learning platform in China, has been officially open-sourced to professional communities since 2016. It is an industrial platform with advanced technologies and rich features that cover core deep learning frameworks, basic model libraries, end-to-end development kits, tools & components as well as service platforms.
-PaddlePaddle is originated from industrial practices with dedication and commitments to industrialization. It has been widely adopted by a wide range of sectors including manufacturing, agriculture, enterprise service, and so on while serving more than 1.5 million developers. With such advantages, PaddlePaddle has helped an increasing number of partners commercialize AI.
+PaddlePaddle is originated from industrial practices with dedication and commitments to industrialization. It has been widely adopted by a wide range of sectors including manufacturing, agriculture, enterprise service, and so on while serving more than 2.3 million developers. With such advantages, PaddlePaddle has helped an increasing number of partners commercialize AI.
 
 
 
@@ -70,7 +70,7 @@ Now our developers can acquire Tesla V100 online computing resources for free. I
 We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/beginners_guide/index_en.html) and
 [Chinese](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.8/beginners_guide/index_cn.html) documentation.
 
-- [Basic Deep Learning Models](https://www.paddlepaddle.org.cn/documentation/docs/en/beginners_guide/basics/index_en.html#basic-deep-learning-models)
+- [Basic Deep Learning Models](https://www.paddlepaddle.org.cn/documentation/docs/en/beginners_guide/index_en.html)
 
   You might want to start from how to implement deep learning basics with PaddlePaddle.
 
@@ -80,7 +80,7 @@ We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/be
   You might have got the hang of Beginner’s Guide, and wish to model practical problems and build your original networks.
   
   
-- [Advanced User Guides](https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_usage/index_en.html)
+- [Advanced User Guides](https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_guide/index_en.html)
 
   So far you have already been familiar with Fluid. And the next step should be building a more efficient model or inventing your original Operator. 
 
@@ -90,7 +90,7 @@ We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/be
    Our new API enables much shorter programs.
 
 
-- [How to Contribute](http://paddlepaddle.org.cn/documentation/docs/en/1.8/advanced_usage/development/contribute_to_paddle/index_en.html)
+- [How to Contribute](https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_guide/addon_development/contribute_code/index_en.html)
 
    We appreciate your contributions!
 

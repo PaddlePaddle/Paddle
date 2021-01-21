@@ -184,7 +184,7 @@ class DataNormOp : public framework::OperatorWithKernel {
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
@@ -390,7 +390,7 @@ class DataNormKernel<platform::CPUDeviceContext, T>
       }
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Unknown storage order: %d", data_layout));
+            "Unknown storage order: %d, please use NCHW or NHWC", data_layout));
     }
   }
 };
@@ -486,7 +486,7 @@ class DataNormGradOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
@@ -701,7 +701,8 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
       }
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Unknown storage order: %s", data_layout_str));
+            "Unknown storage order: %s, please use NCHW or NHWC",
+            data_layout_str));
     }
   }
 };

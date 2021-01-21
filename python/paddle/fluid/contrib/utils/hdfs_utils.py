@@ -33,7 +33,7 @@ _logger = get_logger(
 
 
 class HDFSClient(object):
-    """
+    r"""
     A tool of HDFS 
 
     Args:
@@ -376,7 +376,7 @@ class HDFSClient(object):
             _logger.info("HDFS list path: {} successfully".format(hdfs_path))
 
             ret_lines = []
-            regex = re.compile('\s+')
+            regex = re.compile(r'\s+')
             out_lines = output.strip().split("\n")
             for line in out_lines:
                 re_line = regex.split(line)
@@ -418,7 +418,7 @@ class HDFSClient(object):
             _logger.info("HDFS list all files: {} successfully".format(
                 hdfs_path))
             lines = []
-            regex = re.compile('\s+')
+            regex = re.compile(r'\s+')
             out_lines = output.strip().split("\n")
             for line in out_lines:
                 re_line = regex.split(line)

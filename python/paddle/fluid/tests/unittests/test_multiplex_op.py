@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 
 
@@ -89,6 +90,17 @@ class TestMultiplexOpError(unittest.TestCase):
                 fluid.layers.multiplex(inputs=[x1, x2], index=index2)
 
             self.assertRaises(TypeError, test_type2)
+
+
+class TestMultiplexODygrap(unittest.TestCase):
+    def test_multiplex_dygraph(self):
+        paddle.disable_static()
+        img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
+        img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
+        inputs = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+        index = paddle.to_tensor(np.array([[1], [0]]).astype(np.int32))
+        res = paddle.multiplex(inputs, index)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

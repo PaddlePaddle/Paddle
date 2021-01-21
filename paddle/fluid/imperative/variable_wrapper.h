@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/hooks.h"
+#include "paddle/fluid/imperative/op_base.h"
 
 namespace paddle {
 namespace imperative {
@@ -34,6 +35,8 @@ class VariableWrapper {
   friend class VarBase;
 
   explicit VariableWrapper(const std::string& name) : name_(name) {}
+
+  ~VariableWrapper() { VLOG(10) << "Destruct VariableWrapper: " << Name(); }
 
   const framework::Variable& Var() const { return var_; }
 
@@ -68,9 +71,49 @@ class VariableWrapper {
     }
   }
 
+  bool IsLeaf() const {
+    if (OverridedStopGradient()) {
+      return true;
+    }
+    if (HasGradVar() && !GetGradVar()->HasGradNode()) {
+      return true;
+    }
+    return false;
+  }
+
+  bool IsLeafGrad() const {
+    if (!HasGradNode() && !OverridedStopGradient()) {
+      return true;
+    }
+    return false;
+  }
+
   void SetPersistable(bool persistable) { persistable_ = persistable; }
 
   bool Persistable() const { return persistable_; }
+
+  bool IsEmpty() const {
+    bool is_empty = true;
+    if (var_.IsInitialized()) {
+      const framework::Tensor* tensor = nullptr;
+      if (var_.IsType<framework::LoDTensor>()) {
+        tensor = &(var_.Get<framework::LoDTensor>());
+      } else if (var_.IsType<framework::SelectedRows>()) {
+        tensor = &(var_.Get<framework::SelectedRows>().value());
+      } else {
+        PADDLE_THROW(platform::errors::PermissionDenied(
+            "Only support LoDTensor and SelectedRows for gradient var"));
+      }
+      if (tensor && tensor->IsInitialized()) {
+        is_empty = false;
+      }
+    }
+    return is_empty || is_empty_;
+  }
+
+  // TODO(zhouwei): fix Tensor.clear_gradient() bug, function SetIsEmpty() isn't
+  // need
+  void SetIsEmpty(bool is_empty) { is_empty_ = is_empty; }
 
   const std::string& Name() const { return name_; }
 
@@ -79,10 +122,6 @@ class VariableWrapper {
   void SetType(framework::proto::VarType::Type type) { type_ = type; }
 
   framework::proto::VarType::Type Type() const { return type_; }
-
-  void SetDataType(framework::proto::VarType::Type data_type) {
-    data_type_ = data_type;
-  }
 
   std::shared_ptr<VariableWrapper> GetGradVar() const {
     return grad_var_.lock();
@@ -95,6 +134,12 @@ class VariableWrapper {
   std::shared_ptr<GradOpNode> GetGradNode() const { return grad_node_.lock(); }
 
   bool HasGradNode() const { return !grad_node_.expired(); }
+
+  bool HasGradVar() const { return !grad_var_.expired(); }
+
+  void SetDataType(framework::proto::VarType::Type data_type) {
+    data_type_ = data_type;
+  }
 
   framework::proto::VarType::Type DataType() const {
     const framework::Tensor* tensor = nullptr;
@@ -114,6 +159,14 @@ class VariableWrapper {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
       return data_type_;
     }
+  }
+
+  void SetForwardDataType(framework::proto::VarType::Type data_type) {
+    fwd_data_type_ = data_type;
+  }
+
+  framework::proto::VarType::Type ForwardDataType() const {
+    return fwd_data_type_;
   }
 
   const platform::Place Place() const {
@@ -174,13 +227,25 @@ class VariableWrapper {
 
   std::shared_ptr<LeafVarHookPipeline>& GetLeafHooks() { return leaf_hooks_; }
 
+  uint32_t InplaceVersionSnapshot() const { return inplace_version_snapshot_; }
+
+  void ResetInplaceVersion() {
+    auto new_version = var_.CurrentInplaceVersion();
+
+    VLOG(6) << "The wrapper version of VariableWrapper '" << name_
+            << "' will be updated from " << inplace_version_snapshot_ << "to "
+            << new_version;
+    inplace_version_snapshot_ = new_version;
+  }
+
  private:
   void SetGradVar(const std::shared_ptr<VariableWrapper>& var) {
     auto shared_var = grad_var_.lock();
     if (shared_var != var) {
-      PADDLE_ENFORCE_EQ(shared_var, nullptr,
-                        platform::errors::PermissionDenied(
-                            "Cannot set gradient var wrapper twice"));
+      PADDLE_ENFORCE_EQ(
+          shared_var, nullptr,
+          platform::errors::PermissionDenied(
+              "Cannot set gradient variable wrapper twice for %s", name_));
       grad_var_ = var;
     }
   }
@@ -193,9 +258,16 @@ class VariableWrapper {
 
     auto shared_node = grad_node_.lock();
     if (shared_node != grad_node) {
-      PADDLE_ENFORCE_EQ(
-          shared_node, nullptr,
-          platform::errors::PermissionDenied("Cannot set gradient op twice"));
+      if (grad_node->InplaceGradNameMap().empty()) {
+        // grad_node doesn't have Inplace message
+        PADDLE_ENFORCE_EQ(
+            shared_node, nullptr,
+            platform::errors::PermissionDenied(
+                "Cannot set gradient op twice unless using Inplace Strategy."));
+      } else if (shared_node) {
+        VLOG(3) << "The gradient op of Var (" << Name()
+                << ") has been set twice. Because Inplace Strategy is used.";
+      }
       grad_node_ = grad_node;
     }
   }
@@ -244,11 +316,26 @@ class VariableWrapper {
   int overrided_stop_gradient_{-1};
   bool persistable_{false};
 
+  // Used for checking whether there is any inplace operation affecting gradient
+  // calculation.
+  uint32_t inplace_version_snapshot_{0};
+
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};
 
+  // See [ Why need handle complex gradient to real gradient? ]
+  // Used for grad var to get the data type of its corresponding forward var,
+  // if inconsistent, the data type of grad var needs to be casted to be
+  // consistent with forward var
+  framework::proto::VarType::Type fwd_data_type_{
+      static_cast<framework::proto::VarType::Type>(-1)};
+
   std::weak_ptr<VariableWrapper> grad_var_;
   std::weak_ptr<GradOpNode> grad_node_;
+
+  // TODO(zhouwei): fix bug of Tensor.clear_gradient(), function SetIsEmpty()
+  // isn't need
+  bool is_empty_{false};
 
   // NOTE: only grad var can hold hooks now
   // only interior var can hold interior hooks

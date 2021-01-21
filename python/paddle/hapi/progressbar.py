@@ -159,7 +159,7 @@ class ProgressBar(object):
             sys.stdout.write(info)
             sys.stdout.flush()
             self._last_update = now
-        elif self._verbose == 2:
+        elif self._verbose == 2 or self._verbose == 3:
             if self._num:
                 numdigits = int(np.log10(self._num)) + 1
                 count = ('step %' + str(numdigits) + 'd/%d') % (current_num,

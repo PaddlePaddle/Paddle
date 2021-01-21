@@ -85,6 +85,20 @@ REGISTER_OP_CUDA_KERNEL(
                               ops::SqrtGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
+/* ===========================   rsqrt register  =============================
+ */
+REGISTER_ACTIVATION_CUDA_KERNEL(rsqrt, Rsqrt, RsqrtFunctor, RsqrtGradFunctor);
+
+REGISTER_OP_CUDA_KERNEL(
+    rsqrt_grad_grad,
+    ops::RsqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                               ops::RsqrtGradGradFunctor<float>>,
+    ops::RsqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                               ops::RsqrtGradGradFunctor<double>>,
+    ops::RsqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                               ops::RsqrtGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
 /* ===========================  square register  ============================ */
 REGISTER_OP_CUDA_KERNEL(
     square,
@@ -158,40 +172,6 @@ REGISTER_OP_CUDA_KERNEL(
                               ops::ExpGradFunctor<int64_t>>,
     ops::ActivationGradKernel<plat::CUDADeviceContext,
                               ops::ExpGradFunctor<plat::float16>>);
-/* ========================================================================== */
-
-/* ==========================   abs register  ============================ */
-
-REGISTER_OP_CUDA_KERNEL(
-    abs, ops::ActivationKernel<plat::CUDADeviceContext, ops::AbsFunctor<float>>,
-    ops::ActivationKernel<plat::CUDADeviceContext, ops::AbsFunctor<double>>,
-    ops::ActivationKernel<plat::CUDADeviceContext, ops::AbsFunctor<int>>,
-    ops::ActivationKernel<plat::CUDADeviceContext, ops::AbsFunctor<int64_t>>,
-    ops::ActivationKernel<plat::CUDADeviceContext,
-                          ops::AbsFunctor<plat::float16>>);
-REGISTER_OP_CUDA_KERNEL(
-    abs_grad, ops::ActivationGradKernel<plat::CUDADeviceContext,
-                                        ops::AbsGradFunctor<float>>,
-    ops::ActivationGradKernel<plat::CUDADeviceContext,
-                              ops::AbsGradFunctor<double>>,
-    ops::ActivationGradKernel<plat::CUDADeviceContext,
-                              ops::AbsGradFunctor<int>>,
-    ops::ActivationGradKernel<plat::CUDADeviceContext,
-                              ops::AbsGradFunctor<int64_t>>,
-    ops::ActivationGradKernel<plat::CUDADeviceContext,
-                              ops::AbsGradFunctor<plat::float16>>);
-REGISTER_OP_CUDA_KERNEL(
-    abs_grad_grad,
-    ops::ActivationDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                    ops::AbsGradGradFunctor<float>>,
-    ops::ActivationDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                    ops::AbsGradGradFunctor<double>>,
-    ops::ActivationDoubleGradKernel<plat::CUDADeviceContext,
-                                    ops::AbsGradGradFunctor<plat::float16>>,
-    ops::ActivationDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                    ops::AbsGradGradFunctor<int>>,
-    ops::ActivationDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                    ops::AbsGradGradFunctor<int64_t>>);
 /* ========================================================================== */
 
 /* ==========================  Log register ==================================*/

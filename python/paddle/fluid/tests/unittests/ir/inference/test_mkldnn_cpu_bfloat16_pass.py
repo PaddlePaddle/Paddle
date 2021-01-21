@@ -25,18 +25,13 @@ class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             x = fluid.data(
                 name='x', shape=[-1] + self.shape_x, dtype=self.d_type)
-            y = fluid.data(
-                name='y', shape=[-1] + self.shape_y, dtype=self.d_type)
-            out = fluid.layers.matmul(x, y)
-            out = fluid.layers.transpose(out, perm=[0, 1, 2, 3])
+            out = fluid.layers.transpose(x, perm=[0, 1, 2, 3])
             out = fluid.layers.reshape(out, [0, 0, 0, 0])
             out = fluid.layers.fc(out, size=1)
 
             self.feeds = {
                 "x":
-                np.random.random([self.bs] + self.shape_x).astype(self.d_type),
-                "y":
-                np.random.random([self.bs] + self.shape_y).astype(self.d_type)
+                np.random.random([self.bs] + self.shape_x).astype(self.d_type)
             }
             self.fetch_list = [out]
 

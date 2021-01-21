@@ -198,6 +198,7 @@ void FleetWrapper::HeterPullSparseVars(
   for (auto& t : fea_values) {
     pull_result_ptr.push_back(t.data());
   }
+  /*
   auto status = pslib_ptr_->_worker_ptr->heter_pull_sparse(
       workerid, pull_result_ptr.data(), table_id, fea_keys.data(),
       fea_keys.size(), task->taskid_);
@@ -211,15 +212,15 @@ void FleetWrapper::HeterPullSparseVars(
       exit(-1);
     }
   }
+  */
 }
 
 void FleetWrapper::HeterPushSparseVars(
-    std::shared_ptr<HeterTask> task, const uint64_t table_id,
-    const std::vector<std::string>& sparse_key_names,
+    std::shared_ptr<HeterTask> task, const Scope& scope,
+    const uint64_t table_id, const std::vector<std::string>& sparse_key_names,
     const std::vector<std::string>& sparse_grad_names, const int emb_dim,
     std::vector<::std::future<int32_t>>* push_sparse_status, const bool use_cvm,
     const bool dump_slot, const bool no_cvm) {
-  auto& scope = *(task->scope_);
   int batch_size = task->cur_batch_;
   int offset = 2;
   int slot_offset = 0;
@@ -360,6 +361,7 @@ int FleetWrapper::RegisterHeterCallback(HeterCallBackFunc handler) {
   VLOG(3) << "pslib_ptr_=" << pslib_ptr_;
   VLOG(3) << "_worker_ptr=" << pslib_ptr_->_worker_ptr;
   return pslib_ptr_->_worker_ptr->registe_heter_callback(handler);
+
 #else
   VLOG(0) << "FleetWrapper::RegisterHeterCallback"
           << " does nothing when no pslib";

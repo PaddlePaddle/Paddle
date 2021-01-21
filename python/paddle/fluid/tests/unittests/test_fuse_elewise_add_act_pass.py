@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from simple_nets import simple_fc_net, fc_with_batchnorm, init_data
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import unittest
@@ -25,8 +25,8 @@ class TestMNIST(TestParallelExecutorBase):
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
 
-    def _compare_fuse_elewise_add_act_ops(self, model, use_cuda):
-        if use_cuda and not core.is_compiled_with_cuda():
+    def _compare_fuse_elewise_add_act_ops(self, model, use_device):
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
         img, label = init_data()
 
@@ -45,7 +45,7 @@ class TestMNIST(TestParallelExecutorBase):
             model,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             fuse_elewise_add_act_ops=False,
             use_ir_memory_optimize=False,
             enable_inplace=False,
@@ -54,7 +54,7 @@ class TestMNIST(TestParallelExecutorBase):
             model,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             fuse_elewise_add_act_ops=True,
             use_ir_memory_optimize=False,
             enable_inplace=False,
@@ -66,13 +66,17 @@ class TestMNIST(TestParallelExecutorBase):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
 
     def test_simple_fc_with_fuse_op(self):
-        self._compare_fuse_elewise_add_act_ops(simple_fc_net, True)
-        self._compare_fuse_elewise_add_act_ops(simple_fc_net, False)
+        self._compare_fuse_elewise_add_act_ops(simple_fc_net, DeviceType.CUDA)
+        self._compare_fuse_elewise_add_act_ops(simple_fc_net, DeviceType.CPU)
 
     def test_batchnorm_fc_with_fuse_op(self):
-        self._compare_fuse_elewise_add_act_ops(fc_with_batchnorm, True)
-        self._compare_fuse_elewise_add_act_ops(fc_with_batchnorm, False)
+        self._compare_fuse_elewise_add_act_ops(fc_with_batchnorm,
+                                               DeviceType.CUDA)
+        self._compare_fuse_elewise_add_act_ops(fc_with_batchnorm,
+                                               DeviceType.CPU)
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
     unittest.main()

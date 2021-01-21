@@ -145,9 +145,16 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
 #if IS_TRT_VERSION_GE(6000)
 int SplitPluginDynamic::initialize() { return 0; }
 
-size_t SplitPluginDynamic::getSerializationSize() const { return 0; }
+size_t SplitPluginDynamic::getSerializationSize() const {
+  return SerializedSize(axis_) + SerializedSize(output_length_) +
+         SerializedSize(with_fp16_);
+}
 
-void SplitPluginDynamic::serialize(void* buffer) const {}
+void SplitPluginDynamic::serialize(void* buffer) const {
+  SerializeValue(&buffer, axis_);
+  SerializeValue(&buffer, output_length_);
+  SerializeValue(&buffer, with_fp16_);
+}
 
 nvinfer1::DimsExprs SplitPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
@@ -183,14 +190,14 @@ bool SplitPluginDynamic::supportsFormatCombination(
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (pos == 0) {
-#ifdef SUPPORTS_CUDA_FP16
-    return (in.type == nvinfer1::DataType::kFLOAT ||
-            in.type == nvinfer1::DataType::kHALF) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
-#else
-    return (in.type == nvinfer1::DataType::kFLOAT) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
+    if (with_fp16_) {
+      return (in.type == nvinfer1::DataType::kFLOAT ||
+              in.type == nvinfer1::DataType::kHALF) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    } else {
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    }
   }
   const nvinfer1::PluginTensorDesc& prev = in_out[pos - 1];
   // output
@@ -234,6 +241,7 @@ int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. Split-->fp32";
     thrust::device_vector<float*> d_output_ptrs;
     d_output_ptrs.resize(this->getNbOutputs(), nullptr);
 
@@ -249,7 +257,7 @@ int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         d_segment_offsets.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
         inner_cols, axis_shape, outer_rows);
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef SUPPORTS_CUDA_FP16
+    VLOG(1) << "TRT Plugin DataType selected. Split-->fp16";
     thrust::device_vector<half*> d_output_ptrs;
     d_output_ptrs.resize(this->getNbOutputs(), nullptr);
 
@@ -264,10 +272,6 @@ int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     split_kernel<<<grid, block, 0, stream>>>(
         d_segment_offsets.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
         inner_cols, axis_shape, outer_rows);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "The cuda archs you specific should greater than 600."));
-#endif
   }
   return cudaGetLastError() != cudaSuccess;
 }

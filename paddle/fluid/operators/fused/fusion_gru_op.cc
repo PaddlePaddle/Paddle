@@ -16,6 +16,7 @@ limitations under the License. */
 #include <cstring>  // for memcpy
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc.h"
@@ -133,7 +134,7 @@ framework::OpKernelType FusionGRUOp::GetExpectedKernelType(
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-  if (platform::CanMKLDNNBeUsed(ctx)) {
+  if (this->CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
@@ -479,3 +480,13 @@ REGISTER_OPERATOR(fusion_gru, ops::FusionGRUOp, ops::FusionGRUOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fusion_gru, ops::FusionGRUKernel<float>,
                        ops::FusionGRUKernel<double>);
+
+/* ==========================  register checkpoint ===========================*/
+REGISTER_OP_VERSION(fusion_gru)
+    .AddCheckpoint(
+        R"ROC(Upgrade fusion_gru add a new attribute [Scale_weights])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_weights",
+            "The added attribute 'Scale_weights' is not yet "
+            "registered.",
+            std::vector<float>{1.0f}));

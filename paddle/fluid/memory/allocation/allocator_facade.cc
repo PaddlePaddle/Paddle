@@ -14,14 +14,13 @@
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
-#include <gflags/gflags.h>
-
 #include <map>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
@@ -37,6 +36,7 @@
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_XPU

@@ -26,6 +26,7 @@ import shutil
 from contextlib import closing
 import socket
 import warnings
+import six
 
 import paddle
 import paddle.fluid as fluid
@@ -33,13 +34,23 @@ logger = logging.getLogger("root")
 logger.propagate = False
 
 
-class DistributeMode:
+class DistributeMode():
     """
     There are various mode for fleetrun, each of them is designed for different model.
     """
     COLLECTIVE = 0
     PS = 1
     PS_HETER = 2
+
+
+class DeviceMode():
+    """
+    Training devices type
+    """
+    CPU = 0
+    GPU = 1
+    KUNLUN = 2
+    UNKNOWN = 3
 
 
 class Cluster(object):
@@ -243,7 +254,8 @@ def get_logger(log_level=20, name="root"):
     return logger
 
 
-def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
+def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
+                devices_per_proc):
     assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
     cluster = Cluster(hdfs=None)
     trainer_rank = 0
@@ -252,13 +264,17 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
         pod.rank = node_rank
         pod.addr = ip
         cur_node_endpoints = trainer_endpoints[node_rank]
-        # when use paddlecloud, endpoints may > selected_gpus(user_defined)
+        # when use paddlecloud, endpoints may > devices_per_proc(user_defined)
         assert len(cur_node_endpoints) >= len(
-            selected_gpus
+            devices_per_proc
         ), "current trainer_endpoints size should be greater equal than selected_gpus size."
-        for i in range(len(selected_gpus)):
+        for i in range(len(devices_per_proc)):
             trainer = Trainer()
-            trainer.gpus.append(selected_gpus[i])
+            if device_mode == DeviceMode.GPU:
+                if isinstance(devices_per_proc[i], (list, tuple)):
+                    trainer.gpus.extend(devices_per_proc[i])
+                else:
+                    trainer.gpus.append(devices_per_proc[i])
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
@@ -432,12 +448,15 @@ def start_local_trainers(cluster,
     procs = []
     for idx, t in enumerate(pod.trainers):
         proc_env = {
-            "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpus]),
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         }
+
+        if len(t.gpus) > 0:
+            proc_env["FLAGS_selected_gpus"] = "%s" % ",".join(
+                [str(g) for g in t.gpus])
 
         current_env.update(proc_env)
 
@@ -452,8 +471,8 @@ def start_local_trainers(cluster,
                             pretty_print_envs(proc_env, ("Distributed Envs",
                                                          "Value"))))
             logger.info(
-                "details abouts PADDLE_TRAINER_ENDPOINTS can be found in {}/endpoints.log.".
-                format(log_dir))
+                "details abouts PADDLE_TRAINER_ENDPOINTS can be found in {}/endpoints.log, and detail running logs maybe found in {}/workerlog.0".
+                format(log_dir, log_dir))
         fn = None
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))
@@ -563,6 +582,47 @@ def get_gpus(gpus):
                             gpus, res_gpus, cuda_visible_devices_list))
 
     return res_gpus
+
+
+def get_device_mode():
+    #TODO(gongwb):Add XPU supported
+    if not fluid.core.is_compiled_with_cuda(
+    ) or fluid.core.get_cuda_device_count() <= 0:
+        print("launch train in CPU mode")
+        return DeviceMode.CPU
+
+    print("launch train in GPU mode")
+    return DeviceMode.GPU
+
+
+def get_device_proc_info(args):
+    # device_mode
+    device_mode = get_device_mode()
+
+    # devices
+    devices_per_proc = []
+    if device_mode == DeviceMode.GPU:
+        gpus = get_gpus(args.gpus)
+        if args.nproc_per_node is not None:
+            assert (len(gpus) % int(args.nproc_per_node)) ==0, \
+                "gpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(gpus), arg.nproc_per_node)
+
+            n = int(len(gpus) / int(args.nproc_per_node))
+            devices_per_proc = [
+                gpus[i:i + n] for i in six.moves.range(0, len(gpus), n)
+            ]
+        else:
+            devices_per_proc = gpus
+    elif device_mode == DeviceMode.CPU:
+        if args.nproc_per_node is None:
+            devices_per_proc = [0]
+        else:
+            devices_per_proc = [x for x in range(0, args.nproc_per_node)]
+    else:
+        assert False, "Can't support device_mode:{}, support only cpu and gpu now.".format(
+            device_mode)
+
+    return (device_mode, devices_per_proc)
 
 
 def direct_start(args):
@@ -894,7 +954,7 @@ class ParameterServerLauncher(object):
                 "TRAINING_ROLE": "PSERVER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "POD_IP": cur_server.endpoint.split(":")[0],
-                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "1")),
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
@@ -958,7 +1018,7 @@ class ParameterServerLauncher(object):
                 self.heter_worker_endpoints,
                 "TRAINING_ROLE": "TRAINER",
                 "PADDLE_TRAINER_ID": str(cur_worker.rank),
-                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "1")),
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "FLAGS_selected_gpus": "0",
@@ -1028,7 +1088,7 @@ class ParameterServerLauncher(object):
                 "TRAINING_ROLE": "HETER_TRAINER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "POD_IP": cur_heter_worker.endpoint.split(":")[0],
-                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "1")),
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "FLAGS_selected_gpus": "0",

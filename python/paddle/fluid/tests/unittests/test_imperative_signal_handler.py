@@ -43,16 +43,25 @@ class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
             core._set_process_signal_handler()
             sys.exit(1)
 
-        exception = None
-        try:
-            test_process = multiprocessing.Process(target=__test_process__)
-            test_process.start()
+        def try_except_exit():
+            exception = None
+            try:
+                test_process = multiprocessing.Process(target=__test_process__)
+                test_process.start()
 
-            set_child_signal_handler(id(self), test_process.pid)
-            time.sleep(10)
-        except SystemError as ex:
-            self.assertIn("Fatal", cpt.get_exception_message(ex))
-            exception = ex
+                set_child_signal_handler(id(self), test_process.pid)
+                time.sleep(5)
+            except SystemError as ex:
+                self.assertIn("Fatal", cpt.get_exception_message(ex))
+                exception = ex
+            return exception
+
+        try_time = 10
+        exception = None
+        for i in range(try_time):
+            exception = try_except_exit()
+            if exception is not None:
+                break
 
         self.assertIsNotNone(exception)
 

@@ -1,4 +1,8 @@
 include(operators)
+if(WITH_UNITY_BUILD)
+    # Load Unity Build rules for operators in paddle/fluid/operators/fused.
+    include(unity_build_rule.cmake)
+endif()
 register_operators(EXCLUDES
     fused_bn_activation_op
     conv_fusion_op

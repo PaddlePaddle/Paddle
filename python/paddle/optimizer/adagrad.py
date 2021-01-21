@@ -21,7 +21,7 @@ __all__ = ["Adagrad"]
 
 
 class Adagrad(Optimizer):
-    """
+    r"""
     The Adaptive Gradient optimizer (Adagrad for short) use an optimization described 
     in paper: `Adaptive Subgradient Methods for Online Learning and
     Stochastic Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
@@ -50,8 +50,8 @@ class Adagrad(Optimizer):
 	    The default value is None in static mode, at this time all parameters will be updated.
 	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
 	    It canbe a float value as coeff of L2 regularization or \
-	    :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-	    If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+	    :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+	    If a parameter has set regularizer using :ref:`api_paddle_fluid_param_attr_aramAttr` already, \
 	    the regularization setting here in optimizer will be ignored for this parameter. \
 	    Otherwise, the regularization setting here in optimizer will take effect. \
 	    Default None, meaning there is no regularization.
@@ -71,7 +71,6 @@ class Adagrad(Optimizer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             inp = paddle.rand(shape=[10, 10])
             linear = paddle.nn.Linear(10, 10)
             out = linear(inp)

@@ -236,20 +236,24 @@ def single_defcom_extract(start_from, srcls, is_class_begin=False):
         if srcls[x].startswith('def ') or srcls[x].startswith('class '):
             break
         else:
-            if (comstart == -1 and srcls[x].replace(" ", '').replace(
-                    "\t", '').replace("\n", '').startswith("\"\"\"")):
-                comstart = x
-                comstyle = 2
-                continue
+            if comstart == -1:
+                s = srcls[x].replace(" ", '').replace("\t",
+                                                      '').replace("\n", '')
+                if s.startswith("\"\"\"") or s.startswith("r\"\"\""):
+                    comstart = x
+                    comstyle = 2
+                    continue
             if (comstyle == 2 and comstart != -1 and
                     srcls[x].replace(" ", '').replace("\t", '').replace(
                         "\n", '').startswith("\"\"\"")):
                 break
-            if (comstart == -1 and srcls[x].replace(" ", '').replace(
-                    "\t", '').replace("\n", '').startswith("\'\'\'")):
-                comstart = x
-                comstyle = 1
-                continue
+            if comstart == -1:
+                s = srcls[x].replace(" ", '').replace("\t",
+                                                      '').replace("\n", '')
+                if s.startswith("\'\'\'") or s.startswith("r\'\'\'"):
+                    comstart = x
+                    comstyle = 1
+                    continue
             if (comstyle == 1 and comstart != -1 and
                     srcls[x].replace(" ", '').replace("\t", '').replace(
                         "\n", '').startswith("\'\'\'")):

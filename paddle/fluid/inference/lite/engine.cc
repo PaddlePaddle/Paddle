@@ -53,10 +53,9 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
                                    cfg.param.c_str(), cfg.param.size());
   lite_cxx_config.set_valid_places(cfg.valid_places);
 #ifdef PADDLE_WITH_ARM
-  set_threads.set_threads(cfg.cpu_math_library_num_threads);
+  lite_cxx_config.set_threads(cfg.cpu_math_library_num_threads);
 #else
-  lite_cxx_config.set_x86_math_library_num_threads(
-      cfg.cpu_math_library_num_threads);
+  lite_cxx_config.set_x86_math_num_threads(cfg.cpu_math_library_num_threads);
 #endif
 
 #ifdef LITE_SUBGRAPH_WITH_XPU
