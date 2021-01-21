@@ -98,6 +98,13 @@ class Cluster(object):
                 r.append(t.endpoint)
         return r
 
+    def worker_device_ids(self):
+        r = []
+        for pod in self.pods:
+            for t in pod.trainers:
+                r.append(t.accelerators)
+        return r
+
     def pods_endpoints(self):
         r = []
         for pod in self.pods:
@@ -459,7 +466,9 @@ def start_local_trainers(cluster,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
-            "PADDLE_RANK_IN_NODE": str(idx)
+            "PADDLE_RANK_IN_NODE": str(idx),
+            "PADDLE_CURRENT_WORKER_DEVICE_ID":",".join(t.accelerators),
+            "PADDLE_WORKER_DEVICE_IDS":",".join(cluster.worker_device_ids()),
         }
 
         if len(t.accelerators) > 0 and pod.device_mode==DeviceMode.GPU:
