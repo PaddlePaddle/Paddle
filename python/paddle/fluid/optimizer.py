@@ -4510,6 +4510,14 @@ class PipelineOptimizer(object):
                         'ring_id': self.ring_id,
                     })
 
+    def _is_gradient_clip_op(self, op):
+        return op.desc.has_attr("op_namescope") \
+            and op.desc.attr("op_namescope").startswith("/gradient_clip")
+
+    def _is_regularization_op(self, op):
+        return op.desc.has_attr("op_namescope") \
+            and op.desc.attr("op_namescope").startswith("/regularization")
+
     def minimize(self,
                  loss,
                  startup_program=None,

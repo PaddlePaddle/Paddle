@@ -91,7 +91,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_program._pipeline_opt = dict()
             pp_rank = self.role_maker._worker_index(
             ) // self.user_defined_strategy.sharding_configs[
-                'sharding_group_size'] % 2
+                'sharding_group_size']
             main_program._pipeline_opt['local_rank'] = pp_rank
             main_program._pipeline_opt['ring_id'] = 1
             optimize_ops, params_grads, program_list = pp_optimizer.minimize(
@@ -120,6 +120,9 @@ class ShardingOptimizer(MetaOptimizerBase):
         startup_block = startup_program.global_block()
         self._main_program = main_block.program
         self._startup_program = startup_program
+        with open("start_before_sharding_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(startup_block.program))
 
         # step1: set_up
         self._set_up(params_grads)
@@ -140,6 +143,9 @@ class ShardingOptimizer(MetaOptimizerBase):
         # step5: remove unneeded ops and vars from block
         self._prune_main_program(main_block)
         self._prune_startup_program(startup_block)
+        with open("start_sharding_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(startup_block.program))
         with open("main_sharding_%d" % self.role_maker._worker_index(),
                   'w') as f:
             f.writelines(str(main_program))
