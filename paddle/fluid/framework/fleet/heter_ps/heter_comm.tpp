@@ -220,12 +220,14 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
         cudaMemcpyAsync(cur_task.path->nodes_[cur_step+1].key_storage,
                         cur_task.path->nodes_[cur_step].key_storage,
                         cur_task.path->nodes_[cur_step+1].key_bytes_len,
-                        cudaMemcpyDefault, cur_task.path->nodes_[cur_step+1].in_stream);
+                        cudaMemcpyDefault,
+                        cur_task.path->nodes_[cur_step+1].in_stream);
         if (need_copy_val) {
           cudaMemcpyAsync(cur_task.path->nodes_[cur_step+1].val_storage,
                           cur_task.path->nodes_[cur_step].val_storage,
                           cur_task.path->nodes_[cur_step+1].val_bytes_len,
-                          cudaMemcpyDefault, cur_task.path->nodes_[cur_step+1].in_stream);
+                          cudaMemcpyDefault,
+                          cur_task.path->nodes_[cur_step+1].in_stream);
         } 
       }
     }
@@ -505,7 +507,6 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
              cudaMemcpyDeviceToHost);
 
   std::vector<std::shared_ptr<memory::Allocation>> local_storage;
-  size_t max_depth = 0;
 
   for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
@@ -601,7 +602,6 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
              cudaMemcpyDeviceToHost);
 
   std::vector<std::shared_ptr<memory::Allocation>> local_storage;
-  size_t max_depth = 0;
   for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
     if (h_left[i] == -1 || h_right[i] == -1) {
