@@ -42,7 +42,7 @@ class HeterContext {
   std::vector<std::vector<FeatureValue>> device_values_;
   std::vector<std::vector<FeatureKey>> device_keys_;
   std::vector<std::mutex*> mutex_;
-  
+
   uint32_t shard_num_ = 37;
   uint64_t size() {
     uint64_t total_size = 0;
@@ -53,7 +53,7 @@ class HeterContext {
   }
   void SetShardNum(uint32_t shard_num) { shard_num_ = shard_num; }
   uint32_t ShardNum() { return shard_num_; }
-  void init(int shard_num, int device_num) { 
+  void init(int shard_num, int device_num) {
     shard_num_ = shard_num;
     feature_keys_.resize(shard_num_);
     value_ptr_.resize(shard_num_);

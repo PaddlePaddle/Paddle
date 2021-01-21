@@ -40,7 +40,8 @@ namespace framework {
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
 
-void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task, uint64_t table_id, int feature_dim) {
+void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
+                             uint64_t table_id, int feature_dim) {
   VLOG(3) << "PSGPUWrapper::BuildGPUPSTask begin";
   platform::Timer timeline;
   timeline.Start();
@@ -50,11 +51,11 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task, uint64_t ta
   auto input_channel = dataset->GetInputChannel();
   auto& local_keys = gpu_task->feature_keys_;
   auto& local_ptr = gpu_task->value_ptr_;
-  
+
   auto& device_keys = gpu_task->device_keys_;
   auto& device_vals = gpu_task->device_values_;
   auto& device_mutex = gpu_task->mutex_;
-  
+
   std::vector<std::thread> threads;
   auto fleet_ptr = FleetWrapper::GetInstance();
 
@@ -148,11 +149,13 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task, uint64_t ta
   }
   timeline.Pause();
   VLOG(1) << "GpuPs pull sparse cost " << timeline.ElapsedSec() << " seconds.";
-  
+
   timeline.Start();
-  auto build_func = [device_num, &local_keys, &local_ptr, &device_keys, &device_vals, &device_mutex](int i) {
+  auto build_func = [device_num, &local_keys, &local_ptr, &device_keys,
+                     &device_vals, &device_mutex](int i) {
     std::vector<std::vector<FeatureKey>> task_keys(device_num);
-    std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>> task_ptrs(device_num);
+    std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>> task_ptrs(
+        device_num);
 
     for (size_t j = 0; j < local_keys[i].size(); j++) {
       int shard = local_keys[i][j] % device_num;
@@ -162,13 +165,12 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task, uint64_t ta
 
     for (int dev = 0; dev < device_num; dev++) {
       device_mutex[dev]->lock();
-      
+
       int len = task_keys[dev].size();
       int cur = device_keys[dev].size();
       device_keys[dev].resize(device_keys[dev].size() + len);
       device_vals[dev].resize(device_vals[dev].size() + len);
-      
-      
+
       for (int j = 0; j < len; ++j) {
         device_keys[dev][cur + j] = task_keys[dev][j];
         float* ptr_val = task_ptrs[dev][j]->data();
@@ -193,7 +195,6 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task, uint64_t ta
             val.mf[x] = 0;
           }
         }
-          
       }
 
       device_mutex[dev]->unlock();
@@ -207,8 +208,8 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task, uint64_t ta
     t.join();
   }
   timeline.Pause();
-  VLOG(1) << "GpuPs prepare for build hbm cost " << timeline.ElapsedSec() << " seconds.";
-
+  VLOG(1) << "GpuPs prepare for build hbm cost " << timeline.ElapsedSec()
+          << " seconds.";
 }
 
 void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
