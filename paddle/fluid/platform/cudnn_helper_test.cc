@@ -20,7 +20,7 @@ limitations under the License. */
 
 TEST(CudnnHelper, ScopedTensorDescriptor) {
   using paddle::platform::ScopedTensorDescriptor;
-  using paddle::platform::DataLayout;
+  using paddle::platform::CudnnDataLayout;
 
   ScopedTensorDescriptor tensor_desc;
   std::vector<int> shape = {2, 4, 6, 6};
@@ -65,7 +65,7 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
 
 TEST(CudnnHelper, ScopedFilterDescriptor) {
   using paddle::platform::ScopedFilterDescriptor;
-  using paddle::platform::DataLayout;
+  using paddle::platform::CudnnDataLayout;
 
   ScopedFilterDescriptor filter_desc;
   std::vector<int> shape = {2, 3, 3};
