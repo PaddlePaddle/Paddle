@@ -153,7 +153,18 @@ TEST(test_softmax_inplace_cache, cpu_place) {
   CacheTester ct;
   RunOperator<float>(p, "softmax", dims, "softmax_out");
   RunOperator<float>(p, "softmax", dims, "softmax_out", true);
-  PADDLE_ENFORCE_EQ(ct.Analyze(4), true,
+  PADDLE_ENFORCE_EQ(ct.Analyze(7), true,
+                    platform::errors::InvalidArgument(
+                        "Wrong number of cached oneDNN objects"));
+}
+
+TEST(test_relu_inplace_cache, cpu_place) {
+  framework::DDim dims({32, 64});
+  platform::CPUPlace p;
+  CacheTester ct;
+  RunOperator<float>(p, "relu", dims, "relu_out");
+  RunOperator<float>(p, "relu", dims, "relu_out", true);
+  PADDLE_ENFORCE_EQ(ct.Analyze(7), true,
                     platform::errors::InvalidArgument(
                         "Wrong number of cached oneDNN objects"));
 }
