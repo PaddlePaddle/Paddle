@@ -81,7 +81,6 @@ __all__ = [
         'floor',
         'increment',
         'log',
-        'log_',
         'log2',
         'log10',
         'logsumexp',
@@ -150,18 +149,6 @@ _supported_float_dtype_ = [
     VarDesc.VarType.FP32,
     VarDesc.VarType.FP64,
 ]
-
-
-def log_(x, name=None):
-    """
-    Inplace version of ``log`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_log`.
-    """
-    if in_dygraph_mode():
-        return core.ops.log_(x)
-
-    _print_warning_in_static_mode("log")
-    return log(x, name)
 
 
 def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):

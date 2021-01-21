@@ -366,32 +366,12 @@ class TestDygraphInplaceTanh(TestDygraphInplace):
         return paddle.tanh_(var)
 
 
-"""
-class TestDygraphInplaceAddN(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return paddle.add_n(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.add_n_(var)
-"""
-
-
 class TestDygraphInplaceClip(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         return paddle.clip(var, 0.6, 1.5)
 
     def inplace_api_processing(self, var):
         return paddle.clip_(var, 0.6, 1.5)
-
-
-"""
-class TestDygraphInplaceLog(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return paddle.log(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.log_(var)
-"""
 
 
 class TestDygraphInplaceScale(TestDygraphInplace):
@@ -422,6 +402,22 @@ class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
 
     def inplace_api_processing(self, var):
         return paddle.subtract_(var, self.input_var_2)
+
+
+class TestDygraphInplaceAddN(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.add_n(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.add_n_(var)
+
+
+class TestDygraphInplaceAddNMultiInput(TestDygraphInplaceAdd):
+    def non_inplace_api_processing(self, var):
+        return paddle.add_n([var, self.input_var_2])
+
+    def inplace_api_processing(self, var):
+        return paddle.add_n_([var, self.input_var_2])
 
 
 if __name__ == '__main__':

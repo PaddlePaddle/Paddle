@@ -124,7 +124,6 @@ from .math import exp  #DEFINE_ALIAS
 from .math import floor  #DEFINE_ALIAS
 from .math import increment  #DEFINE_ALIAS
 from .math import log  #DEFINE_ALIAS
-from .math import log_  #DEFINE_ALIAS
 from .math import multiplex  #DEFINE_ALIAS
 from .math import pow  #DEFINE_ALIAS
 from .math import reciprocal  #DEFINE_ALIAS
