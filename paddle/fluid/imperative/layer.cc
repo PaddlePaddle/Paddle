@@ -206,6 +206,7 @@ void VarBase::ClearGradient() {
         grad_t->mutable_value()->clear();
       }
     } else {
+      platform::RecordEvent record_event("ClearGradient");
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {
@@ -451,13 +452,15 @@ static void ClearNoNeedBufferInputs(OpBase* op) {
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
-    const platform::Place& place) {
+    const platform::Place& place,
+    const std::map<std::string, std::string>& inplace_map) {
   const auto& info = op.Info();
   if (!info.dygraph_grad_op_maker_) {
     return nullptr;
   }
 
-  auto grad_node = info.dygraph_grad_op_maker_(op.Type(), ins, outs, attrs);
+  auto grad_node =
+      info.dygraph_grad_op_maker_(op.Type(), ins, outs, attrs, inplace_map);
   if (grad_node && !grad_node->empty()) {
     for (auto& grad_op : *grad_node) {
       grad_op.SetId(OpBase::GenerateUniqueId());

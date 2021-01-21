@@ -14,10 +14,11 @@
 
 import unittest
 import os
+import copy
 from launch_function_helper import wait, _find_free_port
-from multiprocessing import Pool, Process
+from threading import Thread
 
-os.environ['GLOG_vmodule'] = str("gen_nccl_id_op*=10")
+os.environ['GLOG_vmodule'] = str("gen_nccl_id_op*=10,gen_comm_id*=10")
 
 import paddle
 from paddle.fluid import core
@@ -29,8 +30,8 @@ def run_gen_ncc_id(attr):
     nccl_comm_num = attr['nccl_comm_num']
     use_hallreduce = attr['use_hierarchical_allreduce']
 
-    startup_program = paddle.static.default_startup_program()
-    main_program = paddle.static.default_main_program()
+    startup_program = paddle.static.Program()
+    main_program = paddle.static.Program()
 
     with paddle.static.program_guard(main_program, startup_program):
         nccl_id_var = startup_program.global_block().create_var(
@@ -60,9 +61,10 @@ def run_gen_ncc_id(attr):
             attrs=attr)
 
     place = paddle.CPUPlace()
-
     exe = paddle.static.Executor(place)
-    exe.run(startup_program)
+    scope = paddle.static.Scope()
+    with paddle.static.scope_guard(scope):
+        exe.run(startup_program)
 
 
 class TestGenNcclIdOp(unittest.TestCase):
@@ -97,16 +99,19 @@ class TestGenNcclIdOp(unittest.TestCase):
         procs = []
         for i in range(nranks):
             attr['trainer_id'] = i
-            p = Process(target=run_gen_ncc_id, args=(attr, ))
+            # NOTE. multiprocessing cannot be covered by coverage
+            p = Thread(target=run_gen_ncc_id, args=(copy.copy(attr), ))
             p.start()
             procs.append(p)
 
-        wait(procs, timeout=120)
+        for p in procs:
+            p.join()
 
     def test_flat(self):
         print(">>> test gen flat nccl id")
         self.gen_nccl_id(2)
         print("<<< end test gen flat nccl id")
+        print()
 
     def test_hierarchical(self):
         print(">>> test gen hierarchical nccl id")

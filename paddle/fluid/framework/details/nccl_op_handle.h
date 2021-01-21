@@ -94,7 +94,7 @@ class NCCLOpHandleBase : public OpHandleBase {
         continue;
       }
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(dev_id));
+      platform::SetDeviceId(dev_id);
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventCreateWithFlags(
           &inter_events_[dev_id], cudaEventDisableTiming));
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventCreateWithFlags(

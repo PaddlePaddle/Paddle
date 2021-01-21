@@ -614,12 +614,15 @@ class ActivationMKLDNNHandler
                           const MKLDNNMemoryFormat fmt,
                           const platform::MKLDNNDeviceContext& dev_ctx,
                           platform::Place cpu_place,
-                          const std::string& unique_name)
+                          const std::string& unique_name, bool is_inplaced)
 
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, dims, "a", algorithm, unique_name)) {
+            is_inplaced
+                ? platform::CreateKey(dev_ctx, dims, "a", algorithm,
+                                      unique_name)
+                : platform::CreateKey(dev_ctx, dims, "a", unique_name)) {
     auto md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
 
     this->AcquireForwardPrimitiveDescriptor(mkldnn::prop_kind::forward_training,
@@ -637,7 +640,7 @@ class ActivationMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, dims, "a", algorithm, unique_name)) {
+            platform::CreateKey(dev_ctx, dims, "a", unique_name)) {
     auto diff_dst_md = platform::MKLDNNMemDesc(
         dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
     auto src_md =

@@ -31,8 +31,12 @@ option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_F
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
+option(WITH_ASCEND         "Compile PaddlePaddle with ASCEND"        OFF)
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
+endif()
+if (WITH_GPU  AND WITH_ASCEND)
+    message(FATAL_ERROR "Error when compile GPU and ASCEND at the same time")
 endif()
 # cmake 3.12, 3.13, 3.14 will append gcc link options to nvcc, and nvcc doesn't recognize them.
 if(WITH_GPU AND (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.12) AND (${CMAKE_VERSION} VERSION_LESS 3.15))
@@ -80,6 +84,8 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
+    # NOTE(Avin0323): Less parallel count result in faster compilation.
+    math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
@@ -87,13 +93,7 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        # NOTE(Avin0323): Less parallel count result in faster compilation with
-        # Unity Build on GPU.
-        if(WITH_UNITY_BUILD AND WITH_GPU)
-            set(${flag_var} "${${flag_var}} /MP8")
-        else()
-            set(${flag_var} "${${flag_var}} /MP")
-        endif()
+        set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
         set(${flag_var} "${${flag_var}} /w")
@@ -160,6 +160,7 @@ option(WITH_BOX_PS      "Compile with box_ps support"                   OFF)
 option(WITH_XBYAK       "Compile with xbyak support"                    ON)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
+option(WITH_PSCORE     "Compile with parameter server support"         ${WITH_DISTRIBUTE})
 option(WITH_INFERENCE_API_TEST   "Test fluid inference C++ high-level api interface"  OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
@@ -290,6 +291,10 @@ if(WITH_ROCM_PLATFORM)
     find_package(HIP)
     include(hip)
 endif(WITH_ROCM_PLATFORM)
+
+if(WITH_NV_JETSON)
+    set(WITH_ARM ON CACHE STRING "Set WITH_ARM=ON when compiling WITH_NV_JETSON=ON." FORCE)
+endif()
 
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")

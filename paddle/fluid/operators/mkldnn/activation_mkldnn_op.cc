@@ -94,20 +94,22 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   }
 
   PADDLE_ENFORCE(
-      x->dims().size() == 2 || x->dims().size() == 3 || x->dims().size() == 4,
-      platform::errors::Unimplemented("Input dim must be with 2, 3 or 4"));
+      x->dims().size() >= 1 || x->dims().size() <= 6,
+      platform::errors::Unimplemented("Input dimension size can be 1, 2, 3, 4, "
+                                      "5, or 6, but now the dimension size is",
+                                      x->dims().size()));
 
+  bool is_inplaced = x->IsSharedBufferWith(*y);
   auto src_tz = framework::vectorize<int64_t>(x->dims());
 
   auto src_format = src_tz.size() == 2 ? MKLDNNMemoryFormat::nc : x->format();
 
   platform::ActivationMKLDNNHandler<T> handler(
       src_tz, algorithm, alpha, beta, src_format, dev_ctx, ctx.GetPlace(),
-      ctx.InputName("X"));
+      ctx.InputName("X"), is_inplaced);
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
-  auto dst_memory_p =
-      x->IsSharedBufferWith(*y) ? src_memory_p : handler.AcquireDstMemory(y);
+  auto dst_memory_p = is_inplaced ? src_memory_p : handler.AcquireDstMemory(y);
   auto activation_p = handler.AcquireForwardPrimitive();
 
   mkldnn::stream astream(dev_ctx.GetEngine());

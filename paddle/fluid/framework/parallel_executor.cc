@@ -22,6 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/bind_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
@@ -933,10 +934,23 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
             exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
             member_->places_, graph));
       } else {
-        VLOG(3) << "use FastThreadedSSAGraphExecutor";
-        member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-            exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
-            member_->places_, graph));
+        if (member_->use_device_ == p::kXPU) {
+#if defined(PADDLE_WITH_XPU)
+          VLOG(3) << "use BindThreadedSSAGraphExecutor";
+          member_->executor_.reset(new details::BindThreadedSSAGraphExecutor(
+              exec_strategy, member_->local_scopes_,
+              member_->local_exec_scopes_, member_->places_, graph));
+#else
+          PADDLE_THROW(platform::errors::PermissionDenied(
+              "Paddle can't use XPU device since it's not compiled with XPU,"
+              "Please recompile or reinstall Paddle with XPU support."));
+#endif
+        } else {
+          VLOG(3) << "use FastThreadedSSAGraphExecutor";
+          member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+              exec_strategy, member_->local_scopes_,
+              member_->local_exec_scopes_, member_->places_, graph));
+        }
       }
       final_graphs.emplace_back(graph);
     }

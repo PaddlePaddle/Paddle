@@ -54,6 +54,8 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py"
            "tools/wlist.json"
            "paddle/scripts/paddle_build.bat"
+           "tools/windows/run_unittests.sh"
+           "tools/parallel_UT_rule.py"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -140,8 +142,11 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/distributed/__init__.py" ]; then
 	      echo_line="You must have (guru4elephant,raindrops2sea) approval for ${API_FILE} changes "
 	      check_approval 1 35550832 38231817
-      elif [ "${API_FILE}" == "paddle/scripts/paddle_build.bat" ]; then
-	      echo_line="You must have one RD (zhouwei25 (Recommend), luotao1) approval for ${API_FILE} changes, which manages all Paddle CI task on Windows.\n"
+      elif [ "${API_FILE}" == "paddle/scripts/paddle_build.bat" ] || [ "${API_FILE}" == "tools/windows/run_unittests.sh" ]; then
+	      echo_line="You must have one RD (zhouwei25 (Recommend), luotao1) approval for ${API_FILE} changes, which manages the Paddle CI task on Windows.\n"
+	      check_approval 1 52485244 6836917
+      elif [ "${API_FILE}" == "tools/parallel_UT_rule.py" ]; then
+	      echo_line="You must have one RD (zhouwei25 (Recommend), luotao1) approval for ${API_FILE} changes, which manages the rule of running unittest with a same GPU. If the unittest failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED, you can remove it from ${API_FILE}.\n"
 	      check_approval 1 52485244 6836917
       elif [ "${API_FILE}" == "python/paddle/fluid/parallel_executor.py" ]; then
           echo_line="You must have one RD (Xreki,luotao1,zhhsplendid) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
