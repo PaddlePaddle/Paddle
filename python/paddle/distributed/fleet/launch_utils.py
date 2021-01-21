@@ -461,6 +461,8 @@ def start_local_trainers(cluster,
 
     procs = []
     for idx, t in enumerate(pod.trainers):
+        ids=cluster.worker_accelerator_ids()
+        res = [':'.join(ele) for ele in ids]
         proc_env = {
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
@@ -468,7 +470,7 @@ def start_local_trainers(cluster,
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "PADDLE_RANK_IN_NODE": str(idx),
             "PADDLE_CURRENT_WORK_ACCLERATOR_ID":",".join(t.accelerators),
-            "PADDLE_WORK_ACCLERATOR_IDS":",".join(cluster.worker_accelerator_ids()),
+            "PADDLE_WORK_ACCLERATOR_IDS":",".join(res),
         }
 
         if len(t.accelerators) > 0 and pod.device_mode==DeviceMode.GPU:
