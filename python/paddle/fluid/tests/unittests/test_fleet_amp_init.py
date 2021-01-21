@@ -67,7 +67,7 @@ class TestFleetAMPInit(unittest.TestCase):
 
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
-        optimizer.amp_init(place, use_fp16_test=True)
+        optimizer.amp_init(place)
 
         step = 1
         for i in range(step):
