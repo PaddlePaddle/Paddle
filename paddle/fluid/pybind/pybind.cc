@@ -1951,6 +1951,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
+  m.def("nvprof_nvtx_push", platform::CudaNvtxRangePush);
+  m.def("nvprof_nvtx_pop", platform::CudaNvtxRangePop);
+  m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
+  m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
 #endif
 

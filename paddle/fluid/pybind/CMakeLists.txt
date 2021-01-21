@@ -3,6 +3,10 @@ set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapp
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper)
 
+if (WITH_GPU)
+  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
+endif()
+
 if (WITH_NCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
