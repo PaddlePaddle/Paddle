@@ -74,8 +74,6 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetWorkerNum(place_num);
   }
-  auto gpu_ps_wrapper = PSGPUWrapper::GetInstance();
-  gpu_ps_wrapper->InitializeGPU(dev_ids);
   return;
 }
 

@@ -73,8 +73,9 @@ class PSGPUWrapper {
                    const int hidden_size, const int64_t total_length,
                    const int batch_size);
 
-  void BuildGPUPS(const uint64_t table_id, int feature_dim,
-                  std::shared_ptr<HeterContext> context);
+  void BuildGPUPS(const uint64_t table_id, int feature_dim);
+  void BuildTask(std::shared_ptr<HeterContext> gpu_task, uint64_t table_id,
+                 int feature_dim);
   void InitializeGPU(const std::vector<int>& dev_ids) {
     if (s_instance_ != NULL) {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
