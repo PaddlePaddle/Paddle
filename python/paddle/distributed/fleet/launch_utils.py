@@ -98,7 +98,7 @@ class Cluster(object):
                 r.append(t.endpoint)
         return r
 
-    def worker_accelerator_ids(self):
+    def world_device_ids(self):
         r = []
         for pod in self.pods:
             for t in pod.trainers:
@@ -459,7 +459,7 @@ def start_local_trainers(cluster,
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
-    ids=cluster.worker_accelerator_ids()
+    ids=cluster.world_device_ids()
     res = [':'.join(ele) for ele in ids]
     procs = []
     for idx, t in enumerate(pod.trainers):

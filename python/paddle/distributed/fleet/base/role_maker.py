@@ -622,20 +622,20 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._generate_role()
         return self._nodes_num
 
-    def _get_rank_in_node(self):
+    def _get_local_rank(self):
         if not self._role_is_generated:
             self._generate_role()
-        return self._rank_in_node
+        return self._local_rank
 
-    def _get_current_worker_accelerator_id(self):
+    def _get_local_device_id(self):
         if not self._role_is_generated:
             self._generate_role()
-        return self._current_worker_accelerator_id
+        return self._local_device_id
 
-    def _get_worker_accelerator_ids(self):
+    def _get_world_device_ids(self):
         if not self._role_is_generated:
             self._generate_role()
-        return self._worker_accelerator_ids
+        return self._world_device_ids
 
     def _get_trainer_endpoints(self):
         """
@@ -797,9 +797,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._trainers_num = len(self._worker_endpoints)
         self._nodes_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
-        self._rank_in_node = os.getenv("PADDLE_RANK_IN_NODE")
-        self._current_worker_accelerator_id=os.getenv("PADDLE_CURRENT_WORK_ACCLERATOR_ID")
-        self._worker_accelerator_ids=os.getenv("PADDLE_WORK_ACCLERATOR_IDS")
+        self._local_rank = os.getenv("PADDLE_RANK_IN_NODE")
+        self._local_device_id=os.getenv("PADDLE_CURRENT_WORK_ACCLERATOR_ID")
+        self._world_device_ids=os.getenv("PADDLE_WORK_ACCLERATOR_IDS")
 
     def _gloo_init(self):
         # PADDLE_WITH_GLOO 1: trainer barrier, 2: all barrier
