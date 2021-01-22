@@ -20,41 +20,10 @@ limitations under the License. */
 int main(int argc, char** argv) {
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
-  // Because the dynamic library libpaddle_fluid.so clips the symbol table, the
-  // external program cannot recognize the flag inside the so, and the flag
-  // defined by the external program cannot be accessed inside the so.
-  // Therefore, the ParseCommandLine function needs to be called separately
-  // inside and outside.
-  std::vector<char*> external_argv;
-  std::vector<char*> internal_argv;
-
-  // ParseNewCommandLineFlags in gflags.cc starts processing
-  // commandline strings from idx 1.
-  // The reason is, it assumes that the first one (idx 0) is
-  // the filename of executable file.
-  external_argv.push_back(argv[0]);
-  internal_argv.push_back(argv[0]);
-
-  std::vector<google::CommandLineFlagInfo> all_flags;
-  std::vector<std::string> external_flags_name;
-  google::GetAllFlags(&all_flags);
-  for (size_t i = 0; i < all_flags.size(); ++i) {
-    external_flags_name.push_back(all_flags[i].name);
-  }
-
+  std::vector<char*> new_argv;
+  std::string gflags_env;
   for (int i = 0; i < argc; ++i) {
-    bool flag = true;
-    std::string tmp(argv[i]);
-    for (size_t j = 0; j < external_flags_name.size(); ++j) {
-      if (tmp.find(external_flags_name[j]) != std::string::npos) {
-        external_argv.push_back(argv[i]);
-        flag = false;
-        break;
-      }
-    }
-    if (flag) {
-      internal_argv.push_back(argv[i]);
-    }
+    new_argv.push_back(argv[i]);
   }
 
   std::vector<std::string> envs;
@@ -62,7 +31,8 @@ int main(int argc, char** argv) {
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_GRPC) && \
     !defined(PADDLE_WITH_PSLIB)
   std::string str_max_body_size;
-  if (google::GetCommandLineOption("max_body_size", &str_max_body_size)) {
+  if (::GFLAGS_NAMESPACE::GetCommandLineOption("max_body_size",
+                                               &str_max_body_size)) {
     setenv("FLAGS_max_body_size", "2147483647", 1);
     envs.push_back("max_body_size");
   }
@@ -99,7 +69,7 @@ int main(int argc, char** argv) {
     }
     env_string = env_string.substr(0, env_string.length() - 1);
     env_str = strdup(env_string.c_str());
-    internal_argv.push_back(env_str);
+    new_argv.push_back(env_str);
     VLOG(1) << "gtest env_string:" << env_string;
   }
 
@@ -111,17 +81,14 @@ int main(int argc, char** argv) {
     }
     undefok_string = undefok_string.substr(0, undefok_string.length() - 1);
     undefok_str = strdup(undefok_string.c_str());
-    internal_argv.push_back(undefok_str);
+    new_argv.push_back(undefok_str);
     VLOG(1) << "gtest undefok_string:" << undefok_string;
   }
 
-  int new_argc = static_cast<int>(external_argv.size());
-  char** external_argv_address = external_argv.data();
-  google::ParseCommandLineFlags(&new_argc, &external_argv_address, false);
-
-  int internal_argc = internal_argv.size();
-  char** arr = internal_argv.data();
-  paddle::platform::ParseCommandLineFlags(internal_argc, arr, true);
+  int new_argc = static_cast<int>(new_argv.size());
+  char** new_argv_address = new_argv.data();
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(
+      &new_argc, &new_argv_address, false);
   paddle::framework::InitDevices();
 
   int ret = RUN_ALL_TESTS();

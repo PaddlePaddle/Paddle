@@ -55,14 +55,14 @@ void FleetWrapper::LoadSparseOnServer(const std::string& path,
 
 void FleetWrapper::InitServer(
     const std::string& dist_desc,
-    const std::vector<std::string>& host_sign_list, int index,
+    const std::vector<std::string>& host_sign_list, int index, int trainers,
     const std::vector<framework::ProgramDesc>& server_sub_program) {
   if (!is_initialized_) {
     VLOG(3) << "Going to init server";
     pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
         new paddle::distributed::PSCore());
     pserver_ptr_->init_server(dist_desc, &host_sign_list, host_sign_list.size(),
-                              index, server_sub_program);
+                              index, trainers, server_sub_program);
     is_initialized_ = true;
   } else {
     VLOG(3) << "Server can be initialized only once";

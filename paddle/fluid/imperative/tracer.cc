@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/imperative/tracer.h"
+#include <map>
 #include <set>
 #include <unordered_set>
 #include <utility>
@@ -130,7 +131,9 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
-                     const platform::Place& place, bool trace_backward) {
+                     const platform::Place& place, bool trace_backward,
+                     const std::map<std::string, std::string>& inplace_map) {
+  platform::RecordEvent op_type_record_event(type);
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for
@@ -182,16 +185,17 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, new_ins, outs, attrs, place);
+    CreateGradOpNode(*op, new_ins, outs, attrs, place, inplace_map);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }
 }
 
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
-                     const NameVarBaseMap& outs,
-                     framework::AttributeMap attrs) {
-  TraceOp(type, ins, outs, std::move(attrs), expected_place_, has_grad_);
+                     const NameVarBaseMap& outs, framework::AttributeMap attrs,
+                     const std::map<std::string, std::string>& inplace_map) {
+  TraceOp(type, ins, outs, std::move(attrs), expected_place_, has_grad_,
+          inplace_map);
 }
 
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
