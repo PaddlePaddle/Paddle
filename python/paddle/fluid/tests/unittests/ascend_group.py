@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_optimizers.ascend import ascend_parser, ascend_optimizer
 
 paddle.enable_static()
 
@@ -79,6 +80,13 @@ def init_communicator(startup_program, main_program, current_endpoint, endpoints
             attrs={'ring_id': ring_id,
                    'use_calc_stream': True})
 
+    optimizer = ascend_optimizer.AscendOptimizer(None, fetch_list=[])
+    optimizer.minimize(None, startup_program, auto_dp=True)
+
+    exe = paddle.static.Executor(paddle.CPUPlace())
+    exe.run(paddle.static.default_startup_program())
+    exe.run(paddle.static.default_main_program())
+
 def train(world_endpoints, world_device_ids, local_device_ids,local_rank):
     startup_programs=[]
     main_programs=[]
@@ -89,6 +97,7 @@ def train(world_endpoints, world_device_ids, local_device_ids,local_rank):
     groups[0]=[trainer_endpoints[0], trainer_endpoints[1]]
     groups[1]=[trainer_endpoints[2], trainer_endpoints[3]]
     groups[2]=[trainer_endpoints[0], trainer_endpoints[2]]
+    print("groups:", groups)
 
     for i in range(len(trainer_endpoints)):
         startup_programs.append(fluid.Program())

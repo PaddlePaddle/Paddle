@@ -175,6 +175,7 @@ class AscendOptimizer(Optimizer):
                  parameter_list=None,
                  no_grad_set=None,
                  auto_dp=False):
+        minimized = None
         if self.inner_opt:
             minimized = self.inner_opt.minimize(loss, startup_program=startup_program)
 
