@@ -22,32 +22,43 @@ from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 
 
-def _get_node_num(endpoints):
-    ss = set()
-    for ep in endpoints:
-        ip = ep.split(":")[0].strip()
-        if ip not in ss:
-            ss.add(ip)
-    return len(ss)
-
-
 class PipelineHelper(object):
-    def __init__(self, role_maker, wait_port='6174'):
+    def __init__(self, role_maker, wait_port=True):
         self.wait_port = wait_port
         self.role_maker = role_maker
 
     def update_startup_program(self,
                                startup_program=None,
-                               inner_parallelism=None):
+                               inner_parallelism=None,
+                               tensor_model_parallel=1):
         self.startup_program = startup_program
 
         nranks = self.role_maker._worker_num()
         rank = self.role_maker._worker_index()
         endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[rank]
-        node_num = _get_node_num(endpoints)
-        assert nranks % node_num == 0
 
+        if tensor_model_parallel > 1:
+            # Create ring 0 for all gpus within a model_parallel group
+            mp_rank = rank % tensor_model_parallel
+            mp_group = rank // tensor_model_parallel
+            mp_endpoints = [
+                ep for idx, ep in enumerate(endpoints)
+                if idx // tensor_model_parallel == m_group
+            ]
+            self._init_communicator(self.startup_program, current_endpoint,
+                                    mp_endpoints, mp_rank, 0, self.wait_port)
+            self._broadcast_params(0)
+            pp_rank = rank // tensor_model_parallel
+            pp_group = rank % tensor_model_parallel
+            pp_endpoints = [
+                ep for idx, ep in enumerate(endpoints)
+                if idx % tensor_model_parallel == m_group
+            ]
+            self._init_communicator(self.startup_program, current_endpoint,
+                                    pp_endpoints, pp_rank, 1, self.wait_port)
+            # Create ring 1 for all gpus within a model_parallel group
+            return
         # Create ring 0 for all gpus in the same pipeline
         if inner_parallelism > 1:
             pipeline_rank = rank % inner_parallelism
@@ -147,6 +158,8 @@ class PipelineOptimizer(MetaOptimizerBase):
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
         self.num_microbatches = user_defined_strategy.pipeline_configs[
             'micro_batch']
+        self.tensor_model_parallel = user_defined_strategy.pipeline_configs[
+            'tensor_model_parallel']
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -162,7 +175,10 @@ class PipelineOptimizer(MetaOptimizerBase):
 
     def _enable_strategy(self, dist_strategy, context):
         dist_strategy.pipeline = True
-        dist_strategy.pipeline_configs = {"micro_batch": 1, }
+        dist_strategy.pipeline_configs = {
+            "micro_batch": 1,
+            "tensor_model_parallel": 1
+        }
 
     def minimize_impl(self,
                       loss,
@@ -173,18 +189,18 @@ class PipelineOptimizer(MetaOptimizerBase):
         current_endpoint = endpoints[self.role_maker._worker_index()]
         self.wrapped_opt = PO(self.inner_opt,
                               num_microbatches=self.num_microbatches)
-        node_num = _get_node_num(endpoints)
-        gpus_per_node = len(endpoints) // node_num
         self.startup_program = startup_program
         if startup_program is None:
             self.startup_program = fluid.default_startup_program()
 
         self.rank = self.role_maker._worker_index()
         self.nranks = self.role_maker._worker_num()
-        assert self.nranks % node_num == 0
 
         loss.block.program._pipeline_opt = dict()
-        loss.block.program._pipeline_opt['local_rank'] = self.rank
+        loss.block.program._pipeline_opt[
+            'local_rank'] = self.rank % self.tensor_model_parallel
+        loss.block.program._pipeline_opt[
+            'ring_id'] = 0 if self.tensor_model_parallel == 0 else 1
         optimize_ops, params_grads, prog_list = self.wrapped_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
         assert prog_list
@@ -193,12 +209,13 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.main_program = loss.block.program
         self.inner_parallelism = loss.block.program._pipeline_opt[
             'inner_parallelism']
-        assert self.nranks % self.inner_parallelism == 0
+        assert self.nranks % (self.inner_parallelism *
+                              self.tensor_model_parallel) == 0
 
         pipeline_helper = PipelineHelper(self.role_maker)
         pipeline_helper.update_startup_program(
             self.startup_program._pipeline_opt["startup_program"],
-            self.inner_parallelism)
+            self.inner_parallelism, self.tensor_model_parallel)
 
         pipeline_num = self.nranks // self.inner_parallelism
         self._transpile_main_program(loss, pipeline_num, self.inner_parallelism)
