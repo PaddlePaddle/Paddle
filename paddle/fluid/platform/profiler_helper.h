@@ -734,13 +734,6 @@ void AnalyzeEvent(
               std::pair<std::string, EventItem>(fname, event_items[j]));
         }
       }
-      else if (child_index[j] == 1 && event_items[j].name.find("reorder") != std::string::npos){
-        size_t first_slash_pos = event_items[j].name.find('/');
-        if(first_slash_pos != std::string::npos){
-          std::string fname = event_items[j].name.substr(0, first_slash_pos);
-          child_map->insert(std::pair<std::string, EventItem>(fname, event_items[j]));
-        }
-      }
     }
     // average time
     for (auto &item : main_event_items) {
