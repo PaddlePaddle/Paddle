@@ -25,6 +25,7 @@ from .tracer import Tracer
 import logging
 from ..data_feeder import convert_dtype
 import warnings
+from ..framework import _get_paddle_place
 
 __all__ = [
     'no_grad', 'no_grad_', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph',
@@ -128,8 +129,9 @@ def enable_dygraph(place=None):
     This API turn OFF static graph mode. You can turn ON static graph mode by `enable_static <./disable_dygraph_en.html>`_ .
 
     Parameters:
-        place(paddle.CPUPlace|paddle.CUDAPlace, optional): Place to run dynamic graph. Default: None. Which means that the running place will be 
-            determined according to the way of paddle compilation. 
+        place(paddle.CPUPlace|paddle.CUDAPlace|str, optional): Place to run dynamic graph. Default: None. Which means that the running place will be 
+            determined according to the way of paddle compilation. If ``place`` is string, It can be ``cpu``, and ``gpu:x``, where ``x`` is the
+            index of the GPUs.
 
     return:
         None
@@ -149,7 +151,8 @@ def enable_dygraph(place=None):
     """
     global _functional_dygraph_context_manager
     if _functional_dygraph_context_manager is None:
-        _functional_dygraph_context_manager = guard(place=place)
+        _functional_dygraph_context_manager = guard(
+            place=_get_paddle_place(place))
         _functional_dygraph_context_manager.__enter__()
 
         # call disable_dygraph when Python exit
@@ -190,12 +193,12 @@ def disable_dygraph():
 def _switch_tracer_mode_guard_(is_train=True):
     tracer = framework._dygraph_tracer()
     if tracer:
-        mode = tracer._train_mode
-        tracer._train_mode = is_train
+        has_grad = tracer._has_grad
+        tracer._has_grad = is_train
         try:
             yield
         finally:
-            tracer._train_mode = mode
+            tracer._has_grad = has_grad
     else:
         yield
 
@@ -326,13 +329,13 @@ class no_grad_:
     def __enter__(self):
         tracer = framework._dygraph_tracer()
         if tracer:
-            self.orig = tracer._train_mode
-            tracer._train_mode = False
+            self.orig = tracer._has_grad
+            tracer._has_grad = False
 
     def __exit__(self, *args):
         tracer = framework._dygraph_tracer()
         if tracer:
-            tracer._train_mode = self.orig
+            tracer._has_grad = self.orig
 
 
 @signature_safe_contextmanager
@@ -343,8 +346,10 @@ def guard(place=None):
     This context will create a dygraph context for dygraph to run, using python ``with`` statement.
 
     Parameters:
-        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph. 
-            If None, the running place will be determined according to the way of paddle compilation. Default: None
+        place(fluid.CPUPlace| fluid.CUDAPlace|str, optional): Place to execute dygraph. 
+            If None, the running place will be determined according to the way of paddle compilation.
+            If ``place`` is string, It can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
+            index of the GPUs or XPUs. Default: None
 
     return:
         None
@@ -371,10 +376,9 @@ def guard(place=None):
     VarBase = core.VarBase
 
     if place is not None:
-        expected_place = place
+        expected_place = _get_paddle_place(place)
     else:
         expected_place = framework._current_expected_place()
-    tracer._expected_place = expected_place
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
@@ -444,7 +448,6 @@ def grad(outputs,
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             def test_dygraph_grad(create_graph):
                 x = paddle.ones(shape=[1], dtype='float32')
@@ -479,10 +482,9 @@ def grad(outputs,
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             def test_dygraph_grad(grad_outputs=None):
-                x = paddle.fluid.layers.fill_constant(shape=[1], value=2.0, dtype='float32')
+                x = paddle.to_tensor(2.0)
                 x.stop_gradient = False
 
                 y1 = x * x
@@ -505,8 +507,7 @@ def grad(outputs,
 
                 return dx.numpy()
 
-            grad_value = paddle.fluid.layers.fill_constant(shape=[1], value=4.0, dtype='float32')
-
+            grad_value = paddle.to_tensor(4.0)
             # dy1 = [1], dy2 = [1]
             print(test_dygraph_grad(None)) # [7.]
 
@@ -517,7 +518,7 @@ def grad(outputs,
             print(test_dygraph_grad([grad_value, None])) # [19.]
 
             # dy1 = [3], dy2 = [4]
-            grad_y1 = paddle.fluid.layers.fill_constant(shape=[1], value=3.0, dtype='float32')
+            grad_y1 = paddle.to_tensor(3.0)
             print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
 	'''
 
@@ -596,12 +597,12 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
     r"""
     :api_attr: imperative
 
-    The API will create a ``Variable`` or ``ComplexVariable`` object from 
-    tuple, list, numpy\.ndarray, Variable or ComplexVariable object.
+    The API will create a ``Variable`` object from 
+    tuple, list, numpy\.ndarray or Variable object.
 
     Parameters:
-        value(tuple|list|ndarray|Variable|Tensor|ComplexVariable): Initial data. 
-            Can be a list, tuple, NumPy ndarray, Variable, Tensor, ComplexVariable. 
+        value(tuple|list|ndarray|Variable|Tensor): Initial data. 
+            Can be a list, tuple, NumPy ndarray, Variable, Tensor.
             The shape can be multi-dimensional. The data type is one of 
             numpy\.{float16, float32, float64, int16, int32, int64, 
             uint8, uint16, complex64, complex128}.
@@ -616,10 +617,9 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             'int32' , 'int64' , 'uint8' . Default: None.
 
     Returns:
-        Variable or ComplexVariable: If ``value`` is a tuple/list/numpy\.ndarray object, 
+        Variable : If ``value`` is a tuple/list/numpy\.ndarray object, 
             return ``Tensor`` created from the corresponding numpy\.ndarray object, which has 
-            same data type and shape with ``value``. If ``value`` is a Variable or ComplexVariable 
-            object, just return ``value``.
+            same data type and shape with ``value``. 
 
 
     Examples:
@@ -650,13 +650,12 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
 
     """
     support_type = (list, tuple, np.ndarray, core.VarBase, framework.Variable,
-                    framework.ComplexVariable, core.Tensor, core.LoDTensor)
+                    core.Tensor, core.LoDTensor)
     if not isinstance(value, support_type):
         raise TypeError(
             "The type of 'value' in fluid.dygraph.to_variable must be %s, but received %s."
             % (support_type, type(value)))
-    if isinstance(value, (core.VarBase, framework.Variable,
-                          framework.ComplexVariable)):
+    if isinstance(value, (core.VarBase, framework.Variable)):
         return value
     elif isinstance(value, (core.Tensor, core.LoDTensor)):
         return core.VarBase(value)
@@ -685,27 +684,10 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             if value.dtype != dtype:
                 value = value.astype(dtype)
 
-        if np.iscomplexobj(value):
-            if not name:
-                name = framework.unique_name.generate('_generated_var')
-            real_var = core.VarBase(
-                value=value.real,
-                place=framework._current_expected_place(),
-                persistable=False,
-                zero_copy=zero_copy,
-                name=name + ".real")
-            imag_var = core.VarBase(
-                value=value.imag,
-                place=framework._current_expected_place(),
-                persistable=False,
-                zero_copy=zero_copy,
-                name=name + ".imag")
-            return framework.ComplexVariable(real_var, imag_var)
-        else:
-            py_var = core.VarBase(
-                value=value,
-                place=framework._current_expected_place(),
-                persistable=False,
-                zero_copy=zero_copy,
-                name=name if name else '')
-            return py_var
+        py_var = core.VarBase(
+            value=value,
+            place=framework._current_expected_place(),
+            persistable=False,
+            zero_copy=zero_copy,
+            name=name if name else '')
+        return py_var

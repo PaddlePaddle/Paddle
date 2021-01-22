@@ -146,6 +146,9 @@ class TrainerDesc(object):
     def _set_dump_file_num(self, dump_file_num):
         self.proto_desc.dump_file_num = dump_file_num
 
+    def _set_user_define_dump_filename(self, user_define_dump_filename):
+        self.proto_desc.user_define_dump_filename = user_define_dump_filename
+
     def _set_dump_converter(self, converter):
         self.proto_desc.dump_converter = converter
 
@@ -360,6 +363,30 @@ class HeterBoxTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super(HeterBoxTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "HeterBoxTrainer"
+        if self._program == None:
+            raise RuntimeError("None Program")
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)
+
+
+class PSGPUTrainer(TrainerDesc):
+    """
+    Implement of PSGPUTrainer.
+    It's for Distributed training.
+    """
+
+    def __init__(self):
+        super(PSGPUTrainer, self).__init__()
+        pass
+
+    def _set_program(self, program):
+        super(PSGPUTrainer, self)._set_program(program)
+        self._program = program
+
+    def _gen_trainer_desc(self):
+        super(PSGPUTrainer, self)._gen_trainer_desc()
+        self.proto_desc.class_name = "PSGPUTrainer"
         if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)

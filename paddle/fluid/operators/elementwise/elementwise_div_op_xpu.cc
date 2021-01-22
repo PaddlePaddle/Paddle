@@ -19,18 +19,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct XPUDivFunctor {
-  int operator()(xpu::Context* ctx, const T* x, const T* y, T* z, int len) {
-    return xpu::elementwise_div(ctx, x, y, z, len);
-  }
-};
-
 template <typename DeviceContext, typename T>
 class ElementwiseDivXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    XPUElementwise<T, XPUDivFunctor<T>>(ctx);
+    XPUElementwise<T>(ctx, xpu::div<T>);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ElementwiseDivGradXPUKernel : public ElemwiseGradKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
+    XPUElementwiseGrad<T>(ctx, xpu::div_grad<T>, true);
   }
 };
 
@@ -40,4 +42,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     elementwise_div,
     ops::ElementwiseDivXPUKernel<paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(elementwise_div_grad,
+                       ops::ElementwiseDivGradXPUKernel<
+                           paddle::platform::XPUDeviceContext, float>);
 #endif

@@ -19,6 +19,7 @@ import unittest
 import os
 import sys
 import subprocess
+import re
 
 
 class TestFlagsUseMkldnn(unittest.TestCase):
@@ -27,9 +28,21 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         self._python_interp += " check_flags_use_mkldnn.py"
 
         self.env = os.environ.copy()
-        self.env[str("GLOG_v")] = str("3")
+        self.env[str("GLOG_v")] = str("1")
         self.env[str("DNNL_VERBOSE")] = str("1")
         self.env[str("FLAGS_use_mkldnn")] = str("1")
+
+        self.relu_regex = b"^dnnl_verbose,exec,cpu,eltwise,.+alg:eltwise_relu alpha:0 beta:0,10x20x30"
+
+    def _print_when_false(self, cond, out, err):
+        if not cond:
+            print('out', out)
+            print('err', err)
+        return cond
+
+    def found(self, regex, out, err):
+        _found = re.search(regex, out, re.MULTILINE)
+        return self._print_when_false(_found, out, err)
 
     def test_flags_use_mkl_dnn(self):
         cmd = self._python_interp
@@ -43,15 +56,8 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         out, err = proc.communicate()
         returncode = proc.returncode
 
-        print('out', out)
-        print('err', err)
-
         assert returncode == 0
-        # in python3, type(out) is 'bytes', need use encode
-        assert out.find(
-            "dnnl_verbose,exec,cpu,eltwise,jit:avx512_common,forward_training,"
-            "data_f32::blocked:abc:f0 diff_undef::undef::f0,,alg:eltwise_relu".
-            encode()) != -1
+        assert self.found(self.relu_regex, out, err)
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -58,6 +59,7 @@ class CPUQuantizePass : public FusePassBase {
   void QuantizeMatmul(Graph* graph) const;
   void QuantizeElementwiseAdd(Graph* graph) const;
   void QuantizeFusionGru(Graph* graph) const;
+  void QuantizeMultiGru(Graph* graph) const;
 
   void QuantizeInput(Graph* g, Node* op, Node* input, std::string input_name,
                      double scale_to_one, bool is_input_unsigned,
@@ -75,10 +77,14 @@ class CPUQuantizePass : public FusePassBase {
                         bool is_unsigned,
                         std::string scale_attr_name = "") const;
 
-  bool AreScalesPresentForNodes(const Node* op_node,
-                                std::initializer_list<Node*> nodes) const;
+  bool AreScalesPresentForVarNames(std::vector<std::string> names) const;
+  bool AreScalesPresentForNodes(std::initializer_list<Node*> nodes) const;
+  std::pair<bool, LoDTensor> GetScaleDataByName(const std::string& name) const;
   std::pair<bool, LoDTensor> GetScaleDataForNode(const Node* node) const;
+  LoDTensor GetScaleTensorByName(const std::string& name) const;
   LoDTensor GetScaleTensorForNode(const Node* node) const;
+  double GetScaleValueByName(const std::string& name,
+                             bool* is_unsigned = nullptr) const;
   double GetScaleValueForNode(const Node* node,
                               bool* is_unsigned = nullptr) const;
   bool IsOpDequantized(const Node* node) const;

@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include <memory>
 #include <string>
+#include "paddle/fluid/operators/reduce_ops/reduce_op_xpu.h"
+#include "paddle/fluid/platform/xpu_header.h"
+
 namespace paddle {
 namespace operators {
 
@@ -23,90 +25,60 @@ template <typename DeviceContext, typename T>
 class ReduceSumXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(context.GetPlace()), true,
-        platform::errors::Unavailable("This kernel only runs on XPU."));
-    bool reduce_all = context.Attr<bool>("reduce_all");
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
-    output->mutable_data<T>(context.GetPlace());
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    if (reduce_all) {
-      int input_len = input->numel();
-      int r = xpu::sum(dev_ctx.x_context(), input->data<T>(), output->data<T>(),
-                       input_len);
-      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                        platform::errors::External("XPU kernel error!"));
-    } else {
-      int ndim = input->dims().size();
-      std::vector<int> idims;
-      for (int i = 0; i < input->dims().size(); i++) {
-        idims.push_back(input->dims()[i]);
-      }
-      auto dims = context.Attr<std::vector<int>>("dim");
-      int rdim = dims.size();
-      int r =
-          xpu::reduce(dev_ctx.x_context(), input->data<T>(), output->data<T>(),
-                      idims.data(), ndim, dims.data(), rdim, xpu::REDUCE_SUM);
-      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                        platform::errors::External("XPU kernel error!"));
-    }
+    XPUReduce<DeviceContext, T>(context, xpu::reduce_sum<T>);
   }
 };
+
 template <typename DeviceContext, typename T>
 class ReduceSumGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto dims = context.Attr<std::vector<int>>("dim");
     bool reduce_all = context.Attr<bool>("reduce_all");
-    auto* input0 = context.Input<Tensor>("X");
-    auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* output = context.Output<Tensor>(framework::GradVarName("X"));
-    output->mutable_data<T>(context.GetPlace());
-    const auto* input2_d = input2->data<T>();
-    auto* output_d = output->data<T>();
+    auto* x = context.Input<Tensor>("X");
+    auto* out = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+
+    int in_dtype = context.Attr<int>("in_dtype");
+    PADDLE_ENFORCE_EQ(
+        in_dtype == -1, true,
+        platform::errors::InvalidArgument(
+            "XPU only support in_dtype == -1 in reduce_sum_grad op."));
+
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = 0;
-    std::vector<int> idims;
-    int reduce_dim = 0;
-    if (reduce_all) {
-      idims.push_back(input0->numel());
-      idims.push_back(1);
-      idims.push_back(1);
-      r = xpu::reduce_grad(dev_ctx.x_context(), input2_d, output_d,
-                           idims.data(), idims.size(), &reduce_dim, 1,
-                           xpu::REDUCE_SUM);
-      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                        platform::errors::External("XPU kernel error!"));
-    } else if (dims.size() == 1) {
-      // handle reduce by one dimension
-      int reduce_dim_index = dims[0];
-      if (reduce_dim_index < 0) {
-        reduce_dim_index += input0->dims().size();
+    x_grad->mutable_data<T>(context.GetPlace());
+    const auto* out_data = out->data<T>();
+    auto* x_grad_data = x_grad->data<T>();
+
+    const auto& input_dim_size = x->dims().size();
+    std::vector<int> true_dims;
+    for (size_t i = 0; i < dims.size(); ++i) {
+      if (dims[i] < 0) {
+        true_dims.push_back(dims[i] + input_dim_size);
+      } else {
+        true_dims.push_back(dims[i]);
       }
-      auto& input_dim = input0->dims();
-      int before_dim = 1;
-      for (int i = 0; i < reduce_dim_index; ++i) {
-        before_dim *= input_dim[i];
-      }
-      int reduce_dim = input_dim[reduce_dim_index];
-      int after_dim = 1;
-      for (int i = reduce_dim_index + 1; i < input_dim.size(); ++i) {
-        after_dim *= input_dim[i];
-      }
-      idims.push_back(before_dim);
-      idims.push_back(input_dim[reduce_dim_index]);
-      idims.push_back(after_dim);
-      reduce_dim = 1;
-      r = xpu::reduce_grad(dev_ctx.x_context(), input2_d, output_d,
-                           idims.data(), idims.size(), &reduce_dim, 1,
-                           xpu::REDUCE_SUM);
-      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                        platform::errors::External("XPU kernel error!"));
-    } else {
-      PADDLE_THROW(
-          platform::errors::Unimplemented("unsupport reduce sum grad"));
     }
+
+    std::vector<int> ydims(input_dim_size);
+    std::vector<int> xdims((input_dim_size));
+    std::set<int> dims_set(true_dims.begin(), true_dims.end());
+    for (auto i = 0; i < input_dim_size; i++) {
+      xdims[i] = x->dims()[i];
+      if (dims_set.find(i) != dims_set.end() || reduce_all) {
+        ydims[i] = 1;
+      } else {
+        ydims[i] = x->dims()[i];
+      }
+    }
+
+    int r = xpu::broadcast<T>(dev_ctx.x_context(), out_data, x_grad_data, ydims,
+                              xdims);
+    PADDLE_ENFORCE_EQ(
+        r == xpu::Error_t::SUCCESS, true,
+        platform::errors::External("XPU broadcast in reduce_sum_grad op return"
+                                   " wrong value[%d %s].",
+                                   r, XPUAPIErrorMsg[r]));
   }
 };
 

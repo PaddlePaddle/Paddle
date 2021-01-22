@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed/communicator.h"
 
-#include <gflags/gflags.h>
 #include <paddle/fluid/framework/program_desc.h>
 
 #include <algorithm>
@@ -23,6 +22,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <unordered_set>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -162,6 +162,18 @@ void AsyncCommunicator::SendByCommunicator() {
       auto after_send = GetCurrentUS();
       VLOG(3) << "send " << var_name << " use time "
               << after_send - after_merge;
+
+      if (var_name.rfind("@GRAD") != var_name.size() - 5) return;
+
+      auto recv_param = var_name.substr(0, var_name.size() - 5);
+      if (recv_varname_to_ctx_.find(recv_param) == recv_varname_to_ctx_.end())
+        return;
+
+      auto recv_functor = distributed::ParameterRecv<float>();
+      recv_functor(recv_varname_to_ctx_.at(recv_param), *recv_scope_);
+      auto after_recv = GetCurrentUS();
+      VLOG(3) << "recv " << recv_param << " use time "
+              << after_recv - after_send;
     };
     task_futures.emplace_back(send_threadpool_->enqueue(std::move(send_task)));
   }

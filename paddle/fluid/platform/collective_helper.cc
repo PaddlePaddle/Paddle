@@ -42,6 +42,7 @@ class NCCLCommImpl : public NCCLComm {
   void set_dev_ctx(std::unique_ptr<CUDADeviceContext>&& dev_ctx) {
     dev_ctx_ = std::move(dev_ctx);
   }
+  CUDADeviceContext* dev_context() const override { return dev_ctx_.get(); }
 
  private:
   int ring_id_;
@@ -74,7 +75,7 @@ NCCLComm* NCCLCommContext::CreateNCCLComm(ncclUniqueId* nccl_id, int nranks,
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
   ncclComm_t comm = nullptr;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(dev_id));
+  SetDeviceId(dev_id);
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::ncclCommInitRank(&comm, nranks, *nccl_id, rank));
 

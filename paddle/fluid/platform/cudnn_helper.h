@@ -314,7 +314,7 @@ class ScopedRNNTensorDescriptor {
   inline cudnnRNNDataDescriptor_t descriptor(
       const cudnnDataType_t cudnn_type, int max_seq_length, int batch_size,
       int input_size, bool time_major, const std::vector<int>& seq_length) {
-    static float padding_fill = 0.0f;
+    static double padding_fill = 0.0f;
     cudnnRNNDataLayout_t layout;
 
     if (time_major) {

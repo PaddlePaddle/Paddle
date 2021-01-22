@@ -26,171 +26,140 @@ namespace operators {
 template <typename DeviceContext, typename T>
 class ElementwiseAddXPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    XPUElementwise<T, XPUAddFunctor<T>>(ctx);
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    // XPUElementwise<T>(ctx, xpu::add<T>);
+    // ToDo(QingshuChen): update this optimization to elementwise_xpu.h
+    auto x_var = ctx.InputVar("X");
+    PADDLE_ENFORCE_NE(x_var, nullptr, platform::errors::InvalidArgument(
+                                          "Cannot get input Variable X"));
+    PADDLE_ENFORCE_EQ(
+        x_var->IsType<framework::LoDTensor>(), true,
+        platform::errors::InvalidArgument(
+            "XPU only support LoDTensor, Input(X) is not LoDTensor"));
+
+    auto x = x_var->Get<framework::LoDTensor>();
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* z = ctx.Output<framework::LoDTensor>("Out");
+    z->mutable_data<T>(ctx.GetPlace());
+    auto x_dims = x.dims();
+    auto y_dims = y->dims();
+    int max_dim = std::max(x_dims.size(), y_dims.size());
+    int axis = ctx.Attr<int>("axis");
+    axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+
+    PADDLE_ENFORCE_GE(
+        axis, 0,
+        platform::errors::InvalidArgument(
+            "Axis should be great than or equal to 0, but received axis is %d.",
+            axis));
+    PADDLE_ENFORCE_LT(
+        axis, max_dim,
+        platform::errors::InvalidArgument(
+            "Axis should be less than %d, but received axis is %d.", max_dim,
+            axis));
+    std::vector<int> x_dims_vec(max_dim, 1);
+    std::vector<int> y_dims_vec(max_dim, 1);
+    if (x_dims.size() == max_dim) {
+      for (int i = 0; i < max_dim; i++) {
+        x_dims_vec[i] = x_dims[i];
+      }
+    } else {
+      for (int i = 0; i < x_dims.size(); i++) {
+        x_dims_vec[i + axis] = x_dims[i];
+      }
+    }
+    if (y_dims.size() == max_dim) {
+      for (int i = 0; i < max_dim; i++) {
+        y_dims_vec[i] = y_dims[i];
+      }
+    } else {
+      for (int i = 0; i < y_dims.size(); i++) {
+        y_dims_vec[i + axis] = y_dims[i];
+      }
+    }
+    const T* x_data = x.data<T>();
+    const T* y_data = y->data<T>();
+    T* z_data = z->data<T>();
+
+    auto& dev_ctx =
+        ctx.template device_context<paddle::platform::XPUDeviceContext>();
+    int ret = xpu::SUCCESS;
+    ret = xpu::broadcast_add<T>(dev_ctx.x_context(), x_data, y_data, z_data,
+                                x_dims_vec, y_dims_vec);
+    PADDLE_ENFORCE_EQ(
+        ret, xpu::SUCCESS,
+        platform::errors::External(
+            "XPU kernel Elementwise occur error in XPUElementwise error code ",
+            ret, XPUAPIErrorMsg[ret]));
   }
 };
 
 template <typename DeviceContext, typename T>
 class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     ElemwiseGradKernel<T>::Compute(ctx);
-    using Tensor = framework::Tensor;
-
-    auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-
-    auto dx_dims = dout->dims();
-    auto dy_dims_untrimed = dout->dims();
-    T *dx_data = NULL;
-    T *dy_data = NULL;
-
+    // XPUElementwiseGrad<T>(ctx, xpu::add_grad<T>, false);
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* dz = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
-    PADDLE_ENFORCE_GE(dx_dims.size(), dy_dims_untrimed.size(),
-                      platform::errors::InvalidArgument(
-                          "Rank of first input must >= rank of second input."));
-
-    if (dx != nullptr) {
-      dx->mutable_data<T>(ctx.GetPlace());
-      dx_dims = dx->dims();
-      dx_data = dx->data<T>();
-    }
-
-    if (dy != nullptr) {
-      dy->mutable_data<T>(ctx.GetPlace());
-      dy_dims_untrimed = dy->dims();
-      dy_data = dy->data<T>();
-    }
-
-    int pre, n, post, is_common_broadcast;
-    if (dx_dims == dy_dims_untrimed) {
-      pre = post = 1;
-      n = dout->numel();
+    const framework::DDim& x_dims = x->dims();
+    const framework::DDim& y_dims = y->dims();
+    int max_dim = std::max(x_dims.size(), y_dims.size());
+    axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+    PADDLE_ENFORCE_GE(
+        axis, 0,
+        platform::errors::InvalidArgument(
+            "Axis should be great than or equal to 0, but received axis is %d.",
+            axis));
+    PADDLE_ENFORCE_LT(
+        axis, max_dim,
+        platform::errors::InvalidArgument(
+            "Axis should be less than %d, but received axis is %d.", max_dim,
+            axis));
+    std::vector<int> x_dims_vec(max_dim, 1);
+    std::vector<int> y_dims_vec(max_dim, 1);
+    if (x_dims.size() == max_dim) {
+      for (int i = 0; i < max_dim; i++) {
+        x_dims_vec[i] = x_dims[i];
+      }
     } else {
-      axis = (axis == -1 ? dx_dims.size() - dy_dims_untrimed.size() : axis);
-      PADDLE_ENFORCE_EQ(axis >= 0 && axis < dx_dims.size(), true,
-                        platform::errors::InvalidArgument(
-                            "Axis should be in range [0, dx_dims)"));
-      auto dy_dims = trim_trailing_singular_dims(dy_dims_untrimed);
-      axis = (dy_dims.size() == 0) ? dx_dims.size() : axis;
-      get_mid_dims(dx_dims, dy_dims, axis, &pre, &n, &post,
-                   &is_common_broadcast);
+      for (int i = 0; i < x_dims.size(); i++) {
+        x_dims_vec[i + axis] = x_dims[i];
+      }
     }
-    int len = pre * n * post;
+    if (y_dims.size() == max_dim) {
+      for (int i = 0; i < max_dim; i++) {
+        y_dims_vec[i] = y_dims[i];
+      }
+    } else {
+      for (int i = 0; i < y_dims.size(); i++) {
+        y_dims_vec[i + axis] = y_dims[i];
+      }
+    }
 
-    auto &dev_ctx =
+    T* dx_data = nullptr;
+    T* dy_data = nullptr;
+    if (dx) {
+      dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    }
+    if (dy) {
+      dy_data = dy->mutable_data<T>(ctx.GetPlace());
+    }
+
+    auto& dev_ctx =
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
-    if (post == 1) {
-      int r = xpu::matrix_vector_add_grad(
-          dev_ctx.x_context(), dout->data<T>(), dout->data<T>(),
-          dout->data<T>(), dout->data<T>(), dx_data, dy_data, pre, n);
-      if (r == xpu::Error_t::INVALID_PARAM) {
-        PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                          platform::errors::InvalidArgument(
-                              "XPU kernel error of ElementWiseAddOp, error "
-                              "message: INVALID_PARAM, "
-                              "please check your input & output."));
-      } else if (r == xpu::Error_t::RUNTIME_ERROR) {
-        PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                          platform::errors::Unavailable(
-                              "XPU kernel error of ElementWiseAddOp, error "
-                              "message: RUNTIME_ERROR, "
-                              "please check whether Baidu Kunlun card is "
-                              "properly installed."));
-      } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
-        PADDLE_ENFORCE_EQ(
-            r, xpu::Error_t::SUCCESS,
-            platform::errors::ResourceExhausted(
-                "XPU kernel error of ElementWiseAddOp, error message: "
-                "NO_ENOUGH_WORKSPACE, XPU has no enough memory."));
-      }
-      return;
-    }
-
-    if (dx == nullptr) {
-      PADDLE_ENFORCE_EQ(
-          xpu_malloc(reinterpret_cast<void **>(&dx_data), len * sizeof(float)),
-          XPU_SUCCESS,
-          platform::errors::ResourceExhausted("XPU has no enough memory"));
-    }
-
-    if (dy == nullptr) {
-      PADDLE_ENFORCE_EQ(
-          xpu_malloc(reinterpret_cast<void **>(&dy_data), len * sizeof(float)),
-          XPU_SUCCESS,
-          platform::errors::ResourceExhausted("XPU has no enough memory"));
-    } else {
-      if (len != n) {
-        PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void **>(&dy_data),
-                                     len * sizeof(float)),
-                          XPU_SUCCESS, platform::errors::ResourceExhausted(
-                                           "XPU has no enough memory"));
-      }
-    }
-
-    int r = xpu::elementwise_add_grad(
-        dev_ctx.x_context(), dout->data<T>() /*x*/, dout->data<T>() /*y*/,
-        dout->data<T>() /*out*/, dout->data<T>(), dx_data, dy_data, len);
-    if (r == xpu::Error_t::INVALID_PARAM) {
-      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                        platform::errors::InvalidArgument(
-                            "XPU kernel error of ElementWiseAddOp, error "
-                            "message: INVALID_PARAM, "
-                            "please check your input & output."));
-    } else if (r == xpu::Error_t::RUNTIME_ERROR) {
-      PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
-          platform::errors::Unavailable(
-              "XPU kernel error of ElementWiseAddOp, error message: "
-              "RUNTIME_ERROR, "
-              "please check whether Baidu Kunlun card is properly installed."));
-    } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
-      PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
-          platform::errors::ResourceExhausted(
-              "XPU kernel error of ElementWiseAddOp, error message: "
-              "NO_ENOUGH_WORKSPACE, XPU has no enough memory."));
-    }
-
-    if ((dy != nullptr) && (len != n)) {
-      r = xpu::reduce_ew(dev_ctx.x_context(), dy_data, dy->data<T>(), pre, n,
-                         post, xpu::ElementwiseOp::ASSIGN);
-      if (r == xpu::Error_t::INVALID_PARAM) {
-        PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                          platform::errors::InvalidArgument(
-                              "XPU kernel error of ElementWiseAddOp, error "
-                              "message: INVALID_PARAM, "
-                              "please check your input & output."));
-      } else if (r == xpu::Error_t::RUNTIME_ERROR) {
-        PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                          platform::errors::Unavailable(
-                              "XPU kernel error of ElementWiseAddOp, error "
-                              "message: RUNTIME_ERROR, "
-                              "please check whether Baidu Kunlun card is "
-                              "properly installed."));
-      } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
-        PADDLE_ENFORCE_EQ(
-            r, xpu::Error_t::SUCCESS,
-            platform::errors::ResourceExhausted(
-                "XPU kernel error of ElementWiseAddOp, error message: "
-                "NO_ENOUGH_WORKSPACE, XPU has no enough memory."));
-      }
-      dev_ctx.Wait();
-      xpu_free(dy_data);
-    }
-
-    if ((dx == nullptr || dy == nullptr) && !(dy != nullptr && len != n)) {
-      dev_ctx.Wait();
-    }
-
-    if (dx == nullptr) {
-      xpu_free(dx_data);
-    }
-    if (dy == nullptr) {
-      xpu_free(dy_data);
-    }
+    int ret = xpu::broadcast_add_grad<T>(dev_ctx.x_context(), dx_data, dx_data,
+                                         dx_data, dz->data<T>(), dy_data,
+                                         dx_data, x_dims_vec, y_dims_vec);
+    PADDLE_ENFORCE_EQ(
+        ret, xpu::SUCCESS,
+        platform::errors::External(
+            "XPU kernel Elementwise occur error in XPUElementwise error code ",
+            ret, XPUAPIErrorMsg[ret]));
   }
 };
 

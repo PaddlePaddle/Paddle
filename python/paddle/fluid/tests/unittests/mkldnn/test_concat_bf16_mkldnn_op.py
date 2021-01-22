@@ -27,7 +27,6 @@ from paddle import enable_static
                  "place does not support BF16 evaluation")
 class TestConcatBf16Op(OpTest):
     def setUp(self):
-        enable_static()
         self.op_type = "concat"
         self.use_mkldnn = True
         self.mkldnn_data_type = "bfloat16"
@@ -107,4 +106,5 @@ class TestAxis3Case(TestConcatBf16Op):
 
 
 if __name__ == '__main__':
+    enable_static()
     unittest.main()

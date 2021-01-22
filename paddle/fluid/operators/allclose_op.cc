@@ -14,7 +14,9 @@
 
 #include "paddle/fluid/operators/allclose_op.h"
 #include <cmath>
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -63,9 +65,15 @@ class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor, it's data type should be float32, float64.");
     AddInput("Other",
              "The input tensor, it's data type should be float32, float64.");
-    AddInput("Rtol", "The relative tolerance.");
-    AddInput("Atol", "The absolute tolerance.");
+    AddInput("Rtol", "The relative tolerance.").AsDispensable();
+    AddInput("Atol", "The absolute tolerance.").AsDispensable();
     AddOutput("Out", "The output tensor, it's data type is bool.");
+    AddAttr<std::string>("rtol",
+                         "The relative tolerance. Default: :math:`1e-5` .")
+        .SetDefault("1e-5");
+    AddAttr<std::string>("atol",
+                         "The absolute tolerance. Default: :math:`1e-8` .")
+        .SetDefault("1e-8");
     AddAttr<bool>("equal_nan",
                   "If :math:`True` , then two :math:`NaNs` will be "
                   "compared as equal. Default: :math:`False` .")
@@ -91,8 +99,6 @@ class AllcloseOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Allclose");
     OP_INOUT_CHECK(ctx->HasInput("Other"), "Input", "Other", "Allclose");
-    OP_INOUT_CHECK(ctx->HasInput("Rtol"), "Input", "Rtol", "Allclose");
-    OP_INOUT_CHECK(ctx->HasInput("Atol"), "Input", "Atol", "Allclose");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Allclose");
 
     auto input_dim = ctx->GetInputDim("Input");
@@ -153,3 +159,41 @@ REGISTER_OPERATOR(
     ops::AllcloseOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(allclose, ops::AllcloseKernel<CPU, float>,
                        ops::AllcloseKernel<CPU, double>);
+
+/* ==========================  register checkpoint ===========================*/
+REGISTER_OP_VERSION(allclose)
+    .AddCheckpoint(
+        R"ROC(Upgrade allclose, add two new inputs [Rtol] and [Atol].)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput("Rtol",
+                      "The added input 'Rtol' is not"
+                      "dispensable.")
+            .NewInput("Atol",
+                      "The added input 'Atol' is not"
+                      "dispensable."))
+    .AddCheckpoint(
+        R"ROC(Delete two float attributes [rtol] and [atol], 
+        then add 2 string attributes [atol, rtol]. Don't be surprised.
+        This is because float cannot represent hight-precision
+        floating-point values, and our framework doesn't support
+        the use of double attributes. As a result, string instead
+        of double is used here to represent high-precision
+        floating-point values.
+        )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .DeleteAttr("rtol",
+                        "The attribute 'rtol' is deleted."
+                        "The reason why it is deleted is that"
+                        "attributes do not support a float64 value"
+                        "and it is changed to a tensor.")
+            .DeleteAttr("atol",
+                        "The attribute 'atol' is deleted."
+                        "The reason why it is deleted is that"
+                        "attributes do not support a float64 value"
+                        "and it is changed to a tensor.")
+            .NewAttr("rtol",
+                     "(string) The relative tolerance. Default: :math:`1e-5` .",
+                     std::string("1e-5"))
+            .NewAttr("atol",
+                     "(string) The absolute tolerance. Default: :math:`1e-8` .",
+                     std::string("1e-8")));
