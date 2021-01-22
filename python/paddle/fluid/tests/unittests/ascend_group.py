@@ -83,7 +83,6 @@ def train(world_endpoints, world_device_ids, local_device_ids,local_rank):
     startup_programs=[]
     main_programs=[]
 
-
     #trainer_endpoints=["127.0.0.1:6071","127.0.0.1:6072","127.0.0.1:6073","127.0.0.1:6074"]
     trainer_endpoints=world_endpoints
     groups=[[], [], []]
@@ -109,11 +108,11 @@ def train(world_endpoints, world_device_ids, local_device_ids,local_rank):
 worker_endpoints=fleet.worker_endpoints()
 world_device_ids=fleet.world_device_ids()
 local_device_ids=fleet.local_device_ids()
-local_rank=fleet.local_rank()
+local_rank=int(fleet.local_rank())
 
 print("worker_endpoints:", worker_endpoints)
 print("world_device_ids:", world_device_ids)
 print("local_device_ids:", local_device_ids)
-
+print("local_rank:", local_rank)
 
 train(worker_endpoints, world_device_ids,local_device_ids,local_rank)
