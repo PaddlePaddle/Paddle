@@ -144,7 +144,7 @@ struct AbsFunctor<T, NoComplex<T, Real<T>>> {
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    output_[idx] = abs(input_[idx]);
+    output_[idx] = std::abs(input_[idx]);
   }
 
   const T* input_;
