@@ -42,9 +42,9 @@ class LSTMMKLDNNHandler
             ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, weight_h, h0,
             is_reverse, N, Ti, IC, OC, 4,
             ctx.InputName("X") + ctx.InputName("WeightH")) {
-    const bool is_INT8 = std::is_same<T, uint8_t>::value;
-    const bool use_peepholes = ctx.Attr<bool>("use_peepholes");
     if (!this->isCached()) {
+      const bool is_INT8 = std::is_same<T, uint8_t>::value;
+      const bool use_peepholes = ctx.Attr<bool>("use_peepholes");
       // oneDNN kernel has hardcoded activation functions
       PADDLE_ENFORCE_EQ(
           ctx.Attr<std::string>("gate_activation"), "sigmoid",
@@ -275,7 +275,15 @@ template <typename T>
 class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    RunKernel<float>(ctx);
+    const bool is_bf16 = std::is_same<T, paddle::platform::bfloat16>::value;
+    const bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+
+    // BF16 does not support force output
+    if (!is_bf16 && force_fp32_output) {
+      RunKernel<float>(ctx);
+    } else {
+      RunKernel<T>(ctx);
+    }
   }
 
   template <typename Tout = T>
@@ -374,4 +382,5 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(fusion_lstm, MKLDNN, paddle::platform::CPUPlace,
-                   ops::FusionLSTMMKLDNNKernel<float>);
+                   ops::FusionLSTMMKLDNNKernel<float>,
+                   ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>);
