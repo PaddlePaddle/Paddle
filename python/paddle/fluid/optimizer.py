@@ -3759,16 +3759,18 @@ class PipelineOptimizer(object):
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
-        if not isinstance(optimizer, Optimizer) and not isinstance(
-                optimizer, paddle.optimizer.Optimizer) and not isinstance(
-                    optimizer, paddle.fluid.contrib.mixed_precision.decorator.
-                    OptimizerWithMixedPrecision):
+        supported_opt_types = (Optimizer, paddle.optimizer.Optimizer,
+                               paddle.fluid.contrib.mixed_precision.decorator.
+                               OptimizerWithMixedPrecision)
+        if not isinstance(optimizer, supported_opt_types):
             raise ValueError("The 'optimizer' parameter for "
                              "PipelineOptimizer must be an instance of "
-                             "Optimizer, but the given type is {}.".format(
-                                 type(optimizer)))
+                             "{}, but the given type is {}.".format(
+                                 supported_opt_types, type(optimizer)))
+
         self._optimizer = optimizer
-        self._origin_optimizer = self._optimizer  # The original optimizer, such as SGD
+        # Original optimizer defined by users, such as SGD
+        self._origin_optimizer = self._optimizer
         while hasattr(self._origin_optimizer, "inner_opt"):
             self._origin_optimizer = self._origin_optimizer.inner_opt
 
