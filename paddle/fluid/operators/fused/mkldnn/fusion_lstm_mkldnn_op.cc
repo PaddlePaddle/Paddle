@@ -275,15 +275,7 @@ template <typename T>
 class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const bool is_bf16 = std::is_same<T, paddle::platform::bfloat16>::value;
-    const bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-
-    // BF16 does not support force output
-    if (!is_bf16 && force_fp32_output) {
       RunKernel<float>(ctx);
-    } else {
-      RunKernel<T>(ctx);
-    }
   }
 
   template <typename Tout = T>
@@ -382,5 +374,4 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(fusion_lstm, MKLDNN, paddle::platform::CPUPlace,
-                   ops::FusionLSTMMKLDNNKernel<float>,
-                   ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>);
+                   ops::FusionLSTMMKLDNNKernel<float>);
