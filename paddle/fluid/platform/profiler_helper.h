@@ -42,6 +42,8 @@ std::mutex profiler_mu;
 static TracerOption g_tracer_option = TracerOption::kDefault;
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
+// To hook RecordEvent's events, use it to nvtx timeline
+static bool g_enable_nvprof_hook = false;
 // The thread local event list only can be accessed by the specific thread
 // The thread index of each thread
 static thread_local int32_t g_thread_id;

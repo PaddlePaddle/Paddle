@@ -416,6 +416,19 @@ void* GetOpDsoHandle(const std::string& dso_name) {
 #endif
 }
 
+void* GetNvtxDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  PADDLE_THROW(platform::errors::Unimplemented("Nvtx do not support Apple."));
+#elif defined(_WIN32)
+  PADDLE_THROW(platform::errors::Unimplemented("Nvtx do not support Windows."));
+#elif !defined(PADDLE_WITH_CUDA)
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Nvtx do not support without CUDA."));
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvToolsExt.so");
+#endif
+}
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

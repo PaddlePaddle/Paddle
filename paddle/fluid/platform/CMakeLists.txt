@@ -124,7 +124,7 @@ cc_test(lodtensor_printer_test SRCS lodtensor_printer_test.cc DEPS lodtensor_pri
 
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
-  nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_tracer gpu_info enforce)
+  nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_tracer gpu_info enforce dynload_cuda)
   nv_test(cuda_helper_test SRCS cuda_helper_test.cu)
   nv_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info gpu_info place)
 else()
