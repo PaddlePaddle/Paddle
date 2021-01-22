@@ -23,7 +23,7 @@ import paddle.fluid as fluid
 
 paddle.enable_static()
 
-os.system('python3.7 setup.py build')
+os.system('python setup.py build')
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
 fluid.load_op_library(os.path.join(file_dir, 'librelu2_op.so'))
