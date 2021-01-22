@@ -20,12 +20,16 @@ from paddle.fluid import unique_name
 import paddle.fluid.core as core
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.distributed import fleet
 
 paddle.enable_static()
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 OP_ROLE_VAR_KEY = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+
+role = fleet.PaddleCloudRoleMaker(is_collective=True)
+fleet.init(role)
 
 def init_communicator(startup_program, main_program, current_endpoint, endpoints, ring_id):
     nranks = len(endpoints)
@@ -75,12 +79,13 @@ def init_communicator(startup_program, main_program, current_endpoint, endpoints
             attrs={'ring_id': ring_id,
                    'use_calc_stream': True})
 
-def train():
+def train(world_endpoints, world_device_ids, local_device_ids):
     startup_programs=[]
     main_programs=[]
 
 
-    trainer_endpoints=["127.0.0.1:6071","127.0.0.1:6072","127.0.0.1:6073","127.0.0.1:6074"]
+    #trainer_endpoints=["127.0.0.1:6071","127.0.0.1:6072","127.0.0.1:6073","127.0.0.1:6074"]
+    trainer_endpoints=world_endpoints
     groups=[[], [], []]
     groups[0]=[trainer_endpoints[0], trainer_endpoints[1]]
     groups[1]=[trainer_endpoints[2], trainer_endpoints[3]]
@@ -101,4 +106,12 @@ def train():
     print(startup_programs[0])
     print(main_programs[0])
 
-train()
+worker_endpoints=fleet.worker_endpoints()
+world_device_ids=fleet.world_device_ids()
+local_device_ids=fleet.local_device_ids()
+
+print("worker_endpoints:", worker_endpoints)
+print("world_device_ids:", world_device_ids)
+print("local_device_ids:", local_device_ids)
+
+train(worker_endpoints, world_device_ids,local_device_ids)
