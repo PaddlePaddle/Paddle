@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import os
+import sys
 import copy
 import setuptools
 from setuptools.command.build_ext import build_ext
 
-import paddle
+from extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag
+from extension_utils import is_cuda_file, prepare_unix_cflags, add_std_without_repeat, get_build_directory
 
-NVCC_COMPILE_FLAGS = [
-    '-ccbin cc', '-DNVCC', '-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU',
-    '-DPADDLE_USE_DSO', '-Xcompiler'
-]
+IS_WINDOWS = os.name == 'nt'
+CUDA_HOME = find_cuda_home()
 
 
 def CppExtension(name, sources, *args, **kwargs):
@@ -45,79 +45,6 @@ def CUDAExtension(name, sources, *args, **kwargs):
     return setuptools.Extension(name, sources, *args, **kwargs)
 
 
-def normalize_extension_kwargs(kwargs, use_cuda=False):
-    """ 
-    Normalize include_dirs, library_dir and other attributes in kwargs.
-    """
-    assert isinstance(kwargs, dict)
-    # append necessary include dir path of paddle
-    include_dirs = kwargs.get('include_dirs', [])
-    include_dirs.extend(find_paddle_includes(True))
-    kwargs['include_dirs'] = include_dirs
-
-    # append necessary lib path of paddle
-    library_dirs = kwargs.get('library_dirs', [])
-    library_dirs.extend(find_paddle_libraries(True))
-    kwargs['library_dirs'] = library_dirs
-
-    kwargs['language'] = 'c++'
-    return kwargs
-
-
-def find_paddle_includes(use_cuda=False):
-    """
-    Return Paddle necessary include dir path.
-    """
-    # pythonXX/site-packages/paddle/include
-    paddle_include_dir = paddle.sysconfig.get_include()
-    third_party_dir = os.path.join(paddle_include_dir, 'third_party')
-
-    include_dirs = [paddle_include_dir, third_party_dir]
-
-    if use_cuda:
-        cuda_dirs = find_cuda_includes()
-        include_dirs.extend(cuda_dirs)
-
-    return include_dirs
-
-
-def find_cuda_includes():
-    # TODO(Aurelius84): Use heuristic method to find cuda path
-    include_dirs = ["/usr/local/cuda/lib64"]
-
-    return include_dirs
-
-
-def find_paddle_libraries(use_cuda=False):
-    """
-    Return Paddle necessary library dir path.
-    """
-    # pythonXX/site-packages/paddle/libs
-    paddle_lib_dir = paddle.sysconfig.get_lib()
-    return [paddle_lib_dir]
-
-
-def append_necessary_flags(extra_compile_args, use_cuda=False):
-    """
-    Add necessary compile flags for gcc/nvcc compiler.
-    """
-    necessary_flags = ['-std=c++11']
-
-    if use_cuda:
-        necessary_flags.extend(NVCC_COMPILE_FLAGS)
-
-
-def add_compile_flag(extension, flag):
-    extra_compile_args = copy.deepcopy(extension.extra_compile_args)
-    if isinstance(extra_compile_args, dict):
-        for args in extra_compile_args.values():
-            args.append(flag)
-    else:
-        extra_compile_args.append(flag)
-
-    extension.extra_compile_args = extra_compile_args
-
-
 class BuildExtension(build_ext, object):
     """
     For setuptools.cmd_class.
@@ -126,11 +53,10 @@ class BuildExtension(build_ext, object):
     @classmethod
     def with_options(cls, **options):
         '''
-        Returns a subclass with alternative constructor that extends any original keyword
-        arguments to the original constructor with the given options.
+        Returns a BuildExtension subclass that support to specific use-defined options.
         '''
 
-        class cls_with_options(cls):  # type: ignore
+        class cls_with_options(cls):
             def __init__(self, *args, **kwargs):
                 kwargs.update(options)
                 super().__init__(*args, **kwargs)
@@ -144,6 +70,7 @@ class BuildExtension(build_ext, object):
     def initialize_options(self):
         super(BuildExtension, self).initialize_options()
         # update options here.
+        # FIXME(Aurelius84): for unittest
         self.build_lib = './'
 
     def finalize_options(self):
@@ -164,8 +91,70 @@ class BuildExtension(build_ext, object):
         # Consider .cu, .cu.cc as valid source extensions.
         self.compiler.src_extensions += ['.cu', '.cu.cc']
         # Save the original _compile method for later.
-        if self.compiler.compiler_type == 'msvc':
+        if self.compiler.compiler_type == 'msvc' or IS_WINDOWS:
             raise NotImplementedError("Not support on MSVC currently.")
+        else:
+            original_compile = self.compiler._compile
+
+        def unix_custom_single_compiler(obj, src, ext, cc_args, extra_postargs,
+                                        pp_opts):
+            """
+            Monkey patch machanism to replace inner compiler to custom complie process on Unix platform.
+            """
+            # use abspath to ensure no warning
+            src = os.path.abspath(src)
+            cflags = copy.deepcopy(extra_postargs)
+
+            try:
+                original_compiler = self.compiler.compiler_so
+                # ncvv compile CUDA source
+                if is_cuda_file(src):
+                    assert CUDA_HOME is not None
+                    nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
+                    self.compiler.set_executable('compiler_so', nvcc_cmd)
+                    # {'nvcc': {}, 'cxx: {}}
+                    if isinstance(cflags, dict):
+                        cflags = cflags['nvcc']
+                    else:
+                        cflags = prepare_unix_cflags(cflags)
+                # cxx compile Cpp source
+                elif isinstance(cflags, dict):
+                    cflags = cflags['cxx']
+
+                add_std_without_repeat(
+                    cflags, self.compiler.compiler_type, use_std14=False)
+                original_compile(obj, src, ext, cc_args, cflags, pp_opts)
+            finally:
+                # restore original_compiler
+                self.compiler.compiler_so = original_compiler
+
+        def object_filenames_with_cuda(origina_func):
+            """
+            Decorated the function to add customized naming machanism.
+            """
+
+            def wrapper(source_filenames, strip_dir=0, output_dir=''):
+                try:
+                    objects = origina_func(source_filenames, strip_dir,
+                                           output_dir)
+                    for i, source in enumerate(source_filenames):
+                        # modify xx.o -> xx.cu.o
+                        if is_cuda_file(source):
+                            old_obj = objects[i]
+                            objects[i] = old_obj[:-1] + 'cu.o'
+                    # ensure to use abspath
+                    objects = [os.path.abspath(obj) for obj in objects]
+                finally:
+                    self.compiler.object_filenames = origina_func
+
+                return objects
+
+            return wrapper
+
+        # customized compile process
+        self.compiler._compile = unix_custom_single_compiler
+        self.compiler.object_filenames = object_filenames_with_cuda(
+            self.compiler.object_filenames)
 
         build_ext.build_extensions(self)
 

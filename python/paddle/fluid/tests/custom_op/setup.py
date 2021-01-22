@@ -13,7 +13,7 @@
 # limitations under the License.
 import os
 from setuptools import setup
-from cpp_extension import CppExtension, BuildExtension
+from cpp_extension import CppExtension, CUDAExtension, BuildExtension
 from setuptools import Extension
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,12 +21,11 @@ file_dir = os.path.dirname(os.path.abspath(__file__))
 setup(
     name='relu_op_shared',
     ext_modules=[
-        CppExtension(
+        CUDAExtension(
             name='librelu2_op',
-            sources=['relu_op.cc'],
+            sources=['relu_op.cc', 'relu_op.cu'],
             extra_compile_tag=['-g'],
-            extra_link_args=['-lpaddle_framework'],
-            no_python_abi_suffix=True,
+            extra_link_args=['-lpaddle_framework', '-lcudart'],
             output_dir=file_dir)
     ],
     cmdclass={
