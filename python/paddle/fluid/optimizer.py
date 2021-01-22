@@ -3834,14 +3834,16 @@ class PipelineOptimizer(object):
                     block._clone_variable(source_var, False)
         if add_index:
             sum_op = block.ops[add_index]
-            block.insert_op(
+            OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+            block._insert_op(
                 add_index + 1,
                 type='c_allreduce_sum',
                 inputs={'X': sum_op.desc.output_arg_names()[0]},
                 outputs={'Out': sum_op.desc.output_arg_names()[0]},
                 attrs={
-                    'ring_id': self._ring_id,
-                    OP_ROLE_KEY: OpRole.Optimize,
+                    'ring_id': self.ring_id,
+                    OP_ROLE_KEY:
+                    core.op_proto_and_checker_maker.OpRole.Optimize,
                     'use_calc_stream': True
                 })
 
