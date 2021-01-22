@@ -2796,16 +2796,13 @@ PDNode *patterns::MultiGru::operator()() {
 PDNode *patterns::LayerNorm::operator()() {
   auto *x = pattern->NewNode(x_repr())->AsInput()->assert_is_ops_input(
       {"reduce_mean", "elementwise_sub"});
-  auto *x_mean = pattern->NewNode(x_mean_repr())
-                     ->assert_is_op("reduce_mean")
-                     ->AsIntermediate();
+  auto *x_mean = pattern->NewNode(x_mean_repr())->assert_is_op("reduce_mean");
   auto *x_mean_out = pattern->NewNode(x_mean_out_repr())
                          ->assert_is_op_output("reduce_mean", "Out")
-                         ->assert_is_op_input("elementwise_sub")
+                         ->assert_is_op_input("elementwise_sub", "Y")
                          ->AsIntermediate();
-  auto *x_sub_mean = pattern->NewNode(x_sub_mean_repr())
-                         ->assert_is_op("elementwise_sub")
-                         ->AsIntermediate();
+  auto *x_sub_mean =
+      pattern->NewNode(x_sub_mean_repr())->assert_is_op("elementwise_sub");
   auto *x_sub_mean_out =
       pattern->NewNode(x_sub_mean_out_repr())
           ->assert_is_op_output("elementwise_sub")
@@ -2814,62 +2811,54 @@ PDNode *patterns::LayerNorm::operator()() {
   auto *sqr_pow = pattern->NewNode(sqr_pow_repr())
                       ->assert_is_op_input("elementwise_pow", "Y")
                       ->assert_is_persistable_var()
-                      ->AsIntermediate();
-  auto *x_sub_mean_sqr = pattern->NewNode(x_sub_mean_sqr_repr())
-                             ->assert_is_op("elementwise_pow")
-                             ->AsIntermediate();
+                      ->AsInput();
+  auto *x_sub_mean_sqr =
+      pattern->NewNode(x_sub_mean_sqr_repr())->assert_is_op("elementwise_pow");
   auto *x_sub_mean_sqr_out = pattern->NewNode(x_sub_mean_sqr_out_repr())
                                  ->assert_is_op_output("elementwise_pow")
                                  ->assert_is_op_input("reduce_mean")
                                  ->AsIntermediate();
-  auto *std_dev = pattern->NewNode(std_dev_repr())
-                      ->assert_is_op("reduce_mean")
-                      ->AsIntermediate();
+  auto *std_dev = pattern->NewNode(std_dev_repr())->assert_is_op("reduce_mean");
   auto *std_dev_out = pattern->NewNode(std_dev_out_repr())
                           ->assert_is_op_output("reduce_mean")
                           ->assert_is_op_input("elementwise_add")
                           ->AsIntermediate();
-  auto *eps = pattern->NewNode(sqr_pow_repr())
+  auto *eps = pattern->NewNode(eps_repr())
                   ->assert_is_op_input("elementwise_add", "Y")
                   ->assert_is_persistable_var()
-                  ->AsIntermediate();
-  auto *std_dev_eps = pattern->NewNode(std_dev_eps_repr())
-                          ->assert_is_op("elementwise_add")
-                          ->AsIntermediate();
+                  ->AsInput();
+  auto *std_dev_eps =
+      pattern->NewNode(std_dev_eps_repr())->assert_is_op("elementwise_add");
   auto *std_dev_eps_out = pattern->NewNode(std_dev_eps_out_repr())
                               ->assert_is_op_output("elementwise_add")
                               ->assert_is_op_input("sqrt")
                               ->AsIntermediate();
-  auto *std_dev_eps_sqrt = pattern->NewNode(std_dev_eps_sqrt_repr())
-                               ->assert_is_op("sqrt")
-                               ->AsIntermediate();
+  auto *std_dev_eps_sqrt =
+      pattern->NewNode(std_dev_eps_sqrt_repr())->assert_is_op("sqrt");
   auto *std_dev_eps_sqrt_out = pattern->NewNode(std_dev_eps_sqrt_out_repr())
                                    ->assert_is_op_output("sqrt")
                                    ->assert_is_op_input("elementwise_div", "Y")
                                    ->AsIntermediate();
-  auto *division = pattern->NewNode(division_repr())
-                       ->assert_is_op("elementwise_div")
-                       ->AsIntermediate();
+  auto *division =
+      pattern->NewNode(division_repr())->assert_is_op("elementwise_div");
   auto *division_out = pattern->NewNode(division_out_repr())
                            ->assert_is_op_output("elementwise_div")
                            ->assert_is_op_input("elementwise_mul")
                            ->AsIntermediate();
   auto *gamma = pattern->NewNode(gamma_repr())
                     ->assert_is_op_input("elementwise_mul", "Y")
-                    ->assert_is_persistable_var();
-  auto *scale = pattern->NewNode(scale_repr())
-                    ->assert_is_op("elementwise_mul")
-                    ->AsIntermediate();
+                    ->assert_is_persistable_var()
+                    ->AsInput();
+  auto *scale = pattern->NewNode(scale_repr())->assert_is_op("elementwise_mul");
   auto *scale_out = pattern->NewNode(scale_out_repr())
                         ->assert_is_op_output("elementwise_mul")
                         ->assert_is_op_input("elementwise_add")
                         ->AsIntermediate();
   auto *beta = pattern->NewNode(beta_repr())
                    ->assert_is_op_input("elementwise_add", "Y")
-                   ->assert_is_persistable_var();
-  auto *shift = pattern->NewNode(shift_repr())
-                    ->assert_is_op("elementwise_add")
-                    ->AsIntermediate();
+                   ->assert_is_persistable_var()
+                   ->AsInput();
+  auto *shift = pattern->NewNode(shift_repr())->assert_is_op("elementwise_add");
   auto *shift_out = pattern->NewNode(shift_out_repr())
                         ->assert_is_op_output("elementwise_add")
                         ->AsOutput();

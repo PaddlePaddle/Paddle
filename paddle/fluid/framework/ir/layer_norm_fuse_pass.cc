@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/layer_norm_fuse_pass.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -30,14 +31,15 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
                           platform::errors::InvalidArgument(
                               "The input graph of "
                               "LayerNormFusePass should not be nullptr."));
-  FusePassBase::Init("layer_norm", graph);
+  FusePassBase::Init("layer_norm_fuse", graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
-  patterns::LayerNorm layer_norm_pattern(gpd.mutable_pattern(), "layer_norm");
+  patterns::LayerNorm layer_norm_pattern(gpd.mutable_pattern(),
+                                         "layer_norm_fuse");
   layer_norm_pattern();
 
   int found_layer_norm_count = 0;
