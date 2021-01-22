@@ -496,6 +496,11 @@ struct numeric_limits<paddle::platform::complex64> {
   }
 };
 
+HOSTDEVICE inline paddle::platform::complex64 abs(
+    const paddle::platform::complex64& a) {
+  return paddle::platform::abs(a);
+}
+
 }  // namespace std
 namespace Eigen {
 

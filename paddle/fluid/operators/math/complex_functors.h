@@ -162,7 +162,7 @@ struct AbsGradFunctor {
     if (x_[idx] == T(0)) {
       output_[idx] = T(0);
     } else {
-      output_[idx] = T(dout_[idx]) * (x_[idx] / T(abs(x_[idx])));
+      output_[idx] = T(dout_[idx]) * (x_[idx] / T(std::abs(x_[idx])));
     }
   }
 
@@ -181,7 +181,7 @@ struct AbsGradGradFunctor {
     if (x_[idx] == T(0)) {
       output_[idx] = T(0);
     } else {
-      output_[idx] = T(ddx_[idx]) * x_[idx] / T(abs(x_[idx]));
+      output_[idx] = T(ddx_[idx]) * x_[idx] / T(std::abs(x_[idx]));
     }
   }
 
