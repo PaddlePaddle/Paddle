@@ -202,7 +202,8 @@ class SAdam : public SparseOptimizer {
 
       float* tmp_ = tmp.data();
       // float eps_ = epsilon * sqrt(1 - beta2_pow[0]);
-      float eps_ = epsilon * sqrt(1 - beta2_pow);
+      // float eps_ = epsilon * sqrt(1 - beta2_pow);
+      float eps_ = epsilon;
 
       SQRT<float>(update_numel, moment2, tmp_);
       ADD<float>(update_numel, tmp_, eps_, tmp_);

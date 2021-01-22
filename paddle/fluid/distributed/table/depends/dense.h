@@ -161,7 +161,8 @@ class DAdam : public DenseOptimizer {
     lr_ *= sqrt(1 - beta2_pow[0]) / (1 - beta1_pow[0]);
 
     float* tmp_ = tmp.data();
-    float eps_ = epsilon * sqrt(1 - beta2_pow[0]);
+    // float eps_ = epsilon * sqrt(1 - beta2_pow[0]);
+    float eps_ = epsilon;
 
     SQRT<float>(update_numel, moment2 + begin, tmp_);
     ADD<float>(update_numel, tmp_, eps_, tmp_);
