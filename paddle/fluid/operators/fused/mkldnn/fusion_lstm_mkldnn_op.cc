@@ -44,7 +44,6 @@ class LSTMMKLDNNHandler
             ctx.InputName("X") + ctx.InputName("WeightH")) {
     const bool is_INT8 = std::is_same<T, uint8_t>::value;
     const bool use_peepholes = ctx.Attr<bool>("use_peepholes");
-
     if (!this->isCached()) {
       // oneDNN kernel has hardcoded activation functions
       PADDLE_ENFORCE_EQ(
