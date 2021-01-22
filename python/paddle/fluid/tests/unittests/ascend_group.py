@@ -79,7 +79,7 @@ def init_communicator(startup_program, main_program, current_endpoint, endpoints
             attrs={'ring_id': ring_id,
                    'use_calc_stream': True})
 
-def train(world_endpoints, world_device_ids, local_device_ids):
+def train(world_endpoints, world_device_ids, local_device_ids,local_rank):
     startup_programs=[]
     main_programs=[]
 
@@ -103,15 +103,17 @@ def train(world_endpoints, world_device_ids, local_device_ids):
             init_communicator(startup_program, main_program, te, group, idx)
 
     print(len(startup_programs))
-    print(startup_programs[0])
-    print(main_programs[0])
+    print(startup_programs[local_rank])
+    print(main_programs[local_rank])
 
 worker_endpoints=fleet.worker_endpoints()
 world_device_ids=fleet.world_device_ids()
 local_device_ids=fleet.local_device_ids()
+local_rank=fleet.local_rank()
 
 print("worker_endpoints:", worker_endpoints)
 print("world_device_ids:", world_device_ids)
 print("local_device_ids:", local_device_ids)
 
-train(worker_endpoints, world_device_ids,local_device_ids)
+
+train(worker_endpoints, world_device_ids,local_device_ids,local_rank)
