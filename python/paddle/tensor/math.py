@@ -321,8 +321,12 @@ def add_(x, y, name=None):
     if in_dygraph_mode():
         op_type = 'elementwise_add_'
         axis = -1
-        return _elementwise_op_in_dygraph(
+        inplace_shape = x.shape
+        out = _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
+        if inplace_shape != out.shape:
+            raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out.shape, inplace_shape))
+        return out
     _print_warning_in_static_mode("elementwise_add")
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
@@ -396,8 +400,12 @@ def subtract_(x, y, name=None):
     if in_dygraph_mode():
         axis = -1
         act = None
-        return _elementwise_op_in_dygraph(
+        inplace_shape = x.shape
+        out = _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name='elementwise_sub_')
+        if inplace_shape != out.shape:
+            raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out.shape, inplace_shape))
+        return out
     _print_warning_in_static_mode("elementwise_sub")
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 

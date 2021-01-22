@@ -449,6 +449,32 @@ class TestAddInplaceApi(TestAddApi):
         self.add = paddle.add_
 
 
+class TestAddInplaceBroadcast(unittest.TestCase):
+    def test_broadcast_success(self):
+        paddle.disable_static()
+        x_numpy = np.random.rand(2, 3, 4).astype('float')
+        y_numpy = np.random.rand(3, 4).astype('float')
+
+        x = paddle.to_tensor(x_numpy)
+        y = paddle.to_tensor(y_numpy)
+
+        inplace_result = paddle.add_(x, y)
+        numpy_result = x_numpy + y_numpy
+        self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
+        paddle.enable_static()
+
+    def test_broadcast_errors(self):
+        paddle.disable_static()
+        x = paddle.rand([3, 4])
+        y = paddle.rand([2, 3, 4])
+
+        def broadcast_shape_error():
+            paddle.add_(x, y)
+
+        self.assertRaises(ValueError, broadcast_shape_error)
+        paddle.enable_static()
+
+
 class TestComplexElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
