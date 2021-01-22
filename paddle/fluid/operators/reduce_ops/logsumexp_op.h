@@ -14,6 +14,10 @@
 
 #pragma once
 
+#if defined(__GNUC__) && defined(__CUDACC__)
+#define EIGEN_STRONG_INLINE __attribute__((noinline))
+#endif
+
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
