@@ -275,7 +275,7 @@ template <typename T>
 class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-      RunKernel<float>(ctx);
+    RunKernel<float>(ctx);
   }
 
   template <typename Tout = T>
