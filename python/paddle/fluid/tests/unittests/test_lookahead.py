@@ -93,7 +93,18 @@ class TestLookAhead(unittest.TestCase):
         class LinearNet(nn.Layer):
             def __init__(self):
                 super(LinearNet, self).__init__()
-                self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+                weight_attr = paddle.ParamAttr(
+                    name="weight",
+                    initializer=paddle.nn.initializer.Constant(value=0.5))
+                bias_attr = paddle.ParamAttr(
+                    name="bias",
+                    initializer=paddle.nn.initializer.Constant(value=1.0))
+
+                self._linear = nn.Linear(
+                    IMAGE_SIZE,
+                    CLASS_NUM,
+                    weight_attr=weight_attr,
+                    bias_attr=bias_attr)
                 self.bias = self._linear.bias
 
             @paddle.jit.to_static
