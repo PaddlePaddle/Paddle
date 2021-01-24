@@ -493,11 +493,6 @@ struct numeric_limits<paddle::platform::complex128> {
   static paddle::platform::complex128 denorm_min() {
     return paddle::platform::complex128(0.0, 0.0);
   }
-
-  HOSTDEVICE inline paddle::platform::complex128 abs(
-      const paddle::platform::complex128& a) {
-    return paddle::platform::abs(a);
-  }
 };
 
 }  // namespace std
