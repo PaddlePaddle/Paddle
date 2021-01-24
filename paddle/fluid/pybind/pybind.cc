@@ -24,6 +24,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
@@ -1721,6 +1722,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("load_op_library", framework::LoadOpLib);
+  m.def("load_custom_op", framework::LoadCustomOperator);
   m.def("init_devices", []() { framework::InitDevices(); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);

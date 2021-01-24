@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 
 project(cpp_imdb_train_demo CXX C)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 if(NOT DEFINED PADDLE_LIB)
   message(FATAL_ERROR "please set PADDLE_LIB with -DPADDLE_LIB=/paddle/lib/dir")

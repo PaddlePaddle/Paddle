@@ -164,6 +164,8 @@ static void PreparedOpRunImpl(
   static_cast<const framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 
+  VLOG(0) << "infer shape end in dygraph.";
+
   func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
                                         attrs));
 
