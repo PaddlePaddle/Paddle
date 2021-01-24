@@ -21,6 +21,7 @@ from collections import namedtuple
 from .. import core
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from ..multiprocess_utils import _cleanup_mmap, CleanupFuncRegistrar, MP_STATUS_CHECK_INTERVAL
+from ..framework import in_dygraph_mode
 
 # NOTE: queue has a different name in python2 and python3
 if six.PY2:
@@ -124,7 +125,14 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                         batch = [batch]
 
                     tensor_list = core._convert_to_tensor_list(batch)
-                    out_queue.put((idx, tensor_list))
+                    if in_dygraph_mode():
+                        varbase_list = [
+                            core.VarBase(
+                                t, keep_place=True) for t in tensor_list
+                        ]
+                        out_queue.put((idx, varbase_list))
+                    else:
+                        out_queue.put((idx, tensor_list))
                     core._remove_tensor_list_mmap_fds(tensor_list)
                 else:
                     out_queue.put((idx, batch))
