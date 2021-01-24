@@ -225,15 +225,19 @@ class Table(object):
         self.data.append(row_str)
 
     def print_row(self, row):
+        string = ''
         for i in range(self.col_num):
-            print('|' + str(row[i]).center(self.table_len[i] + 2), end='')
-        print('|')
+            string += '|' + str(row[i]).center(self.table_len[i] + 2)
+        string += '|'
+        print(string)
 
     def print_shelf(self):
+        string = ''
         for length in self.table_len:
-            print('+', end='')
-            print('-' * (length + 2), end='')
-        print('+')
+            string += '+'
+            string += '-' * (length + 2)
+        string += '+'
+        print(string)
 
     def print_table(self):
         self.print_shelf()
