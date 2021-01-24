@@ -70,13 +70,10 @@ class AscendIRParser(object):
             rank = op.attr("rank")
             ring_id = op.attr("ring_id")
 
-            if rank == 0:
-                group_name = "hcom_group_" + str(ring_id)
-                global_rank_ids = [self._endpoint_to_world_rank_id(endpoint) for endpoint in self.hcom_endpoints[nccl_id]]
-                self.groups_to_create.append(HcomGroupConfig(name=group_name, nranks=nranks, rank_ids=global_rank_ids))
-                print("append to create group: %s, with rank_ids: %s" % (group_name, global_rank_ids))
-            else:
-                print("no need to create group for other ranks")
+            group_name = "hcom_group_" + str(ring_id)
+            global_rank_ids = [self._endpoint_to_world_rank_id(endpoint) for endpoint in self.hcom_endpoints[nccl_id]]
+            self.groups_to_create.append(HcomGroupConfig(name=group_name, nranks=nranks, rank_ids=global_rank_ids))
+            print("append to create group: %s, with rank_ids: %s" % (group_name, global_rank_ids))
         elif op.type in ascend_parser.registerd_op:
             print("Op[%s] has been registered, begin to parse it" % (op.type))
             op_parser = self.parser_factory.create_parse(ascend_parser.registerd_op[op.type])
@@ -214,7 +211,7 @@ class AscendOptimizer(Optimizer):
 
         for cfg in self.parser.groups_to_create:
             hccl.create_group(cfg.name, cfg.nranks, cfg.rank_ids)
-            print("create group ", cfg.name)
+            print("create group (%s), nranks: %d, rank_ids: %s" % (cfg.name, cfg.nranks, cfg.rank_ids))
 
         self.ascend_instance.add_ascend_subgraph(0, startup_graph)
         self.ascend_instance.add_ascend_subgraph(1, main_graph)
