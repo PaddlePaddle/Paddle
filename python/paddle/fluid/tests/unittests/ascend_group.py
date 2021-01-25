@@ -21,6 +21,11 @@ import paddle.fluid.core as core
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_optimizers.ascend import ascend_parser, ascend_optimizer
+from collections import namedtuple
+
+Block = namedtuple('Block', ['program'])
+Loss = namedtuple('Loss', ['block'])
 
 paddle.enable_static()
 
@@ -63,10 +68,6 @@ def init_communicator(startup_program, main_program, current_endpoint, endpoints
             'ring_id': ring_id,
             OP_ROLE_KEY: OpRole.Forward,
         })
-    block.create_var(
-        name="data",
-        persistable=True,
-        dtype='float32')
 
     with fluid.program_guard(main_program):
         op_type="c_allreduce_sum"
@@ -79,6 +80,9 @@ def init_communicator(startup_program, main_program, current_endpoint, endpoints
             attrs={'ring_id': ring_id,
                    'use_calc_stream': True})
 
+    print("startup program:", startup_program)
+    print("main program:", main_program)
+
 def train(world_endpoints, world_device_ids, local_device_ids,local_rank):
     startup_programs=[]
     main_programs=[]
@@ -89,6 +93,7 @@ def train(world_endpoints, world_device_ids, local_device_ids,local_rank):
     groups[0]=[trainer_endpoints[0], trainer_endpoints[1]]
     groups[1]=[trainer_endpoints[2], trainer_endpoints[3]]
     groups[2]=[trainer_endpoints[0], trainer_endpoints[2]]
+    print("groups:", groups)
 
     for i in range(len(trainer_endpoints)):
         startup_programs.append(fluid.Program())
@@ -104,6 +109,20 @@ def train(world_endpoints, world_device_ids, local_device_ids,local_rank):
     print(len(startup_programs))
     print(startup_programs[local_rank])
     print(main_programs[local_rank])
+
+    print("local rank: ", local_rank)
+    print("local startup program: ", startup_programs[local_rank])
+
+    startup_program = startup_programs[local_rank]
+    main_program = main_programs[local_rank]
+    loss = Loss(Block(main_program))
+    optimizer = ascend_optimizer.AscendOptimizer(None, fetch_list=[])
+    optimizer.minimize(loss, startup_program, auto_dp=True)
+
+    exe = paddle.static.Executor(paddle.CPUPlace())
+    #exe.run(startup_program)
+    exe.run(main_program)
+
 
 worker_endpoints=fleet.worker_endpoints()
 world_device_ids=fleet.world_device_ids()
