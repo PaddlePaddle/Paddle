@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import six
 import sys
 import copy
 import setuptools
@@ -161,7 +162,7 @@ class BuildExtension(build_ext, object):
     def get_ext_filename(self, fullname):
         # for example: custommed_extension.cpython-37m-x86_64-linux-gnu.so
         ext_name = super(BuildExtension, self).get_ext_filename(fullname)
-        if self.no_python_abi_suffix:
+        if self.no_python_abi_suffix and six.PY3:
             split_str = '.'
             name_items = ext_name.split(split_str)
             assert len(

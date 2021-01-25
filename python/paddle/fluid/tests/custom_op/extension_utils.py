@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import six
 import sys
 import copy
 import glob
@@ -125,7 +126,10 @@ def find_cuda_home():
         try:
             with open(os.devnull, 'w') as devnull:
                 nvcc_path = subprocess.check_output(
-                    [which_cmd, 'nvcc'], stderr=devnull).decode().rstrip('\r\n')
+                    [which_cmd, 'nvcc'], stderr=devnull)
+                if six.PY3:
+                    nvcc_path = nvcc_path.decode()
+                nvcc_path = nvcc_path.rstrip('\r\n')
                 # for example: /usr/local/cuda/bin/nvcc
                 cuda_home = os.path.dirname(os.path.dirname(nvcc_path))
         except:
