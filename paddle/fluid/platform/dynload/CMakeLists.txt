@@ -1,6 +1,6 @@
 cc_library(dynamic_loader SRCS dynamic_loader.cc DEPS glog gflags enforce)
 
-list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc cusolver.cc)
+list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc cusolver.cc nvtx.cc)
 #hip
 if (WITH_ROCM_PLATFORM)
     list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc)

@@ -152,7 +152,7 @@ class Layer(core.Layer):
         # Layer-level setting
         self.training = True
         for layer in self.sublayers():
-            layer.train()
+            layer.training = True
 
     def eval(self):
         """
@@ -193,7 +193,7 @@ class Layer(core.Layer):
         # Layer-level setting
         self.training = False
         for layer in self.sublayers():
-            layer.eval()
+            layer.training = False
 
     def apply(self, fn):
         """

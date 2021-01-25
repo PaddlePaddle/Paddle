@@ -131,6 +131,7 @@ struct RecordEvent {
   ~RecordEvent();
 
   bool is_enabled_{false};
+  bool is_pushed_{false};
   uint64_t start_ns_;
   // Event name
   std::string name_;
@@ -226,6 +227,9 @@ void DummyKernelAndEvent();
 // Mark current process as PS by assigning a lister id.
 void SetProfileListener();
 int64_t ListenerId();
+
+void NvprofEnableRecordEvent();
+void NvprofDisableRecordEvent();
 
 }  // namespace platform
 }  // namespace paddle

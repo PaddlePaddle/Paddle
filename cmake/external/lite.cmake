@@ -58,6 +58,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DLITE_BUILD_EXTRA=ON
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
                            -DXPU_SDK_ROOT=${XPU_SDK_ROOT}
+                           -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=ON)
     ExternalProject_Add(
       ${LITE_PROJECT}
@@ -99,6 +100,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME}
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
                            -DXPU_SDK_ROOT=${XPU_SDK_ROOT}
+                           -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=OFF)
 
     ExternalProject_Add(
