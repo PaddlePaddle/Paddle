@@ -46,4 +46,8 @@ std::vector<std::string> PD_GetGradOpDescStrs(
   return ret;
 }
 
+paddle::OpFunctionMap &PD_GetOpFunctionMap() {
+  return paddle::OpFunctionMap::Instance();
+}
+
 }  // end extern "C"

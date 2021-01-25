@@ -159,6 +159,8 @@ cc_test(op_call_stack_test SRCS op_call_stack_test.cc DEPS op_call_stack)
 
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
+cc_library(custom_operator SRCS custom_operator.cc DEPS operator op_registry device_context)
+
 if(WITH_PYTHON)
   py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
   py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
@@ -324,7 +326,7 @@ set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_prot
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 cc_library(paddle_framework_shared
-    SHARED SRCS executor.cc operator.cc
+    SHARED SRCS executor.cc operator.cc custom_operator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
     ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc
     DEPS ${FLUID_FRAMEWORK_MODULES})

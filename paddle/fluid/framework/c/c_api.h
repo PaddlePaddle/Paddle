@@ -19,6 +19,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/extension/include/op_function.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -49,6 +50,9 @@ std::vector<std::string> PD_GetGradOpDescStrs(
     const std::unordered_set<std::string> &no_grad_set,
     std::unordered_map<std::string, std::string> *grad_to_var,
     const std::vector<paddle::framework::BlockDesc *> &grad_block);
+
+// C-API to get global OpFunctionMap.
+paddle::OpFunctionMap &PD_GetOpFunctionMap();
 
 #ifdef __cplusplus
 }
