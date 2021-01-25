@@ -109,7 +109,7 @@ class MulPrimitiveFactory {
 
     auto reorder = mkldnn::reorder(reorder_pd);
 
-    mkldnn::stream astream(engine_);
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
       platform::RecordEvent record_reorder("int_reorder",
                                            platform::EventRole::kUniqueOp);
@@ -184,7 +184,7 @@ class MulPrimitiveFactory {
   }
 
   void Execute() {
-    mkldnn::stream astream(engine_);
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     (*mul_).execute(astream, {{MKLDNN_ARG_SRC, *x_input_},
                               {MKLDNN_ARG_WEIGHTS, *y_input_},
                               {MKLDNN_ARG_DST, *output_}});
@@ -270,8 +270,7 @@ class MulPrimitiveFactory {
 
     auto reorder = mkldnn::reorder(src_mem, dst_mem);
 
-    mkldnn::stream astream(engine_);
-
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
       platform::RecordEvent record_reorder("int_reorder",
                                            platform::EventRole::kUniqueOp);
@@ -355,7 +354,7 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
                           "Operator DNNL Mul must use CPUPlace"));
     platform::MKLDNNDeviceContext::tls().log_lib_version();
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    const auto &mkldnn_engine = dev_ctx.GetEngine();
+    auto &mkldnn_engine = dev_ctx.GetEngine();
 
     const Tensor *x = ctx.Input<Tensor>("X");
     const Tensor *y = ctx.Input<Tensor>("Y");
