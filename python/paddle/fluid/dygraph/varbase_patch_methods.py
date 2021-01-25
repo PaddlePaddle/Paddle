@@ -23,6 +23,7 @@ from ..framework import Variable, Parameter, ParamBase
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
+from paddle.fluid.data_feeder import convert_dtype
 
 
 def monkey_patch_varbase():
@@ -318,6 +319,15 @@ def monkey_patch_varbase():
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
         ("__name__", "Tensor")):
         setattr(core.VarBase, method_name, method)
+
+    def dtype_str(dtype):
+        prefix = 'paddle.'
+        return prefix + convert_dtype(dtype)
+
+    # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
+    # So, we need to overwrite it to custom one.
+    # See details in https://github.com/pybind/pybind11/issues/2537.
+    setattr(core.VarDesc.VarType, "__repr__", dtype_str)
 
     # patch math methods for varbase
     monkey_patch_math_varbase()
