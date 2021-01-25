@@ -12,11 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from distutils.sysconfig import get_python_lib
 from setuptools import setup
 from cpp_extension import CppExtension, CUDAExtension, BuildExtension
 from setuptools import Extension
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
+site_packages_path = get_python_lib()
+# Note(Aurelius84): We use `add_test` in cmake to config how to run unittest in CI. 
+# `PYTHONPATH` will be set as `build/python/paddle` that will make no way to find
+# paddle include directory. Because the following path is generated after insalling
+# PaddlePaddle whl. So here we specific `include_dirs` to avoid errors in CI.
+paddle_includes = [
+    os.path.join(site_packages_path, 'paddle/include'),
+    os.path.join(site_packages_path, 'paddle/include/thirdparty')
+]
 
 setup(
     name='relu_op_shared',
@@ -24,6 +34,7 @@ setup(
         CUDAExtension(
             name='librelu2_op_from_setup',
             sources=['relu_op.cc', 'relu_op.cu'],
+            include_dirs=paddle_includes,
             output_dir=file_dir)
     ],
     cmdclass={
