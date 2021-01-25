@@ -19,13 +19,15 @@ import sys
 import os
 import paddle
 from paddle.fluid import dygraph, core, framework
-from paddle.fluid.executor import Executor
+from paddle.fluid.executor import Executor, scope_guard
+from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.nn import Linear, Conv2D, Conv2DTranspose, MaxPool2D, MaxPool1D, BatchNorm1D, BatchNorm2D, BatchNorm3D
 from paddle.fluid.dygraph.nn import BatchNorm, Pool2D
+from paddle.fluid.framework import _current_expected_place
 from paddle.fluid.io import load_inference_model, save_inference_model
-from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU, Swish
 from paddle.fluid.log_helper import get_logger
+from paddle.nn import Linear, Conv2D, Conv2DTranspose, MaxPool2D, MaxPool1D, BatchNorm1D, BatchNorm2D, BatchNorm3D
+from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU, Swish
 from . import quant_nn
 from .. import quantization_pass
 
@@ -36,6 +38,7 @@ _logger = get_logger(
 
 _op_real_in_out_name = {
     "conv2d": [["Input", "Filter"], ["Output"]],
+    "conv2d_transpose": [["Input", "Filter"], ["Output"]],
     "depthwise_conv2d": [["Input", "Filter"], ["Output"]],
     "pool2d": [["X"], ["Out"]],
     "elementwise_add": [["X", "Y"], ["Out"]],
@@ -355,6 +358,7 @@ class ImperativeCalcOutScale(object):
                 self._forward_post_hook)
             self._register_hook_handle_list.append(forward_post_hook_handle)
 
+    @switch_to_static_graph
     def save_quantized_model(self, layer, path, input_spec=None, **config):
         """
         Save the quantized model for the inference.
@@ -380,125 +384,121 @@ class ImperativeCalcOutScale(object):
 
         assert isinstance(
             layer, dygraph.Layer), "model must be the instance of dygraph.Layer"
-        is_dynamic_mode = False
-        with dygraph.guard():
-            layer.eval()
-            for handle in self._register_hook_handle_list:
-                handle.remove()
-            for key in self._out_scale_dict:
-                self._out_scale_dict[key] = float(self._out_scale_dict[key]
-                                                  .numpy())
-
-        if paddle.in_dynamic_mode():
-            is_dynamic_mode = True
-            paddle.enable_static()
+        #layer.eval()
+        self._dynamic_out_scale_dict = collections.OrderedDict()
+        for key in self._out_scale_dict:
+            self._dynamic_out_scale_dict[key] = float(self._out_scale_dict[key]
+                                                      .numpy())
 
         paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = Executor(place)
 
         file_prefix = os.path.basename(path)
         dirname = os.path.dirname(path)
         model_filename = file_prefix + INFER_MODEL_SUFFIX
         params_filename = file_prefix + INFER_PARAMS_SUFFIX
 
-        [inference_program, feed_target_names, fetch_targets] = (
-            load_inference_model(
-                dirname=dirname,
-                executor=exe,
-                model_filename=model_filename,
-                params_filename=params_filename))
+        scope = core.Scope()
+        with scope_guard(scope):
+            exe = Executor(_current_expected_place())
+            [inference_program, feed_target_names, fetch_targets] = (
+                load_inference_model(
+                    dirname=dirname,
+                    executor=exe,
+                    model_filename=model_filename,
+                    params_filename=params_filename))
 
-        # Traverse all ops in the program and find out the op matching
-        # the Layer in the dynamic graph.
-        layer_var_dict = collections.OrderedDict()
-        ops_list = [key for key, _ in self._out_scale_dict.items()]
-        op_count = 0
-        conv_count = 0
+            # Traverse all ops in the program and find out the op matching
+            # the Layer in the dynamic graph.
+            layer_var_dict = collections.OrderedDict()
+            ops_list = [key for key, _ in self._dynamic_out_scale_dict.items()]
+            op_count = 0
+            conv_count = 0
 
-        for block in inference_program.blocks:
-            for op in block.ops:
-                if op.type in _op_real_in_out_name:
-                    if op.type in ["batch_norm", "pool2d"]:
-                        if op.type == "pool2d" and op.attr(
-                                "pooling_type") != "max":
-                            continue
-                        op_count = self.op_match(op, ops_list, op_count)
-                        if op_count >= len(ops_list):
-                            continue
-                        op._set_attr('out_threshold',
-                                     self._out_scale_dict[ops_list[op_count]])
-                        op_count += 1
-                    else:
-                        output_var_names = quantization_pass._get_op_output_var_names(
-                            op)
-                        for output_var_name in output_var_names:
-                            output_var_tensor = block.var(output_var_name)
-                            if output_var_tensor.dtype not in [
-                                    core.VarDesc.VarType.FP64,
-                                    core.VarDesc.VarType.FP32
-                            ]:
+            for block in inference_program.blocks:
+                for op in block.ops:
+                    if op.type in _op_real_in_out_name:
+                        if op.type in [
+                                "batch_norm", "pool2d", "conv2d_transpose",
+                                "depthwise_conv2d_transpose"
+                        ]:
+                            if op.type == "pool2d" and op.attr(
+                                    "pooling_type") != "max":
                                 continue
-                            # Because the Layer in dygraph may correspond to multiple ops
-                            # in static program after being saved. To ensure correctness,
-                            # the outscale collected for output of dygraph Layer can only
-                            # be set to the last op in the corresponding ops in static program.
-                            #
-                            # We can judge the execution order of the ops which corresponding
-                            # to dygraph Layer by the name of output. And use dict to save
-                            # the corresponding relationship between the dygraph Layer and the
-                            # static graph op that needs to set the outscale attribute.
-                            if '.' not in output_var_name:
-                                continue
-                            dynamic_layer_name, var_name_suffix = output_var_name.split(
-                                ".")
-                            if dynamic_layer_name in layer_var_dict:
-                                if layer_var_dict[dynamic_layer_name][
-                                        0] < var_name_suffix:
+                            op_count = self.op_match(op, ops_list, op_count)
+                            if op_count >= len(ops_list):
+                                continuea
+                            if op.type != "depthwise_conv2d_transpose":
+                                op._set_attr('out_threshold',
+                                             self._dynamic_out_scale_dict[
+                                                 ops_list[op_count]])
+                            op_count += 1
+                        else:
+                            output_var_names = quantization_pass._get_op_output_var_names(
+                                op)
+                            for output_var_name in output_var_names:
+                                output_var_tensor = block.var(output_var_name)
+                                if output_var_tensor.dtype not in [
+                                        core.VarDesc.VarType.FP64,
+                                        core.VarDesc.VarType.FP32
+                                ]:
+                                    continue
+                                # Because the Layer in dygraph may correspond to multiple ops
+                                # in static program after being saved. To ensure correctness,
+                                # the outscale collected for output of dygraph Layer can only
+                                # be set to the last op in the corresponding ops in static program.
+                                #
+                                # We can judge the execution order of the ops which corresponding
+                                # to dygraph Layer by the name of output. And use dict to save
+                                # the corresponding relationship between the dygraph Layer and the
+                                # static graph op that needs to set the outscale attribute.
+                                if '.' not in output_var_name:
+                                    continue
+                                dynamic_layer_name, var_name_suffix = output_var_name.split(
+                                    ".")
+                                if dynamic_layer_name in layer_var_dict:
+                                    if layer_var_dict[dynamic_layer_name][
+                                            0] < var_name_suffix:
+                                        layer_var_dict[dynamic_layer_name] = [
+                                            var_name_suffix, op
+                                        ]
+                                else:
                                     layer_var_dict[dynamic_layer_name] = [
                                         var_name_suffix, op
                                     ]
-                            else:
-                                layer_var_dict[dynamic_layer_name] = [
-                                    var_name_suffix, op
-                                ]
 
-        # Because the naming styles of static and dynamic graph are different,
-        # in order to avoid mistakes, we unify the name here.
-        for (layer_name, var_name_op_list) in layer_var_dict.items():
-            if 'prelu' in layer_name:
-                layer_name = layer_name.replace('prelu', 'p_re_lu')
-            if 'relu' in layer_name:
-                layer_name = layer_name.replace('relu', 're_lu')
-            if 'conv2d' in layer_name:
-                layer_name = 'conv2d_' + str(conv_count)
-                conv_count = conv_count + 1
-            if layer_name not in self._out_scale_dict:
-                continue
-            var_name_op_list[1]._set_attr('out_threshold',
-                                          self._out_scale_dict[layer_name])
+            # Because the naming styles of static and dynamic graph are different,
+            # in order to avoid mistakes, we unify the name here.
+            for (layer_name, var_name_op_list) in layer_var_dict.items():
+                if 'prelu' in layer_name:
+                    layer_name = layer_name.replace('prelu', 'p_re_lu')
+                if 'relu' in layer_name:
+                    layer_name = layer_name.replace('relu', 're_lu')
+                if 'conv2d' in layer_name:
+                    layer_name = 'conv2d_' + str(conv_count)
+                    conv_count = conv_count + 1
+                if layer_name not in self._dynamic_out_scale_dict:
+                    continue
+                var_name_op_list[1]._set_attr(
+                    'out_threshold', self._dynamic_out_scale_dict[layer_name])
 
-        # Save the processed program.
-        save_inference_model(
-            dirname=dirname,
-            feeded_var_names=feed_target_names,
-            target_vars=fetch_targets,
-            executor=exe,
-            main_program=inference_program.clone(),
-            model_filename=model_filename,
-            params_filename=params_filename)
-
-        if is_dynamic_mode:
-            paddle.disable_static()
+            # Save the processed program.
+            save_inference_model(
+                dirname=dirname,
+                feeded_var_names=feed_target_names,
+                target_vars=fetch_targets,
+                executor=exe,
+                main_program=inference_program.clone(),
+                model_filename=model_filename,
+                params_filename=params_filename)
 
     def op_match(self, op, ops_list, op_count):
-        while op_count < len(ops_list) and op.type not in ops_list[op_count]:
+        if op.type == 'depthwise_conv2d_transpose':
+            op_type = "conv2d_transpose"
+        else:
+            op_type = op.type
+        while op_count < len(ops_list) and op_type not in ops_list[op_count]:
             op_count += 1
-        while op_count < len(ops_list) and op.type is "pool2d" and op.attr(
+        while op_count < len(ops_list) and op_type is "pool2d" and op.attr(
                 "pooling_type") != "max":
             op_count += 1
         return op_count
