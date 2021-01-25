@@ -399,7 +399,7 @@ def nonzero(x, as_tuple=False):
         for i in range(rank):
             list_out.append(
                 layers.slice(
-                    outs, axes=[rank - 1], starts=[i], ends=[i + 1]))
+                    outs, axes=[1], starts=[i], ends=[i + 1]))
         return tuple(list_out)
 
 
