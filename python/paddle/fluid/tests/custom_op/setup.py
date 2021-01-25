@@ -22,10 +22,8 @@ setup(
     name='relu_op_shared',
     ext_modules=[
         CUDAExtension(
-            name='librelu2_op',
+            name='librelu2_op_from_setup',
             sources=['relu_op.cc', 'relu_op.cu'],
-            extra_compile_tag=['-g'],
-            extra_link_args=['-lpaddle_framework', '-lcudart'],
             output_dir=file_dir)
     ],
     cmdclass={

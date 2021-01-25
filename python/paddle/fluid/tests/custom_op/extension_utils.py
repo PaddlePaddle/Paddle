@@ -74,10 +74,15 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     library_dirs.extend(find_paddle_libraries(use_cuda))
     kwargs['library_dirs'] = library_dirs
 
-    # append link libraries
-    # libraries = kwargs.get('libraries', [])
-    # libraries.extend(find_cuda_includes())
-    # kwargs['libraries'] = libraries
+    # append compile flags
+    extra_compile_tag = kwargs.get('extra_compile_tag', [])
+    extra_compile_tag.extend(['-g'])
+    kwargs['extra_compile_tag'] = extra_compile_tag
+
+    # append link flags
+    extra_link_args = kwargs.get('extra_link_args', [])
+    extra_link_args.extend(['-lpaddle_framework', '-lcudart'])
+    kwargs['extra_link_args'] = extra_link_args
 
     kwargs['language'] = 'c++'
     return kwargs
