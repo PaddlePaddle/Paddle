@@ -3790,18 +3790,18 @@ class PipelineOptimizer(object):
 
     def _create_vars(self, block, ori_block):
         # Create vars for block, copied from main_program's global block
-        add_index = None
+        extra_index = None
         used_var_set = set()
         for op_idx in range(block.desc.op_size()):
             op = block.ops[op_idx]
-            # For amp update_loss_scaling op, remove vars not in this block
+            # For ops process vars on all devices, remove vars not in this block
             reserved_x = []
-            if op.type == 'concat' and int(op.all_attrs()[
-                    self._op_role_key]) == int(self._op_role.Optimize):
+            if op.type == 'concat' and self._is_optimize_op(op):
                 for input_name in op.desc.input("X"):
                     if block._find_var_recursive(input_name):
                         reserved_x.append(input_name)
                 op.desc.set_input('X', reserved_x)
+                continue
             reserved_x = []
             if op.type == 'update_loss_scaling':
                 for input_name in op.desc.input("X"):
@@ -3809,21 +3809,23 @@ class PipelineOptimizer(object):
                         reserved_x.append(input_name)
                 op.desc.set_input('X', reserved_x)
                 op.desc.set_output('Out', reserved_x)
+                continue
             reserved_x = []
             if op.type == 'sum' and self._is_gradient_clip_op(op):
                 for input_name in op.desc.input("X"):
                     if block._find_var_recursive(input_name):
                         reserved_x.append(input_name)
                 op.desc.set_input('X', reserved_x)
-                add_index = op_idx
+                extra_index = op_idx
+                continue
 
-            op_desc = block.desc.op(op_idx)
+            op_desc = op.desc
             vars = op_desc.input_arg_names() + op_desc.output_arg_names()
             for var in vars:
                 # a var whose name contains "blocking_queue" 
                 # only exists in startup program 
-                if var in used_var_set or "_blocking_queue" in var:
-                    continue
+                # if var in used_var_set or "_blocking_queue" in var:
+                #     continue
                 used_var_set.add(var)
                 if block._find_var_recursive(str(var)): continue
                 source_var = ori_block._var_recursive(str(var))
@@ -3834,11 +3836,11 @@ class PipelineOptimizer(object):
                         persistable=source_var.persistable)
                 else:
                     block._clone_variable(source_var, False)
-        if add_index:
-            sum_op = block.ops[add_index]
+        if extra_index:
+            sum_op = block.ops[extra_index]
             OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
             block._insert_op(
-                add_index + 1,
+                extra_index + 1,
                 type='c_allreduce_sum',
                 inputs={'X': sum_op.desc.output_arg_names()[0]},
                 outputs={'Out': sum_op.desc.output_arg_names()[0]},
@@ -3855,18 +3857,6 @@ class PipelineOptimizer(object):
         op_role = int(op.all_attrs()[self._op_role_key])
         return op_role & int(self._op_role.Backward) and op_role & int(
             self._op_role.Loss)
-
-    #def _is_backward_op(self, op):
-    #    return self._op_role_key in op.attr_names and int(op.all_attrs()[
-    #        self._op_role_key]) & int(self._op_role.Backward)
-
-    #def _is_optimize_op(self, op):
-    #    return self._op_role_key in op.attr_names and int(op.all_attrs()[
-    #        self._op_role_key]) & int(self._op_role.Optimize)
-
-    #def _is_update_op(self, op):
-    #    return 'Param' in op.input_names and 'Grad' in op.input_names and (
-    #        "LearningRate" in op.input_names)
 
     def _split_program(self, main_program, devices):
         """
@@ -4236,16 +4226,14 @@ class PipelineOptimizer(object):
         """
         Get the op_device attribute of a op.
         """
-        device = op.attr(self._op_device_key) if op.has_attr(
-            self._op_device_key) else None
-
+        device = op.attr(self._op_device_key) \
+            if op.has_attr(self._op_device_key) else None
         if device:
-            assert device[0:3] == 'gpu', ("Now, only gpu devices are "
-                                          "supported in pipeline parallemism.")
-
+            assert device[0:3] == 'gpu', "Now, only gpu devices are " \
+                "supported in pipeline parallemism."
         return device
 
-    def _add_op_device_attr_for_op(self, op):
+    def _add_op_device_attr_for_op(self, op, block):
         """
         Add op_device attrribute for op that has not that attribute set.
 
@@ -4261,13 +4249,13 @@ class PipelineOptimizer(object):
         elif op.type == "sum" and self._is_backward_op(op):
             # For sum ops that compute the sum of @RENAMED@ vars
             for name in op.desc.input_arg_names():
-                assert '@RENAME@' in name, (
-                    "The op must be sum used to accumulate rename vars.")
+                assert '@RENAME@' in name, \
+                    "The op must be sum used to accumulate rename vars."
             assert len(op.desc.output_arg_names()) == 1
             out_name = op.desc.output_arg_names()[0]
             post_op = self._find_post_op(block.ops, op, out_name)
             device = post_op.attr(self._op_device_key)
-            assert device, ("The previous op must have op_device set.")
+            assert device, "The post op must have op_device set."
             op._set_attr(self._op_device_key, device)
         elif self._is_loss_op(op):
             # For loss * loss_scaling op added by AMP
@@ -4275,38 +4263,38 @@ class PipelineOptimizer(object):
             assert block.ops[idx + 2].type == "elementwise_mul_grad"
             assert block.ops[idx + 3].type == "mean_grad"
             device = block.ops[idx + 3].attr(self._op_device_key)
-            assert device, "Please put all you program within device_guard scope."
+            assert device, "Please put you program within device_guard scope."
             op._set_attr(self._op_device_key, device)
             block.ops[idx + 1]._set_attr(self._op_device_key, device)
             block.ops[idx + 2]._set_attr(self._op_device_key, device)
         elif self._is_optimize_op(op) and op.type == "cast":
-            # For fp16-->fp32 cast
-            param_grad_name = op.output('Out')
+            # For fp16-->fp32 cast added by AMP
+            grad_name = op.output('Out')
             assert len(param_grad_name) == 1
-            param_name = param_grad_name[0].strip('@GRAD')
+            param_name = grad_name[0].strip('@GRAD')
             device = self._param_device_map[param_name]
             op._set_attr(self._op_device_key, device)
         elif self._is_gradient_clip_op(op) or self._is_regularization_op(op):
             # For gradient clip and regularization ops, we set their op_device
             # attribute to the device where their corresponding parameters on.
-            assert self._op_role_var_key in op.attr_names, (
-                "gradient_clip and "
-                "regularization ops must have op_role_var attribute.")
+            assert self._op_role_var_key in op.attr_names, "gradient_clip " \
+                "and regularization ops must have op_role_var attribute."
             op_role_var = op.attr(self._op_role_var_key)
-            assert len(op_role_var) == 2, (
-                "op_role_var for gradient_clip and "
-                "regularization ops must have two elements.")
+            assert len(op_role_var) == 2, "op_role_var for gradient_clip " \
+                "regularization ops must have two elements."
             param_name = op_role_var[0]
             device = self._param_device_map[param_name]
+            # For sum op added by global gradient clip, it must be 
+            # put on all devices
             if op.type == 'sum': device = "gpu:all"
             op._set_attr(self._op_device_key, device)
         else:
-            assert op.type in [
+            other_known_ops = [
                 'update_loss_scaling', 'reduce_any', 'concat', 'sum'
-            ], ("For other ops with op_device set, must be one of {}, but the "
-                "given one is {}".format(
-                    ['update_loss_scaling', 'reduce_any', 'concat',
-                     'sum'], op.type))
+            ]
+            assert op.type in other_known_ops, "For other ops without " \
+                "op_device set, they must be one of {}, but the " \
+                "given one is {}".format(other_known_ops, op.type)
             assert self._is_optimize_op(op)
             op._set_attr(self._op_device_key, "gpu:all")
 
@@ -4316,78 +4304,28 @@ class PipelineOptimizer(object):
         not that attribute set.
         """
         for op in block.ops:
-            if op.type == "create_py_reader" or op.type == "read" or op.type == "create_double_buffer_reader":
-                # Copy read related ops to all section to make them exit after each epoch.
+            if op.type == "create_py_reader" or op.type == "read" \
+                    or op.type == "create_double_buffer_reader":
+                # Copy read related ops to all section to make them exit 
+                # after each epoch.
+                # We use "gpu:all" to represent the op should be put on all
+                # sub-programs, such as lr-related ops. Note that: "gpu:all"
+                # is only used by pipeline.
                 op._set_attr(self._op_device_key, "gpu:all")
                 continue
             if self._get_op_device_attr(op):
                 # op_device attribute has been set
                 continue
-            self._add_op_device_attr_for_op(op)
-
-    #def _add_default_opdevice_attr(self, block):
-    #    """
-    #    1. Add default op_device attribute for lr-related ops.
-    #       The default value is the one that of the first place.
-    #    2. Add default op_device attribute for sum ops added during
-    #       backward. For these ops, we set the op_device attribute
-    #       as the one of its post op, i.e, which op has the output of the
-    #       sum op as an input.
-    #    3. Add default op_device attribute for amp-related ops.
-    #    """
-    #    first_devcie = ""
-
-    #    # Get the device spec of the first place.
-    #    # device_spec: 'cpu' for cpu device and 'gpu:id' for gpu device,
-    #    # e.g. 'gpu:0', 'gpu:1', etc.
-    #    for op in block.ops:
-    #        if op.has_attr(self._op_device_key) and (
-    #                op.attr(self._op_device_key) != ""):
-    #            first_device = op.attr(self._op_device_key)
-    #            break
-    #    assert first_device
-    #    first_device_type = first_device.split(":")[0]
-    #    assert first_device_type == "gpu"
-
-    #    # set op_device attr for lr-related ops
-    #    lrsched_role = int(self._op_role.LRSched)
-    #    for op in block.ops:
-    #        if op.has_attr(self._op_device_key) and (
-    #                op.attr(self._op_device_key)):
-    #            continue
-    #        if op.type == "sum":
-    #            # For sum ops that compute the sum of @RENAMED@ vars
-    #            for name in op.desc.input_arg_names():
-    #                assert '@RENAME@' in name
-    #            assert len(op.desc.output_arg_names()) == 1
-    #            out_name = op.desc.output_arg_names()[0]
-    #            post_op = self._find_post_op(block.ops, op, out_name)
-    #            device = post_op.attr(self._op_device_key)
-    #            assert device
-    #            op._set_attr(self._op_device_key, device)
-    #            continue
-    #        #elif op.type == "check_finite_and_unscale": # amp-related ops
-    #        #    op_role_var = op.all_attrs()[self._op_role_var_key]
-    #        #    param_name = op_role_var[0]
-    #        #    device = self._param_device_map[param_name]
-    #        #    assert device
-    #        #    op._set_attr(self._op_device_key, device)
-    #        else:  # lr-related ops
-    #            assert op.attr(self._op_role_key) == lrsched_role, (
-    #                "Op {} whose op_device attr has not been set for pipeline"
-    #                " must be of the role LRSched.".format(op.type))
-    #            op._set_attr(self._op_device_key, first_device)
+            self._add_op_device_attr_for_op(op, block)
 
     def _check_validation(self, block):
         """
-        Check whether ops in a block are all validate (i.e., the 
-        op_device attribute has been set).
-        Then, return all device specifications in order.
+        Check whether ops in a block have the op_device attribute set.
+        Then, return all devices in order.
         """
-        device_specs = []
+        device_list = []
         for op in block.ops:
-            type = op.type
-            if not op._has_kernel(type):
+            if not op._has_kernel(op.type):
                 assert op.type == "conditional_block" and (
                     op.attr(self._op_role_key) == int(self._op_role.LRSched)), (
                         "Now, the only supported op without kernel is "
@@ -4395,16 +4333,16 @@ class PipelineOptimizer(object):
             assert op.has_attr(self._op_device_key), (
                 "op ({}) has no {} attribute.".format(op.type,
                                                       self._op_device_key))
-            dev_spec = op.attr(self._op_device_key)
-            assert dev_spec, ("op_device attribute for op "
-                              "{} has not been set.".format(op.type))
-            if dev_spec == "gpu:all": continue
-            dev_type = dev_spec.split(':')[0]
+            device = op.attr(self._op_device_key)
+            assert device, ("op_device attribute for op "
+                            "{} has not been set.".format(op.type))
+            if device == "gpu:all": continue
+            dev_type = device.split(':')[0]
             assert dev_type == "gpu", ("Now only gpu devices are supported "
                                        "for pipeline parallelism.")
-            if not dev_spec in device_specs:
-                device_specs.append(dev_spec)
-        return device_specs
+            if not device in device_list:
+                device_list.append(device)
+        return device_list
 
     def _insert_sendrecv_ops_for_boundaries(self, block):
         """
@@ -4413,26 +4351,17 @@ class PipelineOptimizer(object):
         """
         extra_index = 0
 
-        # A map from var to device spec where op takes it as input,
+        # A map from var to device where op takes it as input,
         # avoiding multiple send and recv ops.
-        var_devspec = dict()
+        var_dev_map = dict()
 
         for index, op in enumerate(list(block.ops)):
-            ## skips lr-related ops and vars, as we will process them later.
-            #if int(op.attr(self._op_role_key)) & int(self._op_role.LRSched):
-            #    continue
-            ## skips loss scaling related ops and vars, as we will process them later.
-            #if op.type in ["reduce_any", "concat", "update_loss_scaling"]:
-            #    continue
-            ## skips update ops and vars, as we will process them later.
-            #if self._is_update_op(op): continue
-
-            cur_device_spec = op.attr(self._op_device_key)
-            if cur_device_spec == "gpu:all": continue
+            cur_device = op.attr(self._op_device_key)
+            if cur_device == "gpu:all": continue
             for var_name in op.input_arg_names:
                 # i.e., lod_tensor_blocking_queue created by DataLoader,
                 # which only exists in startup program.
-                if not var_name in block.vars: continue
+                # if not var_name in block.vars: continue
                 var = block.var(var_name)
                 # skip data, because we will process it later
                 if var.is_data: continue
@@ -4441,27 +4370,25 @@ class PipelineOptimizer(object):
                 #if prev_op is None or prev_op.type == 'update_loss_scaling':
                 #    continue
                 #prev_device_spec = prev_op.attr(self._op_device_key)
-                prev_device_spec = prev_op.attr(
-                    self._op_device_key) if prev_op else None
-                if not prev_device_spec or prev_device_spec == 'gpu:all':
-                    continue
+                prev_device = prev_op.attr(self._op_device_key) \
+                    if prev_op else None
+                if not prev_device or prev_device == 'gpu:all': continue
 
-                if prev_device_spec != cur_device_spec:
-                    if var_name not in var_devspec:
-                        var_devspec[var_name] = []
-                    if cur_device_spec in var_devspec[var_name]: continue
-                    var_devspec[var_name].append(cur_device_spec)
+                if prev_device != cur_device:
+                    if var_name not in var_dev_map: var_dev_map[var_name] = []
+                    if cur_device in var_dev_map[var_name]: continue
+                    var_dev_map[var_name].append(cur_device)
 
                     op_role = op.all_attrs()[self._op_role_key]
                     var = block.vars[var_name]
-                    prev_device_index = int(prev_device_spec.split(':')[1])
-                    cur_device_index = int(cur_device_spec.split(':')[1])
+                    prev_device_index = int(prev_device.split(':')[1])
+                    cur_device_index = int(cur_device.split(':')[1])
                     block._insert_op(
                         index=index + extra_index,
                         type='send_v2',
                         inputs={'X': var},
                         attrs={
-                            self._op_device_key: prev_device_spec,
+                            self._op_device_key: prev_device,
                             self._op_role_key: op_role,
                             'use_calc_stream': True,
                             'peer': cur_device_index,
@@ -4475,7 +4402,7 @@ class PipelineOptimizer(object):
                         attrs={
                             'out_shape': var.shape,
                             'dtype': var.dtype,
-                            self._op_device_key: cur_device_spec,
+                            self._op_device_key: cur_device,
                             self._op_role_key: op_role,
                             'use_calc_stream': True,
                             'peer': prev_device_index,
@@ -4697,13 +4624,12 @@ class PipelineOptimizer(object):
             loss, startup_program, parameter_list, no_grad_set)
         self._param_device_map = self._origin_optimizer._param_device_map
         assert main_block.program._pipeline_opt \
-            and local_rank in main_block.program._pipeline_opt, \
+            and 'local_rank' in main_block.program._pipeline_opt, \
             'Please use pipeline with fleet.'
         local_rank = main_block.program._pipeline_opt['local_rank']
+        self.ring_id = 0
         if 'ring_id' in main_block.program._pipeline_opt:
             self.ring_id = main_block.program._pipeline_opt['ring_id']
-        else:
-            self.ring_id = 0
         if local_rank == 0:
             with open("startup_raw", 'w') as f:
                 f.writelines(str(startup_program))
@@ -4711,15 +4637,8 @@ class PipelineOptimizer(object):
                 f.writelines(str(main_block.program))
 
         # Step1: add default op_device attribute for ops.
-        #self._add_opdevice_attr_for_regularization_clip_amp(main_block)
         self._add_op_device_attr(main_block)
-        device_specs = self._check_validation(main_block)
-
-        # Step2: add default op_device attribute for ops whose op_device
-        # attribute have not been set yet. Then check all ops have the
-        # op_device attribute.
-        #self._add_default_opdevice_attr(main_block)
-        #device_specs = self._check_validation(main_block)
+        device_list = self._check_validation(main_block)
 
         def device_cmp(device1, device2):
             dev1_id = int(device1.split(':')[1])
@@ -4731,13 +4650,12 @@ class PipelineOptimizer(object):
             else:
                 return 0
 
-        sorted_device_spec = sorted(device_specs, key=cmp_to_key(device_cmp))
-        assert sorted_device_spec == device_specs, (
-            "With pipeline "
-            "parallelism, you must use gpu devices one after another "
-            "in the order of their ids.")
+        sorted_device_list = sorted(device_list, key=cmp_to_key(device_cmp))
+        assert sorted_device_list == device_list, (
+            "With pipeline parallelism, you must use gpu devices one after "
+            "another in the order of their ids.")
 
-        # Step3: add send and recv ops between section boundaries
+        # Step2: add send and recv ops between section boundaries
         self._insert_sendrecv_ops_for_boundaries(main_block)
         #with open("startup_%d" % local_rank, 'w') as f:
         #    f.writelines(str(new_startup_program))
@@ -4746,22 +4664,21 @@ class PipelineOptimizer(object):
         with open("main_%d" % local_rank, 'w') as f:
             f.writelines(str(main_block.program))
 
-        # Step4: split program into sections and add pairs of
+        # Step3: split program into sections and add pairs of
         # send and recv ops for data var.
         main_program = main_block.program
-        program_list = self._split_program(main_program, device_specs)
+        program_list = self._split_program(main_program, device_list)
         for p in program_list:
-            self._create_vars(p["program"].block(0),
-                              main_program.global_block())
+            self._create_vars(p["program"].block(0), main_block)
         self._insert_sendrecv_for_data_var(main_block, program_list,
                                            startup_program, device_specs)
 
-        # Step5: Special Case: process persistable vars that exist in
+        # Step4: Special Case: process persistable vars that exist in
         # multiple sections
         self._process_persistable_vars_in_multi_sections(
             main_program, startup_program, program_list)
 
-        # Step6: Add sub blocks for section programs
+        # Step5: Add sub blocks for section programs
         self._add_sub_blocks(main_block, program_list)
 
         assert (main_program._pipeline_opt and
@@ -4776,11 +4693,11 @@ class PipelineOptimizer(object):
             dev_index = dev_spec.split(":")[1]
             place_list.append(core.CUDAPlace(local_rank))
 
-        # Step7: Split startup program
+        # Step6: Split startup program
         new_startup_program = self._split_startup_program(startup_program,
                                                           local_rank)
 
-        # Step8: clear gradients before each mini-batch and 
+        # Step7: clear gradients before each mini-batch and 
         # accumulate gradients during backward
         self._clear_gradients(
             program_list[local_rank]['program'].global_block(),
