@@ -4233,7 +4233,7 @@ class PipelineOptimizer(object):
                 "supported in pipeline parallemism."
         return device
 
-    def _add_op_device_attr_for_op(self, op, block):
+    def _add_op_device_attr_for_op(self, op, idx, block):
         """
         Add op_device attrribute for op that has not that attribute set.
 
@@ -4303,7 +4303,7 @@ class PipelineOptimizer(object):
         Add op_device attrribute for ops in block that have 
         not that attribute set.
         """
-        for op in block.ops:
+        for idx, op in enumerate(block.ops):
             if op.type == "create_py_reader" or op.type == "read" \
                     or op.type == "create_double_buffer_reader":
                 # Copy read related ops to all section to make them exit 
@@ -4316,7 +4316,7 @@ class PipelineOptimizer(object):
             if self._get_op_device_attr(op):
                 # op_device attribute has been set
                 continue
-            self._add_op_device_attr_for_op(op, block)
+            self._add_op_device_attr_for_op(op, idx, block)
 
     def _check_validation(self, block):
         """
