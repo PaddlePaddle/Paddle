@@ -137,8 +137,8 @@ about:
             "-cp37-cp37m-macosx_10_6_intel", "-cp38-cp38-macosx_10_14_x86_64"
         ]
         self.linux_pip = [
-            "-cp35-cp35m-manylinux_x86_64", "-cp36-cp36m-manylinux_x86_64",
-            "-cp37-cp37m-manylinux_x86_64", "-cp38-cp38-manylinux_x86_64"
+            "-cp35-cp35m-linux_x86_64", "-cp36-cp36m-linux_x86_64",
+            "-cp37-cp37m-linux_x86_64", "-cp38-cp38-linux_x86_64"
         ]
         self.windows_pip = [
             "-cp35-cp35m-win_amd64", "-cp36-cp36m-win_amd64", 
