@@ -4696,7 +4696,9 @@ class PipelineOptimizer(object):
         optimize_ops, params_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
         self._param_device_map = self._origin_optimizer._param_device_map
-        assert main_block.program._pipeline_opt and local_rank in main_block.program._pipeline_opt, 'Please use Pipeline with fleet.'
+        assert main_block.program._pipeline_opt \
+            and local_rank in main_block.program._pipeline_opt, \
+            'Please use pipeline with fleet.'
         local_rank = main_block.program._pipeline_opt['local_rank']
         if 'ring_id' in main_block.program._pipeline_opt:
             self.ring_id = main_block.program._pipeline_opt['ring_id']
