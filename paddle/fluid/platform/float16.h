@@ -1013,6 +1013,11 @@ struct numeric_limits<paddle::platform::float16> {
   }
 };
 
+HOSTDEVICE inline paddle::platform::float16 abs(
+    const paddle::platform::float16& a) {
+  return paddle::platform::abs(a);
+}
+
 }  // namespace std
 
 namespace Eigen {
