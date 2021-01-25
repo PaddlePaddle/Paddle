@@ -196,6 +196,11 @@ template void InitLoDTensorHolder<float>(Scope*, const paddle::platform::Place&,
 template void InitLoDTensorHolder<int>(Scope*, const paddle::platform::Place&,
                                        const std::string&,
                                        const std::vector<int64_t>&, const int*);
+template void InitLoDTensorHolder<double>(Scope*,
+                                          const paddle::platform::Place&,
+                                          const std::string&,
+                                          const std::vector<int64_t>&,
+                                          const double*);
 
 }  // namespace test
 }  // namespace ir

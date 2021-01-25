@@ -125,6 +125,161 @@ TEST(FuseLayerNormPass, TestFuse) {
   }
 }
 
+TEST(FuseLayerNormPass, TestInvalidEpsNumel) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* eps_var_desc = prog.MutableBlock(0)->Var("eps");
+  eps_var_desc->SetDataType(proto::VarType::FP32);
+  eps_var_desc->SetShape({2});
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  auto eps_values = std::vector<float>{1e-5f, 1e-5f};
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {2},
+                                   eps_values.data());
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, TestInvalidEpsDataType) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* eps_var_desc = prog.MutableBlock(0)->Var("eps");
+  eps_var_desc->SetDataType(proto::VarType::FP64);
+  eps_var_desc->SetShape({1});
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  double eps_value = 1e-5;
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<double>(&scope, place, "eps", {1}, &eps_value);
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, TestInvalidGammaRank) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* gamma_var_desc = prog.MutableBlock(0)->Var("gamma");
+  gamma_var_desc->SetDataType(proto::VarType::FP32);
+  gamma_var_desc->SetShape({48, 32});
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  float eps_value = 1e-5;
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {1}, &eps_value);
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, TestInvalidBetaRank) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* beta_var_desc = prog.MutableBlock(0)->Var("beta");
+  beta_var_desc->SetDataType(proto::VarType::FP32);
+  beta_var_desc->SetShape({48, 32});
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  float eps_value = 1e-5;
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {1}, &eps_value);
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, TestUnequalGammaBetaShapes) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* beta_var_desc = prog.MutableBlock(0)->Var("beta");
+  beta_var_desc->SetDataType(proto::VarType::FP32);
+  beta_var_desc->SetShape({32});
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  float eps_value = 1e-5;
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {1}, &eps_value);
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, TestGammaBetaUnequalInputChannelShape) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* beta_var_desc = prog.MutableBlock(0)->Var("beta");
+  beta_var_desc->SetDataType(proto::VarType::FP32);
+  beta_var_desc->SetShape({32});
+
+  auto* gamma_var_desc = prog.MutableBlock(0)->Var("gamma");
+  gamma_var_desc->SetDataType(proto::VarType::FP32);
+  gamma_var_desc->SetShape({32});
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  float eps_value = 1e-5;
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {1}, &eps_value);
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
 TEST(FuseLayerNormPass, pass_op_version_check) {
   ASSERT_TRUE(
       paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
