@@ -68,9 +68,9 @@ class AsyncVariable {
     return static_cast<T*>(holder_->Ptr());
   }
 
-  void NotifyAvailable() const {
+  void NotifyAvailable() {
     std::lock_guard<std::mutex> lock(mutex_);
-    state_ = AsyncState::kAvailable;
+    state_ = EnumState::kAvailable;
     cv_.notify_all();
   }
 

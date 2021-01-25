@@ -1605,7 +1605,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   return data_type;
 }
 
-Tensor* OperatorWithKernel::GetTensorFormInputSafely(
+const Tensor* OperatorWithKernel::GetTensorFromInputSafely(
     const ExecutionContext& ctx, const std::string& name) const {
   // 1. get variable and check
   // NOTE: only supports signal input var now
@@ -1618,13 +1618,13 @@ Tensor* OperatorWithKernel::GetTensorFormInputSafely(
       platform::errors::NotFound(
           "The variable %s is not found when promote complex types.", name));
   // 2. get tensor and check
-  Tensor* t = nullptr;
+  const Tensor* t = nullptr;
   if (var->IsType<Tensor>()) {
-    t = var->GetMutable<Tensor>();
+    t = &var->Get<Tensor>();
   } else if (var->IsType<LoDTensor>()) {
-    t = var->GetMutable<LoDTensor>();
+    t = &var->Get<LoDTensor>();
   } else if (var->IsType<SelectedRows>()) {
-    t = var->GetMutable<SelectedRows>()->mutable_value();
+    t = &((&var->Get<SelectedRows>())->value());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported input variable type in complex type promotion."));
@@ -1652,8 +1652,8 @@ proto::VarType::Type OperatorWithKernel::IndicateOrPromoteVarDataTypes(
     const ExecutionContext& ctx, const std::string& name1,
     const std::string& name2) const {
   // 1. Get tensor
-  auto* tensor_a = GetTensorFormInputSafely(ctx, name1);
-  auto* tensor_b = GetTensorFormInputSafely(ctx, name2);
+  auto* tensor_a = GetTensorFromInputSafely(ctx, name1);
+  auto* tensor_b = GetTensorFromInputSafely(ctx, name2);
 
   // 2. Get two input types
   auto type_a = tensor_a->type();

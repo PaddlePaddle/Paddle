@@ -54,7 +54,7 @@ class Variable {
     return holder_->Type();
   }
 
-  void NotifyAvailable() const {
+  void NotifyAvailable() {
     if (holder_ == nullptr) {
       VLOG(8) << "Warning: Calling NotifyAvailable on null AsyncVariable";
     }
