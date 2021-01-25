@@ -322,20 +322,19 @@ class InterpolateOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     framework::LibraryType library = framework::LibraryType::kPlain;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
     auto interp_method = ctx.Attr<std::string>("interp_method");
     // TODO(danqing): support other interp_method
-    if (this->CanMKLDNNBeUsed(ctx) &&
+    if (this->CanMKLDNNBeUsed(ctx, data_type) &&
         (interp_method == "nearest" || interp_method == "bilinear")) {
       layout = framework::DataLayout::kMKLDNN;
       library = framework::LibraryType::kMKLDNN;
     }
 #endif
 
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout, library);
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
