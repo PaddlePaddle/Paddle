@@ -59,7 +59,7 @@ class BuildExtension(build_ext, object):
         class cls_with_options(cls):
             def __init__(self, *args, **kwargs):
                 kwargs.update(options)
-                super().__init__(*args, **kwargs)
+                cls.__init__(self, *args, **kwargs)
 
         return cls_with_options
 
