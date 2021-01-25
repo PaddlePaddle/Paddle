@@ -119,7 +119,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
           this->fwd_pd_->weights_layer_desc(), this->engine_);
 
       auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
-      dnnl::reorder(user_memory, *memory_p, attr_)
+      dnnl::reorder(user_memory, *memory_p, this->attr_)
           .execute(astream, user_memory, *memory_p);
 
       this->dev_ctx_.SetBlob(wx_key, memory_p);
@@ -173,7 +173,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
           this->fwd_pd_->weights_iter_desc(), this->engine_);
 
       auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
-      dnnl::reorder(user_memory, *memory_p, attr_)
+      dnnl::reorder(user_memory, *memory_p, this->attr_)
           .execute(astream, user_memory, *memory_p);
 
       this->dev_ctx_.SetBlob(wh_key, memory_p);
