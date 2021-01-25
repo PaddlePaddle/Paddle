@@ -272,11 +272,11 @@ inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_te
 # densebox
 set(DENSEBOX_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/densebox")
 download_data(${DENSEBOX_INSTALL_DIR} "densebox.tar.gz")
-inference_analysis_test(test_analyzer_detect SRCS analyzer_detect_tester.cc 
-  EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-  ARGS --infer_model=${DENSEBOX_INSTALL_DIR}/model --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt 
-       --infer_shape=${DENSEBOX_INSTALL_DIR}/shape_50.txt)
-set_property(TEST test_analyzer_detect PROPERTY ENVIRONMENT GLOG_vmodule=analysis_predictor=2)
+#inference_analysis_test(test_analyzer_detect SRCS analyzer_detect_tester.cc 
+#  EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+#  ARGS --infer_model=${DENSEBOX_INSTALL_DIR}/model --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt 
+#       --infer_shape=${DENSEBOX_INSTALL_DIR}/shape_50.txt)
+#set_property(TEST test_analyzer_detect PROPERTY ENVIRONMENT GLOG_vmodule=analysis_predictor=2)
 
 # mobilenet with transpose op
 set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
@@ -621,13 +621,13 @@ if(WITH_GPU)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
-    set_tests_properties(trt_resnext_test PROPERTIES TIMEOUT 150)
-    set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 150)
-    set_tests_properties(trt_resnet50_test PROPERTIES TIMEOUT 120)
-    set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 150)
-    set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser PROPERTIES TIMEOUT 150)
-    set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser PROPERTIES TIMEOUT 150)
-    set_tests_properties(test_trt_dynamic_shape_ernie PROPERTIES TIMEOUT 150)
+    set_tests_properties(trt_resnext_test PROPERTIES TIMEOUT 300)
+    set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 300)
+    set_tests_properties(trt_resnet50_test PROPERTIES TIMEOUT 300)
+    set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_trt_dynamic_shape_ernie PROPERTIES TIMEOUT 300)
 endif()
 
 if(WITH_MKLDNN)

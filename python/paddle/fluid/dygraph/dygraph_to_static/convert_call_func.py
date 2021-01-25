@@ -31,6 +31,7 @@ from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogge
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func
 from paddle.fluid.dygraph.layers import Layer
 
 __all__ = ["convert_call"]
@@ -72,11 +73,6 @@ def is_builtin_len(func):
     if isinstance(func, types.BuiltinFunctionType) and func.__name__ == 'len':
         return True
     return False
-
-
-def is_paddle_func(func):
-    m = inspect.getmodule(func)
-    return m is not None and m.__name__.startswith("paddle")
 
 
 def is_unsupported(func):

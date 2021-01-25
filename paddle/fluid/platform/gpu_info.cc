@@ -226,7 +226,7 @@ void SetDeviceId(int id) {
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
                         id, GetCUDADeviceCount()));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(id));
+  PADDLE_RETRY_CUDA_SUCCESS(cudaSetDevice(id));
 }
 
 void GpuMemoryUsage(size_t *available, size_t *total) {

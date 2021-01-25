@@ -99,20 +99,20 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
                                       "5, or 6, but now the dimension size is",
                                       x->dims().size()));
 
+  bool is_inplaced = x->IsSharedBufferWith(*y);
   auto src_tz = framework::vectorize<int64_t>(x->dims());
 
   auto src_format = src_tz.size() == 2 ? MKLDNNMemoryFormat::nc : x->format();
 
   platform::ActivationMKLDNNHandler<T> handler(
       src_tz, algorithm, alpha, beta, src_format, dev_ctx, ctx.GetPlace(),
-      ctx.InputName("X"));
+      ctx.InputName("X"), is_inplaced);
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
-  auto dst_memory_p =
-      x->IsSharedBufferWith(*y) ? src_memory_p : handler.AcquireDstMemory(y);
+  auto dst_memory_p = is_inplaced ? src_memory_p : handler.AcquireDstMemory(y);
   auto activation_p = handler.AcquireForwardPrimitive();
 
-  mkldnn::stream astream(dev_ctx.GetEngine());
+  auto &astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
   activation_p->execute(astream, {{MKLDNN_ARG_FROM, *src_memory_p},
                                   {MKLDNN_ARG_TO, *dst_memory_p}});
   astream.wait();
@@ -158,7 +158,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   auto diff_src_memory_p = handler.AcquireDiffSrcMemory(diff_x);
   auto activation_backward_p = handler.AcquireBackwardPrimitive();
 
-  mkldnn::stream astream(dev_ctx.GetEngine());
+  auto &astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
   activation_backward_p->execute(astream,
                                  {{MKLDNN_ARG_SRC, *src_memory_p},
                                   {MKLDNN_ARG_DIFF_DST, *diff_dst_memory_p},

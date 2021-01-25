@@ -567,7 +567,7 @@ BENCH_FP32_CPU(VBroadcast);
 //     --max_size: the max size would be tested
 //     --filter: the bench name would be run
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
   LOG(INFO) << "Burning " << FLAGS_burning << " times, Repeat " << FLAGS_repeat
             << " times.";

@@ -278,11 +278,12 @@ else:
         # copy the openblas.dll
         shutil.copy('${OPENBLAS_SHARED_LIB}', libs_path)
         package_data['paddle.libs'] += ['openblas' + ext_name]
-    elif os.name == 'posix' and platform.machine() == 'aarch64':
+    elif os.name == 'posix' and platform.machine() == 'aarch64' and '${OPENBLAS_LIB}'.endswith('so'):
         # copy the libopenblas.so on linux+aarch64
         # special: core_noavx.so depends on 'libopenblas.so.0', not 'libopenblas.so'
-        shutil.copy('${OPENBLAS_LIB}' + '.0', libs_path)
-        package_data['paddle.libs'] += ['libopenblas.so.0']
+        if os.path.exists('${OPENBLAS_LIB}' + '.0'):
+            shutil.copy('${OPENBLAS_LIB}' + '.0', libs_path)
+            package_data['paddle.libs'] += ['libopenblas.so.0']
 
 if '${WITH_LITE}' == 'ON':
     shutil.copy('${LITE_SHARED_LIB}', libs_path)
@@ -400,7 +401,7 @@ headers = (
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
-if '${WITH_GPU}' == 'ON':
+if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     headers += list(find_files('*.pb', '${cudaerror_INCLUDE_DIR}'))   # errorMessage.pb for errormessage
 
 class InstallCommand(InstallCommandBase):
@@ -461,7 +462,7 @@ class InstallHeaders(Command):
     def run(self):
         # only copy third_party/cudaErrorMessage.pb for cudaErrorMessage on mac or windows
         if os.name == 'nt' or sys.platform == 'darwin':
-            if '${WITH_GPU}' == 'ON':
+            if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
                 self.mkdir_and_copy_file('${cudaerror_INCLUDE_DIR}/cudaErrorMessage.pb')
             return
         hdrs = self.distribution.headers
