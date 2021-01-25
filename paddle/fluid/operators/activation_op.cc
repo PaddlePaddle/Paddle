@@ -93,6 +93,7 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const std::string& name) {
   framework::LibraryType library{framework::LibraryType::kPlain};
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  auto data_type = oper.IndicateVarDataType(ctx, name);
 // FIXME(liuwei1031) temporarily disable the code to unblock users
 // TODO(liuwei1031) figure out the reason behind
 // https://github.com/PaddlePaddle/Paddle/issues/16096
@@ -106,13 +107,12 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
 #ifdef PADDLE_WITH_MKLDNN
   auto it = oper.Attrs().find("use_mkldnn");
   if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
-      oper.CanMKLDNNBeUsed(ctx)) {
+      oper.CanMKLDNNBeUsed(ctx, data_type)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
 #endif
-  return framework::OpKernelType(oper.IndicateVarDataType(ctx, name),
-                                 ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
 }
 
 class ActivationOp : public framework::OperatorWithKernel {
