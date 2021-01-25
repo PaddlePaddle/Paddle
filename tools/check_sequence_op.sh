@@ -1,6 +1,7 @@
 #!/bin/bash
 
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
+A=1
 
 function check_sequnece_op_unitests(){
     check_white_list_file=$1
