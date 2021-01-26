@@ -56,6 +56,7 @@ class ModelParallelHelper(object):
                 mp_endpoints.append(ep)
         self._init_communicator(self.startup_program, current_endpoint,
                                 mp_endpoints, mp_rank, 0, self.wait_port)
+        self._broadcast_params(ring_id, broadcast_distributed_weight=False)
 
         mp_num = len(endpoints) // inner_parallelism
         if mp_num == 1: return
@@ -69,7 +70,7 @@ class ModelParallelHelper(object):
                 eps.append(ep)
         self._init_communicator(self.startup_program, current_endpoint, eps,
                                 dp_rank, ring_id, self.wait_port)
-        self._broadcast_params(ring_id)
+        self._broadcast_params(ring_id, broadcast_distributed_weight=True)
 
     def _init_communicator(self, program, current_endpoint, endpoints, rank,
                            ring_id, wait_port):
@@ -105,10 +106,10 @@ class ModelParallelHelper(object):
                 OP_ROLE_KEY: OpRole.Forward,
             })
 
-    def _broadcast_params(self, ring_id):
+    def _broadcast_params(self, ring_id, broadcast_distributed_weight):
         block = self.startup_program.global_block()
         for param in block.iter_parameters():
-            if param.is_distributed:
+            if not broadcast_distributed_weight and param.is_distributed:
                 continue
 
             block.append_op(
@@ -231,8 +232,8 @@ class ModelParallelOptimizer(MetaOptimizerBase):
                 for i in range(0, len(op_role_var), 2):
                     param = block.vars[op_role_var[i]]
                     grad = block.vars[op_role_var[i + 1]]
-                    if param.is_distributed:
-                        continue
+                    #if param.is_distributed:
+                    #    continue
                     if offset == idx:
                         offset += 1
                         block._insert_op(
