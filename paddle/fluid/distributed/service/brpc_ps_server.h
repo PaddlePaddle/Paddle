@@ -43,7 +43,6 @@ class BrpcPsServer : public PSServer {
 
  private:
   virtual int32_t initialize();
-
   mutable std::mutex mutex_;
   std::condition_variable cv_;
   bool stoped_ = false;
