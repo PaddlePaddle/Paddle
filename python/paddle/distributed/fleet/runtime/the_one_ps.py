@@ -1015,7 +1015,7 @@ class TheOnePSRuntime(RuntimeBase):
     def _save_persistables(self, *args, **kwargs):
         self._ps_inference_save_persistables(*args, **kwargs)
 
-    def _shrink(self, threshold):
+    def _shrink(self, sparse_table_name=None, threshold=7):
         import paddle.distributed.fleet as fleet
         fleet.util.barrier()
         if self.role_maker._is_first_worker():
@@ -1025,6 +1025,12 @@ class TheOnePSRuntime(RuntimeBase):
                 _is_heter_parameter_server_mode,
                 use_origin_program=True)
 
+            table_ids = []
             for id, names in sparses.items():
+                if sparse_table_name is None:
+                    table_ids.append(id)
+                elif sparse_table_name in names:
+                    table_ids.append(id) 
+            for id in table_ids:
                 self._worker.shrink_sparse_table(id, threshold)
         fleet.util.barrier()
