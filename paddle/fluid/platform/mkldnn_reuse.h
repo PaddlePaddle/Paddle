@@ -232,7 +232,7 @@ class MKLDNNHandlerT {
       dev_ctx_.SetBlob(key_reorder_p, reorder_p);
     }
 
-    mkldnn::stream astream(engine_);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     platform::RecordEvent record_reorder("int_reorder",
                                          platform::EventRole::kUniqueOp);
@@ -261,7 +261,7 @@ class MKLDNNHandlerT {
             std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
 
-        mkldnn::stream astream(engine_);
+        auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
         platform::RecordEvent record_reorder("int_reorder",
                                              platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
@@ -273,7 +273,7 @@ class MKLDNNHandlerT {
       dev_ctx_.SetBlob(user_key, user_memory_p);
       dev_ctx_.SetBlob(target_key, target_memory_p);
     } else if (!is_persistent) {
-      mkldnn::stream astream(engine_);
+      auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
       auto user_memory_p =
           std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(user_key));
@@ -425,7 +425,7 @@ class MKLDNNHandler {
       auto reorder_p =
           std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
       dev_ctx_.SetBlob(key_reorder_p, reorder_p);
-      mkldnn::stream astream(engine_);
+      auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
       platform::RecordEvent record_reorder("int_reorder",
                                            platform::EventRole::kUniqueOp);
       reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
@@ -451,7 +451,7 @@ class MKLDNNHandler {
     auto target_memory_p =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
 
-    mkldnn::stream astream(engine_);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     if (target_memory_p == nullptr) {
       target_memory_p = user_memory_p;
@@ -614,12 +614,15 @@ class ActivationMKLDNNHandler
                           const MKLDNNMemoryFormat fmt,
                           const platform::MKLDNNDeviceContext& dev_ctx,
                           platform::Place cpu_place,
-                          const std::string& unique_name)
+                          const std::string& unique_name, bool is_inplaced)
 
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, dims, "a", algorithm, unique_name)) {
+            is_inplaced
+                ? platform::CreateKey(dev_ctx, dims, "a", algorithm,
+                                      unique_name)
+                : platform::CreateKey(dev_ctx, dims, "a", unique_name)) {
     auto md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
 
     this->AcquireForwardPrimitiveDescriptor(mkldnn::prop_kind::forward_training,
@@ -637,7 +640,7 @@ class ActivationMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, dims, "a", algorithm, unique_name)) {
+            platform::CreateKey(dev_ctx, dims, "a", unique_name)) {
     auto diff_dst_md = platform::MKLDNNMemDesc(
         dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
     auto src_md =

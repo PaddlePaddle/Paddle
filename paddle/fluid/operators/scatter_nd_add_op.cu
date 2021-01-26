@@ -65,7 +65,6 @@ class ScatterNdAddGradOpCUDAKernel : public framework::OpKernel<T> {
     auto *Ids = ctx.Input<Tensor>("Index");
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
     if (dX) {
-      // In place gradient: dX = dO
       framework::TensorCopy(*dOut, ctx.GetPlace(), dX);
     }
     if (dUpdates) {

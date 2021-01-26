@@ -156,7 +156,7 @@ class FleetWrapper {
   //                 const std::vector<uint64_t>& host_sign_list, int index);
   void InitServer(
       const std::string& dist_desc,
-      const std::vector<std::string>& host_sign_list, int index,
+      const std::vector<std::string>& host_sign_list, int index, int trainers,
       const std::vector<framework::ProgramDesc>& server_sub_program = {});
   // init trainer
   void InitWorker(const std::string& dist_desc,
@@ -198,6 +198,10 @@ class FleetWrapper {
   // mode = 1, save delta feature, which means save diff
   void SaveModelOneTable(const uint64_t table_id, const std::string& path,
                          const int mode);
+
+  // recv table from server and save it in LodTensor
+  void RecvAndSaveTable(const uint64_t table_id, const std::string& path);
+
   // clear all models, release their memory
   void ClearModel();
   // clear one table

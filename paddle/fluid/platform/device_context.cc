@@ -172,7 +172,7 @@ Place CPUDeviceContext::GetPlace() const { return place_; }
 #ifdef PADDLE_WITH_XPU
 XPUDeviceContext::XPUDeviceContext() { context_ = xpu::create_context(); }
 
-XPUDeviceContext::~XPUDeviceContext() { xpu::destroy_context(context_); }
+XPUDeviceContext::~XPUDeviceContext() {}
 
 XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
   int dev_id = -1;
@@ -189,6 +189,13 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
                         "Baidu Kunlun Card is properly installed.",
                         ret));
   context_ = xpu::create_context();
+  void* l3ptr = nullptr;
+  int l3_size = 13.5 * 1024 * 1024;
+  xpu_malloc(static_cast<void**>(&l3ptr), l3_size, XPU_MEM_L3);
+  if (l3ptr != nullptr) {
+    context_->_l3_mgr.set(l3ptr, l3_size);
+    std::cout << "set l3 size " << l3_size << std::endl;
+  }
   ret = xpu_set_device(dev_id);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
@@ -204,7 +211,7 @@ void XPUDeviceContext::Wait() const {
                         "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
-  xpu_wait();
+  xpu_wait(context_->xpu_stream);
 }
 
 Place XPUDeviceContext::GetPlace() const { return place_; }
@@ -451,18 +458,32 @@ Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_MKLDNN
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
-    : CPUDeviceContext(place),
-      engine_(mkldnn::engine::kind::cpu, 0),
-      p_blobmap_() {
+    : CPUDeviceContext(place), p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
   p_mutex_.reset(new std::mutex());
 }
 
-MKLDNNDeviceContextThreadLocals::Body::Body() {
+MKLDNNDeviceContextThreadLocals::Body::Body()
+    : cur_engine(mkldnn::engine::kind::cpu, 0), cur_stream(cur_engine) {
   cur_mkldnn_session_id = kMKLDNNSessionID_Default;
   cur_input_shape_str = "";
   cur_input_shape_cache_capacity = 1;
   cur_paddle_data_layout = paddle::framework::DataLayout::kNCHW;
+}
+
+// When Thread finish we clear oneDNN cache
+// This is needed when we have one executor used by many threads
+// e.g. test_analyzer_detect. Thread ID is not part of caching key
+// (for naive executor) so we need to clear cache when one thread finish
+// and other is to start inference
+// TODO(jczaja): Ideally it would be good to clear only part of cache
+// related to thread that is to be terminated
+MKLDNNDeviceContextThreadLocals::Body::~Body() {
+  auto cpu_place = paddle::platform::CPUPlace();
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::MKLDNNDeviceContext* dev_ctx =
+      (platform::MKLDNNDeviceContext*)pool.Get(cpu_place);
+  dev_ctx->ResetBlobMap();
 }
 
 void MKLDNNDeviceContextThreadLocals::Body::set_cur_mkldnn_session_id(
@@ -499,6 +520,14 @@ void MKLDNNDeviceContextThreadLocals::Body::log_lib_version(void) {
     LOG(INFO) << "oneDNN v" << dv->major << "." << dv->minor << "."
               << dv->patch;
   }
+}
+
+const mkldnn::engine& MKLDNNDeviceContextThreadLocals::Body::get_engine(void) {
+  return cur_engine;
+}
+
+mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
+  return cur_stream;
 }
 
 void MKLDNNDeviceContext::ResetBlobMap() {
