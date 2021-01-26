@@ -242,14 +242,12 @@ void PSGPUWorker::TrainFilesWithProfiler() {
     total_time += timeline.ElapsedSec();
     timeline.Start();
   }
-  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost "
-          << total_time << " seconds, ins_num: " << total_ins_num;
+  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << total_time 
+          << " seconds, ins_num: " << total_ins_num;
   for (size_t i = 0; i < op_name.size(); ++i) {
-    VLOG(3) << "card:" << thread_id_ << ", op: " << op_name[i]
-             << ", mean time: " << op_total_time[i] / total_ins_num
-             << "s, totol time:" << op_total_time[i] << "sec";
-    }
-    
+    VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]
+            << ", mean time: " << op_total_time[i] / total_ins_num
+            << "s, totol time:" << op_total_time[i] << "sec";
   }
   return;
 }

@@ -130,12 +130,13 @@ void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
 
 void PSGPUTrainer::Run() {
   for (size_t thidx = 0; thidx < places_.size(); ++thidx) {
-    if(!debug_) {
+    if (!debug_) {
       threads_.push_back(
           std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
     } else {
       threads_.push_back(
-          std::thread(&DeviceWorker::TrainFilesWithProfiler, workers_[thidx].get()));
+          std::thread(&DeviceWorker::TrainFilesWithProfiler,
+                      workers_[thidx].get()));
     }
   }
 }
