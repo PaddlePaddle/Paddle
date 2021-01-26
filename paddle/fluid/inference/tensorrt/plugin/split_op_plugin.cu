@@ -62,7 +62,9 @@ nvinfer1::Dims SplitPlugin::getOutputDimensions(
   return output_dims;
 }
 
-int SplitPlugin::initialize() {
+int SplitPlugin::initialize() { return 0; }
+
+void SplitPlugin::initializeData() {
   PADDLE_ENFORCE_LE(axis_, nvinfer1::Dims::MAX_DIMS,
                     platform::errors::InvalidArgument(
                         "Axis dimension exceeds max dimension in TensorRT. "
@@ -90,7 +92,6 @@ int SplitPlugin::initialize() {
   d_segment_offsets_ = segment_offsets;
   segment_offsets_ = std::move(segment_offsets);
   d_output_ptrs_.resize(this->getNbOutputs(), nullptr);
-  return 0;
 }
 
 // The following part of the code refers to onnx-tensorrt
