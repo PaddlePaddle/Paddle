@@ -1115,7 +1115,7 @@ void BindImperative(py::module *m_ptr) {
 #ifndef _WIN32
       .def(py::pickle(
           [](imperative::VarBase &self) {  // __getstate__
-            auto t = self.MutableVar()->Get<framework::LoDTensor>();
+            auto &t = self.Var().Get<framework::LoDTensor>();
             auto holder = t.Holder();
             PADDLE_ENFORCE_EQ(
                 platform::is_cpu_place(holder->place()), true,
