@@ -15,7 +15,9 @@
 #pragma once
 #include <ThreadPool.h>
 #include <condition_variable>  // NOLINT
+#include <condition_variable>  // NOLINT
 #include <memory>
+#include <mutex>  // NOLINT
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
@@ -80,7 +82,7 @@ class BindThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   std::mutex mutex_;
   std::condition_variable cv_;
-  std::atomic<unsigned int> exec_op_count_;
+  uint32_t exec_op_count_;
   std::atomic<int> error_state;
 
   void RunOpAsyncMainStream(
