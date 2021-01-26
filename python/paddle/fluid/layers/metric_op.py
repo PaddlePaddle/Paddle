@@ -51,6 +51,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
     Examples:
         .. code-block:: python
+
             import numpy as np
 
             import paddle
@@ -156,6 +157,7 @@ def auc(input,
 
     Examples:
         .. code-block:: python
+
             import numpy as np
 
             import paddle
