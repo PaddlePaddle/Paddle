@@ -75,6 +75,11 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     library_dirs.extend(find_paddle_libraries(use_cuda))
     kwargs['library_dirs'] = library_dirs
 
+    # add runtime library dirs
+    runtime_library_dirs = kwargs.get('runtime_library_dirs', [])
+    runtime_library_dirs.extend(find_paddle_libraries(use_cuda))
+    kwargs['runtime_library_dirs'] = runtime_library_dirs
+
     # append compile flags
     extra_compile_tag = kwargs.get('extra_compile_tag', [])
     extra_compile_tag.extend(['-g'])
