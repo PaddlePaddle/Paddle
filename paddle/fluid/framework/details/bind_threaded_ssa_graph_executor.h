@@ -78,8 +78,6 @@ class BindThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ::ThreadPool prepare_pool_;
   ::ThreadPool multi_device_op_pool_;
 
-  std::mutex mutex_;
-  std::condition_variable cv_;
   std::atomic<unsigned int> exec_op_count_;
   std::atomic<int> error_state;
 
