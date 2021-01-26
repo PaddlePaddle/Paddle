@@ -101,7 +101,6 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();
 
-  std::unique_lock<std::mutex> lock(mutex_);
   error_state = 0;
   paddle::framework::FetchResultType fetches;
   if (return_merged) {
@@ -152,8 +151,11 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
       RunOpAsyncMainStream(cur_op, op_deps.get(), ready_ops, cur_index);
     }
   }
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [&] { return exec_op_count_ >= op_deps_.size(); });
+  }
 
-  cv_.wait(lock, [&] { return exec_op_count_ >= op_deps_.size(); });
   if (exception_.IsCaught()) {
     ExecutionFinal(&fetch_ops);
   }

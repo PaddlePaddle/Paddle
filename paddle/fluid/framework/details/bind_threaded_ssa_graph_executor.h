@@ -15,9 +15,7 @@
 #pragma once
 #include <ThreadPool.h>
 #include <condition_variable>  // NOLINT
-#include <condition_variable>  // NOLINT
 #include <memory>
-#include <mutex>  // NOLINT
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
