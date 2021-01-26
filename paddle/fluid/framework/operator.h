@@ -156,8 +156,6 @@ class OperatorBase {
 
   virtual bool SupportGPU() const { return false; }
 
-  virtual bool SupportsMKLDNN() const { return false; }
-
   const std::string& Type() const { return type_; }
 
   bool HasAttr(const std::string& name) const { return attrs_.count(name); }
@@ -492,9 +490,10 @@ class OperatorWithKernel : public OperatorBase {
                          return platform::is_gpu_place(kern_pair.first.place_);
                        });
   }
-  bool SupportsMKLDNN() const override;
+  bool SupportsMKLDNN(proto::VarType::Type data_type) const;
 
-  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) const;
+  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+                       proto::VarType::Type data_type) const;
 
   virtual void InferShape(InferShapeContext* ctx) const = 0;
 

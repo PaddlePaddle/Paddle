@@ -171,6 +171,7 @@ class LookAhead(Optimizer):
         """
         self.inner_optimizer.step()
 
+        self._increment_global_var()
         params_grads = []
         for param in self._parameter_list:
             if not param.trainable:
@@ -188,7 +189,7 @@ class LookAhead(Optimizer):
         for p in parameters:
             self._add_accumulator(self._slow_str, p)
 
-    def _append_optimize_op(self, block, param_and_grad):
+    def _increment_global_var(self):
         if self._global_step_var is None:
             self._global_step_var = layers.create_global_var(
                 name=unique_name.generate("lookahead_step"),
@@ -203,6 +204,7 @@ class LookAhead(Optimizer):
             outputs={'Out': [self._global_step_var]},
             attrs={'step': 1.0})
 
+    def _append_optimize_op(self, block, param_and_grad):
         one_var = paddle.ones(shape=[1], dtype='int32', name='lookahead_ones')
         zero_var = paddle.zeros(
             shape=[1], dtype='int32', name='lookahead_zeros')
@@ -289,6 +291,8 @@ class LookAhead(Optimizer):
             startup_program=startup_program,
             parameters=parameters,
             no_grad_set=no_grad_set)
+
+        self._increment_global_var()
 
         _ = self._apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)

@@ -361,7 +361,7 @@ HOSTDEVICE inline double(abs)(const complex128& a) {
 #if defined(__CUDA_ARCH__)
   return thrust::abs(thrust::complex<double>(a.real, a.imag));
 #else
-  return std::abs(std::complex<double>(a));
+  return std::abs(std::complex<double>(a.real, a.imag));
 #endif
 }
 
