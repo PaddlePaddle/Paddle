@@ -233,6 +233,8 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(desc)
             new_op_desc._set_attr(op_role_attr_name, backward)
+            if desc.has_attr('op_device'):
+                new_op_desc._set_attr('op_device', desc.attr('op_device'))
             result_descs.append(new_op_desc)
     return result_descs
 
@@ -252,6 +254,8 @@ def _add_descs_to_block(descs, block):
         new_op_desc = block.desc.append_op()
         new_op_desc.copy_from(desc)
         new_op_desc._set_attr(op_role_attr_name, backward)
+        if desc.has_attr('op_device'):
+            new_op_desc._set_attr('op_device', desc.attr('op_device'))
         result_descs.append(new_op_desc)
     return result_descs
 

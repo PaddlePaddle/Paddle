@@ -93,6 +93,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             ) // self.user_defined_strategy.sharding_configs[
                 'sharding_group_size']
             main_program._pipeline_opt['local_rank'] = pp_rank
+            main_program._pipeline_opt[
+                'global_rank'] = self.role_maker._worker_index()
             main_program._pipeline_opt['ring_id'] = 1
             optimize_ops, params_grads, program_list = pp_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set)

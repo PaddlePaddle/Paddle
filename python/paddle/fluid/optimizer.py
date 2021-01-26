@@ -19,6 +19,7 @@ import six
 import os
 import logging
 from collections import defaultdict
+import time
 
 import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
@@ -3801,7 +3802,6 @@ class PipelineOptimizer(object):
                     if block._find_var_recursive(input_name):
                         reserved_x.append(input_name)
                 op.desc.set_input('X', reserved_x)
-                continue
             reserved_x = []
             if op.type == 'update_loss_scaling':
                 for input_name in op.desc.input("X"):
@@ -3809,7 +3809,6 @@ class PipelineOptimizer(object):
                         reserved_x.append(input_name)
                 op.desc.set_input('X', reserved_x)
                 op.desc.set_output('Out', reserved_x)
-                continue
             reserved_x = []
             if op.type == 'sum' and self._is_gradient_clip_op(op):
                 for input_name in op.desc.input("X"):
@@ -3817,15 +3816,14 @@ class PipelineOptimizer(object):
                         reserved_x.append(input_name)
                 op.desc.set_input('X', reserved_x)
                 extra_index = op_idx
-                continue
 
             op_desc = op.desc
             vars = op_desc.input_arg_names() + op_desc.output_arg_names()
             for var in vars:
                 # a var whose name contains "blocking_queue" 
                 # only exists in startup program 
-                # if var in used_var_set or "_blocking_queue" in var:
-                #     continue
+                if var in used_var_set or "_blocking_queue" in var:
+                    continue
                 used_var_set.add(var)
                 if block._find_var_recursive(str(var)): continue
                 source_var = ori_block._var_recursive(str(var))
@@ -3966,6 +3964,9 @@ class PipelineOptimizer(object):
                                var_name as output.
             var_name (string): Variable name.
         """
+        # To skip the cast op which has no op_device set
+        if '.cast_fp32' in var_name:
+            var_name = var_name.replace('.cast_fp32', '')
         post_op = []
         before = True
         for op in ops:
@@ -4254,23 +4255,39 @@ class PipelineOptimizer(object):
             assert len(op.desc.output_arg_names()) == 1
             out_name = op.desc.output_arg_names()[0]
             post_op = self._find_post_op(block.ops, op, out_name)
+            assert post_op.has_attr(
+                'op_device'), "{} has no op_device attr for name {}".format(
+                    post_op.type, out_name)
             device = post_op.attr(self._op_device_key)
             assert device, "The post op must have op_device set."
             op._set_attr(self._op_device_key, device)
+        elif (op.type == "cast" or
+              op.type == "scale") and self._is_backward_op(op):
+            prev_op = self._find_real_prev_op(block.ops, op,
+                                              op.desc.input("X")[0])
+            op._set_attr('op_device', prev_op.attr('op_device'))
         elif self._is_loss_op(op):
             # For loss * loss_scaling op added by AMP
             assert block.ops[idx + 1].type == "fill_constant"
             assert block.ops[idx + 2].type == "elementwise_mul_grad"
-            assert block.ops[idx + 3].type == "mean_grad"
-            device = block.ops[idx + 3].attr(self._op_device_key)
+            assert block.ops[idx + 3].type == "elementwise_add_grad"
+            assert block.ops[idx + 4].type == "mean_grad"
+            device = block.ops[idx + 4].attr(self._op_device_key)
             assert device, "Please put you program within device_guard scope."
             op._set_attr(self._op_device_key, device)
             block.ops[idx + 1]._set_attr(self._op_device_key, device)
             block.ops[idx + 2]._set_attr(self._op_device_key, device)
+            block.ops[idx + 2]._set_attr(self._op_device_key, device)
+        elif self._is_optimize_op(op) and op.type == "check_finite_and_unscale":
+            #op._set_attr(self._op_device_key, "gpu:all")
+            op_role_var = op.attr(self._op_role_var_key)
+            param_name = op_role_var[0]
+            device = self._param_device_map[param_name]
+            op._set_attr(self._op_device_key, device)
         elif self._is_optimize_op(op) and op.type == "cast":
             # For fp16-->fp32 cast added by AMP
             grad_name = op.output('Out')
-            assert len(param_grad_name) == 1
+            assert len(grad_name) == 1
             param_name = grad_name[0].strip('@GRAD')
             device = self._param_device_map[param_name]
             op._set_attr(self._op_device_key, device)
@@ -4630,11 +4647,13 @@ class PipelineOptimizer(object):
         self.ring_id = 0
         if 'ring_id' in main_block.program._pipeline_opt:
             self.ring_id = main_block.program._pipeline_opt['ring_id']
-        if local_rank == 0:
+        if main_block.program._pipeline_opt['global_rank'] == 0:
             with open("startup_raw", 'w') as f:
                 f.writelines(str(startup_program))
             with open("main_raw", 'w') as f:
+                print("here")
                 f.writelines(str(main_block.program))
+        time.sleep(20)
 
         # Step1: add default op_device attribute for ops.
         self._add_op_device_attr(main_block)
@@ -4657,12 +4676,8 @@ class PipelineOptimizer(object):
 
         # Step2: add send and recv ops between section boundaries
         self._insert_sendrecv_ops_for_boundaries(main_block)
-        #with open("startup_%d" % local_rank, 'w') as f:
-        #    f.writelines(str(new_startup_program))
-        #with open("main_%d" % local_rank, 'w') as f:
-        #    f.writelines(str(program_list[local_rank]['program']))
-        with open("main_%d" % local_rank, 'w') as f:
-            f.writelines(str(main_block.program))
+        # with open("main_%d" % local_rank, 'w') as f:
+        #    f.writelines(str(main_block.program))
 
         # Step3: split program into sections and add pairs of
         # send and recv ops for data var.
@@ -4671,7 +4686,7 @@ class PipelineOptimizer(object):
         for p in program_list:
             self._create_vars(p["program"].block(0), main_block)
         self._insert_sendrecv_for_data_var(main_block, program_list,
-                                           startup_program, device_specs)
+                                           startup_program, device_list)
 
         # Step4: Special Case: process persistable vars that exist in
         # multiple sections
@@ -4685,12 +4700,11 @@ class PipelineOptimizer(object):
                 isinstance(main_program._pipeline_opt, dict) and
                 'local_rank' in main_program._pipeline_opt), \
                 "You must use pipeline with fleet"
-        local_rank = main_program._pipeline_opt['local_rank'] % len(
-            device_specs)
+        local_rank = main_program._pipeline_opt['local_rank'] % len(device_list)
 
         place_list = []
-        for dev_spec in device_specs:
-            dev_index = dev_spec.split(":")[1]
+        for dev in device_list:
+            dev_index = dev.split(":")[1]
             place_list.append(core.CUDAPlace(local_rank))
 
         # Step6: Split startup program
@@ -4701,7 +4715,7 @@ class PipelineOptimizer(object):
         # accumulate gradients during backward
         self._clear_gradients(
             program_list[local_rank]['program'].global_block(),
-            dev_spec=device_specs[local_rank])
+            dev_spec=device_list[local_rank])
         self._accumulate_gradients(program_list[local_rank]['program']
                                    .global_block())
 
@@ -4709,11 +4723,16 @@ class PipelineOptimizer(object):
             "startup_program": new_startup_program,
         }
 
+        with open("startup_%d" % local_rank, 'w') as f:
+            f.writelines(str(new_startup_program))
+        with open("main_%d" % local_rank, 'w') as f:
+            f.writelines(str(program_list[local_rank]['program']))
+
         place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
-            "inner_parallelism": len(device_specs),
+            "inner_parallelism": len(device_list),
             "section_program": program_list[local_rank],
             "place": place_list[local_rank],
             "place_id": place_id,
