@@ -14992,7 +14992,7 @@ def gather_tree(ids, parents):
             among beams.
 
     Returns:
-        Tensor: A Tensor with the same shape and data type as :attr:`ids`. \
+            A Tensor with the same shape and data type as :attr:`ids`. \
             It contains the full sequences. The sequences are collected from \
             :attr:`ids` by backtracing according to :attr:`parents`.
 
