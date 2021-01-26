@@ -56,7 +56,7 @@ class ModelParallelHelper(object):
                 mp_endpoints.append(ep)
         self._init_communicator(self.startup_program, current_endpoint,
                                 mp_endpoints, mp_rank, 0, self.wait_port)
-        self._broadcast_params(ring_id, broadcast_distributed_weight=False)
+        self._broadcast_params(0, broadcast_distributed_weight=False)
 
         mp_num = len(endpoints) // inner_parallelism
         if mp_num == 1: return
