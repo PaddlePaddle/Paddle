@@ -4,7 +4,7 @@ include(CheckCCompilerFlag)
 include(CheckCXXSymbolExists)
 include(CheckTypeSize)
 
-function(CheckCompilerCXX11Flag)
+function(CheckCompilerCXX14Flag)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.0)
             message(FATAL_ERROR "Unsupported GCC version. GCC >= 5.0 required.")
