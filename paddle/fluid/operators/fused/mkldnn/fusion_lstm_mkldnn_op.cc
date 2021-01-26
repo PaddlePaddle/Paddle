@@ -352,7 +352,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
     auto lstm_forward_p = handler.AcquireForwardPrimitive();
 
-    dnnl::stream astream(mkldnn_engine);
+    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
     lstm_forward_p->execute(astream, lstm_args);
     astream.wait();
 

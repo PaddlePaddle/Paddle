@@ -202,7 +202,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
       memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->src_iter_desc(),
                                                 this->engine_);
 
-      dnnl::stream astream(this->engine_);
+      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
       dnnl::reorder(user_h0_memory, *memory_p, attr_)
           .execute(astream, user_h0_memory, *memory_p);
 
