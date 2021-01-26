@@ -30,7 +30,7 @@ def _get_node_num(endpoints):
     return len(ss)
 
 
-class MegatronHelper(object):
+class ModelParallelHelper(object):
     def __init__(self, role_maker, wait_port=True):
         self.wait_port = wait_port
         self.role_maker = role_maker
@@ -139,24 +139,24 @@ class ModelParallelOptimizer(MetaOptimizerBase):
                         user_defined_strategy):
         super(MegatronOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
-        self.inner_parallelism = user_defined_strategy.megatron_configs[
+        self.inner_parallelism = user_defined_strategy.model_parallel_configs[
             'parallelism']
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
             return False
 
-        if self.user_defined_strategy.pipeline == True:
+        if self.user_defined_strategy.model_parallel == True:
             return True
         return False
 
     def _disable_strategy(self, dist_strategy):
-        dist_strategy.megatron = False
-        dist_strategy.megatron_configs = {}
+        dist_strategy.model_parallel = False
+        dist_strategy.model_parallel_configs = {}
 
     def _enable_strategy(self, dist_strategy, context):
-        dist_strategy.megatron = True
-        dist_strategy.megatron_configs = {"inner_parallelism": 1, }
+        dist_strategy.model_parallel = True
+        dist_strategy.model_parallel_configs = {"parallelism": 1, }
 
     def minimize_impl(self,
                       loss,
@@ -177,11 +177,9 @@ class ModelParallelOptimizer(MetaOptimizerBase):
 
         self.main_program = loss.block.program
         self.inner_parallelism = self.inner_parallelism
-        nranks = len(endpoints)
-        self.nranks = nranks
-        self.nrings = len(self.main_program_list)
+        self.nranks = len(endpoints)
 
-        pipeline_helper = MegatronHelper(self.role_maker)
+        pipeline_helper = ModelParallelHelper(self.role_maker)
         pipeline_helper.update_startup_program(self.startup_program,
                                                self.inner_parallelism)
 
@@ -189,7 +187,7 @@ class ModelParallelOptimizer(MetaOptimizerBase):
         # data parallelism
         dp_parallelism = self.nranks // self.inner_parallelism
 
-        self._transpile_main_program(loss, node_num, gpus_per_node)
+        self._transpile_main_program(loss, dp_parallelism)
         return optimize_ops, params_grads
 
     def _transpile_main_program(self, loss, dp_parallelism):
@@ -265,4 +263,3 @@ class ModelParallelOptimizer(MetaOptimizerBase):
                     outputs={'Out': grad},
                     attrs={'ring_id': ring_id,
                            OP_ROLE_KEY: OpRole.Backward})
-            break
