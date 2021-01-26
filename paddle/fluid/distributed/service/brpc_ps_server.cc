@@ -64,35 +64,13 @@ uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
   auto trainers = _environment->get_trainers();
   options.num_threads = trainers > num_threads ? trainers : num_threads;
 
-  // There are usually two forms of IP address: ip(int) / ip (hostname)
-  // If there're some problem with DNS, or ip triggers the bug of Brpc
-  // We will try to get the IP address of the domain name manually again
   if (_server.Start(ip_port.c_str(), &options) != 0) {
     VLOG(0) << "BrpcPsServer start failed, ip_port= " << ip_port
             << " , Try Again.";
 
-    struct hostent *hp = NULL;
-    hp = gethostbyname(ip.c_str());
+    std::string int_ip_port = GetIntTypeEndpoint(ip, port);
 
-    if (NULL == hp) {
-      LOG(ERROR) << "BrpcPsServer start failed, ip_port= " << ip_port
-                 << " , Error infomation: " << hstrerror(h_errno);
-      return 0;
-    }
-
-    int i = 0;
-    char *int_ip = NULL;
-
-    while (hp->h_addr_list[i] != NULL) {
-      int_ip = inet_ntoa(*(struct in_addr *)hp->h_addr_list[i]);
-      VLOG(0) << "BrpcPsServer gethostbyname  host:" << ip
-              << " -> ip: " << int_ip;
-      break;
-    }
-
-    std::string str_ip = int_ip;
-    std::string int_ip_port = str_ip + ":" + std::to_string(port);
-    if (_server.Start(ip_port.c_str(), &options) != 0) {
+    if (_server.Start(int_ip_port.c_str(), &options) != 0) {
       LOG(ERROR) << "BrpcPsServer start failed, ip_port= " << int_ip_port;
       return 0;
     }

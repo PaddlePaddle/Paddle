@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <vector>
+#include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/server.h"
 
 namespace paddle {
