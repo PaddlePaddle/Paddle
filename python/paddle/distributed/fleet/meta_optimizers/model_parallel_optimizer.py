@@ -61,12 +61,14 @@ class ModelParallelHelper(object):
         if mp_num == 1: return
         # Create rings for gpus as the same model parallel part
         eps = []
-        local_rank = rank % inner_parallelism
-        ring_id = local_rank + 1
-        for i in range(mp_num):
-            eps.append(endpoints[i * inner_parallelism + local_rank])
+        dp_rank = rank // inner_parallelism
+        dp_id = rank % inner_parallelism
+        ring_id = dp_id + 1
+        for idx, ep in enumerate(endpoints):
+            if idx % inner_parallelism == dp_id:
+                eps.append(ep)
         self._init_communicator(self.startup_program, current_endpoint, eps,
-                                local_rank, ring_id, self.wait_port)
+                                dp_rank, ring_id, self.wait_port)
         self._broadcast_params(ring_id)
 
     def _init_communicator(self, program, current_endpoint, endpoints, rank,
@@ -137,7 +139,7 @@ class ModelParallelOptimizer(MetaOptimizerBase):
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
-        super(MegatronOptimizer, self)._set_basic_info(
+        super(ModelParallelOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
         self.inner_parallelism = user_defined_strategy.model_parallel_configs[
             'parallelism']
@@ -165,7 +167,6 @@ class ModelParallelOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[self.role_maker._worker_index()]
-        self.local_rank = self._get_local_rank(current_endpoint, endpoints)
         node_num = _get_node_num(endpoints)
         gpus_per_node = len(endpoints) // node_num
         self.startup_program = startup_program
@@ -192,8 +193,10 @@ class ModelParallelOptimizer(MetaOptimizerBase):
 
     def _transpile_main_program(self, loss, dp_parallelism):
         self._insert_loss_grad_ops(loss, dp_parallelism)
-        for ring_id in range(1, dp_parallelism + 1):
-            self._insert_allreduce_ops(ring_id)
+        ring_id = self.role_maker._worker_index() % self.inner_parallelism + 1
+        print("ring_id: ", ring_id)
+        # for ring_id in range(1, dp_parallelism + 1):
+        self._insert_allreduce_ops(loss, ring_id)
 
     def _insert_loss_grad_ops(self, loss, dp_parallelism):
         """
@@ -214,7 +217,7 @@ class ModelParallelOptimizer(MetaOptimizerBase):
                         OP_ROLE_KEY: OpRole.Backward
                     })
 
-    def _insert_allreduce_ops(self, ring_id):
+    def _insert_allreduce_ops(self, loss, ring_id):
         block = loss.block
         grad = None
         for idx, op in reversed(list(enumerate(block.ops))):
@@ -228,8 +231,7 @@ class ModelParallelOptimizer(MetaOptimizerBase):
                 for i in range(0, len(op_role_var), 2):
                     param = block.vars[op_role_var[i]]
                     grad = block.vars[op_role_var[i + 1]]
-                    origin_param = origin_block.vars[op_role_var[i]]
-                    if origin_param.is_distributed:
+                    if param.is_distributed:
                         continue
                     if offset == idx:
                         offset += 1
