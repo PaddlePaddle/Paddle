@@ -34,7 +34,7 @@ SIZE_FLOAT32 = 4
 SIZE_INT64 = 8
 FULL_SIZE_BYTES = 30106000008
 FULL_IMAGES = 50000
-TARGET_HASH = '22d2e0008dca693916d9595a5ea3ded8'
+TARGET_HASH = '0be07c2c23296b97dad83c626682c66a'
 FOLDER_NAME = "ILSVRC2012/"
 VALLIST_TAR_NAME = "ILSVRC2012/val_list.txt"
 CHUNK_SIZE = 8192
@@ -115,9 +115,7 @@ def check_integrity(filename, target_hash):
     onepart = FULL_SIZE_BYTES // CHUNK_SIZE // 100
     with open(filename, 'rb') as ifs:
         while True:
-            print("PASS3")
             buf = ifs.read(CHUNK_SIZE)
-            print("PASS4")
             if count % onepart == 0:
                 done = count // onepart
                 print_processbar(done)
@@ -161,7 +159,6 @@ def convert_Imagenet_tar2bin(tar_file, output_file):
             if idx % per_percentage == 0:
                 print_processbar(idx // per_percentage)
             idx = idx + 1
-        print("PASSED2")
 
         val_dict = {}
         for line_idx, line in enumerate(lines):
