@@ -28,7 +28,7 @@ function(CheckCompilerCXX14Flag)
 endfunction()
 
 CheckCompilerCXX14Flag()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 # safe_set_flag
 #
 # Set a compile flag only if compiler is support
