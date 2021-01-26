@@ -232,7 +232,8 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     args.idesc.set(transformed_output, iwo_groups);
     args.wdesc.set(*filter, layout_tensor, iwo_groups);
     args.odesc.set(transformed_input, iwo_groups);
-    args.cdesc.set(dtype, padding_common, strides, dilations, c_groups);
+    args.cdesc.set(dtype, padding_common, strides, dilations,
+                   platform::AllowTF32Cudnn(), c_groups);
 
     using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     algo = search::Find<T>(args, false, deterministic, ctx);
@@ -468,7 +469,8 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       args1.idesc.set(transformed_output_grad, iwo_groups);
       args1.wdesc.set(*filter, layout_tensor, iwo_groups);
       args1.odesc.set(input_transpose, iwo_groups);
-      args1.cdesc.set(dtype, padding_common, strides, dilations, c_groups);
+      args1.cdesc.set(dtype, padding_common, strides, dilations,
+                      platform::AllowTF32Cudnn(), c_groups);
       using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
       data_algo = search1::Find<T>(args1, false, deterministic, ctx);
       workspace_size =
@@ -481,7 +483,8 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       args2.idesc.set(transformed_output_grad, iwo_groups);
       args2.wdesc.set(*filter_grad, layout_tensor, iwo_groups);
       args2.odesc.set(input_transpose, iwo_groups);
-      args2.cdesc.set(dtype, padding_common, strides, dilations, c_groups);
+      args2.cdesc.set(dtype, padding_common, strides, dilations,
+                      platform::AllowTF32Cudnn(), c_groups);
       using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
       filter_algo = search2::Find<T>(args2, false, deterministic, ctx);
       workspace_size = std::max(workspace_size,
@@ -551,6 +554,487 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
   }
 };
 
+/*
+ * Inputs:  I, W, dO, ddI, ddW
+ * Outputs: ddO, dW, dI
+ * ddo = conv_bp_data(W, ddI) + conv_bp_data(ddW, I)
+ * dW = conv_bp_filter(dO, ddI)
+ * dI = conv(dO, ddW)
+ */
+template <typename T>
+class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+    auto X = ctx.Input<Tensor>("Input");
+    auto W = ctx.Input<Tensor>("Filter");
+    auto dO = ctx.Input<Tensor>("DOutput");
+    auto ddX = ctx.Input<Tensor>("DDInput");
+    auto ddW = ctx.Input<Tensor>("DDFilter");
+
+    auto ddO = ctx.Output<Tensor>("DDOutput");
+    auto dW = ctx.Output<Tensor>("DFilter");
+    auto dX = ctx.Output<Tensor>("DInput");
+
+    if (ddO) {
+      ddO->mutable_data<T>(ctx.GetPlace());
+      math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+      set_zero(dev_ctx, ddO, static_cast<T>(0));
+    }
+    if (dW) {
+      dW->mutable_data<T>(ctx.GetPlace());
+    }
+    if (dX) {
+      dX->mutable_data<T>(ctx.GetPlace());
+    }
+
+    const T* dy = dO->data<T>();
+    const T* w = W->data<T>();
+
+    const T* ddx = nullptr;
+    const T* ddw = nullptr;
+    T *dw, *dx, *ddy;
+    dw = dx = ddy = nullptr;
+    T* transformed_dx = nullptr;
+    const std::vector<int>& strides = ctx.Attr<std::vector<int>>("strides");
+    std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
+    int groups = ctx.Attr<int>("groups");
+
+    bool deterministic = FLAGS_cudnn_deterministic;
+
+    std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
+
+    std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+    // transform Tensors to channel first-----------
+    Tensor transformed_X_channel(X->type());
+    Tensor transformed_dO_channel(dO->type());
+    Tensor transformed_ddX_channel(X->type());
+
+    Tensor transformed_ddO_channel(dO->type());
+    Tensor transformed_dX_channel(X->type());
+
+    if (channel_last) {
+      ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+          ctx, X, &transformed_X_channel);
+      TransToChannelFirst<platform::CUDADeviceContext, T>(
+          ctx, X, &transformed_X_channel);
+
+      ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+          ctx, dO, &transformed_dO_channel);
+      TransToChannelFirst<platform::CUDADeviceContext, T>(
+          ctx, dO, &transformed_dO_channel);
+
+      if (ddX) {
+        ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+            ctx, ddX, &transformed_ddX_channel);
+        TransToChannelFirst<platform::CUDADeviceContext, T>(
+            ctx, ddX, &transformed_ddX_channel);
+      }
+
+      if (ddO) {
+        ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+            ctx, ddO, &transformed_ddO_channel);
+      }
+      if (dX) {
+        ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+            ctx, dX, &transformed_dX_channel);
+        transformed_dX_channel.mutable_data<T>(ctx.GetPlace());
+      }
+
+    } else {
+      transformed_X_channel = *X;
+      transformed_dO_channel = *dO;
+      if (ddX) {
+        transformed_ddX_channel = *ddX;
+      }
+      if (dX) {
+        transformed_dX_channel = *dX;
+      }
+    }
+    std::vector<int> output_vec =
+        framework::vectorize<int>(transformed_dO_channel.dims());
+
+    auto in_dims = transformed_X_channel.dims();
+    auto filter_dims = W->dims();
+    framework::DDim in_data_dims =
+        framework::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             in_data_dims, strides, ksize);
+
+    int data_dim = strides.size();  // 2d or 3d
+    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
+    Tensor transformed_X(X->type());
+    Tensor transformed_ddX(X->type());
+
+    Tensor transformed_dO(dO->type());
+
+    std::vector<int> padding_common(data_dim, 0);
+    std::vector<int> input_pad(X->dims().size() * 2, 0);
+
+    if (!is_sys_pad) {
+      // get pad
+      std::vector<int> padding_diff(data_dim);
+      std::vector<int> new_input_shape_vec(data_dim + 2);
+      std::vector<int> new_output_grad_shape_vec(data_dim + 2);
+
+      new_input_shape_vec[0] = transformed_X_channel.dims()[0];
+      new_input_shape_vec[1] = transformed_X_channel.dims()[1];
+
+      new_output_grad_shape_vec[0] = transformed_dO_channel.dims()[0];
+      new_output_grad_shape_vec[1] = transformed_dO_channel.dims()[1];
+
+      for (size_t i = 0; i < data_dim; ++i) {
+        padding_diff[i] = std::abs(paddings[2 * i] - paddings[2 * i + 1]);
+        padding_common[i] = std::min(paddings[2 * i], paddings[2 * i + 1]);
+        new_input_shape_vec[i + 2] =
+            transformed_X_channel.dims()[i + 2] + padding_diff[i];
+
+        new_output_grad_shape_vec[i + 2] =
+            transformed_dO_channel.dims()[i + 2] + padding_diff[i];
+
+        input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
+        input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
+      }
+      framework::DDim new_input_shape(
+          framework::make_ddim(new_input_shape_vec));
+      transformed_X.Resize(new_input_shape);
+      transformed_ddX.Resize(new_input_shape);
+
+      framework::DDim new_output_grad_shape(
+          framework::make_ddim(new_output_grad_shape_vec));
+      transformed_dO.Resize(new_output_grad_shape);
+
+      transformed_dO =
+          ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
+              new_output_grad_shape, dev_ctx);
+
+      transformed_X =
+          ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
+              new_input_shape, dev_ctx);
+      if (ddX) {
+        transformed_ddX =
+            ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
+                new_input_shape, dev_ctx);
+      }
+
+      // pad for input
+      const int rank = X->dims().size();
+      T pad_value(0.0);
+      switch (rank) {
+        case 4: {
+          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
+          if (dO) {
+            math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+                ctx, input_pad, transformed_dO_channel, pad_value,
+                &transformed_dO);
+          }
+
+          if (ddX) {
+            math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+                ctx, input_pad, transformed_ddX_channel, pad_value,
+                &transformed_ddX);
+          }
+        } break;
+        case 5: {
+          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
+          if (ddX) {
+            math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+                ctx, input_pad, transformed_ddX_channel, pad_value,
+                &transformed_ddX);
+          }
+        } break;
+        default:
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "ConvOp only support tensors with 4 or 5 dimensions."));
+      }
+
+    } else {
+      transformed_X = transformed_X_channel;
+      transformed_dO = transformed_dO_channel;
+      if (ddX) {
+        transformed_ddX = transformed_ddX_channel;
+      }
+
+      if (paddings.size() == data_dim) {
+        for (size_t i = 0; i < data_dim; ++i) {
+          padding_common[i] = paddings[i];
+        }
+      } else {
+        for (size_t i = 0; i < data_dim; ++i) {
+          padding_common[i] = paddings[2 * i];
+        }
+      }
+    }
+
+    std::vector<int64_t> starts(data_dim, 0);
+    std::vector<int64_t> ends(data_dim, 0);
+    std::vector<int64_t> axes(data_dim, 0);
+    for (size_t i = 0; i < data_dim; ++i) {
+      starts[i] = input_pad[2 * i + 4] * (strides[i] + 1);
+      ends[i] = starts[i] + output_vec[i + 2];
+      axes[i] = i + 2;
+    }
+
+    std::vector<int> transformed_output_vec = output_vec;
+    for (size_t i = 0; i < data_dim; ++i) {
+      transformed_output_vec[i + 2] =
+          output_vec[i + 2] +
+          (input_pad[2 * i + 4] + input_pad[2 * i + 5]) * strides[i] -
+          2 * padding_common[i] + paddings[2 * i] + paddings[2 * i + 1];
+    }
+
+    if (!is_sys_pad) {
+      DDim transformed_output_shape(
+          framework::make_ddim(transformed_output_vec));
+      transformed_ddO_channel.mutable_data<T>(transformed_output_shape,
+                                              ctx.GetPlace());
+    } else {
+      ddO->mutable_data<T>(ctx.GetPlace());
+      transformed_ddO_channel = *ddO;
+      transformed_ddO_channel.Resize(
+          framework::make_ddim(transformed_output_vec));
+    }
+
+    const T* x = transformed_X.data<T>();
+
+    int iwo_group = groups;
+    int c_group = 1;
+#if CUDNN_VERSION_MIN(7, 0, 1)
+    iwo_group = 1;
+    c_group = groups;
+    groups = 1;
+#endif
+    auto dtype = platform::CudnnDataType<T>::type;
+
+    auto handle = dev_ctx.cudnn_handle();
+
+    ConvArgs args1{&transformed_ddO_channel,
+                   W,
+                   &transformed_ddX,
+                   strides,
+                   padding_common,
+                   dilations,
+                   dtype};
+    ConvArgs args2{&transformed_ddO_channel, ddW,       &transformed_X, strides,
+                   padding_common,           dilations, dtype};
+
+    ConvArgs args3{&transformed_dO,
+                   dW,
+                   &transformed_ddX_channel,
+                   strides,
+                   padding_common,
+                   dilations,
+                   dtype};
+    ConvArgs args4{
+        &transformed_dO, ddW,  &transformed_dX_channel, strides, padding_common,
+        dilations,       dtype};
+
+    cudnnConvolutionBwdDataAlgo_t bwd_algo1 =
+        static_cast<cudnnConvolutionBwdDataAlgo_t>(0);
+    cudnnConvolutionBwdDataAlgo_t bwd_algo2 =
+        static_cast<cudnnConvolutionBwdDataAlgo_t>(0);
+    cudnnConvolutionFwdAlgo_t data_algo =
+        static_cast<cudnnConvolutionFwdAlgo_t>(0);
+    cudnnConvolutionBwdFilterAlgo_t filter_algo =
+        static_cast<cudnnConvolutionBwdFilterAlgo_t>(0);
+
+    auto layout = GetCudnnTensorFormat(DataLayout::kNCHW);
+
+    // ddo = conv(ddI, W) + conv(I, ddW)
+    size_t workspace_size = 0;
+
+    T* transformed_ddy_channel = nullptr;
+
+    if (ddO) {
+      ddy = ddO->data<T>();
+      transformed_ddy_channel = transformed_ddO_channel.data<T>();
+      if (ddX) {
+        args1.handle = handle;
+        args1.idesc.set(transformed_ddO_channel, iwo_group);
+        args1.wdesc.set(*W, layout, iwo_group);
+        args1.odesc.set(transformed_ddX, iwo_group);
+        args1.cdesc.set(dtype, padding_common, strides, dilations, c_group);
+        using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+        bwd_algo1 = search1::Find<T>(args1, false, deterministic, ctx);
+        workspace_size = search1::GetWorkspaceSize(args1, bwd_algo1);
+      }
+
+      if (ddW) {
+        ddw = ddW->data<T>();
+        args2.handle = handle;
+        args2.idesc.set(transformed_ddO_channel, iwo_group);
+        args2.wdesc.set(*ddW, layout, iwo_group);
+        args2.odesc.set(transformed_X, iwo_group);
+        args2.cdesc.set(dtype, padding_common, strides, dilations, c_group);
+        using search2 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+        bwd_algo2 = search2::Find<T>(args2, false, deterministic, ctx);
+        workspace_size = std::max(workspace_size,
+                                  search2::GetWorkspaceSize(args2, bwd_algo2));
+      }
+    }
+
+    if (dW && ddX) {
+      dw = dW->data<T>();
+      args3.handle = handle;
+      args3.idesc.set(transformed_dO, iwo_group);
+      args3.wdesc.set(*dW, layout, iwo_group);
+
+      args3.odesc.set(transformed_ddX_channel, iwo_group);
+
+      args3.cdesc.set(dtype, padding_common, strides, dilations, c_group);
+
+      using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+      filter_algo = search3::Find<T>(args3, false, deterministic, ctx);
+      workspace_size = std::max(workspace_size,
+                                search3::GetWorkspaceSize(args3, filter_algo));
+    }
+
+    if (ddW && dX) {
+      transformed_dx = transformed_dX_channel.data<T>();
+
+      args4.handle = handle;
+      args4.idesc.set(transformed_dO, iwo_group);
+      args4.wdesc.set(*ddW, layout, iwo_group);
+      args4.odesc.set(transformed_dX_channel, iwo_group);
+      args4.cdesc.set(dtype, padding_common, strides, dilations, c_group);
+
+      using search4 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+      data_algo = search4::Find<T>(args4, false, deterministic, ctx);
+      workspace_size =
+          std::max(workspace_size, search4::GetWorkspaceSize(args4, data_algo));
+    }
+
+    int i_n, i_c, i_d, i_h, i_w;
+    GetNCDHW(transformed_X.dims(), DataLayout::kNCHW, &i_n, &i_c, &i_d, &i_h,
+             &i_w);
+
+    int o_n, o_c, o_d, o_h, o_w;
+    GetNCDHW(transformed_dO.dims(), DataLayout::kNCHW, &o_n, &o_c, &o_d, &o_h,
+             &o_w);
+
+    int group_offset_in =
+        transformed_X.numel() / transformed_X.dims()[0] / groups;
+    int group_offset_out =
+        transformed_dO.numel() / transformed_dO.dims()[0] / groups;
+    int group_offset_filter = W->numel() / groups;
+
+    ScalingParamType<T> alpha = 1.0f;
+    ScalingParamType<T> beta = 0.0f;
+
+    auto wkspace_handle = dev_ctx.cudnn_workspace_handle();
+
+    if (ddO) {
+      if (ddX) {
+        ddx = transformed_ddX.data<T>();
+        for (int i = 0; i < groups; i++) {
+          wkspace_handle.RunFunc(
+              [&](void* workspace_ptr) {
+                PADDLE_ENFORCE_CUDA_SUCCESS(
+                    platform::dynload::cudnnConvolutionBackwardData(
+                        handle, &alpha, args1.wdesc.desc(),
+                        w + i * group_offset_filter, args1.odesc.desc(),
+                        ddx + i * group_offset_in, args1.cdesc.desc(),
+                        bwd_algo1, workspace_ptr, workspace_size, &beta,
+                        args1.idesc.desc(),
+                        transformed_ddy_channel + i * group_offset_out));
+              },
+              workspace_size);
+        }
+      }
+      if (ddW) {
+        for (int i = 0; i < groups; i++) {
+          wkspace_handle.RunFunc(
+              [&](void* workspace_ptr) {
+                PADDLE_ENFORCE_CUDA_SUCCESS(
+                    platform::dynload::cudnnConvolutionBackwardData(
+                        handle, &alpha, args2.wdesc.desc(),
+                        ddw + i * group_offset_filter, args2.odesc.desc(),
+                        x + i * group_offset_in, args2.cdesc.desc(), bwd_algo2,
+                        workspace_ptr, workspace_size, &alpha,
+                        args2.idesc.desc(),
+                        transformed_ddy_channel + i * group_offset_out));
+              },
+              workspace_size);
+        }
+      }
+      if ((!is_sys_pad) && (!channel_last)) {
+        if (strides.size() == 2U) {
+          Slice<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, &transformed_ddO_channel, ddO, starts, ends, axes);
+        } else if (!is_sys_pad && strides.size() == 3U) {
+          Slice<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, &transformed_ddO_channel, ddO, starts, ends, axes);
+        }
+      } else if ((!is_sys_pad) && (channel_last)) {
+        if (strides.size() == 2U) {
+          Slice<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, &transformed_ddO_channel, &transformed_ddO_channel, starts,
+              ends, axes);
+        } else if (!is_sys_pad && strides.size() == 3U) {
+          Slice<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, &transformed_ddO_channel, &transformed_ddO_channel, starts,
+              ends, axes);
+        }
+
+        TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
+            ctx, &transformed_ddO_channel, ddO);
+      }
+    }
+
+    T* transformed_dy_channel = transformed_dO.data<T>();
+    if (dW && ddX) {
+      ddx = transformed_ddX_channel.data<T>();
+      for (int i = 0; i < groups; i++) {
+        wkspace_handle.RunFunc(
+            [&](void* workspace_ptr) {
+              PADDLE_ENFORCE_CUDA_SUCCESS(
+                  platform::dynload::cudnnConvolutionBackwardFilter(
+                      handle, &alpha, args3.idesc.desc(),
+                      transformed_dy_channel + i * group_offset_out,
+                      args3.odesc.desc(), ddx + i * group_offset_in,
+                      args3.cdesc.desc(), filter_algo, workspace_ptr,
+                      workspace_size, &beta, args3.wdesc.desc(),
+                      dw + i * group_offset_filter));
+            },
+            workspace_size);
+      }
+    }
+
+    if (dX && ddW) {
+      ddw = ddW->data<T>();
+      for (int i = 0; i < groups; i++) {
+        wkspace_handle.RunFunc(
+            [&](void* workspace_ptr) {
+              PADDLE_ENFORCE_CUDA_SUCCESS(
+                  platform::dynload::cudnnConvolutionForward(
+                      handle, &alpha, args4.idesc.desc(),
+                      transformed_dy_channel + i * group_offset_out,
+                      args4.wdesc.desc(), ddw + i * group_offset_filter,
+                      args4.cdesc.desc(), data_algo, workspace_ptr,
+                      workspace_size, &beta, args4.odesc.desc(),
+                      transformed_dx + i * group_offset_in));
+            },
+            workspace_size);
+      }
+      if (channel_last) {
+        TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
+            ctx, &transformed_dX_channel, dX);
+      }
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -565,6 +1049,11 @@ REGISTER_OP_KERNEL(conv2d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
                    ops::CUDNNConvTransposeGradOpKernel<plat::float16>,
                    ops::CUDNNConvTransposeGradOpKernel<float>,
                    ops::CUDNNConvTransposeGradOpKernel<double>);
+REGISTER_OP_KERNEL(
+    conv2d_transpose_grad_grad, CUDNN, plat::CUDAPlace,
+    paddle::operators::CUDNNConvTransposeDoubleGradOpKernel<float>,
+    paddle::operators::CUDNNConvTransposeDoubleGradOpKernel<double>,
+    paddle::operators::CUDNNConvTransposeDoubleGradOpKernel<plat::float16>);
 
 REGISTER_OP_KERNEL(conv3d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
                    ops::CUDNNConvTransposeOpKernel<plat::float16>,

@@ -220,12 +220,16 @@ class TestTanhAPI(unittest.TestCase):
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
+        self.executed_api()
+
+    def executed_api(self):
+        self.tanh = F.tanh
 
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [10, 12], self.dtype)
-            out1 = F.tanh(x)
+            out1 = self.tanh(x)
             th = paddle.nn.Tanh()
             out2 = th(x)
             exe = paddle.static.Executor(self.place)
@@ -260,15 +264,21 @@ class TestTanhAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, F.tanh, 1)
+            self.assertRaises(TypeError, self.tanh, 1)
             # The input dtype must be float16, float32.
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, F.tanh, x_int32)
+            self.assertRaises(TypeError, self.tanh, x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[12, 10], dtype='float16')
-            F.tanh(x_fp16)
+            self.tanh(x_fp16)
+
+
+class TestTanhInplaceAPI(TestTanhAPI):
+    # test paddle.tanh_
+    def executed_api(self):
+        self.tanh = paddle.tanh_
 
 
 class TestAtan(TestActivation, TestParameter):
@@ -992,12 +1002,16 @@ class TestReluAPI(unittest.TestCase):
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
+        self.executed_api()
+
+    def executed_api(self):
+        self.relu = F.relu
 
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [10, 12])
-            out1 = F.relu(x)
+            out1 = self.relu(x)
             m = paddle.nn.ReLU()
             out2 = m(x)
             exe = paddle.static.Executor(self.place)
@@ -1009,9 +1023,9 @@ class TestReluAPI(unittest.TestCase):
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
-        out1 = F.relu(x)
         m = paddle.nn.ReLU()
-        out2 = m(x)
+        out1 = m(x)
+        out2 = self.relu(x)
         out_ref = np.maximum(self.x_np, 0)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
@@ -1021,15 +1035,21 @@ class TestReluAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, F.relu, 1)
+            self.assertRaises(TypeError, self.relu, 1)
             # The input dtype must be float16, float32, float64.
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[10, 12], dtype='int32')
-            self.assertRaises(TypeError, F.relu, x_int32)
+            self.assertRaises(TypeError, self.relu, x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[10, 12], dtype='float16')
-            F.relu(x_fp16)
+            self.relu(x_fp16)
+
+
+class TestReluInplaceAPI(TestReluAPI):
+    # test paddle.nn.functional.relu_
+    def executed_api(self):
+        self.relu = F.relu_
 
 
 def ref_leaky_relu(x, alpha=0.01):
@@ -1557,12 +1577,16 @@ class TestELUAPI(unittest.TestCase):
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
+        self.executed_api()
+
+    def executed_api(self):
+        self.elu = F.elu
 
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [10, 12])
-            out1 = F.elu(x)
+            out1 = self.elu(x)
             m = paddle.nn.ELU()
             out2 = m(x)
             exe = paddle.static.Executor(self.place)
@@ -1574,14 +1598,16 @@ class TestELUAPI(unittest.TestCase):
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
-        out1 = F.elu(x)
+        out1 = self.elu(x)
+        x = paddle.to_tensor(self.x_np)
         m = paddle.nn.ELU()
         out2 = m(x)
         out_ref = elu(self.x_np, 1.0)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
 
-        out1 = F.elu(x, 0.2)
+        out1 = self.elu(x, 0.2)
+        x = paddle.to_tensor(self.x_np)
         m = paddle.nn.ELU(0.2)
         out2 = m(x)
         out_ref = elu(self.x_np, 0.2)
@@ -1593,15 +1619,21 @@ class TestELUAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, F.elu, 1)
+            self.assertRaises(TypeError, self.elu, 1)
             # The input dtype must be float16, float32, float64.
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[10, 12], dtype='int32')
-            self.assertRaises(TypeError, F.elu, x_int32)
+            self.assertRaises(TypeError, self.elu, x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[10, 12], dtype='float16')
-            F.elu(x_fp16)
+            self.elu(x_fp16)
+
+
+class TestELUInplaceAPI(TestELUAPI):
+    # test paddle.nn.functional.elu_
+    def executed_api(self):
+        self.elu = F.elu_
 
 
 class TestReciprocal(TestActivation):

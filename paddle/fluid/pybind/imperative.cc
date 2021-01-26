@@ -1257,27 +1257,30 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::reference)
       .def("_generate_unique_name", &imperative::Tracer::GenerateUniqueName,
            py::arg("key") = "dygraph_tmp")
-      .def(
-          "_set_amp_op_list",
-          [](imperative::Tracer &self,
-             std::unordered_set<std::string> &allow_ops,
-             std::unordered_set<std::string> &block_ops) {
-            // NOTE(zhiqiu): The automatic conversion in pybind11 between
-            // c++
-            // STL and python set/list/dict involve a copy operation that
-            // prevents pass-by-reference semantics, so it is ok to swap.
-            // The reaseon why not directly pass
-            // std::shared_ptr<std::unordered_set<std::string>>
-            // is that pybind11 forbid shared_ptr<T> where T is not custom
-            // type.
-            imperative::AmpOperators::Instance().GetAllowOps()->swap(allow_ops);
-            imperative::AmpOperators::Instance().GetBlockOps()->swap(block_ops);
-          })
+      .def("_set_amp_op_list",
+           [](imperative::Tracer &self,
+              std::unordered_set<std::string> &allow_ops,
+              std::unordered_set<std::string> &block_ops) {
+             // NOTE(zhiqiu): The automatic conversion in pybind11 between
+             // c++
+             // STL and python set/list/dict involve a copy operation that
+             // prevents pass-by-reference semantics, so it is ok to swap.
+             // The reaseon why not directly pass
+             // std::shared_ptr<std::unordered_set<std::string>>
+             // is that pybind11 forbid shared_ptr<T> where T is not custom
+             // type.
+             imperative::AmpOperators::Instance().GetMutableAllowOps()->swap(
+                 allow_ops);
+             imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
+                 block_ops);
+             VLOG(4) << "AMP operators changed, "
+                     << imperative::AmpOperators::Instance();
+           })
       .def("_get_amp_op_list",
            [](imperative::Tracer &self) {
              return std::make_tuple(
-                 *(imperative::AmpOperators::Instance().GetAllowOps()),
-                 *(imperative::AmpOperators::Instance().GetBlockOps()));
+                 *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
+                 *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
            })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
