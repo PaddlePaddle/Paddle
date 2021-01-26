@@ -80,7 +80,12 @@ class InstanceNormPlugin : public PluginTensorRT {
   int initialize() override;
 
   InstanceNormPlugin *clone() const override {
-    return new InstanceNormPlugin(eps_, scale_, bias_);
+    auto *ptr = new InstanceNormPlugin(eps_, scale_, bias_);
+    ptr->handle_ = handle_;
+    ptr->x_desc_ = x_desc_;
+    ptr->y_desc_ = y_desc_;
+    ptr->b_desc_ = b_desc_;
+    return ptr;
   }
 
   const char *getPluginType() const override { return "instance_norm_plugin"; }

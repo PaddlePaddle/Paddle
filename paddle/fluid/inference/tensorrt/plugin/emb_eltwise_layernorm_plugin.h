@@ -189,6 +189,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     auto ptr = new EmbEltwiseLayernormPluginDynamic(
         embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_, hidden_size_,
         eps_, with_fp16_);
+    ptr->initialize();
     return ptr;
   }
 
@@ -294,6 +295,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   float eps_;
 
   bool own_host_buff_{false};
+  bool is_initialized_{false};
   EmbEltwiseLayernormPluginDynamicImplBase* impl_{nullptr};
 };
 

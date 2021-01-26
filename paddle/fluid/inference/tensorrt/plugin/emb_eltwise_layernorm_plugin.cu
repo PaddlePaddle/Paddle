@@ -165,7 +165,10 @@ template class EmbEltwiseLayernormPluginDynamicImpl<half>;
 #endif
 
 int EmbEltwiseLayernormPluginDynamic::initialize() {
-  impl_->initialize();
+  if (!is_initialized_) {
+    impl_->initialize();
+    is_initialized_ = true;
+  }
 
   return 0;
 }
