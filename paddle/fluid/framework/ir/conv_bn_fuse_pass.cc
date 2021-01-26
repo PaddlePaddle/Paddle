@@ -95,13 +95,24 @@ void recompute_bias_and_weights(const Scope* scope,
   variance_array += epsilon;
   variance_array = variance_array.sqrt();
   variance_array = scale_array / variance_array;
-
+  for (int i = 0; i < variance_tensor->numel(); i++) {
+    PADDLE_ENFORCE_EQ(
+        isfinite(variance_array[i]), true,
+        platform::errors::InvalidArgument("fuse batch norm variance should be "
+                                          "finite. Found nonfinite values!"));
+  }
   EigenVectorArrayMap eltwise_y_in_array(
       eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
       eltwise_y_in_tensor->numel(), 1);
 
   eltwise_y_in_array =
       ((eltwise_y_in_array - mean_array) * variance_array) + bn_bias_array;
+  for (int i = 0; i < eltwise_y_in_tensor->numel(); i++) {
+    PADDLE_ENFORCE_EQ(
+        isfinite(eltwise_y_in_array[i]), true,
+        platform::errors::InvalidArgument("fused batch norm bias should be "
+                                          "finite. Found nonfinite values!"));
+  }
 
   // Re-compute weight of conv2d from BN
   auto* weights = scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
