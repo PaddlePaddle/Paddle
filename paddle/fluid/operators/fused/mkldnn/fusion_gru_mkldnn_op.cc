@@ -118,7 +118,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_layer_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      dnnl::stream astream(this->engine_);
       dnnl::reorder(user_memory, *memory_p, this->attr_)
           .execute(astream, user_memory, *memory_p);
 
@@ -172,7 +172,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_iter_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      dnnl::stream astream(this->engine_);
       dnnl::reorder(user_memory, *memory_p, this->attr_)
           .execute(astream, user_memory, *memory_p);
 
@@ -291,7 +291,7 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
 
     auto gru_forward_p = handler.AcquireForwardPrimitive();
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    dnnl::stream astream(mkldnn_engine);
     gru_forward_p->execute(astream, gru_args);
     astream.wait();
 
