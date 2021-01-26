@@ -144,6 +144,15 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "Out");
 }
 
+bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
+  if (ctx.Attr<bool>("adaptive") == false) return true;
+  // (jczaja): oneDNN is supporting only unchangable in size pool window
+  auto src_tz = paddle::framework::vectorize(ctx.Input<Tensor>("X")->dims());
+  std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
+  return src_tz[src_tz.size() - 1] % ksize[1] == 0 &&
+         src_tz[src_tz.size() - 2] % ksize[0] == 0;
+}
+
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
@@ -158,7 +167,7 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, data_type)) {
+      this->CanMKLDNNBeUsed(ctx, data_type) && CanMKLDNNSupportPool(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
@@ -213,7 +222,8 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+      CanMKLDNNSupportPool(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
