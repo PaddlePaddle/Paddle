@@ -29,5 +29,4 @@ no_check_set_white_list = [
     'update_loss_scaling',
     'cudnn_lstm',
     'rnn',
-    'fusion_lstm',
 ]
