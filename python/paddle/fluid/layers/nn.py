@@ -14984,32 +14984,31 @@ def gather_tree(ids, parents):
                              [9 0]]]
 
     Args:
-        ids(Variable): A Tensor with shape :attr:`[length, batch_size, beam_size]`
+        ids(Tensor): A Tensor with shape :attr:`[length, batch_size, beam_size]`
             and data type :attr:`int32` or :attr:`int64`. It contains the selected
             ids of all time steps.
-        parents(Variable): A Tensor with the same shape and data type as :attr:`ids`,
+        parents(Tensor): A Tensor with the same shape and data type as :attr:`ids`,
             It contains the parents corresponding to selected ids when searching
             among beams.
 
     Returns:
-        Variable: A Tensor with the same shape and data type as :attr:`ids`. \
+        Tensor: A Tensor with the same shape and data type as :attr:`ids`. \
             It contains the full sequences. The sequences are collected from \
             :attr:`ids` by backtracing according to :attr:`parents`.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import numpy as np
 
-            ids = fluid.layers.data(name='ids',
-                                    shape=[5, 2, 2],
-                                    dtype='int64',
-                                    append_batch_size=False)
-            parents = fluid.layers.data(name='parents',
-                                        shape=[5, 2, 2],
-                                        dtype='int64',
-                                        append_batch_size=False)
-            final_sequences = fluid.layers.gather_tree(ids, parents)
+            ids = paddle.to_tensor(np.asarray([[[2, 2], [6, 1]], [[3, 9], [6, 1]], [[0, 1], [9, 0]]]))
+    
+            parents = paddle.to_tensor(np.asarray([[[0, 0], [1, 1]], [[1, 0], [1, 0]], [[0, 0], [0, 1]]]))
+            
+            # [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
+            final_sequences = paddle.nn.functional.gather_tree(ids, parents)
+
     """
     helper = LayerHelper('gather_tree', **locals())
     check_variable_and_dtype(ids, 'ids', ['int32', 'int64'], 'gather_tree')
