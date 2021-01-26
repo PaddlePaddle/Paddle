@@ -1033,13 +1033,7 @@ inline void retry_sleep(unsigned milliseconds) {
 /***** HIP ERROR *****/
 inline bool is_error(hipError_t e) { return e != hipSuccess; }
 
-inline std::string GetCudaErrorWebsite(int32_t cuda_version) {
-  std::ostringstream webstr;
-  webstr << "rocm not need web check";
-  return webstr.str();
-}
-
-inline std::string build_nvidia_error_msg(hipError_t e) {
+inline std::string build_rocm_error_msg(hipError_t e) {
 #if defined(PADDLE_WITH_HIP)
   int32_t cuda_version = 100;
 #else
@@ -1047,69 +1041,6 @@ inline std::string build_nvidia_error_msg(hipError_t e) {
 #endif
   std::ostringstream sout;
   sout << " Hip error(" << e << "), " << hipGetErrorString(e) << ".";
-  static platform::proto::cudaerrorDesc cudaerror;
-  static bool _initSucceed = false;
-  if (cudaerror.ByteSizeLong() == 0) {
-    std::string filePath;
-#if !defined(_WIN32)
-    Dl_info info;
-    if (dladdr(reinterpret_cast<void*>(GetCudaErrorWebsite), &info)) {
-      std::string strModule(info.dli_fname);
-      const size_t last_slash_idx = strModule.find_last_of("/");
-      std::string compare_path = strModule.substr(strModule.length() - 6);
-      if (std::string::npos != last_slash_idx) {
-        strModule.erase(last_slash_idx, std::string::npos);
-      }
-      if (compare_path.compare("avx.so") == 0) {
-        filePath = strModule +
-                   "/../include/third_party/cudaerror/data/cudaErrorMessage.pb";
-      } else {
-        filePath =
-            strModule + "/../../thirl_party/cudaerror/data/cudaErrorMessage.pb";
-      }
-    }
-#else
-    char buf[100];
-    MEMORY_BASIC_INFORMATION mbi;
-    HMODULE h_module =
-        (::VirtualQuery(GetCudaErrorWebsite, &mbi, sizeof(mbi)) != 0)
-            ? (HMODULE)mbi.AllocationBase
-            : NULL;
-    GetModuleFileName(h_module, buf, 100);
-    std::string strModule(buf);
-    const size_t last_slash_idx = strModule.find_last_of("\\");
-    std::string compare_path = strModule.substr(strModule.length() - 7);
-    if (std::string::npos != last_slash_idx) {
-      strModule.erase(last_slash_idx, std::string::npos);
-    }
-    if (compare_path.compare("avx.pyd") == 0) {
-      filePath =
-          strModule +
-          "\\..\\include\\third_party\\cudaerror\\data\\cudaErrorMessage.pb";
-    } else {
-      filePath =
-          strModule + "\\..\\third_party\\cudaerror\\data\\cudaErrorMessage.pb";
-    }
-#endif
-    std::ifstream fin(filePath, std::ios::in | std::ios::binary);
-    _initSucceed = cudaerror.ParseFromIstream(&fin);
-  }
-  if (_initSucceed) {
-    for (int i = 0; i < cudaerror.allmessages_size(); ++i) {
-      if (cuda_version == cudaerror.allmessages(i).version()) {
-        for (int j = 0; j < cudaerror.allmessages(i).messages_size(); ++j) {
-          if (e == cudaerror.allmessages(i).messages(j).errorcode()) {
-            sout << "\n  [Advise: "
-                 << cudaerror.allmessages(i).messages(j).errormessage() << "]";
-            return sout.str();
-          }
-        }
-      }
-    }
-  }
-  sout << "\n  [Advise: Please search for the error code(" << e
-       << ") on website( " << GetCudaErrorWebsite(cuda_version)
-       << " ) to get Nvidia's official solution about CUDA Error.]";
   return sout.str();
 }
 
@@ -1153,7 +1084,7 @@ inline const char* hiprandGetErrorString(hiprandStatus_t stat) {
   }
 }
 
-inline std::string build_nvidia_error_msg(hiprandStatus_t stat) {
+inline std::string build_rocm_error_msg(hiprandStatus_t stat) {
   std::string msg(" Hiprand error, ");
   return msg + hiprandGetErrorString(stat) + " ";
 }
@@ -1163,7 +1094,7 @@ inline bool is_error(miopenStatus_t stat) {
   return stat != miopenStatusSuccess;
 }
 
-inline std::string build_nvidia_error_msg(miopenStatus_t stat) {
+inline std::string build_rocm_error_msg(miopenStatus_t stat) {
   std::string msg(" Miopen error, ");
   return msg + platform::dynload::miopenGetErrorString(stat) + " ";
 }
@@ -1194,7 +1125,7 @@ inline const char* rocblasGetErrorString(rocblas_status stat) {
   }
 }
 
-inline std::string build_nvidia_error_msg(rocblas_status stat) {
+inline std::string build_rocm_error_msg(rocblas_status stat) {
   std::string msg(" Rocblas error, ");
   return msg + rocblasGetErrorString(stat) + " ";
 }
@@ -1205,7 +1136,7 @@ inline bool is_error(ncclResult_t nccl_result) {
   return nccl_result != ncclSuccess;
 }
 
-inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
+inline std::string build_rocm_error_msg(ncclResult_t nccl_result) {
   std::string msg(" Rccl error, ");
   return msg + platform::dynload::ncclGetErrorString(nccl_result) + " ";
 }
@@ -1234,18 +1165,18 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
 
 }  // namespace details
 
-#define PADDLE_ENFORCE_CUDA_SUCCESS(COND)                        \
-  do {                                                           \
-    auto __cond__ = (COND);                                      \
-    using __CUDA_STATUS_TYPE__ = decltype(__cond__);             \
-    constexpr auto __success_type__ =                            \
-        ::paddle::platform::details::CudaStatusType<             \
-            __CUDA_STATUS_TYPE__>::kSuccess;                     \
-    if (UNLIKELY(__cond__ != __success_type__)) {                \
-      auto __summary__ = ::paddle::platform::errors::External(   \
-          ::paddle::platform::build_nvidia_error_msg(__cond__)); \
-      __THROW_ERROR_INTERNAL__(__summary__);                     \
-    }                                                            \
+#define PADDLE_ENFORCE_CUDA_SUCCESS(COND)                      \
+  do {                                                         \
+    auto __cond__ = (COND);                                    \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);           \
+    constexpr auto __success_type__ =                          \
+        ::paddle::platform::details::CudaStatusType<           \
+            __CUDA_STATUS_TYPE__>::kSuccess;                   \
+    if (UNLIKELY(__cond__ != __success_type__)) {              \
+      auto __summary__ = ::paddle::platform::errors::External( \
+          ::paddle::platform::build_rocm_error_msg(__cond__)); \
+      __THROW_ERROR_INTERNAL__(__summary__);                   \
+    }                                                          \
   } while (0)
 
 inline void retry_sleep(unsigned millisecond) {
@@ -1271,7 +1202,7 @@ inline void retry_sleep(unsigned millisecond) {
     }                                                                   \
     if (UNLIKELY(__cond__ != __success_type__)) {                       \
       auto __summary__ = ::paddle::platform::errors::External(          \
-          ::paddle::platform::build_nvidia_error_msg(__cond__));        \
+          ::paddle::platform::build_rocm_error_msg(__cond__));          \
       __THROW_ERROR_INTERNAL__(__summary__);                            \
     }                                                                   \
   } while (0)
