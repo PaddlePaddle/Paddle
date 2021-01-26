@@ -166,7 +166,6 @@ def batch_norm(x,
           batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv, w, b)
           print(batch_norm_out)
     """
-    print("------------------4 batch_norm")
     assert len(x.shape) >= 2, "input dim must be larger than 1"
 
     # input ad out must share the memory

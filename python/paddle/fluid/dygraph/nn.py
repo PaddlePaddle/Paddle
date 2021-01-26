@@ -1259,7 +1259,6 @@ class BatchNorm(layers.Layer):
                  do_model_average_for_mean_and_var=True,
                  use_global_stats=False,
                  trainable_statistics=False):
-        print("------------------1 dygraph nn.py Batch_norm")
         super(BatchNorm, self).__init__()
         self._param_attr = param_attr
         self._bias_attr = bias_attr
@@ -1311,13 +1310,6 @@ class BatchNorm(layers.Layer):
         self._variance.stop_gradient = True
 
         self._has_reserve_space = False
-        # if data_layout == 'NHWC':
-        #     flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
-        #     if flag is not None and flag.lower() in ['true', '1']:
-        #         self._has_reserve_space = True
-        # flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
-        # if flag is not None and flag.lower() in ['true', '1']:
-        #     self._has_reserve_space = True
 
         self._in_place = in_place
         self._data_layout = data_layout
@@ -1377,10 +1369,6 @@ class BatchNorm(layers.Layer):
 
         reserve_space = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
-        # reserve_space = None
-        # if self._has_reserve_space:
-        #     reserve_space = self._helper.create_variable_for_type_inference(
-        #         dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
 
         batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
             self._dtype)

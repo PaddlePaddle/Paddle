@@ -30,7 +30,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using DataLayout = framework::DataLayout;  // not platform::DataLayout
+using DataLayout = framework::DataLayout;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
@@ -244,7 +244,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         // 1. fp16 training AND NHWC datalayout OR
         // 2. not fp16 training AND NCHW datalayout
         if (compute_format == DataLayout::kNHWC || train_not_half) {
-          std::cout << "---------------- NEW API --" << std::endl;
           called = true;
           size_t workspace_size = 0;
           size_t reserve_space_size = 0;
@@ -311,7 +310,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         }
 #endif
         if (!called) {
-          std::cout << "---------------- OLD API --" << std::endl;
           PADDLE_ENFORCE_CUDA_SUCCESS(
               platform::dynload::cudnnBatchNormalizationForwardTraining(
                   handle, mode, CudnnDataType<T>::kOne(),
