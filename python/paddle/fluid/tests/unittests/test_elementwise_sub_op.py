@@ -289,30 +289,65 @@ class TestSubtractInplaceApi(TestSubtractApi):
         self.subtract = paddle.subtract_
 
 
-class TestSubtractInplaceBroadcast(unittest.TestCase):
+class TestSubtractInplaceBroadcastSuccess(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 4).astype('float')
+        self.y_numpy = np.random.rand(3, 4).astype('float')
+
     def test_broadcast_success(self):
         paddle.disable_static()
-        x_numpy = np.random.rand(2, 3, 4).astype('float')
-        y_numpy = np.random.rand(3, 4).astype('float')
+        self.init_data()
 
-        x = paddle.to_tensor(x_numpy)
-        y = paddle.to_tensor(y_numpy)
+        x = paddle.to_tensor(self.x_numpy)
+        y = paddle.to_tensor(self.y_numpy)
 
         inplace_result = paddle.subtract_(x, y)
-        numpy_result = x_numpy - y_numpy
+        numpy_result = self.x_numpy - self.y_numpy
         self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
         paddle.enable_static()
 
+
+class TestSubtractInplaceBroadcastSuccess2(TestSubtractInplaceBroadcastSuccess):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 2, 3, 1).astype('float')
+        self.y_numpy = np.random.rand(3, 1).astype('float')
+
+
+class TestSubtractInplaceBroadcastSuccess3(TestSubtractInplaceBroadcastSuccess):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
+        self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
+
+
+class TestSubtractInplaceBroadcastError(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(3, 4).astype('float')
+        self.y_numpy = np.random.rand(2, 3, 4).astype('float')
+
     def test_broadcast_errors(self):
         paddle.disable_static()
-        x = paddle.rand([3, 4])
-        y = paddle.rand([2, 3, 4])
+        self.init_data()
+
+        x = paddle.to_tensor(self.x_numpy)
+        y = paddle.to_tensor(self.y_numpy)
 
         def broadcast_shape_error():
             paddle.subtract_(x, y)
 
         self.assertRaises(ValueError, broadcast_shape_error)
         paddle.enable_static()
+
+
+class TestSubtractInplaceBroadcastError2(TestSubtractInplaceBroadcastError):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 1, 4).astype('float')
+        self.y_numpy = np.random.rand(2, 3, 4).astype('float')
+
+
+class TestSubtractInplaceBroadcastError3(TestSubtractInplaceBroadcastError):
+    def init_data(self):
+        self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
+        self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
 
 if __name__ == '__main__':

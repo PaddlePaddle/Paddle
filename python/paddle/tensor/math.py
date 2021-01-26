@@ -321,11 +321,24 @@ def add_(x, y, name=None):
     if in_dygraph_mode():
         op_type = 'elementwise_add_'
         axis = -1
-        inplace_shape = x.shape
+        x_shape = x.shape
+        y_shape = y.shape
+        len_diff = len(x_shape) - len(y_shape)
+        shape_valid = True
+        if len_diff < 0:
+            shape_valid = False
+        for i in range(len(y_shape)):
+            if x_shape[i+len_diff] == 1 and y_shape[i] != 1:
+                shape_valid = False
+                break
+
+        if not shape_valid:
+            raise ValueError("The shape of inplace tensor {} should not be changed in the Inplace operation.".format(x.shape))
+
         out = _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
-        if inplace_shape != out.shape:
-            raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out.shape, inplace_shape))
+        # if inplace_shape != out.shape:
+        #     raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out.shape, inplace_shape))
         return out
     _print_warning_in_static_mode("elementwise_add")
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
@@ -400,11 +413,24 @@ def subtract_(x, y, name=None):
     if in_dygraph_mode():
         axis = -1
         act = None
-        inplace_shape = x.shape
+        x_shape = x.shape
+        y_shape = y.shape
+        len_diff = len(x_shape) - len(y_shape)
+        shape_valid = True
+        if len_diff < 0:
+            shape_valid = False
+        for i in range(len(y_shape)):
+            if x_shape[i+len_diff] == 1 and y_shape[i] != 1:
+                shape_valid = False
+                break
+
+        if not shape_valid:
+            raise ValueError("The shape of inplace tensor {} should not be changed in the Inplace operation.".format(x.shape))
+
         out = _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name='elementwise_sub_')
-        if inplace_shape != out.shape:
-            raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out.shape, inplace_shape))
+        # if inplace_shape != out.shape:
+        #     raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out.shape, inplace_shape))
         return out
     _print_warning_in_static_mode("elementwise_sub")
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
