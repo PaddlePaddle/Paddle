@@ -958,6 +958,70 @@ class Fleet(object):
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.clear_grad()
 
+    def amp_init(self,
+                 place,
+                 scope=None,
+                 test_program=None,
+                 use_fp16_test=False):
+        """
+        Init the amp training, such as cast fp32 parameters to fp16 type.
+  
+        Args:
+            place(CUDAPlace): place is used to initialize 
+                fp16 parameters with fp32 values.
+            scope(Scope): The scope is used to find fp32 parameters.
+            test_program(Program): The program is used for testing.
+            use_fp16_test(bool): Whether to use fp16 testing.
+            
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle
+                import paddle.nn.functional as F
+                paddle.enable_static()
+
+                def run_example_code():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+                    conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
+                    # 1) Use fp16_guard to control the range of fp16 kernels used.
+                    with paddle.static.amp.fp16_guard():
+                        bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+                        pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+                        hidden = paddle.static.nn.fc(pool, size=10)
+                        loss = paddle.mean(hidden)
+                    # 2) Create the optimizer and set `multi_precision` to True.
+                    # Setting `multi_precision` to True can avoid the poor accuracy
+                    # or the slow convergence in a way. 
+                    optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
+                    # 3) These ops in `custom_black_list` will keep in the float32 computation type.
+                    amp_list = paddle.static.amp.CustomOpLists(
+                        custom_black_list=['pool2d'])
+                    # 4) The entry of Paddle AMP.
+                    # Enable pure fp16 training by setting `use_pure_fp16` to True.
+                    optimizer = paddle.static.amp.decorate(
+                        optimizer,
+                        amp_list,
+                        init_loss_scaling=128.0,
+                        use_dynamic_loss_scaling=True,
+                        use_pure_fp16=True)
+                    # If you don't use the default_startup_program(), you sholud pass
+                    # your defined `startup_program` into `minimize`.
+                    optimizer.minimize(loss)
+                    exe.run(paddle.static.default_startup_program())
+                    # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
+                    # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
+                    optimizer.amp_init(place, scope=paddle.static.global_scope())
+                    
+                if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
+                    run_example_code()       
+        """
+        # imitate target optimizer retrieval
+        return self.user_defined_optimizer.amp_init(place, scope, test_program,
+                                                    use_fp16_test)
+
     def _final_strategy(self):
         if "valid_strategy" not in self._context:
             print(

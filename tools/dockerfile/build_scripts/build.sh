@@ -65,7 +65,7 @@ yum -y install bzip2 make git patch unzip bison yasm diffutils \
 
 wget -q https://cmake.org/files/v3.16/cmake-3.16.0.tar.gz && tar xzf cmake-3.16.0.tar.gz && \
 cd cmake-3.16.0 && ./bootstrap && \
-make -j8 && make install && cd .. && rm cmake-3.16.0.tar.gz
+make -j8 && make install && cd .. && rm cmake-3.16.0.tar.gz && rm -rf cmake-3.16.0
 
 # Install newest autoconf
 build_autoconf $AUTOCONF_ROOT $AUTOCONF_HASH
@@ -160,3 +160,4 @@ LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}"
 wget https://ftp.gnu.org/gnu/binutils/binutils-2.27.tar.gz
 tar xzf binutils-2.27.tar.gz && cd binutils-2.27
 ./configure --prefix=/opt/rh/devtoolset-2/root/usr/ --enable-64-bit-archive && make -j `nproc` && make install
+cd .. && rm binutils-2.27.tar.gz && rm -rf binutils-2.27
