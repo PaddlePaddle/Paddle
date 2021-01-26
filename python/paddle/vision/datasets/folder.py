@@ -111,6 +111,9 @@ class DatasetFolder(Dataset):
                 return data_dir
 
             temp_dir = make_fake_dir()
+            # temp_dir is root dir
+            # temp_dir/class_1/img1_1.jpg
+            # temp_dir/class_2/img2_1.jpg
             data_folder = DatasetFolder(temp_dir)
 
             for items in data_folder:
