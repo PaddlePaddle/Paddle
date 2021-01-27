@@ -43,8 +43,6 @@ registerd_op = {
     "c_send": "SendParser",
     "c_receive": "ReceiveParser",
 
-    "squeeze2_grad": "SqueezeParserGrad",
-    "unsqueeze2_grad": "UnSqueezeParserGrad",
     "equal": "EqualParser",
     "expand": "ExpandParser",
     "range": "RangeParser",
