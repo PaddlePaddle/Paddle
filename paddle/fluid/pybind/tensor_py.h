@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
@@ -293,6 +294,7 @@ void SetTensorFromPyArrayT(
       auto dst = self->mutable_data<T>(place);
       paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
                                       cudaMemcpyHostToDevice);
+
     } else if (paddle::platform::is_cuda_pinned_place(place)) {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
@@ -706,8 +708,9 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
-    paddle::platform::GpuMemcpySync(py_arr.mutable_data(), tensor_buf_ptr,
-                                    copy_bytes, cudaMemcpyDeviceToHost);
+    auto p = BOOST_GET_CONST(platform::CUDAPlace, tensor.place());
+    paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
+                         tensor_buf_ptr, copy_bytes, nullptr);
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(

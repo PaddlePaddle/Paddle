@@ -13,21 +13,34 @@
 # limitations under the License.
 
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import six
 import unittest
+import paddle.nn as nn
 
 
-class SimpleFCLayer(fluid.dygraph.Layer):
+class SimpleFCLayer(nn.Layer):
     def __init__(self, feature_size, batch_size, fc_size):
         super(SimpleFCLayer, self).__init__()
-        self._linear = fluid.dygraph.Linear(feature_size, fc_size)
-        self._offset = fluid.dygraph.to_variable(
+        self._linear = nn.Linear(feature_size, fc_size)
+        self._offset = paddle.to_tensor(
             np.random.random((batch_size, fc_size)).astype('float32'))
 
     def forward(self, x):
         fc = self._linear(x)
         return fc + self._offset
+
+
+class LinearNetWithNone(nn.Layer):
+    def __init__(self, feature_size, fc_size):
+        super(LinearNetWithNone, self).__init__()
+        self._linear = nn.Linear(feature_size, fc_size)
+
+    def forward(self, x):
+        fc = self._linear(x)
+
+        return [fc, [None, 2]]
 
 
 class TestTracedLayerErrMsg(unittest.TestCase):
@@ -150,6 +163,15 @@ class TestTracedLayerErrMsg(unittest.TestCase):
                 loss.backward()
                 optimizer.minimize(loss)
         return layer
+
+
+class TestOutVarWithNoneErrMsg(unittest.TestCase):
+    def test_linear_net_with_none(self):
+        model = LinearNetWithNone(100, 16)
+        in_x = paddle.to_tensor(np.random.random((4, 100)).astype('float32'))
+        with self.assertRaises(TypeError):
+            dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(model,
+                                                                        [in_x])
 
 
 if __name__ == '__main__':

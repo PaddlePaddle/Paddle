@@ -171,6 +171,24 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
   }
 }
 
+// The function is only for scatter grad x,
+// however update grad use gather
+template <typename T, typename IndexT = int>
+void CPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
+                        Tensor* output) {
+  int index_size = index.dims()[0];
+  auto dst_dims = output->dims();
+  const IndexT* p_index = index.data<IndexT>();
+  T* p_output = output->data<T>();
+  size_t slice_size = 1;
+  for (int i = 1; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
+  const size_t slice_bytes = slice_size * sizeof(T);
+  for (int i = 0; i < index_size; ++i) {
+    const IndexT& index_ = p_index[i];
+    memset(p_output + slice_size * index_, 0, slice_bytes);
+  }
+}
+
 template <typename T, typename IndexT = int>
 void ScatterNdAdd(const framework::ExecutionContext& ctx, const Tensor& update,
                   const Tensor& index, Tensor* output) {

@@ -46,7 +46,7 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
     Tensor clip_x;
     int len = x->numel();
     T* clip_x_data =
-        clip_x.mutable_data<T>(platform::XPUPlace(), len * sizeof(T));
+        clip_x.mutable_data<T>(context.GetPlace(), len * sizeof(T));
     r = xpu::clip(dev_ctx.x_context(), x->data<float>(), clip_x_data, len,
                   -1e30, 1e30);
     PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
