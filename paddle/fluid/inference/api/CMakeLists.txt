@@ -46,7 +46,7 @@ endif()
 cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
           zero_copy_tensor ir_pass_manager op_compatible_info)
 
-cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)
+cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api executor)
 
 if(WITH_TESTING)
   if (NOT APPLE AND NOT WIN32)

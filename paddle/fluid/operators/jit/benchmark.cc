@@ -332,7 +332,7 @@ void BenchKernelSgd() {
     for (int i = 0; i < n; ++i) {
       all.push_back(i);
     }
-    std::random_shuffle(all.begin(), all.end());
+    std::shuffle(all.begin(), all.end());
     out.insert(out.begin(), all.begin(), all.begin() + n);
     return out;
   };
