@@ -29,7 +29,7 @@ set_source_files_properties(server.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMP
 cc_library(downpour_server SRCS brpc_ps_server.cc DEPS boost eigen3 table ${RPC_DEPS})
 cc_library(downpour_client SRCS brpc_ps_client.cc DEPS boost eigen3 table ${RPC_DEPS})
 
-cc_library(client SRCS ps_client.cc DEPS downpour_client boost ${RPC_DEPS})
+cc_library(client SRCS ps_client.cc DEPS downpour_client boost ${RPC_DEPS} table)
 cc_library(server SRCS server.cc DEPS downpour_server boost ${RPC_DEPS})
 
 cc_library(communicator SRCS communicator.cc DEPS scope client boost table math_function selected_rows_functor ${RPC_DEPS})

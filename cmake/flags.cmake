@@ -131,6 +131,7 @@ set(COMMON_FLAGS
     -Werror
     -Wall
     -Wextra
+    -Wregister
     -Wnon-virtual-dtor
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
