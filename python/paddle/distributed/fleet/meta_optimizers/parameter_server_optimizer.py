@@ -146,6 +146,12 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
             if is_sgd_adam:
                 return _main, _startup
+            else:
+                from paddle.fluid.incubate.fleet.parameter_server.ir.public import _add_optimize_table_pass
+                _add_optimize_table_pass(main_program, compiled_config,
+                                         self.inner_opt)
+
+                return _main, _startup
 
             _main = server.add_listen_and_serv_pass(_main, compiled_config)
             _main = server.add_rpc_global_flags_pass(_main, compiled_config)
