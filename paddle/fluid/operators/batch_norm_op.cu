@@ -114,7 +114,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                  << "CUDNN_BN_MIN_EPSILON instead.";
     }
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
-#if CUDNN_VERSION >= 7400
+#if CUDNN_VERSION_MIN(7, 0, 1)
     if (FLAGS_cudnn_batchnorm_spatial_persistent) {
       mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
     } else {
@@ -122,7 +122,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     }
 #else
     mode = CUDNN_BATCHNORM_SPATIAL;
-#endif  // CUDNN_VERSION >= 7400
+#endif  // CUDNN_VERSION_MIN(7, 0, 1)
 
     VLOG(3) << "Setting descriptors.";
     std::vector<int> dims;
@@ -149,9 +149,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
     auto handle = dev_ctx.cudnn_handle();
-
-    bool train_not_half =
-        dtype != CUDNN_DATA_HALF && data_layout == DataLayout::kNCHW;
 
     // Now, depending on whether we are running test or not, we have two paths.
     // It is training mode when it's not reference AND not using pre-trained
@@ -241,9 +238,11 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         bool called = false;
 #if CUDNN_VERSION_MIN(7, 4, 1)
         // The condition of calling NEW API:
-        // 1. fp16 training AND NHWC datalayout OR
-        // 2. not fp16 training AND NCHW datalayout
-        if (compute_format == DataLayout::kNHWC || train_not_half) {
+        // 1. fp16 training with NHWC datalayout OR
+        // 2. any of NHWC or NCHW datalayout
+        if (compute_format == DataLayout::kNHWC ||
+            data_layout == DataLayout::kNCHW ||
+            data_layout == DataLayout::kNHWC) {
           called = true;
           size_t workspace_size = 0;
           size_t reserve_space_size = 0;
@@ -308,7 +307,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                   nullptr, workspace_ptr, workspace_size, reserve_space_ptr,
                   reserve_space_size));
         }
-#endif
+#endif  // CUDNN_VERSION_MIN(7, 4, 1)
         if (!called) {
           PADDLE_ENFORCE_CUDA_SUCCESS(
               platform::dynload::cudnnBatchNormalizationForwardTraining(
@@ -624,6 +623,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     auto stream = dev_ctx.stream();
     InplaceHelper<T> inplace_functor;
 
+    // Take this branch when NOT using a pre-trained model
     if (!use_global_stats) {
       if ((N * H * W * D) == 1) {
         framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
@@ -649,7 +649,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                    << "CUDNN_BN_MIN_EPSILON instead.";
       }
       epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
-#if CUDNN_VERSION_MIN(7, 0, 0)
+#if CUDNN_VERSION_MIN(7, 0, 1)
       if (FLAGS_cudnn_batchnorm_spatial_persistent) {
         mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
       } else {
@@ -657,7 +657,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       }
 #else
       mode = CUDNN_BATCHNORM_SPATIAL;
-#endif
+#endif  // CUDNN_VERSION_MIN(7, 0, 1)
 
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           data_desc, CudnnDataType<T>::type,
@@ -681,10 +681,16 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                         num, transformed_x.data<T>(), grid2, block, stream);
       }
 
+      // This branch calls CUDNN APIs
       if (d_scale && d_bias) {
         bool called = false;
 #if CUDNN_VERSION_MIN(7, 4, 1)
-        if (compute_format == DataLayout::kNHWC) {
+        // The condition of calling NEW APIs:
+        // 1. fp16 training with NHWC datalayout OR
+        // 2. any of NHWC or NCHW datalayout
+        if (compute_format == DataLayout::kNHWC ||
+            data_layout == DataLayout::kNCHW ||
+            data_layout == DataLayout::kNHWC) {
           called = true;
           size_t workspace_size = 0;
           void *workspace_ptr = nullptr;
@@ -748,7 +754,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                       reserve_space->template data<T>()),
                   /*reserveSpaceSizeInBytes=*/reserve_space_size));
         }
-#endif
+#endif  // CUDNN_VERSION_MIN(7, 4, 1)
         if (!called) {
           PADDLE_ENFORCE_CUDA_SUCCESS(
               platform::dynload::cudnnBatchNormalizationBackward(
@@ -773,6 +779,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
               ctx, &transformed_d_x, d_x);
         }
       } else {
+        // This branch call CUDA kernels
         if (compute_format == DataLayout::kNCHW) {
           if (d_x) {
             BNBackwardData<T, block, framework::DataLayout::kNCHW><<<
@@ -798,6 +805,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc));
     } else {
+      // Take this branch when using a pre-trained model
       const auto *running_mean = ctx.Input<Tensor>("Mean");
       const auto *running_var = ctx.Input<Tensor>("Variance");
 
