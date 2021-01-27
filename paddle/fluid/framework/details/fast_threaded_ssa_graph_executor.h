@@ -54,6 +54,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   platform::DeviceContextPool fetch_ctxs_;
   std::atomic<int> remaining_;
+  std::atomic<bool> error_happen_;
 
   std::future<
       std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>>
@@ -64,6 +65,13 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ::ThreadPool prepare_pool_;
 
   std::vector<OpHandleBase *> traced_ops_;
+
+  void RunOpWithAsyncVariable(
+      std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
+      const std::vector<OpHandleBase *> &ready_op,
+      const std::shared_ptr<BlockingQueue<size_t>> &complete_q);
+
+  void UpdateAsyncVariableState(const std::vector<VarHandleBase *> &vars);
 
   bool RunOp(OpHandleBase *op,
              const std::shared_ptr<BlockingQueue<size_t>> &complete_q,

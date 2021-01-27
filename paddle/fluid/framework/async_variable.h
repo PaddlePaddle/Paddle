@@ -39,10 +39,10 @@ class AsyncVariable {
 
   template <typename T>
   const T& Get() const {
-    if (state_ != EnumState::kAvailable) {
-      std::unique_lock<std::mutex> lock(mutex_);
-      cv_.wait(lock, [this] { return state_ == EnumState::kAvailable; });
-    }
+    // if (state_ != EnumState::kAvailable) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [this] { return state_ == EnumState::kAvailable; });
+    //}
     PADDLE_ENFORCE_EQ(
         holder_->Type(), VarTypeTrait<T>::kId,
         platform::errors::InvalidArgument("The AsyncVariable::Get type must be "
@@ -54,9 +54,12 @@ class AsyncVariable {
 
   template <typename T>
   T* GetMutable() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    // std::lock_guard<std::mutex> lock(mutex_);
     if (state_ != EnumState::kAvailable) {
-      state_ = EnumState::kAvailable;
+      // GetMutable is incompatible with AsyncVariable due to operation on
+      // pointers are not controled by AsyncVariable. This just experimental
+      // writing to make it works on current platform
+      // state_ = EnumState::kAvailable;
       holder_.reset(new PlaceholderImpl<T>());
     } else {
       PADDLE_ENFORCE_EQ(
@@ -111,6 +114,7 @@ class AsyncVariable {
   ~AsyncVariable();
 
   // Enum representing the states for AsyncVaraible
+  // TODO(zhhsplendid): should make EnumState atomic
   enum EnumState {
     // Reserve
     kUknown = 0,

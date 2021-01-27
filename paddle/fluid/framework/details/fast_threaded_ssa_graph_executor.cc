@@ -20,11 +20,15 @@
 #include <unordered_set>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
+
+DEFINE_int32(async_run_logic, 1,
+             "1 to run new async logic, 0 to run old logic.");
 
 namespace paddle {
 namespace framework {
@@ -94,14 +98,19 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
   } else {
     traced_ops_.clear();
     remaining_ = 0;
+    error_happen_ = false;
     auto complete_q = std::make_shared<BlockingQueue<size_t>>();
-    for (auto op : bootstrap_ops_) {
-      RunOpAsync(op_deps.get(), op, complete_q);
+    if (FLAGS_async_run_logic == 1) {
+      RunOpWithAsyncVariable(op_deps.get(), bootstrap_ops_, complete_q);
+      RunOpWithAsyncVariable(op_deps.get(), ready_fetch_ops, complete_q);
+    } else {
+      for (auto op : bootstrap_ops_) {
+        RunOpAsync(op_deps.get(), op, complete_q);
+      }
+      for (auto op : ready_fetch_ops) {
+        RunOpAsync(op_deps.get(), op, complete_q);
+      }
     }
-    for (auto op : ready_fetch_ops) {
-      RunOpAsync(op_deps.get(), op, complete_q);
-    }
-
     size_t num_complete = 0;
     while (num_complete != op_deps->size()) {
       size_t num_comp = complete_q->Pop();
@@ -285,6 +294,83 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
   });
 }
 
+void FastThreadedSSAGraphExecutor::RunOpWithAsyncVariable(
+    std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
+    const std::vector<OpHandleBase *> &ready_ops,
+    const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
+  std::deque<OpHandleBase *> op_queue;
+  for (auto *ready_op : ready_ops) {
+    // tmp code for handling parameters
+    UpdateAsyncVariableState(ready_op->Inputs());
+    op_queue.push_back(ready_op);
+  }
+  while (!op_queue.empty() && !error_happen_.load()) {
+    OpHandleBase *op_to_run = op_queue.front();
+    op_queue.pop_front();
+    // TODO(Aurelius84): Consider special case in MultiDeviceTransfer
+    if (op_to_run->IsMultiDeviceTransfer()) {
+      VLOG(4) << "Found MultiDeviceTranser op: " << op_to_run->Name()
+              << ", skip it now.";
+    }
+    VLOG(4) << "Launching op: " << op_to_run->Name();
+    // this->pool_.enqueue([=] {
+    VLOG(4) << "Running op: " << op_to_run->Name();
+    // TODO(zhhsplendid): fix threading number
+    size_t complete = 0;
+    if (!RunOp(op_to_run, complete_q, &complete)) {
+      // TODO(zhhsplendid): atomic<bool> to indicate fail
+      VLOG(4) << "Run op " << op_to_run->Name() << " failed.";
+      error_happen_.store(true);
+      return;
+    }
+    VLOG(4) << "Successfully running op: " << op_to_run->Name();
+    UpdateAsyncVariableState(op_to_run->Outputs());
+    complete_q->Push(complete);
+    //});
+
+    auto &outputs = op_to_run->Outputs();
+    for (auto &output : outputs) {
+      for (auto &pending_op : output->PendingOps()) {
+        std::atomic<int> &op_dep = op_deps->at(pending_op);
+        if (op_dep.fetch_sub(1) != 1) {
+          continue;
+        }
+        // TODO(Aurelius84): Consider to avoid thread switch by launching one op
+        // in current thread.
+        op_queue.push_back(pending_op);
+      }
+    }
+  }
+  VLOG(4) << "Finish Running Ops";
+}
+
+void FastThreadedSSAGraphExecutor::UpdateAsyncVariableState(
+    const std::vector<VarHandleBase *> &vars) {
+  // TODO(Aurelius84): we should only update Available state for ready_op's
+  // input vars once, and use callback
+  // and hook to deal with other op's outputs.
+  for (auto var_handle_base : vars) {
+    PADDLE_ENFORCE_NOT_NULL(var_handle_base,
+                            platform::errors::PreconditionNotMet(
+                                "var_handle_base should not be nullptr."));
+    auto *var_handle = static_cast<VarHandle *>(var_handle_base);
+    auto &scope = local_exec_scopes_.at(var_handle->scope_idx());
+    auto *var = scope->FindVar(var_handle->Name());
+    if (var == nullptr) {
+      // control_var
+      VLOG(3) << var_handle->Name() << " is not found in scope.";
+    } else {
+      VLOG(3) << "Set var: " << var_handle->Name()
+              << " with AsyncState::kAvailable";
+      // Tmp code for handling feed data.
+      if (var_handle->Name() == "img" || var_handle->Name() == "label") {
+        return;
+      }
+      var->NotifyAvailable();
+    }
+  }
+}
+
 void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {
   atomic_op_deps_ = prepare_pool_.enqueue([&] {
     auto *op_deps = new std::unordered_map<OpHandleBase *, std::atomic<int>>;
@@ -336,6 +422,11 @@ bool FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
     return true;
   } catch (...) {
     exception_.Catch(std::current_exception());
+    try {
+      exception_.ReThrow();
+    } catch (const std::exception &e) {
+      VLOG(4) << e.what();
+    }
     return false;
   }
 }
