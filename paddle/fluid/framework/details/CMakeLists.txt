@@ -81,7 +81,7 @@ set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto
     inplace_addto_op_pass
     set_reader_device_info_utils
     add_reader_dependency_pass)
-cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
+cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS} fetch_async_op_handle)
 
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
         simple_threadpool device_context)

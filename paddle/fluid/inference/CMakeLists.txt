@@ -48,7 +48,7 @@ set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor
 if(WIN32 AND WITH_GPU)
   cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_API})
 else()
-  create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API} cryptopp)
+  create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API})
   if(TARGET cryptopp)
       target_link_libraries(paddle_fluid cryptopp)
   endif()
