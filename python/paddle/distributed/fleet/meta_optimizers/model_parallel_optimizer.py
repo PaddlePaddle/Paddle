@@ -259,3 +259,4 @@ class ModelParallelOptimizer(MetaOptimizerBase):
                     outputs={'Out': grad},
                     attrs={'ring_id': ring_id,
                            OP_ROLE_KEY: OpRole.Backward})
+            break
