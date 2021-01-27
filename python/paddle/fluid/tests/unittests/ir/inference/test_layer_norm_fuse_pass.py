@@ -30,8 +30,10 @@ class LayerNormFusePassTest(InferencePassTest):
                 shape=[1], value=2, dtype="float32")
             eps = fluid.layers.fill_constant(
                 shape=[1], value=1e-5, dtype="float32")
-            gamma = fluid.data(name="gamma", shape=[120], dtype="float32")
-            beta = fluid.data(name="beta", shape=[120], dtype="float32")
+            gamma = fluid.layers.create_parameter(
+                shape=[120], dtype="float32", is_bias=True)
+            beta = fluid.layers.create_parameter(
+                shape=[120], dtype="float32", is_bias=True)
 
             x_mean_out = fluid.layers.mean(data)
             x_sub_mean_out = fluid.layers.elementwise_sub(data, x_mean_out)
@@ -47,8 +49,6 @@ class LayerNormFusePassTest(InferencePassTest):
 
         self.feeds = {
             "data": np.random.random((3, 64, 120)).astype("float32"),
-            "gamma": np.random.random((120)).astype("float32"),
-            "beta": np.random.random((120)).astype("float32"),
         }
         self.fetch_list = [shift_out]
 

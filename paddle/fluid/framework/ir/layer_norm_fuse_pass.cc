@@ -159,10 +159,10 @@ REGISTER_PASS(layer_norm_fuse_pass, paddle::framework::ir::LayerNormFusePass);
 REGISTER_PASS_CAPABILITY(layer_norm_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("elementwise_add", 0)
-            .EQ("elementwise_div", 0)
-            .EQ("elementwise_mul", 0)
-            .EQ("elementwise_pow", 0)
-            .EQ("elementwise_sub", 0)
-            .EQ("reduce_mean", 0)
-            .EQ("sqrt", 0));
+            .GE("elementwise_add", 0)
+            .GE("elementwise_div", 0)
+            .GE("elementwise_mul", 0)
+            .GE("elementwise_pow", 0)
+            .GE("elementwise_sub", 0)
+            .GE("reduce_mean", 0)
+            .GE("sqrt", 0));
