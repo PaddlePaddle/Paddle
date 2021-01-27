@@ -251,7 +251,6 @@ class ModelParallelOptimizer(MetaOptimizerBase):
             return
 
         for idx, op in list(enumerate(block.ops)):
-            if idx % 100 == 0: print("idx:", idx)
             if is_optimizer_op(op):
                 block._insert_op(
                     idx,
@@ -260,4 +259,3 @@ class ModelParallelOptimizer(MetaOptimizerBase):
                     outputs={'Out': grad},
                     attrs={'ring_id': ring_id,
                            OP_ROLE_KEY: OpRole.Backward})
-        print("done.")
