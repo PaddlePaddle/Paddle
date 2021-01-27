@@ -127,7 +127,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                   strides, ksize);
 
     platform::PoolingMKLDNNHandler<T>::ComputeAdaptivePoolParameters(
-        ctx, paddle::framework::vectorize(in_x->dims()), ksize, strides);
+        ctx, paddle::framework::vectorize(in_x->dims()), &ksize, &strides);
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
