@@ -91,7 +91,7 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_GT(xdims_list.size(), 0, platform::errors::InvalidArgument(
-                                                "No tensor need concat?"));
+                                                "No tensor need concat"));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     int r = xpu::concat<T>(dev_ctx.x_context(), ptrs, out->data<T>(),

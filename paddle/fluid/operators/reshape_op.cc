@@ -386,9 +386,13 @@ class ReshapeKernel {
           (paddle::framework::SizeOfType(in->type()) > 0)) {
         auto &dev_ctx =
             ctx.template device_context<paddle::platform::XPUDeviceContext>();
-        xpu::memcpy_device(
+        int r = xpu::memcpy_device(
             dev_ctx.x_context(), out_ptr, in_ptr,
             in->numel() * paddle::framework::SizeOfType(in->type()));
+        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                          platform::errors::External(
+                              "XPU memcpy_device return wrong value[%d %s]", r,
+                              XPUAPIErrorMsg[r]));
       }
     } else {
 #endif
