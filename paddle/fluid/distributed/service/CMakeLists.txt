@@ -6,7 +6,7 @@ set(BRPC_DEPS brpc ssl crypto protobuf gflags glog zlib leveldb snappy gflags gl
 brpc_library(sendrecv_rpc SRCS
         ${BRPC_SRCS}
         PROTO sendrecv.proto
-        DEPS ${BRPC_DEPS} )
+        DEPS ${BRPC_DEPS} ps_framework_proto table)
 
 set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper)
 

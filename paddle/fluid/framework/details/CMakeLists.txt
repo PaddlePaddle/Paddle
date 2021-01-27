@@ -51,7 +51,7 @@ else()
     cc_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
              variable_visitor)
     cc_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
-            variable_visitor place device_memory_aligment)
+            variable_visitor place device_memory_aligment all_reduce_op_handle)
     cc_library(grad_merge_all_reduce_op_handle SRCS grad_merge_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor
             ddim memory variable_visitor place device_memory_aligment all_reduce_op_handle fused_all_reduce_op_handle)
     if(WITH_DISTRIBUTE)
