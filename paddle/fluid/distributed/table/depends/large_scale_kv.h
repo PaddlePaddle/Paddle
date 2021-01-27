@@ -210,11 +210,14 @@ class ValueBlock {
     value->is_entry_ = state;
   }
 
-  void Shrink(const int threshold) {
+  void Shrink(const float decay_rate, const float count_threshold, const int unseen_threshold) {
     for (auto iter = values_.begin(); iter != values_.end();) {
       auto &value = iter->second;
+      // TODO:add exponential decay here, we need account current epoch's feature sign's count.
+      value->count_ *= decay_rate;
       value->unseen_days_++;
-      if (value->unseen_days_ >= threshold) {
+      if ((unseen_threshold > 1 && value->unseen_days_ >= unseen_threshold) 
+          || (count_threshold > 1.0 && value->count_ <= count_threshold)) {
         iter = values_.erase(iter);
       } else {
         ++iter;

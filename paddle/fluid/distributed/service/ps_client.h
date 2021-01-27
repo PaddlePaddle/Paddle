@@ -76,7 +76,9 @@ class PSClient {
 
   // 触发table数据退场
   virtual std::future<int32_t> shrink(uint32_t table_id,
-                                      const std::string threshold) = 0;
+                                      const std::string decay_rate,
+                                      const std::string count_threshold,
+                                      const std::string unseen_threshold) = 0;
 
   // 全量table进行数据load
   virtual std::future<int32_t> load(const std::string &epoch,

@@ -346,8 +346,10 @@ std::future<int32_t> BrpcPsClient::send_save_cmd(
 }
 
 std::future<int32_t> BrpcPsClient::shrink(uint32_t table_id,
-                                          const std::string threshold) {
-  return send_cmd(table_id, PS_SHRINK_TABLE, {threshold});
+                                          const std::string decay_rate,
+                                          const std::string count_threshold,
+                                          const std::string unseen_threshold) {
+  return send_cmd(table_id, PS_SHRINK_TABLE, {decay_rate, count_threshold, unseen_threshold});
 }
 
 std::future<int32_t> BrpcPsClient::load(const std::string &epoch,

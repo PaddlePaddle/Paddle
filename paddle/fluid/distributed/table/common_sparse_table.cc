@@ -541,13 +541,18 @@ int32_t CommonSparseTable::flush() { return 0; }
 
 int32_t CommonSparseTable::shrink(const std::string& param) {
   rwlock_->WRLock();
-  int threshold = std::stoi(param);
-  VLOG(0) << "sparse table shrink: " << threshold;
+  auto params = paddle::string::split_string<std::string>(param, ",");
+  float decay_rate = std::stof(params[0]);
+  float count_threshold = std::stof(params[1]);
+  int unseen_threshold = std::stoi(params[2]);
+  VLOG(1) << "sparse table shrink, decay_rate: " << decay_rate 
+          << ", count_threshold: " << count_threshold
+          << ", unseen_threshold: " << unseen_threshold;
 
   for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
     // shrink
-    VLOG(0) << shard_id << " " << task_pool_size_ << " begin shrink";
-    shard_values_[shard_id]->Shrink(threshold);
+    VLOG(1) << shard_id << " " << task_pool_size_ << " begin shrink";
+    shard_values_[shard_id]->Shrink(decay_rate, count_threshold, unseen_threshold);
   }
   rwlock_->UNLock();
   return 0;

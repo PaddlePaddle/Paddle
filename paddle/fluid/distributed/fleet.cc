@@ -472,10 +472,15 @@ void FleetWrapper::PrintTableStat(const uint64_t table_id) {
   }
 }
 
-void FleetWrapper::ShrinkSparseTable(int table_id, int threshold) {
+void FleetWrapper::ShrinkSparseTable(int table_id, 
+                                    float decay_rate, 
+                                    float count_threshold, 
+                                    int unseen_threshold) {
   auto* communicator = Communicator::GetInstance();
   auto ret =
-      communicator->_worker_ptr->shrink(table_id, std::to_string(threshold));
+      communicator->_worker_ptr->shrink(table_id, std::to_string(decay_rate),
+                                        std::to_string(count_threshold), 
+                                        std::to_string(unseen_threshold));
   ret.wait();
   int32_t err_code = ret.get();
   if (err_code == -1) {

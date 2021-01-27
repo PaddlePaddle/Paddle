@@ -217,7 +217,7 @@ class FleetWrapper {
   // clear one table
   void ClearOneTable(const uint64_t table_id);
   // shrink sparse table
-  void ShrinkSparseTable(int table_id, int threshold);
+  void ShrinkSparseTable(int table_id, float decay_rate, float count_threshold, int unseen_threshold);
   // shrink dense table
   void ShrinkDenseTable(int table_id, Scope* scope,
                         std::vector<std::string> var_list, float decay,

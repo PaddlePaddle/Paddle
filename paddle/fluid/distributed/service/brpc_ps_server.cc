@@ -503,7 +503,8 @@ int32_t BrpcPsService::shrink_table(Table *table,
     return -1;
   }
   table->flush();
-  if (table->shrink(request.params(0)) != 0) {
+  auto param = request.params(0) + "," + request.params(1) + "," + request.params(2);
+  if (table->shrink(param) != 0) {
     set_response_code(response, -1, "table shrink failed");
     return -1;
   }
