@@ -72,10 +72,9 @@ namespace framework {
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
 
-bool InitGflags(const std::vector<std::string> &args,
-                uint32_t (*external_func)(int *, char ***, bool)) {
+bool InitGflags(const std::vector<std::string> &args) {
   paddle::platform::FlagRegistrar::Get().Insert(args);
-  return paddle::platform::FlagRegistrar::Get().SyncFlagsOnce(external_func);
+  return paddle::platform::FlagRegistrar::Get().SyncFlagsOnce(nullptr);
 }
 
 void InitCupti() {
