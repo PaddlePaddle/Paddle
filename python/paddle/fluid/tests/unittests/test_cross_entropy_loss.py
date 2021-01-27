@@ -93,6 +93,90 @@ def cross_entropy_loss_2d(input,
 
 
 class CrossEntropyLoss(unittest.TestCase):
+    def test_cross_entropy_loss_1d_with_mean_ignore(self):
+        input_np = np.random.random([2, 4]).astype(np.float64)
+        label_np = np.random.randint(0, 4, size=(2)).astype(np.int64)
+        paddle.enable_static()
+        prog = fluid.Program()
+        startup_prog = fluid.Program()
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        with fluid.program_guard(prog, startup_prog):
+            input = fluid.data(name='input', shape=[2, 4], dtype='float64')
+            label = fluid.data(name='label', shape=[2], dtype='int64')
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(ignore_index=0)
+            ret = cross_entropy_loss(input, label)
+
+            exe = fluid.Executor(place)
+            static_ret = exe.run(prog,
+                                 feed={
+                                     'input': input_np,
+                                     'label': label_np,
+                                 },
+                                 fetch_list=[ret])
+            self.assertIsNotNone(static_ret)
+        expected = cross_entropy_loss_1d(input_np, label_np)[0]
+
+        with fluid.dygraph.guard():
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                axis=1, ignore_index=0)
+            dy_ret = cross_entropy_loss(
+                fluid.dygraph.to_variable(input_np),
+                fluid.dygraph.to_variable(label_np))
+            dy_ret_value = dy_ret.numpy()
+            self.assertIsNotNone(dy_ret_value)
+        expected = cross_entropy_loss_1d(input_np, label_np, ignore_index=0)[0]
+        self.assertTrue(np.allclose(static_ret, dy_ret_value))
+        self.assertTrue(np.allclose(static_ret, expected))
+        self.assertTrue(np.allclose(dy_ret_value, expected))
+
+    def test_cross_entropy_loss_1d_with_weight_mean_ignore(self):
+        input_np = np.random.random([2, 4]).astype(np.float64)
+        label_np = np.random.randint(0, 4, size=(2)).astype(np.int64)
+        weight_np = np.random.random([4]).astype(np.float64)  #shape:C
+        paddle.enable_static()
+        prog = fluid.Program()
+        startup_prog = fluid.Program()
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        with fluid.program_guard(prog, startup_prog):
+            input = fluid.data(name='input', shape=[2, 4], dtype='float64')
+            label = fluid.data(name='label', shape=[2], dtype='int64')
+            weight = fluid.data(
+                name='weight', shape=[4],
+                dtype='float64')  #weight for each class
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                weight=weight, ignore_index=0)
+            ret = cross_entropy_loss(input, label)
+
+            exe = fluid.Executor(place)
+            static_ret = exe.run(prog,
+                                 feed={
+                                     'input': input_np,
+                                     'label': label_np,
+                                     "weight": weight_np
+                                 },
+                                 fetch_list=[ret])
+            self.assertIsNotNone(static_ret)
+        expected = cross_entropy_loss_1d(
+            input_np, label_np, weight=weight_np)[0]
+
+        with fluid.dygraph.guard():
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                weight=fluid.dygraph.to_variable(weight_np),
+                axis=1,
+                ignore_index=0)
+            dy_ret = cross_entropy_loss(
+                fluid.dygraph.to_variable(input_np),
+                fluid.dygraph.to_variable(label_np))
+            dy_ret_value = dy_ret.numpy()
+            self.assertIsNotNone(dy_ret_value)
+        expected = cross_entropy_loss_1d(
+            input_np, label_np, weight=weight_np, ignore_index=0)[0]
+        self.assertTrue(np.allclose(static_ret, dy_ret_value))
+        self.assertTrue(np.allclose(static_ret, expected))
+        self.assertTrue(np.allclose(dy_ret_value, expected))
+
     def test_cross_entropy_loss_1d_with_weight_mean(self):
         input_np = np.random.random([2, 4]).astype(np.float64)
         label_np = np.random.randint(0, 4, size=(2)).astype(np.int64)

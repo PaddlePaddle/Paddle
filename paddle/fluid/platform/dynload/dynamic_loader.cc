@@ -287,7 +287,7 @@ void* GetCUDNNDsoHandle() {
       "For instance, download cudnn-10.0-windows10-x64-v7.6.5.32.zip from "
       "NVIDIA's official website, \n"
       "then, unzip it and copy it into C:\\Program Files\\NVIDIA GPU Computing "
-      "Toolkit\\CUDA/v10.0\n"
+      "Toolkit\\CUDA\\v10.0\n"
       "You should do this according to your CUDA installation directory and "
       "CUDNN version.");
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, win_cudnn_lib, true,
@@ -413,6 +413,19 @@ void* GetOpDsoHandle(const std::string& dso_name) {
       "Create custom cpp op outside framework do not support Windows."));
 #else
   return GetDsoHandleFromSearchPath(FLAGS_op_dir, dso_name);
+#endif
+}
+
+void* GetNvtxDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  PADDLE_THROW(platform::errors::Unimplemented("Nvtx do not support Apple."));
+#elif defined(_WIN32)
+  PADDLE_THROW(platform::errors::Unimplemented("Nvtx do not support Windows."));
+#elif !defined(PADDLE_WITH_CUDA)
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Nvtx do not support without CUDA."));
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvToolsExt.so");
 #endif
 }
 

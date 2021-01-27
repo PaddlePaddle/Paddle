@@ -30,8 +30,10 @@ taskkill /f /im op_function_generator.exe
 wmic process where name="op_function_generator.exe" call terminate
 
 rem ------initialize common variable------
+if not defined GENERATOR set GENERATOR="Visual Studio 14 2015 Win64"
 if not defined BRANCH set BRANCH=develop
-if not defined TENSORRT_ROOT set TENSORRT_ROOT="C:/TensorRT-5.1.5.0"
+if not defined WITH_TENSORRT set WITH_TENSORRT=ON 
+if not defined TENSORRT_ROOT set TENSORRT_ROOT="D:/TensorRT"
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
 if not defined WITH_TESTING set WITH_TESTING=ON
@@ -42,11 +44,15 @@ if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
 if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_TPCACHE set WITH_TPCACHE=ON
 if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
-set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
+if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
 rem -------set cache build work directory-----------
 rmdir build\python /s/q
 del build\CMakeCache.txt
+
+: set CI_SKIP_CPP_TEST if only *.py changed
+git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
+
 if "%WITH_CACHE%"=="OFF" (
     rmdir build /s/q
     goto :mkbuild
@@ -65,29 +71,12 @@ git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
     git diff HEAD last_pr --stat --name-only | findstr "cmake/[a-zA-Z]*\.cmake CMakeLists.txt"
-    if !ERRORLEVEL! EQU 0 (
-        rmdir build /s/q
-    )
     git branch -D last_pr
     git branch last_pr
 ) else (
     rmdir build /s/q
     git branch last_pr
 )
-
-:: set CI_SKIP_CPP_TEST if only *.py changed
-git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
-
-:: for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
-:: set day_now=%datetime:~6,2%
-:: set day_before=-1
-:: set /p day_before=< %cache_dir%\day.txt
-:: if %day_now% NEQ %day_before% (
-::     echo %day_now% > %cache_dir%\day.txt
-::     type %cache_dir%\day.txt
-::     rmdir build /s/q
-::     goto :mkbuild
-:: )
 
 :: git diff HEAD origin/develop --stat --name-only
 :: git diff HEAD origin/develop --stat --name-only | findstr ".cmake CMakeLists.txt paddle_build.bat"
@@ -98,12 +87,13 @@ git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 :mkbuild
 if not exist build (
     echo Windows build cache FALSE
-    echo "ipipe_log_param_Windows_Build_Cache: FALSE"
+    set Windows_Build_Cache=FALSE
     mkdir build
 ) else (
     echo Windows build cache TRUE
-    echo "ipipe_log_param_Windows_Build_Cache: TRUE"
+    set Windows_Build_Cache=TRUE
 )
+echo ipipe_log_param_Windows_Build_Cache: %Windows_Build_Cache%
 cd /d build
 dir .
 dir %cache_dir%
@@ -111,11 +101,11 @@ dir paddle\fluid\pybind\Release
 
 rem ------initialize the python environment------
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
+set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
 
 rem ToDo: virtual environment can't be deleted safely, some process not exit when task is canceled
 rem Now use system python environment temporarily
-rem set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 rem %PYTHON_EXECUTABLE% -m pip install virtualenv
 rem %PYTHON_EXECUTABLE% -m virtualenv paddle_winci
 rem call paddle_winci\Scripts\activate.bat
@@ -164,12 +154,11 @@ rem ------initialize cmake variable for mkl------
 set WITH_MKL=ON
 set WITH_GPU=OFF
 set MSVC_STATIC_CRT=ON
-set WITH_CLCACHE=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
-call :unit_test || goto unit_test_error
+call :test_unit || goto test_unit_error
 call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
@@ -180,13 +169,11 @@ rem ------initialize cmake variable for openblas------
 set WITH_MKL=ON
 set WITH_GPU=ON
 set MSVC_STATIC_CRT=OFF
-rem Temporarily turn off WITH_INFERENCE_API_TEST on GPU due to compile hang
-set WITH_INFERENCE_API_TEST=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
-call :unit_test || goto unit_test_error
+call :test_unit || goto test_unit_error
 call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
@@ -213,6 +200,20 @@ set CUDA_PATH=%CUDA_TOOLKIT_ROOT_DIR%
 
 rem ------set third_party cache dir------
 
+: clear third party cache every once in a while
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+set day_now=%datetime:~6,2%
+set day_before=-1
+set /p day_before=< %cache_dir%\day.txt
+if %day_now% NEQ %day_before% (
+    echo %day_now% > %cache_dir%\day.txt
+    type %cache_dir%\day.txt
+    if %day_now% EQU 20 (
+        rmdir %cache_dir%\third_party_GPU/ /s/q
+        rmdir %cache_dir%\third_party/ /s/q
+    )
+)
+
 if "%WITH_TPCACHE%"=="OFF" (
     set THIRD_PARTY_PATH=%work_dir:\=/%/build/third_party
     goto :cmake_impl
@@ -233,17 +234,19 @@ if "%WITH_GPU%"=="ON" (
 )
 
 :cmake_impl
-echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
--DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
+echo cmake .. -G %GENERATOR% -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+-DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD%
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD%
 
-cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
--DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
+cmake .. -G %GENERATOR% -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+-DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD%
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD%
 goto:eof
 
 :cmake_error
@@ -259,7 +262,7 @@ echo    ========================================
 echo    Step 2. Buile Paddle ...
 echo    ========================================
 
-for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*9/10
+for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*2/3
 set build_times=1
 :build_tp
 echo Build third_party the %build_times% time:
@@ -282,9 +285,9 @@ clcache.exe -z
 
 echo Build Paddle the %build_times% time:
 if "%WITH_CLCACHE%"=="OFF" (
-    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
+    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:normal paddle.sln
 ) else (
-    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
+    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:normal paddle.sln
 )
 
 if %ERRORLEVEL% NEQ 0 (
@@ -331,12 +334,12 @@ set /p libsize=< lib_size.txt
 for /F %%i in ("%libsize%") do (
     set /a libsize_m=%%i/1024
     echo "Windows Paddle_Inference Size: !libsize_m!M"
-    echo "ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M"
+    echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
 )
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
 set /p whlsize=< whl_size.txt
 for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
-for /F %%i in ("%whlsize%") do echo "ipipe_log_param_Windows_PR_whl_Size: %%i"
+for /F %%i in ("%whlsize%") do echo ipipe_log_param_Windows_PR_whl_Size: %%i
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 
@@ -361,7 +364,7 @@ echo Test import paddle failed, will exit!
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
-:unit_test
+:test_unit
 @ECHO ON
 echo    ========================================
 echo    Step 4. Running unit tests ...
@@ -431,7 +434,7 @@ ctest.exe -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C
 
 goto:eof
 
-:unit_test_error
+:test_unit_error
 :: echo 8 > %cache_dir%\error_code.txt
 :: type %cache_dir%\error_code.txt
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
@@ -489,7 +492,7 @@ echo spec_path=$(pwd)/UNITTEST_PR.spec>>  check_change_of_unittest.sh
 echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
 echo num=$(awk 'END{print NR}' ${spec_path})>> check_change_of_unittest.sh
 echo echo "Windows 1 card TestCases count is $num">> check_change_of_unittest.sh
-echo echo "ipipe_log_param_Windows_1_Card_TestCases_Count: $num">> check_change_of_unittest.sh
+echo echo ipipe_log_param_Windows_1_Card_TestCases_Count: $num>> check_change_of_unittest.sh
 echo UPSTREAM_URL='https://github.com/PaddlePaddle/Paddle'>>  check_change_of_unittest.sh
 echo origin_upstream_url=`git remote -v ^| awk '{print $1, $2}' ^| uniq ^| grep upstream ^| awk '{print $2}'`>>  check_change_of_unittest.sh
 echo if [ "$origin_upstream_url" == "" ]; then>>  check_change_of_unittest.sh
@@ -504,11 +507,12 @@ echo     git fetch upstream $BRANCH # develop is not fetched>>  check_change_of_
 echo fi>>  check_change_of_unittest.sh
 echo git checkout -b origin_pr >>  check_change_of_unittest.sh
 echo git checkout -f $BRANCH >>  check_change_of_unittest.sh
-echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
--DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
+echo cmake .. -G %GENERATOR% -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+-DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% >>  check_change_of_unittest.sh
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% >>  check_change_of_unittest.sh
 echo cat ^<^<EOF>>  check_change_of_unittest.sh
 echo     ============================================       >>  check_change_of_unittest.sh
 echo     Generate unit tests.spec of develop.               >>  check_change_of_unittest.sh
@@ -581,7 +585,7 @@ set /a end_secs=dd*86400+hh*3600+nn*60+ss
 set /a cost_secs=end_secs-start_sec
 echo "Windows %~3 Time: %cost_secs%s"
 set tempTaskName=%~3
-echo "ipipe_log_param_Windows_%tempTaskName: =_%_Time: %cost_secs%s"
+echo ipipe_log_param_Windows_%tempTaskName: =_%_Time: %cost_secs%s
 goto:eof
 
 
@@ -589,11 +593,11 @@ goto:eof
 for /f "tokens=2,4" %%i in ('clcache.exe -s ^| findstr "entries hits"') do set %%i=%%j
 if %hits% EQU 0 (
     echo "clcache hit rate: 0%%"
-    echo "ipipe_log_param_Clcache_Hit_Rate: 0%%"
+    echo ipipe_log_param_Clcache_Hit_Rate: 0%%
 ) else (
     set /a rate=%hits%*10000/%entries%
     echo "clcache hit rate: %rate:~0,-2%.%rate:~-2%%%"
-    echo "ipipe_log_param_Clcache_Hit_Hate: %rate:~0,-2%.%rate:~-2%%%"
+    echo ipipe_log_param_Clcache_Hit_Hate: %rate:~0,-2%.%rate:~-2%%%
 )
 goto:eof
 

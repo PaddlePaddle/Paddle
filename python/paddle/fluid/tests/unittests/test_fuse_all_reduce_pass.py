@@ -35,7 +35,7 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
                                     get_data_from_feeder=None,
                                     optimizer=None,
                                     fuse_all_optimizer_ops=False):
-        if use_device == DeviceType.GPU and not core.is_compiled_with_cuda():
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
         feed_dict_data = None
@@ -82,12 +82,12 @@ class TestFuseAllReduceOps(TestFuseAllReduceOpsBase):
             fuse_all_optimizer_ops=True)
 
     def test_simple_fc_with_fuse_all_reduce(self):
-        self._decorate_compare_fused_all_reduce(simple_fc_net, DeviceType.GPU)
+        self._decorate_compare_fused_all_reduce(simple_fc_net, DeviceType.CUDA)
         self._decorate_compare_fused_all_reduce(simple_fc_net, DeviceType.CPU)
 
     def test_batchnorm_fc_with_fuse_all_reduce(self):
         self._decorate_compare_fused_all_reduce(fc_with_batchnorm,
-                                                DeviceType.GPU)
+                                                DeviceType.CUDA)
         self._decorate_compare_fused_all_reduce(fc_with_batchnorm,
                                                 DeviceType.CPU)
 
@@ -126,7 +126,7 @@ class TestFuseAllReduceOpsWithSparseGrad(TestFuseAllReduceOpsBase):
 
     def test_simple_bow_net_with_fuse_all_reduce(self):
         model = partial(bow_net, dict_dim=self.word_dict_len, is_sparse=True)
-        self._decorate_compare_fused_all_reduce(model, DeviceType.GPU)
+        self._decorate_compare_fused_all_reduce(model, DeviceType.CUDA)
         self._decorate_compare_fused_all_reduce(model, DeviceType.CPU)
 
 

@@ -112,18 +112,19 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+    auto data_type =
+        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
 
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
 #endif
 
-    return framework::OpKernelType(
-        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
-        ctx.device_context(), layout, library);
+    return framework::OpKernelType(data_type, ctx.device_context(), layout,
+                                   library);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -210,7 +211,7 @@ REGISTER_OP_VERSION(gaussian_random)
             .NewInput("ShapeTensorList",
                       "The output shape supports list filled with Tensor. "
                       "ShapeTensorList is dispensable.")
-            .ModifyAttr(
-                "shape",
-                "Add the default value of shape, the default value is {}.",
-                {}));
+            .ModifyAttr("shape",
+                        "The arg 'default_value' of attr 'shape' is changed: "
+                        "from 'None' to '{}'.",
+                        std::vector<int64_t>{}));

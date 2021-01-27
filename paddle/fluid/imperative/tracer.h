@@ -16,12 +16,13 @@
 
 #include <atomic>
 #include <future>  // NOLINT
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 #include "ThreadPool.h"
+#include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -29,6 +30,10 @@
 
 namespace paddle {
 namespace imperative {
+
+using GarbageCollectorMap =
+    std::map<platform::Place,
+             std::unique_ptr<paddle::framework::GarbageCollector>>;
 
 class UniqueNameGenerator {
  public:
@@ -57,10 +62,12 @@ class Tracer {
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
-               const platform::Place& place, bool trace_bacward);
+               const platform::Place& place, bool trace_bacward,
+               const std::map<std::string, std::string>& inplace_map = {});
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
-               const NameVarBaseMap& outs, framework::AttributeMap attrs);
+               const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const std::map<std::string, std::string>& inplace_map = {});
 
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs, bool trace_backward);
@@ -102,6 +109,9 @@ class Tracer {
 
   bool IsAutoCastEnabled() const { return enable_autocast_; }
 
+  paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
+      const platform::Place& place);
+
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
   std::unique_ptr<jit::ProgramDescTracer> program_desc_tracer_;
@@ -110,11 +120,15 @@ class Tracer {
   platform::Place expected_place_;
   bool has_grad_{true};
   bool enable_autocast_{false};
+  GarbageCollectorMap gcs_;
 };
 
 // To access static variable current_tracer
 const std::shared_ptr<Tracer>& GetCurrentTracer();
 void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
+void IncreaseVarbaseReferenceCountUntilCopyComplete(
+    const std::shared_ptr<imperative::VarBase>& var,
+    const platform::Place& place);
 
 }  // namespace imperative
 }  // namespace paddle

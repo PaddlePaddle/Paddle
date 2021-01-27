@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -57,6 +57,8 @@ TEST(PredictorPool, use_gpu) {
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir);
   config.EnableTensorRtEngine();
+  config.Exp_DisableTensorRtOPs({"fc"});
+  config.EnableTensorRtDLA(0);
   services::PredictorPool pred_pool(config, 1);
 
   auto predictor = pred_pool.Retrive(0);

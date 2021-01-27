@@ -48,7 +48,7 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     platform::ReorderMKLDNNHandler handler(tz, dout->type(), dout_type, dev_ctx,
                                            onednn_engine, key);
 
-    mkldnn::stream astream(onednn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     auto reorder_src_memory_p = handler.AcquireSrcMemory(
         dout->format(), platform::to_void_cast(dout->data<T>()));
 

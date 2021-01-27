@@ -202,7 +202,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           output->mutable_data<T>(place, concat_pd->dst_desc().get_size()));
     }
 
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     std::unordered_map<int, memory> args;
     for (size_t i = 0; i < multi_input.size(); ++i) {
       args.insert({MKLDNN_ARG_MULTIPLE_SRC + i, (*srcs).at(i)});

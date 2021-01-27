@@ -208,6 +208,12 @@ class TestUnsqueezeOp4_AxesTensor(TestUnsqueezeOp_AxesTensor):
 
 # test api
 class TestUnsqueezeAPI(unittest.TestCase):
+    def setUp(self):
+        self.executed_api()
+
+    def executed_api(self):
+        self.unsqueeze = paddle.unsqueeze
+
     def test_api(self):
         input = np.random.random([3, 2, 5]).astype("float64")
         x = paddle.static.data(name='x', shape=[3, 2, 5], dtype="float64")
@@ -218,12 +224,11 @@ class TestUnsqueezeAPI(unittest.TestCase):
         axes_tensor_int64 = paddle.static.data(
             name='axes_tensor_int64', shape=[3], dtype="int64")
 
-        out_1 = paddle.unsqueeze(x, axis=[3, 1, 1])
-        out_2 = paddle.unsqueeze(
-            x, axis=[positive_3_int32, positive_1_int64, 1])
-        out_3 = paddle.unsqueeze(x, axis=axes_tensor_int32)
-        out_4 = paddle.unsqueeze(x, axis=3)
-        out_5 = paddle.unsqueeze(x, axis=axes_tensor_int64)
+        out_1 = self.unsqueeze(x, axis=[3, 1, 1])
+        out_2 = self.unsqueeze(x, axis=[positive_3_int32, positive_1_int64, 1])
+        out_3 = self.unsqueeze(x, axis=axes_tensor_int32)
+        out_4 = self.unsqueeze(x, axis=3)
+        out_5 = self.unsqueeze(x, axis=axes_tensor_int64)
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
         res_1, res_2, res_3, res_4, res_5 = exe.run(
@@ -244,9 +249,14 @@ class TestUnsqueezeAPI(unittest.TestCase):
     def test_error(self):
         def test_axes_type():
             x2 = paddle.static.data(name="x2", shape=[2, 25], dtype="int32")
-            paddle.unsqueeze(x2, axis=2.1)
+            self.unsqueeze(x2, axis=2.1)
 
         self.assertRaises(TypeError, test_axes_type)
+
+
+class TestUnsqueezeInplaceAPI(TestUnsqueezeAPI):
+    def executed_api(self):
+        self.unsqueeze = paddle.unsqueeze_
 
 
 if __name__ == "__main__":

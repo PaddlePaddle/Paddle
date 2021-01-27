@@ -199,6 +199,9 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
     case PaddleDType::UINT8:
       tensor.copy_to_cpu<uint8_t>(static_cast<uint8_t *>(array.mutable_data()));
       break;
+    case PaddleDType::INT8:
+      tensor.copy_to_cpu<int8_t>(static_cast<int8_t *>(array.mutable_data()));
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported data type. Now only supports INT32, INT64, UINT8 and "
@@ -222,6 +225,12 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
       break;
     case PaddleDType::FLOAT32:
       tensor.CopyToCpu<float>(static_cast<float *>(array.mutable_data()));
+      break;
+    case PaddleDType::UINT8:
+      tensor.CopyToCpu(static_cast<uint8_t *>(array.mutable_data()));
+      break;
+    case PaddleDType::INT8:
+      tensor.CopyToCpu(static_cast<int8_t *>(array.mutable_data()));
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -495,6 +504,9 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("disable_trt_plugin_fp16") = false)
       .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
       .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
+      .def("enable_tensorrt_dla", &AnalysisConfig::EnableTensorRtDLA,
+           py::arg("dla_core") = 0)
+      .def("tensorrt_dla_enabled", &AnalysisConfig::tensorrt_dla_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,

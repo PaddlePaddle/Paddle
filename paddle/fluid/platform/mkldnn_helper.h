@@ -188,7 +188,7 @@ MKLDNNGetDataType<paddle::platform::bfloat16>() {
 inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
                     const mkldnn::engine& engine) {
   auto reorder_prim = mkldnn::reorder(src, dst);
-  mkldnn::stream astream(engine);
+  auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
                                        platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);

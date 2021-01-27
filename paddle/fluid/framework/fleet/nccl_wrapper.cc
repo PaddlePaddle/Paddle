@@ -50,7 +50,7 @@ void NCCLWrapper::SetRankInfo(const int local_rank, const int global_rank,
   nccl_info_.local_rank_ = local_rank;
   nccl_info_.my_global_rank_ = global_rank;
   nccl_info_.global_ranks_ = ranks;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(local_rank));
+  platform::SetDeviceId(local_rank);
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&(nccl_info_.stream_)));
 #endif
   return;
