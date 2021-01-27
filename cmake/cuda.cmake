@@ -204,7 +204,7 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # So, don't set these flags here.
 if (NOT WIN32) # windows msvc2015 support c++14 natively.
     # -std=c++14 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
-  set(CMAKE_CUDA_STANDARD 17)
+  set(CMAKE_CUDA_STANDARD 14)
 endif(NOT WIN32)
 
 # (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflic with -w
