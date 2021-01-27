@@ -41,7 +41,18 @@ registerd_op = {
     "c_broadcast": "BroadcastParser",
     "c_reduce_scatter": "ReduceScatterParser",
     "c_send": "SendParser",
-    "c_receive": "ReceiveParser"
+    "c_receive": "ReceiveParser",
+
+    "squeeze2_grad": "SqueezeParserGrad",
+    "unsqueeze2_grad": "UnSqueezeParserGrad",
+    "equal": "EqualParser",
+    "expand": "ExpandParser",
+    "range": "RangeParser",
+    "squeeze2": "SqueezeParser",
+    "unsqueeze2": "UnSqueezeParser",
+    "uniform_random": "UniformRandomParser",
+
+
 }
 global_cnt = -1
 global_input_cnt = -1
@@ -667,17 +678,22 @@ class ScaleParser(AscendParserBase):
 
     def _apply(self):
         x = self._get_ge_input(self.op.input_arg_names[0])
-        scale = self.op.attr("scale") #self.get_ge_input(self.op.input_arg_names[1])
+        scale = self.op.attr("scale")
         bias = self.op.attr("bias")
         bias_after_scale = self.op.attr("bias_after_scale")
         if bias_after_scale:
-            scale_value = core.GEOperatorFactory.create_operator("scale" + self._accumulated_op_id(), "Power").set_input("x", x).set_attr_float("power", 1.0).set_attr_float("scale", scale).set_attr_float("shift", bias)
+            scale_value = core.GEOperatorFactory.create_operator("scale" 
+                + self._accumulated_op_id(), "Power").set_input("x", x)
+            .set_attr_float("power", 1.0).set_attr_float("scale", scale)
+            .set_attr_float("shift", bias)
         else:
-            x_add_bias = core.GEOperatorFactory.create_operator("adds" + self._accumulated_op_id(), "Adds").set_input("x", x).set_attr_float("value", bias) #set_input("x2", bias)
-            scale_value = core.GEOperatorFactory.create_operator("scale" + self._accumulated_op_id(), "Power").set_input("x", x_add_bias).set_attr_float("power", 1.0).set_attr_float("scale", scale).set_attr_float("shift", 0.0)
-            #tensor_zeros = core.GEOperatorFactory.create_operator("zeroslike" + self.getid(), "ZerosLike").set_input("x", x)
-            #bias_ = self.create_ge_tensor([1], 5, bias)
-            #const_bias = core.GEOperatorFactory.create_operator("const" + self.getid(), "Const").set_attr_tensor("value", tensor_bias)
+            x_add_bias = core.GEOperatorFactory.create_operator("adds" 
+            + self._accumulated_op_id(), "Adds").set_input("x", x)
+            .set_attr_float("value", bias) #set_input("x2", bias)
+            scale_value = core.GEOperatorFactory.create_operator("scale" 
+                + self._accumulated_op_id(), "Power").set_input("x", x_add_bias)
+            .set_attr_float("power", 1.0).set_attr_float("scale", scale)
+            .set_attr_float("shift", 0.0)
         return [scale_value],[[0]]
 
 class ReshapeParser(AscendParserBase):
@@ -695,9 +711,166 @@ class ReshapeParser(AscendParserBase):
         print("shape: ", shape)
         data_x1_shape = self._get_ge_input(self.op.input_arg_names[0])
         tensor = self._create_ge_tensor([len(shape)], 2, shape)
-        const_shape = core.GEOperatorFactory.create_operator("shape" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor)
-        reshape = core.GEOperatorFactory.create_operator("reshape" + self._accumulated_op_id(), "Reshape").set_input("x", data_x1_shape).set_input("shape", const_shape).set_attr_int32("axis", axis)
+        const_shape = core.GEOperatorFactory.create_operator("shape" 
+            + self._accumulated_op_id(), "Const")
+        .set_attr_tensor("value", tensor)
+        reshape = core.GEOperatorFactory.create_operator("reshape" 
+            + self._accumulated_op_id(), "Reshape").set_input("x", data_x1_shape)
+        .set_input("shape", const_shape).set_attr_int32("axis", axis)
 
         return [reshape, reshape], [[0],[1]]
+
+
+class EqualParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(EqualParser, self).__init__(graph, var2geop)
+        self.parser_name = "equal"
+
+    def _apply(self):
+        data_x1_shape = self.get_ge_input(self.op.input_arg_names[0])
+        data_x2_shape = self.get_ge_input(self.op.input_arg_names[1])
+        assign = core.GEOperatorFactory.create_operator("equal" 
+            + self.getid(), "Equal").set_input("x1", data_x1_shape)
+        .set_input("x2", data_x2_shape)
+        return [assign]
+
+
+class ExpandParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(ExpandParser, self).__init__(graph, var2geop)
+        self.parser_name = "expand"
+
+    def _apply(self):
+        data_x1_shape = self.get_ge_input(self.op.input_arg_names[0])
+        expand_times = self.op.attr('expand_times')
+
+        tensor = self.create_ge_tensor([len(expand_times)], 2, expand_times)
+        expand_tensor = core.GEOperatorFactory.create_operator("const" 
+            + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor)
+        assign = core.GEOperatorFactory.create_operator("tile" 
+            + self._accumulated_op_id(), "Tile")
+        .set_input("x", data_x1_shape).set_input("multiples", expand_tensor )
+        return [assign]
+
+
+class ExpandGradParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(ExpandGradParser, self).__init__(graph, var2geop)
+        self.parser_name = "expand_grad"
+
+    def _apply(self):
+        out_grad = self.get_ge_input(self.op.input_arg_names[0])
+        expand_times = self.op.attr('expand_times')
+        
+        tensor = self.create_ge_tensor([len(expand_times)], 2, expand_times)
+        const_shape = core.GEOperatorFactory.create_operator("shape" 
+            + self._accumulated_op_id(), "Const")
+        .set_attr_tensor("value", tensor) 
+        x_grad = core.GEOperatorFactory.create_operator("expand" 
+            + self._accumulated_op_id(), "Tile").set_input("x", out_grad)
+        .set_input("multiples", const_shape)
+
+        return [x_grad]
+
+
+class RangeParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(RangeParser, self).__init__(graph, var2geop)
+        self.parser_name = "range"
+
+    def _apply(self):
+        # TODO not support range type yet
+        start = self.get_ge_input(self.op.input_arg_names[0])
+        end = self.get_ge_input(self.op.input_arg_names[1])
+        delta = self.get_ge_input(self.op.input_arg_names[2])
+
+
+        ge_range = core.GEOperatorFactory.create_operator("range" 
+            + self._accumulated_op_id(), "Range")\
+        .set_input("start", start)\
+        .set_input("limit", end) \
+        .set_input("delta", delta)
+        return [ge_range]
+
+
+class SqueezeParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(SqueezeParser, self).__init__(graph, var2geop)
+        self.parser_name = "squeeze2"
+
+    def _apply(self):
+        tensor = self.get_ge_input(self.op.input_arg_names[0])
+        axes = self.op.attr("axes") 
+
+        ge_range = core.GEOperatorFactory.create_operator("squeeze" 
+            + self._accumulated_op_id(), "Squeeze")
+        .set_input("x", tensor).set_attr_vec_int32("axes", axes)
+        return [ge_range]
+
+
+class UnSqueezeParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(UnSqueezeParser, self).__init__(graph, var2geop)
+        self.parser_name = "unsqueeze2"
+
+    def _apply(self):
+        tensor = self.get_ge_input(self.op.input_arg_names[0])
+        axes = self.op.attr("axes") 
+
+        ge_range = core.GEOperatorFactory.create_operator("unsqueeze" 
+            + self._accumulated_op_id(), "Unsqueeze")
+        .set_input("x", tensor)
+        .set_attr_vec_int32("axes", axes)
+        return [ge_range]
+
+
+class UniformRandomParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(niformRandomParser, self).__init__(graph, var2geop)
+        self.parser_name = "uniform_random"
+
+    def _apply(self):
+        shape = self.op.attr("shape")
+        dtype = self.op.attr("dtype")
+        min_v = self.op.attr("min")
+        max_v = self.op.attr("max")
+        seed = self.op.attr("seed")
+
+        ge_range = core.GEOperatorFactory.create_operator("uniform_random" 
+            + self._accumulated_op_id(), "RandomUniform")
+        .set_input("shape", tensor)
+        .set_attr_int32("axes", axes)
+        return [ge_range]
+
+
+class SqueezeGradParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(SqueezeParser, self).__init__(graph, var2geop)
+        self.parser_name = "squeeze2_grad"
+
+    def _apply(self):
+        tensor = self.get_ge_input(self.op.input_arg_names[0])
+        axes = self.op.attr("axes") 
+
+        ge_range = core.GEOperatorFactory.create_operator("squeeze2_grad" + 
+            self._accumulated_op_id(), "SqueezeGrad").set_input("x", tensor)
+        .set_attr_vec_int32("axes", axes)
+        return [ge_range]
+
+
+class UnSqueezeGradParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(UnSqueezeGradParser, self).__init__(graph, var2geop)
+        self.parser_name = "unsqueeze2_grad"
+
+    def _apply(self):
+        tensor = self.get_ge_input(self.op.input_arg_names[0])
+        axes = self.op.attr("axes") 
+
+        ge_range = core.GEOperatorFactory.create_operator("unsqueeze2_grad" 
+            + self._accumulated_op_id(), "UnsqueezeGrad")
+        .set_input("x", tensor)
+        .set_attr_vec_int32("axes", axes)
+        return [ge_range]
 
 
