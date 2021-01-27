@@ -499,7 +499,7 @@ with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r") as f:
     long_description = f.read()
 
 with redirect_stdout():
-    setup(name='tianshuo-test-pp',
+    setup(name='${PACKAGE_NAME}',
         version='${PADDLE_VERSION}',
         description='Parallel Distributed Deep Learning',
         long_description=long_description,
