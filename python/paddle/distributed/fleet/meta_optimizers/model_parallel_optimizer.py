@@ -21,15 +21,6 @@ from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 
 
-def _get_node_num(endpoints):
-    ss = set()
-    for ep in endpoints:
-        ip = ep.split(":")[0].strip()
-        if ip not in ss:
-            ss.add(ip)
-    return len(ss)
-
-
 class ModelParallelHelper(object):
     def __init__(self, role_maker, wait_port=True):
         self.wait_port = wait_port
@@ -44,8 +35,6 @@ class ModelParallelHelper(object):
         rank = self.role_maker._worker_index()
         endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[rank]
-        node_num = _get_node_num(endpoints)
-        assert len(endpoints) % node_num == 0
 
         # Create ring 0 for all model parallel parts within a single model
         mp_endpoints = []
@@ -54,6 +43,7 @@ class ModelParallelHelper(object):
         for idx, ep in enumerate(endpoints):
             if idx // inner_parallelism == mp_id:
                 mp_endpoints.append(ep)
+        print("model parallel eps:{}, rank{}".format(mp_endpoints, mp_rank))
         self._init_communicator(self.startup_program, current_endpoint,
                                 mp_endpoints, mp_rank, 0, self.wait_port)
         self._broadcast_params(0, broadcast_distributed_weight=False)
@@ -64,10 +54,15 @@ class ModelParallelHelper(object):
         eps = []
         dp_rank = rank // inner_parallelism
         dp_id = rank % inner_parallelism
-        ring_id = dp_id + 1
+        #if dp_rank == 1: dp_rank =0
+        #if dp_rank == 0: dp_rank =1
+        ring_id = 1
         for idx, ep in enumerate(endpoints):
             if idx % inner_parallelism == dp_id:
                 eps.append(ep)
+        #ep = eps.pop(0)
+        #eps.insert(1, ep)
+        print("data parallel eps:{}, rank{}".format(eps, dp_rank))
         self._init_communicator(self.startup_program, current_endpoint, eps,
                                 dp_rank, ring_id, self.wait_port)
         self._broadcast_params(ring_id, broadcast_distributed_weight=True)
@@ -168,8 +163,6 @@ class ModelParallelOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[self.role_maker._worker_index()]
-        node_num = _get_node_num(endpoints)
-        gpus_per_node = len(endpoints) // node_num
         self.startup_program = startup_program
         if startup_program is None:
             self.startup_program = fluid.default_startup_program()
@@ -194,7 +187,7 @@ class ModelParallelOptimizer(MetaOptimizerBase):
 
     def _transpile_main_program(self, loss, dp_parallelism):
         self._insert_loss_grad_ops(loss, dp_parallelism)
-        ring_id = self.role_maker._worker_index() % self.inner_parallelism + 1
+        ring_id = 1
         print("ring_id: ", ring_id)
         # for ring_id in range(1, dp_parallelism + 1):
         self._insert_allreduce_ops(loss, ring_id)
@@ -257,12 +250,14 @@ class ModelParallelOptimizer(MetaOptimizerBase):
         if grad is None:
             return
 
-        for idx, op in enumerate(block.ops):
+        for idx, op in list(enumerate(block.ops)):
+            if idx % 100 == 0: print("idx:", idx)
             if is_optimizer_op(op):
                 block._insert_op(
-                    idx + ring_id,
+                    idx,
                     type='c_sync_comm_stream',
                     inputs={'X': grad},
                     outputs={'Out': grad},
                     attrs={'ring_id': ring_id,
                            OP_ROLE_KEY: OpRole.Backward})
+        print("done.")
