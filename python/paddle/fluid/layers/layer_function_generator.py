@@ -23,7 +23,6 @@ from ..proto import framework_pb2
 from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, in_dygraph_mode
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype
-import paddle
 
 __all__ = [
     'generate_layer_fn', 'generate_activation_fn', 'generate_inplace_fn',
@@ -302,7 +301,9 @@ def generate_inplace_fn(inplace_op_type):
             op = getattr(core.ops, inplace_op_type)
             return op(x)
 
-        paddle.tensor.manipulation._print_warning_in_static_mode(origin_op_type)
+        warnings.warn(
+            "In static mode, {}() is the same as {}() and does not perform inplace operation.".
+            format(inplace_op_type, origin_op_type))
         return generate_activation_fn(origin_op_type)(x, name)
 
     func.__name__ = inplace_op_type

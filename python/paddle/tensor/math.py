@@ -25,7 +25,7 @@ from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable,
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
-from .manipulation import _print_warning_in_static_mode
+from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 
 # TODO: define math functions
 # yapf: disable
@@ -1985,16 +1985,14 @@ def tanh(x, name=None):
     helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
     return out
 
+@inplace_apis_in_dygraph_only
 def tanh_(x, name=None):
     r"""
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_tanh`.
     """
-    if in_dygraph_mode():
-        return core.ops.tanh_(x)
+    return core.ops.tanh_(x)
 
-    _print_warning_in_static_mode("tanh")
-    return tanh(x, name)
 
 def increment(x, value=1.0, name=None):
     """
