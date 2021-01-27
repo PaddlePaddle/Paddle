@@ -31,14 +31,12 @@ class SplitPlugin : public PluginTensorRT {
   SplitPlugin(int axis, std::vector<int> const& output_lengths, bool with_fp16)
       : axis_(axis), same_shape_(true), output_length_(output_lengths) {
     with_fp16_ = with_fp16;
-    initializeData();
   }
 
   SplitPlugin(void const* serial_data, size_t serial_length) {
     deserializeBase(serial_data, serial_length);
     DeserializeValue(&serial_data, &serial_length, &axis_);
     DeserializeValue(&serial_data, &serial_length, &output_length_);
-    initializeData();
   }
 
   SplitPlugin* clone() const override {
@@ -67,8 +65,6 @@ class SplitPlugin : public PluginTensorRT {
     SerializeValue(&buffer, axis_);
     SerializeValue(&buffer, output_length_);
   }
-
-  void initializeData();
 
   int axis_;
   int outer_rows_;
