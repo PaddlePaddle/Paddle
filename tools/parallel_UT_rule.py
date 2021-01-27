@@ -1,11 +1,11 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +16,7 @@ import sys
 import os
 
 # *=======These unittest doesn't occupy GPU memory, just run as CPU unittest=======* #
-# It run 8 job each time, If it failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED, 
+# It run 8 job each time, If it failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED,
 # just remove it from this list.
 CPU_PARALLEL_JOB = [
     'test_row_conv',
@@ -193,6 +193,7 @@ CPU_PARALLEL_JOB = [
     'test_load_op_xpu',
     'test_load_op',
     'test_linear_chain_crf_op',
+    'test_layer_norm_fuse_pass',
     'test_layer_norm_mkldnn_op',
     'test_layer_norm_bf16_mkldnn_op',
     'test_lambv2_op',
@@ -398,7 +399,7 @@ CPU_PARALLEL_JOB = [
     'aes_cipher_test',
 ]
 
-# It run 4 job each time, If it failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED, 
+# It run 4 job each time, If it failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED,
 # just remove it from this list.
 TETRAD_PARALLEL_JOB = [
     'system_allocator_test',
