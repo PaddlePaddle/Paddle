@@ -15,12 +15,11 @@
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from inference_pass_test import InferencePassTest
 from paddle import enable_static
 from paddle.fluid.core import PassVersionChecker
-
-enable_static()
 
 
 class LayerNormFusePassTest(InferencePassTest):
@@ -60,4 +59,5 @@ class LayerNormFusePassTest(InferencePassTest):
 
 
 if __name__ == "__main__":
+    enable_static()
     unittest.main()
