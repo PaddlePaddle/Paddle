@@ -31,7 +31,8 @@ void ParseCommandLineFlags(int argc, char** argv, bool remove);
 namespace paddle {
 namespace framework {
 
-bool InitGflags(std::vector<std::string> argv);
+bool InitGflags(const std::vector<std::string>& args,
+                uint32_t (*external_func)(int*, char***, bool) = nullptr);
 
 void InitGLOG(const std::string& prog_name);
 

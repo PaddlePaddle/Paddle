@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/flag_manager.h"
 #include "paddle/fluid/string/split.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -71,34 +72,10 @@ namespace framework {
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
 
-bool InitGflags(std::vector<std::string> args) {
-  bool successed = false;
-  std::call_once(gflags_init_flag, [&]() {
-    FLAGS_logtostderr = true;
-    // NOTE(zhiqiu): dummy is needed, since the function
-    // ParseNewCommandLineFlags in gflags.cc starts processing
-    // commandline strings from idx 1.
-    // The reason is, it assumes that the first one (idx 0) is
-    // the filename of executable file.
-    args.insert(args.begin(), "dummy");
-    std::vector<char *> argv;
-    std::string line;
-    int argc = args.size();
-    for (auto &arg : args) {
-      argv.push_back(const_cast<char *>(arg.data()));
-      line += arg;
-      line += ' ';
-    }
-    VLOG(1) << "Before Parse: argc is " << argc
-            << ", Init commandline: " << line;
-
-    char **arr = argv.data();
-    ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &arr, true);
-    successed = true;
-
-    VLOG(1) << "After Parse: argc is " << argc;
-  });
-  return successed;
+bool InitGflags(const std::vector<std::string> &args,
+                uint32_t (*external_func)(int *, char ***, bool)) {
+  paddle::platform::FlagRegistrar::Get().Insert(args);
+  return paddle::platform::FlagRegistrar::Get().SyncFlagsOnce(external_func);
 }
 
 void InitCupti() {

@@ -32,6 +32,9 @@ if (WITH_PYTHON)
 endif()
 
 cc_library(flags SRCS flags.cc DEPS gflags)
+cc_library(flag_manager SRCS flag_manager.cc DEPS gflags error_codes_proto)
+cc_test(flag_manager_test SRCS flag_manager_test.cc DEPS flag_manager)
+
 cc_library(denormal SRCS denormal.cc DEPS)
 
 cc_library(errors SRCS errors.cc DEPS error_codes_proto)
@@ -97,7 +100,7 @@ cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
-cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
+cc_library(device_context SRCS device_context.cc init.cc DEPS flag_manager simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS})
 
