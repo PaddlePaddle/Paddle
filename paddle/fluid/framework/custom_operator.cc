@@ -24,13 +24,14 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/extension/include/op_function.h"
-
+#include "paddle/fluid/extension/include/op_functor.h"
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/c/c_api.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
 namespace framework {
@@ -54,69 +55,41 @@ static T* DynLoad(void* handle, std::string name) {
 
 }  // namespace detail
 
-// custom op kernel define
-template <typename Func>
-static void CallKernelFunc(const framework::ExecutionContext& ctx, Func&& func);
+////////////////// Kernel Define ////////////////////
 
-template <>
-void CallKernelFunc<const std::function<std::vector<Tensor>(const Tensor&)>&>(
-    const framework::ExecutionContext& ctx,
-    const std::function<std::vector<Tensor>(const Tensor&)>& func) {
-  VLOG(0) << "start run in CallKernelFunc";
-  auto* x = ctx.Input<Tensor>(detail::kCustomOpInputPrefix + std::to_string(0));
-  PADDLE_ENFORCE_NOT_NULL(x, "input x is nullptr.");
-  PADDLE_ENFORCE(x->IsInitialized(), "input x is not initialized.");
-
-  VLOG(0) << "run forward func in CallKernelFunc";
-  auto outs = func(*x);
-
-  VLOG(0) << "share output in CallKernelFunc";
-  auto true_outs = ctx.MultiOutput<Tensor>(detail::kCustomOpOutputPrefix);
-  for (size_t i = 0; i < true_outs.size(); ++i) {
-    (true_outs)[i]->ShareDataWith(outs.at(i));
-  }
-}
-
-template <>
-void CallKernelFunc<const std::function<
-    std::vector<Tensor>(const Tensor&, const Tensor&, const Tensor&)>&>(
-    const framework::ExecutionContext& ctx,
-    const std::function<std::vector<Tensor>(const Tensor&, const Tensor&,
-                                            const Tensor&)>& func) {
+// custom op kernel call function define
+static void RunKernelFunc(const framework::ExecutionContext& ctx,
+                          paddle::KernelFunc func) {
+  VLOG(0) << "Before run KernelFunc.";
   std::vector<const Tensor*> ins;
   for (auto name : ctx.InNameList()) {
     VLOG(0) << "input name: " << name;
     auto* x = ctx.Input<Tensor>(name);
-    PADDLE_ENFORCE_NOT_NULL(x, "input %s is nullptr.", name);
-    PADDLE_ENFORCE(x->IsInitialized(), "input %s is not initialized.", name);
+    PADDLE_ENFORCE_NOT_NULL(
+        x, platform::errors::NotFound("Input tensor (%s) is nullptr.", name));
+    PADDLE_ENFORCE_EQ(x->IsInitialized(), true,
+                      platform::errors::InvalidArgument(
+                          "Input tensor (%s) is not initialized."));
     ins.emplace_back(x);
   }
+  std::vector<boost::any> attrs;
 
-  VLOG(0) << "run forward func in CallKernelFunc";
-  auto outs = func(*ins[0], *ins[1], *ins[2]);
+  VLOG(0) << "Run KernelFunc.";
+  auto outs = func(ins, attrs);
 
-  VLOG(0) << "share output in CallKernelFunc";
-  auto out_names = ctx.OutNameList();
-  PADDLE_ENFORCE_EQ(out_names.size(), 1, "only can hold 1 out in custom op.");
-  auto true_outs = ctx.MultiOutput<Tensor>(out_names[0]);
+  VLOG(0) << "Share outputs into ExecutionContext.";
+  auto out_name = ctx.OutNameList();
+  PADDLE_ENFORCE_EQ(
+      out_name.size(), 1UL,
+      platform::errors::InvalidArgument(
+          "Custom operator can only hold 1 output as vector<Tensor>."));
+  auto true_outs = ctx.MultiOutput<Tensor>(out_name[0]);
   for (size_t i = 0; i < true_outs.size(); ++i) {
-    (true_outs)[i]->ShareDataWith(outs.at(i));
+    true_outs[i]->ShareDataWith(outs.at(i));
   }
 }
 
-template <typename DataType, typename Func>
-class CustomOpKernel : public framework::OpKernel<DataType> {
- public:
-  explicit CustomOpKernel(Func func) : func_(func) {}
-
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(0) << "run in compute.";
-    CallKernelFunc(ctx, func_);
-  }
-
- private:
-  Func func_;
-};
+//////////////////// Operator Define /////////////////
 
 class CustomOperator : public OperatorWithKernel {
  public:
@@ -136,7 +109,7 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
       std::string name = detail::kCustomOpInputPrefix + std::to_string(i);
       AddInput(name, "The input of Custom operator.");
     }
-    // only one output
+    // only one output, as vector<Tensor>
     AddOutput(detail::kCustomOpOutputPrefix, "The output of Custom Operator.")
         .AsDuplicable();
     AddComment(R"DOC(Custom Operator.)DOC");
@@ -154,6 +127,8 @@ class CustomGradOperator : public OperatorWithKernel {
     VLOG(0) << "Infer shape of custom grad operator.";
   }
 };
+
+//////////// Operator and Kernel Register //////////////
 
 void RegisterOperator(const std::string& name, size_t input_num) {
   /* Op register */
@@ -229,15 +204,8 @@ void RegisterOperator(const std::string& name, size_t input_num) {
   OpInfoMap::Instance().Insert(name + "_grad", grad_info);
 }
 
-template <typename Func>
-void RegisterOperatorKernel(const std::string& name, TensorFunction* func) {
-  // 0. unwrap func
-  Func true_func = std::move(func->UnWrap<Func>());
-
-  // 1. construct kernel func
-  CustomOpKernel<float, Func> custom_kernel(true_func);
-
-  // 2. insert kernel
+void RegisterOperatorKernel(const std::string& name,
+                            const paddle::KernelFunc& func) {
   std::string library_type = "CPU";
   std::string data_layout = "ANYLAYOUT";
   OpKernelType key(ToDataType(std::type_index(typeid(float))),
@@ -246,9 +214,9 @@ void RegisterOperatorKernel(const std::string& name, TensorFunction* func) {
   VLOG(0) << "op name in kernel: " << name;
   VLOG(0) << "op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] =
-      [custom_kernel](const framework::ExecutionContext& ctx) {
-        VLOG(0) << "run custom kernel func.";
-        custom_kernel.Compute(ctx);
+      [func](const framework::ExecutionContext& ctx) {
+        VLOG(0) << "run custom kernel func in lambda.";
+        RunKernelFunc(ctx, func);
       };
 }
 
@@ -257,27 +225,22 @@ void LoadCustomOperator(const std::string& dso_name) {
   void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
 
   typedef OpFunctionMap& get_op_func_map_t();
-  get_op_func_map_t* get_op_func_map =
+  auto* get_op_func_map =
       detail::DynLoad<get_op_func_map_t>(handle, "PD_GetOpFunctionMap");
   auto& op_func_map = get_op_func_map();
-  auto& op_funcs = op_func_map.map();
+  auto& op_funcs = op_func_map.GetMap();
 
   VLOG(0) << "size of op funcs map: " << op_funcs.size();
   for (auto& pair : op_funcs) {
     VLOG(0) << "pair first - op name: " << pair.first;
     // 1. op func info
-    auto forward_in_num = pair.second.forward_in_num();
-    // auto backward_in_num = pair.second.backward_in_num();
-    auto forward_func = pair.second.forward_func();
-    auto backward_func = pair.second.backward_func();
+    auto& forward_func = pair.second.GetForwardFuncs()[0];
+    auto& backward_func = pair.second.GetBackwardFuncs()[0];
     // 2. register op
-    RegisterOperator(pair.first, forward_in_num);
+    RegisterOperator(pair.first, pair.second.GetNumTensorArgs());
     // 3. register op kernel
-    RegisterOperatorKernel<std::function<std::vector<Tensor>(const Tensor&)>>(
-        pair.first, &forward_func);
-    RegisterOperatorKernel<std::function<std::vector<Tensor>(
-        const Tensor&, const Tensor&, const Tensor&)>>(pair.first + "_grad",
-                                                       &backward_func);
+    RegisterOperatorKernel(pair.first, forward_func);
+    RegisterOperatorKernel(pair.first + "_grad", backward_func);
   }
 }
 

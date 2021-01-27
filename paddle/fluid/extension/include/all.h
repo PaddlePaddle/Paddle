@@ -20,5 +20,5 @@ limitations under the License. */
 
 #include "paddle/fluid/extension/include/device.h"
 #include "paddle/fluid/extension/include/dtype.h"
-#include "paddle/fluid/extension/include/op_function.h"
+#include "paddle/fluid/extension/include/op_functor.h"
 #include "paddle/fluid/extension/include/tensor.h"
