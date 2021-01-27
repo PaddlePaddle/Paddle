@@ -296,5 +296,69 @@ class TestDygraphInplaceTanh(TestDygraphInplace):
         return paddle.tanh_(var)
 
 
+class TestDygraphInplaceCeil(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.ceil(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.ceil_(var)
+
+
+class TestDygraphInplaceFloor(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.floor(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.floor_(var)
+
+
+class TestDygraphInplaceExp(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.exp(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.exp_(var)
+
+
+class TestDygraphInplaceReciprocal(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.reciprocal(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.reciprocal_(var)
+
+
+class TestDygraphInplaceRound(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.round(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.round_(var)
+
+
+class TestDygraphInplaceSqrt(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.sqrt(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.sqrt_(var)
+
+
+class TestDygraphInplaceRsqrt(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.rsqrt(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.rsqrt_(var)
+
+
+class TestDygraphInplaceSigmoid(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.nn.functional.sigmoid(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.nn.functional.sigmoid_(var)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -33,6 +33,7 @@ from ..fluid.layers import abs    #DEFINE_ALIAS
 from ..fluid.layers import acos    #DEFINE_ALIAS
 from ..fluid.layers import asin    #DEFINE_ALIAS
 from ..fluid.layers import ceil    #DEFINE_ALIAS
+from ..fluid.layers import ceil_    #DEFINE_ALIAS
 from ..fluid.layers import cos    #DEFINE_ALIAS
 from ..fluid.layers import tan    #DEFINE_ALIAS
 from ..fluid.layers import sinh    #DEFINE_ALIAS
@@ -45,21 +46,27 @@ from ..fluid.layers import cosh    #DEFINE_ALIAS
 # from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
 # from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
 from ..fluid.layers import exp    #DEFINE_ALIAS
+from ..fluid.layers import exp_    #DEFINE_ALIAS
 from ..fluid.layers import floor    #DEFINE_ALIAS
+from ..fluid.layers import floor_    #DEFINE_ALIAS
 from ..fluid.layers import log    #DEFINE_ALIAS
 from ..fluid.layers import reciprocal    #DEFINE_ALIAS
+from ..fluid.layers import reciprocal_    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_max    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_min    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
 from ..fluid.layers import round    #DEFINE_ALIAS
+from ..fluid.layers import round_    #DEFINE_ALIAS
 from ..fluid.layers import rsqrt    #DEFINE_ALIAS
+from ..fluid.layers import rsqrt_    #DEFINE_ALIAS
 from ..fluid.layers import scale    #DEFINE_ALIAS
 from ..fluid.layers import square    #DEFINE_ALIAS
 from ..fluid.layers import stanh    #DEFINE_ALIAS
 from ..fluid.layers import atan    #DEFINE_ALIAS
 from ..fluid.layers import erf    #DEFINE_ALIAS
 from ..fluid.layers import sqrt    #DEFINE_ALIAS
+from ..fluid.layers import sqrt_    #DEFINE_ALIAS
 from ..fluid.layers import sin    #DEFINE_ALIAS
 
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
@@ -74,11 +81,14 @@ __all__ = [
         'asin',
         'atan',
         'ceil',
+        'ceil_',
         'cos',
         'cosh',
         'cumsum',
         'exp',
+        'exp_',
         'floor',
+        'floor_',
         'increment',
         'log',
         'log2',
@@ -89,13 +99,17 @@ __all__ = [
         'pow',
         'prod',
         'reciprocal',
+        'reciprocal_',
         'round',
+        'round_',
         'rsqrt',
+        'rsqrt_',
         'scale',
         'sign',
         'sin',
         'sinh',
         'sqrt',
+        'sqrt_',
         'square',
         'stanh',
         'sum',

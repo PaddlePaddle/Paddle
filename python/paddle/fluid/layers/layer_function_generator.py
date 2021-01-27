@@ -23,9 +23,11 @@ from ..proto import framework_pb2
 from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, in_dygraph_mode
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype
+import paddle
 
 __all__ = [
-    'generate_layer_fn', 'generate_activation_fn', 'autodoc', 'templatedoc'
+    'generate_layer_fn', 'generate_activation_fn', 'generate_inplace_fn',
+    'autodoc', 'templatedoc'
 ]
 
 
@@ -280,6 +282,35 @@ def generate_activation_fn(op_type):
         additional_args_lines=[
             "name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`."
         ])
+    return func
+
+
+def generate_inplace_fn(inplace_op_type):
+    """Register the Python layer for an Inplace Operator without Attribute.
+
+    Args:
+       inplace_op_type: The name of the inplace operator to be created.
+
+    This function takes in the inplace operator type (sigmoid_, exp_ , ceil_ etc) and
+    creates the operator functionality.
+
+    """
+    origin_op_type = inplace_op_type[:-1]
+
+    def func(x, name=None):
+        if in_dygraph_mode():
+            op = getattr(core.ops, inplace_op_type)
+            return op(x)
+
+        paddle.tensor.manipulation._print_warning_in_static_mode(origin_op_type)
+        return generate_activation_fn(origin_op_type)(x, name)
+
+    func.__name__ = inplace_op_type
+    func.__doc__ = """
+Inplace version of ``{0}`` API, the output Tensor will be inplaced with input ``x``.
+Please refer to :ref:`api_fluid_layers_{1}`.
+""".format(origin_op_type, origin_op_type)
+
     return func
 
 

@@ -19,6 +19,7 @@ from ...fluid.layers import maxout  #DEFINE_ALIAS
 # from ...fluid.layers import soft_relu  #DEFINE_ALIAS
 from ...fluid.layers import swish  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid  #DEFINE_ALIAS
+from ...fluid.layers import sigmoid_  #DEFINE_ALIAS
 from ...tensor.math import tanh  #DEFINE_ALIAS
 from ...tensor.math import tanh_  #DEFINE_ALIAS
 
@@ -47,6 +48,7 @@ __all__ = [
     'softshrink',
     'softsign',
     'sigmoid',
+    'sigmoid_',
     'swish',
     'tanh',
     'tanh_',
