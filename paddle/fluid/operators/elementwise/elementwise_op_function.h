@@ -258,6 +258,46 @@ __global__ void CommonForwardBroadcastCUDAKernel(
 }
 
 template <typename Functor, typename T, typename OutType = T>
+__global__ void CommonForwardBroadcastCUDAKernelShareMem(
+    const int *x_strides_array, const int *y_strides_array,
+    const int *out_dims_array, const T *x, const T *y, OutType *out,
+    int out_size, int small_arr_size, int max_dim, Functor func,
+    const bool is_xsize_larger) {
+  extern __shared__ __align__(sizeof(T)) unsigned char s_buf[];
+  T *share_buf = reinterpret_cast<T *>(s_buf);
+  int stride = blockDim.x * gridDim.x;
+  int tid_s = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid_s < small_arr_size) {
+    if (is_xsize_larger) {
+      share_buf[tid_s] = y[tid_s];
+    } else {
+      share_buf[tid_s] = x[tid_s];
+    }
+  }
+  __syncthreads();
+
+  for (int out_index = blockIdx.x * blockDim.x + threadIdx.x;
+       out_index < out_size; out_index += blockDim.x * gridDim.x) {
+    int x_index = 0;
+    int y_index = 0;
+    int out_index_quotient = out_index;
+    int remainder = 0;
+#pragma unroll
+    for (int i = max_dim - 1; i >= 0; --i) {
+      GetDivMod(out_index_quotient, out_dims_array[i], &out_index_quotient,
+                &remainder);
+      x_index += remainder * x_strides_array[i];
+      y_index += remainder * y_strides_array[i];
+    }
+    if (is_xsize_larger) {
+      out[out_index] = func(x[out_index], share_buf[y_index]);
+    } else {
+      out[out_index] = func(y[out_index], share_buf[x_index]);
+    }
+  }
+}
+
+template <typename Functor, typename T, typename OutType = T>
 void CommonForwardBroadcastCUDA(
     const framework::Tensor *x, const framework::Tensor *y,
     framework::Tensor *z, int *x_dims_array, int *y_dims_array,
@@ -303,11 +343,27 @@ void CommonForwardBroadcastCUDA(
   dim3 gird_size = dim3(
       (out_size + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
   dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
-
+#if 0
   CommonForwardBroadcastCUDAKernel<
       Functor, T, OutType><<<gird_size, block_size, 0, ctx.stream()>>>(
       x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu, x_data,
       y_data, out_data, out_size, max_dim, func, is_xsize_larger);
+#else
+  if (sizeof(T) > sizeof(int)) {
+    cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
+  }
+  const int x_arr_size = std::accumulate(x_dims_array, x_dims_array + max_dim,
+                                         1, std::multiplies<int>());
+  const int y_arr_size = std::accumulate(y_dims_array, y_dims_array + max_dim,
+                                         1, std::multiplies<int>());
+  const int small_arr_size = x_arr_size > y_arr_size ? y_arr_size : x_arr_size;
+
+  CommonForwardBroadcastCUDAKernelShareMem<Functor, T, OutType><<<
+      gird_size, block_size, small_arr_size * sizeof(T), ctx.stream()>>>(
+      x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu, x_data,
+      y_data, out_data, out_size, small_arr_size, max_dim, func,
+      is_xsize_larger);
+#endif
 }
 
 #endif  // __NVCC__
