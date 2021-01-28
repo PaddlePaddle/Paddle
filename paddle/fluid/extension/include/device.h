@@ -18,8 +18,8 @@ limitations under the License. */
 
 namespace paddle {
 
-using CPUPlace = platform::CPUPlace;
-using CUDAPlace = platform::CUDAPlace;
-using XPUPlace = platform::XPUPlace;
+using CPU = platform::CPUPlace;
+using CUDA = platform::CUDAPlace;
+using XPU = platform::XPUPlace;
 
 }  // namespace paddle

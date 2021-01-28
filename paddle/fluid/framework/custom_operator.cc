@@ -53,14 +53,29 @@ static T* DynLoad(void* handle, std::string name) {
   return func;
 }
 
+static std::type_index StringToDataType(const std::string& str) {
+  if (str == "float") {
+    return std::type_index(typeid(float));
+  } else if (str == "double") {
+    return std::type_index(typeid(double));
+  } else if (str == "int") {
+    return std::type_index(typeid(int));
+  } else if (str == "int64_t") {
+    return std::type_index(typeid(int64_t));
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported data type `%s` now.", str));
+  }
+}
+
 }  // namespace detail
 
 ////////////////// Kernel Define ////////////////////
 
 // custom op kernel call function define
-static void RunKernelFunc(const framework::ExecutionContext& ctx,
-                          paddle::KernelFunc func) {
-  VLOG(0) << "Before run KernelFunc.";
+static void RunComputeFunc(const framework::ExecutionContext& ctx,
+                           paddle::ComputeFunc func) {
+  VLOG(0) << "Before run ComputeFunc.";
   std::vector<const Tensor*> ins;
   for (auto name : ctx.InNameList()) {
     VLOG(0) << "input name: " << name;
@@ -74,7 +89,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
   }
   std::vector<boost::any> attrs;
 
-  VLOG(0) << "Run KernelFunc.";
+  VLOG(0) << "Run ComputeFunc.";
   auto outs = func(ins, attrs);
 
   VLOG(0) << "Share outputs into ExecutionContext.";
@@ -205,42 +220,60 @@ void RegisterOperator(const std::string& name, size_t input_num) {
 }
 
 void RegisterOperatorKernel(const std::string& name,
-                            const paddle::KernelFunc& func) {
-  std::string library_type = "CPU";
-  std::string data_layout = "ANYLAYOUT";
-  OpKernelType key(ToDataType(std::type_index(typeid(float))),
-                   platform::CPUPlace());
+                            const paddle::KernelExecFunction& kernel_func) {
+  auto place = kernel_func.GetPlace();
+  auto library_type = kernel_func.GetLibType();
+  auto data_layout = "ANYLAYOUT";
+  if (library_type == "MKLDNN") {
+    data_layout = "MKLDNNLAYOUT";
+  }
 
   VLOG(0) << "op name in kernel: " << name;
-  VLOG(0) << "op kernel key: " << key;
-  OperatorWithKernel::AllOpKernels()[name][key] =
-      [func](const framework::ExecutionContext& ctx) {
-        VLOG(0) << "run custom kernel func in lambda.";
-        RunKernelFunc(ctx, func);
-      };
+  auto& compute_func_map = kernel_func.GetComputeFuncMap();
+  for (auto& pair : compute_func_map) {
+    // pair.first: dtype string
+    // pair.second: ComputeFunc
+    OpKernelType key(ToDataType(detail::StringToDataType(pair.first)), place,
+                     StringToDataLayout(data_layout),
+                     StringToLibraryType(library_type.c_str()));
+    VLOG(0) << "op kernel key: " << key;
+    auto& func = pair.second;
+    OperatorWithKernel::AllOpKernels()[name][key] =
+        [func](const framework::ExecutionContext& ctx) {
+          VLOG(0) << "run custom kernel func in lambda.";
+          RunComputeFunc(ctx, func);
+        };
+  }
 }
 
 // load op api
 void LoadCustomOperator(const std::string& dso_name) {
   void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
 
-  typedef OpFunctionMap& get_op_func_map_t();
+  typedef OpExecFunctionMap& get_op_func_map_t();
   auto* get_op_func_map =
-      detail::DynLoad<get_op_func_map_t>(handle, "PD_GetOpFunctionMap");
+      detail::DynLoad<get_op_func_map_t>(handle, "PD_GetOpExecFunctionMap");
   auto& op_func_map = get_op_func_map();
   auto& op_funcs = op_func_map.GetMap();
 
   VLOG(0) << "size of op funcs map: " << op_funcs.size();
   for (auto& pair : op_funcs) {
+    // pair.first: op_type
+    // pair.second: OpExecFunction
+
+    // 1. register op
     VLOG(0) << "pair first - op name: " << pair.first;
-    // 1. op func info
-    auto& forward_func = pair.second.GetForwardFuncs()[0];
-    auto& backward_func = pair.second.GetBackwardFuncs()[0];
-    // 2. register op
     RegisterOperator(pair.first, pair.second.GetNumTensorArgs());
-    // 3. register op kernel
-    RegisterOperatorKernel(pair.first, forward_func);
-    RegisterOperatorKernel(pair.first + "_grad", backward_func);
+
+    // 2. register op kernel
+    for (auto& forward_func : pair.second.GetForwardFuncList()) {
+      // KernelExecFunction
+      RegisterOperatorKernel(pair.first, forward_func);
+    }
+
+    for (auto& backward_func : pair.second.GetBackwardFuncList()) {
+      RegisterOperatorKernel(pair.first + "_grad", backward_func);
+    }
   }
 }
 

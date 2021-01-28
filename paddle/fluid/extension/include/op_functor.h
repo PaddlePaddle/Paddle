@@ -24,6 +24,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 
@@ -31,9 +32,10 @@ using Tensor = framework::Tensor;
 
 using FuncInfo = std::pair<size_t, size_t>;
 using TraitsFunc = FuncInfo (*)();
-using KernelFunc = std::vector<Tensor> (*)(std::vector<const Tensor*> inputs,
-                                           std::vector<boost::any> attrs);
-using KernelFuncList = std::vector<KernelFunc>;
+using ComputeFunc = std::vector<Tensor> (*)(std::vector<const Tensor*> inputs,
+                                            std::vector<boost::any> attrs);
+// key std::string means data type, replace by enum DataType later
+using ComputeFuncMap = std::unordered_map<std::string, ComputeFunc>;
 
 #define DISABLE_COPY_AND_ASSIGN(classname)         \
  private:                                          \
@@ -42,13 +44,13 @@ using KernelFuncList = std::vector<KernelFunc>;
   classname& operator=(const classname&) = delete; \
   classname& operator=(classname&&) = delete
 
-//////////////////// Kernel Function traits (PD_TRAITS) ///////////////////
+//////////////////// Compute Function traits (PD_TRAITS) ///////////////////
 
 template <typename T, typename Enabled = void>
-struct KernelFuncTraits;
+struct ComputeFuncTraits;
 
 template <typename Return, typename... Args>
-struct KernelFuncTraits<Return (*)(Args...)> {
+struct ComputeFuncTraits<Return (*)(Args...)> {
   static FuncInfo GetFuncInfo() {
     // TODO(chenweihang): parse tensor args num & attribute num
     return std::make_pair(Arity, 0);
@@ -64,16 +66,16 @@ struct KernelFuncTraits<Return (*)(Args...)> {
   using Arg = typename std::tuple_element<Index, ArgsTuple>::type;
 };
 
-////////////////////// Kernel Function (PD_KERNEL) ////////////////////////
+////////////////////// Compute Function (PD_KERNEL) ////////////////////////
 
 template <typename T>
 struct TypeTag {};
 
 template <typename F, F f>
-struct KernelFuncImpl;
+struct ComputeFuncImpl;
 
 template <typename Return, typename... Args, Return (*impl_fn)(Args...)>
-struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
+struct ComputeFuncImpl<Return (*)(Args...), impl_fn> {
   static Return Compute(std::vector<const Tensor*> inputs,
                         std::vector<boost::any> attrs) {
     return ComputeCallHelper<Args..., TypeTag<int>>::template Compute<0, 0>(
@@ -127,17 +129,51 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   };
 };
 
-////////////////////// Op Function //////////////////////
+////////////////////// Kernel Execution Function //////////////////
 
-class OpFunction {
+class KernelExecFunction {
  public:
-  OpFunction() = default;
+  KernelExecFunction() = delete;
+  KernelExecFunction(const platform::Place& place, const std::string& lib_type,
+                     const ComputeFuncMap& func_map)
+      : place_(place), lib_type_(lib_type), func_map_(func_map) {}
 
-  void SetForwardFuncs(KernelFuncList ffs) { forward_funcs_ = ffs; }
-  const KernelFuncList& GetForwardFuncs() const { return forward_funcs_; }
+  const platform::Place& GetPlace() const { return place_; }
 
-  void SetBackwardFuncs(KernelFuncList bfs) { backward_funcs_ = bfs; }
-  const KernelFuncList& GetBackwardFuncs() const { return backward_funcs_; }
+  const std::string& GetLibType() const { return lib_type_; }
+
+  const ComputeFuncMap GetComputeFuncMap() const { return func_map_; }
+
+ private:
+  // replace by enum Place later
+  platform::Place place_;
+
+  // replace by enum LibraryType later
+  std::string lib_type_;
+
+  // compute function
+  ComputeFuncMap func_map_;
+};
+
+////////////////////// Op Execution Function //////////////////////
+
+class OpExecFunction {
+ public:
+  OpExecFunction() = default;
+
+  void AppendForwardFunc(const KernelExecFunction& ffs) {
+    forward_funcs_.emplace_back(ffs);
+  }
+  const std::vector<KernelExecFunction>& GetForwardFuncList() const {
+    return forward_funcs_;
+  }
+
+  void AppendBackwardFunc(const KernelExecFunction& bfs) {
+    backward_funcs_.emplace_back(bfs);
+  }
+  const std::vector<KernelExecFunction>& GetBackwardFuncList() const {
+    return backward_funcs_;
+  }
 
   void SetNumTensorArgs(size_t num) { num_tensor_args_ = num; }
   size_t GetNumTensorArgs() const { return num_tensor_args_; }
@@ -147,8 +183,8 @@ class OpFunction {
 
  private:
   // 1. func member
-  KernelFuncList forward_funcs_;
-  KernelFuncList backward_funcs_;
+  std::vector<KernelExecFunction> forward_funcs_;
+  std::vector<KernelExecFunction> backward_funcs_;
   // support infershape func later
 
   // 2. func traits
@@ -156,30 +192,52 @@ class OpFunction {
   size_t num_attributes_;
 };
 
-//////////////////////// OpFunction Map //////////////////////////
+//////////////////////// Op Execution Function Map //////////////////////////
 
-class OpFunctionMap {
+class OpExecFunctionMap {
  public:
-  static OpFunctionMap& Instance() {
-    static OpFunctionMap g_custom_op_function_holder;
+  static OpExecFunctionMap& Instance() {
+    static OpExecFunctionMap g_custom_op_function_holder;
     return g_custom_op_function_holder;
   }
 
-  void Insert(const std::string& op_type, const OpFunction& funcs) {
+  void Insert(const std::string& op_type, const OpExecFunction& op_func) {
     PADDLE_ENFORCE_NE(map_.find(op_type) != map_.end(), true,
                       platform::errors::AlreadyExists(
                           "Operator (%s) has been registered.", op_type));
-    map_.insert({op_type, funcs});
+    map_.insert({op_type, op_func});
   }
 
-  const std::unordered_map<std::string, OpFunction>& GetMap() { return map_; }
+  void InsertForwardKernelFunc(const std::string& op_type,
+                               const KernelExecFunction& forward_func_) {
+    auto it = map_.find(op_type);
+    if (it == map_.end()) {
+      throw std::runtime_error("op not exists");
+    } else {
+      it->second.AppendForwardFunc(forward_func_);
+    }
+  }
+
+  void InsertBackwardKernelFunc(const std::string& op_type,
+                                const KernelExecFunction& backward_func_) {
+    auto it = map_.find(op_type);
+    if (it == map_.end()) {
+      throw std::runtime_error("op not exists");
+    } else {
+      it->second.AppendBackwardFunc(backward_func_);
+    }
+  }
+
+  const std::unordered_map<std::string, OpExecFunction>& GetMap() {
+    return map_;
+  }
 
  private:
-  OpFunctionMap() = default;
+  OpExecFunctionMap() = default;
 
-  std::unordered_map<std::string, OpFunction> map_;
+  std::unordered_map<std::string, OpExecFunction> map_;
 
-  DISABLE_COPY_AND_ASSIGN(OpFunctionMap);
+  DISABLE_COPY_AND_ASSIGN(OpExecFunctionMap);
 };
 
 ///////////////// Op Function Registrar ////////////////////////////
@@ -190,35 +248,99 @@ class Registrar {
 };
 
 struct OperatorFunctionRegistrar : public Registrar {
-  OperatorFunctionRegistrar(const char* op_type, TraitsFunc traits_func,
-                            KernelFuncList forward_funcs,
-                            KernelFuncList backward_funcs) {
-    OpFunction op_func;
+  OperatorFunctionRegistrar(const char* op_type, TraitsFunc traits_func) {
+    OpExecFunction op_func;
     FuncInfo func_info = traits_func();
     op_func.SetNumTensorArgs(func_info.first);
     op_func.SetNumAttributes(func_info.second);
-    op_func.SetForwardFuncs(forward_funcs);
-    op_func.SetBackwardFuncs(backward_funcs);
-    OpFunctionMap::Instance().Insert(op_type, op_func);
+    OpExecFunctionMap::Instance().Insert(op_type, op_func);
+  }
+};
+
+template <typename Func, Func... funcs>
+struct OpKernelFuncRegistrar : public Registrar {
+  OpKernelFuncRegistrar(const char* op_type, bool is_forward,
+                        const char* lib_type, platform::Place place,
+                        const char* func_names) {
+    // 1. build ComputeFuncMap
+    ComputeFuncMap compute_func_map;
+    std::vector<ComputeFunc> compute_funcs{{funcs...}};
+    auto dtype_strs = ParseKernelDataTypeFromDeclaration(func_names);
+    if (compute_funcs.size() != dtype_strs.size()) {
+      throw std::runtime_error("kernel function number error.");
+    }
+    // use default dtype "float"
+    for (size_t i = 0; i < compute_funcs.size(); ++i) {
+      compute_func_map[dtype_strs[i]] = compute_funcs[i];
+    }
+
+    // 2. build KernelExecFunction
+    auto kernel_func = KernelExecFunction(place, lib_type, compute_func_map);
+
+    // 3. insert
+    if (is_forward) {
+      OpExecFunctionMap::Instance().InsertForwardKernelFunc(op_type,
+                                                            kernel_func);
+    } else {
+      OpExecFunctionMap::Instance().InsertBackwardKernelFunc(op_type,
+                                                             kernel_func);
+    }
+  }
+
+ private:
+  // only for demo test, polish later
+  std::vector<std::string> ParseKernelDataTypeFromDeclaration(
+      const std::string& func_names) {
+    std::vector<std::string> res;
+    // add others later
+    std::vector<std::string> dtypes{"<float>", "<double>", "<int>",
+                                    "<int64_t>"};
+    for (auto& dtype : dtypes) {
+      if (func_names.find(dtype) != std::string::npos) {
+        VLOG(0) << "contains data type: " << dtype;
+        res.emplace_back(dtype.substr(1, dtype.size() - 2));
+      }
+    }
+    return res;
   }
 };
 
 /////////////////////// Op register marco /////////////////////////
 
 #define PD_KERNEL(...) \
-  ::paddle::KernelFuncImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
+  ::paddle::ComputeFuncImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
 
 #define OP_INFO(...) \
-  ::paddle::KernelFuncTraits<decltype(&__VA_ARGS__)>::GetFuncInfo
+  ::paddle::ComputeFuncTraits<decltype(&__VA_ARGS__)>::GetFuncInfo
 
-#define REGISTER_OP_FUNCTION(op_type, traits_func, forward_funcs, \
-                             backward_funcs)                      \
-  static ::paddle::OperatorFunctionRegistrar                      \
-      __operator_function_registrar_##op_type##__(                \
-          #op_type, traits_func, forward_funcs, backward_funcs);  \
-  int TouchOpRegistrar_##op_type() {                              \
-    __operator_function_registrar_##op_type##__.Touch();          \
-    return 0;                                                     \
+#define ADD_OPERATOR(op_type, traits_func)                                \
+  static ::paddle::OperatorFunctionRegistrar                              \
+      __operator_function_registrar_##op_type##__(#op_type, traits_func); \
+  int TouchOperatorFunctionRegistrar_##op_type() {                        \
+    __operator_function_registrar_##op_type##__.Touch();                  \
+    return 0;                                                             \
   }
+
+#define ADD_KERNEL(op_type, is_forward, lib_type, place, ...)                \
+  static ::paddle::OpKernelFuncRegistrar<::paddle::ComputeFunc, __VA_ARGS__> \
+      __op_kernel_func_registrar_##op_type##_##is_forward##_##lib_type##__(  \
+          #op_type, is_forward, #lib_type, place, #__VA_ARGS__);             \
+  int TouchOpKernelFuncRegistrar_##op_type_##is_forward##_##lib_type##__() { \
+    __op_kernel_func_registrar_##op_type##_##is_forward##_##lib_type##__     \
+        .Touch();                                                            \
+    return 0;                                                                \
+  }
+
+#define ADD_FORWARD_CPU_KERNEL(op_type, ...) \
+  ADD_KERNEL(op_type, true, CPU, ::paddle::platform::CPUPlace(), __VA_ARGS__)
+
+#define ADD_BACKWARD_CPU_KERNEL(op_type, ...) \
+  ADD_KERNEL(op_type, false, CPU, ::paddle::platform::CPUPlace(), __VA_ARGS__)
+
+#define ADD_FORWARD_CUDA_KERNEL(op_type, ...) \
+  ADD_KERNEL(op_type, true, CUDA, ::paddle::platform::CUDAPlace(), __VA_ARGS__)
+
+#define ADD_BACKWARD_CUDA_KERNEL(op_type, ...) \
+  ADD_KERNEL(op_type, false, CUDA, ::paddle::platform::CUDAPlace(), __VA_ARGS__)
 
 }  // namespace paddle
