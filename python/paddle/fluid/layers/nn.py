@@ -3040,10 +3040,8 @@ def inplace_abn(input,
         dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
-
     reserve_space = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
-
     batch_norm_out = input
 
     inputs = {
@@ -3067,7 +3065,6 @@ def inplace_abn(input,
         inputs['MomemtumTensor'] = momentum
     else:
         attrs['momentum'] = momentum
-
     outputs = {
         "Y": batch_norm_out,
         "MeanOut": mean_out,

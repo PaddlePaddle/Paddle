@@ -688,9 +688,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         // The condition of calling NEW APIs:
         // 1. fp16 training with NHWC datalayout OR
         // 2. any of NHWC or NCHW datalayout
-        if (compute_format == DataLayout::kNHWC ||
-            data_layout == DataLayout::kNCHW ||
-            data_layout == DataLayout::kNHWC) {
+        if ((compute_format == DataLayout::kNHWC ||
+             data_layout == DataLayout::kNCHW ||
+             data_layout == DataLayout::kNHWC) &&
+            reserve_space) {
           called = true;
           size_t workspace_size = 0;
           void *workspace_ptr = nullptr;

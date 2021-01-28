@@ -1309,8 +1309,6 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype)
         self._variance.stop_gradient = True
 
-        self._has_reserve_space = False
-
         self._in_place = in_place
         self._data_layout = data_layout
         self._momentum = momentum
@@ -1366,7 +1364,6 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype, stop_gradient=True)
         saved_variance = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
-
         reserve_space = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
 
