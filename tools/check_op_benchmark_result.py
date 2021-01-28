@@ -190,7 +190,7 @@ if __name__ == "__main__":
         help="Specify the api info to run benchmark test.")
     args = parser.parse_args()
 
-    check_results = dict(accuracy=list(), speed=["argmax_0 (forward)"])
+    check_results = dict(accuracy=list(), speed=list())
 
     develop_result_dict = load_benchmark_result_from_logs_dir(
         args.develop_logs_dir)
