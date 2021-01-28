@@ -35,6 +35,10 @@
             "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
         },
         {
+            "name":"flatten_",
+            "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
+        },
+        {
             "name":"scatter_",
             "annotation":"Inplace APIs don't need sample code. There is a special document introducing Inplace strategy"
         },
