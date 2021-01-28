@@ -134,8 +134,15 @@ int32_t BrpcPsClient::create_client2client_connection(
     server_ip_port.append(std::to_string(client_list[i].port));
     _client_channels[i].reset(new brpc::Channel());
     if (_client_channels[i]->Init(server_ip_port.c_str(), "", &options) != 0) {
-      LOG(ERROR) << "psclient connect to client:" << server_ip_port
-                 << " Failed!";
+      VLOG(0) << "BrpcPSClient connect to Client:" << server_ip_port
+              << " Failed! Try again.";
+      std::string int_ip_port =
+          GetIntTypeEndpoint(client_list[i].ip, client_list[i].port);
+      if (_client_channels[i]->Init(int_ip_port.c_str(), "", &options) != 0) {
+        LOG(ERROR) << "BrpcPSClient connect to Client:" << int_ip_port
+                   << " Failed!";
+        return -1;
+      }
     }
     os << server_ip_port << ",";
   }
@@ -168,9 +175,16 @@ int32_t BrpcPsClient::initialize() {
       _server_channels[i][j].reset(new brpc::Channel());
       if (_server_channels[i][j]->Init(server_ip_port.c_str(), "", &options) !=
           0) {
-        LOG(ERROR) << "psclient connect to server:" << server_ip_port
-                   << " Failed!";
-        return -1;
+        VLOG(0) << "BrpcPSclient connect to Server:" << server_ip_port
+                << " Failed! Try again.";
+        std::string int_ip_port =
+            GetIntTypeEndpoint(server_list[i].ip, server_list[i].port);
+        if (_server_channels[i][j]->Init(int_ip_port.c_str(), "", &options) !=
+            0) {
+          LOG(ERROR) << "BrpcPSclient connect to Server:" << int_ip_port
+                     << " Failed!";
+          return -1;
+        }
       }
     }
     os << server_ip_port << ",";
