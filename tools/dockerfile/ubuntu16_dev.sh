@@ -36,7 +36,9 @@ function ref_whl(){
     ref_gcc=_gcc8.2
   fi
 
-  if [[ ${ref_CUDA_MAJOR} == "10" ]];then
+  if [[ ${ref_CUDA_MAJOR} == "11" ]];then
+      ref_version=.post110
+  elif [[ ${ref_CUDA_MAJOR} == "10" ]];then
       ref_version=.post100
   elif [[ ${ref_CUDA_MAJOR} == "10.1" ]];then
       ref_version=.post101
@@ -46,7 +48,8 @@ function ref_whl(){
       ref_version=.post90
   fi
   
-  ref_web="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}${ref_gcc}"
+  ref_web_cpu="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}"
+  ref_web_gcc="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}${ref_gcc}"
   
   if [[ ${PADDLE_VERSION} == "0.0.0" && ${WITH_GPU} == "ON" ]]; then
     ref_paddle_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp27-cp27mu-linux_x86_64.whl
@@ -80,11 +83,19 @@ function ref_whl(){
 
 function install_whl(){
   dockerfile_line=`wc -l Dockerfile.tmp|awk '{print $1}'`
-  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle_whl} && pip install ${ref_paddle_whl} && rm -f  ${ref_paddle_whl}" Dockerfile.tmp
-  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle3_whl} && pip3.5 install ${ref_paddle3_whl} && rm  -f ${ref_paddle3_whl}" Dockerfile.tmp
-  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle36_whl} && pip3.6 install ${ref_paddle36_whl} && rm -f ${ref_paddle36_whl}" Dockerfile.tmp
-  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle37_whl} && pip3.7 install ${ref_paddle37_whl} && rm -f ${ref_paddle37_whl}" Dockerfile.tmp
-  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle38_whl} && pip3.8 install ${ref_paddle38_whl} && rm -f ${ref_paddle38_whl}" Dockerfile.tmp
+  if [[ ${WITH_GPU} == "ON" ]]; then
+    sed -i "${dockerfile_line}i RUN wget -q ${ref_web_gcc}/${ref_paddle_whl} && pip install ${ref_paddle_whl} && rm -f  ${ref_paddle_whl}" Dockerfile.tmp
+    sed -i "${dockerfile_line}i RUN wget -q ${ref_web_gcc}/${ref_paddle3_whl} && pip3.5 install ${ref_paddle3_whl} && rm  -f ${ref_paddle3_whl}" Dockerfile.tmp
+    sed -i "${dockerfile_line}i RUN wget -q ${ref_web_gcc}/${ref_paddle36_whl} && pip3.6 install ${ref_paddle36_whl} && rm -f ${ref_paddle36_whl}" Dockerfile.tmp
+    sed -i "${dockerfile_line}i RUN wget -q ${ref_web_gcc}/${ref_paddle37_whl} && pip3.7 install ${ref_paddle37_whl} && rm -f ${ref_paddle37_whl}" Dockerfile.tmp
+    sed -i "${dockerfile_line}i RUN wget -q ${ref_web_gcc}/${ref_paddle38_whl} && pip3.8 install ${ref_paddle38_whl} && rm -f ${ref_paddle38_whl}" Dockerfile.tmp
+  else
+    sed -i "${dockerfile_line}i RUN wget -q ${ref_web_cpu}/${ref_paddle_whl} && pip install ${ref_paddle_whl} && rm -f  ${ref_paddle_whl}" Dockerfile.tmp
+    sed -i "${dockerfile_line}i RUN wget -q ${ref_web_cpu}/${ref_paddle3_whl} && pip3.5 install ${ref_paddle3_whl} && rm  -f ${ref_paddle3_whl}" Dockerfile.tmp
+    sed -i "${dockerfile_line}i RUN wget -q ${ref_web_cpu}/${ref_paddle36_whl} && pip3.6 install ${ref_paddle36_whl} && rm -f ${ref_paddle36_whl}" Dockerfile.tmp
+    sed -i "${dockerfile_line}i RUN wget -q ${ref_web_cpu}/${ref_paddle37_whl} && pip3.7 install ${ref_paddle37_whl} && rm -f ${ref_paddle37_whl}" Dockerfile.tmp
+    sed -i "${dockerfile_line}i RUN wget -q ${ref_web_cpu}/${ref_paddle38_whl} && pip3.8 install ${ref_paddle38_whl} && rm -f ${ref_paddle38_whl}" Dockerfile.tmp
+  fi
 }
 
 
