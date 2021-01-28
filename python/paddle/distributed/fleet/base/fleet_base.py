@@ -1200,17 +1200,6 @@ class Fleet(object):
         optimize_ops = []
         params_grads = []
 
-        if self._role_maker._is_non_distributed() and not self._is_collective:
-            if self._runtime_handle is None:
-                self._runtime_handle = RuntimeFactory()._create_runtime(context)
-
-            compiled_program = compiler.CompiledProgram(
-                self.origin_main_program).with_data_parallel(
-                    loss_name=loss.name, share_vars_from=None)
-            loss.block.program._graph = compiled_program
-            return self.user_defined_optimizer.minimize(
-                loss, startup_program, parameter_list, no_grad_set=no_grad_set)
-
         if meta_optimizer:
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
