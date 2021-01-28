@@ -208,7 +208,7 @@ struct OperatorFunctionRegistrar : public Registrar {
 #define PD_KERNEL(...) \
   ::paddle::KernelFuncImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
 
-#define PD_TRAITS(...) \
+#define OP_INFO(...) \
   ::paddle::KernelFuncTraits<decltype(&__VA_ARGS__)>::GetFuncInfo
 
 #define REGISTER_OP_FUNCTION(op_type, traits_func, forward_funcs, \
