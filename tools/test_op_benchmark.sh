@@ -176,7 +176,7 @@ function compile_install_paddlepaddle {
 # run op benchmark test
 function run_op_benchmark_test {
   [ ${#BENCHMARK_OP_MAP[*]} -eq 0 ] && return
-  local logs_dir op_name branch_name api_info_file
+  local task device logs_dir op_name branch_name api_info_file
   [ -z "$VISIBLE_DEVICES" ] && export VISIBLE_DEVICES=0
   [ "$BENCHMARK_PRINT_FAIL_LOG" != "1" ] && export BENCHMARK_PRINT_FAIL_LOG=1
   api_info_file="$(pwd)/api_info.txt"
@@ -196,14 +196,18 @@ function run_op_benchmark_test {
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
     pushd benchmark/api > /dev/null
-    bash deploy/main_control.sh tests_v2 \
-                                tests_v2/configs \
-                                $logs_dir \
-                                $VISIBLE_DEVICES \
-                                "gpu" \
-                                "both" \
-                                $api_info_file \
-                                "paddle"
+    for device in "gpu" "cpu"
+    do
+      [ "${device}" == "gpu" ] && task="both" || task="accuracy"
+      bash deploy/main_control.sh tests_v2 \
+                                  tests_v2/configs \
+                                  $logs_dir \
+                                  $VISIBLE_DEVICES \
+                                  ${device} \
+                                  ${task} \
+                                  $api_info_file \
+                                  "paddle"
+    done
     popd > /dev/null
   done
 }

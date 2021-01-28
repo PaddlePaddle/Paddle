@@ -16,6 +16,7 @@ limitations under the License. */
 
 #ifdef __NVCC__
 
+
 #include <cub/cub.cuh>
 #include <limits>
 #include <string>
