@@ -35,11 +35,12 @@ class LayerNormFusePassTest(InferencePassTest):
             beta = fluid.layers.create_parameter(
                 shape=[120], dtype="float32", is_bias=True)
 
-            x_mean_out = fluid.layers.mean(data)
+            x_mean_out = fluid.layers.reduce_mean(data, dim=-1, keep_dim=True)
             x_sub_mean_out = fluid.layers.elementwise_sub(data, x_mean_out)
             x_sub_mean_sqr_out = fluid.layers.elementwise_pow(x_sub_mean_out,
                                                               sqr_pow)
-            std_dev_out = fluid.layers.mean(x_sub_mean_sqr_out)
+            std_dev_out = fluid.layers.reduce_mean(
+                x_sub_mean_sqr_out, dim=-1, keep_dim=True)
             std_dev_eps_out = fluid.layers.elementwise_add(std_dev_out, eps)
             std_dev_eps_sqrt_out = fluid.layers.sqrt(std_dev_eps_out)
             division_out = fluid.layers.elementwise_div(x_sub_mean_out,

@@ -38,32 +38,41 @@ ProgramDesc BuildGraphProgram() {
        "shift_out"},
       {"sqr_pow", "eps", "gamma", "beta"});
 
-  auto* block_desc = prog.MutableBlock(0);
-  auto* x_var_desc = block_desc->Var("x");
+  const auto& block_desc = prog.Block(0);
+  auto* x_var_desc = block_desc.FindVar("x");
   x_var_desc->SetDataType(proto::VarType::FP32);
   x_var_desc->SetShape({3, 32, 48});
 
-  auto* eps_var_desc = block_desc->Var("eps");
+  auto* eps_var_desc = block_desc.FindVar("eps");
   eps_var_desc->SetDataType(proto::VarType::FP32);
   eps_var_desc->SetShape({1});
 
-  auto* gamma_var_desc = block_desc->Var("gamma");
+  auto* gamma_var_desc = block_desc.FindVar("gamma");
   gamma_var_desc->SetDataType(proto::VarType::FP32);
   gamma_var_desc->SetShape({48});
 
-  auto* beta_var_desc = block_desc->Var("beta");
+  auto* beta_var_desc = block_desc.FindVar("beta");
   beta_var_desc->SetDataType(proto::VarType::FP32);
   beta_var_desc->SetShape({48});
 
-  test::CreateOp(&prog, "reduce_mean", {{"X", "x"}}, {{"Out", "x_mean_out"}},
-                 false);
+  auto* x_mean = test::CreateOp(&prog, "reduce_mean", {{"X", "x"}},
+                                {{"Out", "x_mean_out"}}, false);
+  x_mean->SetAttr("dim", std::vector<int>{-1});
+  x_mean->SetAttr("keep_dim", true);
+  x_mean->SetAttr("reduce_all", false);
+
   test::CreateOp(&prog, "elementwise_sub", {{"X", "x"}, {"Y", "x_mean_out"}},
                  {{"Out", "x_sub_mean_out"}}, false);
   test::CreateOp(&prog, "elementwise_pow",
                  {{"X", "x_sub_mean_out"}, {"Y", "sqr_pow"}},
                  {{"Out", "x_sub_mean_sqr_out"}}, false);
-  test::CreateOp(&prog, "reduce_mean", {{"X", "x_sub_mean_sqr_out"}},
-                 {{"Out", "std_dev_out"}}, false);
+  auto* std_dev =
+      test::CreateOp(&prog, "reduce_mean", {{"X", "x_sub_mean_sqr_out"}},
+                     {{"Out", "std_dev_out"}}, false);
+  std_dev->SetAttr("dim", std::vector<int>{-1});
+  std_dev->SetAttr("keep_dim", true);
+  std_dev->SetAttr("reduce_all", false);
+
   test::CreateOp(&prog, "elementwise_add", {{"X", "std_dev_out"}, {"Y", "eps"}},
                  {{"Out", "std_dev_eps_out"}}, false);
   test::CreateOp(&prog, "sqrt", {{"X", "std_dev_eps_out"}},
@@ -128,7 +137,7 @@ TEST(FuseLayerNormPass, TestFuse) {
 TEST(FuseLayerNormPass, TestInvalidEpsNumel) {
   ProgramDesc prog = BuildGraphProgram();
 
-  auto* eps_var_desc = prog.MutableBlock(0)->Var("eps");
+  auto* eps_var_desc = prog.Block(0).FindVar("eps");
   eps_var_desc->SetDataType(proto::VarType::FP32);
   eps_var_desc->SetShape({2});
 
@@ -154,7 +163,7 @@ TEST(FuseLayerNormPass, TestInvalidEpsNumel) {
 TEST(FuseLayerNormPass, TestInvalidEpsDataType) {
   ProgramDesc prog = BuildGraphProgram();
 
-  auto* eps_var_desc = prog.MutableBlock(0)->Var("eps");
+  auto* eps_var_desc = prog.Block(0).FindVar("eps");
   eps_var_desc->SetDataType(proto::VarType::FP64);
   eps_var_desc->SetShape({1});
 
@@ -179,7 +188,7 @@ TEST(FuseLayerNormPass, TestInvalidEpsDataType) {
 TEST(FuseLayerNormPass, TestInvalidGammaRank) {
   ProgramDesc prog = BuildGraphProgram();
 
-  auto* gamma_var_desc = prog.MutableBlock(0)->Var("gamma");
+  auto* gamma_var_desc = prog.Block(0).FindVar("gamma");
   gamma_var_desc->SetDataType(proto::VarType::FP32);
   gamma_var_desc->SetShape({48, 32});
 
@@ -204,7 +213,7 @@ TEST(FuseLayerNormPass, TestInvalidGammaRank) {
 TEST(FuseLayerNormPass, TestInvalidBetaRank) {
   ProgramDesc prog = BuildGraphProgram();
 
-  auto* beta_var_desc = prog.MutableBlock(0)->Var("beta");
+  auto* beta_var_desc = prog.Block(0).FindVar("beta");
   beta_var_desc->SetDataType(proto::VarType::FP32);
   beta_var_desc->SetShape({48, 32});
 
@@ -229,7 +238,7 @@ TEST(FuseLayerNormPass, TestInvalidBetaRank) {
 TEST(FuseLayerNormPass, TestUnequalGammaBetaShapes) {
   ProgramDesc prog = BuildGraphProgram();
 
-  auto* beta_var_desc = prog.MutableBlock(0)->Var("beta");
+  auto* beta_var_desc = prog.Block(0).FindVar("beta");
   beta_var_desc->SetDataType(proto::VarType::FP32);
   beta_var_desc->SetShape({32});
 
@@ -254,11 +263,11 @@ TEST(FuseLayerNormPass, TestUnequalGammaBetaShapes) {
 TEST(FuseLayerNormPass, TestGammaBetaUnequalInputChannelShape) {
   ProgramDesc prog = BuildGraphProgram();
 
-  auto* beta_var_desc = prog.MutableBlock(0)->Var("beta");
+  auto* beta_var_desc = prog.Block(0).FindVar("beta");
   beta_var_desc->SetDataType(proto::VarType::FP32);
   beta_var_desc->SetShape({32});
 
-  auto* gamma_var_desc = prog.MutableBlock(0)->Var("gamma");
+  auto* gamma_var_desc = prog.Block(0).FindVar("gamma");
   gamma_var_desc->SetDataType(proto::VarType::FP32);
   gamma_var_desc->SetShape({32});
 
@@ -273,6 +282,214 @@ TEST(FuseLayerNormPass, TestGammaBetaUnequalInputChannelShape) {
   // Init scope, as it is used in pass
   exe.CreateVariables(prog, 0, true, &scope);
   test::InitLoDTensorHolder<float>(&scope, place, "eps", {1}, &eps_value);
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, NoFusionBadInMeanDimAttrRank) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* x_mean_desc = test::GetOp(prog, "reduce_mean", "Out", "x_mean_out");
+  ASSERT_NE(x_mean_desc, nullptr);
+  x_mean_desc->SetAttr("dim", std::vector<int>{1, 1});
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  auto eps_values = std::vector<float>{1e-5f, 1e-5f};
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {2},
+                                   eps_values.data());
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, NoFusionBadInMeanDimAttr) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* x_mean_desc = test::GetOp(prog, "reduce_mean", "Out", "x_mean_out");
+  ASSERT_NE(x_mean_desc, nullptr);
+  x_mean_desc->SetAttr("dim", std::vector<int>{1});
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  auto eps_values = std::vector<float>{1e-5f, 1e-5f};
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {2},
+                                   eps_values.data());
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, NoFusionBadInMeanKeepDimAttr) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* x_mean_desc = test::GetOp(prog, "reduce_mean", "Out", "x_mean_out");
+  ASSERT_NE(x_mean_desc, nullptr);
+  x_mean_desc->SetAttr("keep_dim", false);
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  auto eps_values = std::vector<float>{1e-5f, 1e-5f};
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {2},
+                                   eps_values.data());
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, NoFusionBadInMeanReduceAllAttr) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* x_mean_desc = test::GetOp(prog, "reduce_mean", "Out", "x_mean_out");
+  ASSERT_NE(x_mean_desc, nullptr);
+  x_mean_desc->SetAttr("reduce_all", true);
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  auto eps_values = std::vector<float>{1e-5f, 1e-5f};
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {2},
+                                   eps_values.data());
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, NoFusionBadStdDevMeanDimAttrRank) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* std_dev_desc = test::GetOp(prog, "reduce_mean", "Out", "std_dev_out");
+  ASSERT_NE(std_dev_desc, nullptr);
+  std_dev_desc->SetAttr("dim", std::vector<int>{1, 1});
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  auto eps_values = std::vector<float>{1e-5f, 1e-5f};
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {2},
+                                   eps_values.data());
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, NoFusionBadStdDevMeanDimAttr) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* std_dev_desc = test::GetOp(prog, "reduce_mean", "Out", "std_dev_out");
+  ASSERT_NE(std_dev_desc, nullptr);
+  std_dev_desc->SetAttr("dim", std::vector<int>{1});
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  auto eps_values = std::vector<float>{1e-5f, 1e-5f};
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {2},
+                                   eps_values.data());
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, NoFusionBadStdDevMeanKeepDimAttr) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* std_dev_desc = test::GetOp(prog, "reduce_mean", "Out", "std_dev_out");
+  ASSERT_NE(std_dev_desc, nullptr);
+  std_dev_desc->SetAttr("keep_dim", false);
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  auto eps_values = std::vector<float>{1e-5f, 1e-5f};
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {2},
+                                   eps_values.data());
+
+  graph.SetNotOwned(kParamScopeAttr, &scope);
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
+                                      "shift_out", removed_nodes, added_nodes),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(FuseLayerNormPass, NoFusionBadStdDevMeanReduceAllAttr) {
+  ProgramDesc prog = BuildGraphProgram();
+
+  auto* std_dev_desc = test::GetOp(prog, "reduce_mean", "Out", "std_dev_out");
+  ASSERT_NE(std_dev_desc, nullptr);
+  std_dev_desc->SetAttr("reduce_all", true);
+
+  Graph graph(prog);
+  constexpr int removed_nodes = 19;
+  constexpr int added_nodes = 1;
+
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  auto eps_values = std::vector<float>{1e-5f, 1e-5f};
+  // Init scope, as it is used in pass
+  exe.CreateVariables(prog, 0, true, &scope);
+  test::InitLoDTensorHolder<float>(&scope, place, "eps", {2},
+                                   eps_values.data());
 
   graph.SetNotOwned(kParamScopeAttr, &scope);
   EXPECT_THROW(test::RunPassAndAssert(&graph, "layer_norm_fuse_pass", "x",
