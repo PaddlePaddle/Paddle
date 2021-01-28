@@ -133,6 +133,21 @@ void InitLoDTensorHolder(Scope* scope, const paddle::platform::Place& place,
                          const std::vector<int64_t>& dims,
                          const T* data = nullptr);
 
+///
+/// @brief      Retrieve operator descriptor from program.
+///
+/// @param[in]  prog             The program descriptor containing the op we
+///                              search for.
+/// @param[in]  op_type          The wanted operator type name.
+/// @param[in]  output_name      The wanted operator output name.
+/// @param[in]  output_arg_name  The wanted operator output argument name.
+///
+/// @return     The operator descriptor.
+///
+OpDesc* GetOp(const ProgramDesc& prog, const std::string& op_type,
+              const std::string& output_name,
+              const std::string& output_arg_name);
+
 }  // namespace test
 }  // namespace ir
 }  // namespace framework

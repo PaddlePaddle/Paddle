@@ -36,7 +36,7 @@ OpDesc* CreateOp(ProgramDesc* prog, const std::string& op_type_name,
                  const std::vector<InOutVarNamePair>& inputs,
                  const std::vector<InOutVarNamePair>& outputs,
                  bool use_mkldnn) {
-  auto op = prog->MutableBlock(0)->AppendOp();
+  auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(op_type_name);
   op->SetAttr("use_mkldnn", use_mkldnn);
 
@@ -201,6 +201,21 @@ template void InitLoDTensorHolder<double>(Scope*,
                                           const std::string&,
                                           const std::vector<int64_t>&,
                                           const double*);
+
+OpDesc* GetOp(const ProgramDesc& prog, const std::string& op_type,
+              const std::string& output_name,
+              const std::string& output_arg_name) {
+  auto all_ops = prog.Block(0).AllOps();
+  for (auto* op_desc : all_ops) {
+    if (op_desc->Type() == op_type && op_desc->HasOutput(output_name)) {
+      const auto& arg_names = op_desc->Outputs().at(output_name);
+      for (const auto& name : arg_names) {
+        if (name == output_arg_name) return op_desc;
+      }
+    }
+  }
+  return nullptr;
+}
 
 }  // namespace test
 }  // namespace ir
