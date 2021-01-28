@@ -113,7 +113,6 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
   container_->prefetch(cudaCpuDeviceId, stream);
   size_t num = container_->size();
   KeyType unuse_key = std::numeric_limits<KeyType>::max();
-  VLOG(1) << "prefetch to gpu dev: " << devid << " table cap: " << num;
   thrust::pair<KeyType, ValType>* kv = container_->data();
   for (size_t i = 0; i < num; ++i) {
     if (kv[i].first == unuse_key) {

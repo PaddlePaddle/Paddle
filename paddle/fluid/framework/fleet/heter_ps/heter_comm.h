@@ -103,7 +103,7 @@ class HeterComm {
                     char* src_val);
 
  private:
-  using Table = HashTable<KeyType, ValType>;
+  using Table = HashTable<KeyType, ValType>; 
   int block_size_{256};
   float load_factor_{0.75};
   std::vector<Table*> tables_;

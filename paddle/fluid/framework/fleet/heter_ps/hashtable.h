@@ -60,7 +60,7 @@ class HashTable {
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;
-};
+}; 
 }  // end namespace framework
 }  // end namespace paddle
 #include "hashtable_inl.h"
