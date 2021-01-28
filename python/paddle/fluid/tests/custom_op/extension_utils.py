@@ -23,9 +23,12 @@ import subprocess
 import paddle
 
 IS_WINDOWS = os.name == 'nt'
+# TODO(Aurelius84): Need check version of gcc and g++ is same.
+# After CI path is fixed, we will modify into cc.
 NVCC_COMPILE_FLAGS = [
-    '-ccbin', 'cc', '-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU', '-DPADDLE_USE_DSO',
-    '-Xcompiler', '-fPIC', '-w', '--expt-relaxed-constexpr', '-O3', '-DNVCC'
+    '-ccbin', 'gcc', '-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU',
+    '-DPADDLE_USE_DSO', '-Xcompiler', '-fPIC', '-w', '--expt-relaxed-constexpr',
+    '-O3', '-DNVCC'
 ]
 
 
@@ -81,9 +84,9 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     kwargs['runtime_library_dirs'] = runtime_library_dirs
 
     # append compile flags
-    extra_compile_tag = kwargs.get('extra_compile_tag', [])
-    extra_compile_tag.extend(['-g'])
-    kwargs['extra_compile_tag'] = extra_compile_tag
+    extra_compile_args = kwargs.get('extra_compile_args', [])
+    extra_compile_args.extend(['-g'])
+    kwargs['extra_compile_args'] = extra_compile_args
 
     # append link flags
     extra_link_args = kwargs.get('extra_link_args', [])
