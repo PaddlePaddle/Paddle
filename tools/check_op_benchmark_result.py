@@ -135,7 +135,7 @@ def update_api_info_file(fail_case_list, api_info_file):
     with open(api_info_file) as f:
         for line in f:
             line_list = line.split(',')
-            case = line_list[0]
+            case = line_list[0].split(':')[0]
             if case in fail_case_dict:
                 line_list[0] = "%s:%s" % (case, fail_case_dict[case])
                 api_info_list.append(','.join(line_list))
