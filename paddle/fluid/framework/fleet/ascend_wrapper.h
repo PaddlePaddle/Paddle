@@ -40,7 +40,7 @@ namespace framework {
 typedef ge::Graph AscendGraphDesc;
 
 #ifdef PADDLE_WITH_ASCEND_STRING
-using AscendString = AscendString;
+using AscendString = ge::AscendString;
 #else
 using AscendString = std::string;
 #endif
