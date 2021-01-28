@@ -98,10 +98,14 @@ class TestInplace(unittest.TestCase):
 class TestDygraphInplace(unittest.TestCase):
     def setUp(self):
         self.init_data()
+        self.set_np_compare_func()
 
     def init_data(self):
-        self.input_var_numpy = np.random.rand(2, 3, 1)
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
         self.dtype = "float32"
+
+    def set_np_compare_func(self):
+        self.np_compare = np.array_equal
 
     def non_inplace_api_processing(self, var):
         return paddle.squeeze(var)
@@ -190,7 +194,7 @@ class TestDygraphInplace(unittest.TestCase):
             loss.backward()
             grad_var_a = var_a.grad
 
-        self.assertTrue(np.array_equal(grad_var_a_inplace, grad_var_a))
+        self.assertTrue(self.np_compare(grad_var_a_inplace, grad_var_a))
 
     def test_backward_success_2(self):
         # Although var_b is modified inplace after using it, it does not used in gradient computation.
@@ -225,7 +229,7 @@ class TestDygraphInplace(unittest.TestCase):
 
             loss.backward()
             grad_var_a = var_a.grad
-        self.assertTrue(np.array_equal(grad_var_a_inplace, grad_var_a))
+        self.assertTrue(self.np_compare(grad_var_a_inplace, grad_var_a))
 
 
 class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
@@ -313,6 +317,9 @@ class TestDygraphInplaceFloor(TestDygraphInplace):
 
 
 class TestDygraphInplaceExp(TestDygraphInplace):
+    def set_np_compare_func(self):
+        self.np_compare = np.allclose
+
     def non_inplace_api_processing(self, var):
         return paddle.exp(var)
 
@@ -337,6 +344,10 @@ class TestDygraphInplaceRound(TestDygraphInplace):
 
 
 class TestDygraphInplaceSqrt(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(0, 5, [10, 20, 1])
+        self.dtype = "float32"
+
     def non_inplace_api_processing(self, var):
         return paddle.sqrt(var)
 
@@ -344,7 +355,7 @@ class TestDygraphInplaceSqrt(TestDygraphInplace):
         return paddle.sqrt_(var)
 
 
-class TestDygraphInplaceRsqrt(TestDygraphInplace):
+class TestDygraphInplaceRsqrt(TestDygraphInplaceSqrt):
     def non_inplace_api_processing(self, var):
         return paddle.rsqrt(var)
 
