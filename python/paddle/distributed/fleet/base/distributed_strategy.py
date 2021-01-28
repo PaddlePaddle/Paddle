@@ -374,7 +374,7 @@ class DistributedStrategy(object):
             use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
 
             use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
-                   Default None, which means that its value equals to `use_pure_fp16`.
+                   Default True. Only takes effect when `use_pure_fp16` is turned on.
 
         Examples 1:
 
@@ -390,6 +390,7 @@ class DistributedStrategy(object):
         Examples 2:
 
           .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.amp = True
