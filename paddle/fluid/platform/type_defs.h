@@ -12,27 +12,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/dynload/rccl.h"
+#pragma once
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#else
+#include <cuda_runtime.h>
+#endif
 
 namespace paddle {
-namespace platform {
-namespace dynload {
 
-std::once_flag rccl_dso_flag;
-void *rccl_dso_handle;
-
-#define DEFINE_WRAP(__name) DynLoad__##__name __name
-
-RCCL_RAND_ROUTINE_EACH(DEFINE_WRAP);
-
-#if NCCL_VERSION_CODE >= 2212
-RCCL_RAND_ROUTINE_EACH_AFTER_2212(DEFINE_WRAP)
+#ifdef PADDLE_WITH_HIP
+#define gpuSuccess hipSuccess
+using gpuStream_t = hipStream_t;
+using gpuError_t = hipError_t;
+using gpuEvent_t = hipEvent_t;
+#else
+#define gpuSuccess cudaSuccess
+using gpuStream_t = cudaStream_t;
+using gpuError_t = cudaError_t;
+using gpuEvent_t = cudaEvent_t;
 #endif
 
-#if NCCL_VERSION_CODE >= 2703
-RCCL_RAND_ROUTINE_EACH_AFTER_2703(DEFINE_WRAP)
-#endif
-
-}  // namespace dynload
-}  // namespace platform
 }  // namespace paddle

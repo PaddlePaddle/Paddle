@@ -495,12 +495,30 @@ else:
     def redirect_stdout():
         yield
 
+# Log for PYPI
+if sys.version_info > (3,0):
+    with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r", encoding='UTF-8') as f:
+        long_description = f.read()
+else:
+    with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r")as f:
+        long_description = unicode(f.read(), 'UTF-8')
+
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',
         version='${PADDLE_VERSION}',
         description='Parallel Distributed Deep Learning',
-        install_requires=setup_requires,
+        long_description=long_description,
+        long_description_content_type="text/markdown",
+        author_email="Paddle-better@baidu.com",
+        maintainer="PaddlePaddle",
+        maintainer_email="Paddle-better@baidu.com",
+        project_urls = {
+            'Homepage': 'https://www.paddlepaddle.org.cn/',
+            'Downloads': 'https://github.com/paddlepaddle/paddle'
+        }, 
+        license='Apache Software License',
         packages=packages,
+        install_requires=setup_requires,
         ext_modules=ext_modules,
         package_data=package_data,
         package_dir=package_dir,
@@ -515,7 +533,21 @@ with redirect_stdout():
             'console_scripts': [
                 'fleetrun = paddle.distributed.fleet.launch:launch'
             ]
-        }
+        },
+        classifiers=[
+            'Development Status :: 5 - Production/Stable',
+            'Operating System :: OS Independent',
+            'Intended Audience :: Developers',
+            'Intended Audience :: Education',
+            'Intended Audience :: Science/Research',
+            'License :: OSI Approved :: Apache Software License',
+            'Programming Language :: C++',
+            'Programming Language :: Python :: 2.7',
+            'Programming Language :: Python :: 3.5',
+            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
+            'Programming Language :: Python :: 3.8',
+        ],
     )
 
 # As there are a lot of files in purelib which causes many logs,
