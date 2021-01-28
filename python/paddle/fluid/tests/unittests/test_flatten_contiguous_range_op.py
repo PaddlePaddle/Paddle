@@ -235,6 +235,7 @@ class TestDygraphFlattenPython(unittest.TestCase):
 
         res_shape = test_Negative()
         self.assertTrue((2, 3, 16) == res_shape)
+        paddle.enable_static()
 
 
 class TestDygraphInplaceFlattenPython(TestDygraphFlattenPython):
