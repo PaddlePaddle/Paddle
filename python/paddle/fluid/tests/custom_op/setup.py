@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import six
 from distutils.sysconfig import get_python_lib
 from setuptools import setup
-from cpp_extension import CppExtension, CUDAExtension, BuildExtension
+from cpp_extension import CppExtension, CUDAExtension, BuildExtension, IS_WINDOWS
 from setuptools import Extension
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -28,6 +29,11 @@ paddle_includes = [
     os.path.join(site_packages_path, 'paddle/include/third_party')
 ]
 
+# TODO(Aurelius84): Memory layout is different if build paddle with PADDLE_WITH_MKLDNN=ON,
+# and will lead to ABI problem on Coverage CI. We will handle it in next PR.
+extra_compile_args = ['-DPADDLE_WITH_MKLDNN'
+                      ] if six.PY2 and not IS_WINDOWS else []
+
 setup(
     name='relu_op_shared',
     ext_modules=[
@@ -35,6 +41,7 @@ setup(
             name='librelu2_op_from_setup',
             sources=['relu_op.cc', 'relu_op.cu'],
             include_dirs=paddle_includes,
+            extra_compile_args=extra_compile_args,
             output_dir=file_dir)
     ],
     cmdclass={
