@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/layer_norm_fuse_pass.h"
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/layer_norm_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
@@ -25,6 +28,37 @@ namespace ir {
 
 // cpplint complaints (wrong!) for not included <string> header in below line.
 using string::PrettyLogDetail;  // NOLINT
+
+namespace {
+void validateReduceOpAttrs(const Node* node, const std::string& name) {
+  const auto* op = node->Op();
+  if (op->HasAttr("dim")) {
+    auto dims = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
+    PADDLE_ENFORCE_EQ(dims.size(), 1, platform::errors::PreconditionNotMet(
+                                          "The LayerNorm fusion ", name,
+                                          " reduction must happen over only "
+                                          "single dimension."));
+    PADDLE_ENFORCE_EQ(dims.front(), -1, platform::errors::PreconditionNotMet(
+                                            "The LayerNorm fusion ", name,
+                                            " reduction must happen over last "
+                                            "dimension."));
+  }
+  if (op->HasAttr("reduce_all")) {
+    PADDLE_ENFORCE(!BOOST_GET_CONST(bool, op->GetAttr("reduce_all")),
+                   platform::errors::PreconditionNotMet(
+                       "The LayerNorm fusion ", name,
+                       " reduction must have "
+                       "\'reduce_all\' attribute set to false."));
+  }
+  if (op->HasAttr("keep_dim")) {
+    PADDLE_ENFORCE(BOOST_GET_CONST(bool, op->GetAttr("keep_dim")),
+                   platform::errors::PreconditionNotMet(
+                       "The LayerNorm fusion ", name,
+                       " reduction must have "
+                       "\'keep_dim\' attribute set to true."));
+  }
+}
+}  // namespace
 
 void LayerNormFusePass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
@@ -119,6 +153,9 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
                           "and gamma tensors shapes' must be equal to the last "
                           "input's dimension size."));
 
+    validateReduceOpAttrs(x_mean, "input mean");
+    validateReduceOpAttrs(std_dev, "std_dev mean");
+
     // ------------------ op creation and placement ---------------------------
 
     OpDesc ln_op_desc;
@@ -160,9 +197,14 @@ REGISTER_PASS_CAPABILITY(layer_norm_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .GE("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .GE("elementwise_div", 0)
+            .LE("elementwise_div", 1)
             .GE("elementwise_mul", 0)
+            .LE("elementwise_mul", 1)
             .GE("elementwise_pow", 0)
+            .LE("elementwise_pow", 1)
             .GE("elementwise_sub", 0)
-            .GE("reduce_mean", 0)
-            .GE("sqrt", 0));
+            .LE("elementwise_sub", 1)
+            .EQ("reduce_mean", 0)
+            .EQ("sqrt", 0));
