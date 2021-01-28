@@ -46,7 +46,6 @@ class AMPOptimizer(MetaOptimizerBase):
         amp_lists = mixed_precision.AutoMixedPrecisionLists(
             custom_white_list, custom_black_list, custom_black_varnames)
 
-        print('use_fp16_guard={}'.format(config['use_fp16_guard']))
         self.wrapped_opt = mixed_precision.decorate(
             self.inner_opt, amp_lists, config['init_loss_scaling'],
             config['incr_every_n_steps'], config['decr_every_n_nan_or_inf'],
