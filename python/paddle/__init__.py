@@ -110,6 +110,7 @@ from .tensor.manipulation import broadcast_to  #DEFINE_ALIAS
 from .tensor.manipulation import expand_as  #DEFINE_ALIAS
 from .tensor.manipulation import tile  #DEFINE_ALIAS
 from .tensor.manipulation import flatten  #DEFINE_ALIAS
+from .tensor.manipulation import flatten_  #DEFINE_ALIAS
 from .tensor.manipulation import gather  #DEFINE_ALIAS
 from .tensor.manipulation import gather_nd  #DEFINE_ALIAS
 from .tensor.manipulation import reshape  #DEFINE_ALIAS

@@ -41,6 +41,7 @@ __all__ = [
     'broadcast_to',
     'expand_as',
     'flatten',
+    'flatten_',
     'gather',
     'gather_nd',
     'reshape',
@@ -277,6 +278,36 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         attrs={"start_axis": start_axis,
                "stop_axis": stop_axis})
     return out
+
+
+@inplace_apis_in_dygraph_only
+def flatten_(x, start_axis=0, stop_axis=-1, name=None):
+    """
+    Inplace version of ``flatten`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_flatten`.
+    """
+    if not (isinstance(x, Variable)):
+        raise ValueError("The input x should be a Tensor")
+
+    x_dim = len(x.shape)
+    if not (isinstance(start_axis, int)) or (
+            start_axis > x_dim - 1) or start_axis < -x_dim:
+        raise ValueError(
+            "The start_axis should be a int, and in range [-rank(x), rank(x))")
+    if not (isinstance(stop_axis, int)) or (
+            stop_axis > x_dim - 1) or stop_axis < -x_dim:
+        raise ValueError(
+            "The stop_axis should be a int, and in range [-rank(x), rank(x))")
+    if start_axis < 0:
+        start_axis = start_axis + x_dim
+    if stop_axis < 0:
+        stop_axis = stop_axis + x_dim
+    if start_axis > stop_axis:
+        raise ValueError("The stop_axis should be larger than stat_axis")
+
+    dy_out, _ = core.ops.flatten_contiguous_range_(x, 'start_axis', start_axis,
+                                                   'stop_axis', stop_axis)
+    return dy_out
 
 
 def roll(x, shifts, axis=None, name=None):

@@ -248,6 +248,14 @@ class TestDygraphInplaceReshape(TestDygraphInplace):
         return paddle.reshape_(var, [-1])
 
 
+class TestDygraphInplaceFlatten(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.flatten(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.flatten_(var)
+
+
 class TestDygraphInplaceScatter(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.array([[1, 1], [2, 2], [3, 3]])
