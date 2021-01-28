@@ -1,14 +1,3 @@
-<p align="center">
-<img align="center" src="./logo.png", width=1600>
-<p>
-
-
-
-
-
-
-This page is only for test.
-
 
 --------------------------------------------------------------------------------
 
