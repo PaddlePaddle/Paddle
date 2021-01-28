@@ -70,7 +70,7 @@ class BuildExtension(build_ext, object):
 
     def initialize_options(self):
         super(BuildExtension, self).initialize_options()
-        # update options here.
+        # update options here
         # FIXME(Aurelius84): for unittest
         self.build_lib = './'
 
