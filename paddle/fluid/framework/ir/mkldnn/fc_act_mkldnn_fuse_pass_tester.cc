@@ -202,19 +202,22 @@ TEST(FuseFCActOneDNNPass, FuseWithSigmoid) {
 }
 
 TEST(FuseFCActOneDNNPass, FuseWithHardSwish) {
-  auto prog = BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
-  CreateOp(&prog, "fc",
-           {
-               {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
-           },
-           {{"Out", "fc_y"}});
-  CreateOp(&prog, "hard_swish", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+  auto prog =
+      test::BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
+  test::CreateOp(&prog, "fc",
+                 {
+                     {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+                 },
+                 {{"Out", "fc_y"}});
+  test::CreateOp(&prog, "hard_swish", {{"Input", "fc_y"}}, {{"Out", "act_y"}},
+                 false);
 
   Graph graph(prog);
   constexpr int removed_nodes_count = 2;
 
-  RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count);
-  AssertOpsCount(graph, {{"fc", 1}, {"hard_swish", 0}});
+  EXPECT_TRUE(test::RunPassAndAssert(&graph, "fc_act_mkldnn_fuse_pass", "x",
+                                     "act_y", removed_nodes_count));
+  EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 1}, {"hard_swish", 0}}));
 
   for (const auto* node : graph.Nodes()) {
     if (node->IsOp() && node->Op()->Type() == "fc") {
@@ -224,10 +227,11 @@ TEST(FuseFCActOneDNNPass, FuseWithHardSwish) {
       ASSERT_TRUE(op->HasAttr("activation_type"));
       auto act_type =
           BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
-      EXPECT_TRUE(act_type.compare("hard_swish") == 0);
+      EXPECT_EQ(act_type.compare("hard_swish"), 0);
     }
   }
-  
+}
+
 TEST(FuseFCActOneDNNPass, pass_op_version_check) {
   ASSERT_TRUE(
       paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
