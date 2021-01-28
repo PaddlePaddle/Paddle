@@ -824,22 +824,25 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
 
   auto *bn_mean_out_var = pattern->NewNode(bn_mean_out_repr())
                               ->AsOutput()
-                              ->assert_is_op_output("batch_norm", "MeanOut");
+                              ->assert_is_op_output("batch_norm", "MeanOut")
+                              ->assert_has_n_outputs(0);
 
   auto *bn_variance_out_var =
       pattern->NewNode(bn_variance_out_repr())
           ->AsOutput()
-          ->assert_is_op_output("batch_norm", "VarianceOut");
+          ->assert_is_op_output("batch_norm", "VarianceOut")
+          ->assert_has_n_outputs(0);
 
-  auto *bn_saved_mean_var =
-      pattern->NewNode(bn_saved_mean_repr())
-          ->AsOutput()
-          ->assert_is_op_output("batch_norm", "SavedMean");
+  auto *bn_saved_mean_var = pattern->NewNode(bn_saved_mean_repr())
+                                ->AsOutput()
+                                ->assert_is_op_output("batch_norm", "SavedMean")
+                                ->assert_has_n_outputs(0);
 
   auto *bn_saved_variance_var =
       pattern->NewNode(bn_saved_variance_repr())
           ->AsOutput()
-          ->assert_is_op_output("batch_norm", "SavedVariance");
+          ->assert_is_op_output("batch_norm", "SavedVariance")
+          ->assert_has_n_outputs(0);
 
   conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
 

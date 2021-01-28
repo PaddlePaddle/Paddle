@@ -44,6 +44,8 @@ inline const char* miopenGetErrorString(miopenStatus_t status) {
       return "MIOPEN_STATUS_INTERNAL_ERROR";
     case miopenStatusNotImplemented:
       return "MIOPEN_STATUS_NOT_IMPLEMENTED";
+    case miopenStatusUnsupportedOp:
+      return "MIOPEN_STATUS_UNSUPPORTED_OP";
     case miopenStatusUnknownError:
     default:
       return "MIOPEN_STATUS_UNKNOWN_ERROR";
@@ -70,6 +72,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
  * include all needed miopen functions in HPPL
  **/
 #define MIOPEN_DNN_ROUTINE_EACH(__macro)                  \
+  __macro(miopenGetVersion);                              \
   __macro(miopenSet4dTensorDescriptor);                   \
   __macro(miopenSetTensorDescriptor);                     \
   __macro(miopenInitConvolutionNdDescriptor);             \
@@ -80,6 +83,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenGetTensorDescriptor);                     \
   __macro(miopenCreateTensorDescriptor);                  \
   __macro(miopenDestroyTensorDescriptor);                 \
+  __macro(miopenGetTensorDescriptorSize);                 \
   __macro(miopenSet2dPoolingDescriptor);                  \
   __macro(miopenGet2dPoolingDescriptor);                  \
   __macro(miopenGetPoolingNdForwardOutputDim);            \
@@ -109,9 +113,12 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenSoftmaxBackward);                         \
   __macro(miopenSoftmaxForward);                          \
   __macro(miopenCreateDropoutDescriptor);                 \
+  __macro(miopenDestroyDropoutDescriptor);                \
+  __macro(miopenRestoreDropoutDescriptor);                \
   __macro(miopenDropoutGetStatesSize);                    \
   __macro(miopenSetDropoutDescriptor);                    \
   __macro(miopenCreateRNNDescriptor);                     \
+  __macro(miopenDestroyRNNDescriptor);                    \
   __macro(miopenSetRNNDescriptor);                        \
   __macro(miopenGetRNNParamsSize);                        \
   __macro(miopenGetRNNWorkspaceSize);                     \
@@ -120,8 +127,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenRNNBackwardData);                         \
   __macro(miopenRNNBackwardWeights);                      \
   __macro(miopenRNNForwardInference);                     \
-  __macro(miopenDestroyDropoutDescriptor);                \
-  __macro(miopenDestroyRNNDescriptor);
+  __macro(miopenGetTensorNumBytes);
 
 MIOPEN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 
