@@ -115,7 +115,6 @@ class AscendIRParser(object):
             return []
 
         graph = core.GEGraph(graph_name)
-        print("begin parse %s" % (graph_name))
 
         ge_in_operator, self.var2geop = self._construct_input_map(input_varlist)
 
