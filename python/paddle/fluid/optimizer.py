@@ -4515,9 +4515,10 @@ class PipelineOptimizer(object):
             #grad_fp16_name = self._append_grad_suffix(param_name + ".cast_fp16")
             if not main_block.has_var(grad_name): continue
             # For amp, we set the fp16 param_grad as persistable
-            #use_fp16_grad = False
-            #if main_block.has_var(grad_fp16_name):
-            #    use_fp16_grad = True
+            use_fp16_grad = False
+            if main_block.has_var(grad_fp16_name):
+                use_fp16_grad = True
+                continue
             #    grad_fp16_var = main_block.vars[grad_fp16_name]
             grad_var = main_block.vars[grad_name]
             grad_var.persistable = True
