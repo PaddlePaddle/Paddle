@@ -130,7 +130,7 @@ class AscendIRParser(object):
                 name = e.name
             ge_out_operator.append(self.var2geop[name])
 
-        # (Debug) If you want to print back prop vars, append/assign the varname in ge_out_operator here, such as: 
+        # (Debug) If you want to print back prop vars, append/assign the varname in ge_out_operator here, such as:
         # if graph_name == "main":
         #     ge_out_operator.append(self.var2geop["reduce_sum_0.tmp_0@GRAD"])
 
@@ -233,6 +233,7 @@ class AscendOptimizer(Optimizer):
         self.parser = AscendIRParser()
 
         input_varlist = self._get_input_varlist(main_block.program)
+
         startup_graph, main_graph = self.parser.parse_program(
             startup_program, main_block.program, input_varlist, self.fetch_list)
 
