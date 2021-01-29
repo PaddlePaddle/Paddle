@@ -1206,8 +1206,11 @@ def _get_optimize_program(main_program, compiled_config, inner_opt):
 
             if optimize_op.input("Param")[0] == "Param":
                 for input_name in optimize_op.input_names:
-                    _main.global_block()._rename_var(
-                        optimize_op.input(input_name)[0], input_name)
+                    origin_varname = optimize_op.input(input_name)[0]
+                    _main.global_block()._rename_var(origin_varname, input_name)
+                    if _startup.global_block().has_var(origin_varname):
+                        _startup.global_block()._rename_var(origin_varname,
+                                                            input_name)
 
     return _main, _startup, feed_var, fetch_var
 
@@ -1218,8 +1221,8 @@ def _add_optimize_table_pass(main_program, compiled_config, inner_opt):
         main_program, compiled_config, inner_opt)
 
     compiled_config.optimize_info = {
-        "feed_var_names": feed_var_name,
-        "fetch_var_names": fetch_var_name,
+        "feed_var_name": "feed_var_name",
+        "fetch_var_name": "fetch_var_name",
         "main_program": _main,
         "startup_program": _startup,
         "class": "OptimizeTable"

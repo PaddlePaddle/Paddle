@@ -89,7 +89,9 @@ int32_t CommonDenseTable::initialize_optimizer() {
   } else if (name == "sum") {
     optimizer_ = std::make_shared<DSUM>(common, &values_);
   } else {
-    VLOG(0) << "init optimizer failed";
+    optimizer_ =
+        std::make_shared<DGeneralOptimizer>(sub_program_, _config, &values_);
+    optimizer_->set_global_lr(_global_lr);
   }
   VLOG(0) << "init optimizer " << name << " done";
   return 0;
@@ -135,6 +137,52 @@ int32_t CommonDenseTable::push_dense(const float* values, size_t num) {
   }
   return 0;
 }
+
+// int32_t CommonDenseTable::_run_optimize_program(const float* push_values,
+//                                                 size_t num) {
+//   FLAGS_eager_delete_tensor_gb = -1;
+//   auto blas = GetBlas<float>();
+//   auto* grad_tensor = scope_->Var("Grad")->GetMutable<LoDTensor>();
+//   grad_tensor->Resize(framework::make_ddim({1, param_dim_}));
+//   auto* grad_data = grad_tensor->mutable_data<float>(place_);
+//   blas.VCOPY(param_dim_, push_values, grad_data);
+
+//   auto common = _config.common();
+//   int size = static_cast<int>(common.params().size());
+//   for (int x = 0; x < size; ++x) {
+//     auto& varname = common.params()[x];
+//     auto& dim = common.dims()[x];
+//     auto* var_tensor = scope_->Var(varname)->GetMutable<LoDTensor>();
+//     if (varname == "LearningRate") {
+//       float* lr_data = var_tensor->mutable_data<float>(place_);
+//       lr_data[0] = *(_global_lr);
+//     } else {
+//       var_tensor->Resize(framework::make_ddim({1, param_dim_}));
+//       auto* var_data = var_tensor->mutable_data<float>(place_);
+//       float* param_data = values_[x].data();
+//       blas.VCOPY(param_dim_, param_data, var_data);
+//     }
+//   }
+
+//   executor_->RunPreparedContext(exec_context_.get(), scope_, false, false);
+
+//   std::stringstream ss;
+//   ss << "push dense optimize: grad: " << grad_data[0] << "; ";
+//   for (int x = 0; x < size; ++x) {
+//     auto& varname = common.params()[x];
+//     auto& dim = common.dims()[x];
+//     auto* var_tensor = scope_->FindVar(varname)->GetMutable<LoDTensor>();
+//     auto* var_data = var_tensor->mutable_data<float>(place_);
+//     ss << varname << ": " << var_data[0] << "; ";
+//     if (varname == "LearningRate") {
+//       continue;
+//     } else {
+//       blas.VCOPY(param_dim_, var_data, values_[x].data());
+//     }
+//   }
+//   ss << "\n";
+//   VLOG(0) << ss.str();
+// }
 
 int32_t CommonDenseTable::_push_dense(const float* values, size_t num) {
   PADDLE_ENFORCE_GE(
