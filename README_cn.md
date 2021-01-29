@@ -25,13 +25,10 @@
 
 ### 安装最新稳定版本:
 ```
-# Linux CPU
+# CPU
 pip install paddlepaddle
-# Linux GPU cuda10cudnn7
+# GPU
 pip install paddlepaddle-gpu
-# Linux GPU cuda9cudnn7
-pip install paddlepaddle-gpu==2.0.0.post110
-
 ```
 更多安装信息详见官网 [安装说明](https://www.paddlepaddle.org.cn/install/quick)
 
