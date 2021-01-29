@@ -1,26 +1,11 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-# 
-#     http://www.apache.org/licenses/LICENSE-2.0
-# 
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import os
+import numpy as np
+from collections import namedtuple
+
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Optimizer
 import paddle.fluid.core as core
-import numpy as np
-from . import ascend_parser
-from paddle.distributed import fleet
-import hccl.manage.api as hccl
-from collections import namedtuple
+from ascend import ascend_parser
 
 HcomGroupConfig = namedtuple('HcomGroupConfig', ['name', 'nranks', 'rank_ids'])
 
@@ -29,25 +14,27 @@ class AscendIRParser(object):
         self.graph_idx = 0
         self.hcom_endpoints = {}
         self.groups_to_create = []
-
+        
     def _construct_input_map(self, input_varlist):
         ret_map = {}
         ge_in_operator = []
         for id, var in enumerate(input_varlist):
             if var.is_data: # input data
-                ge_input = core.GEOperatorFactory.create_operator(var.name, "Data").set_attr_int32("index", id)
+                print("_construct_input_map for %d input var[%s]" % (id, var.name))
+                ge_input = core.GEOperatorFactory.create_operator(
+                    var.name, "Data").set_attr_int32("index", id)
                 ret_map[var.name] = ge_input
                 ge_in_operator.append(ge_input)
-            else: # param, learning ...
+            else: # param
+                print("_construct_input_map for %d param var[%s]" % (id, var.name))
                 ge_input = core.GEOperatorFactory.create_operator(var.name, "Variable")
-                ge_input.update_output_desc("y", core.GETensorDesc(core.GEShape(var.shape), core.GEFormat.FORMAT_ND, core.GEDataType.DT_FLOAT))
+                ge_input.update_output_desc("y", 
+                                                core.GETensorDesc(
+                                                    core.GEShape(var.shape),
+                                                    core.GEFormat.FORMAT_ND, 
+                                                    core.GEDataType.DT_FLOAT))
                 ret_map[var.name] = ge_input
         return ge_in_operator, ret_map
-
-    def _endpoint_to_world_rank_id(self, endpoint):
-        world_endpoints = fleet.worker_endpoints()
-        assert endpoint in world_endpoints, "endpoint (%s) not in worker_endpoints (%s) " % (endpoint, fleet.world_device_ids())
-        return world_endpoints.index(endpoint)
 
     def parse_op(self, op):
         if op.type == 'c_gen_nccl_id':
@@ -75,12 +62,12 @@ class AscendIRParser(object):
             self.groups_to_create.append(HcomGroupConfig(name=group_name, nranks=nranks, rank_ids=global_rank_ids))
             print("append to create group: %s, with rank_ids: %s" % (group_name, global_rank_ids))
         elif op.type in ascend_parser.registerd_op:
-            print("Op[%s] has been registered, begin to parse it" % (op.type))
+            print("op[%s] has been registered" % (op.type))
             op_parser = self.parser_factory.create_parse(ascend_parser.registerd_op[op.type])
             op_parser.apply(op)
         else:
-            print("Op[%s] has not been registered, so we have to skip it" % (op.type))
-
+            print("op[%s] has not been registered, parse failed..." % (op.type))
+            
     def _parse_program(self, graph_name, program, input_varlist=[], fetch_list=[]):
         begin_graph_idx = self.graph_idx
         ge_in_operator = []
@@ -89,47 +76,48 @@ class AscendIRParser(object):
 
         block = program.global_block()
         if len(block.ops) == 0:
-            print("There is no ops in program %s" % (graph_name))
+            print("there is no ops in program %s" % (graph_name))
             return []
 
         graph = core.GEGraph(graph_name)
+        print("begin parse %s" % (graph_name)) 
 
         ge_in_operator, self.var2geop = self._construct_input_map(input_varlist)
-
+        
         self.parser_factory = ascend_parser.AscendParserFactory(graph, self.var2geop)
         for i, curop in list(enumerate(block.ops)):
             self.parse_op(curop)
-
-        # Set fetch_var for GE
+           
         for e in fetch_list:
             name = e
             if not isinstance(e, str):
-                name = e.name
+                try:
+                    name = e.name
+                except AttributeError:
+                    print(e)
             ge_out_operator.append(self.var2geop[name])
-
-        # (Debug) If you want to print back prop vars, append/assign the varname in ge_out_operator here, such as: 
-        # if graph_name == "main":
-        #     ge_out_operator.append(self.var2geop["reduce_sum_0.tmp_0@GRAD"])
-
-        # Add ops that may be input of a graph, such as const.
+         
         for varname, geop in self.var2geop.items():
             if varname.startswith("geinput"):
                 ge_in_operator.append(geop)
-
+        #print("ge_in_operator: ", ge_in_operator)
+        #print("ge_out_operator: ", ge_out_operator)       
         graph.set_inputs(ge_in_operator).set_outputs(ge_out_operator)
 
-        # Remove ops of origin program
         op_num = len(block.ops)
         for i in range(op_num - 1, -1, -1):
             block._remove_op(i)
-
+        
+        #if self.graph_idx == 0: # hack for startup program
+        #    fetch_list = [block.var("learning_rate_0")]
+        
         input_varlist = [var for var in input_varlist if var.is_data]
-
+        
         block.append_op(
             type="ascend_trigger",
             inputs={"FeedList": input_varlist},
             outputs={"FetchList": fetch_list},
-            attrs={'graph_idx': self.graph_idx})
+            attrs={'graph_idx': begin_graph_idx + i})
         self.graph_idx += 1
         return graph
 
@@ -145,7 +133,7 @@ class AscendOptimizer(Optimizer):
     def __init__(self, optimizer, fetch_list=[]):
         self.inner_opt = optimizer
         self.fetch_list = fetch_list
-
+        
     def __del__(self):
         core.ge_finalize()
 
@@ -177,42 +165,24 @@ class AscendOptimizer(Optimizer):
             minimized = self.inner_opt.minimize(loss, startup_program=startup_program)
 
         self.ascend_instance = core.AscendInstance()
-
-        from paddle.distributed import fleet
-        if auto_dp and fleet.worker_num() > 1:
-            from paddle.fluid.transpiler import ascend_transpiler
-            t = ascend_transpiler.AscendTranspiler(startup_program, loss.block.program)
-            t.transpile()
-            print(loss.block.program)
-
+        
         # Config about Graph Engine can be found in https://support.huaweicloud.com/
-        config = {
-            "ge.exec.deviceId": str(fleet.local_device_ids()),
-            "ge.graphRunMode": "1",
-            "ge.exec.precision_mode": "must_keep_origin_dtype",
-            # if multi mode
-            "ge.exec.rankTableFile": os.getenv("RANK_TABLE_FILE"),
-            "ge.exec.rankId": str(fleet.worker_index()),
-            "ge.exec.isUseHcom": "1",
-            "ge.exec.deployMode": "0",
-        }
+        config = {"ge.exec.deviceId": "0", "ge.graphRunMode": "1", "ge.exec.precision_mode": "must_keep_origin_dtype"} # "allow_mix_precision"}
         print("ge_initialize config:", config)
         core.ge_initialize(config)
 
         # Init Session
-        self.ascend_instance.init_global_resources()
-
+        self.ascend_instance.init_global_resources()  # add whatever parameters here to init
+        
         main_block = loss.block
         self.parser = AscendIRParser()
 
         input_varlist = self._get_input_varlist(main_block.program)
+        #print("input_varlist: ", input_varlist)
+
         startup_graph, main_graph = self.parser.parse_program(
             startup_program, main_block.program, input_varlist, self.fetch_list)
-
-        for cfg in self.parser.groups_to_create:
-            hccl.create_group(cfg.name, cfg.nranks, cfg.rank_ids)
-            print("create group (%s), nranks: %d, rank_ids: %s" % (cfg.name, cfg.nranks, cfg.rank_ids))
-
+        
         self.ascend_instance.add_ascend_subgraph(0, startup_graph)
         self.ascend_instance.add_ascend_subgraph(1, main_graph)
 
