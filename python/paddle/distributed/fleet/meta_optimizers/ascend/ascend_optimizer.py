@@ -229,7 +229,6 @@ class AscendOptimizer(Optimizer):
         self.parser = AscendIRParser()
 
         input_varlist = self._get_input_varlist(main_block.program)
-        #print("input_varlist: ", input_varlist)
 
         startup_graph, main_graph = self.parser.parse_program(
             startup_program, main_block.program, input_varlist, self.fetch_list)
