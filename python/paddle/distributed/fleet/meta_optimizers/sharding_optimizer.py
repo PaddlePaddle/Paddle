@@ -152,6 +152,14 @@ class ShardingOptimizer(MetaOptimizerBase):
                   'w') as f:
             f.writelines(str(main_program))
 
+        # crop ops
+        for idx, op in reversed(list(enumerate(main_block.ops))):
+            if op.type == 'fill_constant' and int(op.attr('op_role')) == 16:
+                out_name = op.output_arg_names()[0]
+                if not 'GRAD' in out_name: continue
+                if not main_block.has_var(out_name): continue
+                main_block._remove_op(idx)
+
         # check op dependecy
         check_broadcast(main_block)
         #check_allreduce_sum(main_block, self._shard, self.dp_ring_id)
