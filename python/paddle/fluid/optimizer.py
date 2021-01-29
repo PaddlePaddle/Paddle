@@ -4592,7 +4592,8 @@ class PipelineOptimizer(object):
                         param_name = op_role_var[i]
                         fp32_grad_var_name = param_name + "@GRAD"
                         fp32_grad_var = block.vars[grad_name]
-                        cast_grad_var_name = unique_name.generate(grad_name)
+                        cast_grad_var_name = unique_name.generate(
+                            fp32_grad_var_name)
                         cast_var = self._create_var(block, grad_var,
                                                     cast_grad_var_name)
                         cast_var.persistable = False
