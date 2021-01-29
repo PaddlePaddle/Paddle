@@ -4512,24 +4512,24 @@ class PipelineOptimizer(object):
             device = self._param_device_map[param_name]
             if device != dev_spec: continue
             grad_name = self._append_grad_suffix(param_name)
-            grad_fp16_name = self._append_grad_suffix(param_name + ".cast_fp16")
+            #grad_fp16_name = self._append_grad_suffix(param_name + ".cast_fp16")
             if not main_block.has_var(grad_name): continue
             # For amp, we set the fp16 param_grad as persistable
-            use_fp16_grad = False
-            if main_block.has_var(grad_fp16_name):
-                use_fp16_grad = True
-                grad_fp16_var = main_block.vars[grad_fp16_name]
+            #use_fp16_grad = False
+            #if main_block.has_var(grad_fp16_name):
+            #    use_fp16_grad = True
+            #    grad_fp16_var = main_block.vars[grad_fp16_name]
             grad_var = main_block.vars[grad_name]
             grad_var.persistable = True
-            real_grad_var = grad_fp16_var if use_fp16_grad else grad_var
+            #real_grad_var = grad_fp16_var if use_fp16_grad else grad_var
             main_block._insert_op(
                 index=0,
                 type='fill_constant',
                 inputs={},
-                outputs={'Out': [real_grad_var]},
+                outputs={'Out': [grad_var]},
                 attrs={
-                    'shape': real_grad_var.shape,
-                    'dtype': real_grad_var.dtype,
+                    'shape': grad_var.shape,
+                    'dtype': grad_var.dtype,
                     'value': float(0),
                     self._op_device_key: device,
                     # a trick to run this op once per mini-batch
@@ -4587,6 +4587,38 @@ class PipelineOptimizer(object):
                             self._op_role_var_key: op_role_var
                         })
                     offset += 1
+                    if 'cast_fp16' in grad_name:
+                        param_name = op_role_var[i]
+                        fp32_grad_var_name = param_name + "@GRAD"
+                        fp32_grad_var = block.vars[grad_name]
+                        cast_grad_var_name = unique_name.generate(grad_name)
+                        cast_var = self._create_var(block, grad_var,
+                                                    new_grad_var_name)
+                        new_var.persistable = False
+                        block._insert_op(
+                            index=offset + 1,
+                            type='cast',
+                            inputs={'X': fp32_grad_var},
+                            outputs={'Out': cast_var},
+                            attrs={
+                                'in_dtype': fp32_grad_var.dtype,
+                                'out_dtype': cast_var.dtype,
+                                self._op_device_key: device,
+                                self._op_role_key: self._op_role.Backward,
+                                self._op_role_var_key: op_role_var
+                            })
+                        offset += 1
+                        block._insert_op(
+                            index=offset + 1,
+                            type='sum',
+                            inputs={'X': [grad_var, cast_var]},
+                            outputs={'Out': grad_var},
+                            attrs={
+                                self._op_device_key: device,
+                                self._op_role_key: self._op_role.Backward,
+                                self._op_role_var_key: op_role_var
+                            })
+                        offset += 1
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
