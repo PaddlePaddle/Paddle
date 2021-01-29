@@ -45,7 +45,7 @@ void SectionWorker::TrainFiles() {
   VLOG(5) << "begin section_worker TrainFiles";
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
-  std::unique_ptr<GarbageCollector> gc;
+  std::unique_ptr<GarbageCollector> gc = nullptr;
   auto unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
   if (max_memory_size >= 0) {
 #ifdef PADDLE_WITH_CUDA

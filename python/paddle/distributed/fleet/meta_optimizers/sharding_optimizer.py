@@ -108,7 +108,10 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.use_pipeline:
             startup_program = startup_program._pipeline_opt['startup_program']
             #main_program = main_program._pipeline_opt['section_program']['program']
+            print("pp_rank:", pp_rank)
             main_program = program_list[pp_rank]['program']
+            with open("main_%d" % self.role_maker._worker_index(), 'w') as f:
+                f.writelines(str(main_program))
             main_block = main_program.global_block()
             new_params_grads = []
             for param, grad in params_grads:
@@ -122,9 +125,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         startup_block = startup_program.global_block()
         self._main_program = main_block.program
         self._startup_program = startup_program
-        with open("start_before_sharding_%d" % self.role_maker._worker_index(),
-                  'w') as f:
-            f.writelines(str(startup_block.program))
 
         # step1: set_up
         self._set_up(params_grads)

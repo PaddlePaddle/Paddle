@@ -3791,32 +3791,34 @@ class PipelineOptimizer(object):
 
     def _create_vars(self, block, ori_block):
         # Create vars for block, copied from main_program's global block
-        extra_index = None
+        # extra_index = 0
         used_var_set = set()
+        OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
         for op_idx in range(block.desc.op_size()):
+            should_insert = False
             op = block.ops[op_idx]
             # For ops process vars on all devices, remove vars not in this block
             reserved_x = []
+            if op.type == 'reduce_any' and self._is_optimize_op(op):
+                should_insert = True
             if op.type == 'concat' and self._is_optimize_op(op):
                 for input_name in op.desc.input("X"):
                     if block._find_var_recursive(input_name):
                         reserved_x.append(input_name)
                 op.desc.set_input('X', reserved_x)
-            reserved_x = []
+                # should_insert = True
             if op.type == 'update_loss_scaling':
                 for input_name in op.desc.input("X"):
                     if block._find_var_recursive(input_name):
                         reserved_x.append(input_name)
                 op.desc.set_input('X', reserved_x)
                 op.desc.set_output('Out', reserved_x)
-            reserved_x = []
             if op.type == 'sum' and self._is_gradient_clip_op(op):
                 for input_name in op.desc.input("X"):
                     if block._find_var_recursive(input_name):
                         reserved_x.append(input_name)
                 op.desc.set_input('X', reserved_x)
-                extra_index = op_idx
-
+                should_insert = True
             op_desc = op.desc
             vars = op_desc.input_arg_names() + op_desc.output_arg_names()
             for var in vars:
@@ -3828,12 +3830,85 @@ class PipelineOptimizer(object):
                 if block._find_var_recursive(str(var)): continue
                 source_var = ori_block._var_recursive(str(var))
                 if source_var.type == core.VarDesc.VarType.READER:
-                    block.create_var(
+                    dest_var = block.create_var(
                         name=var,
                         type=core.VarDesc.VarType.READER,
                         persistable=source_var.persistable)
                 else:
-                    block._clone_variable(source_var, False)
+                    dest_var = block._clone_variable(source_var, False)
+                dest_var.stop_gradient = source_var.stop_gradient
+
+            if not should_insert: continue
+            out_name = op.desc.output_arg_names()[0]
+            out_var = block.var(out_name)
+            offset = 0
+            if op.type == "reduce_any":
+                temp_var = block.create_var(
+                    name=out_name + "_cast_int32", shape=[1], dtype="int32")
+                block._insert_op(
+                    # op_idx + 1 + extra_index,
+                    op_idx + 1 + offset,
+                    type='cast',
+                    inputs={'X': out_var},
+                    outputs={'Out': temp_var},
+                    attrs={
+                        'in_dtype': out_var.dtype,
+                        'out_dtype': temp_var.dtype,
+                        OP_ROLE_KEY:
+                        core.op_proto_and_checker_maker.OpRole.Optimize
+                    })
+                offset += 1
+                # extra_index += 1
+            block._insert_op(
+                # op_idx + 1 + extra_index,
+                op_idx + 1 + offset,
+                type='c_allreduce_sum',
+                inputs={'X': temp_var if op.type == "reduce_any" else out_var},
+                outputs={
+                    'Out': temp_var if op.type == "reduce_any" else out_var
+                },
+                attrs={
+                    'ring_id': self.ring_id,
+                    OP_ROLE_KEY:
+                    core.op_proto_and_checker_maker.OpRole.Optimize,
+                    'use_calc_stream': True
+                })
+            offset += 1
+            # extra_index += 1
+            if op.type == "reduce_any":
+                block._insert_op(
+                    # op_idx + 1 + extra_index,
+                    op_idx + 1 + offset,
+                    type='cast',
+                    inputs={'X': temp_var},
+                    outputs={'Out': out_var},
+                    attrs={
+                        'in_dtype': temp_var.dtype,
+                        'out_dtype': out_var.dtype,
+                        OP_ROLE_KEY:
+                        core.op_proto_and_checker_maker.OpRole.Optimize
+                    })
+                # extra_index += 1
+
+    def _is_loss_grad_op(self, op):
+
+        op_desc = op.desc
+        vars = op_desc.input_arg_names() + op_desc.output_arg_names()
+        for var in vars:
+            # a var whose name contains "blocking_queue" 
+            # only exists in startup program 
+            if var in used_var_set or "_blocking_queue" in var:
+                continue
+            used_var_set.add(var)
+            if block._find_var_recursive(str(var)): continue
+            source_var = ori_block._var_recursive(str(var))
+            if source_var.type == core.VarDesc.VarType.READER:
+                block.create_var(
+                    name=var,
+                    type=core.VarDesc.VarType.READER,
+                    persistable=source_var.persistable)
+            else:
+                block._clone_variable(source_var, False)
         if extra_index:
             sum_op = block.ops[extra_index]
             OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -4028,9 +4103,10 @@ class PipelineOptimizer(object):
             dtype=ref_var.dtype,
             type=ref_var.type,
             lod_level=ref_var.lod_level,
-            persistable=False,
-            is_data=False,
+            persistable=ref_var.persistable,
+            is_data=ref_var.is_data,
             need_check_feed=ref_var.desc.need_check_feed())
+        new_var.stop_gradient = ref_var.stop_gradient
         return new_var
 
     def _get_data_var_info(self, block):
@@ -4303,7 +4379,8 @@ class PipelineOptimizer(object):
             device = self._param_device_map[param_name]
             # For sum op added by global gradient clip, it must be 
             # put on all devices
-            if op.type == 'sum': device = "gpu:all"
+            if op.type == 'sum' or op.type == 'sqrt' or op.type == 'fill_constant' or op.type == 'elementwise_max' or op.type == 'elementwise_div':
+                device = "gpu:all"
             op._set_attr(self._op_device_key, device)
         else:
             other_known_ops = [
@@ -4438,18 +4515,21 @@ class PipelineOptimizer(object):
             grad_fp16_name = self._append_grad_suffix(param_name + ".cast_fp16")
             if not main_block.has_var(grad_name): continue
             # For amp, we set the fp16 param_grad as persistable
+            use_fp16_grad = False
             if main_block.has_var(grad_fp16_name):
-                grad_name = grad_fp16_name
+                use_fp16_grad = True
+                grad_fp16_var = main_block.vars[grad_fp16_name]
             grad_var = main_block.vars[grad_name]
             grad_var.persistable = True
+            real_grad_var = grad_fp16_var if use_fp16_grad else grad_var
             main_block._insert_op(
                 index=0,
                 type='fill_constant',
                 inputs={},
-                outputs={'Out': [grad_var]},
+                outputs={'Out': [real_grad_var]},
                 attrs={
-                    'shape': grad_var.shape,
-                    'dtype': grad_var.dtype,
+                    'shape': real_grad_var.shape,
+                    'dtype': real_grad_var.dtype,
                     'value': float(0),
                     self._op_device_key: device,
                     # a trick to run this op once per mini-batch
@@ -4494,6 +4574,7 @@ class PipelineOptimizer(object):
                     new_grad_var_name = unique_name.generate(grad_name)
                     new_var = self._create_var(block, grad_var,
                                                new_grad_var_name)
+                    new_var.persistable = False
                     self._rename_arg(op, grad_name, new_grad_var_name)
                     block._insert_op(
                         index=offset + 1,
@@ -4651,9 +4732,7 @@ class PipelineOptimizer(object):
             with open("startup_raw", 'w') as f:
                 f.writelines(str(startup_program))
             with open("main_raw", 'w') as f:
-                print("here")
                 f.writelines(str(main_block.program))
-        time.sleep(20)
 
         # Step1: add default op_device attribute for ops.
         self._add_op_device_attr(main_block)
@@ -4701,6 +4780,7 @@ class PipelineOptimizer(object):
                 'local_rank' in main_program._pipeline_opt), \
                 "You must use pipeline with fleet"
         local_rank = main_program._pipeline_opt['local_rank'] % len(device_list)
+        print("local rank:", local_rank)
 
         place_list = []
         for dev in device_list:
@@ -4723,10 +4803,10 @@ class PipelineOptimizer(object):
             "startup_program": new_startup_program,
         }
 
-        with open("startup_%d" % local_rank, 'w') as f:
-            f.writelines(str(new_startup_program))
-        with open("main_%d" % local_rank, 'w') as f:
-            f.writelines(str(program_list[local_rank]['program']))
+        # with open("startup_%d" % local_rank, 'w') as f:
+        #     f.writelines(str(new_startup_program))
+        # with open("main_%d" % local_rank, 'w') as f:
+        #     f.writelines(str(program_list[local_rank]['program']))
 
         place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         main_program._pipeline_opt = {
