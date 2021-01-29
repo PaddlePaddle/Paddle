@@ -157,7 +157,6 @@ class AscendParserBase(object):
         return self.var2geop[input_var_name]
 
     def update_output(self, geop_list, index_list):
-        #print("********************", self.var2geop)
         output_num = len(self.op.output_names)
         assert output_num == len(
             index_list
