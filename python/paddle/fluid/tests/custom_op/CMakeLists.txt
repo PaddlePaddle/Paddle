@@ -22,9 +22,9 @@ set_property(TARGET relu_op_shared PROPERTY LINK_LIBRARIES  ${TARGET_LIBRARIES} 
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-# for coverage
-LIST(REMOVE_ITEM TEST_OPS test_custom_op)
-
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
+
+# Compiling .so will cost some time, but running process is very fast.
+set_tests_properties(test_custom_op_with_setup PROPERTIES TIMEOUT 180)
