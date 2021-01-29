@@ -1,9 +1,21 @@
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Optimizer
 import paddle.fluid.core as core
-import paddle.fluid as fluid
 import numpy as np
-from functools import reduce
+from paddle.distributed import fleet
 
 registerd_op = {## forwards
                 "elementwise_add": "AddParser",
@@ -19,7 +31,7 @@ registerd_op = {## forwards
                 "elementwise_pow": "DotPowParser",
                 "elementwise_max": "MaxParser",
                 "elementwise_min": "MinParser",
-                "elementwise_sub": "DotSubParser", 
+                "elementwise_sub": "DotSubParser",
                 "pow": "PowParser",
                 "gelu": "GeluParser",
                 "sqrt": "SqrtParser",
@@ -47,6 +59,13 @@ registerd_op = {## forwards
                 #"increment": "IncrementParser",
                 "lookup_table": "LookupTableParser",
                 "truncated_gaussian_random": "TruncatedNormalParser",
+                "c_allgather": "AllGatherParser",
+                "c_allreduce_sum": "AllReduceSumParser",
+                "c_allreduce_max": "AllReduceMaxParser",
+                "c_broadcast": "BroadcastParser",
+                "c_reduce_scatter": "ReduceScatterParser",
+                "c_send": "SendParser",
+                "c_receive": "ReceiveParser",
 
                 ## backwords
                 "matmul_grad": "MatMulGradParser",
@@ -81,7 +100,7 @@ global_input_cnt = -1
 
 class AscendHelper(object):
     def __init__(self):
-        self.dtype_map = {
+        self.dtype2ge_map = {
             0: core.GEDataType.DT_BOOL,
             1: core.GEDataType.DT_INT16,
             2: core.GEDataType.DT_INT32,
@@ -99,24 +118,24 @@ class AscendHelper(object):
             5: "float32",
             6: "float64"
         }
-        self.dtype2paddle_inv_map = {
-            "VarType.FP32": 0,
-            "VarType.FP16": 1
-        }
+        self.dtype2paddle_inv_map = {"VarType.FP32": 0, "VarType.FP16": 1}
 
     def dtype2ge(self, dtype):
-        assert dtype in self.dtype_map, "dtype[%d] is not supported %d" % (dtype)
-        return self.dtype_map[dtype]
+        assert dtype in self.dtype2ge_map, "dtype[%d] is not supported %d" % (
+            dtype)
+        return self.dtype2ge_map[dtype]
 
     def dtype2np(self, index):
-        assert index in self.dtype2np_map, "index[%d] is not supported %d" % (dtype)
+        assert index in self.dtype2np_map, "index[%d] is not supported %d" % (
+            dtype)
         return self.dtype2np_map[index]
+
 
 class AscendParserFactory(object):
     def __init__(self, graph, var2geop):
         self.graph = graph
         self.var2geop = var2geop
-        
+
     def create_parse(self, parser_class):
         try:
             parser = globals()[parser_class](self.graph, self.var2geop)
@@ -124,15 +143,17 @@ class AscendParserFactory(object):
         except:
             raise ValueError("parser class %s does not exist" % parser_class)
 
+
 class AscendParserBase(object):
-    def __init__(self, graph, var2geop):        
+    def __init__(self, graph, var2geop):
         self.graph = graph
         self.var2geop = var2geop
         self.op = None
         self.ascend_helper = AscendHelper()
 
     def _get_ge_input(self, input_var_name):
-        assert input_var_name in self.var2geop, "var %s not created before" % (input_var_name)
+        assert input_var_name in self.var2geop, "var %s not created before" % (
+            input_var_name)
         return self.var2geop[input_var_name]
 
     def update_output(self, geop_list, index_list):
@@ -154,14 +175,16 @@ class AscendParserBase(object):
                 for i in range(len(arguments)):
                     print("assgin index_list[%d][%d] to %s" %
                           (output_id, i, arguments[i]))
-                    self.var2geop[arguments[i]] = geop_list[index_list[output_id][i]]
+                    self.var2geop[arguments[i]] = geop_list[index_list[
+                        output_id][i]]
 
         for geop in geop_list:
             self.graph.add_op(geop)
 
     def apply(self, op):
         self.op = op
-        assert self.op.type == self.parser_name, "op [%s] != parser_name[%s]" % (self.op.type, self.parser_name)
+        assert self.op.type == self.parser_name, "op [%s] != parser_name[%s]" % (
+            self.op.type, self.parser_name)
         print("begin to parse op %s" % (self.parser_name))
         geop_list, index_list = self._apply()
         self.update_output(geop_list, index_list)
@@ -175,14 +198,13 @@ class AscendParserBase(object):
         global global_cnt
         global_cnt += 1
         return "." + str(global_cnt)
-    
+
     def _create_ge_tensor(self, shape, dtype, value):
         tensor_desc = core.GETensorDesc(
-                                core.GEShape(shape), 
-                                core.GEFormat.FORMAT_ND, 
-                                self.ascend_helper.dtype2ge(dtype))
+            core.GEShape(shape), core.GEFormat.FORMAT_ND,
+            self.ascend_helper.dtype2ge(dtype))
         tensor = core.GETensor(tensor_desc)
-        
+
         data = (value * np.ones((
             shape))).reshape(shape).astype(self.ascend_helper.dtype2np(dtype))
         buf = data.tobytes()
@@ -192,21 +214,22 @@ class AscendParserBase(object):
 
     def _get_ge_tensor(self, shape, dtype, value_list):
         tensor_desc = core.GETensorDesc(
-                                core.GEShape(shape), 
-                                core.GEFormat.FORMAT_ND, 
-                                self.ascend_helper.dtype2ge(dtype))
+            core.GEShape(shape), core.GEFormat.FORMAT_ND,
+            self.ascend_helper.dtype2ge(dtype))
         tensor = core.GETensor(tensor_desc)
 
-        data = np.array(value_list).reshape(shape).astype(self.ascend_helper.dtype2np(dtype))
+        data = np.array(value_list).reshape(shape).astype(
+            self.ascend_helper.dtype2np(dtype))
         buf = data.tobytes()
         data_8 = np.frombuffer(buf, dtype=np.uint8)
         tensor.set_data(data_8)
 
         tensor_const = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensor)
 
         return tensor_const
-    
+
     def _get_variable(self, shape, dtype, tensor):
         if dtype == "int32":
             type = core.GEDataType.DT_INT32
@@ -215,8 +238,10 @@ class AscendParserBase(object):
 
         var = core.GEOperatorFactory.create_operator(
             "variable" + self._accumulated_op_id(), "Variable")
-        var.update_output_desc("y", 
-            core.GETensorDesc(core.GEShape(shape), core.GEFormat.FORMAT_ND, type))
+        var.update_output_desc("y",
+                               core.GETensorDesc(
+                                   core.GEShape(shape), core.GEFormat.FORMAT_ND,
+                                   type))
         assign = core.GEOperatorFactory.create_operator(
             "assign" + self._accumulated_op_id(), "Assign").set_input(
                 "value", tensor).set_input("ref", var)
@@ -224,22 +249,24 @@ class AscendParserBase(object):
         return assign
 
     def _create_shape_tensor(self):
-        tensor_desc = core.GETensorDesc(core.GEShape([2]), core.GEFormat.FORMAT_ND, core.GEDataType.DT_INT32)
+        tensor_desc = core.GETensorDesc(
+            core.GEShape([2]), core.GEFormat.FORMAT_ND,
+            core.GEDataType.DT_INT32)
         tensor = core.GETensor(tensor_desc)
 
-        data = np.ones((2)).astype("int32").reshape([2]) 
+        data = np.ones((2)).astype("int32").reshape([2])
         data[0] = 64
         buf = data.tobytes()
         data_8 = np.frombuffer(buf, dtype=np.uint8)
         tensor.set_data(data_8)
         return tensor
-    
+
     def _get_GEtensor_shape(self, tensor):
         tensor_shape = core.GEOperatorFactory.create_operator(
             "shape" + self._accumulated_op_id(), "Shape").set_input("x", tensor)
         tensor_shape = core.GEOperatorFactory.create_operator(
             "cast" + self._accumulated_op_id(), "Cast").set_input(
-            "x", tensor_shape).set_attr_int32("dst_type", 0)
+                "x", tensor_shape).set_attr_int32("dst_type", 0)
         return tensor_shape
 
 
@@ -253,8 +280,10 @@ class AddParser(AscendParserBase):
         x = self._get_ge_input(self.op.input_arg_names[0])
         y = self._get_ge_input(self.op.input_arg_names[1])
         add = core.GEOperatorFactory.create_operator(
-            "add" + self._accumulated_op_id(), "Add").set_input("x1", x).set_input("x2", y)
+            "add" + self._accumulated_op_id(),
+            "Add").set_input("x1", x).set_input("x2", y)
         return [add], [[0]]
+
 
 class DotSubParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -265,8 +294,10 @@ class DotSubParser(AscendParserBase):
         x = self._get_ge_input(self.op.input_arg_names[0])
         y = self._get_ge_input(self.op.input_arg_names[1])
         sub = core.GEOperatorFactory.create_operator(
-            "sub" + self._accumulated_op_id(), "Sub").set_input("x1", x).set_input("x2", y)
+            "sub" + self._accumulated_op_id(),
+            "Sub").set_input("x1", x).set_input("x2", y)
         return [sub], [[0]]
+
 
 class DotMulParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -276,10 +307,11 @@ class DotMulParser(AscendParserBase):
     def _apply(self):
         x = self._get_ge_input(self.op.input_arg_names[0])
         y = self._get_ge_input(self.op.input_arg_names[1])
-        print("=======", self.op.input_arg_names)
         mul = core.GEOperatorFactory.create_operator(
-            "dotmul" + self._accumulated_op_id(), "Mul").set_input("x1", x).set_input("x2", y)
+            "dotmul" + self._accumulated_op_id(),
+            "Mul").set_input("x1", x).set_input("x2", y)
         return [mul], [[0]]
+
 
 class DotDivParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -290,8 +322,10 @@ class DotDivParser(AscendParserBase):
         x = self._get_ge_input(self.op.input_arg_names[0])
         y = self._get_ge_input(self.op.input_arg_names[1])
         div = core.GEOperatorFactory.create_operator(
-            "dotdiv" + self._accumulated_op_id(), "Div").set_input("x1", x).set_input("x2", y)
+            "dotdiv" + self._accumulated_op_id(),
+            "Div").set_input("x1", x).set_input("x2", y)
         return [div], [[0]]
+
 
 class DotPowParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -302,8 +336,10 @@ class DotPowParser(AscendParserBase):
         x = self._get_ge_input(self.op.input_arg_names[0])
         y = self._get_ge_input(self.op.input_arg_names[1])
         pow = core.GEOperatorFactory.create_operator(
-            "dotpow" + self._accumulated_op_id(), "Pow").set_input("x1", x1).set_input("x2", y)
+            "dotpow" + self._accumulated_op_id(),
+            "Pow").set_input("x1", x1).set_input("x2", y)
         return [pow], [[0]]
+
 
 class LessParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -314,8 +350,10 @@ class LessParser(AscendParserBase):
         x = self._get_ge_input(self.op.input_arg_names[0])
         y = self._get_ge_input(self.op.input_arg_names[1])
         less_than = core.GEOperatorFactory.create_operator(
-            "less_than" + self._accumulated_op_id(), "Less").set_input("x1", x).set_input("x2", y)
+            "less_than" + self._accumulated_op_id(),
+            "Less").set_input("x1", x).set_input("x2", y)
         return [less_than], [[0]]
+
 
 class MaxParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -323,12 +361,13 @@ class MaxParser(AscendParserBase):
         self.parser_name = "elementwise_max"
 
     def _apply(self):
-        print("============", self.op.input_arg_names)
         x = self._get_ge_input(self.op.input_arg_names[0])
         y = self._get_ge_input(self.op.input_arg_names[1])
         max_out = core.GEOperatorFactory.create_operator(
-            "max" + self._accumulated_op_id(), "Maximum").set_input("x1", x).set_input("x2", y)
+            "max" + self._accumulated_op_id(),
+            "Maximum").set_input("x1", x).set_input("x2", y)
         return [max_out], [[0]]
+
 
 class MinParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -339,8 +378,10 @@ class MinParser(AscendParserBase):
         x = self._get_ge_input(self.op.input_arg_names[0])
         y = self._get_ge_input(self.op.input_arg_names[1])
         min_out = core.GEOperatorFactory.create_operator(
-            "min" + self._accumulated_op_id(), "Minimum").set_input("x1", x).set_input("x2", y)
+            "min" + self._accumulated_op_id(),
+            "Minimum").set_input("x1", x).set_input("x2", y)
         return [min_out], [[0]]
+
 
 ## cal
 class LogParser(AscendParserBase):
@@ -354,6 +395,7 @@ class LogParser(AscendParserBase):
             "log" + self._accumulated_op_id(), "Log").set_input("x", x)
         return [log], [[0]]
 
+
 class SqrtParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(SqrtParser, self).__init__(graph, var2geop)
@@ -365,6 +407,7 @@ class SqrtParser(AscendParserBase):
             "sqrt" + self._accumulated_op_id(), "Sqrt").set_input("x", x)
         return [sqrt], [[0]]
 
+
 class PowParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(PowParser, self).__init__(graph, var2geop)
@@ -373,11 +416,13 @@ class PowParser(AscendParserBase):
     def _apply(self):
         x = self._get_ge_input(self.op.input_arg_names[0])
         factor = self.op.attr("factor")
-        print("factor: ", factor)
         pow_value = core.GEOperatorFactory.create_operator(
-            "pow" + self._accumulated_op_id(), "Power").set_input("x", x).set_attr_float(
-            "power", factor).set_attr_float("scale", 1.0).set_attr_float("shift", 0.0)
+            "pow" + self._accumulated_op_id(),
+            "Power").set_input("x", x).set_attr_float(
+                "power", factor).set_attr_float("scale", 1.0).set_attr_float(
+                    "shift", 0.0)
         return [pow_value], [[0]]
+
 
 class SquareParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -390,25 +435,28 @@ class SquareParser(AscendParserBase):
             "square" + self._accumulated_op_id(), "Square").set_input("x", x)
         return [square], [[0]]
 
+
 class SumParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(SumParser, self).__init__(graph, var2geop)
         self.parser_name = "sum"
 
     def _apply(self):
-        print("***********: ", len(self.op.input_arg_names))
         len_list = len(self.op.input_arg_names)
         if len_list < 2:
             assert False, "the size of input list must large or equal 2"
         x = self._get_ge_input(self.op.input_arg_names[0])
         y = self._get_ge_input(self.op.input_arg_names[1])
         sum = core.GEOperatorFactory.create_operator(
-            "sum" + self._accumulated_op_id(), "Add").set_input("x1", x).set_input("x2", y)
+            "sum" + self._accumulated_op_id(),
+            "Add").set_input("x1", x).set_input("x2", y)
         for i in range(2, len_list):
             y = self._get_ge_input(self.op.input_arg_names[i])
             sum = core.GEOperatorFactory.create_operator(
-                "sum" + self._accumulated_op_id(), "Add").set_input("x1", sum).set_input("x2", y)
+                "sum" + self._accumulated_op_id(),
+                "Add").set_input("x1", sum).set_input("x2", y)
         return [sum], [[0]]
+
 
 class LogicalNotParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -416,10 +464,12 @@ class LogicalNotParser(AscendParserBase):
         self.parser_name = "logical_not"
 
     def _apply(self):
-        x = self._get_ge_input(self.op.input_arg_names[0]) 
+        x = self._get_ge_input(self.op.input_arg_names[0])
         logical_not = core.GEOperatorFactory.create_operator(
-            "logical_not" + self._accumulated_op_id(), "LogicalNot").set_input("x", x)
+            "logical_not" + self._accumulated_op_id(),
+            "LogicalNot").set_input("x", x)
         return [logical_not], [[0]]
+
 
 class MeanParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -427,13 +477,13 @@ class MeanParser(AscendParserBase):
         self.parser_name = "mean"
 
     def _apply(self):
-        print("======", self.op.input_arg_names)
-        print("======", self.op.output_arg_names) 
         x = self._get_ge_input(self.op.input_arg_names[0])
         mean = core.GEOperatorFactory.create_operator(
-            "mean" + self._accumulated_op_id(), "ReduceMeanD").set_input("x", x).set_attr_bool(
-            "keep_dims", False).set_attr_vec_int32("axes", [])
+            "mean" + self._accumulated_op_id(),
+            "ReduceMeanD").set_input("x", x).set_attr_bool(
+                "keep_dims", False).set_attr_vec_int32("axes", [])
         return [mean], [[0]]
+
 
 class ReduceSumParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -446,16 +496,14 @@ class ReduceSumParser(AscendParserBase):
         keep_dims = self.op.attr("keep_dim")
         reduce_all = self.op.attr("reduce_all")
         x_shape = self.op.block.var(self.op.input_arg_names[0]).shape
-        print("axes in reduce_sum: ", axes)
-        print("keep_dims in reduce_sum: ", keep_dims)
-        print("reduce_all in reduce_sum: ", reduce_all)
-        print("x_shape: ", x_shape)
         if reduce_all:
             axes = list(range(len(x_shape)))
         reduce_sum = core.GEOperatorFactory.create_operator(
-            "reduce_sum" + self._accumulated_op_id(), "ReduceSumD").set_input("x", x, 0).set_attr_vec_int32(
-            "axes", axes).set_attr_bool("keep_dims", keep_dims)
+            "reduce_sum" + self._accumulated_op_id(),
+            "ReduceSumD").set_input("x", x, 0).set_attr_vec_int32(
+                "axes", axes).set_attr_bool("keep_dims", keep_dims)
         return [reduce_sum], [[0]]
+
 
 #class IncrementParser(AscendParserBase):
 #    def __init__(self, graph, var2geop):
@@ -483,31 +531,26 @@ class MatMulParser(AscendParserBase):
         y = self._get_ge_input(self.op.input_arg_names[1])
         transpose_x = self.op.attr("transpose_X")
         transpose_y = self.op.attr("transpose_Y")
-        
+
         x1_shape = self.op.block.var(self.op.input_arg_names[0]).shape
         x2_shape = self.op.block.var(self.op.input_arg_names[1]).shape
-        print("x1_shape: ", x1_shape)
-        print("x2_shape: ", x2_shape)
-        print(self.op.block.var(self.op.input_arg_names[0]).dtype)
-        print(self.op.block.var(self.op.input_arg_names[1]).dtype)  
-        print("transpose_x: ", transpose_x)
-        print("transpose_y: ", transpose_y)
 
         if len(x1_shape) > 2:
             matmul = core.GEOperatorFactory.create_operator(
                 "matmul" + self._accumulated_op_id(), "BatchMatMul").set_input(
-                "x1", x).set_input("x2", y).set_attr_bool(
-                "adj_x1", transpose_x).set_attr_bool("adj_x2", transpose_y)
+                    "x1", x).set_input("x2", y).set_attr_bool(
+                        "adj_x1",
+                        transpose_x).set_attr_bool("adj_x2", transpose_y)
         elif len(x1_shape) == 2:
             matmul = core.GEOperatorFactory.create_operator(
-                "matmul" + self._accumulated_op_id(), "MatMul").set_input(
-                "x1", x).set_input("x2", y).set_attr_bool(
-                "transpose_x1", transpose_x).set_attr_bool(
-                "transpose_x2", transpose_y)
+                "matmul" + self._accumulated_op_id(),
+                "MatMul").set_input("x1", x).set_input("x2", y).set_attr_bool(
+                    "transpose_x1", transpose_x).set_attr_bool("transpose_x2",
+                                                               transpose_y)
         else:
             assert False, "not support"
-        print(self._accumulated_op_id())
         return [matmul], [[0]]
+
 
 class MulParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -518,56 +561,57 @@ class MulParser(AscendParserBase):
         x = self._get_ge_input(self.op.input_arg_names[0])
         y = self._get_ge_input(self.op.input_arg_names[1])
         x_num_col_dims = self.op.attr("x_num_col_dims")
-        y_num_col_dims = self.op.attr("y_num_col_dims") 
+        y_num_col_dims = self.op.attr("y_num_col_dims")
         shape_x1 = self.op.block.var(self.op.input_arg_names[0]).shape
         shape_x2 = self.op.block.var(self.op.input_arg_names[1]).shape
-        
-        print("======", self.op.input_arg_names)
-        print("======", self.op.output_arg_names)
-        print("x1_shape: ", shape_x1)
-        print("x2_shape: ", shape_x2)
-        print("x_num_col_dims: ", x_num_col_dims)
-        print("y_num_col_dims: ", y_num_col_dims)
 
         if x_num_col_dims == 1 and y_num_col_dims == 1:
-            if len(shape_x1) == 2 and len(shape_x2) == 2: 
+            if len(shape_x1) == 2 and len(shape_x2) == 2:
                 matmul = core.GEOperatorFactory.create_operator(
-                    "mul" + self._accumulated_op_id(), "MatMul").set_input("x1", x).set_input("x2", y)
+                    "mul" + self._accumulated_op_id(),
+                    "MatMul").set_input("x1", x).set_input("x2", y)
             elif len(shape_x1) == 3 and len(shape_x2) == 2:
                 flatten_x1 = core.GEOperatorFactory.create_operator(
-                    "flatten" + self._accumulated_op_id(), "Flatten").set_input("x", x)
+                    "flatten" + self._accumulated_op_id(),
+                    "Flatten").set_input("x", x)
                 matmul = core.GEOperatorFactory.create_operator(
                     "mul" + self._accumulated_op_id(), "MatMul").set_input(
-                    "x1", flatten_x1, 0).set_input(
-                    "x2", y, 0)
+                        "x1", flatten_x1, 0).set_input("x2", y, 0)
             else:
                 assert False, "not support"
         else:
             if len(shape_x1) == 3 and len(shape_x2) == 2:
                 assert x_num_col_dims == 2, "only support 2"
                 flatten_x1 = core.GEOperatorFactory.create_operator(
-                    "flatten" + self._accumulated_op_id(), "FlattenV2").set_input(
-                        "x", x).set_attr_int32("axis", 0).set_attr_int32("end_axis", 1) 
+                    "flatten" + self._accumulated_op_id(),
+                    "FlattenV2").set_input("x", x).set_attr_int32(
+                        "axis", 0).set_attr_int32("end_axis", 1)
                 matmul_m = core.GEOperatorFactory.create_operator(
                     "mul" + self._accumulated_op_id(), "MatMul").set_input(
-                    "x1", flatten_x1, 0).set_input("x2", y, 0)
+                        "x1", flatten_x1, 0).set_input("x2", y, 0)
                 matmul_transpose = core.GEOperatorFactory.create_operator(
-                    "transpose" + self._accumulated_op_id(), "TransposeD").set_input(
-                    "x", matmul_m).set_attr_vec_int32("perm", [1, 0])
-                tensor = self._create_ge_tensor([3], 2, [shape_x2[1], shape_x1[0], shape_x1[1]])
+                    "transpose" + self._accumulated_op_id(),
+                    "TransposeD").set_input(
+                        "x", matmul_m).set_attr_vec_int32("perm", [1, 0])
+                tensor = self._create_ge_tensor(
+                    [3], 2, [shape_x2[1], shape_x1[0], shape_x1[1]])
                 const_shape = core.GEOperatorFactory.create_operator(
-                    "shape" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor)
+                    "shape" + self._accumulated_op_id(),
+                    "Const").set_attr_tensor("value", tensor)
                 reshape_matmul = core.GEOperatorFactory.create_operator(
                     "reshape" + self._accumulated_op_id(), "Reshape").set_input(
-                    "x", matmul_transpose).set_input("shape", const_shape).set_attr_int32("axis", 0)
+                        "x", matmul_transpose).set_input(
+                            "shape", const_shape).set_attr_int32("axis", 0)
                 matmul = core.GEOperatorFactory.create_operator(
-                    "transpose" + self._accumulated_op_id(), "TransposeD").set_input(
-                    "x", reshape_matmul).set_attr_vec_int32("perm", [1, 2, 0])    
+                    "transpose" + self._accumulated_op_id(),
+                    "TransposeD").set_input(
+                        "x",
+                        reshape_matmul).set_attr_vec_int32("perm", [1, 2, 0])
             else:
                 assert False, "not support"
-        
-        print(self._accumulated_op_id())
+
         return [matmul], [[0]]
+
 
 class LayerNormParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -577,37 +621,40 @@ class LayerNormParser(AscendParserBase):
     def _apply(self):
         x = self._get_ge_input(self.op.input_arg_names[2])
         scale = self._get_ge_input(self.op.input_arg_names[1])
-        bias = self._get_ge_input(self.op.input_arg_names[0])  
+        bias = self._get_ge_input(self.op.input_arg_names[0])
         epsilon = self.op.attr("epsilon")
         begin_norm_axis = self.op.attr("begin_norm_axis")
-        x_dtype=self.op.block.var(self.op.input_arg_names[2]).dtype
-        
-        print("========", self.op.input_arg_names)
-        print("========", self.op.output_arg_names) 
-        print("epsilon: ", epsilon)
-        print("begin_norm_axis: ", begin_norm_axis)
-        print("x dtype: ", x_dtype)
+        x_dtype = self.op.block.var(self.op.input_arg_names[2]).dtype
 
         shape_tensor = core.GEOperatorFactory.create_operator(
             "shape" + self._accumulated_op_id(), "Shape").set_input("x", x)
         scale_expand = core.GEOperatorFactory.create_operator(
-            "broadcast_to_d" + self._accumulated_op_id(), "BroadcastTo").set_input(
-            "x", scale).set_input("shape", shape_tensor)
-        bias_expand =  core.GEOperatorFactory.create_operator(
-            "broadcast_to_d" + self._accumulated_op_id(), "BroadcastTo").set_input(
-            "x", bias).set_input("shape", shape_tensor)
+            "broadcast_to_d" + self._accumulated_op_id(),
+            "BroadcastTo").set_input("x",
+                                     scale).set_input("shape", shape_tensor)
+        bias_expand = core.GEOperatorFactory.create_operator(
+            "broadcast_to_d" + self._accumulated_op_id(),
+            "BroadcastTo").set_input("x", bias).set_input("shape", shape_tensor)
         layer_norm = core.GEOperatorFactory.create_operator(
-            "layer_norm" + self._accumulated_op_id(), "LayerNorm").set_input("x", x).set_input(
-            "gamma", scale_expand).set_input("beta", bias_expand).set_attr_int32(
-            "begin_norm_axis", begin_norm_axis).set_attr_int32(
-            "begin_params_axis", begin_norm_axis).set_attr_float("epsilon", epsilon)
+            "layer_norm" + self._accumulated_op_id(),
+            "LayerNorm").set_input("x", x).set_input(
+                "gamma",
+                scale_expand).set_input("beta", bias_expand).set_attr_int32(
+                    "begin_norm_axis", begin_norm_axis).set_attr_int32(
+                        "begin_params_axis",
+                        begin_norm_axis).set_attr_float("epsilon", epsilon)
 
-        cast_dtype = 0 if self.ascend_helper.dtype2paddle_inv_map[str(x_dtype)] == 0 else 1
-        print(cast_dtype)
-        y = core.GEOperatorFactory.create_operator("cast" + self._accumulated_op_id(), "Cast").set_input("x", layer_norm, 0).set_attr_int32("dst_type", cast_dtype)
-        mean = core.GEOperatorFactory.create_operator("cast" + self._accumulated_op_id(), "Cast").set_input("x", layer_norm, 1).set_attr_int32("dst_type", cast_dtype)
-        variance = core.GEOperatorFactory.create_operator("cast" + self._accumulated_op_id(), "Cast").set_input("x", layer_norm, 2).set_attr_int32("dst_type", cast_dtype) 
-        print(self._accumulated_op_id())
+        cast_dtype = 0 if self.ascend_helper.dtype2paddle_inv_map[str(
+            x_dtype)] == 0 else 1
+        y = core.GEOperatorFactory.create_operator(
+            "cast" + self._accumulated_op_id(), "Cast").set_input(
+                "x", layer_norm, 0).set_attr_int32("dst_type", cast_dtype)
+        mean = core.GEOperatorFactory.create_operator(
+            "cast" + self._accumulated_op_id(), "Cast").set_input(
+                "x", layer_norm, 1).set_attr_int32("dst_type", cast_dtype)
+        variance = core.GEOperatorFactory.create_operator(
+            "cast" + self._accumulated_op_id(), "Cast").set_input(
+                "x", layer_norm, 2).set_attr_int32("dst_type", cast_dtype)
         return [y, mean, variance], [[1], [2], [0]]
 
 
@@ -623,6 +670,7 @@ class ReluParser(AscendParserBase):
             "relu" + self._accumulated_op_id(), "Relu").set_input("x", x)
         return [relu], [[0]]
 
+
 class GeluParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(GeluParser, self).__init__(graph, var2geop)
@@ -633,6 +681,7 @@ class GeluParser(AscendParserBase):
         gelu = core.GEOperatorFactory.create_operator(
             "gelu" + self._accumulated_op_id(), "Gelu").set_input("x", x)
         return [gelu], [[0]]
+
 
 class TanhParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -656,45 +705,43 @@ class SoftmaxWithCrossEntropyParser(AscendParserBase):
         label = self._get_ge_input(self.op.input_arg_names[0])
         logits = self._get_ge_input(self.op.input_arg_names[1])
         cls_num = self.op.block.var(self.op.input_arg_names[1]).shape[1]
-        
-        print("=========", self.op.input_arg_names)
-        print("=========", self.op.output_arg_names) 
-        print("label shape: ", self.op.block.var(self.op.input_arg_names[0]).shape)
-        print("logits shape: ", self.op.block.var(self.op.input_arg_names[1]).shape) 
-        
+
         softmax = core.GEOperatorFactory.create_operator(
-            "softmax" + self._accumulated_op_id(), "SoftmaxV2").set_input("x", logits)
+            "softmax" + self._accumulated_op_id(),
+            "SoftmaxV2").set_input("x", logits)
         label = core.GEOperatorFactory.create_operator(
             "cast" + self._accumulated_op_id(), "Cast").set_input(
-            "x", label).set_attr_int32("dst_type", 3)
+                "x", label).set_attr_int32("dst_type", 3)
 
         tensoron = self._create_ge_tensor([1], 5, 1)
         on = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensoron)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensoron)
         tensoroff = self._create_ge_tensor([1], 5, 0)
         off = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensoroff)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensoroff)
         self._mark_as_input(on)
         self._mark_as_input(off)
         onehot = core.GEOperatorFactory.create_operator(
             "onehot" + self._accumulated_op_id(), "OneHotD").set_input(
-            "x", label).set_input("on_value", on).set_input(
-            "off_value", off).set_attr_int32("depth", cls_num)
+                "x", label).set_input("on_value", on).set_input(
+                    "off_value", off).set_attr_int32("depth", cls_num)
         squeeze = core.GEOperatorFactory.create_operator(
             "mul" + self._accumulated_op_id(), "Squeeze").set_input("x", onehot)
-        
+
         loss_all = core.GEOperatorFactory.create_operator(
-            "loss" + self._accumulated_op_id(), 
+            "loss" + self._accumulated_op_id(),
             "SoftmaxCrossEntropyWithLogits").set_input(
-            "features", logits).set_input("labels", squeeze)
+                "features", logits).set_input("labels", squeeze)
         loss = core.GEOperatorFactory.create_operator(
             "cast" + self._accumulated_op_id(), "Cast").set_input(
-            "x", loss_all, 0).set_attr_int32("dst_type", 0)
+                "x", loss_all, 0).set_attr_int32("dst_type", 0)
         loss_expand = core.GEOperatorFactory.create_operator(
-            "unsqueeze" + self._accumulated_op_id(), 
+            "unsqueeze" + self._accumulated_op_id(),
             "Unsqueeze").set_input("x", loss).set_attr_vec_int32("axes", [1])
-        print(self._accumulated_op_id())
         return [label, softmax, loss_expand], [[2], [1]]
+
 
 class SoftMaxParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -706,8 +753,8 @@ class SoftMaxParser(AscendParserBase):
         axes = self.op.attr("axis")
 
         softmax = core.GEOperatorFactory.create_operator(
-            "softmax" + self._accumulated_op_id(), 
-            "SoftmaxV2").set_input("x", logits).set_attr_vec_int32("axes", [axes])
+            "softmax" + self._accumulated_op_id(), "SoftmaxV2").set_input(
+                "x", logits).set_attr_vec_int32("axes", [axes])
         return [softmax], [[0]]
 
 
@@ -723,6 +770,7 @@ class ShapeParser(AscendParserBase):
             "shape" + self._accumulated_op_id(), "Shape").set_input("x", x)
         return [shape], [[0]]
 
+
 class FillConstantParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(FillConstantParser, self).__init__(graph, var2geop)
@@ -732,30 +780,32 @@ class FillConstantParser(AscendParserBase):
         shape = self.op.attr("shape")
         dtype = self.op.attr("dtype")
         value = self.op.attr("value")
-        print("shape: ", shape)
-        print("dtype: ", dtype)
-        print("value: ", value)
 
         tensor = self._create_ge_tensor(shape, dtype, value)
         const = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensor)
         self._mark_as_input(const)
         if self.op.block.var(self.op.output('Out')[0]).persistable:
-            print("%s is Persistable in fill_constant" % (self.op.output('Out')[0]))
+            print("%s is Persistable in fill_constant" %
+                  (self.op.output('Out')[0]))
             var = core.GEOperatorFactory.create_operator(
                 self.op.output('Out')[0], "Variable")
-            var.update_output_desc("y", 
-                core.GETensorDesc(
-                    core.GEShape(shape), 
-                    core.GEFormat.FORMAT_ND, 
-                    core.GEDataType.DT_FLOAT))
+            var.update_output_desc("y",
+                                   core.GETensorDesc(
+                                       core.GEShape(shape),
+                                       core.GEFormat.FORMAT_ND,
+                                       core.GEDataType.DT_FLOAT))
             assign = core.GEOperatorFactory.create_operator(
                 "assign" + self._accumulated_op_id(), "Assign").set_input(
-                "value", const).set_input("ref", var)
+                    "value", const).set_input("ref", var)
             return [const], [[0]]
         else:
-            print("self.op.output('Out')[0]: %s is not persistable in fill_constant"% (self.op.output('Out')[0]))
+            print(
+                "self.op.output('Out')[0]: %s is not persistable in fill_constant"
+                % (self.op.output('Out')[0]))
         return [const], [[0]]
+
 
 class TruncatedNormalParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -768,30 +818,28 @@ class TruncatedNormalParser(AscendParserBase):
         mean = self.op.attr("mean")
         std = self.op.attr("std")
         seed = self.op.attr("seed")
-        print("shape: ", shape)
-        print("dtype: ", dtype)
-        print("mean: ", mean)
-        print("std: ", std)
-        print("min: ", mean - 2*std)
-        print("max: ", mean + 2*std)
-        print("seed: ", seed)
-        
+
         tensor1 = self._create_ge_tensor([len(shape)], 2, shape)
         shape_tensor = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor1)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensor1)
         tensor2 = self._create_ge_tensor([1], dtype, mean)
         mean_tensor = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor2)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensor2)
         tensor3 = self._create_ge_tensor([1], dtype, std)
         std_tensor = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor3)
-        tensor4 = self._create_ge_tensor([1], dtype, mean-2*std)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensor3)
+        tensor4 = self._create_ge_tensor([1], dtype, mean - 2 * std)
         min_tensor = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor4)
-        tensor5 = self._create_ge_tensor([1], dtype, mean+2*std)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensor4)
+        tensor5 = self._create_ge_tensor([1], dtype, mean + 2 * std)
         max_tensor = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor5)
-        
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensor5)
+
         self._mark_as_input(shape_tensor)
         self._mark_as_input(mean_tensor)
         self._mark_as_input(std_tensor)
@@ -799,34 +847,38 @@ class TruncatedNormalParser(AscendParserBase):
         self._mark_as_input(max_tensor)
 
         truncated_normal = core.GEOperatorFactory.create_operator(
-            "truncated_normal" + self._accumulated_op_id(), 
+            "truncated_normal" + self._accumulated_op_id(),
             "ParameterizedTruncatedNormal").set_input(
                 "shape", shape_tensor).set_input(
                     "means", mean_tensor).set_input(
                         "stdevs", std_tensor).set_input(
                             "min", min_tensor).set_input(
-                                "max", max_tensor).set_attr_int32(
-                                    "seed", 0)
-        
+                                "max", max_tensor).set_attr_int32("seed", 0)
+
         ## wirte the output of truncatedNormal from startup_program to main_program
         if self.op.block.var(self.op.output('Out')[0]).persistable:
-            print("%s is Persistable in truncated_normal" % 
-                (self.op.output('Out')[0]))
+            print("%s is Persistable in truncated_normal" %
+                  (self.op.output('Out')[0]))
             var = core.GEOperatorFactory.create_operator(
                 self.op.output('Out')[0], "Variable")
             var.update_output_desc("y",
-                                    core.GETensorDesc(
-                                        core.GEShape(shape), 
-                                        core.GEFormat.FORMAT_ND, 
-                                        core.GEDataType.DT_FLOAT))
+                                   core.GETensorDesc(
+                                       core.GEShape(shape),
+                                       core.GEFormat.FORMAT_ND,
+                                       core.GEDataType.DT_FLOAT))
             assign = core.GEOperatorFactory.create_operator(
                 "assign" + self._accumulated_op_id(), "Assign").set_input(
                     "value", truncated_normal).set_input("ref", var)
-            return [shape_tensor, mean_tensor, std_tensor,
-                min_tensor, max_tensor, truncated_normal], [[-1]]
+            return [
+                shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor,
+                truncated_normal
+            ], [[-1]]
         else:
-            print("self.op.output('Out')[0] is not persistable in truncated_noraml")
+            print(
+                "self.op.output('Out')[0] is not persistable in truncated_noraml"
+            )
         return [truncated_normal], [[0]]
+
 
 class GatherParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -837,14 +889,13 @@ class GatherParser(AscendParserBase):
         index = self._get_ge_input(self.op.input_arg_names[0])
         x = self._get_ge_input(self.op.input_arg_names[1])
         clo = self.op.block.var(self.op.input_arg_names[1]).shape[-1]
-       
-        print("======", self.op.input_arg_names)
-        print("gather_index_shape: ", self.op.block.var(self.op.input_arg_names[0]).shape)
-        
+
         gather = core.GEOperatorFactory.create_operator(
             "gather" + self._accumulated_op_id(), "Gather").set_input(
-                "x", x).set_input("indices", index).set_attr_bool("validate_indices", True)
+                "x", x).set_input("indices", index).set_attr_bool(
+                    "validate_indices", True)
         return [gather], [[0]]
+
 
 class ScatterParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -858,26 +909,24 @@ class ScatterParser(AscendParserBase):
         overwrite = self.op.attr("overwrite")
         index_shape = self.op.block.var(self.op.input_arg_names[0]).shape
 
-        print("=======", self.op.input_arg_names)
-        print(self.op.block.var(self.op.input_arg_names[1]))
-        print(self.op.block.var(self.op.input_arg_names[2]))
-        print("overwrite: ", overwrite)
-
         if len(index_shape) == 1:
             index = core.GEOperatorFactory.create_operator(
                 "unsqueeze" + self.getid(), "Unsqueeze").set_input(
                     "x", index).set_attr_vec_int32("axes", [1])
         if not overwrite:
             scatter_value = core.GEOperatorFactory.create_operator(
-                "scatter" + self._accumulated_op_id(), "TensorScatterAdd").set_input(
+                "scatter" + self._accumulated_op_id(),
+                "TensorScatterAdd").set_input(
                     "x", x_var).set_input("indices", index_var).set_input(
                         "updates", updatesi_var)
         else:
             scatter_value = core.GEOperatorFactory.create_operator(
-                "scatter" + self._accumulated_op_id(), "TensorScatterUpdate").set_input(
+                "scatter" + self._accumulated_op_id(),
+                "TensorScatterUpdate").set_input(
                     "x", x_var).set_input("indices", index_var).set_input(
-                        "updates", updates_var)  
+                        "updates", updates_var)
         return [x_var, index_var, updates_var, scatter_value], [[-1]]
+
 
 class CastParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -887,11 +936,11 @@ class CastParser(AscendParserBase):
     def _apply(self):
         x = self._get_ge_input(self.op.input_arg_names[0])
         dtype = self.op.attr("out_dtype")
-        print("dtype in cast: ", dtype)
         cast = core.GEOperatorFactory.create_operator(
             "cast" + self._accumulated_op_id(), "Cast").set_input(
                 "x", x).set_attr_int32("dst_type", dtype)
         return [cast]
+
 
 class AssignParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -906,6 +955,7 @@ class AssignParser(AscendParserBase):
                 "value", const).set_input("ref", var)
         return [assign], [[0]]
 
+
 class ScaleParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(ScaleParser, self).__init__(graph, var2geop)
@@ -917,11 +967,6 @@ class ScaleParser(AscendParserBase):
         bias = self.op.attr("bias")
         bias_after_scale = self.op.attr("bias_after_scale")
 
-        print("==============", self.op.input_arg_names)
-        print("==============", self.op.output_arg_names) 
-        print("scale: ", scale)
-        print("bias: ", bias)
-        print("bias_after_scale: ", bias_after_scale)
         if bias_after_scale:
             scale_value = core.GEOperatorFactory.create_operator(
                 "scale" + self._accumulated_op_id(), "Power").set_input(
@@ -933,9 +978,11 @@ class ScaleParser(AscendParserBase):
                     "x", x).set_attr_float("value", bias)
             scale_value = core.GEOperatorFactory.create_operator(
                 "scale" + self._accumulated_op_id(), "Power").set_input(
-                    "x", x_add_bias).set_attr_float("power", 1.0).set_attr_float(
-                        "scale", scale).set_attr_float("shift", 0.0) 
+                    "x",
+                    x_add_bias).set_attr_float("power", 1.0).set_attr_float(
+                        "scale", scale).set_attr_float("shift", 0.0)
         return [scale_value], [[0]]
+
 
 class SliceParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -962,22 +1009,16 @@ class SliceParser(AscendParserBase):
             if i in axes:
                 cnt += 1
         size = [ends_cor[i] - starts_cor[i] for i in range(len(axes_cor))]
-        
-        print("org axes: ", axes, len(axes))
-        print("org starts: ", starts, len(starts))
-        print("org ends: ", ends, len(ends))
-        print("size: ", size)
-        print("cor axes: ", axes_cor)
-        print("cor starts: ", starts_cor)
-        print("cor ends: ", ends_cor)
-        
-        assert len(axes_cor) == len(starts_cor) == len(ends_cor), "the three fields must have same size" 
+
+        assert len(axes_cor) == len(starts_cor) == len(
+            ends_cor), "the three fields must have same size"
         slice_value = core.GEOperatorFactory.create_operator(
             "slice" + self._accumulated_op_id(), "SliceD").set_input(
                 "x", x).set_attr_vec_int32(
                     "offsets", starts_cor).set_attr_vec_int32("size", size)
-        
+
         return [slice_value], [[0]]
+
 
 class ReshapeParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -988,33 +1029,31 @@ class ReshapeParser(AscendParserBase):
         org_shape = self.op.block.var(self.op.input_arg_names[0]).shape
         assert org_shape.count(-1) == 0, "do not allow the dim is -1"
         shape = self.op.attr("shape")
-        print("reshape_shape: ", shape)
         for cnt in range(len(shape)):
             if shape[cnt] == 0:
                 shape[cnt] = org_shape[cnt]
-         
+
         if -1 in shape:
             assert shape.count(-1) == 1, "only allow one dim is -1"
-            mul_res_org = reduce(lambda x,y: x * y, org_shape)
-            mul_res_refine = reduce(lambda x,y: x * y, shape) * -1
+            mul_res_org = reduce(lambda x, y: x * y, org_shape)
+            mul_res_refine = reduce(lambda x, y: x * y, shape) * -1
             idx = shape.index(-1)
             shape[idx] = mul_res_org // mul_res_refine
-        
-        print("==========:", self.op.input_arg_names)
-        print("org_shape: ", org_shape)
-        print("refine shape: ", shape)
 
         x = self._get_ge_input(self.op.input_arg_names[0])
         tensor = self._create_ge_tensor([len(shape)], 2, shape)
         const_shape = core.GEOperatorFactory.create_operator(
-            "shape" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor)
+            "shape" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensor)
         reshape = core.GEOperatorFactory.create_operator(
             "reshape" + self._accumulated_op_id(), "Reshape").set_input(
-                "x", x).set_input("shape", const_shape).set_attr_int32("axis", 0)
+                "x",
+                x).set_input("shape", const_shape).set_attr_int32("axis", 0)
         x_shape = core.GEOperatorFactory.create_operator(
             "shape" + self._accumulated_op_id(), "Shape").set_input("x", x)
-        
+
         return [x_shape, reshape], [[1], [0]]
+
 
 class TransposeParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1022,10 +1061,8 @@ class TransposeParser(AscendParserBase):
         self.parser_name = "transpose2"
 
     def _apply(self):
-        x = self._get_ge_input(self.op.input_arg_names[0]) 
+        x = self._get_ge_input(self.op.input_arg_names[0])
         perm = self.op.attr("axis")
-        print("==========:", self.op.input_arg_names)
-        print("perm: ", perm)
         transpose = core.GEOperatorFactory.create_operator(
             "transpose" + self._accumulated_op_id(), "TransposeD").set_input(
                 "x", x).set_attr_vec_int32("perm", perm)
@@ -1033,6 +1070,7 @@ class TransposeParser(AscendParserBase):
             "shape" + self._accumulated_op_id(), "Shape").set_input("x", x)
 
         return [x_shape, transpose], [[1], [0]]
+
 
 class AccuracyParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1043,13 +1081,7 @@ class AccuracyParser(AscendParserBase):
         pred = self._get_ge_input(self.op.input_arg_names[0])
         label = self._get_ge_input(self.op.input_arg_names[1])
         logits = self._get_ge_input(self.op.input_arg_names[2])
-        
-        print("=============", self.op.input_arg_names)
-        print("=============", self.op.output_arg_names)
-        print(self.op.block.var(self.op.input_arg_names[2]).dtype)
-        
 
-        ## acc
         pred = core.GEOperatorFactory.create_operator(
             "cast" + self._accumulated_op_id(), "Cast").set_input(
                 "x", pred).set_attr_int32("dst_type", 3)
@@ -1064,20 +1096,25 @@ class AccuracyParser(AscendParserBase):
                 "x", equal).set_attr_int32("dst_type", 0)
         acc = core.GEOperatorFactory.create_operator(
             "mean" + self._accumulated_op_id(), "ReduceMeanD").set_input(
-                "x", cast).set_attr_bool("keep_dims", False).set_attr_vec_int32("axes", [])
+                "x", cast).set_attr_bool("keep_dims", False).set_attr_vec_int32(
+                    "axes", [])
         correct = core.GEOperatorFactory.create_operator(
             "sum" + self._accumulated_op_id(), "ReduceSumD").set_input(
-                "x", cast).set_attr_bool("keep_dims", False).set_attr_vec_int32("axes", [])
+                "x", cast).set_attr_bool("keep_dims", False).set_attr_vec_int32(
+                    "axes", [])
         ones_tensor = core.GEOperatorFactory.create_operator(
-            "oneslike" + self._accumulated_op_id(), "OnesLike").set_input("x", label)
+            "oneslike" + self._accumulated_op_id(),
+            "OnesLike").set_input("x", label)
         ones_tensor = core.GEOperatorFactory.create_operator(
             "cast" + self._accumulated_op_id(), "Cast").set_input(
                 "x", ones_tensor).set_attr_int32("dst_type", 0)
         total = core.GEOperatorFactory.create_operator(
             "sum" + self._accumulated_op_id(), "ReduceSumD").set_input(
-                "x", ones_tensor).set_attr_bool("keep_dims", False).set_attr_vec_int32("axes", [])
+                "x", ones_tensor).set_attr_bool(
+                    "keep_dims", False).set_attr_vec_int32("axes", [])
 
         return [acc, correct, total], [[0], [1], [2]]
+
 
 class TopkParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1088,27 +1125,24 @@ class TopkParser(AscendParserBase):
         x = self._get_ge_input(self.op.input_arg_names[0])
         k = self.op.attr("k")
 
-        print("======", self.op.block.var(self.op.input_arg_names[0]).dtype)
-        print("======", self.op.input_arg_names)
-        print("k: ", k)
-
         tensor = self._create_ge_tensor([1], 2, k)
         const_k = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), 
-                "Const").set_attr_tensor("value", tensor)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensor)
         cast_x = core.GEOperatorFactory.create_operator(
-            "cast" + self._accumulated_op_id(), 
-                "Cast").set_input("x", x).set_attr_int32("dst_type", 1)
+            "cast" + self._accumulated_op_id(),
+            "Cast").set_input("x", x).set_attr_int32("dst_type", 1)
         topk = core.GEOperatorFactory.create_operator(
-            "topk" + self._accumulated_op_id(), 
-                "TopK").set_input("x", cast_x).set_input("k", const_k)
+            "topk" + self._accumulated_op_id(),
+            "TopK").set_input("x", cast_x).set_input("k", const_k)
         value = core.GEOperatorFactory.create_operator(
-            "cast" + self._accumulated_op_id(), "Cast").set_input("x", 
-                topk, 0).set_attr_int32("dst_type", 0)
+            "cast" + self._accumulated_op_id(), "Cast").set_input(
+                "x", topk, 0).set_attr_int32("dst_type", 0)
         index = core.GEOperatorFactory.create_operator(
             "cast" + self._accumulated_op_id(), "Cast").set_input(
                 "x", topk, 1).set_attr_int32("dst_type", 0)
         return [value, index], [[1], [0]]
+
 
 class LookupTableParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1127,6 +1161,7 @@ class LookupTableParser(AscendParserBase):
                 "x", w).set_input("indices", ids_squeeze)
         return [out], [[0]]
 
+
 class StackParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(StackParser, self).__init__(graph, var2geop)
@@ -1136,46 +1171,172 @@ class StackParser(AscendParserBase):
         tiles = len(self.op.input_arg_names)
         data_x_lst = []
         for index in range(tiles):
-            data_x_lst.append(self._get_ge_input(self.op.input_arg_names[index]))
+            data_x_lst.append(
+                self._get_ge_input(self.op.input_arg_names[index]))
         axis = self.op.attr("axis")
 
-        print("========", self.op.input_arg_names)
-        print("number of stack: ", tiles)
-        
         data_x = data_x_lst[0]
         tensor = self._create_ge_tensor([1], 2, axis)
         tensor_axis = core.GEOperatorFactory.create_operator(
-            "axis" + self._accumulated_op_id(), 
-                "Const").set_attr_tensor("value", tensor)
+            "axis" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensor)
         expand = core.GEOperatorFactory.create_operator(
-            "expand" + self._accumulated_op_id(), 
-                "ExpandDims").set_input("x", data_x).set_input(
-                    "axis", tensor_axis)
-        
+            "expand" + self._accumulated_op_id(),
+            "ExpandDims").set_input("x", data_x).set_input("axis", tensor_axis)
+
         stack = core.GEOperatorFactory.create_operator(
-            "stack" + self._accumulated_op_id(), 
-                "TileWithAxis").set_input("x", expand).set_attr_int32(
-                    "axis", axis).set_attr_int32("tiles", tiles)
-        print(self._accumulated_op_id())
-        
+            "stack" + self._accumulated_op_id(),
+            "TileWithAxis").set_input("x", expand).set_attr_int32(
+                "axis", axis).set_attr_int32("tiles", tiles)
+
         return [stack], [[0]]
+
 
 class UnSqueezeParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(UnSqueezeParser, self).__init__(graph, var2geop)
         self.parser_name = "unsqueeze2"
 
-    def _apply(self): 
+    def _apply(self):
         x = self._get_ge_input(self.op.input_arg_names[0])
         axes = self.op.attr('axes')
 
         output = core.GEOperatorFactory.create_operator(
-            "unsqueeze" + self._accumulated_op_id(), 
-                "Unsqueeze").set_input("x", x).set_attr_vec_int32("axes", axes)
+            "unsqueeze" + self._accumulated_op_id(),
+            "Unsqueeze").set_input("x", x).set_attr_vec_int32("axes", axes)
         shape = core.GEOperatorFactory.create_operator(
             "shape" + self._accumulated_op_id(), "Shape").set_input("x", output)
         return [shape, output], [[1], [0]]
 
+
+## parallel
+class AllGatherParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(AllGatherParser, self).__init__(graph, var2geop)
+        self.parser_name = "c_allgather"
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        rank_size = self.op.attr("rank_size")
+        group = self.op.attr("group")
+
+        allgather = core.GEOperatorFactory.create_operator(
+            "allgather" + self._accumulated_op_id(), "HcomAllGather").set_input(
+                "x", x).set_attr_int32(
+                    "rank_size", rank_size).set_attr_string("group", group)
+        return [allgather], [[0]]
+
+
+class AllReduceParser(AscendParserBase):
+    def __init__(self, graph, var2geop, reduction):
+        super(AllReduceParser, self).__init__(graph, var2geop)
+        self.parser_name = "c_allreduce_" + reduction
+        self.reduction = reduction
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        reduction = self.reduction
+        ring_id = self.op.attr("ring_id")
+        group = "hcom_group_" + str(ring_id)
+        fusion = None  #self.op.attr("fusion")
+        fusion_id = None  #self.op.attr("fusion_id")
+
+        allreduce = core.GEOperatorFactory.create_operator(
+            "allreduce" + self._accumulated_op_id(), "HcomAllReduce").set_input(
+                "x", x).set_attr_string(
+                    "reduction", reduction).set_attr_string("group", group)
+        if fusion is not None:
+            allreduce.set_attr_int32("fusion", fusion)
+
+        if fusion_id is not None:
+            allreduce.set_attr_int32("fusion_id", fusion_id)
+        return [allreduce], [[0]]
+
+
+class AllReduceSumParser(AllReduceParser):
+    def __init__(self, graph, var2geop):
+        super(AllReduceSumParser, self).__init__(graph, var2geop, 'sum')
+
+
+class AllReduceMaxParser(AllReduceParser):
+    def __init__(self, graph, var2geop):
+        super(AllReduceMaxParser, self).__init__(graph, var2geop, 'max')
+
+
+class BroadcastParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(BroadcastParser, self).__init__(graph, var2geop)
+        self.parser_name = "c_broadcast"
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        root_rank = self.op.attr("root_rank")
+        group = self.op.attr("group")
+
+        broadcast = core.GEOperatorFactory.create_operator(
+            "broadcast" + self._accumulated_op_id(), "HcomBroadcast").set_input(
+                "x", x).set_attr_int32(
+                    "root_rank", root_rank).set_attr_string("group", group)
+        return [broadcast], [[0]]
+
+
+class ReduceScatterParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(ReduceScatterParser, self).__init__(graph, var2geop)
+        self.parser_name = "c_reduce_scatter"
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        reduction = self.op.attr("reduction")
+        group = self.op.attr("group")
+        rank_size = self.op.attr("rank_size")
+
+        reduce_scatter = core.GEOperatorFactory.create_operator(
+            "reducescatter" + self._accumulated_op_id(),
+            "HcomReduceScatter").set_input("x", x).set_attr_string(
+                "reduction", reduction).set_attr_string(
+                    "group", group).set_attr_int32("rank_size", rank_size)
+        return [reduce_scatter], [[0]]
+
+
+class SendParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(SendParser, self).__init__(graph, var2geop)
+        self.parser_name = "c_send"
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        sr_tag = self.op.attr("sr_tag")
+        dest_rank = self.op.attr("dest_rank")
+        group = self.op.attr("group")
+
+        send = core.GEOperatorFactory.create_operator(
+            "send" + self._accumulated_op_id(), "HcomSend").set_input(
+                "x", x).set_attr_int32("sr_tag", sr_tag).set_attr_int32(
+                    "dest_rank", dest_rank).set_attr_string("group", group)
+        return [send], [[0]]
+
+
+class ReceiveParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(ReceiveParser, self).__init__(graph, var2geop)
+        self.parser_name = "c_receive"
+
+    def _apply(self):
+        x = self._get_ge_input(self.op.input_arg_names[0])
+        sr_tag = self.op.attr("sr_tag")
+        src_rank = self.op.attr("src_rank")
+        group = self.op.attr("group")
+        shape = self.op.attr("shape")
+        dtype = self.op.attr("dtype")
+
+        receive = core.GEOperatorFactory.create_operator(
+            "receive" + self._accumulated_op_id(), "HcomReceive").set_input(
+                "x", x).set_attr_int32("sr_tag", sr_tag).set_attr_int32(
+                    "src_rank", src_rank).set_attr_string(
+                        "group", group).set_attr_vec_int32(
+                            "shape", shape).set_attr_int32("dtype", dtype)
+        return [receive], [[0]]
 
 
 #****************************************************************#
@@ -1192,25 +1353,25 @@ class ReduceSumGradParser(AscendParserBase):
         self.parser_name = "reduce_sum_grad"
 
     def _apply(self):
-        print("===========: ", self.op.input_arg_names)
-        print("===========: ", self.op.output_arg_names)
         x = self._get_ge_input(self.op.input_arg_names[0])
         input = self._get_ge_input(self.op.input_arg_names[1])
 
         shape_tensor = core.GEOperatorFactory.create_operator(
-            "shape" + self._accumulated_op_id(), "Shape").set_input("x", input, 0)
+            "shape" + self._accumulated_op_id(),
+            "Shape").set_input("x", input, 0)
         tensoron = self._create_ge_tensor([1], 2, -1)
         const = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), 
-                "Const").set_attr_tensor("value", tensoron)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensoron)
         self._mark_as_input(const)
 
         reduce_sum = core.GEOperatorFactory.create_operator(
-            "broadcast_to_d" + self._accumulated_op_id(), 
-                "BroadcastTo").set_input("x", x).set_input("shape", shape_tensor)
+            "broadcast_to_d" + self._accumulated_op_id(),
+            "BroadcastTo").set_input("x", x).set_input("shape", shape_tensor)
         #reduce_sum = core.GEOperatorFactory.create_operator("expand" + self._accumulated_op_id(), "ExpandDims").set_input("x", reduce_sum).set_input("axis", const)
 
         return [reduce_sum], [[0]]
+
 
 class MatMulGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1223,153 +1384,148 @@ class MatMulGradParser(AscendParserBase):
         y = self._get_ge_input(self.op.input_arg_names[2])
         transpose_x = self.op.attr("transpose_X")
         transpose_y = self.op.attr("transpose_Y")
-        
+
         out_grad_shape = self.op.block.var(self.op.input_arg_names[0]).shape
         x_shape = self.op.block.var(self.op.input_arg_names[1]).shape
-        y_shape = self.op.block.var(self.op.input_arg_names[2]).shape 
-        print("=======", self.op.input_arg_names)
-        print("=======", self.op.output_arg_names)
-        print("out_grad_shape: ", out_grad_shape)
-        print("x_shape: ", x_shape)
-        print("y_shape: ", y_shape)
-        print("transpose_x: ", transpose_x) 
-        print("transpose_y: ", transpose_y)
-        
+        y_shape = self.op.block.var(self.op.input_arg_names[2]).shape
+
         if len(x_shape) > 2:
-            if transpose_y: 
+            if transpose_y:
                 x_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "BatchMatMul").set_input("x1", out_grad).set_input(
-                            "x2", y).set_attr_bool(
-                                "adj_x1", False).set_attr_bool("adj_x2", False)
+                    self.parser_name + self._accumulated_op_id(),
+                    "BatchMatMul").set_input("x1", out_grad).set_input(
+                        "x2", y).set_attr_bool(
+                            "adj_x1", False).set_attr_bool("adj_x2", False)
                 y_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "BatchMatMul").set_input("x1", out_grad).set_input(
-                            "x2", x).set_attr_bool(
-                                "adj_x1", True).set_attr_bool("adj_x2", False)
+                    self.parser_name + self._accumulated_op_id(),
+                    "BatchMatMul").set_input("x1", out_grad).set_input(
+                        "x2", x).set_attr_bool(
+                            "adj_x1", True).set_attr_bool("adj_x2", False)
             else:
                 x_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "BatchMatMul").set_input("x1", out_grad).set_input(
-                            "x2", y).set_attr_bool(
-                                "adj_x1", False).set_attr_bool("adj_x2", True)
+                    self.parser_name + self._accumulated_op_id(),
+                    "BatchMatMul").set_input("x1", out_grad).set_input(
+                        "x2", y).set_attr_bool(
+                            "adj_x1", False).set_attr_bool("adj_x2", True)
                 y_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "BatchMatMul").set_input("x1", x).set_input(
-                            "x2", out_grad).set_attr_bool(
-                                "adj_x1", True).set_attr_bool("adj_x2", False)
+                    self.parser_name + self._accumulated_op_id(),
+                    "BatchMatMul").set_input("x1", x).set_input(
+                        "x2", out_grad).set_attr_bool(
+                            "adj_x1", True).set_attr_bool("adj_x2", False)
         else:
             if transpose_y:
                 x_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "MatMul").set_input("x1", out_grad).set_input(
-                            "x2", y).set_attr_bool(
-                                "transpose_x1", False).set_attr_bool(
-                                    "transpose_x2", False)
+                    self.parser_name + self._accumulated_op_id(),
+                    "MatMul").set_input("x1", out_grad).set_input(
+                        "x2", y).set_attr_bool(
+                            "transpose_x1", False).set_attr_bool("transpose_x2",
+                                                                 False)
                 y_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "MatMul").set_input("x1", out_grad).set_input(
-                            "x2", x).set_attr_bool(
-                                "transpose_x1", True).set_attr_bool(
-                                    "transpose_x2", False)
+                    self.parser_name + self._accumulated_op_id(),
+                    "MatMul").set_input("x1", out_grad).set_input(
+                        "x2", x).set_attr_bool(
+                            "transpose_x1", True).set_attr_bool("transpose_x2",
+                                                                False)
             else:
                 x_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "MatMul").set_input("x1", out_grad).set_input(
-                            "x2", y).set_attr_bool(
-                                "transpose_x1", False).set_attr_bool(
-                                    "transpose_x2", True)
+                    self.parser_name + self._accumulated_op_id(),
+                    "MatMul").set_input("x1", out_grad).set_input(
+                        "x2", y).set_attr_bool(
+                            "transpose_x1", False).set_attr_bool("transpose_x2",
+                                                                 True)
                 y_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "MatMul").set_input("x1", x).set_input(
-                            "x2", out_grad).set_attr_bool(
-                                "transpose_x1", True).set_attr_bool(
-                                    "transpose_x2", False)
-        
-        print(self._accumulated_op_id())
+                    self.parser_name + self._accumulated_op_id(),
+                    "MatMul").set_input("x1", x).set_input(
+                        "x2", out_grad).set_attr_bool(
+                            "transpose_x1", True).set_attr_bool("transpose_x2",
+                                                                False)
 
         return [x_grad, y_grad], [[0], [1]]
+
 
 class MulGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(MulGradParser, self).__init__(graph, var2geop)
         self.parser_name = "mul_grad"
-    
+
     def _apply(self):
         out_grad = self._get_ge_input(self.op.input_arg_names[0])
         x = self._get_ge_input(self.op.input_arg_names[1])
         y = self._get_ge_input(self.op.input_arg_names[2])
         x_num_col_dims = self.op.attr("x_num_col_dims")
         y_num_col_dims = self.op.attr("y_num_col_dims")
-        
+
         shape_out_grad = self.op.block.var(self.op.input_arg_names[0]).shape
         shape_x = self.op.block.var(self.op.input_arg_names[1]).shape
         shape_y = self.op.block.var(self.op.input_arg_names[2]).shape
-        print("======", self.op.input_arg_names)
-        print("======", self.op.output_arg_names)
-        print("out_grad_shape: ", shape_out_grad)
-        print("x_shape: ", shape_x)
-        print("y_shape: ", shape_y)
-        print("x_num_col_dims: ", x_num_col_dims)
-        print("y_num_col_dims: ", y_num_col_dims)
-        
+
         if x_num_col_dims == 1 and y_num_col_dims == 1:
             if len(shape_x) == 2 and len(shape_y) == 2:
                 x_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "MatMul").set_input("x1", out_grad).set_input(
-                            "x2", y).set_attr_bool(
-                                "transpose_x1", False).set_attr_bool(
-                                    "transpose_x2", True)
+                    self.parser_name + self._accumulated_op_id(),
+                    "MatMul").set_input("x1", out_grad).set_input(
+                        "x2", y).set_attr_bool(
+                            "transpose_x1", False).set_attr_bool("transpose_x2",
+                                                                 True)
                 y_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "MatMul").set_input("x1", x).set_input(
-                            "x2", out_grad).set_attr_bool(
-                                "transpose_x1", True).set_attr_bool(
-                                    "transpose_x2", False)
+                    self.parser_name + self._accumulated_op_id(),
+                    "MatMul").set_input("x1", x).set_input(
+                        "x2", out_grad).set_attr_bool(
+                            "transpose_x1", True).set_attr_bool("transpose_x2",
+                                                                False)
             elif len(shape_x) == 3 and len(shape_y) == 2:
                 flatten_x = core.GEOperatorFactory.create_operator(
-                    "flatten" + self._accumulated_op_id(), "Flatten").set_input("x", x)
+                    "flatten" + self._accumulated_op_id(),
+                    "Flatten").set_input("x", x)
                 x_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), "MatMul").set_input(
+                    self.parser_name + self._accumulated_op_id(),
+                    "MatMul").set_input(
                         "x1", out_grad).set_input("x2", y).set_attr_bool(
-                            "transpose_x1", False).set_attr_bool("transpose_x2", True)
+                            "transpose_x1",
+                            False).set_attr_bool("transpose_x2", True)
                 if len(shape_out_grad) == 2:
                     x_grad = core.GEOperatorFactory.create_operator(
-                        "unsqueeze" + self._accumulated_op_id(), 
-                            "Unsqueeze").set_input("x", x_grad).set_attr_vec_int32("axes", [1])
+                        "unsqueeze" + self._accumulated_op_id(),
+                        "Unsqueeze").set_input("x", x_grad).set_attr_vec_int32(
+                            "axes", [1])
 
                 y_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), "MatMul").set_input(
-                        "x1", flatten_x).set_input("x2", out_grad).set_attr_bool(
-                            "transpose_x1", True).set_attr_bool("transpose_x2", False)
+                    self.parser_name + self._accumulated_op_id(),
+                    "MatMul").set_input(
+                        "x1",
+                        flatten_x).set_input("x2", out_grad).set_attr_bool(
+                            "transpose_x1",
+                            True).set_attr_bool("transpose_x2", False)
         else:
             if len(shape_x) == 3 and len(shape_y) == 2:
                 assert x_num_col_dims == 2, "only support 2"
                 flatten_x = core.GEOperatorFactory.create_operator(
-                    "flatten" + self._accumulated_op_id(), "FlattenV2").set_input(
-                        "x", x).set_attr_int32("axis", 0).set_attr_int32("end_axis", 1) 
+                    "flatten" + self._accumulated_op_id(),
+                    "FlattenV2").set_input("x", x).set_attr_int32(
+                        "axis", 0).set_attr_int32("end_axis", 1)
                 flatten_out_grad = core.GEOperatorFactory.create_operator(
-                    "flatten" + self._accumulated_op_id(), "FlattenV2").set_input(
-                        "x", out_grad).set_attr_int32("axis", 0).set_attr_int32("end_axis", 1) 
-                 
+                    "flatten" + self._accumulated_op_id(),
+                    "FlattenV2").set_input("x", out_grad).set_attr_int32(
+                        "axis", 0).set_attr_int32("end_axis", 1)
+
                 y_unsqueeze = core.GEOperatorFactory.create_operator(
-                    "unsqueeze" + self._accumulated_op_id(), "Unsqueeze").set_input(
-                        "x", y).set_attr_vec_int32("axes", [0])
+                    "unsqueeze" + self._accumulated_op_id(),
+                    "Unsqueeze").set_input("x",
+                                           y).set_attr_vec_int32("axes", [0])
                 x_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "BatchMatMul").set_input("x1", out_grad).set_input(
-                            "x2", y_unsqueeze).set_attr_bool(
-                                "adj_x1", False).set_attr_bool("adj_x2", True)
+                    self.parser_name + self._accumulated_op_id(),
+                    "BatchMatMul").set_input("x1", out_grad).set_input(
+                        "x2", y_unsqueeze).set_attr_bool(
+                            "adj_x1", False).set_attr_bool("adj_x2", True)
                 y_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "MatMul").set_input("x1", flatten_x).set_input(
-                            "x2", flatten_out_grad).set_attr_bool(
-                                "transpose_x1", True).set_attr_bool("transpose_x2", False)
-        
-        print(self._accumulated_op_id())
-        
+                    self.parser_name + self._accumulated_op_id(),
+                    "MatMul").set_input("x1", flatten_x).set_input(
+                        "x2", flatten_out_grad).set_attr_bool(
+                            "transpose_x1",
+                            True).set_attr_bool("transpose_x2", False)
+
         return [x_grad, y_grad], [[0], [1]]
+
 
 class ReluGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1380,16 +1536,17 @@ class ReluGradParser(AscendParserBase):
         out = self._get_ge_input(self.op.input_arg_names[0])
         out_grad = self._get_ge_input(self.op.input_arg_names[1])
         relu_grad = core.GEOperatorFactory.create_operator(
-            self.parser_name + self._accumulated_op_id(), 
-                "ReluGrad").set_input("gradients", out_grad).set_input("features", out)
+            self.parser_name + self._accumulated_op_id(), "ReluGrad").set_input(
+                "gradients", out_grad).set_input("features", out)
         return [relu_grad], [[0]]
+
 
 class SoftmaxWithCrossEntropyGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(SoftmaxWithCrossEntropyGradParser, self).__init__(graph, var2geop)
         self.parser_name = "softmax_with_cross_entropy_grad"
 
-    def _apply(self): 
+    def _apply(self):
         label = self._get_ge_input(self.op.input_arg_names[0])
         loss_grad = self._get_ge_input(self.op.input_arg_names[1])
         softmax = self._get_ge_input(self.op.input_arg_names[2])
@@ -1398,22 +1555,18 @@ class SoftmaxWithCrossEntropyGradParser(AscendParserBase):
         label_shape = self.op.block.var(self.op.input_arg_names[0]).shape
         loss_grad_shape = self.op.block.var(self.op.input_arg_names[1]).shape
         softmax_shape = self.op.block.var(self.op.input_arg_names[2]).shape
-        print("==============", self.op.input_arg_names)
-        print("==============", self.op.output_arg_names)
-        print("label_shape: ", label_shape)
-        print("loss_grad_shape: ", loss_grad_shape)
-        print("softmax_shape: ", softmax_shape)
-        
 
         tensoron = self._create_ge_tensor([1], 5, 1)
         on = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensoron)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensoron)
         tensoroff = self._create_ge_tensor([1], 5, 0)
         off = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensoroff)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensoroff)
         self._mark_as_input(on)
         self._mark_as_input(off)
-        
+
         label = core.GEOperatorFactory.create_operator(
             "cast" + self._accumulated_op_id(), "Cast").set_input(
                 "x", label).set_attr_int32("dst_type", 3)
@@ -1422,15 +1575,17 @@ class SoftmaxWithCrossEntropyGradParser(AscendParserBase):
                 "x", label).set_input("on_value", on).set_input(
                     "off_value", off).set_attr_int32("depth", cls_num)
         squeeze = core.GEOperatorFactory.create_operator(
-            "suqeeze" + self._accumulated_op_id(), "Squeeze").set_input("x", onehot)
+            "suqeeze" + self._accumulated_op_id(),
+            "Squeeze").set_input("x", onehot)
         sub = core.GEOperatorFactory.create_operator(
             "sub" + self._accumulated_op_id(), "Sub").set_input(
                 "x1", softmax).set_input("x2", squeeze)
         grad = core.GEOperatorFactory.create_operator(
-            "mul" + self._accumulated_op_id(), "Mul").set_input("x1", loss_grad).set_input("x2", sub)
-         
-        print(self._accumulated_op_id())
+            "mul" + self._accumulated_op_id(),
+            "Mul").set_input("x1", loss_grad).set_input("x2", sub)
+
         return [on, off, label, onehot, grad], [[-1]]
+
 
 class DotMulGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1438,20 +1593,19 @@ class DotMulGradParser(AscendParserBase):
         self.parser_name = "elementwise_mul_grad"
 
     def _apply(self):
-        print("==============", self.op.input_arg_names)
-        print("==============", self.op.output_arg_names)
         out_grad = self._get_ge_input(self.op.input_arg_names[0])
         out_1 = self._get_ge_input(self.op.input_arg_names[1])
         out_2 = self._get_ge_input(self.op.input_arg_names[2])
-        
+
         x_grad = core.GEOperatorFactory.create_operator(
-            self.parser_name + self._accumulated_op_id(), 
-                "Mul").set_input("x1", out_grad).set_input("x2", out_2)
+            self.parser_name + self._accumulated_op_id(),
+            "Mul").set_input("x1", out_grad).set_input("x2", out_2)
         y_grad = core.GEOperatorFactory.create_operator(
-            self.parser_name + self._accumulated_op_id(), 
-                "Mul").set_input("x1", out_1).set_input("x2", out_grad)
+            self.parser_name + self._accumulated_op_id(),
+            "Mul").set_input("x1", out_1).set_input("x2", out_grad)
 
         return [x_grad, y_grad], [[0], [1]]
+
 
 class DotAddGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1465,45 +1619,37 @@ class DotAddGradParser(AscendParserBase):
         out_grad_shape = self.op.block.var(self.op.input_arg_names[0]).shape
         out_1_shape = self.op.block.var(self.op.input_arg_names[1]).shape
         out_2_shape = self.op.block.var(self.op.input_arg_names[2]).shape
-        
-        print("==============", self.op.input_arg_names)
-        print("==============", self.op.output_arg_names)
-        print("out_grad_shape: ", out_grad_shape)
-        print("out_1_shape: ", out_1_shape)
-        print("out_2_shape: ", out_2_shape)
 
-        # x_grad
         x_grad = out_grad
         cur_time_x = len(out_grad_shape) - len(out_1_shape)
         for i in range(cur_time_x):
-             x_grad = core.GEOperatorFactory.create_operator(
-                self.parser_name + self._accumulated_op_id(), 
-                    "ReduceSumD").set_input("x", x_grad).set_attr_vec_int32(
-                        "axes", [0]).set_attr_bool("keep_dims", False)
+            x_grad = core.GEOperatorFactory.create_operator(
+                self.parser_name + self._accumulated_op_id(),
+                "ReduceSumD").set_input("x", x_grad).set_attr_vec_int32(
+                    "axes", [0]).set_attr_bool("keep_dims", False)
         for axis, size in enumerate(out_1_shape):
             if size == 1:
                 x_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "ReduceSumD").set_input("x", x_grad).set_attr_vec_int32(
-                            "axes", [axis]).set_attr_bool("keep_dims", True)
+                    self.parser_name + self._accumulated_op_id(),
+                    "ReduceSumD").set_input("x", x_grad).set_attr_vec_int32(
+                        "axes", [axis]).set_attr_bool("keep_dims", True)
 
-        # y_grad
         y_grad = out_grad
         cur_time_y = len(out_grad_shape) - len(out_2_shape)
         for i in range(cur_time_y):
-             y_grad = core.GEOperatorFactory.create_operator(
-                self.parser_name + self._accumulated_op_id(), 
-                    "ReduceSumD").set_input("x", y_grad).set_attr_vec_int32(
-                        "axes", [0]).set_attr_bool("keep_dims", False)
+            y_grad = core.GEOperatorFactory.create_operator(
+                self.parser_name + self._accumulated_op_id(),
+                "ReduceSumD").set_input("x", y_grad).set_attr_vec_int32(
+                    "axes", [0]).set_attr_bool("keep_dims", False)
         for axis, size in enumerate(out_2_shape):
             if size == 1:
                 y_grad = core.GEOperatorFactory.create_operator(
-                    self.parser_name + self._accumulated_op_id(), 
-                        "ReduceSumD").set_input("x", y_grad).set_attr_vec_int32(
-                            "axes", [axis]).set_attr_bool("keep_dims", True)
-    
-        print(self._accumulated_op_id()) 
+                    self.parser_name + self._accumulated_op_id(),
+                    "ReduceSumD").set_input("x", y_grad).set_attr_vec_int32(
+                        "axes", [axis]).set_attr_bool("keep_dims", True)
+
         return [x_grad, y_grad], [[0], [1]]
+
 
 class DotDivGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1511,29 +1657,24 @@ class DotDivGradParser(AscendParserBase):
         self.parser_name = "elementwise_div_grad"
 
     def _apply(self):
-        print("==============", self.op.input_arg_names)
-        print("==============", self.op.output_arg_names) 
-        print("out_shape: ", self.op.block.var(self.op.input_arg_names[0]).shape)
-        print("out_grad_shape: ", self.op.block.var(self.op.input_arg_names[1]).shape)
-        print("x_shape: ", self.op.block.var(self.op.input_arg_names[2]).shape)
-        print("y_shape: ", self.op.block.var(self.op.input_arg_names[3]).shape)
-
         out = self._get_ge_input(self.op.input_arg_names[0])
         out_grad = self._get_ge_input(self.op.input_arg_names[1])
         x = self._get_ge_input(self.op.input_arg_names[2])
         y = self._get_ge_input(self.op.input_arg_names[3])
-        
+
         y_power = core.GEOperatorFactory.create_operator(
             "power" + self._accumulated_op_id(), "Power").set_input(
-                "x", y).set_attr_float("power", -1) 
-        # x_grad
+                "x", y).set_attr_float("power", -1)
+
         tensor_zeros = core.GEOperatorFactory.create_operator(
-            "zeroslike" + self._accumulated_op_id(), "ZerosLike").set_input("x", x)
+            "zeroslike" + self._accumulated_op_id(),
+            "ZerosLike").set_input("x", x)
         x_zero = core.GEOperatorFactory.create_operator(
             "equal" + self._accumulated_op_id(), "Equal").set_input(
                 "x1", x).set_input("x2", tensor_zeros)
         x_nozero = core.GEOperatorFactory.create_operator(
-            "logical_not" + self._accumulated_op_id(), "LogicalNot").set_input("x", x_zero)
+            "logical_not" + self._accumulated_op_id(),
+            "LogicalNot").set_input("x", x_zero)
         x_nozero_f = core.GEOperatorFactory.create_operator(
             "cast" + self._accumulated_op_id(), "Cast").set_input(
                 "x", x_nozero).set_attr_int32("dst_type", 0)
@@ -1541,10 +1682,9 @@ class DotDivGradParser(AscendParserBase):
             "mul" + self._accumulated_op_id(), "Mul").set_input(
                 "x1", x_nozero_f).set_input("x2", y_power)
         x_grad = core.GEOperatorFactory.create_operator(
-            self.parser_name + self._accumulated_op_id(), 
-                "Mul").set_input("x1", x_grad_w).set_input("x2", out_grad)
+            self.parser_name + self._accumulated_op_id(),
+            "Mul").set_input("x1", x_grad_w).set_input("x2", out_grad)
 
-        # y_grad
         y_grad_w = core.GEOperatorFactory.create_operator(
             "mul" + self._accumulated_op_id(), "Mul").set_input(
                 "x1", out).set_input("x2", y_power)
@@ -1552,19 +1692,8 @@ class DotDivGradParser(AscendParserBase):
             "mul" + self._accumulated_op_id(), "Mul").set_input(
                 "x1", y_grad_w).set_input("x2", out_grad)
 
-        #tensor_shape_1 = self.get_GEtensor_shape(x)
-        #tensor_shape_2 = self.get_GEtensor_shape(y)
-        #tensor_shape_3 = self.get_GEtensor_shape(y_grad)
-        ##tensor_shape_4 = self.get_GEtensor_shape(x_grad)
-        #tensor_shape_5 = self.get_GEtensor_shape(self.var2geop["sqrt_1.tmp_0"])
-        ##tensor_shape_6 = self.get_GEtensor_shape(self.var2geop["fc_16.tmp_2@GRAD"])
-        #self.var2geop["tensor_shape_1"] = tensor_shape_1
-        #self.var2geop["tensor_shape_2"] = tensor_shape_2 
-        #self.var2geop["tensor_shape_3"] = tensor_shape_3
-        #self.var2geop["tensor_shape_4"] = tensor_shape_5
-
-        print(self._accumulated_op_id())
         return [x_grad, y_grad], [[0], [1]]
+
 
 class SoftmaxGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1574,16 +1703,13 @@ class SoftmaxGradParser(AscendParserBase):
     def _apply(self):
         out = self._get_ge_input(self.op.input_arg_names[0])
         out_grad = self._get_ge_input(self.op.input_arg_names[1])
-        
-        print("===========", self.op.input_arg_names)
-        print("===========", self.op.output_arg_names)
-        print("x_shape: ", self.op.block.var(self.op.input_arg_names[0]).shape)
-        print("out_grad_shape: ", self.op.block.var(self.op.input_arg_names[1]).shape)
 
         x_grad = core.GEOperatorFactory.create_operator(
-            self.parser_name + self._accumulated_op_id(), 
-                "SoftmaxGrad").set_input("softmax", out).set_input("grad_softmax", out_grad)
+            self.parser_name + self._accumulated_op_id(),
+            "SoftmaxGrad").set_input("softmax", out).set_input("grad_softmax",
+                                                               out_grad)
         return [x_grad], [[0]]
+
 
 class ReshapeGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1594,56 +1720,50 @@ class ReshapeGradParser(AscendParserBase):
         out_grad = self._get_ge_input(self.op.input_arg_names[0])
         x_shape = self._get_ge_input(self.op.input_arg_names[1])
         x_shape_list = self.op.block.var(self.op.input_arg_names[1]).shape
-        
-        print("===========", self.op.input_arg_names)
-        print("===========", self.op.output_arg_names) 
-        print("x_shape: ", x_shape_list)
-        print("out_grad: ", self.op.block.var(self.op.input_arg_names[0]).shape)
 
         if x_shape_list[0] == 0:
             x_shape_delzero = x_shape_list[1:]
-        tensor = self._create_ge_tensor([len(x_shape_delzero)], 2, x_shape_delzero)
+        tensor = self._create_ge_tensor([len(x_shape_delzero)], 2,
+                                        x_shape_delzero)
         const_shape = core.GEOperatorFactory.create_operator(
-            "shape" + self._accumulated_op_id(), "Const").set_attr_tensor("value", tensor) 
+            "shape" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", tensor)
         x_grad = core.GEOperatorFactory.create_operator(
             "reshape" + self._accumulated_op_id(), "Reshape").set_input(
                 "x", out_grad).set_input("shape", const_shape)
-        print(self._accumulated_op_id())
 
         return [x_grad], [[0]]
+
 
 class GatherGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(GatherGradParser, self).__init__(graph, var2geop)
         self.parser_name = "gather_grad"
-    
+
     def _apply(self):
         index = self._get_ge_input(self.op.input_arg_names[0])
         out_grad = self._get_ge_input(self.op.input_arg_names[1])
         x = self._get_ge_input(self.op.input_arg_names[2])
-        
+
         index_shape = self.op.block.var(self.op.input_arg_names[0]).shape
         out_grad_shape = self.op.block.var(self.op.input_arg_names[1]).shape
         x_shape = self.op.block.var(self.op.input_arg_names[2]).shape
-        
-        print("===========", self.op.input_arg_names) 
-        print(index_shape, out_grad_shape, x_shape) 
-        
+
         if len(index_shape) == 1:
             index = core.GEOperatorFactory.create_operator(
-                "unsqueeze" + self._accumulated_op_id(), 
-                    "Unsqueeze").set_input("x", index).set_attr_vec_int32("axes", [1])
-        
+                "unsqueeze" + self._accumulated_op_id(), "Unsqueeze").set_input(
+                    "x", index).set_attr_vec_int32("axes", [1])
+
         tensor_zeros = core.GEOperatorFactory.create_operator(
-            "zeroslike" + self._accumulated_op_id(), "ZerosLike").set_input("x", x)    
+            "zeroslike" + self._accumulated_op_id(),
+            "ZerosLike").set_input("x", x)
         x_grad = core.GEOperatorFactory.create_operator(
-            "scatter" + self._accumulated_op_id(), 
-                "TensorScatterUpdate").set_input(
-                    "x", tensor_zeros).set_input(
-                        "indices", index).set_input(
-                            "updates", out_grad)  
+            "scatter" + self._accumulated_op_id(),
+            "TensorScatterUpdate").set_input("x", tensor_zeros).set_input(
+                "indices", index).set_input("updates", out_grad)
 
         return [tensor_zeros, x_grad], [[-1]]
+
 
 class TransposeGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1657,19 +1777,14 @@ class TransposeGradParser(AscendParserBase):
 
         x_shape = self.op.block.var(self.op.input_arg_names[1]).shape[1:]
         out_grad_shape = self.op.block.var(self.op.input_arg_names[0]).shape
-        
-        print("===========", self.op.input_arg_names)
-        print("perm: ", perm)
-        print("x_shape: ", x_shape)
-        print("out_grad_shape: ", out_grad_shape)
-        
         assert list(map(lambda x: out_grad_shape[x], perm)) == list(x_shape)
-        
+
         x_grad = core.GEOperatorFactory.create_operator(
-            "transpose" + self._accumulated_op_id(), 
-                "TransposeD").set_input("x", out_grad).set_attr_vec_int32("perm", perm)
-        
+            "transpose" + self._accumulated_op_id(), "TransposeD").set_input(
+                "x", out_grad).set_attr_vec_int32("perm", perm)
+
         return [x_grad], [[0]]
+
 
 class LayerNormGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1677,15 +1792,6 @@ class LayerNormGradParser(AscendParserBase):
         self.parser_name = "layer_norm_grad"
 
     def _apply(self):
-        print("===========", self.op.input_arg_names)
-        print("==========", self.op.output_arg_names)
-        print("bias_shape", self.op.block.var(self.op.input_arg_names[0]).shape)
-        print("mean_shape", self.op.block.var(self.op.input_arg_names[1]).shape)
-        print("scale_shape", self.op.block.var(self.op.input_arg_names[2]).shape)
-        print("variance_shape", self.op.block.var(self.op.input_arg_names[3]).shape)
-        print("x_shape", self.op.block.var(self.op.input_arg_names[4]).shape)
-        print("out_grad_shape", self.op.block.var(self.op.input_arg_names[5]).shape)
-        
         bias = self._get_ge_input(self.op.input_arg_names[0])
         mean = self._get_ge_input(self.op.input_arg_names[1])
         scale = self._get_ge_input(self.op.input_arg_names[2])
@@ -1695,13 +1801,13 @@ class LayerNormGradParser(AscendParserBase):
         x_dtype = self.op.block.var(self.op.input_arg_names[4]).dtype
 
         x_grad = core.GEOperatorFactory.create_operator(
-            self.parser_name + self._accumulated_op_id(), 
-                "LayerNormGrad").set_input("dy", out_grad).set_input(
-                    "x", x).set_input("variance", variance).set_input(
-                        "mean", mean).set_input("gamma", scale) 
-        
-        cast_dtype = 0 if self.ascend_helper.dtype2paddle_inv_map[str(x_dtype)] == 0 else 1
-        print(cast_dtype)
+            self.parser_name + self._accumulated_op_id(),
+            "LayerNormGrad").set_input("dy", out_grad).set_input(
+                "x", x).set_input("variance", variance).set_input(
+                    "mean", mean).set_input("gamma", scale)
+
+        cast_dtype = 0 if self.ascend_helper.dtype2paddle_inv_map[str(
+            x_dtype)] == 0 else 1
         out_x_grad = core.GEOperatorFactory.create_operator(
             "cast" + self._accumulated_op_id(), "Cast").set_input(
                 "x", x_grad, 0).set_attr_int32("dst_type", cast_dtype)
@@ -1712,8 +1818,8 @@ class LayerNormGradParser(AscendParserBase):
             "cast" + self._accumulated_op_id(), "Cast").set_input(
                 "x", x_grad, 2).set_attr_int32("dst_type", cast_dtype)
 
-        print(self._accumulated_op_id())
         return [out_x_grad, out_scale_grad, out_bias_grad], [[2], [1], [0]]
+
 
 class TanhGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1721,15 +1827,14 @@ class TanhGradParser(AscendParserBase):
         self.parser_name = 'tanh_grad'
 
     def _apply(self):
-        print('TanhGradParser',self.op.input_arg_names)
-        print('TanhGradParser',self.op.output_arg_names)
         y = self._get_ge_input(self.op.input_arg_names[0])
         out_grad = self._get_ge_input(self.op.input_arg_names[1])
         tanh_grad = core.GEOperatorFactory.create_operator(
-            "tanh_grad" + self._accumulated_op_id(), 
-                "TanhGrad").set_input("y", y).set_input("dy", out_grad)
+            "tanh_grad" + self._accumulated_op_id(),
+            "TanhGrad").set_input("y", y).set_input("dy", out_grad)
 
         return [tanh_grad], [[0]]
+
 
 class LogGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1737,14 +1842,13 @@ class LogGradParser(AscendParserBase):
         self.parser_name = 'log_grad'
 
     def _apply(self):
-        print('LogGradParser',self.op.input_arg_names)
-        print('LogGradParser',self.op.output_arg_names)
         grad = self._get_ge_input(self.op.input_arg_names[0])
         input = self._get_ge_input(self.op.input_arg_names[1])
         log_grad = core.GEOperatorFactory.create_operator(
-            "log_grad" + self._accumulated_op_id(), 
-                "DivNoNan").set_input("x1", grad).set_input("x2", input)
+            "log_grad" + self._accumulated_op_id(),
+            "DivNoNan").set_input("x1", grad).set_input("x2", input)
         return [log_grad], [[0]]
+
 
 class SqrtGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1755,9 +1859,10 @@ class SqrtGradParser(AscendParserBase):
         y = self._get_ge_input(self.op.input_arg_names[0])
         out_grad = self._get_ge_input(self.op.input_arg_names[1])
         sqrt_grad = core.GEOperatorFactory.create_operator(
-            "sqrt_grad" + self._accumulated_op_id(), 
-                "SqrtGrad").set_input("y", y).set_input("dy", out_grad)
+            "sqrt_grad" + self._accumulated_op_id(),
+            "SqrtGrad").set_input("y", y).set_input("dy", out_grad)
         return [sqrt_grad]
+
 
 class PowGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1768,16 +1873,17 @@ class PowGradParser(AscendParserBase):
         grad = self._get_ge_input(self.op.input_arg_names[0])
         x = self._get_ge_input(self.op.input_arg_names[1])
         factor = self.op.attr("factor")
-        
+
         shape_tensor = self._create_shape_tensor()
         shape_tensor = core.GEOperatorFactory.create_operator(
             "shape" + self._accumulated_op_id(), "Shape").set_input("x", x)
         factor_scale = self._create_ge_tensor([1], 5, factor)
         factor_scale = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), 
-                "Const").set_attr_tensor("value", factor_scale)
+            "const" + self._accumulated_op_id(),
+            "Const").set_attr_tensor("value", factor_scale)
         factor_tensor = core.GEOperatorFactory.create_operator(
-            "broadcast_to_d" + self._accumulated_op_id(),  "BroadcastTo").set_input(
+            "broadcast_to_d" + self._accumulated_op_id(),
+            "BroadcastTo").set_input(
                 "x", factor_scale).set_input("shape", shape_tensor)
 
         x_power = core.GEOperatorFactory.create_operator(
@@ -1787,10 +1893,11 @@ class PowGradParser(AscendParserBase):
             "x_power_mul_factor" + self._accumulated_op_id(), "Mul").set_input(
                 "x1", x).set_input("x2", factor_tensor)
         x_power_mul_factor_grad = core.GEOperatorFactory.create_operator(
-            "x_power_mul_factor_grad" + self._accumulated_op_id(), 
-                "Mul").set_input("x1", x_power_mul_factor).set_input("x2", grad)
+            "x_power_mul_factor_grad" + self._accumulated_op_id(),
+            "Mul").set_input("x1", x_power_mul_factor).set_input("x2", grad)
 
         return [x_power_mul_factor_grad], [[0]]
+
 
 class GeluGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1798,11 +1905,6 @@ class GeluGradParser(AscendParserBase):
         self.parser_name = "gelu_grad"
 
     def _apply(self):
-        print("===========", self.op.input_arg_names)
-        print("===========", self.op.output_arg_names)
-        print("out_grad_shape: ", self.op.block.var(self.op.input_arg_names[0]).shape)
-        print("x_shape: ", self.op.block.var(self.op.input_arg_names[1]).shape)
-
         grad = self._get_ge_input(self.op.input_arg_names[0])
         x = self._get_ge_input(self.op.input_arg_names[1])
 
@@ -1814,22 +1916,19 @@ class GeluGradParser(AscendParserBase):
 
         return [gelu_grad], [[0]]
 
+
 class MeanGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(MeanGradParser, self).__init__(graph, var2geop)
         self.parser_name = "mean_grad"
 
     def _apply(self):
-        print("===========", self.op.input_arg_names)
-        print("==========", self.op.output_arg_names)
-        print("out_grad_shape: ", self.op.block.var(self.op.input_arg_names[0]).shape)
-        print("x_shape: ", self.op.block.var(self.op.input_arg_names[1]).shape)
-
         grad = self._get_ge_input(self.op.input_arg_names[0])
         x = self._get_ge_input(self.op.input_arg_names[1])
-        
+
         ones_tensor = core.GEOperatorFactory.create_operator(
-            "one_tensor" + self._accumulated_op_id(), "OnesLike").set_input("x", x)
+            "one_tensor" + self._accumulated_op_id(),
+            "OnesLike").set_input("x", x)
         sum = core.GEOperatorFactory.create_operator(
             "mean" + self._accumulated_op_id(), "ReduceSumD").set_input(
                 "x", ones_tensor).set_attr_bool(
@@ -1839,10 +1938,11 @@ class MeanGradParser(AscendParserBase):
                 "x", sum).set_attr_float("power", -1)
 
         mean_grad = core.GEOperatorFactory.create_operator(
-            "mean_grad" + self._accumulated_op_id(), 
-                "Mul").set_input("x1", mean).set_input("x2", grad)
-     
+            "mean_grad" + self._accumulated_op_id(),
+            "Mul").set_input("x1", mean).set_input("x2", grad)
+
         return [mean_grad], [[0]]
+
 
 class SliceGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1858,11 +1958,7 @@ class SliceGradParser(AscendParserBase):
 
         x_shape = self.op.block.var(self.op.input_arg_names[0]).shape
         grad_shape = self.op.block.var(self.op.input_arg_names[1]).shape
-        
-        print("=======", self.op.input_arg_names)
-        print("x_shape: ", x_shape)
-        print("grad_shape: ", grad_shape)
-    
+
         len_shape = len(x_shape)
         axes_cor = list(range(len_shape))
         starts_cor, ends_cor = [], []
@@ -1875,18 +1971,16 @@ class SliceGradParser(AscendParserBase):
                 ends_cor.append(0)
             if i in axes:
                 cnt += 1
-            print(starts_cor, ends_cor, cnt, i)
 
-        # don't slice first dimension
         starts_cor[0] = 0
         ends_cor[0] = 0
-        paddings = [[s, e] for (s,e) in zip(starts_cor, ends_cor)]
-        print('paddings', paddings)
+        paddings = [[s, e] for (s, e) in zip(starts_cor, ends_cor)]
         slice_value = core.GEOperatorFactory.create_operator(
-            "slice_grad" + self._accumulated_op_id(), 
-                "PadD").set_input("x", grad).set_attr_vec_vec_int64("paddings", paddings)
+            "slice_grad" + self._accumulated_op_id(), "PadD").set_input(
+                "x", grad).set_attr_vec_vec_int64("paddings", paddings)
 
         return [slice_value], [[0]]
+
 
 class LookUpTableGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1901,25 +1995,27 @@ class LookUpTableGradParser(AscendParserBase):
         shape_ids = self.op.block.var(self.op.input_arg_names[0]).shape
         shape_grad = self.op.block.var(self.op.input_arg_names[1]).shape
         shape_embedding = self.op.block.var(self.op.input_arg_names[2]).shape
-        print("ids_shape: ", shape_ids)
-        print("out_grad_shape: ", shape_grad)
-        print("embedding_shape: ", shape_embedding)
 
         ids_flatten = core.GEOperatorFactory.create_operator(
             "flatten" + self._accumulated_op_id(), "FlattenV2").set_input(
-                "x", ids).set_attr_int32("axis", 0).set_attr_int32("end_axis", 1)
+                "x",
+                ids).set_attr_int32("axis", 0).set_attr_int32("end_axis", 1)
         grad_flatten = core.GEOperatorFactory.create_operator(
             "flatten" + self._accumulated_op_id(), "FlattenV2").set_input(
-                "x", grad).set_attr_int32("axis", 0).set_attr_int32("end_axis", 1)
-        
+                "x",
+                grad).set_attr_int32("axis", 0).set_attr_int32("end_axis", 1)
+
         tensor_zeros = core.GEOperatorFactory.create_operator(
-            "zeroslike" + self._accumulated_op_id(), "ZerosLike").set_input("x", embedding)
+            "zeroslike" + self._accumulated_op_id(),
+            "ZerosLike").set_input("x", embedding)
         embedding_grad = core.GEOperatorFactory.create_operator(
-            "scatteradd" + self._accumulated_op_id(), "TensorScatterAdd").set_input(
+            "scatteradd" + self._accumulated_op_id(),
+            "TensorScatterAdd").set_input(
                 "x", tensor_zeros).set_input("indices", ids_flatten).set_input(
                     "updates", grad_flatten)
-        
+
         return [embedding_grad], [[0]]
+
 
 class SGDParser(AscendParserBase):
     def __init__(self, graph, var2geop):
@@ -1931,17 +2027,18 @@ class SGDParser(AscendParserBase):
         lr = self._get_ge_input(self.op.input_arg_names[1])
         param = self._get_ge_input(self.op.input_arg_names[2])
         sgd = core.GEOperatorFactory.create_operator(
-            "momentum" + self._accumulated_op_id(), 
-                "ApplyGradientDescent").set_input("var", param).set_input(
-                    "alpha", lr).set_input("delta", grad)
+            "momentum" + self._accumulated_op_id(),
+            "ApplyGradientDescent").set_input("var", param).set_input(
+                "alpha", lr).set_input("delta", grad)
         return [sgd], [[0]]
+
 
 class AdamParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(AdamParser, self).__init__(graph, var2geop)
         self.parser_name = "adam"
 
-    def _apply(self): 
+    def _apply(self):
         beta1_power = self._get_ge_input(self.op.input_arg_names[0])
         beta2_power = self._get_ge_input(self.op.input_arg_names[1])
         grad = self._get_ge_input(self.op.input_arg_names[2])
@@ -1952,8 +2049,6 @@ class AdamParser(AscendParserBase):
         beta1 = self.op.attr('beta1')
         beta2 = self.op.attr('beta2')
         epsilon = self.op.attr('epsilon')
-
-        print(beta1, beta2, epsilon)
 
         beta1 = core.GEOperatorFactory.create_operator(
             "const" + self._accumulated_op_id(), "Const").set_attr_tensor(
@@ -1966,20 +2061,13 @@ class AdamParser(AscendParserBase):
                 "value", self._create_ge_tensor([1], 5, epsilon))
 
         adam = core.GEOperatorFactory.create_operator(
-            "adam" + self._accumulated_op_id(), "ApplyAdam").set_input(
-                "var", param).set_input(
-                    "m", moment1).set_input(
-                        "v", moment2).set_input(
-                            "beta1_power", beta1_power).set_input(
-                                "beta2_power", beta2_power).set_input(
-                                    "lr", lr).set_input(
-                                        "beta1", beta1).set_input(
-                                            "beta2", beta2).set_input(
-                                                "epsilon", epsilon).set_input(
-                                                    "grad", grad)
+            "adam" + self._accumulated_op_id(),
+            "ApplyAdam").set_input("var", param).set_input(
+                "m", moment1).set_input("v", moment2).set_input(
+                    "beta1_power", beta1_power).set_input(
+                        "beta2_power", beta2_power).set_input(
+                            "lr", lr).set_input("beta1", beta1).set_input(
+                                "beta2", beta2).set_input(
+                                    "epsilon", epsilon).set_input("grad", grad)
 
         return [adam], [[0]]
-
-
-
-
