@@ -51,6 +51,10 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._reduced_grads_to_param = {}
         self._shard = Shard()
 
+        # use sharding as outer parallelism (e.g. inner:Megatron & outer sharding)
+        self._as_outer_parallelism = True
+        self._inner_parallelism_size = 4
+
     def _can_apply(self):
         if not self.role_maker._is_collective:
             return False
@@ -105,8 +109,10 @@ class ShardingOptimizer(MetaOptimizerBase):
         startup_block._sync_with_cpp()
 
         # step4: insert reduce_sum for grad
-        insert_scale_loss_grad_ops(
-            main_block, scale=1.0 / self.role_maker._worker_num())
+        grad_scale_coeff = self.role_maker._worker_num()
+        if self._as_outer_parallelism:
+            grad_scale_coeff = grad_scale_coeff / self._inner_parallelism_size
+        insert_scale_loss_grad_ops(main_block, scale=1.0 / grad_scale_coeff)
         main_block._sync_with_cpp()
 
         # step5: remove unneeded ops and vars from block
@@ -115,7 +121,8 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # check op dependecy
         check_broadcast(main_block)
-        check_allreduce_sum(main_block, self._shard, self.dp_ring_id)
+        check_allreduce_sum(main_block, self._shard, self.sharding_ring_id,
+                            self.dp_ring_id)
         self._wait()
         return optimize_ops, params_grads
 
@@ -459,6 +466,7 @@ class ShardingOptimizer(MetaOptimizerBase):
     def _init_comm(self):
 
         if self.hybrid_dp:
+            assert self._as_outer_parallelism == False, "hybrid dp is conflict when using sharding as outer parallelism"
             self.sharding_group_size = self.user_defined_strategy.sharding_configs[
                 "sharding_group_size"]
             self.sharding_ring_id = 0
@@ -488,16 +496,54 @@ class ShardingOptimizer(MetaOptimizerBase):
 
             logging.info("Using Sharing&DP mode !")
         else:
-            self.sharding_ring_id = 0
-            self.sharding_rank = self.global_rank
-            self.sharding_group_size = self.role_maker._worker_num()
-            self.sharding_group_endpoints = self.endpoints
+            if self._as_outer_parallelism:
+                self.sharding_ring_id = 1
+                assert self.global_word_size > self._inner_parallelism_size, \
+                    "global_word_size: {} should be larger than inner_parallelism_size: {}".format(self.global_word_size, self._inner_parallelism_size)
+                assert self.global_word_size % self._inner_parallelism_size == 0, \
+                    "global_word_size: {} should be divisible to the inner_parallelism_size: {}".format(self.global_word_size, self._inner_parallelism_size)
+                self.sharding_rank = self.global_rank // self._inner_parallelism_size
+                self.sharding_group_size = self.role_maker._worker_num(
+                ) // self._inner_parallelism_size
+                _offset = self.global_rank % self._inner_parallelism_size
+                self.sharding_group_endpoints = [
+                    ep for idx, ep in enumerate(self.endpoints)
+                    if idx % self._inner_parallelism_size == _offset
+                ]
+                logging.info("Using Sharing as Outer parallelism mode !")
+
+                print(
+                    "init the nccl comm for megatron paramllelism, this should be done in Megatron Metaoptimizer"
+                )
+                partition_idx = self.global_rank // self._inner_parallelism_size
+                magetron_endpoints = self.endpoints[
+                    partition_idx * self._inner_parallelism_size:partition_idx *
+                    self._inner_parallelism_size + self._inner_parallelism_size]
+                magetron_rank = self.global_rank % self._inner_parallelism_size
+
+                self._collective_helper._init_communicator(
+                    program=self._startup_program,
+                    current_endpoint=self.current_endpoint,
+                    endpoints=magetron_endpoints,
+                    rank=magetron_rank,
+                    ring_id=0,
+                    wait_port=True)
+                logging.info("megatron group size: {}".format(
+                    self._inner_parallelism_size))
+                logging.info("megatron rank: {}".format(magetron_rank))
+                logging.info("megatron endpoints: {}".format(
+                    magetron_endpoints))
+            else:
+                self.sharding_ring_id = 0
+                self.sharding_rank = self.global_rank
+                self.sharding_group_size = self.role_maker._worker_num()
+                self.sharding_group_endpoints = self.endpoints
+                logging.info("Using Sharing alone mode !")
+
             self.dp_ring_id = -1
             self.dp_rank = -1
             self.dp_group_size = None
             self.dp_group_endpoints = None
-
-            logging.info("Using Sharing alone mode !")
 
         logging.info("global word size: {}".format(self.global_word_size))
         logging.info("global rank: {}".format(self.global_rank))

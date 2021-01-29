@@ -28,21 +28,24 @@ def check_broadcast(block):
     if the broadcasted var has a fill_constant op, the fill_constant
     op should stay forward before the broadcast op, and before a
     sync_calc op. Otherwise, raise error.
+
+    should ignore and skip broadcast_op of inner_parallelism (e.g. Megatron)
     """
     broadcast_vars = {}
     for idx, op in enumerate(block.ops):
         if op.type == "c_broadcast":
-            var_name = op.desc.input_arg_names()[0]
-            if "@BroadCast" in var_name:
-                if var_name in broadcast_vars:
-                    raise ValueError("var_name areadly exist: {}"
-                                     "the old pos is {}, the new pos is {}".
-                                     format(var_name, broadcast_vars[var_name][
-                                         "broadcast_pos"], idx))
-                broadcast_vars[var_name] = {
-                    "fill_constant_pos": -1,
-                    "broadcast_pos": idx,
-                }
+            if op.all_attrs()["use_calc_stream"] == False:
+                var_name = op.desc.input_arg_names()[0]
+                if "@BroadCast" in var_name:
+                    if var_name in broadcast_vars:
+                        raise ValueError("var_name areadly exist: {}"
+                                         "the old pos is {}, the new pos is {}".
+                                         format(var_name, broadcast_vars[
+                                             var_name]["broadcast_pos"], idx))
+                    broadcast_vars[var_name] = {
+                        "fill_constant_pos": -1,
+                        "broadcast_pos": idx,
+                    }
 
     for idx, op in enumerate(block.ops):
         if op.type == "fill_constant":
@@ -61,14 +64,15 @@ def check_broadcast(block):
             last_sync_calc_op_idx = idx
             continue
         if op.type == "c_broadcast":
-            var_name = op.desc.input_arg_names()[0]
-            if "@BroadCast" in var_name:
-                if broadcast_vars[var_name]["fill_constant_pos"] != -1:
-                    assert (last_sync_calc_op_idx != -1)
-                    assert (broadcast_vars[var_name]["fill_constant_pos"] <
-                            last_sync_calc_op_idx)
-                    assert (last_sync_calc_op_idx < idx)
-                continue
+            if op.all_attrs()["use_calc_stream"] == False:
+                var_name = op.desc.input_arg_names()[0]
+                if "@BroadCast" in var_name:
+                    if broadcast_vars[var_name]["fill_constant_pos"] != -1:
+                        assert (last_sync_calc_op_idx != -1)
+                        assert (broadcast_vars[var_name]["fill_constant_pos"] <
+                                last_sync_calc_op_idx)
+                        assert (last_sync_calc_op_idx < idx)
+                    continue
         for input_name in op.desc.input_arg_names():
             if input_name in broadcast_vars:
                 assert (broadcast_vars[input_name]["broadcast_pos"] != -1)
@@ -78,7 +82,7 @@ def check_broadcast(block):
     return
 
 
-def check_allreduce_sum(block, shard, dp_ring_id=-1):
+def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
     """
     the op order should be:
         grad:
@@ -89,32 +93,36 @@ def check_allreduce_sum(block, shard, dp_ring_id=-1):
             - 4: allreuce_sum_dp (dp_grads)
             - 5: sync_comm (dp_grads)
             - 6: op that use Var (dp_grads & sum)
+
+    should ignore and skip allreduce_op of inner_parallelism (e.g. Megatron)
     """
     vars_status = {}
     dp_grads_status = {}
     idx_last_grad_allreduce = -1
     idx_amp_allreduce = -1
     idx_gradient_clip_allreduce = -1
+
     for idx, op in enumerate(block.ops):
         if op.type == "c_allreduce_sum":
-            ring_id = op.desc.attr("ring_id")
-            var_name = op.desc.input_arg_names()[0]
-            param = var_name.split("@")[0]
+            if op.all_attrs()["use_calc_stream"] == False:
+                ring_id = op.desc.attr("ring_id")
+                var_name = op.desc.input_arg_names()[0]
+                param = var_name.split("@")[0]
 
-            assert 'sum' in var_name or ("@GRAD" in var_name)
-            if 'sum' in var_name or (not shard.has_param(param)):
-                vars_status[var_name] = -1
-            else:
-                dp_grads_status[var_name] = -1
+                assert 'sum' in var_name or ("@GRAD" in var_name)
+                if 'sum' in var_name or (not shard.has_param(param)):
+                    vars_status[var_name] = -1
+                else:
+                    dp_grads_status[var_name] = -1
 
-            if ring_id != 0:
-                assert shard.has_param(param)
-                assert ring_id == dp_ring_id
+                if ring_id != sharding_ring_id:
+                    assert shard.has_param(param)
+                    assert ring_id == dp_ring_id
 
-            if "sum" in var_name:
-                idx_amp_allreduce = idx
-            elif "@GRAD":
-                idx_last_grad_allreduce = idx
+                if "sum" in var_name:
+                    idx_amp_allreduce = idx
+                elif "@GRAD":
+                    idx_last_grad_allreduce = idx
 
         if op.type == "c_allreduce_max":
             idx_gradient_clip_allreduce = idx
@@ -130,36 +138,38 @@ def check_allreduce_sum(block, shard, dp_ring_id=-1):
                     dp_grads_status[var_name] = 1
 
         elif op.type == "c_allreduce_sum":
-            var_name = op.desc.input_arg_names()[0]
-            ring_id = op.desc.attr("ring_id")
-            if ring_id == 0:
-                if var_name in vars_status:
-                    _status = vars_status[var_name]
+            if op.all_attrs()["use_calc_stream"] == False:
+                var_name = op.desc.input_arg_names()[0]
+                ring_id = op.desc.attr("ring_id")
+                if ring_id == sharding_ring_id:
+                    if var_name in vars_status:
+                        _status = vars_status[var_name]
+                    else:
+                        _status = dp_grads_status[var_name]
+                    if _status == -1:
+                        raise ValueError("{} is not generated, but you are"
+                                         "trying to all-reduce it".format(
+                                             var_name))
+                    if _status == 0:
+                        raise ValueError("There should be a sync_calc op "
+                                         "after generate Var: {} and before the"
+                                         "c_allreduce_sum op".format(var_name))
+                    assert (_status == 1)
+                    if var_name in vars_status:
+                        vars_status[var_name] = 2
+                    else:
+                        dp_grads_status[var_name] = 2
                 else:
-                    _status = dp_grads_status[var_name]
-                if _status == -1:
-                    raise ValueError("{} is not generated, but you are"
-                                     "trying to all-reduce it".format(var_name))
-                if _status == 0:
-                    raise ValueError("There should be a sync_calc op "
-                                     "after generate Var: {} and before the"
-                                     "c_allreduce_sum op".format(var_name))
-                assert (_status == 1)
-                if var_name in vars_status:
-                    vars_status[var_name] = 2
-                else:
-                    dp_grads_status[var_name] = 2
-            else:
-                assert ring_id == dp_ring_id
-                param = var_name.split("@")[0]
-                assert shard.has_param(param)
-                assert dp_grads_status[var_name] == 3
-                dp_grads_status[var_name] = 4
+                    assert ring_id == dp_ring_id
+                    param = var_name.split("@")[0]
+                    assert shard.has_param(param)
+                    assert dp_grads_status[var_name] == 3
+                    dp_grads_status[var_name] = 4
 
         elif op.type == "c_sync_comm_stream":
             var_name = op.desc.input_arg_names()[0]
             ring_id = op.desc.attr("ring_id")
-            if ring_id == 0:
+            if ring_id == sharding_ring_id:
                 for var_name in op.desc.input_arg_names():
                     if var_name in vars_status:
                         assert vars_status[var_name] == 2
@@ -428,7 +438,7 @@ def comm_analyse(main_program):
                                                       count))
 
 
-def add_sync_comm(program, dist_strategy):
+def add_sync_comm(program, nccl_ids):
     """
     When clone a test prog by clone from the sharding main prog, 
     part of the sync_comm op maybe be pruned by mistake, this function
@@ -438,6 +448,9 @@ def add_sync_comm(program, dist_strategy):
     #NOTE (liangjianzhong): only support one comm stream by now, use more than one 
     # comm streams will cause error. should be revise in future.
 
+    assert isinstance(
+        nccl_ids, list
+    ), "the second argument of this function should be a list of nccl_ids"
     block = program.global_block()
     not_sync_vars = set([])
     for op in block.ops:
@@ -448,7 +461,7 @@ def add_sync_comm(program, dist_strategy):
             for input_name in op.desc.input_arg_names():
                 not_sync_vars.remove(input_name)
     if not_sync_vars:
-        for nccl_id in range(dist_strategy.nccl_comm_num):
+        for nccl_id in nccl_ids:
             block.append_op(
                 type='c_sync_comm_stream',
                 inputs={'X': list(not_sync_vars)},
