@@ -193,7 +193,6 @@ CPU_PARALLEL_JOB = [
     'test_load_op_xpu',
     'test_load_op',
     'test_linear_chain_crf_op',
-    'test_layer_norm_fuse_pass',
     'test_layer_norm_mkldnn_op',
     'test_layer_norm_bf16_mkldnn_op',
     'test_lambv2_op',
