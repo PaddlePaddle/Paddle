@@ -464,8 +464,14 @@ class TestParallelDyGraphRunnerBase(object):
     def run_trainer(self, args):
 
         seed = 90
-        device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        place = fluid.CUDAPlace(device_id)
+        if fluid.core.is_compiled_with_cuda():
+            device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+            place = fluid.CUDAPlace(device_id)
+        elif fluid.core.is_compiled_with_xpu():
+            device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
+            place = fluid.XPUPlace(device_id)
+        else:
+            assert ("Only support CUDAPlace or XPUPlace for now.")
 
         with fluid.dygraph.guard(place):
             fluid.default_startup_program().random_seed = seed

@@ -4,6 +4,9 @@ else()
     if (WITH_NCCL)
         cc_test(nccl_context_test SRCS nccl_context_test.cc DEPS nccl_context)
     endif()
+    if (WITH_XPU_BKCL)
+        cc_test(bkcl_context_test SRCS bkcl_context_test.cc DEPS bkcl_context)
+    endif()
 endif(WIN32)
 
 

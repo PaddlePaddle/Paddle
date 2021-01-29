@@ -220,13 +220,16 @@ BKCLComm* BKCLCommContext::CreateBKCLComm(BKCLUniqueId* bkcl_id, int nranks,
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
   BKCLContext_t comm = nullptr;
-  PADDLE_ENFORCE_EQ(
-      xpu_set_device(dev_id), XPU_SUCCESS,
-      platform::errors::PreconditionNotMet("xpu_set_device failed"));
-
-  PADDLE_ENFORCE_EQ(
-      bkcl_init_rank(&comm, rank, nranks, bkcl_id), BKCL_SUCCESS,
-      platform::errors::PreconditionNotMet("bkcl_init_rank failed"));
+  auto ret = xpu_set_device(dev_id);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::PreconditionNotMet(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+  ret = bkcl_init_rank(&comm, rank, nranks, bkcl_id);
+  PADDLE_ENFORCE_EQ(ret, BKCL_SUCCESS,
+                    platform::errors::PreconditionNotMet(
+                        "bkcl_init_rank failed, got wrong value [%d].", ret));
 
   auto* comm_wrapper = AssignBKCLComm(comm, nranks, rank, dev_id, ring_id);
 

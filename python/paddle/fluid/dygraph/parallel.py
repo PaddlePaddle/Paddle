@@ -55,9 +55,12 @@ def prepare_context(strategy=None):
         if isinstance(place, core.CUDAPlace):
             parallel_helper._set_parallel_ctx(
                 core.NCCLParallelContext(strategy, place))
+        elif isinstance(place, core.XPUPlace):
+            parallel_helper._set_parallel_ctx(
+                core.BKCLParallelContext(strategy, place))
         else:
             # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
-            assert ("Only support CUDAPlace for now.")
+            assert ("Only support CUDAPlace or XPUPlace for now.")
         parallel_helper._init_parallel_ctx()
     return strategy
 
