@@ -62,7 +62,7 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 ## 文档
 
 我们提供 [英文](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html) 和
-[中文](https://www.paddlepaddle.org.cn/documentation/docs/zh/guide/index_cn.html) 文档
+[中文](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html) 文档
 
 - [使用指南](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html)
 
