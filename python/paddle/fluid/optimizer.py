@@ -4595,7 +4595,7 @@ class PipelineOptimizer(object):
                         cast_grad_var_name = unique_name.generate(grad_name)
                         cast_var = self._create_var(block, grad_var,
                                                     cast_grad_var_name)
-                        new_var.persistable = False
+                        cast_var.persistable = False
                         block._insert_op(
                             index=offset + 1,
                             type='cast',
