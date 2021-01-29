@@ -123,24 +123,28 @@ class AscendIRParser(object):
         for i, curop in list(enumerate(block.ops)):
             self.parse_op(curop)
 
+        # Set fetch_var for GE
         for e in fetch_list:
             name = e
             if not isinstance(e, str):
                 name = e.name
             ge_out_operator.append(self.var2geop[name])
 
+        # (Debug) If you want to print back prop vars, append/assign the varname in ge_out_operator here, such as:
+        # if graph_name == "main":
+        #     ge_out_operator.append(self.var2geop["reduce_sum_0.tmp_0@GRAD"])
+
+        # Add ops that may be input of a graph, such as const.
         for varname, geop in self.var2geop.items():
             if varname.startswith("geinput"):
                 ge_in_operator.append(geop)
 
         graph.set_inputs(ge_in_operator).set_outputs(ge_out_operator)
 
+        # Remove ops of origin program
         op_num = len(block.ops)
         for i in range(op_num - 1, -1, -1):
             block._remove_op(i)
-
-        #if self.graph_idx == 0: # hack for startup program
-        #    fetch_list = [block.var("learning_rate_0")]
 
         input_varlist = [var for var in input_varlist if var.is_data]
 
