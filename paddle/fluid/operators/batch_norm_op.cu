@@ -81,7 +81,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
             ? DataLayout::kNHWC
             : DataLayout::kNCHW;
-
+    bool train_not_half =
+        dtype == CUDNN_DATA_FLOAT && data_layout == DataLayout::kNCHW;
     Tensor transformed_x(x->type());
     Tensor transformed_y(y->type());
     if (data_layout == DataLayout::kNHWC &&
@@ -99,14 +100,14 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     }
 
     // ------------------- cudnn descriptors ---------------------
-    cudnnTensorDescriptor_t data_desc;
-    cudnnTensorDescriptor_t bn_param_desc;
-    cudnnBatchNormMode_t mode;
+    cudnnTensorDescriptor_t data_desc_;
+    cudnnTensorDescriptor_t bn_param_desc_;
+    cudnnBatchNormMode_t mode_;
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnCreateTensorDescriptor(&data_desc));
+        platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc));
+        platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
@@ -116,12 +117,12 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 #if CUDNN_VERSION_MIN(7, 0, 1)
     if (FLAGS_cudnn_batchnorm_spatial_persistent) {
-      mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+      mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
     } else {
-      mode = CUDNN_BATCHNORM_SPATIAL;
+      mode_ = CUDNN_BATCHNORM_SPATIAL;
     }
 #else
-    mode = CUDNN_BATCHNORM_SPATIAL;
+    mode_ = CUDNN_BATCHNORM_SPATIAL;
 #endif  // CUDNN_VERSION_MIN(7, 0, 1)
 
     VLOG(3) << "Setting descriptors.";
@@ -135,13 +136,13 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       strides = {H * W * D * C, 1, W * D * C, D * C, C};
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        data_desc, CudnnDataType<T>::type,
+        data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
     // Note: PERSISTENT not implemented for inference
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDeriveBNTensorDescriptor(
-            bn_param_desc, data_desc,
-            test_mode ? CUDNN_BATCHNORM_SPATIAL : mode));
+            bn_param_desc_, data_desc_,
+            test_mode ? CUDNN_BATCHNORM_SPATIAL : mode_));
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -151,14 +152,14 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     auto handle = dev_ctx.cudnn_handle();
 
     // Now, depending on whether we are running test or not, we have two paths.
-    // It is training mode when it's not reference AND not using pre-trained
+    // It is training mode_ when it's not reference AND not using pre-trained
     // model.
     bool training = !test_mode && !use_global_stats;
     if (!training) {
       // only when test we use input to do computation.
       const auto *est_mean = ctx.Input<Tensor>("Mean");
       const auto *est_var = ctx.Input<Tensor>("Variance");
-      // Run inference mode.
+      // Run inference mode_.
       PADDLE_ENFORCE_EQ(
           est_mean->dims().size(), 1UL,
           platform::errors::InvalidArgument(
@@ -193,10 +194,10 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
               handle,
               // Note: PERSISTENT not implemented for inference
               CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
-              CudnnDataType<T>::kZero(), data_desc,
-              transformed_x.template data<T>(), data_desc,
+              CudnnDataType<T>::kZero(), data_desc_,
+              transformed_x.template data<T>(), data_desc_,
               transformed_y.template mutable_data<T>(ctx.GetPlace()),
-              bn_param_desc, scale->template data<BatchNormParamType<T>>(),
+              bn_param_desc_, scale->template data<BatchNormParamType<T>>(),
               bias->template data<BatchNormParamType<T>>(),
               est_mean->template data<BatchNormParamType<T>>(),
               est_var->template data<BatchNormParamType<T>>(), epsilon));
@@ -210,7 +211,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         momentum = mom_cpu.data<float>()[0];
       }
 
-      // Run training mode.
+      // Run training mode_.
       // obtain running mean and running inv var, and see if we need to
       // initialize them.
 
@@ -240,9 +241,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         // The condition of calling NEW API:
         // 1. fp16 training with NHWC datalayout OR
         // 2. any of NHWC or NCHW datalayout
-        if (compute_format == DataLayout::kNHWC ||
-            data_layout == DataLayout::kNCHW ||
-            data_layout == DataLayout::kNHWC) {
+        if (compute_format == DataLayout::kNHWC || train_not_half) {
           called = true;
           size_t workspace_size = 0;
           size_t reserve_space_size = 0;
@@ -263,12 +262,12 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
               platform::dynload::
                   cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
                       /*handle=*/handle,
-                      /*mode=*/mode,
+                      /*mode_=*/mode_,
                       /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
-                      /*xDesc=*/data_desc,
+                      /*xDesc=*/data_desc_,
                       /*zDesc=*/nullptr,
-                      /*yDesc=*/data_desc,
-                      /*bnScaleBiasMeanVarDesc=*/bn_param_desc,
+                      /*yDesc=*/data_desc_,
+                      /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
                       /*activationDesc=*/nullptr,
                       /*sizeInBytes=*/&workspace_size));
 
@@ -277,10 +276,10 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
               platform::dynload::
                   cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
                       /*handle=*/handle,
-                      /*mode=*/mode,
+                      /*mode_=*/mode_,
                       /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
                       /*activationDesc=*/nullptr,
-                      /*xDesc=*/data_desc,
+                      /*xDesc=*/data_desc_,
                       /*sizeInBytes=*/&reserve_space_size));
 
           reserve_space_ptr = reserve_space->mutable_data(
@@ -289,11 +288,11 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
               ctx.GetPlace(), transformed_x.type(), workspace_size);
           PADDLE_ENFORCE_CUDA_SUCCESS(
               platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
-                  handle, mode, CUDNN_BATCHNORM_OPS_BN,
+                  handle, mode_, CUDNN_BATCHNORM_OPS_BN,
                   CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
-                  data_desc, transformed_x.template data<T>(), nullptr, nullptr,
-                  data_desc, transformed_y.template data<T>(), bn_param_desc,
-                  scale->template data<BatchNormParamType<T>>(),
+                  data_desc_, transformed_x.template data<T>(), nullptr,
+                  nullptr, data_desc_, transformed_y.template data<T>(),
+                  bn_param_desc_, scale->template data<BatchNormParamType<T>>(),
                   bias->template data<BatchNormParamType<T>>(), this_factor,
                   mean_out->template mutable_data<BatchNormParamType<T>>(
                       ctx.GetPlace()),
@@ -311,11 +310,11 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         if (!called) {
           PADDLE_ENFORCE_CUDA_SUCCESS(
               platform::dynload::cudnnBatchNormalizationForwardTraining(
-                  handle, mode, CudnnDataType<T>::kOne(),
-                  CudnnDataType<T>::kZero(), data_desc,
-                  transformed_x.template data<T>(), data_desc,
+                  handle, mode_, CudnnDataType<T>::kOne(),
+                  CudnnDataType<T>::kZero(), data_desc_,
+                  transformed_x.template data<T>(), data_desc_,
                   transformed_y.template mutable_data<T>(ctx.GetPlace()),
-                  bn_param_desc, scale->template data<BatchNormParamType<T>>(),
+                  bn_param_desc_, scale->template data<BatchNormParamType<T>>(),
                   bias->template data<BatchNormParamType<T>>(), this_factor,
                   mean_out->template mutable_data<BatchNormParamType<T>>(
                       ctx.GetPlace()),
@@ -338,9 +337,9 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     }
     // clean when exit.
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDestroyTensorDescriptor(data_desc));
+        platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc));
+        platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
   }
 };
 
@@ -425,7 +424,7 @@ class InplaceHelper {
                   int M, const int num, const T *y, int grid2, const int block,
                   const cudaStream_t &stream) {
     PADDLE_ENFORCE_EQ(x, y, platform::errors::InvalidArgument(
-                                "X and Y should be inplaced in inplace mode"));
+                                "X and Y should be inplaced in inplace mode_"));
     KeBNRestoreData<<<grid2, block, 0, stream>>>(
         layout, x, scale, bias, mean, variance, epsilon, C, M, num, y);
   }
@@ -521,13 +520,13 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       is_inplace = true;
       PADDLE_ENFORCE_EQ(d_x, d_y,
                         platform::errors::InvalidArgument(
-                            "X@GRAD and Y@GRAD not inplace in inplace mode"));
+                            "X@GRAD and Y@GRAD not inplace in inplace mode_"));
     } else {
       x = ctx.Input<Tensor>("X");
       is_inplace = false;
       PADDLE_ENFORCE_NE(d_x, d_y,
                         platform::errors::InvalidArgument(
-                            "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
+                            "X@GRAD and Y@GRAD inplaced in non-inplace mode_"));
     }
 
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -580,7 +579,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
             ? DataLayout::kNHWC
             : DataLayout::kNCHW;
-
+    bool train_not_half =
+        dtype == CUDNN_DATA_FLOAT && data_layout == DataLayout::kNCHW;
     Tensor transformed_x(x->type());
     Tensor transformed_d_y(d_y->type());
     Tensor transformed_d_x(d_x->type());
@@ -623,7 +623,6 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     auto stream = dev_ctx.stream();
     InplaceHelper<T> inplace_functor;
 
-    // Take this branch when NOT using a pre-trained model
     if (!use_global_stats) {
       if ((N * H * W * D) == 1) {
         framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
@@ -635,14 +634,14 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       }
 
       // ------------------- cudnn descriptors ---------------------
-      cudnnTensorDescriptor_t data_desc;
-      cudnnTensorDescriptor_t bn_param_desc;
-      cudnnBatchNormMode_t mode;
+      cudnnTensorDescriptor_t data_desc_;
+      cudnnTensorDescriptor_t bn_param_desc_;
+      cudnnBatchNormMode_t mode_;
 
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnCreateTensorDescriptor(&data_desc));
+          platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc));
+          platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
       if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
         LOG(ERROR) << "Provided epsilon is smaller than "
                    << "CUDNN_BN_MIN_EPSILON. Setting it to "
@@ -651,20 +650,20 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 #if CUDNN_VERSION_MIN(7, 0, 1)
       if (FLAGS_cudnn_batchnorm_spatial_persistent) {
-        mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+        mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
       } else {
-        mode = CUDNN_BATCHNORM_SPATIAL;
+        mode_ = CUDNN_BATCHNORM_SPATIAL;
       }
 #else
-      mode = CUDNN_BATCHNORM_SPATIAL;
+      mode_ = CUDNN_BATCHNORM_SPATIAL;
 #endif  // CUDNN_VERSION_MIN(7, 0, 1)
 
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-          data_desc, CudnnDataType<T>::type,
+          data_desc_, CudnnDataType<T>::type,
           x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnDeriveBNTensorDescriptor(bn_param_desc,
-                                                           data_desc, mode));
+          platform::dynload::cudnnDeriveBNTensorDescriptor(bn_param_desc_,
+                                                           data_desc_, mode_));
 
       const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
       const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
@@ -688,10 +687,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         // The condition of calling NEW APIs:
         // 1. fp16 training with NHWC datalayout OR
         // 2. any of NHWC or NCHW datalayout
-        if ((compute_format == DataLayout::kNHWC ||
-             data_layout == DataLayout::kNCHW ||
-             data_layout == DataLayout::kNHWC) &&
-            reserve_space) {
+        if (compute_format == DataLayout::kNHWC || train_not_half) {
           called = true;
           size_t workspace_size = 0;
           void *workspace_ptr = nullptr;
@@ -702,14 +698,14 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
               platform::dynload::
                   cudnnGetBatchNormalizationBackwardExWorkspaceSize(
                       /*handle=*/dev_ctx.cudnn_handle(),
-                      /*mode=*/mode,
+                      /*mode_=*/mode_,
                       /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
-                      /*xDesc=*/data_desc,
-                      /*yDesc=*/data_desc,
-                      /*dyDesc=*/data_desc,
+                      /*xDesc=*/data_desc_,
+                      /*yDesc=*/data_desc_,
+                      /*dyDesc=*/data_desc_,
                       /*dzDesc=*/nullptr,
-                      /*dxDesc=*/data_desc,
-                      /*bnScaleBiasMeanVarDesc=*/bn_param_desc,
+                      /*dxDesc=*/data_desc_,
+                      /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
                       /*activationDesc=*/nullptr,
                       /*sizeInBytes=*/&workspace_size));
 
@@ -719,24 +715,24 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           PADDLE_ENFORCE_CUDA_SUCCESS(
               platform::dynload::cudnnBatchNormalizationBackwardEx(
                   /*handle=*/dev_ctx.cudnn_handle(),
-                  /*mode=*/mode,
+                  /*mode_=*/mode_,
                   /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
                   /*alphaDataDiff=*/CudnnDataType<T>::kOne(),
                   /*betaDataDiff=*/CudnnDataType<T>::kZero(),
                   /*alphaParamDiff=*/CudnnDataType<T>::kOne(),
                   /*betaParamDiff=*/CudnnDataType<T>::kZero(),
-                  /*xDesc=*/data_desc,
+                  /*xDesc=*/data_desc_,
                   /*xData=*/transformed_x.template data<T>(),
                   /*yDesc=*/nullptr,
                   /*yData=*/nullptr,
-                  /*dyDesc=*/data_desc,
+                  /*dyDesc=*/data_desc_,
                   /*dyData=*/transformed_d_y.template data<T>(),
                   /*dzDesc=*/nullptr,
                   /*dzData=*/nullptr,
-                  /*dxDesc=*/data_desc,
+                  /*dxDesc=*/data_desc_,
                   /*dxData=*/transformed_d_x.template mutable_data<T>(
                       ctx.GetPlace()),
-                  /*dBnScaleBiasDesc=*/bn_param_desc,
+                  /*dBnScaleBiasDesc=*/bn_param_desc_,
                   /*bnScaleData=*/scale->template data<BatchNormParamType<T>>(),
                   /*bnBiasData=*/nullptr,
                   /*dBnScaleData=*/d_scale
@@ -759,13 +755,13 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         if (!called) {
           PADDLE_ENFORCE_CUDA_SUCCESS(
               platform::dynload::cudnnBatchNormalizationBackward(
-                  dev_ctx.cudnn_handle(), mode, CudnnDataType<T>::kOne(),
+                  dev_ctx.cudnn_handle(), mode_, CudnnDataType<T>::kOne(),
                   CudnnDataType<T>::kZero(), CudnnDataType<T>::kOne(),
-                  CudnnDataType<T>::kZero(), data_desc,
-                  transformed_x.template data<T>(), data_desc,
-                  transformed_d_y.template data<T>(), data_desc,
+                  CudnnDataType<T>::kZero(), data_desc_,
+                  transformed_x.template data<T>(), data_desc_,
+                  transformed_d_y.template data<T>(), data_desc_,
                   transformed_d_x.template mutable_data<T>(ctx.GetPlace()),
-                  bn_param_desc, scale->template data<BatchNormParamType<T>>(),
+                  bn_param_desc_, scale->template data<BatchNormParamType<T>>(),
                   d_scale->template mutable_data<BatchNormParamType<T>>(
                       ctx.GetPlace()),
                   d_bias->template mutable_data<BatchNormParamType<T>>(
@@ -802,9 +798,9 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 
       // clean when exit.
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnDestroyTensorDescriptor(data_desc));
+          platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc));
+          platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
     } else {
       // Take this branch when using a pre-trained model
       const auto *running_mean = ctx.Input<Tensor>("Mean");
