@@ -22,9 +22,10 @@ from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_u
 
 
 class ModelParallelHelper(object):
-    def __init__(self, role_maker, wait_port=True):
+    def __init__(self, role_maker, wait_port=True, megatron_dp=False):
         self.wait_port = wait_port
         self.role_maker = role_maker
+        self.megatron_dp = megatron_dp
 
     def update_startup_program(self,
                                startup_program=None,
@@ -48,24 +49,29 @@ class ModelParallelHelper(object):
                                 mp_endpoints, mp_rank, 0, self.wait_port)
         self._broadcast_params(0, broadcast_distributed_weight=False)
 
-        mp_num = len(endpoints) // inner_parallelism
-        if mp_num == 1: return
-        # Create rings for gpus as the same model parallel part
-        eps = []
-        dp_rank = rank // inner_parallelism
-        dp_id = rank % inner_parallelism
-        #if dp_rank == 1: dp_rank =0
-        #if dp_rank == 0: dp_rank =1
-        ring_id = 1
-        for idx, ep in enumerate(endpoints):
-            if idx % inner_parallelism == dp_id:
-                eps.append(ep)
-        #ep = eps.pop(0)
-        #eps.insert(1, ep)
-        print("data parallel eps:{}, rank{}".format(eps, dp_rank))
-        self._init_communicator(self.startup_program, current_endpoint, eps,
-                                dp_rank, ring_id, self.wait_port)
-        self._broadcast_params(ring_id, broadcast_distributed_weight=True)
+        print("megatron group size: {}".format(inner_parallelism))
+        print("megatron rank: {}".format(mp_rank))
+        print("megatron endpoints: {}".format(mp_endpoints))
+
+        if self.megatron_dp:
+            mp_num = len(endpoints) // inner_parallelism
+            if mp_num == 1: return
+            # Create rings for gpus as the same model parallel part
+            eps = []
+            dp_rank = rank // inner_parallelism
+            dp_id = rank % inner_parallelism
+            #if dp_rank == 1: dp_rank =0
+            #if dp_rank == 0: dp_rank =1
+            ring_id = 1
+            for idx, ep in enumerate(endpoints):
+                if idx % inner_parallelism == dp_id:
+                    eps.append(ep)
+            #ep = eps.pop(0)
+            #eps.insert(1, ep)
+            print("data parallel eps:{}, rank{}".format(eps, dp_rank))
+            self._init_communicator(self.startup_program, current_endpoint, eps,
+                                    dp_rank, ring_id, self.wait_port)
+            self._broadcast_params(ring_id, broadcast_distributed_weight=True)
 
     def _init_communicator(self, program, current_endpoint, endpoints, rank,
                            ring_id, wait_port):
@@ -129,9 +135,14 @@ class ModelParallelOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(ModelParallelOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
-        # we do not allow meta optimizer to be inner optimizer currently
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = [
+            "RecomputeOptimizer",
+            "AMPOptimizer",
+            "LarsOptimizer",
+            "LambOptimizer",
+        ]
         self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
+        self.megatron_dp = False
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
@@ -156,6 +167,10 @@ class ModelParallelOptimizer(MetaOptimizerBase):
         dist_strategy.model_parallel = True
         dist_strategy.model_parallel_configs = {"parallelism": 1, }
 
+    # the following function will be used by AMP if both Megatron and AMP are turn on together.
+    def apply_gradients(self, params_grads):
+        return self.minimize_impl(params_grads=params_grads)
+
     def minimize_impl(self,
                       loss,
                       startup_program=None,
@@ -167,6 +182,8 @@ class ModelParallelOptimizer(MetaOptimizerBase):
         if startup_program is None:
             self.startup_program = fluid.default_startup_program()
 
+        # (TODO) check the order of metaoptimizer
+        # (TODO) check the params_grads
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, self.startup_program, parameter_list, no_grad_set)
 
@@ -179,10 +196,12 @@ class ModelParallelOptimizer(MetaOptimizerBase):
                                                self.inner_parallelism)
 
         assert self.nranks % self.inner_parallelism == 0
-        # data parallelism
-        dp_parallelism = self.nranks // self.inner_parallelism
 
-        self._transpile_main_program(loss, dp_parallelism)
+        if self.megatron_dp:
+            # data parallelism
+            dp_parallelism = self.nranks // self.inner_parallelism
+
+            self._transpile_main_program(loss, dp_parallelism)
         return optimize_ops, params_grads
 
     def _transpile_main_program(self, loss, dp_parallelism):

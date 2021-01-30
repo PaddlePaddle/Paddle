@@ -39,6 +39,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             "AMPOptimizer",
             "LarsOptimizer",
             "LambOptimizer",
+            "ModelParallelOptimizer",
         ]
         self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
         self._main_program = None
@@ -52,8 +53,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._shard = Shard()
 
         # use sharding as outer parallelism (e.g. inner:Megatron & outer sharding)
-        self._as_outer_parallelism = True
-        self._inner_parallelism_size = 4
+        self._as_outer_parallelism = False
+        self._inner_parallelism_size = None
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -83,6 +84,11 @@ class ShardingOptimizer(MetaOptimizerBase):
             "fuse_broadcast_MB"]
         self.hybrid_dp = self.user_defined_strategy.sharding_configs[
             "hybrid_dp"]
+        self._as_outer_parallelism = self.user_defined_strategy.sharding_configs[
+            "as_outer_parallelism"]
+        self._inner_parallelism_size = int(
+            self.user_defined_strategy.sharding_configs[
+                "inner_parallelism_size"])
 
         if self.inner_opt is None:
             raise ValueError(
@@ -512,27 +518,27 @@ class ShardingOptimizer(MetaOptimizerBase):
                 ]
                 logging.info("Using Sharing as Outer parallelism mode !")
 
-                print(
-                    "init the nccl comm for megatron paramllelism, this should be done in Megatron Metaoptimizer"
-                )
-                partition_idx = self.global_rank // self._inner_parallelism_size
-                magetron_endpoints = self.endpoints[
-                    partition_idx * self._inner_parallelism_size:partition_idx *
-                    self._inner_parallelism_size + self._inner_parallelism_size]
-                magetron_rank = self.global_rank % self._inner_parallelism_size
+                # print(
+                #     "init the nccl comm for megatron paramllelism, this should be done in Megatron Metaoptimizer"
+                # )
+                # partition_idx = self.global_rank // self._inner_parallelism_size
+                # magetron_endpoints = self.endpoints[
+                #     partition_idx * self._inner_parallelism_size:partition_idx *
+                #     self._inner_parallelism_size + self._inner_parallelism_size]
+                # magetron_rank = self.global_rank % self._inner_parallelism_size
 
-                self._collective_helper._init_communicator(
-                    program=self._startup_program,
-                    current_endpoint=self.current_endpoint,
-                    endpoints=magetron_endpoints,
-                    rank=magetron_rank,
-                    ring_id=0,
-                    wait_port=True)
-                logging.info("megatron group size: {}".format(
-                    self._inner_parallelism_size))
-                logging.info("megatron rank: {}".format(magetron_rank))
-                logging.info("megatron endpoints: {}".format(
-                    magetron_endpoints))
+                # self._collective_helper._init_communicator(
+                #     program=self._startup_program,
+                #     current_endpoint=self.current_endpoint,
+                #     endpoints=magetron_endpoints,
+                #     rank=magetron_rank,
+                #     ring_id=0,
+                #     wait_port=True)
+                # logging.info("megatron group size: {}".format(
+                #     self._inner_parallelism_size))
+                # logging.info("megatron rank: {}".format(magetron_rank))
+                # logging.info("megatron endpoints: {}".format(
+                #     magetron_endpoints))
             else:
                 self.sharding_ring_id = 0
                 self.sharding_rank = self.global_rank
