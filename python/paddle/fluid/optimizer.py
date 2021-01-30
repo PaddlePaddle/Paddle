@@ -4561,67 +4561,67 @@ class PipelineOptimizer(object):
                         self._op_role_key: self._op_role.Backward
                     })
                 break
-            if self._is_backward_op(op) and (
-                    self._op_role_var_key in op.attr_names):
-                op_role_var = op.all_attrs()[self._op_role_var_key]
+            #if self._is_backward_op(op) and (
+            #        self._op_role_var_key in op.attr_names):
+            #    op_role_var = op.all_attrs()[self._op_role_var_key]
 
-                if len(op_role_var) == 0:
-                    continue
-                assert len(op_role_var) % 2 == 0
-                offset = index
-                for i in range(0, len(op_role_var), 2):
-                    grad_name = op_role_var[i + 1]
-                    grad_var = block.vars[grad_name]
-                    if not 'cast_fp16' in grad_name:
-                        new_grad_var_name = unique_name.generate(grad_name)
-                        new_var = self._create_var(block, grad_var,
-                                                   new_grad_var_name)
-                        new_var.persistable = False
-                        self._rename_arg(op, grad_name, new_grad_var_name)
-                        block._insert_op(
-                            index=offset + 1,
-                            type='sum',
-                            inputs={'X': [grad_var, new_var]},
-                            outputs={'Out': grad_var},
-                            attrs={
-                                self._op_device_key: device,
-                                self._op_role_key: self._op_role.Backward,
-                                self._op_role_var_key: op_role_var
-                            })
-                        offset += 1
-                    if 'cast_fp16' in grad_name:
-                        param_name = op_role_var[i]
-                        fp32_grad_var_name = param_name + "@GRAD"
-                        fp32_grad_var = block.vars[grad_name]
-                        cast_grad_var_name = unique_name.generate(
-                            fp32_grad_var_name)
-                        cast_var = self._create_var(block, grad_var,
-                                                    cast_grad_var_name)
-                        cast_var.persistable = False
-                        block._insert_op(
-                            index=offset + 1,
-                            type='cast',
-                            inputs={'X': fp32_grad_var},
-                            outputs={'Out': cast_var},
-                            attrs={
-                                'in_dtype': fp32_grad_var.dtype,
-                                'out_dtype': cast_var.dtype,
-                                self._op_device_key: device,
-                                self._op_role_key: self._op_role.Backward,
-                                self._op_role_var_key: op_role_var
-                            })
-                        offset += 1
-                        block._insert_op(
-                            index=offset + 1,
-                            type='sum',
-                            inputs={'X': [grad_var, cast_var]},
-                            outputs={'Out': grad_var},
-                            attrs={
-                                self._op_device_key: device,
-                                self._op_role_key: self._op_role.Backward,
-                                self._op_role_var_key: op_role_var
-                            })
-                        offset += 1
+            #    if len(op_role_var) == 0:
+            #        continue
+            #    assert len(op_role_var) % 2 == 0
+            #    offset = index
+            #    for i in range(0, len(op_role_var), 2):
+            #        grad_name = op_role_var[i + 1]
+            #        grad_var = block.vars[grad_name]
+            #        if not 'cast_fp16' in grad_name:
+            #            new_grad_var_name = unique_name.generate(grad_name)
+            #            new_var = self._create_var(block, grad_var,
+            #                                       new_grad_var_name)
+            #            new_var.persistable = False
+            #            self._rename_arg(op, grad_name, new_grad_var_name)
+            #            block._insert_op(
+            #                index=offset + 1,
+            #                type='sum',
+            #                inputs={'X': [grad_var, new_var]},
+            #                outputs={'Out': grad_var},
+            #                attrs={
+            #                    self._op_device_key: device,
+            #                    self._op_role_key: self._op_role.Backward,
+            #                    self._op_role_var_key: op_role_var
+            #                })
+            #            offset += 1
+            #        if 'cast_fp16' in grad_name:
+            #            param_name = op_role_var[i]
+            #            fp32_grad_var_name = param_name + "@GRAD"
+            #            fp32_grad_var = block.vars[grad_name]
+            #            cast_grad_var_name = unique_name.generate(
+            #                fp32_grad_var_name)
+            #            cast_var = self._create_var(block, grad_var,
+            #                                        cast_grad_var_name)
+            #            cast_var.persistable = False
+            #            block._insert_op(
+            #                index=offset + 1,
+            #                type='cast',
+            #                inputs={'X': fp32_grad_var},
+            #                outputs={'Out': cast_var},
+            #                attrs={
+            #                    'in_dtype': fp32_grad_var.dtype,
+            #                    'out_dtype': cast_var.dtype,
+            #                    self._op_device_key: device,
+            #                    self._op_role_key: self._op_role.Backward,
+            #                    self._op_role_var_key: op_role_var
+            #                })
+            #            offset += 1
+            #            block._insert_op(
+            #                index=offset + 1,
+            #                type='sum',
+            #                inputs={'X': [grad_var, cast_var]},
+            #                outputs={'Out': grad_var},
+            #                attrs={
+            #                    self._op_device_key: device,
+            #                    self._op_role_key: self._op_role.Backward,
+            #                    self._op_role_var_key: op_role_var
+            #                })
+            #            offset += 1
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
@@ -5815,7 +5815,7 @@ class GradientMergeOptimizer(object):
 
     def _is_the_backward_op(self, op):
         op_maker = core.op_proto_and_checker_maker
-        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        backward = core.op_proto_and_checker_maker.OpRole.Bcackward
         if op_maker.kOpRoleVarAttrName() in op.attr_names and \
                 int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(backward):
             return True
