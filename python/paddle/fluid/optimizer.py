@@ -4828,9 +4828,9 @@ class PipelineOptimizer(object):
 
         # Step7: clear gradients before each mini-batch and 
         # accumulate gradients during backward
-        self._clear_gradients(
-            program_list[local_rank]['program'].global_block(),
-            dev_spec=device_list[local_rank])
+        #self._clear_gradients(
+        #    program_list[local_rank]['program'].global_block(),
+        #    dev_spec=device_list[local_rank])
         self._accumulate_gradients(program_list[local_rank]['program']
                                    .global_block())
 

@@ -16,7 +16,7 @@ from paddle.fluid import unique_name, core
 import paddle.fluid as fluid
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper
-from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op
+from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op, is_update_op
 from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import MetaOptimizerBase
 from paddle.distributed.fleet.meta_optimizers.sharding.shard import Shard, ProgramSegment
 from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import FP16Utils
@@ -129,6 +129,21 @@ class ShardingOptimizer(MetaOptimizerBase):
         # step1: set_up
         self._set_up(params_grads)
 
+        ## crop ops
+        #for idx, op in reversed(list(enumerate(main_block.ops))):
+        #    if op.type == 'fill_constant' and int(op.attr('op_role')) == 16:
+        #        out_name = op.output_arg_names[0]
+        #        if not 'GRAD' in out_name: continue
+        #        param_name = out_name.strip("@GRAD")
+        #        #if main_block.has_var(out_name): continue
+        #        if self._shard.has_param(param_name): continue
+        #        main_block._remove_op(idx)
+        #    #if is_update_op(op):
+        #    #    op_role_var = op.attr('op_role_var')
+        #    #    param_name = op_role_var[0]
+        #    #    if not self._shard.has_param(param_name):
+        #    #        main_block._remove_op(idx)
+
         # step2: split_program
         self._split_program(main_block)
 
@@ -145,20 +160,31 @@ class ShardingOptimizer(MetaOptimizerBase):
         # step5: remove unneeded ops and vars from block
         self._prune_main_program(main_block)
         self._prune_startup_program(startup_block)
+
+        for param_name, grad_name in params_grads:
+            if not main_block.has_var(grad_name): continue
+            grad_var = main_block.vars[grad_name]
+            grad_var.persistable = True
+            main_block._insert_op(
+                index=0,
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [grad_var]},
+                attrs={
+                    'shape': grad_var.shape,
+                    'dtype': grad_var.dtype,
+                    'value': float(0),
+                    self._op_device_key: device,
+                    # a trick to run this op once per mini-batch
+                    self._op_role_key: self._op_role.Optimize.LRSched,
+                })
+
         with open("start_sharding_%d" % self.role_maker._worker_index(),
                   'w') as f:
             f.writelines(str(startup_block.program))
         with open("main_sharding_%d" % self.role_maker._worker_index(),
                   'w') as f:
             f.writelines(str(main_program))
-
-        # crop ops
-        for idx, op in reversed(list(enumerate(main_block.ops))):
-            if op.type == 'fill_constant' and int(op.attr('op_role')) == 16:
-                out_name = op.output_arg_names[0]
-                if not 'GRAD' in out_name: continue
-                if main_block.has_var(out_name): continue
-                main_block._remove_op(idx)
 
         # check op dependecy
         check_broadcast(main_block)
