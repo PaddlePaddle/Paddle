@@ -157,7 +157,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             if op.type == 'fill_constant' and int(op.attr('op_role')) == 16:
                 out_name = op.output_arg_names[0]
                 if not 'GRAD' in out_name: continue
-                if not main_block.has_var(out_name): continue
+                if main_block.has_var(out_name): continue
                 main_block._remove_op(idx)
 
         # check op dependecy
