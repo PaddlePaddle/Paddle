@@ -3862,7 +3862,7 @@ class PipelineOptimizer(object):
             block._insert_op(
                 # op_idx + 1 + extra_index,
                 op_idx + 1 + offset,
-                type='c_allreduce_sum',
+                type='c_allreduce_max',
                 inputs={'X': temp_var if op.type == "reduce_any" else out_var},
                 outputs={
                     'Out': temp_var if op.type == "reduce_any" else out_var
