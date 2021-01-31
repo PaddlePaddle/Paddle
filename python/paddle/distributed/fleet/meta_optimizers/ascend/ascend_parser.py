@@ -170,7 +170,6 @@ class AscendParserBase(object):
             self.parser_name, len(index_list), output_num)
         for output_id in range(output_num):
             arguments = self.op.output(self.op.output_names[output_id])
-            #print("%d argument:  %s" % (output_id, str(arguments)))
             if len(arguments) > 0:
                 assert len(arguments) == len(
                     index_list[output_id]
@@ -178,8 +177,6 @@ class AscendParserBase(object):
                     self.parser_name, output_id, len(index_list[output_id]),
                     len(arguments))
                 for i in range(len(arguments)):
-                    #print("assgin index_list[%d][%d] to %s" %
-                    #      (output_id, i, arguments[i]))
                     self.var2geop[arguments[i]] = geop_list[index_list[
                         output_id][i]]
 
@@ -792,8 +789,6 @@ class FillConstantParser(AscendParserBase):
             "Const").set_attr_tensor("value", tensor)
         self._mark_as_input(const)
         if self.op.block.var(self.op.output('Out')[0]).persistable:
-            #print("%s is Persistable in fill_constant" %
-            #      (self.op.output('Out')[0]))
             var = core.GEOperatorFactory.create_operator(
                 self.op.output('Out')[0], "Variable")
             var.update_output_desc("y",
@@ -805,10 +800,6 @@ class FillConstantParser(AscendParserBase):
                 "assign" + self._accumulated_op_id(), "Assign").set_input(
                     "value", const).set_input("ref", var)
             return [const], [[0]]
-        #else:
-        #    print(
-        #        "self.op.output('Out')[0]: %s is not persistable in fill_constant"
-        #        % (self.op.output('Out')[0]))
         return [const], [[0]]
 
 
@@ -862,8 +853,6 @@ class TruncatedNormalParser(AscendParserBase):
 
         ## wirte the output of truncatedNormal from startup_program to main_program
         if self.op.block.var(self.op.output('Out')[0]).persistable:
-            #print("%s is Persistable in truncated_normal" %
-            #      (self.op.output('Out')[0]))
             var = core.GEOperatorFactory.create_operator(
                 self.op.output('Out')[0], "Variable")
             var.update_output_desc("y",
@@ -878,10 +867,6 @@ class TruncatedNormalParser(AscendParserBase):
                 shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor,
                 truncated_normal
             ], [[-1]]
-        #else:
-        #    print(
-        #        "self.op.output('Out')[0] is not persistable in truncated_noraml"
-        #    )
         return [truncated_normal], [[0]]
 
 
