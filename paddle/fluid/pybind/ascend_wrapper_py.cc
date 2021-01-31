@@ -269,7 +269,7 @@ void BindAscendGraph(py::module *m) {
 #ifdef PADDLE_WITH_ASCEND_STRING
       .def("register_call_back_func",
            static_cast<ge::Status (ge::Session::*)(  // NOLINT
-               const char *, const ge::Session::pCallBackFunc &)>(
+               const char *, const ge::session::pCallBackFunc &)>(
                &ge::Session::RegisterCallBackFunc))
 #else
       .def("register_call_back_func",
