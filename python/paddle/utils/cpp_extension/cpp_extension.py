@@ -17,6 +17,7 @@ import six
 import sys
 import textwrap
 import copy
+
 import setuptools
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext

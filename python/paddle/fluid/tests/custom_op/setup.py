@@ -19,6 +19,7 @@ from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
 site_packages_path = get_python_lib()
+
 # Note(Aurelius84): We use `add_test` in Cmake to config how to run unittest in CI.
 # `PYTHONPATH` will be set as `build/python/paddle` that will make no way to find
 # paddle include directory. Because the following path is generated after insalling

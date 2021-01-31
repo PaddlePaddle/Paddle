@@ -22,8 +22,8 @@ import textwrap
 import platform
 import warnings
 import subprocess
-from contextlib import contextmanager
 
+from contextlib import contextmanager
 from setuptools.command import bdist_egg
 
 import paddle
