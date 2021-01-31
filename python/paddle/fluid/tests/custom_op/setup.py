@@ -35,7 +35,7 @@ extra_compile_args = ['-DPADDLE_WITH_MKLDNN'
                       ] if six.PY2 and not IS_WINDOWS else []
 
 setup(
-    name='librelu2_op_from_setup',
+    name='relu2_op_shared',
     ext_modules=[
         CUDAExtension(
             name='librelu2_op_from_setup',

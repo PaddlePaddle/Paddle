@@ -24,7 +24,7 @@ def compile_so():
     """
     # build .so with setup.py
     file_dir = os.path.dirname(os.path.abspath(__file__))
-    os.system('cd {} && python3.7 setup.py build'.format(file_dir))
+    os.system('cd {} && python setup.py build'.format(file_dir))
 
 
 if __name__ == '__main__':
