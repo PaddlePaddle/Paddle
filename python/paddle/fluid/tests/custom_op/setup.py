@@ -15,8 +15,8 @@ import os
 import six
 from distutils.sysconfig import get_python_lib
 from setuptools import setup
-from cpp_extension import CppExtension, CUDAExtension, BuildExtension, IS_WINDOWS
-from setuptools import Extension
+from paddle.utils.cpp_extension import CppExtension, CUDAExtension, BuildExtension
+from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
 site_packages_path = get_python_lib()
@@ -45,5 +45,5 @@ setup(
             output_dir=file_dir)
     ],
     cmdclass={
-        'build_ext': BuildExtension.with_options(no_python_abi_suffix=True)
+        'build_ext': BuildExtension.with_options(no_python_abi_suffix=True),
     })

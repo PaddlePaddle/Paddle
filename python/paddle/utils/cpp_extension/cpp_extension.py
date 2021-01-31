@@ -19,8 +19,8 @@ import copy
 import setuptools
 from setuptools.command.build_ext import build_ext
 
-from extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag
-from extension_utils import is_cuda_file, prepare_unix_cflags, add_std_without_repeat, get_build_directory
+from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag
+from .extension_utils import is_cuda_file, prepare_unix_cflags, add_std_without_repeat, get_build_directory
 
 IS_WINDOWS = os.name == 'nt'
 CUDA_HOME = find_cuda_home()
@@ -30,6 +30,15 @@ def CppExtension(name, sources, *args, **kwargs):
     """
     Returns setuptools.CppExtension instance for setup.py to make it easy
     to specify compile flags while build C++ custommed op kernel.
+
+    Args:
+           name(str): The extension name
+           sources(list[str]): The C++/CUDA source file names
+           args(list[options]): list of config options used to compile shared library
+           kwargs(dict[option]): dict of config options used to compile shared library
+           
+       Returns:
+           Extension: instance of setuptools.Extension
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=False)
 
@@ -40,6 +49,15 @@ def CUDAExtension(name, sources, *args, **kwargs):
     """
     Returns setuptools.CppExtension instance for setup.py to make it easy
     to specify compile flags while build CUDA custommed op kernel.
+
+    Args:
+           name(str): The extension name
+           sources(list[str]): The C++/CUDA source file names
+           args(list[options]): list of config options used to compile shared library
+           kwargs(dict[option]): dict of config options used to compile shared library
+           
+       Returns:
+           Extension: instance of setuptools.Extension
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=True)
 
@@ -48,7 +66,8 @@ def CUDAExtension(name, sources, *args, **kwargs):
 
 class BuildExtension(build_ext, object):
     """
-    For setuptools.cmd_class.
+    Inherited from setuptools.command.build_ext to customized how to apply
+    compilation process with shared library.
     """
 
     @classmethod
@@ -67,11 +86,12 @@ class BuildExtension(build_ext, object):
     def __init__(self, *args, **kwargs):
         super(BuildExtension, self).__init__(*args, **kwargs)
         self.no_python_abi_suffix = kwargs.get("no_python_abi_suffix", False)
+        if 'output_dir' in kwargs:
+            self.build_lib = kwargs.get("output_dir")
 
     def initialize_options(self):
         super(BuildExtension, self).initialize_options()
         # update options here
-        # FIXME(Aurelius84): for unittest
         self.build_lib = './'
 
     def finalize_options(self):
@@ -177,3 +197,116 @@ class BuildExtension(build_ext, object):
 
     def _check_abi(self):
         pass
+
+def load(name,
+         sources,
+         extra_cflags=None,
+         extra_cuda_cflags=None,
+         extra_ldflags=None,
+         extra_include_paths=None,
+         build_directory=None,
+         verbose=False):
+
+    # TODO(Aurelius84): Add JIT compile with cmake
+    file_dir = os.path.dirname(os.path.abspath(__file__))
+    os.system('cd {} && python3.7 setup.py build'.format(file_dir))
+
+    return _import_module_from_library(name, build_directory)
+
+call_once = True
+
+def _import_module_from_library(name, build_directory):
+    """
+    Load .so shared library and import it as callable python module.
+    """
+    ext_path = os.path.join(build_directory, name+'.so')
+    if not os.path.exists(ext_path):
+        raise FileNotFoundError("Extension path: {} does not exist.".format(ext_path))
+    
+    # load custom op_info and kernels from .so shared library
+    global call_once
+    import paddle.fluid as fluid
+    if call_once:
+        fluid.load_op_library(ext_path)
+        call_once = False
+
+    # TODO(Aurelius84): need op_type
+    op_name = 'relu2'
+
+    # generate Python api in ext_path
+    return _generate_python_module(op_name, build_directory)
+
+
+API_TEMPLATE = """
+from paddle.fluid.layer_helper import LayerHelper
+# from /workspace/paddle-fork/python/paddle/fluid/tests/custom_op/cpp_extension import parse_op_info
+
+# _, out_infos = parse_op_info('{op_name}')
+
+from importlib import machinery
+loader = machinery.SourceFileLoader('x', '/workspace/paddle-fork/python/paddle/fluid/tests/custom_op/cpp_extension.py')
+m = loader.load_module()
+
+_, out_infos = m.parse_op_info('relu2')
+
+def {op_name}({inputs}):
+    helper = LayerHelper("{op_name}", **locals())
+
+    # prepare inputs
+    ins = {ins}
+
+    # prepare outputs
+    outs = {{}}
+    for out_name in out_infos:
+        outs[out_name] =  helper.create_variable(dtype='float32', persistable=False)
+    
+    helper.append_op(type="{op_name}", inputs=ins, outputs=outs)
+
+    return list(outs.values())[0]
+"""
+
+def _generate_python_module(op_name, build_directory):
+    """
+    Automatically generate python file to allow import or load into as module
+    """
+    api_file = os.path.join(build_directory, op_name + '.py')
+    params_str, ins_str = _get_api_inputs_str(op_name)
+
+    # generate python api file
+    api_content = API_TEMPLATE.format(op_name=op_name, inputs=params_str, ins=ins_str)
+
+    
+    with open(api_file, 'w') as f:
+        f.write(api_content)
+
+    custom_api = _load_module_from_file(op_name, api_file)
+    return custom_api
+
+def _load_module_from_file(op_name, api_file_path):
+    """
+    Load module from python file.
+    """
+    if not os.path.exists(api_file_path):
+        raise FileNotFoundError("File : {} does not exist.".format(api_file_path))
+    
+    ext_name = "extension"
+    if six.PY2:
+        import imp
+        module = imp.load_source(ext_name, api_file_path)
+    else:
+        from importlib import machinery
+        loader = machinery.SourceFileLoader(ext_name, api_file_path)
+        module = loader.load_module()
+    
+    assert hasattr(module, op_name)
+    return getattr(module, op_name)
+
+
+def _get_api_inputs_str(op_name):
+    """
+    Returns string of api parameters and inputs dict.
+    """
+    in_names, _ = parse_op_info(op_name)
+    params_str = ','.join([p.lower() for p in in_names])
+    ins_str = "{%s}" % ','.join(["'{}' : {}".format(in_name, in_name.lower()) for in_name in in_names])
+    return params_str, ins_str

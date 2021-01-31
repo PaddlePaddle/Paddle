@@ -17,12 +17,19 @@ import six
 import sys
 import copy
 import glob
+import textwrap
+import platform
 import warnings
 import subprocess
+from contextlib import contextmanager
+
+from setuptools.command import bdist_egg
 
 import paddle
+from paddle.fluid.framework import OpProtoHolder
 
-IS_WINDOWS = os.name == 'nt'
+OS_NAME = platform.system()
+IS_WINDOWS = OS_NAME == 'Windows'
 # TODO(Aurelius84): Need check version of gcc and g++ is same.
 # After CI path is fixed, we will modify into cc.
 NVCC_COMPILE_FLAGS = [
@@ -31,6 +38,47 @@ NVCC_COMPILE_FLAGS = [
     '-O3', '-DNVCC'
 ]
 
+@contextmanager
+def bootstrap_context():
+    origin_write_stub = bdist_egg.write_stub
+    bdist_egg.write_stub = custom_write_stub
+    yield
+
+    bdist_egg.write_stub = origin_write_stub
+
+
+def custom_write_stub(resource, pyfile):
+    _stub_template = textwrap.dedent("""
+        import paddle
+        
+        %r
+
+        def __bootstrap__():
+            import os 
+            name = 'librelu2_op_from_setup'
+            so_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), name+'.so')
+            fluid.load_op_library(so_path)
+
+            from importlib import machinery
+            loader = machinery.SourceFileLoader('pd_py_ext', '/workspace/paddle-fork/python/paddle/fluid/tests/custom_op/extension_utils.py')
+            m = loader.load_module()
+
+            global out_infos
+            _, out_infos = m.parse_op_info('relu2')
+            m = inject_ext_module(__name__, 'relu2')
+        __bootstrap__()
+        """).lstrip()
+    with open(pyfile, 'w') as f:
+        f.write(_stub_template % "TODO")
+
+def inject_ext_module(module_name, api_name):
+    if module_name in sys.modules:
+        return sys.modules[module_name]
+    
+    new_module = imp.new_module(module_name)
+    setattr(new_module, api_name, eval(api_name))
+
+    return new_module
 
 def prepare_unix_cflags(cflags):
     """
@@ -206,11 +254,32 @@ def get_build_directory(name):
     """
     root_extensions_directory = os.envsiron.get('PADDLE_EXTENSION_DIR')
     if root_extensions_directory is None:
-        # TODO(Aurelius84): consider wind32/macOs
-        here = os.path.abspath(__file__)
-        root_extensions_directory = os.path.realpath(here)
+        dir_name = "paddle_extensions"
+        if OS_NAME == 'Linux':
+            root_extensions_directory = os.path.join(os.path.expanduser('~/.cache'), dir_name)
+        else: 
+            # TODO(Aurelius84): consider wind32/macOs
+            raise NotImplementedError("Only support Linux now.")
+        
         warnings.warn(
-            "$PADDLE_EXTENSION_DIR is not set, using path: {} by default."
-            .format(root_extensions_directory))
+            "$PADDLE_EXTENSION_DIR is not set, using path: {} by default.".
+            format(root_extensions_directory))
+        
+    if not os.path.exists(root_extensions_directory):
+        os.makedirs(root_extensions_directory, exist_ok=True)
 
     return root_extensions_directory
+
+
+def parse_op_info(op_name):
+    """
+    Parse input names and outpus detail information from registered custom op
+    from OpInfoMap.
+    """
+    # TODO(Aurelius84): parse necessary infos of custom op
+    op_proto = OpProtoHolder.instance().get_op_proto("relu2")
+
+    in_names = [x.name for x in op_proto.inputs]
+    out_infos = [x.name for x in op_proto.outputs]
+    # out_infos = {'Y': {}}
+    return in_names, out_infos
