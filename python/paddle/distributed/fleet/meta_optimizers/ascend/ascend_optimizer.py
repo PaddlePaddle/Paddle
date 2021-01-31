@@ -26,10 +26,11 @@ HcomGroupConfig = namedtuple('HcomGroupConfig', ['name', 'nranks', 'rank_ids'])
 
 
 class AscendIRParser(object):
-    def __init__(self):
+    def __init__(self, auto_dp=False):
         self.graph_idx = 0
         self.hcom_endpoints = {}
         self.groups_to_create = []
+        self._auto_dp=auto_dp
 
     def _construct_input_map(self, input_varlist):
         ret_map = {}
@@ -91,13 +92,11 @@ class AscendIRParser(object):
             print("append to create group: %s, with rank_ids: %s" %
                   (group_name, global_rank_ids))
         elif op.type in ascend_parser.registerd_op:
-            print("Op[%s] has been registered, begin to parse it" % (op.type))
             op_parser = self.parser_factory.create_parse(
                 ascend_parser.registerd_op[op.type])
             op_parser.apply(op)
         else:
-            print("Op[%s] has not been registered, so we have to skip it" %
-                  (op.type))
+            assert False, "Op[%s] has not been registered, so we have to skip it" % (op.type)
 
     def _parse_program(self,
                        graph_name,
@@ -161,6 +160,14 @@ class AscendIRParser(object):
         startup_graph = self._parse_program("startup", startup_program)
         main_graph = self._parse_program("main", main_program, input_varlist,
                                          fetch_list)
+        if self._auto_dp:
+            assert len(self.groups_to_create)==0, "can't parse program under auto_dp mode"
+
+            from paddle.distributed import fleet
+            self.groups_to_create.append(
+                HcomGroupConfig(
+                    name="hcom_group_0", nranks=fleet.world_size(), rank_ids=[x for x in range(fleet.world_size())]))
+
         return startup_graph, main_graph
 
 
@@ -196,7 +203,8 @@ class AscendOptimizer(Optimizer):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None,
-                 auto_dp=False):
+                 auto_dp=False,
+                 rank_table_file=None):
         minimized = None
         if self.inner_opt:
             minimized = self.inner_opt.minimize(
@@ -210,19 +218,24 @@ class AscendOptimizer(Optimizer):
             t = ascend_transpiler.AscendTranspiler(startup_program,
                                                    loss.block.program)
             t.transpile()
-            print(loss.block.program)
+            #print(loss.block.program)
 
         # Config about Graph Engine can be found in https://support.huaweicloud.com/
         config = {
             "ge.exec.deviceId": str(fleet.local_device_ids()),
             "ge.graphRunMode": "1",
             "ge.exec.precision_mode": "must_keep_origin_dtype",
-            # if multi mode
-            "ge.exec.rankTableFile": os.getenv("RANK_TABLE_FILE"),
-            "ge.exec.rankId": str(fleet.worker_index()),
-            "ge.exec.isUseHcom": "1",
-            "ge.exec.deployMode": "0",
+            #"ge.exec.rankTableFile" = rank_table_file
+            #"ge.exec.rankId" = str(fleet.worker_index()) 
+            #"ge.exec.isUseHcom" = "0"
+            #"ge.exec.deployMode" = "0"
         }
+        # if multi trainers
+        if rank_table_file:
+            config["ge.exec.rankTableFile"] = rank_table_file
+            config["ge.exec.rankId"] = str(fleet.worker_index()) 
+            config["ge.exec.isUseHcom"] = "1"
+            config["ge.exec.deployMode"] = "0"
         print("ge_initialize config:", config)
         core.ge_initialize(config)
 
@@ -230,7 +243,7 @@ class AscendOptimizer(Optimizer):
         self.ascend_instance.init_global_resources()
 
         main_block = loss.block
-        self.parser = AscendIRParser()
+        self.parser = AscendIRParser(auto_dp=auto_dp)
 
         input_varlist = self._get_input_varlist(main_block.program)
 
