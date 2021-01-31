@@ -256,6 +256,24 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   }
 }
 
+// NOTE(wangxi). When copying data to the accelerator card,
+// we need set_device(dev_id) first.
+template <typename P>
+static int GetDeviceId(const P &place) {
+  // for CPUPlace and CUDAPinnedPlace, not used for now.
+  return -1;
+}
+
+template <>
+int GetDeviceId<platform::CUDAPlace>(const platform::CUDAPlace &place) {
+  return place.GetDeviceId();
+}
+
+template <>
+int GetDeviceId<platform::XPUPlace>(const platform::XPUPlace &place) {
+  return place.GetDeviceId();
+}
+
 template <typename T, typename P>
 void SetTensorFromPyArrayT(
     framework::Tensor *self,
@@ -279,6 +297,14 @@ void SetTensorFromPyArrayT(
     }
   } else if (paddle::platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
+    int ret = xpu_set_device(GetDeviceId(place));
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External(
+            "XPU API return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            ret));
+
     auto dst = self->mutable_data<T>(place);
     xpu_memcpy(dst, array.data(), array.nbytes(),
                XPUMemcpyKind::XPU_HOST_TO_DEVICE);
