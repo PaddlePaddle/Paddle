@@ -39,36 +39,40 @@ namespace framework {
 
 typedef ge::Graph AscendGraphDesc;
 
+#ifdef PADDLE_WITH_ASCEND_STRING
+using AscendString = ge::AscendString;
+#else
+using AscendString = std::string;
+#endif
+
 class AscendInstance {
  public:
   virtual ~AscendInstance() {}
   AscendInstance() {}
 
-  std::map<ge::AscendString, ge::AscendString> GetDefaultInitOptions() {
-	  std::map<ge::AscendString, ge::AscendString> init_options;
-	  init_options["ge.exec.deviceId"] = "0";
-	  init_options["ge.graphRunMode"] = "1";
-	  return init_options;
+  std::map<AscendString, AscendString> GetDefaultInitOptions() {
+    std::map<AscendString, AscendString> init_options;
+    init_options["ge.exec.deviceId"] = "0";
+    init_options["ge.graphRunMode"] = "1";
+    return init_options;
   }
 
-  std::map<ge::AscendString, ge::AscendString> GetDefaultInitSessionOptions() {
-	  std::map<ge::AscendString, ge::AscendString> init_options;
-	  init_options["a"] = "b";
-	  init_options["ge.trainFlag"] = "1";
-	  return init_options;
+  std::map<AscendString, AscendString> GetDefaultInitSessionOptions() {
+    std::map<AscendString, AscendString> init_options;
+    init_options["a"] = "b";
+    init_options["ge.trainFlag"] = "1";
+    return init_options;
   }
 
-  ge::Status InitGEForUT(){
-	return ge::GEInitialize(GetDefaultInitOptions());
-  }
+  ge::Status InitGEForUT() { return ge::GEInitialize(GetDefaultInitOptions()); }
 
   void InitGlobalResouces() {
-	  LOG(INFO) << "Begin InitGlobalResouces";
-      session_.reset(new ge::Session(GetDefaultInitSessionOptions()));
-	  if (session_ == nullptr){
-		  LOG(FATAL) << "new session error:" << session_;
-	  }
-	  LOG(INFO) << "End InitGlobalResouces";
+    LOG(INFO) << "Begin InitGlobalResouces";
+    session_.reset(new ge::Session(GetDefaultInitSessionOptions()));
+    if (session_ == nullptr) {
+      LOG(FATAL) << "new session error:" << session_;
+    }
+    LOG(INFO) << "End InitGlobalResouces";
   }
 
   static std::shared_ptr<AscendInstance> GetInstance() {
@@ -191,6 +195,6 @@ class AscendInstance {
  private:
   static std::shared_ptr<AscendInstance> ascend_instance_;
 };
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif
