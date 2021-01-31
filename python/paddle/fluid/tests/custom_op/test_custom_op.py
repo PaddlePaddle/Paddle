@@ -42,10 +42,6 @@ def relu2(x, name=None):
     return out
 
 
-# from cpp_extension import load
-
-# relu2 = load("librelu2_op_from_setup", sources = [], build_directory = "./")
-
 @contextlib.contextmanager
 def scope_prog_guard():
     prog = fluid.Program()
@@ -64,6 +60,7 @@ def linear_fc(data, label, use_custom_relu):
     loss = fluid.layers.cross_entropy(input=hidden, label=label)
     loss = fluid.layers.mean(loss)
     return loss
+
 
 def custom_op_test(use_gpu=True, use_custom_relu=True):
     with scope_prog_guard():
@@ -119,5 +116,5 @@ class CustomOpTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # load_so(so_name='librelu2_op.so')
+    load_so(so_name='librelu2_op.so')
     unittest.main()

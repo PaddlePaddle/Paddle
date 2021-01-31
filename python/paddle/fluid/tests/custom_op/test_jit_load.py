@@ -1,21 +1,35 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .cpp_extension import CUDAExtension
-from .cpp_extension import CppExtension
-from .cpp_extension import BuildExtension
-from .cpp_extension import load, setup
-from .extension_utils import parse_op_info
+import os
+import unittest
+import paddle
+import numpy as np
 
-__all__ = ['CppExtension', 'CUDAExtension', 'BuildExtension', 'load', 'setup']
+from paddle.utils.cpp_extension import load
+
+relu2 = load(name='relu2', sources=['relu_op.cc', 'relu_op.cu'])
+
+
+class TestJITLoad(unittest.TestCase):
+    def test_api(self):
+        paddle.set_device('cpu')
+        raw_data = np.array([[-1, 1, 0], [1, -1, -1]]).astype('float32')
+        x = paddle.to_tensor(raw_data, dtype='float32')
+        out = relu2(raw_data)
+        self.assertTrue(np.array_equal(out, raw_data))
+
+
+if __name__ == '__main__':
+    unittest.main()

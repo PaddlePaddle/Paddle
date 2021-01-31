@@ -14,8 +14,7 @@
 import os
 import six
 from distutils.sysconfig import get_python_lib
-from setuptools import setup
-from paddle.utils.cpp_extension import CppExtension, CUDAExtension, BuildExtension
+from paddle.utils.cpp_extension import CppExtension, CUDAExtension, BuildExtension, setup
 from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -35,15 +34,15 @@ extra_compile_args = ['-DPADDLE_WITH_MKLDNN'
                       ] if six.PY2 and not IS_WINDOWS else []
 
 setup(
-    name='relu_op_shared',
+    name='librelu2_op_from_setup',
     ext_modules=[
         CUDAExtension(
             name='librelu2_op_from_setup',
             sources=['relu_op.cc', 'relu_op.cu'],
             include_dirs=paddle_includes,
-            extra_compile_args=extra_compile_args,
-            output_dir=file_dir)
+            extra_compile_args=extra_compile_args)
     ],
     cmdclass={
-        'build_ext': BuildExtension.with_options(no_python_abi_suffix=True),
+        'build_ext': BuildExtension.with_options(
+            no_python_abi_suffix=True, output_dir=file_dir)  # for unittest
     })

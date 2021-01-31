@@ -15,15 +15,45 @@
 import os
 import six
 import sys
+import textwrap
 import copy
 import setuptools
+from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 
-from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag
+from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag, bootstrap_context
 from .extension_utils import is_cuda_file, prepare_unix_cflags, add_std_without_repeat, get_build_directory
+from .extension_utils import _import_module_from_library, CustomOpInfo, _write_setup_file, _jit_compile
 
 IS_WINDOWS = os.name == 'nt'
 CUDA_HOME = find_cuda_home()
+
+
+def setup(**attr):
+    """
+    Wrapper setuptools.setup function to valid `build_ext` command and
+    implement generated paddle api code injection by switching `write_stub`
+    function in bdist_egg with `custom_write_stub`.
+    """
+    cmdclass = attr.get('cmdclass', {})
+    assert isinstance(cmdclass, dict)
+    # if not specific cmdclass in setup, add it automaticaly.
+    if 'build_ext' not in cmdclass:
+        cmdclass['build_ext'] = BuildExtension.with_options(
+            no_python_abi_suffix=True)
+        attr['cmdclass'] = cmdclass
+    elif not isinstance(cmdclass['build_ext'], BuildExtension):
+        raise ValueError(
+            "Require paddle.utils.cpp_extension.BuildExtension in setup(cmdclass={'build_ext: ...'}), but received {}".
+            format(type(cmdclass['build_ext'])))
+
+    # Add rename .so hook in easy_install
+    assert 'easy_install' not in cmdclass
+    cmdclass['easy_install'] = EasyInstallCommand
+
+    # switch `write_stub` to inject paddle api in .egg
+    with bootstrap_context():
+        setuptools.setup(**attr)
 
 
 def CppExtension(name, sources, *args, **kwargs):
@@ -85,14 +115,14 @@ class BuildExtension(build_ext, object):
 
     def __init__(self, *args, **kwargs):
         super(BuildExtension, self).__init__(*args, **kwargs)
-        self.no_python_abi_suffix = kwargs.get("no_python_abi_suffix", False)
+        self.no_python_abi_suffix = kwargs.get("no_python_abi_suffix", True)
         if 'output_dir' in kwargs:
             self.build_lib = kwargs.get("output_dir")
 
     def initialize_options(self):
         super(BuildExtension, self).initialize_options()
         # update options here
-        self.build_lib = './'
+        # self.build_lib = './'
 
     def finalize_options(self):
         super(BuildExtension, self).finalize_options()
@@ -177,6 +207,7 @@ class BuildExtension(build_ext, object):
         self.compiler.object_filenames = object_filenames_with_cuda(
             self.compiler.object_filenames)
 
+        print(self.get_outputs())
         build_ext.build_extensions(self)
 
     def get_ext_filename(self, fullname):
@@ -198,6 +229,30 @@ class BuildExtension(build_ext, object):
     def _check_abi(self):
         pass
 
+
+class EasyInstallCommand(easy_install, object):
+    """
+    Extend easy_intall Command to control the behavior of naming shared library
+    file.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(EasyInstallCommand, self).__init__(*args, **kwargs)
+
+    def run(self):
+        super(EasyInstallCommand, self).run()
+        # NOTE: To avoid failing import .so file instead of
+        # python file because they have same name, we rename
+        # .so shared library to another name.
+        for egg_file in self.outputs:
+            filename, ext = os.path.splitext(egg_file)
+            if ext == '.so':
+                new_so_path = filename + "_pd_" + ext
+                if not os.path.exists(new_so_path):
+                    os.rename(r'%s' % egg_file, r'%s' % new_so_path)
+                assert os.path.exists(new_so_path)
+
+
 def load(name,
          sources,
          extra_cflags=None,
@@ -207,106 +262,23 @@ def load(name,
          build_directory=None,
          verbose=False):
 
-    # TODO(Aurelius84): Add JIT compile with cmake
-    file_dir = os.path.dirname(os.path.abspath(__file__))
-    os.system('cd {} && python3.7 setup.py build'.format(file_dir))
+    # TODO(Aurelius84): It just contains main logic codes, more details
+    # will be added later.
+    if build_directory is None:
+        build_directory = get_build_directory()
+    # ensure to use abs path
+    build_directory = os.path.abspath(build_directory)
+    file_path = os.path.join(build_directory, "setup.py")
 
-    return _import_module_from_library(name, build_directory)
+    # TODO(Aurelius84): split cflags and cuda_flags
+    if extra_cflags is None: extra_cflags = []
+    if extra_cuda_cflags is None: extra_cuda_cflags = []
+    compile_flags = extra_cflags + extra_cuda_cflags
 
-call_once = True
+    _write_setup_file(name, sources, file_path, extra_include_paths,
+                      compile_flags, link_args)
+    _jit_compile(file_path)
 
-def _import_module_from_library(name, build_directory):
-    """
-    Load .so shared library and import it as callable python module.
-    """
-    ext_path = os.path.join(build_directory, name+'.so')
-    if not os.path.exists(ext_path):
-        raise FileNotFoundError("Extension path: {} does not exist.".format(ext_path))
-    
-    # load custom op_info and kernels from .so shared library
-    global call_once
-    import paddle.fluid as fluid
-    if call_once:
-        fluid.load_op_library(ext_path)
-        call_once = False
+    custom_op_api = _import_module_from_library(name, build_directory)
 
-    # TODO(Aurelius84): need op_type
-    op_name = 'relu2'
-
-    # generate Python api in ext_path
-    return _generate_python_module(op_name, build_directory)
-
-
-API_TEMPLATE = """
-from paddle.fluid.layer_helper import LayerHelper
-# from /workspace/paddle-fork/python/paddle/fluid/tests/custom_op/cpp_extension import parse_op_info
-
-# _, out_infos = parse_op_info('{op_name}')
-
-from importlib import machinery
-loader = machinery.SourceFileLoader('x', '/workspace/paddle-fork/python/paddle/fluid/tests/custom_op/cpp_extension.py')
-m = loader.load_module()
-
-_, out_infos = m.parse_op_info('relu2')
-
-def {op_name}({inputs}):
-    helper = LayerHelper("{op_name}", **locals())
-
-    # prepare inputs
-    ins = {ins}
-
-    # prepare outputs
-    outs = {{}}
-    for out_name in out_infos:
-        outs[out_name] =  helper.create_variable(dtype='float32', persistable=False)
-    
-    helper.append_op(type="{op_name}", inputs=ins, outputs=outs)
-
-    return list(outs.values())[0]
-"""
-
-def _generate_python_module(op_name, build_directory):
-    """
-    Automatically generate python file to allow import or load into as module
-    """
-    api_file = os.path.join(build_directory, op_name + '.py')
-    params_str, ins_str = _get_api_inputs_str(op_name)
-
-    # generate python api file
-    api_content = API_TEMPLATE.format(op_name=op_name, inputs=params_str, ins=ins_str)
-
-    
-    with open(api_file, 'w') as f:
-        f.write(api_content)
-
-    custom_api = _load_module_from_file(op_name, api_file)
-    return custom_api
-
-def _load_module_from_file(op_name, api_file_path):
-    """
-    Load module from python file.
-    """
-    if not os.path.exists(api_file_path):
-        raise FileNotFoundError("File : {} does not exist.".format(api_file_path))
-    
-    ext_name = "extension"
-    if six.PY2:
-        import imp
-        module = imp.load_source(ext_name, api_file_path)
-    else:
-        from importlib import machinery
-        loader = machinery.SourceFileLoader(ext_name, api_file_path)
-        module = loader.load_module()
-    
-    assert hasattr(module, op_name)
-    return getattr(module, op_name)
-
-
-def _get_api_inputs_str(op_name):
-    """
-    Returns string of api parameters and inputs dict.
-    """
-    in_names, _ = parse_op_info(op_name)
-    params_str = ','.join([p.lower() for p in in_names])
-    ins_str = "{%s}" % ','.join(["'{}' : {}".format(in_name, in_name.lower()) for in_name in in_names])
-    return params_str, ins_str
+    return custom_op_api
