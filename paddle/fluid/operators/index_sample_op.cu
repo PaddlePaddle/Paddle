@@ -14,13 +14,13 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/index_sample_op.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-using platform::PADDLE_CUDA_NUM_THREADS;
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
@@ -28,49 +28,41 @@ template <typename T, typename IndexT = int>
 __global__ void IndexSampleForward(const IndexT* index, const T* in_data,
                                    T* out_data, size_t index_length,
                                    size_t input_length, size_t batch_size) {
-  int ix = blockDim.x * blockIdx.x + threadIdx.x;
-  int iy = blockDim.y * blockIdx.y + threadIdx.y;
-  int tid = iy * index_length + ix;
-  int tid_x = iy * input_length + ix;
+  int index_i = blockDim.x * blockIdx.x + threadIdx.x;
+  int index_j = blockDim.y * blockIdx.y + threadIdx.y;
+  int index_idx = index_j * index_length + index_i;
+  int in_idx = index_j * input_length + index_i;
 
-  if (ix < index_length & iy < batch_size) {
-    IndexT idx = index[tid];
-    out_data[tid] = in_data[tid_x - ix + idx];
+  if (index_i < index_length & index_j < batch_size) {
+    IndexT sample_idx = index[index_idx];
+    out_data[index_idx] = in_data[in_idx - index_i + sample_idx];
   }
 }
 
 template <typename T, typename IndexT = int>
-__global__ void IndexSampleGradDefault(const IndexT* index, T* in_grad,
-                                       const T* out_grad, size_t index_length,
-                                       size_t input_length, size_t batch_size) {
-  int ix = blockDim.x * blockIdx.x + threadIdx.x;
-  int iy = blockDim.y * blockIdx.y + threadIdx.y;
-  int tid = iy * index_length + ix;
-  int tid_y = iy * input_length + ix;
+__global__ void IndexSampleGrad(const IndexT* index, T* in_grad,
+                                const T* out_grad, size_t index_length,
+                                size_t input_length, size_t batch_size,
+                                bool same_data_in_row = true) {
+  int index_i = blockDim.x * blockIdx.x + threadIdx.x;
+  int index_j = blockDim.y * blockIdx.y + threadIdx.y;
+  int index_idx = index_j * index_length + index_i;
+  int in_idx = index_j * input_length + index_i;
 
-  if (ix < index_length & iy < batch_size) {
-    IndexT idx = index[tid];
-    platform::CudaAtomicAdd(&(in_grad[tid_y - ix + idx]), out_grad[tid]);
+  if (index_i < index_length & index_j < batch_size) {
+    IndexT sample_idx = index[index_idx];
+    if (same_data_in_row) {
+      platform::CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
+                              out_grad[sample_idx]);
+    } else {
+      in_grad[in_idx - index_i + sample_idx] = out_grad[sample_idx];
+    }
   }
 }
 
-template <typename T, typename IndexT = int>
-__global__ void IndexSampleGradSpecial(const IndexT* index, T* in_grad,
-                                       const T* out_grad, size_t index_length,
-                                       size_t input_length, size_t batch_size) {
-  int ix = blockDim.x * blockIdx.x + threadIdx.x;
-  int iy = blockDim.y * blockIdx.y + threadIdx.y;
-  int tid = iy * index_length + ix;
-  int tid_y = iy * input_length + ix;
-
-  if (ix < index_length & iy < batch_size) {
-    IndexT idx = index[tid];
-    in_grad[tid_y - ix + idx] = out_grad[tid];
-  }
-}
-
-template <typename DeviceContext, typename T>
-class IndexSampleCUDAKernel : public framework::OpKernel<T> {
+template <typename T>
+class IndexSampleKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<LoDTensor>("X");
@@ -127,8 +119,9 @@ class IndexSampleCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
-class IndexSampleGradCUDAKernel : public framework::OpKernel<T> {
+template <typename T>
+class IndexSampleGradKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* output_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
@@ -156,47 +149,35 @@ class IndexSampleGradCUDAKernel : public framework::OpKernel<T> {
 
     auto stream =
         ctx.template device_context<platform::CUDADeviceContext>().stream();
-
     auto input_num = input_grad->numel();
     auto input_dim = input_grad->dims();
     auto index_dim = index->dims();
     size_t batch_size = index_dim[0];
     size_t input_length = input_dim[1];
     size_t index_length = index_dim[1];
+    bool same_data_in_index_row = index_length == 1 ? false : true;
 
     auto block_width = platform::RoundToPowerOfTwo(index_length);
     auto block_height =
         platform::RoundToPowerOfTwo(index_length * batch_size) / block_width;
-
     dim3 block_dim(block_width, block_height);
     dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                   (batch_size + block_dim.y - 1) / block_dim.y);
 
-    platform::GpuMemsetAsync(input_grad_data, 0,
-                             sizeof(T) * input_length * batch_size, stream);
+    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    set_zero(dev_ctx, input_grad, static_cast<T>(0));
 
     if (index_type == framework::proto::VarType::INT64) {
       const int64_t* index_data = index->data<int64_t>();
-      if (index_length == 1) {
-        IndexSampleGradSpecial<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
-            index_data, input_grad_data, output_grad_data, index_length,
-            input_length, batch_size);
-      } else {
-        IndexSampleGradDefault<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
-            index_data, input_grad_data, output_grad_data, index_length,
-            input_length, batch_size);
-      }
+      IndexSampleGrad<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
+          index_data, input_grad_data, output_grad_data, index_length,
+          input_length, batch_size, same_data_in_index_row);
     } else if (index_type == framework::proto::VarType::INT32) {
       const int* index_data = index->data<int>();
-      if (index_length == 1) {
-        IndexSampleGradSpecial<T, int><<<grid_dim, block_dim, 0, stream>>>(
-            index_data, input_grad_data, output_grad_data, index_length,
-            input_length, batch_size);
-      } else {
-        IndexSampleGradDefault<T, int><<<grid_dim, block_dim, 0, stream>>>(
-            index_data, input_grad_data, output_grad_data, index_length,
-            input_length, batch_size);
-      }
+      IndexSampleGrad<T, int><<<grid_dim, block_dim, 0, stream>>>(
+          index_data, input_grad_data, output_grad_data, index_length,
+          input_length, batch_size, same_data_in_index_row);
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
   }
@@ -208,14 +189,13 @@ class IndexSampleGradCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     index_sample,
-    ops::IndexSampleCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::IndexSampleCUDAKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::IndexSampleCUDAKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::IndexSampleCUDAKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::IndexSampleKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::IndexSampleKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::IndexSampleKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::IndexSampleKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     index_sample_grad,
-    ops::IndexSampleGradCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::IndexSampleGradCUDAKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::IndexSampleGradCUDAKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::IndexSampleGradCUDAKernel<paddle::platform::CUDADeviceContext,
-                                   int64_t>);
+    ops::IndexSampleGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::IndexSampleGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::IndexSampleGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::IndexSampleGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
