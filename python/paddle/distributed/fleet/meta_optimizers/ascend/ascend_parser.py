@@ -66,6 +66,12 @@ registerd_op = {## forwards
                 "c_reduce_scatter": "ReduceScatterParser",
                 "c_send": "SendParser",
                 "c_receive": "ReceiveParser",
+                "uniform_random": "UniformRandomParser",
+                "range": "RangeParser",
+                "equal": "EqualParser",
+                "expand": "ExpandParser",
+                "squeeze2": "SqueezeParser",
+
 
                 ## backwords
                 "matmul_grad": "MatMulGradParser",
@@ -164,7 +170,6 @@ class AscendParserBase(object):
             self.parser_name, len(index_list), output_num)
         for output_id in range(output_num):
             arguments = self.op.output(self.op.output_names[output_id])
-            print("%d argument:  %s" % (output_id, str(arguments)))
             if len(arguments) > 0:
                 assert len(arguments) == len(
                     index_list[output_id]
@@ -172,8 +177,6 @@ class AscendParserBase(object):
                     self.parser_name, output_id, len(index_list[output_id]),
                     len(arguments))
                 for i in range(len(arguments)):
-                    print("assgin index_list[%d][%d] to %s" %
-                          (output_id, i, arguments[i]))
                     self.var2geop[arguments[i]] = geop_list[index_list[
                         output_id][i]]
 
@@ -184,7 +187,7 @@ class AscendParserBase(object):
         self.op = op
         assert self.op.type == self.parser_name, "op [%s] != parser_name[%s]" % (
             self.op.type, self.parser_name)
-        print("begin to parse op %s" % (self.parser_name))
+        #print("begin to parse op %s" % (self.parser_name))
         geop_list, index_list = self._apply()
         self.update_output(geop_list, index_list)
 
@@ -786,8 +789,6 @@ class FillConstantParser(AscendParserBase):
             "Const").set_attr_tensor("value", tensor)
         self._mark_as_input(const)
         if self.op.block.var(self.op.output('Out')[0]).persistable:
-            print("%s is Persistable in fill_constant" %
-                  (self.op.output('Out')[0]))
             var = core.GEOperatorFactory.create_operator(
                 self.op.output('Out')[0], "Variable")
             var.update_output_desc("y",
@@ -799,10 +800,6 @@ class FillConstantParser(AscendParserBase):
                 "assign" + self._accumulated_op_id(), "Assign").set_input(
                     "value", const).set_input("ref", var)
             return [const], [[0]]
-        else:
-            print(
-                "self.op.output('Out')[0]: %s is not persistable in fill_constant"
-                % (self.op.output('Out')[0]))
         return [const], [[0]]
 
 
@@ -856,8 +853,6 @@ class TruncatedNormalParser(AscendParserBase):
 
         ## wirte the output of truncatedNormal from startup_program to main_program
         if self.op.block.var(self.op.output('Out')[0]).persistable:
-            print("%s is Persistable in truncated_normal" %
-                  (self.op.output('Out')[0]))
             var = core.GEOperatorFactory.create_operator(
                 self.op.output('Out')[0], "Variable")
             var.update_output_desc("y",
@@ -872,10 +867,6 @@ class TruncatedNormalParser(AscendParserBase):
                 shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor,
                 truncated_normal
             ], [[-1]]
-        else:
-            print(
-                "self.op.output('Out')[0] is not persistable in truncated_noraml"
-            )
         return [truncated_normal], [[0]]
 
 
@@ -938,7 +929,7 @@ class CastParser(AscendParserBase):
         cast = core.GEOperatorFactory.create_operator(
             "cast" + self._accumulated_op_id(), "Cast").set_input(
                 "x", x).set_attr_int32("dst_type", dtype)
-        return [cast]
+        return [cast], [[0]]
 
 
 class AssignParser(AscendParserBase):
@@ -1336,6 +1327,117 @@ class ReceiveParser(AscendParserBase):
                         "group", group).set_attr_vec_int32(
                             "shape", shape).set_attr_int32("dtype", dtype)
         return [receive], [[0]]
+
+
+class RangeParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(RangeParser, self).__init__(graph, var2geop)
+        self.parser_name = "range"
+
+    def _apply(self):
+        # TODO not support range type yet
+        start = self._get_ge_input(self.op.input_arg_names[0])
+        end = self._get_ge_input(self.op.input_arg_names[1])
+        delta = self._get_ge_input(self.op.input_arg_names[2])
+
+        ge_range = core.GEOperatorFactory.create_operator(
+            "range" + self._accumulated_op_id(), "Range")\
+              .set_input("start", end)\
+              .set_input("limit", start) \
+              .set_input("delta", delta)
+
+        return [ge_range], [[0]]
+
+
+class UniformRandomParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(UniformRandomParser, self).__init__(graph, var2geop)
+        self.parser_name = "uniform_random"
+
+    def _apply(self):
+        shape = self.op.attr("shape")
+
+        min_v = self.op.attr("min")
+        max_v = self.op.attr("max")
+        seed = self.op.attr("seed")
+        dtype = self.op.attr("dtype")
+        assert max_v > min_v, "assert max_v > min_v, but recieved " + \
+               "as max_v={}, min_v={} ".format(max_v, min_v)
+
+        tensor1 = self._create_ge_tensor([len(shape)], 2, shape)
+        shape_tensor = core.GEOperatorFactory.create_operator(
+            "const" + self._accumulated_op_id(), 
+            "Const").set_attr_tensor("value", tensor1)
+
+        ge_ur = core.GEOperatorFactory.create_operator(
+            "uniform_random" + self._accumulated_op_id(), "RandomUniform")\
+            .set_input("shape", shape_tensor)\
+            .set_attr_dtype("dtype", self.ascend_helper.dtype2ge(dtype))  \
+            .set_attr_int32("seed", seed)\
+            .set_attr_int32("seed2", seed)
+
+        scale = max_v - min_v
+
+        scale_value = core.GEOperatorFactory.create_operator(
+                "scale" + self._accumulated_op_id(), "Power").set_input(
+                    "x", ge_ur).set_attr_float("power", 1.0).set_attr_float(
+                        "scale", scale).set_attr_float("shift", min_v)
+
+        return [scale_value], [[0]]
+
+
+class EqualParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(EqualParser, self).__init__(graph, var2geop)
+        self.parser_name = "equal"
+
+    def _apply(self):
+        data_x1 = self._get_ge_input(self.op.input_arg_names[0])
+        data_x2 = self._get_ge_input(self.op.input_arg_names[1])
+        equal = core.GEOperatorFactory.create_operator("equal" \
+           + self._accumulated_op_id(), "Equal")\
+             .set_input("x1", data_x1)\
+             .set_input("x2", data_x2)
+        return [equal], [[0]]
+
+
+class ExpandParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(ExpandParser, self).__init__(graph, var2geop)
+        self.parser_name = "expand"
+
+    def _apply(self):
+        data_x1_shape = self._get_ge_input(self.op.input_arg_names[0])
+        expand_times = self.op.attr('expand_times')
+
+        tensor = self._create_ge_tensor([len(expand_times)], 2, expand_times)
+        expand_tensor = core.GEOperatorFactory.\
+           create_operator("const" + self._accumulated_op_id(), "Const")\
+              .set_attr_tensor("value", tensor)
+
+        assign = core.GEOperatorFactory\
+           .create_operator("tile" + self._accumulated_op_id(), "Tile")\
+              .set_input("x", data_x1_shape)\
+              .set_input("multiples", expand_tensor)
+        return [assign], [[0]]
+
+
+class SqueezeParser(AscendParserBase):
+    def __init__(self, graph, var2geop):
+        super(SqueezeParser, self).__init__(graph, var2geop)
+        self.parser_name = "squeeze2"
+
+    def _apply(self):
+        tensor = self._get_ge_input(self.op.input_arg_names[0])
+        axes = self.op.attr("axes") 
+
+        data_squeezed = core.GEOperatorFactory\
+           .create_operator("squeeze" + self._accumulated_op_id(), "Squeeze")\
+             .set_input("x", tensor)\
+             .set_attr_vec_int32("axes", axes)
+        shape = core.GEOperatorFactory.create_operator(
+            "shape" + self._accumulated_op_id(), "Shape").set_input("x", data_squeezed)
+        return [shape, data_squeezed], [[1], [0]]
 
 
 #****************************************************************#
@@ -2070,3 +2172,4 @@ class AdamParser(AscendParserBase):
                                     "epsilon", epsilon).set_input("grad", grad)
 
         return [adam], [[0]]
+
