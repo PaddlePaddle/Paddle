@@ -24,7 +24,7 @@ from setuptools.command.build_ext import build_ext
 
 from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag, bootstrap_context
 from .extension_utils import is_cuda_file, prepare_unix_cflags, add_std_without_repeat, get_build_directory
-from .extension_utils import _import_module_from_library, CustomOpInfo, _write_setup_file, _jit_compile
+from .extension_utils import _import_module_from_library, CustomOpInfo, _write_setup_file, _jit_compile, parse_op_name_from
 
 IS_WINDOWS = os.name == 'nt'
 CUDA_HOME = find_cuda_home()
@@ -43,10 +43,10 @@ def setup(**attr):
         cmdclass['build_ext'] = BuildExtension.with_options(
             no_python_abi_suffix=True)
         attr['cmdclass'] = cmdclass
-    elif not isinstance(cmdclass['build_ext'], BuildExtension):
-        raise ValueError(
-            "Require paddle.utils.cpp_extension.BuildExtension in setup(cmdclass={'build_ext: ...'}), but received {}".
-            format(type(cmdclass['build_ext'])))
+    # elif not isinstance(cmdclass['build_ext'], BuildExtension):
+    #     raise ValueError(
+    #         "Require paddle.utils.cpp_extension.BuildExtension in setup(cmdclass={'build_ext: ...'}), but received {}".
+    #         format(type(cmdclass['build_ext'])))
 
     # Add rename .so hook in easy_install
     assert 'easy_install' not in cmdclass
@@ -117,16 +117,18 @@ class BuildExtension(build_ext, object):
     def __init__(self, *args, **kwargs):
         super(BuildExtension, self).__init__(*args, **kwargs)
         self.no_python_abi_suffix = kwargs.get("no_python_abi_suffix", True)
-        if 'output_dir' in kwargs:
-            self.build_lib = kwargs.get("output_dir")
+        self.output_dir = kwargs.get("output_dir", None)
 
     def initialize_options(self):
         super(BuildExtension, self).initialize_options()
-        # update options here
-        # self.build_lib = './'
 
     def finalize_options(self):
         super(BuildExtension, self).finalize_options()
+        # NOTE(Aurelius84): Set location of compiled share library.
+        # Carefully to modify this because `setup.py build/install`
+        # and load will rely on this attribute.
+        if self.output_dir is not None:
+            self.build_lib = self.output_dir
 
     def build_extensions(self):
         self._check_abi()
@@ -138,7 +140,6 @@ class BuildExtension(build_ext, object):
                         extension.extra_compile_args[compiler] = []
             # add determine compile flags
             add_compile_flag(extension, '-std=c++11')
-            # add_compile_flag(extension, '-lpaddle_framework')
 
         # Consider .cu, .cu.cc as valid source extensions.
         self.compiler.src_extensions += ['.cu', '.cu.cc']
@@ -180,9 +181,11 @@ class BuildExtension(build_ext, object):
                 # restore original_compiler
                 self.compiler.compiler_so = original_compiler
 
-        def object_filenames_with_cuda(origina_func):
+        def object_filenames_with_cuda(origina_func, build_directory):
             """
             Decorated the function to add customized naming machanism.
+            Originally, both .cc/.cu will have .o object output that will
+            bring file override problem. Use .cu.o as CUDA object suffix.
             """
 
             def wrapper(source_filenames, strip_dir=0, output_dir=''):
@@ -194,8 +197,16 @@ class BuildExtension(build_ext, object):
                         if is_cuda_file(source):
                             old_obj = objects[i]
                             objects[i] = old_obj[:-1] + 'cu.o'
+                    # if user set build_directory, output objects there.
+                    print("build_directory:", build_directory)
+                    if build_directory is not None:
+                        objects = [
+                            os.path.join(build_directory, os.path.basename(obj))
+                            for obj in objects
+                        ]
                     # ensure to use abspath
                     objects = [os.path.abspath(obj) for obj in objects]
+                    print(objects)
                 finally:
                     self.compiler.object_filenames = origina_func
 
@@ -206,9 +217,9 @@ class BuildExtension(build_ext, object):
         # customized compile process
         self.compiler._compile = unix_custom_single_compiler
         self.compiler.object_filenames = object_filenames_with_cuda(
-            self.compiler.object_filenames)
+            self.compiler.object_filenames, self.build_lib)
 
-        print(self.get_outputs())
+        self._record_op_info()
         build_ext.build_extensions(self)
 
     def get_ext_filename(self, fullname):
@@ -228,13 +239,39 @@ class BuildExtension(build_ext, object):
         return ext_name
 
     def _check_abi(self):
+        # TODO(Aurelius84): Enhance abi check
         pass
+
+    def _record_op_info(self):
+        """
+        Record custum op inforomation. 
+        """
+        # parse op name
+        sources = []
+        for extension in self.extensions:
+            sources.extend(extension.sources)
+
+        sources = [os.path.abspath(s) for s in sources]
+        op_name = parse_op_name_from(sources)
+
+        # parse shared library abs path
+        outputs = self.get_outputs()
+        assert len(outputs) == 1
+
+        build_directory = os.path.abspath(outputs[0])
+        so_name = os.path.basename(build_directory)
+        CustomOpInfo.instance().add(op_name,
+                                    so_name=so_name,
+                                    build_directory=build_directory)
 
 
 class EasyInstallCommand(easy_install, object):
     """
     Extend easy_intall Command to control the behavior of naming shared library
     file.
+
+    NOTE(Aurelius84): This is a hook inherited Command class used to rename shared
+                    library file after extracting egg-info into site-packages.
     """
 
     def __init__(self, *args, **kwargs):
@@ -271,15 +308,19 @@ def load(name,
     build_directory = os.path.abspath(build_directory)
     file_path = os.path.join(build_directory, "setup.py")
 
+    sources = [os.path.abspath(source) for source in sources]
+
     # TODO(Aurelius84): split cflags and cuda_flags
     if extra_cflags is None: extra_cflags = []
     if extra_cuda_cflags is None: extra_cuda_cflags = []
     compile_flags = extra_cflags + extra_cuda_cflags
 
+    # write setup.py file and compile it 
     _write_setup_file(name, sources, file_path, extra_include_paths,
-                      compile_flags, link_args)
+                      compile_flags, extra_ldflags)
     _jit_compile(file_path)
 
+    # import as callable python api
     custom_op_api = _import_module_from_library(name, build_directory)
 
     return custom_op_api

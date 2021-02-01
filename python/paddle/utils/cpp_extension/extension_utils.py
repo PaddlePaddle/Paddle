@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import re
 import six
 import sys
 import copy
@@ -87,8 +88,10 @@ def custom_write_stub(resource, pyfile):
         {custom_api}
         """).lstrip()
 
-    # so_path = os.path.join(CustomOpInfo.instance()[op_name].build_directory, resource)
-    so_path = '/workspace/paddle-fork/python/paddle/fluid/tests/custom_op/build/lib.linux-x86_64-3.7/librelu2_op_from_setup.so'
+    # Parse registerring op information
+    _, op_info = CustomOpInfo.instance().last()
+    so_path = op_info.build_directory
+
     new_custom_op = paddle.utils.load_op_library(so_path)
     assert len(new_custom_op) == 1
 
@@ -105,13 +108,14 @@ def custom_write_stub(resource, pyfile):
                 custom_api=_custom_api_content(new_custom_op[0])))
 
 
+OpInfo = collections.namedtuple('OpInfo',
+                                ['so_name', 'build_directory', 'out_dtypes'])
+
+
 class CustomOpInfo:
     """
     A global map to log all compiled custom op information.
     """
-
-    OpInfo = collections.namedtuple(
-        'OpInfo', ['so_name', 'build_directory', 'out_dtypes'])
 
     @classmethod
     def instance(cls):
@@ -123,10 +127,18 @@ class CustomOpInfo:
         assert not hasattr(
             self.__class__,
             '_instance'), 'Please use `instance()` to get CustomOpInfo object!'
-        self.op_info_map = {}
+        # NOTE(Aurelius84): Use OrderedDict to save more order information
+        self.op_info_map = collections.OrderedDict()
 
     def add(self, op_name, so_name, build_directory=None, out_dtypes=None):
         self.op_info_map[op_name] = OpInfo(so_name, build_directory, out_dtypes)
+
+    def last(self):
+        """
+        Return the lastest insert custom op info.
+        """
+        assert len(self.op_info_map) > 0
+        return next(reversed(self.op_info_map.items()))
 
 
 def prepare_unix_cflags(cflags):
@@ -301,7 +313,7 @@ def get_build_directory():
     """
     Return paddle extension root directory, default specific by `PADDLE_EXTENSION_DIR`
     """
-    root_extensions_directory = os.envsiron.get('PADDLE_EXTENSION_DIR')
+    root_extensions_directory = os.environ.get('PADDLE_EXTENSION_DIR')
     if root_extensions_directory is None:
         dir_name = "paddle_extensions"
         if OS_NAME == 'Linux':
@@ -351,13 +363,11 @@ def _import_module_from_library(name, build_directory):
             ext_path))
 
     # load custom op_info and kernels from .so shared library
-    paddle.utils.load_op_library(ext_path)
-
-    # TODO(Aurelius84): need op_type
-    op_name = 'relu2'
+    op_names = paddle.utils.load_op_library(ext_path)
+    assert len(op_names) == 1
 
     # generate Python api in ext_path
-    return _generate_python_module(op_name, build_directory)
+    return _generate_python_module(op_names[0], build_directory)
 
 
 def _generate_python_module(op_name, build_directory):
@@ -396,7 +406,12 @@ def _custom_api_content(op_name):
             
             helper.append_op(type="{op_name}", inputs=ins, outputs=outs)
 
-            return list(outs.values())[0]""").lstrip()
+            res = list(outs.values())[0]
+            if len(res) == 1:
+                return res[0]
+            else:
+                return res
+            """).lstrip()
 
     # generate python api file
     api_content = API_TEMPLATE.format(
@@ -447,30 +462,43 @@ def _write_setup_file(name, sources, file_path, include_dirs, compile_flags,
     template = textwrap.dedent("""
     import os
     from paddle.utils.cpp_extension import CppExtension, CUDAExtension, BuildExtension, setup
+    from paddle.utils.cpp_extension import get_build_directory
     setup(
         name='{name}',
         ext_modules=[
-            CUDAExtension(
-                name='librelu2_op_from_setup',
+            {prefix}Extension(
+                name='{name}',
                 sources={sources},
                 include_dirs={include_dirs},
                 extra_compile_args={extra_compile_args},
-                extra_link_args={extra_link_args})
-        ])""").lstrip()
+                extra_link_args={extra_link_args})],
+        cmdclass={{"build_ext" : BuildExtension.with_options(
+            output_dir=get_build_directory(),
+            no_python_abi_suffix=True)
+        }})""").lstrip()
+
+    with_cuda = False
+    if any([is_cuda_file(source) for source in sources]):
+        with_cuda = True
 
     content = template.format(
         name=name,
+        prefix='CUDA' if with_cuda else 'Cpp',
         sources=list2str(sources),
         include_dirs=list2str(include_dirs),
         extra_compile_args=list2str(compile_flags),
-        extra_link_args=list2str(link_args), )
+        extra_link_args=list2str(link_args))
     with open(file_path, 'w') as f:
         f.write(content)
 
 
 def list2str(args):
-    if args is None: return 'None'
+    """
+    Convert list[str] into string. For example: [x, y] -> "['x', 'y']"
+    """
+    if args is None: return '[]'
     assert isinstance(args, (list, tuple))
+    args = ["'{}'".format(arg) for arg in args]
     return '[' + ','.join(args) + ']'
 
 
@@ -478,9 +506,40 @@ def _jit_compile(file_path):
     """
     Build shared library in subprocess
     """
-    # TODO(Aurelius84): Enhance codes.
-    cmd = 'cd {} && python3.7 setup.py build'.format(file_path)
-    subprocess.run(cmd,
-                   stdout=subprocess.PIPE,
-                   stderr=subprocess.PIPE,
-                   encoding="utf-8")
+    # TODO(Aurelius84): Enhance codes
+    ext_dir = os.path.dirname(file_path)
+    setup_file = os.path.basename(file_path)
+    compile_cmd = 'cd {} && python {} build'.format(ext_dir, setup_file)
+    run_cmd(compile_cmd)
+
+
+def parse_op_name_from(sources):
+    """
+    Parse registerring custom op name from sources.
+    """
+
+    def regex(content):
+        pattern = re.compile(r'REGISTER_OPERATOR\(([^,]+),')
+
+        content = re.sub(r'\s|\t|\n', '', content)
+        op_name = pattern.findall(content)
+        op_name = set([re.sub('_grad', '', name) for name in op_name])
+
+        return op_name
+
+    op_names = set()
+    for source in sources:
+        with open(source, 'r') as f:
+            content = f.read()
+            op_names |= regex(content)
+
+    # TODO(Aurelius84): Support register more customs op at once
+    assert len(op_names) == 1
+    return list(op_names)[0]
+
+
+def run_cmd(command, wait=True):
+    """
+    Execute command with subprocess.
+    """
+    return subprocess.check_call(command, shell=True)
