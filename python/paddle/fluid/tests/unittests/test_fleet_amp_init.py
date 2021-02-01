@@ -46,34 +46,88 @@ class TestFleetAMPInit(unittest.TestCase):
     def test_fleet_amp_init(self):
         if not fluid.core.is_compiled_with_cuda():
             return
-        input_x = paddle.static.data(
-            name="x", shape=[None, 32], dtype='float32')
-        input_y = paddle.static.data(name="y", shape=[None, 1], dtype='int64')
 
-        cost = mlp(input_x, input_y)
-        optimizer = paddle.optimizer.Momentum(
-            learning_rate=0.001,
-            momentum=0.9,
-            weight_decay=fluid.regularizer.L2Decay(1e-4),
-            multi_precision=True)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
 
-        optimizer = paddle.static.amp.decorate(optimizer)
-        optimizer = fleet.distributed_optimizer(optimizer)
-        optimizer.minimize(cost)
+        with paddle.static.program_guard(main_program, startup_program):
+            input_x = paddle.static.data(
+                name="x", shape=[None, 32], dtype='float32')
+            input_y = paddle.static.data(
+                name="y", shape=[None, 1], dtype='int64')
+
+            cost = mlp(input_x, input_y)
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=0.001,
+                momentum=0.9,
+                weight_decay=fluid.regularizer.L2Decay(1e-4),
+                multi_precision=True)
+
+            optimizer = paddle.static.amp.decorate(optimizer)
+            optimizer = fleet.distributed_optimizer(optimizer)
+            optimizer.minimize(cost)
+
         place = paddle.CUDAPlace(0)
 
         exe = paddle.static.Executor(place)
-        exe.run(paddle.static.default_startup_program())
+        exe.run(startup_program)
         optimizer.amp_init(place)
 
         step = 1
         for i in range(step):
-            cost_val = exe.run(program=paddle.static.default_main_program(),
+            cost_val = exe.run(program=main_program,
                                feed=gen_data(),
                                fetch_list=[cost.name])
+
+    def test_fleet_amp_meta_optimizer_init(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
+
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        fleet.init(role)
+
+        with paddle.static.program_guard(main_program, startup_program):
+            input_x = paddle.static.data(
+                name="x", shape=[None, 32], dtype='float32')
+            input_y = paddle.static.data(
+                name="y", shape=[None, 1], dtype='int64')
+
+            cost = mlp(input_x, input_y)
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=0.001,
+                momentum=0.9,
+                weight_decay=fluid.regularizer.L2Decay(1e-4),
+                multi_precision=True)
+
+            strategy = paddle.distributed.fleet.DistributedStrategy()
+            strategy.amp = True
+            strategy.amp_configs = {'use_pure_fp16': True}
+            strategy.gradient_merge = True
+            strategy.gradient_merge_configs = {"k_steps": 2}
+
+            optimizer = fleet.distributed_optimizer(optimizer, strategy)
+            optimizer.minimize(cost)
+
+        print(fleet._get_applied_meta_list())
+
+        place = paddle.CUDAPlace(0)
+
+        exe = paddle.static.Executor(place)
+        exe.run(startup_program)
+        optimizer.amp_init(place)
+
+        step = 3
+        for i in range(step):
+            cost_val = exe.run(program=main_program,
+                               feed=gen_data(),
+                               fetch_list=[cost.name])
+            print(cost_val)
 
 
 if __name__ == '__main__':

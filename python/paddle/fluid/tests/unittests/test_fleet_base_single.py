@@ -78,6 +78,7 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
         }
 
     def test_single_run_collective_minimize(self):
+        paddle.enable_static()
         input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
@@ -114,6 +115,7 @@ class TestFleetBaseSingleRunPS(unittest.TestCase):
         }
 
     def test_single_run_ps_minimize(self):
+        paddle.enable_static()
         input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 

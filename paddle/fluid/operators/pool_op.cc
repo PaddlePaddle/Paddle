@@ -149,6 +149,7 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
   framework::LibraryType library_{framework::LibraryType::kPlain};
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
@@ -157,15 +158,13 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, data_type)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
 }
 
 framework::OpKernelType PoolOp::GetKernelTypeForVar(
@@ -205,6 +204,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   framework::LibraryType library_{framework::LibraryType::kPlain};
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
@@ -213,13 +213,11 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
-
-  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
                                  library_);
