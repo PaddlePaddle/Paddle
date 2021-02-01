@@ -290,7 +290,7 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
   auto dim = tensor->value().dims()[1];
   std::transform(tensor->rows().begin(), tensor->rows().end(),
                  std::back_inserter(sparse_push_keys),
-                 [&](int id) { return static_cast<uint64_t>(id); });
+                 [&](int64_t id) { return static_cast<uint64_t>(id); });
 
   for (auto i = 0; i < static_cast<int>(sparse_push_keys.size()); ++i) {
     push_g_vec.push_back(tensor->mutable_value()->data<float>() + i * dim);
