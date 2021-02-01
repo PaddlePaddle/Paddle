@@ -444,7 +444,7 @@ PYBIND11_MODULE(core_noavx, m) {
         [](const py::handle file,
            const std::vector<py::handle> vec_var_base_list) {
           int fd = PyObject_AsFileDescriptor(file.ptr());
-          std::cout << "\n ===write fd :" << fd << "\n";
+
           // The given object cannot be converted to a file descriptor
           PADDLE_ENFORCE_EQ(
               fd != -1, true,
@@ -467,7 +467,6 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_load_numpy_array_from_var_list", [](const py::handle file,
                                               const int offset) {
     int fd = PyObject_AsFileDescriptor(file.ptr());
-    std::cout << "\n ===load fd :" << fd << "\n";
     PADDLE_ENFORCE_EQ(
         fd != -1, true,
         platform::errors::InvalidArgument(
@@ -554,7 +553,7 @@ PYBIND11_MODULE(core_noavx, m) {
         [](const py::handle file, const py::handle &vec_var_list,
            const Scope &scope) {
           int fd = PyObject_AsFileDescriptor(file.ptr());
-          std::cout << "\n ===save static fd :" << fd << "\n";
+
           PADDLE_ENFORCE_EQ(
               fd != -1, true,
               platform::errors::InvalidArgument(

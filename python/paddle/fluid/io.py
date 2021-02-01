@@ -1759,12 +1759,21 @@ def _pack_loaded_dict(load_obj):
 
 
 def _load_numpy_array_from_var_list(path):
+    def check_config(config):
+        if isinstance(config, dict):
+            if 'version' in config and 'protocol' in config:
+                return
+        raise ValueError(
+            "Wrong `config`. Excepted `config=dict(version = *, protocol = *)`, but received `config={}`".
+            format(config))
+
     with open(path, 'rb') as f:
         f.seek(0, 2)
         file_size = f.tell()
         f.seek(0, 0)
         load_config = pickle.load(f) if six.PY2 else pickle.load(
             f, encoding='latin1')
+        check_config(load_config)
         if not isinstance(load_config, dict):
             raise ValueError(
                 "Type of `load_config` is wrong. Expected `dict`, but reveived {}.".
@@ -1819,11 +1828,11 @@ def _save_extend(obj, path, global_scope=None):
         if isinstance(obj, core.VarBase):
             tensor_name = obj.name
             save_tesnors.append(obj)
-            return ('VarBase', tensor_name, core.VarBase)
+            return ('VarBase', tensor_name)
         elif isinstance(obj, Variable):
             tensor_name = obj.name
             save_tesnors.append(obj)
-            return ('Variable', tensor_name, Variable)
+            return ('Variable', tensor_name)
         return None
 
     def check_same_type_in_list(var_list):
@@ -1861,7 +1870,6 @@ def _save_extend(obj, path, global_scope=None):
         save_byte_num = core._save_number(f, 0)
         f.flush()
         # f.seek(tell_offset+save_byte_num,0)
-        print(f.tell())
         Pickler = pickle.Pickler(f, protocol=protocol)
         Pickler.persistent_id = persistent_id
         Pickler.dump(obj)

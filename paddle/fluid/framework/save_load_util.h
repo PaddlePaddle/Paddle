@@ -38,7 +38,7 @@
         -1 != state, true,                                              \
         platform::errors::PreconditionNotMet(                           \
             "An error occurred when trying to %s to the file.", INFO)); \
-    std::cout << INFO << ":" << state << "\n";                          \
+    VLOG(3) << INFO << ":" << state << " Bytes.";                       \
   } while (0);
 
 namespace paddle {

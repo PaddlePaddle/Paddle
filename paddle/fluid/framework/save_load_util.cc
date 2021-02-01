@@ -509,7 +509,7 @@ size_t ReadTensorNumberWithFD(int fd) {
   PADDLE_ENFORCE_WR(
       read(fd, reinterpret_cast<char*>(&tensor_number), sizeof(tensor_number)),
       "read number of tensor");
-  std::cout << "\n=== number of tensor:" << tensor_number << "\n";
+
   delete[] tensor_number_mark_buffer;
   return tensor_number;
 }
