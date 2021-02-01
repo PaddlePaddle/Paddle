@@ -3897,6 +3897,7 @@ class PipelineOptimizer(object):
                     'Out': temp_var if op.type == "reduce_any" else out_var
                 },
                 attrs={
+                    'ring_id': self.ring_id,
                     OP_ROLE_KEY:
                     core.op_proto_and_checker_maker.OpRole.Optimize,
                 })
