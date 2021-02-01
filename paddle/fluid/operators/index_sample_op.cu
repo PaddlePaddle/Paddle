@@ -179,7 +179,6 @@ class IndexSampleGradKernel<platform::CUDADeviceContext, T>
           index_data, input_grad_data, output_grad_data, index_length,
           input_length, batch_size, same_data_in_index_row);
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
   }
 };
 
