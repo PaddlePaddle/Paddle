@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <vector>
 #include <thread>
+#include <vector>
 #include "cub/cub.cuh"
 #include "hashtable.h"
 #include "heter_resource.h"
@@ -73,7 +73,7 @@ class HeterComm {
     return ((send_id / 4 != receive_id / 4) && (send_id + 4) % 8 != receive_id);
   }
 
-  //void dump_to_cpu(int index);
+  // void dump_to_cpu(int index);
 
   void end_pass();
 
@@ -103,7 +103,7 @@ class HeterComm {
                     char* src_val);
 
  private:
-  using Table = HashTable<KeyType, ValType>; 
+  using Table = HashTable<KeyType, ValType>;
   int block_size_{256};
   float load_factor_{0.75};
   std::vector<Table*> tables_;

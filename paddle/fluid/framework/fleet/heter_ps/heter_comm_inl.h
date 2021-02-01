@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_PSLIB
-namespace paddle { 
+namespace paddle {
 namespace framework {
 
 template <typename T>
@@ -599,14 +599,14 @@ template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::end_pass() {
   int total_gpu = resource_->total_gpu();
   std::vector<std::thread> threads;
-  
+
   auto dump_to_cpu_func = [this](int index) {
-    auto stream = resource_->local_stream(index, 0); 
+    auto stream = resource_->local_stream(index, 0);
     int dev_id = resource_->dev_id(index);
     platform::CUDADeviceGuard guard(dev_id);
     tables_[index]->dump_to_cpu(dev_id, stream);
   };
-  
+
   for (int i = 0; i < total_gpu; ++i) {
     threads.push_back(std::thread(dump_to_cpu_func, i));
   }
@@ -615,9 +615,9 @@ void HeterComm<KeyType, ValType, GradType>::end_pass() {
   }
 }
 
-//template <typename KeyType, typename ValType, typename GradType>
-//void HeterComm<KeyType, ValType, GradType>::dump_to_cpu(int index) {
-//  auto stream = resource_->local_stream(index, 0); 
+// template <typename KeyType, typename ValType, typename GradType>
+// void HeterComm<KeyType, ValType, GradType>::dump_to_cpu(int index) {
+//  auto stream = resource_->local_stream(index, 0);
 //  int dev_id = resource_->dev_id(index);
 //  platform::CUDADeviceGuard guard(dev_id);
 //  tables_[index]->dump_to_cpu(dev_id, stream);

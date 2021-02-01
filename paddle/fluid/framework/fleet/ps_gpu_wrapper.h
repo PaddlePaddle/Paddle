@@ -162,8 +162,8 @@ class PSGPUWrapper {
     slot_vector_ = slot_vector;
   }
 
-  void EndPass() { HeterPs_->end_pass(); } 
-  void ShowOneTable(int index) { HeterPs_->show_one_table(index); } 
+  void EndPass() { HeterPs_->end_pass(); }
+  void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
 
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;

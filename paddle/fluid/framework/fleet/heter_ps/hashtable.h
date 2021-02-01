@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <glog/logging.h>
 #include <limits>
 #include <memory>
 #include <vector>
-#include <glog/logging.h>
-#include "thrust/pair.h"
 #include "common_value.h"  // NOLINT
+#include "thrust/pair.h"
 //#include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #ifdef PADDLE_WITH_PSLIB
@@ -60,7 +60,7 @@ class HashTable {
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;
-}; 
+};
 }  // end namespace framework
 }  // end namespace paddle
 #include "hashtable_inl.h"

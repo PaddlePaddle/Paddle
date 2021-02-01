@@ -119,7 +119,8 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
       continue;
     }
     ValType& gpu_val = kv[i].second;
-    auto* downpour_value = (paddle::ps::DownpourFixedFeatureValue*)(gpu_val.cpu_ptr);
+    auto* downpour_value =
+        (paddle::ps::DownpourFixedFeatureValue*)(gpu_val.cpu_ptr);
     int downpour_value_size = downpour_value->size();
     if (gpu_val.mf_size > 0 && downpour_value_size == 7) {
       downpour_value->resize(gpu_val.mf_size + downpour_value_size);
@@ -133,7 +134,7 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
     cpu_val[5] = gpu_val.lr_g2sum;
     cpu_val[6] = gpu_val.slot;
     if (gpu_val.mf_size > 0) {
-      for (int x = 0; x < gpu_val.mf_size; x++){
+      for (int x = 0; x < gpu_val.mf_size; x++) {
         cpu_val[x + 7] = gpu_val.mf[x];
       }
     }
