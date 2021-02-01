@@ -229,7 +229,7 @@ def batch_norm(x,
         dtype=dtype, stop_gradient=True)
     batch_norm_out = helper.create_variable_for_type_inference(dtype)
     reserve_space = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
+        dtype=x.dtype, stop_gradient=True)
 
     outputs = {
         "Y": [batch_norm_out],

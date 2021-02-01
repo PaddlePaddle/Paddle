@@ -152,14 +152,14 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     auto handle = dev_ctx.cudnn_handle();
 
     // Now, depending on whether we are running test or not, we have two paths.
-    // It is training mode_ when it's not reference AND not using pre-trained
+    // It is training mode when it's not reference AND not using pre-trained
     // model.
     bool training = !test_mode && !use_global_stats;
     if (!training) {
       // only when test we use input to do computation.
       const auto *est_mean = ctx.Input<Tensor>("Mean");
       const auto *est_var = ctx.Input<Tensor>("Variance");
-      // Run inference mode_.
+      // Run inference mode.
       PADDLE_ENFORCE_EQ(
           est_mean->dims().size(), 1UL,
           platform::errors::InvalidArgument(
@@ -211,7 +211,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         momentum = mom_cpu.data<float>()[0];
       }
 
-      // Run training mode_.
+      // Run training mode.
       // obtain running mean and running inv var, and see if we need to
       // initialize them.
 
@@ -262,7 +262,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
               platform::dynload::
                   cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
                       /*handle=*/handle,
-                      /*mode_=*/mode_,
+                      /*mode=*/mode_,
                       /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
                       /*xDesc=*/data_desc_,
                       /*zDesc=*/nullptr,
@@ -276,7 +276,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
               platform::dynload::
                   cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
                       /*handle=*/handle,
-                      /*mode_=*/mode_,
+                      /*mode=*/mode_,
                       /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
                       /*activationDesc=*/nullptr,
                       /*xDesc=*/data_desc_,
@@ -424,7 +424,7 @@ class InplaceHelper {
                   int M, const int num, const T *y, int grid2, const int block,
                   const cudaStream_t &stream) {
     PADDLE_ENFORCE_EQ(x, y, platform::errors::InvalidArgument(
-                                "X and Y should be inplaced in inplace mode_"));
+                                "X and Y should be inplaced in inplace mode"));
     KeBNRestoreData<<<grid2, block, 0, stream>>>(
         layout, x, scale, bias, mean, variance, epsilon, C, M, num, y);
   }
@@ -520,13 +520,13 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       is_inplace = true;
       PADDLE_ENFORCE_EQ(d_x, d_y,
                         platform::errors::InvalidArgument(
-                            "X@GRAD and Y@GRAD not inplace in inplace mode_"));
+                            "X@GRAD and Y@GRAD not inplace in inplace mode"));
     } else {
       x = ctx.Input<Tensor>("X");
       is_inplace = false;
       PADDLE_ENFORCE_NE(d_x, d_y,
                         platform::errors::InvalidArgument(
-                            "X@GRAD and Y@GRAD inplaced in non-inplace mode_"));
+                            "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
     }
 
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -698,7 +698,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
               platform::dynload::
                   cudnnGetBatchNormalizationBackwardExWorkspaceSize(
                       /*handle=*/dev_ctx.cudnn_handle(),
-                      /*mode_=*/mode_,
+                      /*mode=*/mode_,
                       /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
                       /*xDesc=*/data_desc_,
                       /*yDesc=*/data_desc_,
@@ -715,7 +715,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           PADDLE_ENFORCE_CUDA_SUCCESS(
               platform::dynload::cudnnBatchNormalizationBackwardEx(
                   /*handle=*/dev_ctx.cudnn_handle(),
-                  /*mode_=*/mode_,
+                  /*mode=*/mode_,
                   /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
                   /*alphaDataDiff=*/CudnnDataType<T>::kOne(),
                   /*betaDataDiff=*/CudnnDataType<T>::kZero(),

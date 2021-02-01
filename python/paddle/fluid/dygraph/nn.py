@@ -1365,7 +1365,7 @@ class BatchNorm(layers.Layer):
         saved_variance = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
         reserve_space = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True)
+            dtype=self._helper.input_dtype(input), stop_gradient=True)
 
         batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
             self._dtype)

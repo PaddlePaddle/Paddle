@@ -440,7 +440,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     "SavedMean": block.var('saved_mean'),
                     "SavedVariance": block.var('saved_variance')
                 }
-                block.create_var(name="reserve_space", dtype='float16')
+                block.create_var(name="reserve_space", dtype='float32')
                 outputs["ReserveSpace"] = block.var('reserve_space')
                 bn_op = block.append_op(
                     type="batch_norm",
