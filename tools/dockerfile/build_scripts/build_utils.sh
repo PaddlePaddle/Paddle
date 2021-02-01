@@ -130,6 +130,12 @@ function build_cpython {
 
 function build_cpythons {
     for py_ver in $@; do
+        if [ ${py_ver} == "2.7.15" ]; then
+            GET_PIP_URL="https://bootstrap.pypa.io/2.7/get-pip.py"
+        elif [ ${py_ver} == "3.5.1" ]  ;then
+            GET_PIP_URL="https://bootstrap.pypa.io/3.5/get-pip.py"
+        fi
+
         check_var $GET_PIP_URL
         curl -sLO $GET_PIP_URL
         build_cpython $py_ver
