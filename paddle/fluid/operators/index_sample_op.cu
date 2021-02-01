@@ -143,9 +143,6 @@ class IndexSampleGradKernel<platform::CUDADeviceContext, T>
                               framework::proto::VarType::INT32),
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
-        platform::errors::InvalidArgument("It must use CUDAPlace."));
 
     auto stream =
         ctx.template device_context<platform::CUDADeviceContext>().stream();
