@@ -58,6 +58,15 @@ int test_main(const AnalysisConfig& config, Barrier* barrier = nullptr) {
   return 0;
 }
 
+#ifdef PADDLE_WITH_XPU
+TEST(AnalysisPredictor, native_xpu) {
+  AnalysisConfig config;
+  config.EnableXpu();
+  config.SetModel(FLAGS_infer_model + "/" + "mul_model");
+  test_main(config);
+}
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 TEST(AnalysisPredictor, thread_local_stream) {
   const size_t thread_num = 5;
