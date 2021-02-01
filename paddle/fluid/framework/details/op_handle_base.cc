@@ -47,7 +47,7 @@ void OpHandleBase::InitCUDA() {
 #ifdef PADDLE_WITH_CUDA
   for (auto &p : dev_ctxes_) {
     int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p.first).device;
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(dev_id));
+    platform::SetDeviceId(dev_id);
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
   }
@@ -216,13 +216,6 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
           PADDLE_THROW(
               platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
-        } else if (platform::is_xpu_place(place)) {
-#ifdef PADDLE_WITH_XPU
-          dev_ctxes_.at(place)->Wait();
-#else
-          PADDLE_THROW(
-              platform::errors::PreconditionNotMet("Not compiled with XPU."));
-#endif
         }
         // There are nothing to do when the place is CPUPlace.
       }
@@ -271,19 +264,6 @@ void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
 #else
           PADDLE_THROW(
               platform::errors::PreconditionNotMet("Not compiled with CUDA."));
-#endif
-        } else if (platform::is_xpu_place(in_var_handle->place())) {
-#ifdef PADDLE_WITH_XPU
-          PADDLE_ENFORCE_EQ(
-              platform::is_same_place(place, in_var_handle->place()), true,
-              platform::errors::InvalidArgument(
-                  "The place of output(%s) is not consistent with the "
-                  "place of current op(%s).",
-                  in_var_handle->Name(), Name()));
-          dev_ctxes_.at(place)->Wait();
-#else
-          PADDLE_THROW(
-              platform::errors::PreconditionNotMet("Not compiled with XPU."));
 #endif
         }
         // There are nothing to do when the place is CPUPlace.

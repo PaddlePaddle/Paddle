@@ -197,9 +197,9 @@ class Pool2dOpConverter : public OpConverter {
             engine_, Padding, *const_cast<nvinfer1::ITensor *>(input1), pre_pad,
             post_pad);
         PADDLE_ENFORCE_NOT_NULL(
-            pad_layer,
-            platform::errors::Fatal(
-                "pad layer in poolOp converter could not be created."));
+            pad_layer, platform::errors::Fatal(
+                           "Pad layer in poolOp converter could not be "
+                           "created. The pointer to pad layer is `NULL`."));
         input1 = pad_layer->getOutput(0);
       }
       auto *pool_layer = TRT_ENGINE_ADD_LAYER(

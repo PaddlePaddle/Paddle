@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <netdb.h>
 #include <iostream>
 #include <string>
 #include <vector>
-
 #include "brpc/channel.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -44,8 +44,8 @@ class DeviceContext;
 namespace paddle {
 namespace distributed {
 
-using MultiVarMsg = ::paddle::MultiVariableMessage;
-using VarMsg = ::paddle::VariableMessage;
+using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
+using VarMsg = ::paddle::distributed::VariableMessage;
 
 void SerializeToMultiVarMsgAndIOBuf(
     const std::string& message_name,
@@ -81,6 +81,8 @@ void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
 void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
                              butil::IOBufBytesIterator& iobuf,
                              const platform::DeviceContext& ctx);
+
+std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port);
 
 }  // namespace distributed
 }  // namespace paddle

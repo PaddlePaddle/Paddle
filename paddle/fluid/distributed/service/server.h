@@ -27,11 +27,27 @@
 #include "paddle/fluid/distributed/service/env.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/channel.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+class Executor;
+class ProgramDesc;
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace distributed {
 
 class Table;
+using paddle::distributed::PsRequestMessage;
+using paddle::distributed::PsResponseMessage;
 
 class PSServer {
  public:
@@ -40,8 +56,9 @@ class PSServer {
   PSServer(PSServer &&) = delete;
   PSServer(const PSServer &) = delete;
 
-  virtual int32_t configure(const PSParameter &config, PSEnvironment &env,
-                            size_t server_rank) final;
+  virtual int32_t configure(
+      const PSParameter &config, PSEnvironment &env, size_t server_rank,
+      const std::vector<framework::ProgramDesc> &server_sub_program = {}) final;
 
   // return server_ip
   virtual std::string ip() { return butil::my_ip_cstr(); }
@@ -86,9 +103,13 @@ class PSServer {
   PSEnvironment *_environment;
   std::unordered_map<uint32_t, std::shared_ptr<Table>> _table_map;
   std::unordered_map<int32_t, MsgHandlerFunc> _msg_handler_map;
+
+ protected:
+  std::shared_ptr<framework::Scope> scope_;
+  platform::Place place_ = platform::CPUPlace();
 };
 
-REGISTER_REGISTERER(PSServer);
+REGISTER_PSCORE_REGISTERER(PSServer);
 
 typedef std::function<void(void *)> PServerCallBack;
 
@@ -122,8 +143,8 @@ class PsBaseService : public PsService {
     return 0;
   }
   virtual void service(::google::protobuf::RpcController *controller,
-                       const ::paddle::PsRequestMessage *request,
-                       ::paddle::PsResponseMessage *response,
+                       const PsRequestMessage *request,
+                       PsResponseMessage *response,
                        ::google::protobuf::Closure *done) override = 0;
 
   virtual void set_response_code(PsResponseMessage &response, int err_code,
@@ -140,7 +161,7 @@ class PsBaseService : public PsService {
   PSServer *_server;
   const ServerParameter *_config;
 };
-REGISTER_REGISTERER(PsBaseService);
+REGISTER_PSCORE_REGISTERER(PsBaseService);
 
 class PSServerFactory {
  public:

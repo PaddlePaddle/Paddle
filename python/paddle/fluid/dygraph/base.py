@@ -379,7 +379,6 @@ def guard(place=None):
         expected_place = _get_paddle_place(place)
     else:
         expected_place = framework._current_expected_place()
-    tracer._expected_place = expected_place
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():

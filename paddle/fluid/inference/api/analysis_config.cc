@@ -126,6 +126,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_disabled_ops_);
+  CP_MEMBER(trt_use_dla_);
+  CP_MEMBER(trt_dla_core_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
   CP_MEMBER(trt_use_oss_);
@@ -305,6 +307,11 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
 
+void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
+  trt_use_dla_ = true;
+  trt_dla_core_ = dla_core;
+}
+
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
@@ -345,7 +352,7 @@ void AnalysisConfig::Update() {
     pass_builder()->ClearPasses();
     for (const auto &pass : kTRTSubgraphPasses) {
       if (tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
-          (pass == "conv_bn_fuse_pass" || pass == "fc_fuse_pass")) {
+          (pass == "conv_bn_fuse_pass")) {
         continue;
       }
       pass_builder()->AppendPass(pass);
@@ -451,6 +458,9 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   for (auto &op : trt_disabled_ops_) ss << op.c_str();
   ss << ";";
+
+  ss << trt_use_dla_;
+  ss << trt_dla_core_;
 
   ss << enable_memory_optim_;
 

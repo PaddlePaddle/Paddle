@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_NCCL
 #pragma once
 
+#ifdef PADDLE_WITH_NCCL
 #include <stdio.h>
 #include <memory>
 #include <string>
@@ -132,7 +132,7 @@ struct NCCLContextMap {
           }
           VLOG(1) << "init nccl rank:" << rank << ", nranks:" << nranks
                   << ", gpu_id:" << gpu_id << ", dev_id:" << order_[i];
-          PADDLE_RETRY_CUDA_SUCCESS(cudaSetDevice(gpu_id));
+          SetDeviceId(gpu_id);
           PADDLE_RETRY_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
               comms.get() + i, nranks, *nccl_id, rank));
         }

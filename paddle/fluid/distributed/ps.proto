@@ -86,7 +86,7 @@ message SparseTableParameter {
 message ServerServiceParameter {
   optional string server_class = 1 [ default = "BrpcPsServer" ];
   optional string client_class = 2 [ default = "BrpcPsClient" ];
-  optional string service_class = 3 [ default = "PsService" ];
+  optional string service_class = 3 [ default = "BrpcPsService" ];
   optional uint32 start_server_port = 4
       [ default = 0 ]; // will find a avaliable port from it
   optional uint32 server_thread_num = 5 [ default = 12 ];
@@ -126,12 +126,11 @@ message TableAccessorParameter {
 }
 
 message TensorAccessorParameter {
-  optional string tensor_class = 1;
-  optional uint32 fea_dim = 2;
-  optional uint32 emb_dim = 3;
-  optional string param = 4;
-  optional string grad = 5;
-  optional string common_block_map = 6;
+  optional string feed_var_name = 1;
+  optional string fetch_var_name = 2;
+  optional int64 startup_program_id = 3;
+  optional int64 main_program_id = 4;
+  optional string tensor_table_class = 6;
 }
 
 message CommonAccessorParameter {
