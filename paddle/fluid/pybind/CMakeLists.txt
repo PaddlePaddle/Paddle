@@ -5,6 +5,7 @@ set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapp
 
 if (WITH_GPU)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
+  set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
 endif()
 
 if (WITH_NCCL)

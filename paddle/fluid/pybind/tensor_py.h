@@ -27,6 +27,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/bfloat16.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -262,6 +265,9 @@ template <typename P>
 static int GetDeviceId(const P &place) {
   // for CPUPlace and CUDAPinnedPlace, not used for now.
   return -1;
+  // for CPUPlace and CUDAPinnedPlace.
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "Paddle can't Get CPUPlace or CUDAPinnedPlace Device Id."));
 }
 
 template <>
@@ -305,6 +311,7 @@ void SetTensorFromPyArrayT(
             "Baidu Kunlun Card is properly installed.",
             ret));
 
+    platform::XPUDeviceGuard guard(GetDeviceId(place));
     auto dst = self->mutable_data<T>(place);
     xpu_memcpy(dst, array.data(), array.nbytes(),
                XPUMemcpyKind::XPU_HOST_TO_DEVICE);
@@ -317,6 +324,7 @@ void SetTensorFromPyArrayT(
 #ifdef PADDLE_WITH_CUDA
     if (paddle::platform::is_gpu_place(place)) {
       // TODO(zhiqiu): set SetDeviceId before calling cuda APIs.
+      platform::CUDADeviceGuard guard(GetDeviceId(place));
       auto dst = self->mutable_data<T>(place);
       paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
                                       cudaMemcpyHostToDevice);
