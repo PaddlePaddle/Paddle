@@ -32,20 +32,17 @@ from paddle.fluid.framework import OpProtoHolder
 
 OS_NAME = platform.system()
 IS_WINDOWS = OS_NAME == 'Windows'
-# TODO(Aurelius84): Need check version of gcc and g++ is same.
-# After CI path is fixed, we will modify into cc.
 NVCC_COMPILE_FLAGS = [
-    '-ccbin', 'gcc', '-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU',
-    '-DPADDLE_USE_DSO', '-Xcompiler', '-fPIC', '-w', '--expt-relaxed-constexpr',
-    '-O3', '-DNVCC'
+    '-ccbin', 'cc', '-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU', '-DPADDLE_USE_DSO',
+    '-Xcompiler', '-fPIC', '-w', '--expt-relaxed-constexpr', '-O3', '-DNVCC'
 ]
-
-import os
-os.path.exists
 
 
 @contextmanager
 def bootstrap_context():
+    """
+    Context to manage how to write `__bootstrap__` code in .egg
+    """
     origin_write_stub = bdist_egg.write_stub
     bdist_egg.write_stub = custom_write_stub
     yield
@@ -56,7 +53,7 @@ def bootstrap_context():
 def custom_write_stub(resource, pyfile):
     """
     Customized write_stub function to allow us to inject generated python
-    api code into egg python file.
+    api codes into egg python file.
     """
     _stub_template = textwrap.dedent("""
         import os
@@ -95,9 +92,8 @@ def custom_write_stub(resource, pyfile):
     new_custom_op = paddle.utils.load_op_library(so_path)
     assert len(new_custom_op) == 1
 
-    # NOTE: To avoid failing import .so file instead of
-    # python file because they have same name, we rename
-    # .so shared library to another name, see EasyInstallCommand.
+    # NOTE: To avoid importing .so file instead of python file because they have same name,
+    # we rename .so shared library to another name, see EasyInstallCommand.
     filename, ext = os.path.splitext(resource)
     resource = filename + "_pd_" + ext
 
@@ -114,7 +110,7 @@ OpInfo = collections.namedtuple('OpInfo',
 
 class CustomOpInfo:
     """
-    A global map to log all compiled custom op information.
+    A global Singleton map to record all compiled custom ops information.
     """
 
     @classmethod
@@ -428,7 +424,8 @@ def _load_module_from_file(op_name, api_file_path):
         raise FileNotFoundError("File : {} does not exist.".format(
             api_file_path))
 
-    ext_name = "extension"
+    # Unique readable module name to place custom api.
+    ext_name = "_paddle_cpp_extension_"
     if six.PY2:
         import imp
         module = imp.load_source(ext_name, api_file_path)
@@ -457,7 +454,7 @@ def _get_api_inputs_str(op_name):
 def _write_setup_file(name, sources, file_path, include_dirs, compile_flags,
                       link_args):
     """
-    Automatically generate setup.py write into file.
+    Automatically generate setup.py and write it into build directory.
     """
     template = textwrap.dedent("""
     import os
@@ -506,7 +503,6 @@ def _jit_compile(file_path):
     """
     Build shared library in subprocess
     """
-    # TODO(Aurelius84): Enhance codes
     ext_dir = os.path.dirname(file_path)
     setup_file = os.path.basename(file_path)
     compile_cmd = 'cd {} && python {} build'.format(ext_dir, setup_file)

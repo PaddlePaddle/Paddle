@@ -33,7 +33,7 @@ CUDA_HOME = find_cuda_home()
 def setup(**attr):
     """
     Wrapper setuptools.setup function to valid `build_ext` command and
-    implement generated paddle api code injection by switching `write_stub`
+    implement paddle api code injection by switching `write_stub`
     function in bdist_egg with `custom_write_stub`.
     """
     cmdclass = attr.get('cmdclass', {})
@@ -60,16 +60,16 @@ def setup(**attr):
 def CppExtension(name, sources, *args, **kwargs):
     """
     Returns setuptools.CppExtension instance for setup.py to make it easy
-    to specify compile flags while build C++ custommed op kernel.
+    to specify compile flags while building C++ custommed op kernel.
 
     Args:
-           name(str): The extension name
+           name(str): The extension name used as generated shared library name
            sources(list[str]): The C++/CUDA source file names
            args(list[options]): list of config options used to compile shared library
            kwargs(dict[option]): dict of config options used to compile shared library
            
        Returns:
-           Extension: instance of setuptools.Extension
+           Extension: An instance of setuptools.Extension
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=False)
 
@@ -82,13 +82,13 @@ def CUDAExtension(name, sources, *args, **kwargs):
     to specify compile flags while build CUDA custommed op kernel.
 
     Args:
-           name(str): The extension name
+           name(str): The extension name used as generated shared library name
            sources(list[str]): The C++/CUDA source file names
            args(list[options]): list of config options used to compile shared library
            kwargs(dict[option]): dict of config options used to compile shared library
            
        Returns:
-           Extension: instance of setuptools.Extension
+           Extension: An instance of setuptools.Extension
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=True)
 
@@ -97,15 +97,15 @@ def CUDAExtension(name, sources, *args, **kwargs):
 
 class BuildExtension(build_ext, object):
     """
-    Inherited from setuptools.command.build_ext to customized how to apply
-    compilation process with shared library.
+    Inherited from setuptools.command.build_ext to customize how to apply
+    compilation process with share library.
     """
 
     @classmethod
     def with_options(cls, **options):
-        '''
-        Returns a BuildExtension subclass that support to specific use-defined options.
-        '''
+        """
+        Returns a BuildExtension subclass containing use-defined options.
+        """
 
         class cls_with_options(cls):
             def __init__(self, *args, **kwargs):
@@ -115,6 +115,16 @@ class BuildExtension(build_ext, object):
         return cls_with_options
 
     def __init__(self, *args, **kwargs):
+        """
+        Attributes is initialized with following oreder:
+        
+            1. super(self).__init__()
+            2. initialize_options(self)
+            3. the reset of current __init__()
+            4. finalize_options(self)
+        
+        So, it is recommended to set attribute value in `finalize_options`.
+        """
         super(BuildExtension, self).__init__(*args, **kwargs)
         self.no_python_abi_suffix = kwargs.get("no_python_abi_suffix", True)
         self.output_dir = kwargs.get("output_dir", None)
@@ -124,9 +134,9 @@ class BuildExtension(build_ext, object):
 
     def finalize_options(self):
         super(BuildExtension, self).finalize_options()
-        # NOTE(Aurelius84): Set location of compiled share library.
+        # NOTE(Aurelius84): Set location of compiled shared library.
         # Carefully to modify this because `setup.py build/install`
-        # and load will rely on this attribute.
+        # and `load` interface rely on this attribute.
         if self.output_dir is not None:
             self.build_lib = self.output_dir
 
@@ -154,10 +164,10 @@ class BuildExtension(build_ext, object):
             """
             Monkey patch machanism to replace inner compiler to custom complie process on Unix platform.
             """
-            # use abspath to ensure no warning
+            # use abspath to ensure no warning and don't remove deecopy because modify params
+            # with dict type is dangerous.
             src = os.path.abspath(src)
             cflags = copy.deepcopy(extra_postargs)
-
             try:
                 original_compiler = self.compiler.compiler_so
                 # ncvv compile CUDA source
@@ -270,7 +280,7 @@ class EasyInstallCommand(easy_install, object):
     Extend easy_intall Command to control the behavior of naming shared library
     file.
 
-    NOTE(Aurelius84): This is a hook inherited Command class used to rename shared
+    NOTE(Aurelius84): This is a hook subclass inherited Command used to rename shared
                     library file after extracting egg-info into site-packages.
     """
 

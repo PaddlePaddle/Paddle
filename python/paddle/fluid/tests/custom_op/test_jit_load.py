@@ -16,7 +16,6 @@ import os
 import unittest
 import paddle
 import numpy as np
-
 from paddle.utils.cpp_extension import load
 
 # Compile and load custom op Just-In-Time

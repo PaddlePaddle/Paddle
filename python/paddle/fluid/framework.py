@@ -1991,13 +1991,13 @@ class OpProtoHolder(object):
 
     def update_op_proto(self):
         op_protos = get_all_op_protos()
-        new_custom_ops = []
+        custom_op_names = []
         for proto in op_protos:
             if proto.type not in self.op_proto_map:
                 self.op_proto_map[proto.type] = proto
-                new_custom_ops.append(proto.type)
+                custom_op_names.append(proto.type)
 
-        return new_custom_ops
+        return custom_op_names
 
     @staticmethod
     def generated_op_attr_names():
@@ -5708,7 +5708,7 @@ def load_op_library(lib_filename):
         lib_filename (str): name of dynamic library.
     
     Returns:
-        list[str]: new register custom op name.
+        list[str]: new registered custom op names.
 
     Examples:
         .. code-block:: python
