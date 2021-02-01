@@ -165,19 +165,16 @@ _supported_float_dtype_ = [
 ]
 
 
+@inplace_apis_in_dygraph_only
 def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     Inplace version of ``scale`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_scale`.
     """
-    if in_dygraph_mode():
-        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
-        return core.ops.scale_(x, 'scale',
-                             float(_scale), 'bias',
-                             float(bias), 'bias_after_scale', bias_after_scale)
-
-    _print_warning_in_static_mode("scale")
-    return layers.scale(x, scale, bias, bias_after_scale, act, name)
+    _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
+    return core.ops.scale_(x, 'scale',
+                            float(_scale), 'bias',
+                            float(bias), 'bias_after_scale', bias_after_scale)
 
 
 def pow(x, y, name=None):
@@ -327,24 +324,22 @@ def add(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+@inplace_apis_in_dygraph_only
 def add_(x, y, name=None):
     """
     Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_add`.
     """
-    if in_dygraph_mode():
-        op_type = 'elementwise_add_'
-        axis = -1
+    op_type = 'elementwise_add_'
+    axis = -1
 
-        out_shape = broadcast_shape(x.shape, y.shape)
-        if out_shape != x.shape:
-            raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
 
-        out = _elementwise_op_in_dygraph(
-            x, y, axis=axis, op_name=op_type)
-        return out
-    _print_warning_in_static_mode("elementwise_add")
-    return _elementwise_op(LayerHelper('elementwise_add', **locals()))
+    out = _elementwise_op_in_dygraph(
+        x, y, axis=axis, op_name=op_type)
+    return out
 
 
 def subtract(x, y, name=None):
@@ -408,24 +403,22 @@ def subtract(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+@inplace_apis_in_dygraph_only
 def subtract_(x, y, name=None):
     """
     Inplace version of ``subtract`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_subtract`.
     """
-    if in_dygraph_mode():
-        axis = -1
-        act = None
+    axis = -1
+    act = None
 
-        out_shape = broadcast_shape(x.shape, y.shape)
-        if out_shape != x.shape:
-            raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
 
-        out = _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_sub_')
-        return out
-    _print_warning_in_static_mode("elementwise_sub")
-    return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
+    out = _elementwise_op_in_dygraph(
+        x, y, axis=axis, act=act, op_name='elementwise_sub_')
+    return out
 
 
 def divide(x, y, name=None):
@@ -947,18 +940,15 @@ def add_n(inputs, name=None):
     return out
 
 
+@inplace_apis_in_dygraph_only
 def add_n_(inputs, name=None):
     """
     Inplace version of ``add_n`` API, the output Tensor will be inplaced with the first Tensor in input ``inputs``.
     Please refer to :ref:`api_tensor_add_n`.
     """
-    if in_dygraph_mode():
-        if isinstance(inputs, Variable):
-            inputs = [inputs]
-        return core.ops.sum_(inputs, 'use_mkldnn', False)
-
-    _print_warning_in_static_mode("add_n")
-    return add_n(inputs, name)
+    if isinstance(inputs, Variable):
+        inputs = [inputs]
+    return core.ops.sum_(inputs, 'use_mkldnn', False)
 
 
 def mm(input, mat2, name=None):
@@ -1641,24 +1631,21 @@ def clip(x, min=None, max=None, name=None):
     return output
 
 
+@inplace_apis_in_dygraph_only
 def clip_(x, min=None, max=None, name=None):
     """
     Inplace version of ``clip`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_clip`.
     """
-    if in_dygraph_mode():
-        fmin = float(np.finfo(np.float32).min)
-        fmax = float(np.finfo(np.float32).max)
-        if isinstance(min, Variable):
-            min = min.numpy().item(0)
-        if isinstance(max, Variable):
-            max = max.numpy().item(0)
-        min = fmin if min is None else min
-        max = fmax if max is None else max
-        return core.ops.clip_(x, "min", min, "max", max)
-
-    _print_warning_in_static_mode("clip")
-    return clip(x, min, max, name)
+    fmin = float(np.finfo(np.float32).min)
+    fmax = float(np.finfo(np.float32).max)
+    if isinstance(min, Variable):
+        min = min.numpy().item(0)
+    if isinstance(max, Variable):
+        max = max.numpy().item(0)
+    min = fmin if min is None else min
+    max = fmax if max is None else max
+    return core.ops.clip_(x, "min", min, "max", max)
 
 
 

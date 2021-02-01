@@ -36,8 +36,7 @@ from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode
 from ...fluid.framework import _varbase_creator
 from ...fluid.framework import Variable
-
-from ...tensor.manipulation import _print_warning_in_static_mode
+from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 
 __all__ = [
     'binary_cross_entropy',
@@ -64,6 +63,7 @@ __all__ = [
 kIgnoreIndex = -100
 
 
+@inplace_apis_in_dygraph_only
 def softmax_with_cross_entropy_(logits,
                                 label,
                                 soft_label=False,
@@ -75,19 +75,13 @@ def softmax_with_cross_entropy_(logits,
     Inplace version of ``softmax_with_cross_entropy`` API, the output Tensor will be inplaced with input ``logits``.
     Please refer to :ref:`api_nn_cn_softmax_with_cross_entropy`.
     """
-    if in_dygraph_mode():
-        softmax, loss = core.ops.softmax_with_cross_entropy_(
-            logits, label, 'soft_label', soft_label, 'ignore_index',
-            ignore_index, 'numeric_stable_mode', numeric_stable_mode, 'axis',
-            axis)
-        if not return_softmax:
-            return loss
-        else:
-            return loss, softmax
-
-    _print_warning_in_static_mode("softmax_with_cross_entropy")
-    return softmax_with_cross_entropy(logits, label, soft_label, ignore_index,
-                                      numeric_stable_mode, return_softmax, axis)
+    softmax, loss = core.ops.softmax_with_cross_entropy_(
+        logits, label, 'soft_label', soft_label, 'ignore_index', ignore_index,
+        'numeric_stable_mode', numeric_stable_mode, 'axis', axis)
+    if not return_softmax:
+        return loss
+    else:
+        return loss, softmax
 
 
 def binary_cross_entropy(input, label, weight=None, reduction='mean',
