@@ -165,7 +165,9 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         main_program._hierarchical_allreduce_inter_nranks = local_build_strategy.hierarchical_allreduce_inter_nranks
 
         # TODO(guru4elephant): should be an independent optimizer
-        self._setup_nccl_op(startup_program, main_program, local_build_strategy)
+        if worker_num > 1:
+            self._setup_nccl_op(startup_program, main_program,
+                                local_build_strategy)
 
         local_build_strategy.num_trainers = self.role_maker._worker_num()
         local_build_strategy.trainer_id = self.role_maker._worker_index()
