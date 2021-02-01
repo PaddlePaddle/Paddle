@@ -263,8 +263,6 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
 // we need set_device(dev_id) first.
 template <typename P>
 static int GetDeviceId(const P &place) {
-  // for CPUPlace and CUDAPinnedPlace, not used for now.
-  return -1;
   // for CPUPlace and CUDAPinnedPlace.
   PADDLE_THROW(platform::errors::PermissionDenied(
       "Paddle can't Get CPUPlace or CUDAPinnedPlace Device Id."));
@@ -303,14 +301,6 @@ void SetTensorFromPyArrayT(
     }
   } else if (paddle::platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-    int ret = xpu_set_device(GetDeviceId(place));
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d %s], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret, XPUAPIErrorMsg[ret]));
-
     platform::XPUDeviceGuard guard(GetDeviceId(place));
     auto dst = self->mutable_data<T>(place);
     xpu_memcpy(dst, array.data(), array.nbytes(),
@@ -323,7 +313,6 @@ void SetTensorFromPyArrayT(
   } else {
 #ifdef PADDLE_WITH_CUDA
     if (paddle::platform::is_gpu_place(place)) {
-      // TODO(zhiqiu): set SetDeviceId before calling cuda APIs.
       platform::CUDADeviceGuard guard(GetDeviceId(place));
       auto dst = self->mutable_data<T>(place);
       paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
