@@ -259,7 +259,7 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   }
 }
 
-// NOTE(wangxi). When copying data to the accelerator card,
+// NOTE(wangxi): When copying data to the accelerator card,
 // we need set_device(dev_id) first.
 template <typename P>
 static int GetDeviceId(const P &place) {
@@ -276,6 +276,19 @@ int GetDeviceId<platform::CUDAPlace>(const platform::CUDAPlace &place) {
 template <>
 int GetDeviceId<platform::XPUPlace>(const platform::XPUPlace &place) {
   return place.GetDeviceId();
+}
+
+// NOTE(wangxi16): Used by VarBase __setitem__
+template <>
+int GetDeviceId<platform::Place>(const platform::Place &place) {
+  if (paddle::platform::is_gpu_place(place)) {
+    return GetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place));
+  } else if (paddle::platform::is_xpu_place(place)) {
+    return GetDeviceId(BOOST_GET_CONST(platform::XPUPlace, place));
+  }
+  // for CPUPlace and CUDAPinnedPlace.
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "Paddle can't Get CPUPlace or CUDAPinnedPlace Device Id."));
 }
 
 template <typename T, typename P>
