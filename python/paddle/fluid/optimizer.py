@@ -3862,7 +3862,21 @@ class PipelineOptimizer(object):
             block._insert_op(
                 # op_idx + 1 + extra_index,
                 op_idx + 1 + offset,
-                type='c_allreduce_max',
+                type='c_sync_calc_stream',
+                inputs={'X': temp_var if op.type == "reduce_any" else out_var},
+                outputs={
+                    'Out': temp_var if op.type == "reduce_any" else out_var
+                },
+                attrs={
+                    OP_ROLE_KEY:
+                    core.op_proto_and_checker_maker.OpRole.Optimize,
+                })
+            offset += 1
+            block._insert_op(
+                # op_idx + 1 + extra_index,
+                op_idx + 1 + offset,
+                type='c_allreduce_max'
+                if op.type == "reduce_any" else 'c_allreduce_sum',
                 inputs={'X': temp_var if op.type == "reduce_any" else out_var},
                 outputs={
                     'Out': temp_var if op.type == "reduce_any" else out_var
@@ -3871,7 +3885,20 @@ class PipelineOptimizer(object):
                     'ring_id': self.ring_id,
                     OP_ROLE_KEY:
                     core.op_proto_and_checker_maker.OpRole.Optimize,
-                    'use_calc_stream': True
+                    'use_calc_stream': False
+                })
+            offset += 1
+            block._insert_op(
+                # op_idx + 1 + extra_index,
+                op_idx + 1 + offset,
+                type='c_sync_comm_stream',
+                inputs={'X': temp_var if op.type == "reduce_any" else out_var},
+                outputs={
+                    'Out': temp_var if op.type == "reduce_any" else out_var
+                },
+                attrs={
+                    OP_ROLE_KEY:
+                    core.op_proto_and_checker_maker.OpRole.Optimize,
                 })
             offset += 1
             # extra_index += 1
@@ -3890,39 +3917,39 @@ class PipelineOptimizer(object):
                     })
                 # extra_index += 1
 
-    def _is_loss_grad_op(self, op):
+            # def _is_loss_grad_op(self, op):
 
-        op_desc = op.desc
-        vars = op_desc.input_arg_names() + op_desc.output_arg_names()
-        for var in vars:
-            # a var whose name contains "blocking_queue" 
-            # only exists in startup program 
-            if var in used_var_set or "_blocking_queue" in var:
-                continue
-            used_var_set.add(var)
-            if block._find_var_recursive(str(var)): continue
-            source_var = ori_block._var_recursive(str(var))
-            if source_var.type == core.VarDesc.VarType.READER:
-                block.create_var(
-                    name=var,
-                    type=core.VarDesc.VarType.READER,
-                    persistable=source_var.persistable)
-            else:
-                block._clone_variable(source_var, False)
-        if extra_index:
-            sum_op = block.ops[extra_index]
-            OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-            block._insert_op(
-                extra_index + 1,
-                type='c_allreduce_sum',
-                inputs={'X': sum_op.desc.output_arg_names()[0]},
-                outputs={'Out': sum_op.desc.output_arg_names()[0]},
-                attrs={
-                    'ring_id': self.ring_id,
-                    OP_ROLE_KEY:
-                    core.op_proto_and_checker_maker.OpRole.Optimize,
-                    'use_calc_stream': True
-                })
+            #     op_desc = op.desc
+            #     vars = op_desc.input_arg_names() + op_desc.output_arg_names()
+            #     for var in vars:
+            #         # a var whose name contains "blocking_queue" 
+            #         # only exists in startup program 
+            #         if var in used_var_set or "_blocking_queue" in var:
+            #             continue
+            #         used_var_set.add(var)
+            #         if block._find_var_recursive(str(var)): continue
+            #         source_var = ori_block._var_recursive(str(var))
+            #         if source_var.type == core.VarDesc.VarType.READER:
+            #             block.create_var(
+            #                 name=var,
+            #                 type=core.VarDesc.VarType.READER,
+            #                 persistable=source_var.persistable)
+            #         else:
+            #             block._clone_variable(source_var, False)
+            #     if extra_index:
+            #         sum_op = block.ops[extra_index]
+            #         OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+            #         block._insert_op(
+            #             extra_index + 1,
+            #             type='c_allreduce_sum',
+            #             inputs={'X': sum_op.desc.output_arg_names()[0]},
+            #             outputs={'Out': sum_op.desc.output_arg_names()[0]},
+            #             attrs={
+            #                 'ring_id': self.ring_id,
+            #                 OP_ROLE_KEY:
+            #                 core.op_proto_and_checker_maker.OpRole.Optimize,
+            #                 'use_calc_stream': True
+            #             })
 
     def _is_loss_grad_op(self, op):
         if self._op_role_key not in op.attr_names:
