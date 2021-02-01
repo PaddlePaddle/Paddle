@@ -26,11 +26,12 @@ HcomGroupConfig = namedtuple('HcomGroupConfig', ['name', 'nranks', 'rank_ids'])
 
 
 class AscendIRParser(object):
-    def __init__(self, auto_dp=False):
+    def __init__(self, auto_dp=False, world_rank_size=1):
         self.graph_idx = 0
         self.hcom_endpoints = {}
         self.groups_to_create = []
-        self._auto_dp=auto_dp
+        self._auto_dp = auto_dp
+        self._world_rank_size = world_rank_size
 
     def _construct_input_map(self, input_varlist):
         ret_map = {}
@@ -96,7 +97,8 @@ class AscendIRParser(object):
                 ascend_parser.registerd_op[op.type])
             op_parser.apply(op)
         else:
-            assert False, "Op[%s] has not been registered, so we have to skip it" % (op.type)
+            assert False, "Op[%s] has not been registered, so we have to skip it" % (
+                op.type)
 
     def _parse_program(self,
                        graph_name,
@@ -160,13 +162,16 @@ class AscendIRParser(object):
         startup_graph = self._parse_program("startup", startup_program)
         main_graph = self._parse_program("main", main_program, input_varlist,
                                          fetch_list)
-        if self._auto_dp:
-            assert len(self.groups_to_create)==0, "can't parse program under auto_dp mode"
+        if self._auto_dp and self._world_rank_size > 1:
+            assert len(self.groups_to_create
+                       ) == 0, "can't parse program under auto_dp mode"
 
             from paddle.distributed import fleet
             self.groups_to_create.append(
                 HcomGroupConfig(
-                    name="hcom_group_0", nranks=fleet.world_size(), rank_ids=[x for x in range(fleet.world_size())]))
+                    name="hcom_group_0",
+                    nranks=fleet.world_size(),
+                    rank_ids=[x for x in range(fleet.world_size())]))
 
         return startup_graph, main_graph
 
@@ -213,7 +218,7 @@ class AscendOptimizer(Optimizer):
         self.ascend_instance = core.AscendInstance()
 
         from paddle.distributed import fleet
-        if auto_dp and fleet.worker_num() > 1:
+        if auto_dp and fleet.world_size() > 1:
             from paddle.fluid.transpiler import ascend_transpiler
             t = ascend_transpiler.AscendTranspiler(startup_program,
                                                    loss.block.program)
@@ -225,15 +230,11 @@ class AscendOptimizer(Optimizer):
             "ge.exec.deviceId": str(fleet.local_device_ids()),
             "ge.graphRunMode": "1",
             "ge.exec.precision_mode": "must_keep_origin_dtype",
-            #"ge.exec.rankTableFile" = rank_table_file
-            #"ge.exec.rankId" = str(fleet.worker_index()) 
-            #"ge.exec.isUseHcom" = "0"
-            #"ge.exec.deployMode" = "0"
         }
         # if multi trainers
-        if rank_table_file:
+        if rank_table_file and fleet.world_size() > 1:
             config["ge.exec.rankTableFile"] = rank_table_file
-            config["ge.exec.rankId"] = str(fleet.worker_index()) 
+            config["ge.exec.rankId"] = str(fleet.worker_index())
             config["ge.exec.isUseHcom"] = "1"
             config["ge.exec.deployMode"] = "0"
         print("ge_initialize config:", config)
@@ -243,7 +244,8 @@ class AscendOptimizer(Optimizer):
         self.ascend_instance.init_global_resources()
 
         main_block = loss.block
-        self.parser = AscendIRParser(auto_dp=auto_dp)
+        self.parser = AscendIRParser(
+            auto_dp=auto_dp, world_rank_size=fleet.world_size())
 
         input_varlist = self._get_input_varlist(main_block.program)
 
@@ -251,9 +253,9 @@ class AscendOptimizer(Optimizer):
             startup_program, main_block.program, input_varlist, self.fetch_list)
 
         for cfg in self.parser.groups_to_create:
-            hccl.create_group(cfg.name, cfg.nranks, cfg.rank_ids)
             print("create group (%s), nranks: %d, rank_ids: %s" %
                   (cfg.name, cfg.nranks, cfg.rank_ids))
+            hccl.create_group(cfg.name, cfg.nranks, cfg.rank_ids)
 
         self.ascend_instance.add_ascend_subgraph(0, startup_graph)
         self.ascend_instance.add_ascend_subgraph(1, main_graph)
