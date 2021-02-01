@@ -744,7 +744,6 @@ class LRNMKLDNNHandler
   }
 };
 
-
 template <typename T>
 class TransposeMKLDNNHandler : public MKLDNNHandler {
  public:

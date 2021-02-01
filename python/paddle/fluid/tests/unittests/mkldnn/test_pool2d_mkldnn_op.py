@@ -91,6 +91,7 @@ class TestAvgPoolAdaptive2(TestAvgPoolAdaptive):
     def init_shape(self):
         self.shape = [2, 3, 6, 6]
 
+
 class TestAvgPoolAdaptive3(TestAvgPoolAdaptive):
     def init_test_case(self):
         self.ksize = [3, 3]
@@ -99,6 +100,7 @@ class TestAvgPoolAdaptive3(TestAvgPoolAdaptive):
     def init_shape(self):
         self.shape = [1, 3, 16, 16]
 
+
 class TestAvgPoolAdaptive4(TestAvgPoolAdaptive):
     def init_test_case(self):
         self.ksize = [6, 6]
@@ -106,6 +108,7 @@ class TestAvgPoolAdaptive4(TestAvgPoolAdaptive):
 
     def init_shape(self):
         self.shape = [1, 3, 16, 16]
+
 
 class TestAsymPad(TestPool2D_Op):
     def init_test_case(self):
