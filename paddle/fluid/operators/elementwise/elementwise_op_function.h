@@ -208,6 +208,24 @@ __global__ void ElementwiseKernel(const T *x, const T *y, OutType *out, int pre,
 }
 
 template <typename Functor, typename T, typename OutType>
+__global__ void ElementwiseKernelSharedMemory(const T *x_data, const T *y_data,
+                                              OutType *out_data, int n,
+                                              int post, const size_t total,
+                                              Functor func) {
+  const int share_size = 1024;
+  __shared__ T s_data[share_size];
+  int tid = threadIdx.x + blockDim.x * blockIdx.x;
+
+  if (tid < total) {
+    int idx_small_arr = tid / post % n;
+    int idx_share = idx_small_arr % share_size;
+    s_data[idx_share] = y_data[idx_small_arr];
+    __syncthreads();
+    out_data[tid] = func(x_data[tid], s_data[idx_share]);
+  }
+}
+
+template <typename Functor, typename T, typename OutType>
 void ComputeElementwiseCUDA(const framework::Tensor *x,
                             const framework::Tensor *y, framework::Tensor *z,
                             int pre, int n, int post,
@@ -218,16 +236,18 @@ void ComputeElementwiseCUDA(const framework::Tensor *x,
   OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
 
   int numel = pre * n * post;
-  int threads = 256;
+  int threads = platform::RoundToPowerOfTwo(numel);
   int blocks = (numel + threads - 1) / threads;
+
   if (is_xsize_larger) {
-    ElementwiseKernel<Functor, T,
-                      OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        x_data, y_data, out_data, pre, n, post, numel, func);
+    ElementwiseKernelSharedMemory<
+        Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+        x_data, y_data, out_data, n, post, numel, func);
+
   } else {
-    ElementwiseKernel<Functor, T,
-                      OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        y_data, x_data, out_data, pre, n, post, numel, func);
+    ElementwiseKernelSharedMemory<
+        Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+        y_data, x_data, out_data, n, post, numel, func);
   }
 }
 
