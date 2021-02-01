@@ -695,6 +695,7 @@ class TestDistBase(unittest.TestCase):
         self._dc_asgd = False  # must use with async mode
         self._use_reader_alloc = True
         self._nccl2_mode = False
+        self._bkcl_mode = False
         self._pipeline_mode = False
         self._mp_mode = False
         # FIXME(typhoonzero): I added this stupid argument to enable
@@ -983,10 +984,12 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": ep,
             })
+        # TODO(liuyuhui):XPU_VISIBLE_DEVICES is not working right now,
+        # will update it after Badiu Kunlun partners' support.
         elif self.__use_xpu:
             tr_cmd += " --use_xpu"
             env.update({
-                "FLAGS_selected_xpus": "{}".format(trainer_id + 1),
+                "FLAGS_selected_xpus": "{}".format(trainer_id),
                 #"XPU_VISIBLE_DEVICES": "{}".format(trainer_id + 1),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
@@ -1232,7 +1235,7 @@ class TestDistBase(unittest.TestCase):
                 required_envs,
                 check_error_log,
                 log_name=log_name + "_dgc_2cards",
-                gpus="0,1")
+                devices="0,1")
 
             self._use_dgc = False
             base_losses = self._run_local(

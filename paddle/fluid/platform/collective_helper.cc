@@ -221,11 +221,12 @@ BKCLComm* BKCLCommContext::CreateBKCLComm(BKCLUniqueId* bkcl_id, int nranks,
 
   BKCLContext_t comm = nullptr;
   auto ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::PreconditionNotMet(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::PreconditionNotMet(
+          "XPU API return wrong value[%d %s], please check whether "
+          "Baidu Kunlun Card is properly installed.",
+          ret, XPUAPIErrorMsg[ret]));
   ret = bkcl_init_rank(&comm, rank, nranks, bkcl_id);
   PADDLE_ENFORCE_EQ(ret, BKCL_SUCCESS,
                     platform::errors::PreconditionNotMet(
@@ -242,37 +243,6 @@ BKCLComm* BKCLCommContext::CreateBKCLComm(BKCLUniqueId* bkcl_id, int nranks,
 
   return comm_wrapper;
 }
-
-/*
-void BKCLCommContext::CreateAllBKCLComms(const std::vector<int>& dev_ids,
-                                         int ring_id) {
-  PADDLE_ENFORCE_GT(
-      dev_ids.size(), 0,
-      platform::errors::InvalidArgument("Expected the size of dev_ids > 0. But "
-                                        "received the size of dev_ids is %d.",
-                                        dev_ids.size()));
-
-  const int kDevices = dev_ids.size();
-  BKCLContext_t comms[kDevices];
-  PADDLE_ENFORCE_XPU_SUCCESS(platform::dynload::bkclCommInitAll(
-      comms, dev_ids.size(), dev_ids.data()));
-
-  PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0,
-                    platform::errors::InvalidArgument(
-                        "Expected comm_map_.count(ring_id) = 0. But received "
-                        "comm_map_.count(ring_id) is %d.",
-                        comm_map_.count(ring_id)));
-  for (size_t i = 0; i < dev_ids.size(); ++i) {
-    AssignBKCLComm(comms[i], dev_ids.size(), i, dev_ids[i], ring_id);
-    VLOG(1) << "bkcl communicator of rank " << i << " in ring " << ring_id
-            << " has been created on device " << dev_ids[i];
-  }
-
-  std::call_once(once_flag_, []() {
-    std::atexit([]() { BKCLCommContext::Instance().ReleaseBKCLComms(); });
-  });
-}
-*/
 
 BKCLComm* BKCLCommContext::AssignBKCLComm(BKCLContext_t comm, int nranks,
                                           int rank, int dev_id, int ring_id) {

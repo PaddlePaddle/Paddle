@@ -50,7 +50,12 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
                     BKCL_SUCCESS, platform::errors::PreconditionNotMet(
                                       "BKCL all reduce failed"));
 }
-
+/*
+Baidu Kunlun Communication Library(BKCL) is designed for multi Baidu Kunlun
+cards communication
+as NVIDIA Collective Communications Library(NCCL) in multi Nvidia GPU cards.
+Please refer to bkcl.h in xpu.tar.gz linked in cmake/external/xpu.cmake.
+*/
 void BKCLParallelContext::BcastBKCLId(
     std::vector<BKCLUniqueId> &bkcl_ids,  // NOLINT
     int root) {

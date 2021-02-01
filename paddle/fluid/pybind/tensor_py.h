@@ -307,9 +307,9 @@ void SetTensorFromPyArrayT(
     PADDLE_ENFORCE_EQ(
         ret, XPU_SUCCESS,
         platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
+            "XPU API return wrong value[%d %s], please check whether "
             "Baidu Kunlun Card is properly installed.",
-            ret));
+            ret, XPUAPIErrorMsg[ret]));
 
     platform::XPUDeviceGuard guard(GetDeviceId(place));
     auto dst = self->mutable_data<T>(place);
