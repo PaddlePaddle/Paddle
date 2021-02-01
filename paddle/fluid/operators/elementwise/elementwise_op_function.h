@@ -217,11 +217,10 @@ __global__ void ElementwiseKernelSharedMemory(const T *x_data, const T *y_data,
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
 
   if (tid < total) {
-    int idx_small_arr = tid / post % n;
-    int idx_share = idx_small_arr % share_size;
-    s_data[idx_share] = y_data[idx_small_arr];
+    int idx = tid / post % n;
+    s_data[idx % share_size] = y_data[idx];
     __syncthreads();
-    out_data[tid] = func(x_data[tid], s_data[idx_share]);
+    out_data[tid] = func(x_data[tid], s_data[idx % share_size]);
   }
 }
 
