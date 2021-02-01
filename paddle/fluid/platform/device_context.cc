@@ -188,6 +188,9 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
                         "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
+
+  LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: " << place_.device;
+
   context_ = xpu::create_context();
   const int MAX_XPU_NUM = 16;
   const int l3_size = 13.5 * 1024 * 1024;

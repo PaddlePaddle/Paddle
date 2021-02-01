@@ -15,18 +15,22 @@
 import os
 import sys
 import time
+import paddle.fluid as fluid
 
 
 def train(prefix):
-    selected_gpus = os.getenv("FLAGS_selected_gpus")
+    if fluid.core.is_compiled_with_xpu():
+        selected_devices = os.getenv("FLAGS_selected_xpus")
+    else:
+        selected_devices = os.getenv("FLAGS_selected_gpus")
     trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
     worker_endpoints_env = os.getenv("PADDLE_TRAINER_ENDPOINTS")
     current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
     worker_endpoints = worker_endpoints_env
     trainers_num = len(worker_endpoints.split(','))
 
-    name = "selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
-        .format(selected_gpus, worker_endpoints, trainers_num, current_endpoint,trainer_id)
+    name = "selected_devices:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
+        .format(selected_devices, worker_endpoints, trainers_num, current_endpoint,trainer_id)
 
     print(name)
     with open("{}.check_{}.log".format(prefix, trainer_id), "w") as f:

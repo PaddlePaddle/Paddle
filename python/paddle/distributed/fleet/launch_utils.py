@@ -662,7 +662,7 @@ def get_device_proc_info(args):
 
             n = int(len(xpus) / int(args.nproc_per_node))
             devices_per_proc = [
-                gpus[i:i + n] for i in six.moves.range(0, len(xpus), n)
+                xpus[i:i + n] for i in six.moves.range(0, len(xpus), n)
             ]
         else:
             devices_per_proc = xpus
