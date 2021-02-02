@@ -67,6 +67,15 @@ TEST(AnalysisPredictor, native_xpu) {
 }
 #endif
 
+#ifdef LITE_SUBGRAPH_WITH_XPU
+TEST(AnalysisPredictor, lite_xpu) {
+  AnalysisConfig config;
+  config.EnableXpu();
+  config.SetModel(FLAGS_infer_model + "/" + "mul_model");
+  config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
+}
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 TEST(AnalysisPredictor, thread_local_stream) {
   const size_t thread_num = 5;
