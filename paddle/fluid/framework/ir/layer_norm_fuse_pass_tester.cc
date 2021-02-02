@@ -108,7 +108,8 @@ TEST(FuseLayerNormPass, TestFuse) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  // LayerNorm + outputs: {Mean, Variance}
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -143,7 +144,7 @@ TEST(FuseLayerNormPass, TestInvalidEpsNumel) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -169,7 +170,7 @@ TEST(FuseLayerNormPass, TestInvalidEpsDataType) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -194,7 +195,7 @@ TEST(FuseLayerNormPass, TestInvalidGammaRank) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -219,7 +220,7 @@ TEST(FuseLayerNormPass, TestInvalidBetaRank) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -244,7 +245,7 @@ TEST(FuseLayerNormPass, TestUnequalGammaBetaShapes) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -273,7 +274,7 @@ TEST(FuseLayerNormPass, TestGammaBetaUnequalInputChannelShape) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -298,7 +299,7 @@ TEST(FuseLayerNormPass, NoFusionBadInMeanDimAttrRank) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -324,7 +325,7 @@ TEST(FuseLayerNormPass, NoFusionBadInMeanDimAttr) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -350,7 +351,7 @@ TEST(FuseLayerNormPass, NoFusionBadInMeanKeepDimAttr) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -376,7 +377,7 @@ TEST(FuseLayerNormPass, NoFusionBadInMeanReduceAllAttr) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -402,7 +403,7 @@ TEST(FuseLayerNormPass, NoFusionBadStdDevMeanDimAttrRank) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -428,7 +429,7 @@ TEST(FuseLayerNormPass, NoFusionBadStdDevMeanDimAttr) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -454,7 +455,7 @@ TEST(FuseLayerNormPass, NoFusionBadStdDevMeanKeepDimAttr) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -480,7 +481,7 @@ TEST(FuseLayerNormPass, NoFusionBadStdDevMeanReduceAllAttr) {
 
   Graph graph(prog);
   constexpr int removed_nodes = 19;
-  constexpr int added_nodes = 1;
+  constexpr int added_nodes = 3;
 
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};

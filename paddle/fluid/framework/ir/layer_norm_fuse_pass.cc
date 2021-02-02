@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/layer_norm_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -58,6 +59,22 @@ void validateReduceOpAttrs(const Node* node, const std::string& name) {
                        "\'keep_dim\' attribute set to true."));
   }
 }
+
+void setIntermediateOut(OpDesc* desc, const std::string& out_name,
+                        const std::string& scope_name) {
+  std::string new_name = scope_name + "/at." + out_name + ".new";
+  desc->SetOutput(out_name, {new_name});
+}
+
+void addIntermediateOut(Node* op_node, const std::string& out_name,
+                        const std::string& scope_name, Graph* graph) {
+  std::string new_name = scope_name + "/at." + out_name + ".new";
+  VarDesc out_var(new_name);
+  out_var.SetPersistable(false);
+  auto* node_var = graph->CreateVarNode(&out_var);
+  IR_NODE_LINK_TO(op_node, node_var);
+}
+
 }  // namespace
 
 void LayerNormFusePass::ApplyImpl(Graph* graph) const {
@@ -65,15 +82,14 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
                           platform::errors::InvalidArgument(
                               "The input graph of "
                               "LayerNormFusePass should not be nullptr."));
-  FusePassBase::Init("layer_norm_fuse", graph);
+  FusePassBase::Init(scope_name_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
-  patterns::LayerNorm layer_norm_pattern(gpd.mutable_pattern(),
-                                         "layer_norm_fuse");
+  patterns::LayerNorm layer_norm_pattern(gpd.mutable_pattern(), scope_name_);
   layer_norm_pattern();
 
   int found_layer_norm_count = 0;
@@ -164,10 +180,15 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     ln_op_desc.SetInput("Scale", {gamma->Name()});
     ln_op_desc.SetInput("Bias", {beta->Name()});
     ln_op_desc.SetOutput("Y", {shift_out->Name()});
+    setIntermediateOut(&ln_op_desc, "Mean", scope_name_);
+    setIntermediateOut(&ln_op_desc, "Variance", scope_name_);
     ln_op_desc.SetAttr("begin_norm_axis", static_cast<int>(x_shape.size() - 1));
     ln_op_desc.SetAttr("epsilon", *(eps_tensor->data<float>()));
     ln_op_desc.SetAttr("is_test", true);
     Node* ln_op = g->CreateOpNode(&ln_op_desc);
+
+    addIntermediateOut(ln_op, "Mean", scope_name_, g);
+    addIntermediateOut(ln_op, "Variance", scope_name_, g);
 
     IR_NODE_LINK_TO(x, ln_op);
     IR_NODE_LINK_TO(gamma, ln_op);

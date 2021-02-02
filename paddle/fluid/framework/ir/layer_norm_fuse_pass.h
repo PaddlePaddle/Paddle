@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -72,6 +74,9 @@ class LayerNormFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
+
+ private:
+  const std::string scope_name_{"layer_norm_fuse"};
 };
 
 }  // namespace ir
