@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
-#include <dlfcn.h>
 #include <string>
 
 #include "gflags/gflags.h"
