@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static void GenBKCLID(std::vector<bkclUniqueId>* bkcl_ids) {
+static void GenBKCLID(std::vector<BKCLUniqueId>* bkcl_ids) {
   for (size_t i = 0; i < bkcl_ids->size(); ++i) {
     BKCLResult_t ret = bkcl_get_unique_id(&(*bkcl_ids)[i]);
     PADDLE_ENFORCE_EQ(BKCL_SUCCESS, ret,
@@ -37,7 +37,7 @@ static void GenBKCLID(std::vector<bkclUniqueId>* bkcl_ids) {
   }
 }
 
-static void CopyBKCLIDToVar(const std::vector<bkclUniqueId>& bkcl_ids,
+static void CopyBKCLIDToVar(const std::vector<BKCLUniqueId>& bkcl_ids,
                             std::function<std::string(size_t)> func,
                             const framework::Scope& scope) {
   for (size_t i = 0; i < bkcl_ids.size(); ++i) {
@@ -46,8 +46,8 @@ static void CopyBKCLIDToVar(const std::vector<bkclUniqueId>& bkcl_ids,
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("Variable with name %s is not found",
                                         var_name.c_str()));
-    auto = var->GetMutable<bkclUniqueId>();
-    memcpy(bkcl_id, &bkcl_ids[i], sizeof(bkclUniqueId));
+    auto = var->GetMutable<BKCLUniqueId>();
+    memcpy(bkcl_id, &bkcl_ids[i], sizeof(BKCLUniqueId));
   }
 }
 
@@ -68,7 +68,7 @@ class CGenBKCLIdOp : public framework::OperatorBase {
       return Output("Out");
     };
 
-    std::vector<bkclUniqueId> bkcl_ids;
+    std::vector<BKCLUniqueId> bkcl_ids;
     bkcl_ids.resize(1);
 
     if (rank == 0) {
