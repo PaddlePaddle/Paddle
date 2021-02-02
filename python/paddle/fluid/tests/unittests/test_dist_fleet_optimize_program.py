@@ -26,27 +26,28 @@ paddle.enable_static()
 
 
 class TestFleetOptimizeProgram(unittest.TestCase):
-    role = role_maker.UserDefinedRoleMaker(
-        current_id=0,
-        role=role_maker.Role.SERVER,
-        worker_num=2,
-        server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+    def test_general_optimize(self):
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.SERVER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
 
-    fleet.init(role)
+        fleet.init(role)
 
-    batch_size = 128
-    is_sparse = True
-    is_distribute = False
+        batch_size = 128
+        is_sparse = True
+        is_distribute = False
 
-    strategy = paddle.distributed.fleet.DistributedStrategy()
-    strategy.a_sync = True
-    strategy.a_sync_configs = {"k_steps": 100, "launch_barrier": False}
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"launch_barrier": False}
 
-    avg_cost, _, _, _ = train_network(batch_size, is_distribute, is_sparse)
+        avg_cost, _, _, _ = train_network(batch_size, is_distribute, is_sparse)
 
-    optimizer = fluid.optimizer.AdagradOptimizer(learning_rate=0.001)
-    optimizer = fleet.distributed_optimizer(optimizer, strategy)
-    optimizer.minimize(avg_cost)
+        optimizer = fluid.optimizer.AdagradOptimizer(learning_rate=0.001)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(avg_cost)
 
 
 if __name__ == "__main__":
