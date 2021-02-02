@@ -16,11 +16,6 @@ limitations under the License. */
 
 #include <sys/stat.h>
 
-#include "gflags/gflags_declare.h"
-#include "glog/logging.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/dynload/cuda_driver.h"
-#include "paddle/fluid/platform/dynload/nvrtc.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DECLARE_string(cuda_dir);
