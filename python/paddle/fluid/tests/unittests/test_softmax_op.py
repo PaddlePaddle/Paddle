@@ -24,6 +24,7 @@ import paddle
 import paddle.nn.functional as F
 
 np.random.seed(10)
+paddle.enable_static()
 
 
 def stable_softmax(x):
