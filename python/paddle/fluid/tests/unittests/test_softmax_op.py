@@ -139,17 +139,28 @@ class TestSoftmaxOp6(TestSoftmaxOp):
         return 3
 
 
+#TODO(joejiong): temporary helper function,
+#it will be removed after rocm platform fix double type related functionality.
+def rocm_plugin(self):
+    if core.is_compiled_with_rocm():
+        self.dtype = np.float32
+    else:
+        self.dtype = np.float64
+
+
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp(TestSoftmaxOp):
     def init_kernel_type(self):
         self.use_cudnn = True
+        rocm_plugin(self)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp2(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5]
 
 
@@ -157,6 +168,7 @@ class TestSoftmaxCUDNNOp2(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp3(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -167,6 +179,7 @@ class TestSoftmaxCUDNNOp3(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp4(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -177,6 +190,7 @@ class TestSoftmaxCUDNNOp4(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp5(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -187,6 +201,7 @@ class TestSoftmaxCUDNNOp5(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp6(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -197,6 +212,7 @@ class TestSoftmaxCUDNNOp6(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp7(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5, 6]
 
 
@@ -204,6 +220,7 @@ class TestSoftmaxCUDNNOp7(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp8(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -214,6 +231,7 @@ class TestSoftmaxCUDNNOp8(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp9(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -224,6 +242,7 @@ class TestSoftmaxCUDNNOp9(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp10(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -234,6 +253,7 @@ class TestSoftmaxCUDNNOp10(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp11(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -244,6 +264,7 @@ class TestSoftmaxCUDNNOp11(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp12(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -301,11 +322,15 @@ class TestSoftmaxAPI(unittest.TestCase):
         ) else paddle.CPUPlace()
         self.x_np = np.random.uniform(-1., 1., [2, 3, 4, 5]).astype('float32')
         self.out_ref = np.apply_along_axis(stable_softmax, -1, self.x_np)
+        self.executed_api()
+
+    def executed_api(self):
+        self.softmax = F.softmax
 
     def test_static_check(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', self.x_np.shape, 'float32')
-            out1 = F.softmax(x)
+            out1 = self.softmax(x)
             m = paddle.nn.Softmax()
             out2 = m(x)
             exe = paddle.static.Executor(self.place)
@@ -318,22 +343,26 @@ class TestSoftmaxAPI(unittest.TestCase):
         paddle.disable_static(self.place)
 
         x = paddle.to_tensor(self.x_np)
-        out1 = F.softmax(x)
+        out1 = self.softmax(x)
+        x = paddle.to_tensor(self.x_np)
         m = paddle.nn.Softmax()
         out2 = m(x)
         out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
 
-        out1 = F.softmax(x, axis=0)
+        out1 = self.softmax(x, axis=0)
+        x = paddle.to_tensor(self.x_np)
         m = paddle.nn.Softmax(axis=0)
         out2 = m(x)
         out_ref = ref_softmax(self.x_np, axis=0, dtype=None)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
-
-        out = F.softmax(x, dtype=np.float64)
-        out_ref = ref_softmax(self.x_np, axis=-1, dtype=np.float64)
+        platform_init_dtype = np.float64
+        if core.is_compiled_with_rocm():
+            platform_init_dtype = np.float32
+        out = self.softmax(x, dtype=platform_init_dtype)
+        out_ref = ref_softmax(self.x_np, axis=-1, dtype=platform_init_dtype)
         self.assertEqual(np.allclose(out_ref, out.numpy()), True)
 
         paddle.enable_static()
@@ -341,15 +370,20 @@ class TestSoftmaxAPI(unittest.TestCase):
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, F.softmax, 1)
+            self.assertRaises(TypeError, self.softmax, 1)
             # The input dtype must be float16, float32, float64.
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[2, 3], dtype='int32')
-            self.assertRaises(TypeError, F.softmax, x_int32)
+            self.assertRaises(TypeError, self.softmax, x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[2, 3], dtype='float16')
-            F.softmax(x_fp16)
+            self.softmax(x_fp16)
+
+
+class TestSoftmaxInplaceAPI(TestSoftmaxAPI):
+    def executed_api(self):
+        self.softmax = F.softmax_
 
 
 if __name__ == "__main__":
