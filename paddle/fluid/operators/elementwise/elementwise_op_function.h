@@ -95,6 +95,13 @@ inline void get_mid_dims(const framework::DDim &x_dims,
     (*post) *= x_dims[i];
   }
 }
+
+inline void get_anchors(const framework::DDim &x_dims,
+                        const framework::DDim &y_dims, const int axis, int *pre,
+                        int *n, int *post, int *m) {
+  // TODO(limingshu : arr changeing mechanism)
+}
+
 inline int GetElementwiseIndex(const int *x_dims_array, const int max_dim,
                                const int *index_array) {
   int index_ = 0;
@@ -198,8 +205,8 @@ void CommonForwardBroadcastCPU(const framework::Tensor *x,
 
 #ifdef __NVCC__
 template <typename Functor, typename T, typename OutType>
-__global__ void ElementwiseKernel(const T *x, const T *y, OutType *out, int pre,
-                                  int n, int post, int total, Functor func) {
+__global__ void ElementwiseKernel(const T *x, const T *y, OutType *out, int n,
+                                  int post, int total, Functor func) {
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int idx = tid / post % n;
   if (tid < total) {
@@ -223,11 +230,11 @@ void ComputeElementwiseCUDA(const framework::Tensor *x,
   if (is_xsize_larger) {
     ElementwiseKernel<Functor, T,
                       OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        x_data, y_data, out_data, pre, n, post, numel, func);
+        x_data, y_data, out_data, n, post, numel, func);
   } else {
     ElementwiseKernel<Functor, T,
                       OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        y_data, x_data, out_data, pre, n, post, numel, func);
+        y_data, x_data, out_data, n, post, numel, func);
   }
 }
 
@@ -254,6 +261,21 @@ __global__ void CommonForwardBroadcastCUDAKernel(
     } else {
       out[out_index] = func(y[y_index], x[x_index]);
     }
+  }
+}
+
+template <typename Functor, typename T, typename OutType>
+__global__ void CommonForwardBroadcastCUDAKernel2(const T *x_data,
+                                                  const T *y_data,
+                                                  OutType *out_data, int pre,
+                                                  int n, int post, int m,
+                                                  Functor func) {
+  int large_arr_idx = threadIdx.x + blockDim.x * blockIdx.x;
+  int small_arr_idx =
+      (large_arr_idx / n / post / m) * post + large_arr_idx / m % post;
+  if (large_arr_idx / n / post / m < pre) {
+    out_data[large_arr_idx] =
+        func(x_data[large_arr_idx], y_data[small_arr_idx]);
   }
 }
 
