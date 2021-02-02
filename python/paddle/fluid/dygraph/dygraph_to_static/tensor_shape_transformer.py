@@ -24,21 +24,26 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 
 
-def create_convert_shape_node(var_shape_node):
+def create_convert_shape_node(var_shape_node,
+                              slice_node=None,
+                              in_control_flow=False):
     assert isinstance(var_shape_node, (gast.Attribute, gast.Subscript))
 
-    convert_var_shape_func = "paddle.jit.dy2static.convert_var_shape"
-
     if isinstance(var_shape_node, gast.Attribute):
-        api_shape_node = gast.Call(
-            func=gast.parse(convert_var_shape_func).body[0].value,
-            args=[var_shape_node.value],
-            keywords=[])
+        args = [ast_to_source_code(var_shape_node.value).strip()]
+        if slice_node:
+            args.append(ast_to_source_code(slice_node).strip())
+
+        convert_var_shape_func = "paddle.jit.dy2static.convert_var_shape({}, in_control_flow={})".format(
+            ",".join(args), in_control_flow)
+
+        api_shape_node = gast.parse(convert_var_shape_func).body[0].value
         return api_shape_node
 
     if isinstance(var_shape_node, gast.Subscript):
         result_node = copy.deepcopy(var_shape_node)
-        result_node.value = create_convert_shape_node(result_node.value)
+        result_node = create_convert_shape_node(
+            result_node.value, result_node.slice, in_control_flow)
         return result_node
 
 
@@ -72,14 +77,30 @@ class TensorShapeTransformer(gast.NodeTransformer):
         self.generic_visit(node)
         return node
 
+    def visit_Subscript(self, node):
+        value_node = node.value
+        slice_node = node.slice
+        if isinstance(value_node, gast.Name):
+            if self._is_var_shape(value_node) and self._used_by_paddle_api(
+                    value_node):
+                var_shape_node = self.name_to_var_shape[value_node.id]
+                return create_convert_shape_node(var_shape_node, slice_node)
+
+        if isinstance(value_node, gast.Attribute):
+            if self._used_by_paddle_api(value_node) and self._is_var_shape(
+                    value_node):
+                return create_convert_shape_node(value_node, slice_node)
+
+        return node
+
     def visit_Attribute(self, node):
         if self._used_by_paddle_api(node):
-            if self.is_var_shape(node):
+            if self._is_var_shape(node):
                 return create_convert_shape_node(node)
         return node
 
     def visit_Name(self, node):
-        if node.id in self.name_to_var_shape:
+        if self._is_var_shape(node):
             if self._used_by_paddle_api(node):
                 var_shape_node = self.name_to_var_shape[node.id]
                 return create_convert_shape_node(var_shape_node)
@@ -126,7 +147,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
             return False
         args = node.iter.args
         for idx, arg in enumerate(args):
-            if isinstance(arg, gast.Name) and arg.id in self.name_to_var_shape:
+            if isinstance(arg, gast.Name) and self._is_var_shape(arg):
                 args[idx] = create_convert_shape_node(self.name_to_var_shape[
                     arg.id])
 
@@ -136,11 +157,11 @@ class TensorShapeTransformer(gast.NodeTransformer):
         need_transformed = False
         for child_node in gast.walk(cond):
             var_shape_node = None
-            if isinstance(child_node, (gast.Attribute)):
-                if self.is_var_shape(child_node):
+            if isinstance(child_node, (gast.Attribute, gast.Subscript)):
+                if self._is_var_shape(child_node):
                     var_shape_node = child_node
             elif isinstance(child_node, (gast.Name)):
-                if child_node.id in self.name_to_var_shape:
+                if self._is_var_shape(child_node):
                     var_shape_node = self.name_to_var_shape[child_node.id]
 
             if var_shape_node:
@@ -150,7 +171,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
                 for field, value in gast.iter_fields(parent_node):
                     if child_node is value:
                         setattr(parent_node, field,
-                                create_convert_shape_node(var_shape_node))
+                                create_convert_shape_node(var_shape_node, None,
+                                                          True))
                         break
                     # Some child_node may be in a list such as gast.Compare
                     if isinstance(value, list):
@@ -158,7 +180,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
                         for i, v in enumerate(value):
                             if child_node is v:
                                 value[i] = create_convert_shape_node(
-                                    var_shape_node)
+                                    var_shape_node, None, True)
                                 has_converted_shape = True
                                 break
                         if has_converted_shape:
@@ -166,6 +188,14 @@ class TensorShapeTransformer(gast.NodeTransformer):
         return need_transformed
 
     def _used_by_paddle_api(self, node):
+        """
+        Whether node is used in paddle api as arguments.
+        For example:
+            1) Return True in `paddle.relu(x)` where node is `x` (gast.Name)
+            2) Return True in `paddle.add(self.x)` where node is `self.x` (gast.Attribute)
+            3) Return False in `paddle.add(self.x)` where node is `paddle.add` (gast.Attribute),
+               because the role of node is not arguments but `gast.Call.func`.
+        """
         assert isinstance(node, (gast.Attribute, gast.Name))
         wrapper_node = self.node_to_wrapper_map.get(node)
         if not wrapper_node:
@@ -174,7 +204,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
         while wrapper_node.parent:
             parent_node = wrapper_node.parent.node
             if isinstance(parent_node, gast.Call):
-                if is_paddle_api(parent_node):
+                # Note(Aurelius84): Filter the case when the role of node is `gast.Call.func`.
+                if is_paddle_api(parent_node) and parent_node.func != node:
                     return True
                 else:
                     return False
@@ -182,24 +213,30 @@ class TensorShapeTransformer(gast.NodeTransformer):
 
         return False
 
-    def is_var_shape(self, node):
+    def _is_var_shape(self, node):
         """
-        Return True if node is like `x.shape`, return False otherwise.
+        Return True if node is like `x.shape` or `x.shape[0]`, return False otherwise.
         """
-        assert isinstance(node, gast.Attribute)
-
-        if node.attr != 'shape':
+        if not isinstance(node, (gast.Name, gast.Attribute, gast.Subscript)):
             return False
 
-        try:
-            value_id = node.value.id
-        except AttributeError:
-            return False
-
-        if value_id in self.name_to_var_shape:
+        if isinstance(node, gast.Name) and node.id in self.name_to_var_shape:
             return True
 
-        return True
+        if isinstance(node, gast.Attribute):
+            if node.attr != 'shape':
+                return False
+
+            if not isinstance(node.value, gast.Name):
+                return False
+
+            return True
+
+        if isinstance(node, gast.Subscript):
+            value_node = node.value
+            return self._is_var_shape(value_node)
+
+        return False
 
     def _update_name_to_var_shape(self, node):
         assert isinstance(node, gast.Assign)
@@ -223,7 +260,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
                         self.name_to_var_shape[target_id] = sub_node
                         has_updated = True
                 if isinstance(value_node, gast.Attribute):
-                    if self.is_var_shape(value_node):  # eg: x.shape
+                    if self._is_var_shape(value_node):  # eg: x.shape
                         index_value_node = gast.Constant(value=idx, kind=None)
                         slice_index_node = gast.Index(value=index_value_node)
                         sub_node = gast.Subscript(
@@ -238,17 +275,17 @@ class TensorShapeTransformer(gast.NodeTransformer):
             target_id = ast_to_source_code(target_node).strip()
 
             if isinstance(value_node, gast.Name):
-                if value_node.id in self.name_to_var_shape:
+                if self._is_var_shape(value_node):
                     self.name_to_var_shape[target_id] = self.name_to_var_shape[
                         value_node.id]
                     return True
             if isinstance(value_node, gast.Attribute):
-                if self.is_var_shape(value_node):  # eg: x.shape
+                if self._is_var_shape(value_node):  # eg: x.shape
                     self.name_to_var_shape[target_id] = value_node
                     return True
             if isinstance(value_node, gast.Subscript):
                 if isinstance(value_node.value, gast.Attribute):
-                    if self.is_var_shape(value_node.value):  # eg: x.shape[0]
+                    if self._is_var_shape(value_node.value):  # eg: x.shape[0]
                         self.name_to_var_shape[target_id] = value_node
                         return True
         return False

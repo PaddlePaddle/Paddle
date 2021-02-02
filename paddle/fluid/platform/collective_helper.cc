@@ -75,7 +75,7 @@ NCCLComm* NCCLCommContext::CreateNCCLComm(ncclUniqueId* nccl_id, int nranks,
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
   ncclComm_t comm = nullptr;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(dev_id));
+  SetDeviceId(dev_id);
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::ncclCommInitRank(&comm, nranks, *nccl_id, rank));
 

@@ -295,7 +295,7 @@ TEST(EOF_EXCEPTION, THROW_EOF) {
   EXPECT_TRUE(caught_eof);
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 bool CheckCudaStatusSuccess(T value, const std::string& msg = "success") {
   PADDLE_ENFORCE_CUDA_SUCCESS(value);
@@ -312,7 +312,35 @@ bool CheckCudaStatusFailure(T value, const std::string& msg) {
     return ex_msg.find(msg) != std::string::npos;
   }
 }
+#ifdef PADDLE_WITH_HIP
+TEST(enforce, hip_success) {
+  EXPECT_TRUE(CheckCudaStatusSuccess(hipSuccess));
+  EXPECT_TRUE(CheckCudaStatusFailure(hipErrorInvalidValue, "Hip error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(hipErrorOutOfMemory, "Hip error"));
 
+  EXPECT_TRUE(CheckCudaStatusSuccess(HIPRAND_STATUS_SUCCESS));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(HIPRAND_STATUS_VERSION_MISMATCH, "Hiprand error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(HIPRAND_STATUS_NOT_INITIALIZED, "Hiprand error"));
+
+  EXPECT_TRUE(CheckCudaStatusSuccess(miopenStatusSuccess));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(miopenStatusNotInitialized, "Miopen error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(miopenStatusAllocFailed, "Miopen error"));
+
+  EXPECT_TRUE(CheckCudaStatusSuccess(rocblas_status_success));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(rocblas_status_invalid_handle, "Rocblas error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(rocblas_status_invalid_value, "Rocblas error"));
+#if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
+  EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
+  EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError, "Rccl error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(ncclSystemError, "Rccl error"));
+#endif
+}
+#else
 TEST(enforce, cuda_success) {
   EXPECT_TRUE(CheckCudaStatusSuccess(cudaSuccess));
   EXPECT_TRUE(CheckCudaStatusFailure(cudaErrorInvalidValue, "Cuda error"));
@@ -340,6 +368,7 @@ TEST(enforce, cuda_success) {
   EXPECT_TRUE(CheckCudaStatusFailure(ncclSystemError, "Nccl error"));
 #endif
 }
+#endif
 #endif
 
 struct CannotToStringType {

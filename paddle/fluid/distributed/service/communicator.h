@@ -223,6 +223,9 @@ class Communicator {
   // 6. recv sparse param
   virtual void RpcRecvSparse(const std::string &varname, int table_id,
                              Scope *scope);
+  // 7. send gloabl step
+  virtual void SendGlobalStep(const CommContext &ctx, int batches,
+                              Scope *send_scope);
 
   virtual ~Communicator() {}
   virtual void RpcProfilerControl();
@@ -376,8 +379,6 @@ class AsyncCommunicator : public Communicator {
 
   virtual void SendByCommunicator();
 
-  virtual void SendGlobalStep(int batches) {}
-
   virtual void RecvByCommunicator();
 
   virtual void RecvNoBarrier();
@@ -526,8 +527,6 @@ class GeoCommunicator : public AsyncCommunicator {
             const framework::Scope &scope) override;
 
   void SendByCommunicator() { return; }
-
-  void SendGlobalStep(int batches) override { return; }
 
   void RecvByCommunicator() override { return; }
 

@@ -25,8 +25,7 @@ from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ["VOC2012"]
 
-VOC_URL = 'http://host.robots.ox.ac.uk/pascal/VOC/voc2012/\
-VOCtrainval_11-May-2012.tar'
+VOC_URL = 'https://dataset.bj.bcebos.com/voc/VOCtrainval_11-May-2012.tar'
 
 VOC_MD5 = '6cd6e144f989b92b3379bac3b3de84fd'
 SET_FILE = 'VOCdevkit/VOC2012/ImageSets/Segmentation/{}.txt'
@@ -42,12 +41,14 @@ class VOC2012(Dataset):
     """
     Implementation of `VOC2012 <http://host.robots.ox.ac.uk/pascal/VOC/voc2012/>`_ dataset
 
+    To speed up the download, we put the data on https://dataset.bj.bcebos.com/voc/VOCtrainval_11-May-2012.tar. 
+    Original data can get from http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar.
+
     Args:
         data_file(str): path to data file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None,  default data path: ~/.cache/paddle/dataset/voc2012
         mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
-        download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+        download(bool): download dataset automatically if :attr:`data_file` is None. Default True
         backend(str, optional): Specifies which type of image to be returned: 
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
             If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
