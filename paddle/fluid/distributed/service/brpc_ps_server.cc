@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
-
+#include <netdb.h>
 #include <thread>  // NOLINT
 #include "Eigen/Dense"
 #include "butil/endpoint.h"
@@ -65,9 +65,17 @@ uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
   options.num_threads = trainers > num_threads ? trainers : num_threads;
 
   if (_server.Start(ip_port.c_str(), &options) != 0) {
-    LOG(ERROR) << "BrpcPsServer start failed, ip_port=" << ip_port;
-    return 0;
+    VLOG(0) << "BrpcPsServer start failed, ip_port= " << ip_port
+            << " , Try Again.";
+
+    std::string int_ip_port = GetIntTypeEndpoint(ip, port);
+
+    if (_server.Start(int_ip_port.c_str(), &options) != 0) {
+      LOG(ERROR) << "BrpcPsServer start failed, ip_port= " << int_ip_port;
+      return 0;
+    }
   }
+
   VLOG(0) << "BrpcPsServer::start registe_ps_server";
   _environment->registe_ps_server(ip, port, _rank);
   VLOG(0) << "BrpcPsServer::start wait";

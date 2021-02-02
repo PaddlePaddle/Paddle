@@ -1,9 +1,9 @@
 cc_library(dynamic_loader SRCS dynamic_loader.cc DEPS glog gflags enforce)
 
 list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc cusolver.cc nvtx.cc)
-#hip
-if (WITH_ROCM_PLATFORM)
-    list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc)
+
+if (WITH_ROCM)
+  list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc)
 endif()
 
 # There is no macOS version of NCCL.
@@ -13,7 +13,7 @@ if (NOT APPLE AND NOT WIN32)
   if (WITH_NCCL)
     list(APPEND CUDA_SRCS nccl.cc)
   endif()
-  if (WITH_ROCM_PLATFORM)
+  if (WITH_ROCM)
     list(APPEND HIP_SRCS hiprtc.cc rocm_driver.cc)
     if (WITH_RCCL)
       list(APPEND HIP_SRCS rccl.cc)
@@ -29,9 +29,9 @@ configure_file(cupti_lib_path.h.in ${CMAKE_CURRENT_BINARY_DIR}/cupti_lib_path.h)
 if (CUPTI_FOUND)
     list(APPEND CUDA_SRCS cupti.cc)
 endif(CUPTI_FOUND)
-if(WITH_ROCM_PLATFORM)
+if(WITH_ROCM)
   hip_library(dynload_cuda SRCS ${HIP_SRCS} DEPS dynamic_loader)
-  hip_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
+  cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
 else()
   nv_library(dynload_cuda SRCS ${CUDA_SRCS} DEPS dynamic_loader)
   cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
