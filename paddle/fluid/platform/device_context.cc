@@ -11,15 +11,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
-#include <stddef.h>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
-#include "cuda_runtime_api.h"
 #include "glog/logging.h"
-#include "unsupported/Eigen/CXX11/src/Tensor/TensorDeviceGpu.h"
 
 namespace paddle {
 namespace memory {

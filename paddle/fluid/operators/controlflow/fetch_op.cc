@@ -12,27 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
-
-#include "glog/logging.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/data_layout_transform.h"
+#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
-
-namespace paddle {
-namespace framework {
-class LoDTensor;
-class OpDesc;
-class Scope;
-template <typename T>
-class EmptyGradOpMaker;
-}  // namespace framework
-namespace imperative {
-class OpBase;
-}  // namespace imperative
-}  // namespace paddle
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
