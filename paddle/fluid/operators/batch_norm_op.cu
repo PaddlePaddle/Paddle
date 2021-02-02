@@ -29,7 +29,6 @@ DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 namespace paddle {
 namespace operators {
 
-// hahhahahahha
 using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
 template <typename T>
