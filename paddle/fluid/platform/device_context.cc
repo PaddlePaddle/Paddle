@@ -1,4 +1,4 @@
-Place/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -12,9 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include <set>
 
-#include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
