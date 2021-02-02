@@ -49,6 +49,8 @@ class TestFleetOptimizeProgram(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
+        fleet.init_server()
+
 
 if __name__ == "__main__":
     unittest.main()
