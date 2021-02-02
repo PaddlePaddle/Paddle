@@ -14,6 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
 
+#include <fstream>
+#include <random>
+
+#include "framework.pb.h"
+#include "glog/logging.h"
+#include "paddle/fluid/framework/tensor.h"
+
 namespace paddle {
 namespace framework {
 

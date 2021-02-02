@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/operators/reader/py_reader.h"
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace operators {
 namespace reader {

@@ -14,6 +14,10 @@
 
 #include "paddle/fluid/framework/fleet/nccl_wrapper.h"
 
+#include "cuda_runtime_api.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
+
 namespace paddle {
 namespace framework {
 

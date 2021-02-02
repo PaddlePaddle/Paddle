@@ -21,9 +21,15 @@
 #include <utility>
 #include <vector>
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -40,8 +46,8 @@ class Graph;
 namespace paddle {
 namespace platform {
 #if defined(PADDLE_WITH_NCCL)
-class NCCLContextMap;
 class NCCLCommunicator;
+class NCCLContextMap;
 #elif defined(PADDLE_WITH_XPU_BKCL)
 class BKCLContextMap;
 class BKCLCommunicator;

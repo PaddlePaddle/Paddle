@@ -13,14 +13,28 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
-#include <netdb.h>
+
+#include <stddef.h>
 #include <thread>  // NOLINT
-#include "Eigen/Dense"
-#include "butil/endpoint.h"
-#include "iomanip"
+#include <utility>
+
+#include "brpc/closure_guard.h"
+#include "brpc/controller.h"
+#include "butil/thread_local.h"
+#include "glog/logging.h"
+#include "paddle/fluid/distributed/common/registerer.h"
+#include "paddle/fluid/distributed/service/env.h"
+#include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace google {
+namespace protobuf {
+class Closure;
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
 
 namespace paddle {
 namespace distributed {

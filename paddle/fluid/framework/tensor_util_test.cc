@@ -15,7 +15,16 @@
 #include "paddle/fluid/framework/tensor_util.h"
 
 #include <gtest/gtest.h>
+#include <string.h>
 #include <cmath>
+
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
+#include "gtest/gtest_pred_impl.h"
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/dlpack_tensor.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace framework {

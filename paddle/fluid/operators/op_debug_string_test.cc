@@ -16,7 +16,12 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
 
 USE_OP(elementwise_add_grad);
 

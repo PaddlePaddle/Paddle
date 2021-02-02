@@ -14,6 +14,11 @@
 
 #include "paddle/fluid/framework/details/var_handle.h"
 
+#include <sstream>
+
+#include "glog/logging.h"
+#include "paddle/fluid/framework/ir/node.h"
+
 namespace paddle {
 namespace framework {
 namespace details {

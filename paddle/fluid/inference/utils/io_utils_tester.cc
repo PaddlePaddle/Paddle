@@ -14,8 +14,14 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <iosfwd>
+#include <string>
 
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
+#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 
 namespace paddle {

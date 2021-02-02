@@ -45,8 +45,8 @@ class Variable;
 namespace paddle {
 namespace imperative {
 
-class OpBase;
 class GradOpNode;
+class OpBase;
 class VariableWrapper;
 
 class ThreadSafeNameSet {

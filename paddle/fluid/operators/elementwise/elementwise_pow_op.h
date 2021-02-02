@@ -14,8 +14,13 @@ limitations under the License. */
 #include <cmath>
 #include <type_traits>
 
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {

@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/is_test_pass.h"
-
 #include <gtest/gtest.h>
+#include <string>
+
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/platform/enforce.h"
 #ifdef _WIN32
 #undef FALSE
 #undef TRUE

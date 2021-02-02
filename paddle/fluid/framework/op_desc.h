@@ -20,8 +20,10 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

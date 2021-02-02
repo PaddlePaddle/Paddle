@@ -14,6 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/vol2col.h"
 
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_impl.h"
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace platform {
 class CPUDeviceContext;

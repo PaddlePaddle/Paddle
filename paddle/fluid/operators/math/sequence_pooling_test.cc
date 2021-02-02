@@ -13,8 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_pooling.h"
+
 #include <gtest/gtest.h>
-#include <vector>
+#include <stdint.h>
+
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
+#include "gtest/gtest_pred_impl.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_impl.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 template <typename DeviceContext, typename T>
 void TestSequencePoolingSum(const DeviceContext &context,

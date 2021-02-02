@@ -13,15 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <math.h>
+#include <stdint.h>
 #include <iostream>
 #include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
-
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/sampler.h"
+
 namespace paddle {
 namespace platform {
 class CUDADeviceContext;

@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/matrix_bit_code.h"
 
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/platform/device_context.h"
+
 namespace paddle {
 namespace operators {
 namespace math {

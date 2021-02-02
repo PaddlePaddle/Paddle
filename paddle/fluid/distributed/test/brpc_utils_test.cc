@@ -12,21 +12,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <unistd.h>
 #include <string>
-#include <thread>  // NOLINT
 
-#include "google/protobuf/text_format.h"
+#include "butil/iobuf.h"
+#include "butil/iobuf_inl.h"
+#include "glog/logging.h"
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/variable.h"
-
+#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/distributed/service/brpc_utils.h"
+#include "paddle/fluid/distributed/service/sendrecv.pb.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/unroll_array_ops.h"
+#include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/cuda_error.pb.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/printf.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

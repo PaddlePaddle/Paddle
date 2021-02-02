@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <nccl.h>
 #include <atomic>
 #include <ctime>
 #include <map>
@@ -22,6 +23,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "driver_types.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"

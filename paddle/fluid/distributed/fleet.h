@@ -14,8 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#include <ThreadPool.h>
+#include <stdint.h>
 #include <atomic>
 #include <ctime>
+#include <functional>
+#include <future>
 #include <map>
 #include <memory>
 #include <random>
@@ -23,7 +27,6 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include <ThreadPool.h>
 #include "paddle/fluid/distributed/communicator_common.h"
 #include "paddle/fluid/distributed/service/service.h"
 #include "paddle/fluid/framework/archive.h"
@@ -34,9 +37,21 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class Scope;
+class SelectedRows;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace distributed {
+
+class PSCore;
 
 using framework::LoDTensor;
 using framework::Scope;

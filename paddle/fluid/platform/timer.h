@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <stdlib.h>
+#include <sys/time.h>
+#include <sys/types.h>
 
 #include "paddle/fluid/platform/port.h"
 

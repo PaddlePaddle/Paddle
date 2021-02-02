@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/gru_compute.h"
 
-#include <string>
+#include "cblas.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/gru_cpu_kernel.h"
 #include "paddle/fluid/operators/math/detail/gru_kernel.h"

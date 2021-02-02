@@ -15,11 +15,14 @@
 #include "paddle/fluid/framework/ir/conv_affine_channel_fuse_pass.h"
 
 #include <cmath>
-#include <vector>
 
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "glog/logging.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
+#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

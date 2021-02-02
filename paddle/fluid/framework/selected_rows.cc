@@ -14,6 +14,14 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/selected_rows.h"
 
+#include <stdint.h>
+
+#include "glog/logging.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_impl.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/place.h"
+
 namespace paddle {
 namespace platform {
 class DeviceContext;

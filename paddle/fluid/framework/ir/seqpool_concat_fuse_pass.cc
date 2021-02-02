@@ -13,9 +13,15 @@
  * limitations under the License. */
 
 #include "paddle/fluid/framework/ir/seqpool_concat_fuse_pass.h"
+
 #include <string>
-#include <unordered_set>
-#include <vector>
+
+#include "glog/logging.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

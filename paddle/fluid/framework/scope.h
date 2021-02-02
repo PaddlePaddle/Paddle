@@ -18,6 +18,7 @@ extern "C" {
 #include <xxhash.h>
 }
 
+#include <cstddef>
 #include <list>
 #include <memory>
 #include <string>

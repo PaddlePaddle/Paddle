@@ -18,8 +18,12 @@ limitations under the License. */
 
 #include <cuda_runtime.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string>
 #include <vector>
+
+#include "driver_types.h"
+#include "vector_types.h"
 
 namespace paddle {
 namespace platform {

@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 
+#include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace memory {
 namespace allocation {

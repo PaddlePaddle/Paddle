@@ -10,6 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <cudnn.h>
+#include <nccl.h>
 #include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
@@ -18,7 +20,13 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "cuda.h"
+#include "cusolverDn.h"
+#include "driver_types.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/macros.h"
+#include "vector_types.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"

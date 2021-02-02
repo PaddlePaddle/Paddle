@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <cudnn.h>
+#include <dlfcn.h>
 #include <glog/logging.h>
 #include <mutex>  // NOLINT
 

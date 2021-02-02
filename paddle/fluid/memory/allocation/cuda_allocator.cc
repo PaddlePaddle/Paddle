@@ -13,10 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <string>
-#include "paddle/fluid/platform/cuda_device_guard.h"
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 

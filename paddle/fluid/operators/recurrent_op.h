@@ -14,13 +14,20 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
 #include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
+#include "glog/logging.h"
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace platform {

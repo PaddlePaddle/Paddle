@@ -16,6 +16,10 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
+#include "gtest/gtest_pred_impl.h"
+
 TEST(OpKernelType, ToString) {
   using OpKernelType = paddle::framework::OpKernelType;
   using DataType = paddle::framework::proto::VarType;

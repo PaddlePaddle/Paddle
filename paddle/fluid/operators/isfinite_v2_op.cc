@@ -14,9 +14,18 @@
 
 #include "paddle/fluid/operators/isfinite_v2_op.h"
 
+#include <stdint.h>
 #include <string>
 
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/platform/cuda_error.pb.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

@@ -16,6 +16,9 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
+#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
 

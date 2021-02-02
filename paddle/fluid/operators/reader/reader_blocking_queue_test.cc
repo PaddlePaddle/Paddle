@@ -14,7 +14,10 @@
 
 #include <thread>  // NOLINT
 
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
+#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 
 using paddle::operators::reader::BlockingQueue;

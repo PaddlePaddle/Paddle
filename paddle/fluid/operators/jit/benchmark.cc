@@ -12,18 +12,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. */
 
+#include <stdint.h>
 #include <iostream>
 #include <random>
-#include <string>
-#include <vector>
+
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/operators/jit/helper.h"
+#include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/variant.h"  // for UNUSED
 
 DEFINE_int32(burning, 10, "Burning times.");

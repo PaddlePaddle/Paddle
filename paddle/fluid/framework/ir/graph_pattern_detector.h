@@ -18,6 +18,7 @@
 #include <gtest/gtest_prod.h>
 #endif
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <numeric>
@@ -32,6 +33,7 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/dot.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

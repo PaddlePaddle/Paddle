@@ -15,8 +15,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_transform.h"
 
 #include "paddle/fluid/framework/data_device_transform.h"
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

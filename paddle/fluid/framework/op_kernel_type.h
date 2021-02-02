@@ -14,10 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#include <iosfwd>
 #include <string>
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"

@@ -13,6 +13,8 @@
    limitations under the License. */
 
 #pragma once
+#include <stdint.h>
+#include <iosfwd>
 #include <string>
 
 #include "paddle/fluid/framework/data_layout.h"

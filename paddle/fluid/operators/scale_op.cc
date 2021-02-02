@@ -14,7 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/scale_op.h"
 
+#include <stdint.h>
 #include <string>
+
+#include "paddle/fluid/framework/grad_op_desc_maker.h"
+#include "paddle/fluid/framework/inplace_op_inference.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 
 namespace paddle {
 namespace framework {

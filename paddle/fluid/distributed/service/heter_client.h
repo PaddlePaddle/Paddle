@@ -13,17 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <stdint.h>
 #include <atomic>
 #include <ctime>
+#include <functional>
+#include <future>
 #include <map>
 #include <memory>
 #include <random>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
+#include "google/protobuf/stubs/callback.h"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
@@ -31,6 +36,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace distributed {

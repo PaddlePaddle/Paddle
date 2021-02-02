@@ -16,6 +16,11 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace framework {
 class InferShapeContext;

@@ -16,7 +16,13 @@ limitations under the License. */
 
 #include <string>
 
+#include "cuda_runtime_api.h"
+#include "driver_types.h"
+#include "glog/logging.h"
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
+#include "gtest/gtest_pred_impl.h"
 
 TEST(Event, CpuElapsedTime) {
   using paddle::platform::Event;

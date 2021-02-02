@@ -14,7 +14,13 @@
 
 #include "paddle/fluid/operators/assign_value_op.h"
 
+#include <stdint.h>
 #include <string>
+
+#include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 
 namespace paddle {
 namespace framework {

@@ -20,7 +20,9 @@
 #include <unordered_set>
 #include <utility>
 
+#include "driver_types.h"
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 

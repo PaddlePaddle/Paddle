@@ -14,10 +14,23 @@
 
 #include "paddle/fluid/framework/details/gather_op_handle.h"
 
-#include <memory>
-#include <unordered_map>
+#include <stdint.h>
+#include <stdlib.h>
 
+#include "glog/logging.h"
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
+#include "gtest/gtest_pred_impl.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/platform/cuda_error.pb.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

@@ -12,14 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
-#include <unordered_set>
-#include <vector>
-
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
-#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/transpose_flatten_concat_fuse_pass.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace paddle {
+namespace framework {
+namespace ir {
+class Graph;
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <stdint.h>
 #include <list>
 #include <map>
 #include <memory>
@@ -21,6 +22,7 @@
 #include <utility>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace memory {

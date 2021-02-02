@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <stdint.h>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -31,6 +32,7 @@
 namespace paddle {
 namespace framework {
 class VarDesc;
+
 namespace details {
 class ComputationOpHandle;
 class ShareTensorBufferOpHandle;

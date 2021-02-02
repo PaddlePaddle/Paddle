@@ -14,9 +14,11 @@
 
 #pragma once
 
+#include <stdint.h>
 #include <map>
 #include <memory>  // for unique_ptr
 #include <string>
+#include <typeinfo>
 #include <unordered_map>
 #include <utility>  // for move
 #include <vector>
@@ -24,6 +26,7 @@
 #include "paddle/fluid/operators/jit/gen_base.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/operators/jit/kernel_key.h"
+#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {

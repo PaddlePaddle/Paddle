@@ -12,8 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "glog/logging.h"
+#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/swish_op_plugin.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace nvinfer1 {
 class ILayer;
@@ -21,6 +26,7 @@ class ILayer;
 namespace paddle {
 namespace framework {
 class Scope;
+
 namespace proto {
 class OpDesc;
 }  // namespace proto

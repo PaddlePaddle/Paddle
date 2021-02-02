@@ -12,19 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <stdio.h>  // for removing the port file
-#include <csignal>
-#include <cstdlib>
-#include <fstream>
-#include <thread>  // NOLINT
-#include <vector>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "gflags/gflags.h"
-
+#include "glog/logging.h"
+#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/operators/pscore/heter_listen_and_serv_op.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace distributed {
+class HeterServer;
+}  // namespace distributed
+}  // namespace paddle
 
 DEFINE_int32(rpc_send_thread_num, 12, "number of threads for rpc send");
 

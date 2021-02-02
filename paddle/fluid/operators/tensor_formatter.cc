@@ -13,8 +13,14 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/tensor_formatter.h"
-#include <algorithm>
+
+#include <mutex>
 #include <string>
+#include <typeindex>
+
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor_impl.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {

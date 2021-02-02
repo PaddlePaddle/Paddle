@@ -13,8 +13,13 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/op_handle_base.h"
 
-#include <map>
-#include <unordered_set>
+#include <iosfwd>
+
+#include "driver_types.h"
+#include "glog/logging.h"
+#include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/details/var_handle.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {

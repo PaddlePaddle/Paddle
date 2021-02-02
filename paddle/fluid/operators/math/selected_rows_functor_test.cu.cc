@@ -12,9 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include <stdint.h>
+
+#include "cuda_runtime_api.h"
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
+#include "gtest/gtest_pred_impl.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 TEST(selected_rows_functor, gpu_add) {
   paddle::platform::CUDAPlace gpu_place(0);

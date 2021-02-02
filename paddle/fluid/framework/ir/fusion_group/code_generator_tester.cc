@@ -13,15 +13,26 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+#include <stdint.h>
 #include <cmath>
+#include <random>
 #include <string>
-#include <vector>
+#include <typeindex>
 
+#include "glog/logging.h"
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
+#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
+#include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
+#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/tensor_impl.h"
 #include "paddle/fluid/platform/device_code.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

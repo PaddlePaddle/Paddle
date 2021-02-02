@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_padding.h"
 
+#include <string.h>
+
+#include "paddle/fluid/framework/tensor_impl.h"
+
 namespace paddle {
 namespace framework {
 class LoDTensor;

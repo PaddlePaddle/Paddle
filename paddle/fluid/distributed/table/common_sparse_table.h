@@ -17,12 +17,14 @@
 #include <ThreadPool.h>
 #include <assert.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "Eigen/Dense"
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/common_table.h"
@@ -34,6 +36,8 @@
 
 namespace paddle {
 namespace distributed {
+
+class SparseOptimizer;
 
 class CommonSparseTable : public SparseTable {
  public:

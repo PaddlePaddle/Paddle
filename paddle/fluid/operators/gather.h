@@ -14,13 +14,18 @@ limitations under the License. */
 
 #pragma once
 #include <memory.h>
+#include <stdint.h>
 #include <cstring>
 #include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_impl.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {

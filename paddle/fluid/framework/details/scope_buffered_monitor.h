@@ -14,6 +14,7 @@
 
 #pragma once
 #include <deque>
+#include <functional>
 #include <unordered_set>
 #include <utility>
 #include <vector>

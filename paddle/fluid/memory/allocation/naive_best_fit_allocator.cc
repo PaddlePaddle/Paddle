@@ -14,18 +14,13 @@
 
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
+#include <mutex>
 
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
-#include "paddle/fluid/memory/detail/system_allocator.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/split.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif

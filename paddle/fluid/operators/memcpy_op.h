@@ -18,11 +18,19 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
 class LoDTensor;
 class Variable;
+class SelectedRows;
 }  // namespace framework
 }  // namespace paddle
 

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -29,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

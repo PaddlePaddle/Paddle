@@ -14,11 +14,11 @@
 
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 
-#include <algorithm>
 #include <memory>
 #include <string>
-#include <utility>
 
+#include "glog/logging.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/imperative/tracer.h"
 
 namespace paddle {

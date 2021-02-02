@@ -13,7 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/string/to_string.h"
+
 #include <gtest/gtest.h>
+
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
+#include "gtest/gtest_pred_impl.h"
 
 constexpr char kOutputString[] = "User Defined Output";
 class UserDefinedClass {

@@ -13,18 +13,26 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <stdint.h>
 #include <atomic>
+#include <condition_variable>
 #include <ctime>
+#include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <random>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "brpc/channel.h"
+#include "brpc/closure_guard.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
+#include "gflags/gflags_declare.h"
+#include "glog/logging.h"
 #include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/executor.h"
@@ -32,8 +40,25 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/profiler.h"
+
+namespace google {
+namespace protobuf {
+class Closure;
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
+namespace paddle {
+namespace framework {
+class Executor;
+class ProgramDesc;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
@@ -43,6 +68,7 @@ using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
 class HeterService;
+
 typedef int32_t (HeterService::*serviceHandlerFunc)(
     const PsRequestMessage& request, PsResponseMessage& response,
     brpc::Controller* cntl);

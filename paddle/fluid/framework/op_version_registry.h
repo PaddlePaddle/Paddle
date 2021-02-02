@@ -14,21 +14,28 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
+#include <boost/none.hpp>
+#include <boost/variant.hpp>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include <boost/none.hpp>
-#include <boost/variant.hpp>
+#include "glog/logging.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_version_proto.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {
 namespace compatible {
+
+namespace pb {
+class OpVersionMap;
+}  // namespace pb
 
 using OpAttrVariantT =
     boost::variant<bool,                     /* AttrType::BOOL */

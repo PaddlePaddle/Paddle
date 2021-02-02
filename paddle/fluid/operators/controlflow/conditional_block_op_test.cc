@@ -14,9 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
+#include "gtest/gtest_pred_impl.h"
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/place.h"
 
 USE_NO_KERNEL_OP(conditional_block);
 USE_NO_KERNEL_OP(conditional_block_grad);

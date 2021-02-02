@@ -16,6 +16,13 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
+#include "glog/logging.h"
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
+#include "gtest/gtest_pred_impl.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/platform/place.h"
+
 void PrepareCPUTensors(paddle::framework::LoDTensor* ids,
                        paddle::framework::LoDTensor* scores,
                        paddle::framework::LoDTensor* pre_ids,

@@ -14,20 +14,9 @@
 
 #include "paddle/fluid/imperative/reducer.h"
 
-#include <algorithm>
 #include <iostream>
-#include <map>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <utility>
-#include <vector>
 
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/op_base.h"
-#include "paddle/fluid/imperative/variable_wrapper.h"
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/string/string_helper.h"
 
 #if defined(PADDLE_WITH_NCCL)

@@ -14,7 +14,19 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
 
+#include <stdint.h>
+
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
+#include "gtest/gtest_pred_impl.h"
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/library_type.h"
+#include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/place.h"
 
 TEST(DataTypeTransform, CPUTransform) {
   auto place = paddle::platform::CPUPlace();

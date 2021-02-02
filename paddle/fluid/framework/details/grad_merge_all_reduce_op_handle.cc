@@ -13,14 +13,9 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
 
-#include <algorithm>
-
-#include "paddle/fluid/framework/details/container_cast.h"
-#include "paddle/fluid/framework/details/reduce_and_gather.h"
-#include "paddle/fluid/framework/details/variable_visitor.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "gflags/gflags_declare.h"
+#include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_NCCL
 DECLARE_bool(sync_nccl_allreduce);

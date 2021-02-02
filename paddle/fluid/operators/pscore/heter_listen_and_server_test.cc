@@ -13,24 +13,35 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdlib.h>
+#include <sys/types.h>
 #include <unistd.h>
-#include <chrono>  // NOLINT
-#include <memory>
 #include <string>
 #include <thread>  // NOLINT
-#include <unordered_map>
 
+#include "gflags/gflags_declare.h"
+#include "glog/logging.h"
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/service/brpc_utils.h"
+#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
-
+#include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/pscore/heter_listen_and_serv_op.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

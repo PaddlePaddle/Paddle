@@ -13,8 +13,9 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen/seqpool.h"
-#include <memory>
+
 #include "paddle/fluid/operators/jit/gen/act.h"  // for exp_float_consts ones
+#include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 

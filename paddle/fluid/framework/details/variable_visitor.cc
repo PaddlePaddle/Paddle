@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/details/variable_visitor.h"
 
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

@@ -14,14 +14,20 @@
 
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
+#include <functional>
 #include <future>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "butil/endpoint.h"
+#include "glog/logging.h"
 #include "google/protobuf/service.h"
+#include "google/protobuf/stubs/callback.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/service/env.h"
@@ -30,6 +36,17 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+
+namespace google {
+namespace protobuf {
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
+namespace paddle {
+namespace distributed {
+class PSEnvironment;
+}  // namespace distributed
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -46,6 +63,7 @@ namespace paddle {
 namespace distributed {
 
 class Table;
+
 using paddle::distributed::PsRequestMessage;
 using paddle::distributed::PsResponseMessage;
 

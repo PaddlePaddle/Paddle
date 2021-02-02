@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
 #include <memory>
 
 #include "paddle/fluid/memory/allocation/allocator.h"

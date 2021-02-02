@@ -17,9 +17,11 @@ limitations under the License. */
 #include <ThreadPool.h>
 #include <stdint.h>
 #include <atomic>
+#include <condition_variable>
 #include <deque>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <numeric>
 #include <set>
 #include <string>
@@ -29,7 +31,13 @@ limitations under the License. */
 #include <vector>
 
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/distributed/communicator_common.h"
+#include "paddle/fluid/distributed/ps.pb.h"
+#include "paddle/fluid/distributed/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/service/env.h"
+#include "paddle/fluid/distributed/service/ps_client.h"
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -40,10 +48,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
+#include "unsupported/Eigen/CXX11/../../../Eigen/src/Core/util/Constants.h"
+#include "unsupported/Eigen/CXX11/../../../Eigen/src/Core/util/Meta.h"
 
-#include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/service/brpc_ps_client.h"
-#include "paddle/fluid/distributed/service/ps_client.h"
+namespace paddle {
+namespace distributed {
+class PSClient;
+struct CommContext;
+}  // namespace distributed
+}  // namespace paddle
 
 DECLARE_bool(communicator_is_sgd_optimizer);
 

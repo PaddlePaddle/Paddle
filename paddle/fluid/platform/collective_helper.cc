@@ -14,7 +14,10 @@
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include <utility>
+
+#include "glog/logging.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace platform {

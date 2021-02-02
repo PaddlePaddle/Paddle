@@ -16,9 +16,14 @@ limitations under the License. */
 
 #include <memory>
 
+#include "cuda_runtime_api.h"
 #include "gflags/gflags.h"
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
+#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/platform/enforce.h"
 
 DECLARE_bool(use_pinned_memory);
 

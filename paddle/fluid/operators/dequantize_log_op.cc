@@ -14,7 +14,17 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/dequantize_log_op.h"
 
+#include <sys/types.h>
 #include <string>
+
+#include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_impl.h"
+#include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

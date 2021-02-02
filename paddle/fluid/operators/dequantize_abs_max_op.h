@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace framework {

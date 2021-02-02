@@ -17,6 +17,7 @@ limitations under the License. */
 #include <iostream>
 #include <vector>
 
+#include "boost/variant/static_visitor.hpp"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
 

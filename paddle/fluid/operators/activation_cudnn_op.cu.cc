@@ -12,9 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cudnn.h>
+
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_impl.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/platform/cuda_error.pb.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
+#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {

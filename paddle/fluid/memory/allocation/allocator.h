@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <stdint.h>
+#include <exception>
 #include <memory>
 #include <string>
 #include <type_traits>

@@ -12,7 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <stdlib.h>
+#include <string>
+
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/init.h"

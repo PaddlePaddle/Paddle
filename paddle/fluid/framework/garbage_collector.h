@@ -14,14 +14,18 @@
 
 #pragma once
 
+#include <sys/types.h>
 #include <deque>
 #include <functional>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <utility>
 
+#include "driver_types.h"
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace platform {

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cudnn.h>
 #include <algorithm>
 #include <functional>
 #include <iostream>
@@ -23,8 +24,11 @@
 #include <string>
 #include <vector>
 
+#include "cuda.h"
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

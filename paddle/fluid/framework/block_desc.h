@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
 #include <deque>
 #include <memory>
 #include <set>
@@ -21,6 +22,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/proto_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -29,8 +31,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class ProgramDesc;
 class OpDesc;
+class ProgramDesc;
 class VarDesc;
 
 // Each Protobuf Message, we provide a XXXBind class. In that class, we optimize

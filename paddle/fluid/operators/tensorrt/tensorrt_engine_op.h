@@ -23,13 +23,21 @@
 #include <utility>
 #include <vector>
 
+#include "glog/logging.h"
+#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace inference {

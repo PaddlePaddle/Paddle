@@ -15,15 +15,20 @@
 #pragma once
 
 #if defined(PADDLE_WITH_NCCL)
+#include <nccl.h>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
 #include "boost/variant.hpp"
+#include "driver_types.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace platform {
@@ -47,6 +52,8 @@ namespace platform {
 //
 // The NCCLComm instance is created and reversed in the NCCLCommContext
 // singleton with a global user specified group id.
+class CUDADeviceContext;
+
 class NCCLComm {
  public:
   virtual int ring_id() const = 0;

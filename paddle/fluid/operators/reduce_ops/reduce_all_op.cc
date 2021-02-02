@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_all_op.h"
 
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;

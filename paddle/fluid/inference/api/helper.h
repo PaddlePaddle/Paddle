@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 #include <fstream>
+#include <stdexcept>
 #if !defined(_WIN32)
 #include <sys/time.h>
 #endif
@@ -29,6 +30,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/port.h"

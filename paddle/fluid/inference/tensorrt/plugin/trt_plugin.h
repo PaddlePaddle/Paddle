@@ -15,16 +15,25 @@
 #pragma once
 
 #include <NvInfer.h>
+#include <NvInferRuntime.h>
+#include <NvInferRuntimeCommon.h>
 #include <cstring>
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "driver_types.h"
+#include "gflags/gflags_declare.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace nvinfer1 {
+class ITensor;
+}  // namespace nvinfer1
 
 DECLARE_bool(profile);
 

@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <curand.h>
+#include <dlfcn.h>
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"

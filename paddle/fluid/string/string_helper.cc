@@ -15,7 +15,9 @@
 #include "paddle/fluid/string/string_helper.h"
 
 #include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 

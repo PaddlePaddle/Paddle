@@ -14,8 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {

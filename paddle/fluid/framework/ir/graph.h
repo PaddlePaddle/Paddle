@@ -20,6 +20,8 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "boost/any.hpp"
+#include "glog/logging.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"

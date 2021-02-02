@@ -14,19 +14,27 @@ limitations under the License. */
 
 #pragma once
 
+#include <glog/logging.h>
+#include <stdint.h>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <glog/logging.h>
 #include "paddle/fluid/distributed/ps.pb.h"
+#include "paddle/fluid/distributed/service/env.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/service/server.h"
 
 namespace paddle {
 namespace distributed {
+
+class PSClient;
+class PSServer;
+class PsRequestMessage;
+class PsResponseMessage;
+class PsService;
 
 using paddle::distributed::PsRequestMessage;
 using paddle::distributed::PsResponseMessage;

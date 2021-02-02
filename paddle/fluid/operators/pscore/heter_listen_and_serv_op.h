@@ -19,6 +19,7 @@ limitations under the License. */
 #include <memory>
 #include <set>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -29,8 +30,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace distributed {
+class HeterRequestHandler;
+class HeterServer;
+}  // namespace distributed
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

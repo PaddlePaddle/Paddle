@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/variable_helper.h"
 
-#include <vector>
-
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"

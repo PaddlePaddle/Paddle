@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <functional>
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -22,8 +23,11 @@
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/platform/cuda_error.pb.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace platform {
@@ -35,6 +39,7 @@ namespace paddle {
 namespace framework {
 
 class Scope;
+
 namespace details {
 struct VarHandleBase;
 }  // namespace details

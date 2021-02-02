@@ -16,6 +16,14 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
+#include "gtest/gtest_pred_impl.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor_impl.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
+
 template <typename DeviceContext, typename T>
 void TestSequencePadding(const DeviceContext &context,
                          const paddle::framework::LoD &lod,

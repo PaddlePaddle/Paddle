@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <iosfwd>
 #include <memory>
 #include <string>
 #include <utility>

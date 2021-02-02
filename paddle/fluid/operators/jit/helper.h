@@ -14,10 +14,13 @@
 
 #pragma once
 
+#include <stdint.h>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <string>
+#include <type_traits>
+#include <typeinfo>
 #include <unordered_map>
 #include <utility>  // for std::move
 #include <vector>
@@ -26,6 +29,8 @@
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/operators/jit/kernel_key.h"
 #include "paddle/fluid/operators/jit/kernel_pool.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {

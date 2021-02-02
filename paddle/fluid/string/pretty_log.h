@@ -17,8 +17,8 @@
 #include <sstream>
 #include <string>
 #include <utility>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/string/printf.h"
 
 DECLARE_bool(color);

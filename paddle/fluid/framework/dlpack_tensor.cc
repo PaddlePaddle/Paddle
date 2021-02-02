@@ -12,8 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/dlpack_tensor.h"
-#include <unordered_map>
+
+#include <stdint.h>
+#include <type_traits>
+
+#include "dlpack/dlpack.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace platform {

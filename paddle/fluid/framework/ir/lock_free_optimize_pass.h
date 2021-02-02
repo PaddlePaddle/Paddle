@@ -14,20 +14,20 @@
 
 #pragma once
 
+#include <boost/algorithm/string/predicate.hpp>
 #include <string>
 #include <vector>
 
-#include <boost/algorithm/string/predicate.hpp>
-
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class Node;
 class Graph;
+class Node;
 
 /*
 * Remove the sum op of all gradients of the backward op.

@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/var_desc.h"
 
 namespace paddle {
 namespace framework {

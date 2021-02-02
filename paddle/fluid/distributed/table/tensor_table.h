@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <sys/types.h>
 #include <algorithm>
 #include <condition_variable>  // NOLINT
 #include <memory>
@@ -22,11 +24,22 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/distributed/common/utils.h"
+#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+class Executor;
+class Scope;
+struct ExecutorPrepareContext;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace distributed {

@@ -14,6 +14,18 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
 
+#include <stdint.h>
+
+#include "paddle/fluid/framework/tensor_impl.h"
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace platform {
+struct complex128;
+struct complex64;
+}  // namespace platform
+}  // namespace paddle
+
 namespace paddle {
 namespace framework {
 class Tensor;

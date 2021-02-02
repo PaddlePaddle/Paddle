@@ -17,8 +17,8 @@
 #include <memory>  // for unique_ptr
 #include <string>
 #include <vector>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
 
 DECLARE_bool(dump_jitcode);

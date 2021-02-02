@@ -13,11 +13,9 @@
 // limitations under the License.
 #include "paddle/fluid/platform/cpu_info.h"
 
-#include <ostream>
 #include <sstream>
 
 #include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/string/printf.h"
 

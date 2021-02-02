@@ -13,8 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
-#include <algorithm>
+
 #include <string>
+
+#include "glog/logging.h"
+#include "paddle/fluid/operators/controlflow/op_variant.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

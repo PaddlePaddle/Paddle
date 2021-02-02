@@ -14,8 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 
-#include <algorithm>
-#include <vector>
+#include <cstdlib>
+
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

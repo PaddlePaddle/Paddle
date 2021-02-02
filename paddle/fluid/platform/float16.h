@@ -15,7 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+#include <cmath>
+#include <iosfwd>
 #include <limits>
+#include <type_traits>
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>

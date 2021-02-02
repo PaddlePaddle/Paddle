@@ -15,9 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <netdb.h>
+#include <stdint.h>
 #include <iostream>
 #include <string>
 #include <vector>
+
 #include "brpc/channel.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -27,6 +29,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/port.h"
+
+namespace butil {
+class IOBuf;
+class IOBufBytesIterator;
+}  // namespace butil
 
 namespace grpc {
 class ByteBuffer;

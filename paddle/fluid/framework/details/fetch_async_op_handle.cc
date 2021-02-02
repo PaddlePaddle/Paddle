@@ -15,8 +15,16 @@
 #include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 
 #include <string>
-#include <utility>
 
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_impl.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {

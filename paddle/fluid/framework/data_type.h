@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <stdint.h>
+#include <iosfwd>
 #include <string>
 #include <typeindex>
 
@@ -26,9 +28,9 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 struct bfloat16;
-struct float16;
-struct complex64;
 struct complex128;
+struct complex64;
+struct float16;
 }  // namespace platform
 }  // namespace paddle
 

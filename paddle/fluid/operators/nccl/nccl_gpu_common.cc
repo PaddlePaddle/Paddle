@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 
+#include <mutex>
+
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace platform {
 namespace {

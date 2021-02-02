@@ -14,8 +14,10 @@
 
 #pragma once
 
+#include <iosfwd>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -24,10 +26,12 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 class SelectedRows;
+
 namespace details {
 struct VarHandle;
 }  // namespace details

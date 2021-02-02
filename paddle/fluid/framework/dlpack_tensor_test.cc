@@ -13,9 +13,19 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/dlpack_tensor.h"
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <vector>
+#include <stdint.h>
+#include <type_traits>
+
+#include "dlpack/dlpack.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace platform {

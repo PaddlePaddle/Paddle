@@ -15,6 +15,9 @@ limitations under the License. */
 
 #include <NvInfer.h>
 #include <NvInferPlugin.h>
+#include <NvInferRuntime.h>
+#include <NvInferRuntimeCommon.h>
+#include <NvInferVersion.h>
 #if !defined(_WIN32)
 #include <dlfcn.h>
 #endif
@@ -92,7 +95,7 @@ extern void* tensorrt_plugin_dso_handle;
 TENSORRT_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP)
 TENSORRT_PLUGIN_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_PLUGIN_WRAP)
 
-#endif // end of NV_TENSORRT_MAJOR
+#endif  // end of NV_TENSORRT_MAJOR
 
 }  // namespace dynload
 }  // namespace platform

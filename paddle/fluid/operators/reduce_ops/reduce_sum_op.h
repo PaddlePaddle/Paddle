@@ -14,9 +14,16 @@
 
 #pragma once
 
+#include <sys/types.h>
 #include <vector>
 
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor_impl.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 
 namespace paddle {
 namespace operators {

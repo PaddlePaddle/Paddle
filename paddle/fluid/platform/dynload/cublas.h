@@ -15,8 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <cublasXt.h>
+#include <cublas_api.h>
 #include <cublas_v2.h>
 #include <cuda.h>
+#include <dlfcn.h>
 #include <mutex>  // NOLINT
 #include <type_traits>
 
