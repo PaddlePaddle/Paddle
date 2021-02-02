@@ -50,8 +50,8 @@ class Lamb(Optimizer):
     learning rate, :math:`\\lambda` the LAMB weight decay rate.
 
     Args:
-        learning_rate (float|Variable, optional): the learning rate used to update parameters. \
-            Can be a float value or a Variable with data type float32. Default 0.001.
+        learning_rate (float|Tensor, optional): the learning rate used to update parameters. \
+            Can be a float value or a Tensor with data type float32. Default 0.001.
         lamb_weight_decay (float, optional): The LAMB weight decay rate. Default 0.01. Remind that weight_decay should be None.
         beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
             Default 0.9.
