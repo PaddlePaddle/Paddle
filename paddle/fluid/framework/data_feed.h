@@ -19,8 +19,6 @@ limitations under the License. */
 #define _LINUX
 #endif
 
-#include <stdint.h>
-#include <stdio.h>
 #include <fstream>
 #include <future>  // NOLINT
 #include <memory>
@@ -41,8 +39,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {

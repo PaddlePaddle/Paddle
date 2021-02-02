@@ -14,13 +14,11 @@
 
 #pragma once
 
-#include <boost/algorithm/string/predicate.hpp>
 #include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

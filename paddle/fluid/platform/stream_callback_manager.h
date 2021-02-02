@@ -22,7 +22,6 @@
 #include <memory>
 #include <mutex>  // NOLINT
 
-#include "driver_types.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

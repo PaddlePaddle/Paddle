@@ -14,17 +14,12 @@
 
 #pragma once
 
-#include <sys/types.h>
 #include <algorithm>
 #include <string>
-#include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/assign_value_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"

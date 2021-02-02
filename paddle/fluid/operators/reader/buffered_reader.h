@@ -20,9 +20,7 @@
 #include <vector>
 
 #include "ThreadPool.h"
-#include "driver_types.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_resource_pool.h"
 #include "paddle/fluid/platform/gpu_info.h"

@@ -14,23 +14,10 @@ limitations under the License. */
 
 #include <string>
 
-#include "butil/iobuf.h"
-#include "butil/iobuf_inl.h"
-#include "glog/logging.h"
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "gtest/gtest_pred_impl.h"
+
 #include "paddle/fluid/distributed/service/brpc_utils.h"
-#include "paddle/fluid/distributed/service/sendrecv.pb.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/unroll_array_ops.h"
-#include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/cuda_error.pb.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

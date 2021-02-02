@@ -13,18 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <stdint.h>
 #include <cstring>
 #include <string>
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_impl.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "unordered_set"
 

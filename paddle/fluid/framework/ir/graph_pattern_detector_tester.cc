@@ -14,13 +14,7 @@
 
 #include <gtest/gtest.h>
 
-#include "glog/logging.h"
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
-#include "gtest/gtest_pred_impl.h"
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {

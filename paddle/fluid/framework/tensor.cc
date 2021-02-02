@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
 
-#include "paddle/fluid/framework/data_type.h"
-
 namespace paddle {
 namespace memory {
 namespace allocation {

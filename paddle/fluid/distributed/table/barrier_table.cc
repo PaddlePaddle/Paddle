@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <stdint.h>
-#include <condition_variable>
-#include <mutex>
-#include <string>
-
-#include "glog/logging.h"
 #include "paddle/fluid/distributed/table/common_table.h"
 
 namespace paddle {

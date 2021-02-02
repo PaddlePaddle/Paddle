@@ -17,14 +17,9 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_impl.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {

@@ -20,10 +20,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "driver_types.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace platform {

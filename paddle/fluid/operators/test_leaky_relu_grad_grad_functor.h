@@ -14,20 +14,12 @@
 
 #pragma once
 
-#include <sys/types.h>
 #include <algorithm>
 #include <random>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_impl.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/fluid/platform/hostdevice.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {

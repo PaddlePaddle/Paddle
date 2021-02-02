@@ -14,14 +14,6 @@
 
 #pragma once
 
-#include <stdint.h>
-#include <atomic>
-#include <condition_variable>
-#include <memory>
-#include <mutex>
-#include <string>
-#include <vector>
-
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"

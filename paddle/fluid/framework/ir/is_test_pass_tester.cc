@@ -13,11 +13,6 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <string>
-
-#include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/enforce.h"
 #ifdef _WIN32
 #undef FALSE
 #undef TRUE

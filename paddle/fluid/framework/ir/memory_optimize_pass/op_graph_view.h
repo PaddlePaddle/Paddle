@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

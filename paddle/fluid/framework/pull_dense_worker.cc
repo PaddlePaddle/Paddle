@@ -11,17 +11,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <stdint.h>
 #include <time.h>
-#include <unistd.h>
-#include <memory>
-#include <mutex>
-#include <thread>
-
-#include "glog/logging.h"
 #include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/trainer_desc.pb.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

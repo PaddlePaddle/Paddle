@@ -13,18 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <sys/types.h>
 #include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/type_defs.h"
-#include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

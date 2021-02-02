@@ -16,10 +16,6 @@
 
 #include <string>
 
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {

@@ -19,12 +19,8 @@ limitations under the License. */
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
-#include "driver_types.h"
 #include "gflags/gflags.h"
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA

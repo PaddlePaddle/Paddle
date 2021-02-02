@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <memory>
 #include <vector>
 
@@ -22,7 +21,6 @@
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace memory {

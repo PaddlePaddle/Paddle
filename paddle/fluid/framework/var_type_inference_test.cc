@@ -16,15 +16,10 @@ limitations under the License. */
 
 #include <string>
 
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "gtest/gtest_pred_impl.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

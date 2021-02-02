@@ -10,14 +10,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-
-#include <stdint.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <functional>
-#include <iostream>
-
-#include "gloo/transport/tcp/attr.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/string/string_helper.h"
 

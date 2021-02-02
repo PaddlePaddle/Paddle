@@ -17,8 +17,6 @@ limitations under the License. */
 #include <string>
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

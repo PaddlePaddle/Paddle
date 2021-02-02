@@ -13,10 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph.h"
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/program_desc.h"
 

@@ -13,11 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/framework/tuple.h"
 
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "gtest/gtest_pred_impl.h"
-#include "paddle/fluid/platform/enforce.h"
 
 TEST(Tuple, Make) {
   std::vector<paddle::framework::ElementVar> element_type;

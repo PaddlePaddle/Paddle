@@ -14,14 +14,6 @@
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
 
-#include "glog/logging.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/details/var_handle.h"
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/platform/enforce.h"
-
 namespace paddle {
 namespace framework {
 namespace details {

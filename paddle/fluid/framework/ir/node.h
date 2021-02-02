@@ -14,18 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <typeindex>
 #include <typeinfo>
 #include <vector>
 
-#include "boost/any.hpp"
-#include "glog/logging.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {

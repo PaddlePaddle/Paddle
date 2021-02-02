@@ -14,23 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#include <stdint.h>
-#include <sys/types.h>
 #include <algorithm>
-#include <iosfwd>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {

@@ -17,12 +17,8 @@
 #include <ThreadPool.h>
 #include <assert.h>
 #include <pthread.h>
-#include <stdint.h>
-#include <memory>
 #include <string>
-
 #include "Eigen/Dense"
-#include "glog/logging.h"
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/common_table.h"
 #include "paddle/fluid/distributed/table/depends/dense.h"

@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>

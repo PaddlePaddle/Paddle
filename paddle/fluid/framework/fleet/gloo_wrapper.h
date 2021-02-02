@@ -20,7 +20,6 @@ limitations under the License. */
 #include <sys/types.h>
 #include <unistd.h>
 #endif
-#include <chrono>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -37,9 +36,7 @@ limitations under the License. */
 #include <gloo/rendezvous/store.h>
 #include <gloo/transport/tcp/device.h>
 #endif
-#include "glog/logging.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace gloo {
 class Context;

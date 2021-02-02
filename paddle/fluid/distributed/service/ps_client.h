@@ -14,19 +14,12 @@
 
 #pragma once
 
-#include <stddef.h>
-#include <stdint.h>
-#include <functional>
 #include <future>
 #include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include "glog/logging.h"
-#include "google/protobuf/stubs/callback.h"
-#include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/service/env.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"

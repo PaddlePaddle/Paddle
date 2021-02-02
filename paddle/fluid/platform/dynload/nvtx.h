@@ -14,7 +14,6 @@ limitations under the License. */
 #pragma once
 #ifndef _WIN32
 #include <cuda.h>
-#include <dlfcn.h>
 #include <nvToolsExt.h>
 #include <mutex>  // NOLINT
 

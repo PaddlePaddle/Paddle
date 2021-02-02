@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <stdint.h>
 #include <string>
 #include <vector>
 

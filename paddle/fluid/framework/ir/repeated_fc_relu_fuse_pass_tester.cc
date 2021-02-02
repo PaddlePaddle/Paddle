@@ -13,12 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <string>
-
-#include "glog/logging.h"
-#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

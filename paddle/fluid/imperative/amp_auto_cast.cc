@@ -17,8 +17,6 @@
 #include <memory>
 #include <string>
 
-#include "glog/logging.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/imperative/tracer.h"
 
 namespace paddle {

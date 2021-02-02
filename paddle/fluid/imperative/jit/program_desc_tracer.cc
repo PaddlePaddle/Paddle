@@ -14,11 +14,6 @@
 
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 
-#include "glog/logging.h"
-#include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/platform/enforce.h"
-
 namespace paddle {
 namespace imperative {
 class VarBase;

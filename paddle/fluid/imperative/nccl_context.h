@@ -23,8 +23,6 @@
 #endif
 
 #include "paddle/fluid/imperative/parallel_context.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

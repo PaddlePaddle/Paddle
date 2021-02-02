@@ -14,14 +14,12 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <cmath>
 #include <limits>
 #include <string>
 
 #include "paddle/fluid/operators/jit/helper.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
-#include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

@@ -14,12 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <ThreadPool.h>
-#include <stdint.h>
 #include <atomic>
 #include <ctime>
-#include <functional>
-#include <future>
 #include <map>
 #include <memory>
 #include <random>
@@ -37,7 +33,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

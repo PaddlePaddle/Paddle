@@ -29,7 +29,6 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {

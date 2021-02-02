@@ -17,12 +17,8 @@ limitations under the License. */
 
 #include <cuda.h>
 #include <cupti.h>
-#include <dlfcn.h>
 #include <mutex>  // NOLINT
 
-#include "cupti_activity.h"
-#include "cupti_callbacks.h"
-#include "cupti_result.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 

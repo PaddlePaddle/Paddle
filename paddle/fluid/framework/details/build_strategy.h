@@ -21,11 +21,9 @@
 #include <vector>
 
 #include "boost/optional.hpp"
-#include "boost/optional/optional.hpp"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/cuda_error.pb.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 

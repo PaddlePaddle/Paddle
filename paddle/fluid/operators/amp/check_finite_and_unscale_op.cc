@@ -14,31 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
 
-#include <string>
-
-#include "paddle/fluid/framework/op_kernel_type.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/platform/enforce.h"
-
-namespace paddle {
-namespace framework {
-class InferShapeContext;
-class OpDesc;
-template <typename T>
-class EmptyGradOpMaker;
-}  // namespace framework
-namespace imperative {
-class OpBase;
-}  // namespace imperative
-namespace platform {
-struct CPUPlace;
-}  // namespace platform
-}  // namespace paddle
-
 namespace paddle {
 namespace operators {
 

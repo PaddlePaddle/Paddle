@@ -14,7 +14,5 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/cudnn_placement_pass.h"
 
-#include "paddle/fluid/framework/ir/pass.h"
-
 REGISTER_PASS(cudnn_placement_pass, paddle::framework::ir::CUDNNPlacementPass)
     .RequirePassAttr("cudnn_enabled_op_types");

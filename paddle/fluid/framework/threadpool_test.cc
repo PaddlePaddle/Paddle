@@ -14,13 +14,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <atomic>
-#include <thread>
-
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
-#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/framework/type_defs.h"
 
 namespace framework = paddle::framework;
 

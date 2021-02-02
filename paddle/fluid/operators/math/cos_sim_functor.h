@@ -47,9 +47,8 @@ struct CosSimFunctor {
 
         yy += tep_y * tep_y;
         xy += tep_x * tep_y;
-        xx = xx > eps ? xx : eps;
       }
-
+      xx = xx > eps ? xx : eps;
       yy = yy > eps ? yy : eps;
       xx = sqrt(xx);
       yy = sqrt(yy);

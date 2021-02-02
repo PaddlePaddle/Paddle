@@ -14,22 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include <math.h>
 #include <algorithm>
 #include <vector>
 
-#include "driver_types.h"
-#include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/platform/hostdevice.h"
 #if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__)
 #include "paddle/fluid/operators/jit/kernels.h"

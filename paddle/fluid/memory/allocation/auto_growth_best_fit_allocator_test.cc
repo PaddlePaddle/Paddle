@@ -16,11 +16,7 @@
 
 #include <cstdlib>
 
-#include "gflags/gflags_declare.h"
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "gtest/gtest_pred_impl.h"
 
 DECLARE_bool(free_idle_chunk);
 DECLARE_bool(free_when_no_cache_hit);

@@ -17,13 +17,6 @@
 #include <gtest/gtest.h>
 #include <string>
 
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
-#include "gtest/gtest_pred_impl.h"
-#include "paddle/fluid/framework/tensor_impl.h"
-#include "paddle/fluid/framework/type_defs.h"
-#include "paddle/fluid/platform/cuda_error.pb.h"
-
 namespace paddle {
 namespace platform {
 struct float16;

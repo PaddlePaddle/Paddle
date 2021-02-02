@@ -14,14 +14,8 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/framework/op_info.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/beam_search_decode_op.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

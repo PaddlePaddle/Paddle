@@ -12,18 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <nccl.h>
 #include <thread>  // NOLINT
 
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "gtest/gtest_pred_impl.h"
-#include "paddle/fluid/imperative/nccl_context.h"
-#include "paddle/fluid/imperative/parallel_context.h"
-#include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/cuda_error.pb.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;

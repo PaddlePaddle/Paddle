@@ -20,7 +20,6 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/operators/jit/gen/jitcode.h"
-#include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

@@ -15,16 +15,13 @@
 #pragma once
 
 #include <memory>
-#include <mutex>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {

@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <atomic>              // NOLINT
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
@@ -24,7 +23,6 @@
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace memory {

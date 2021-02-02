@@ -17,15 +17,12 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include <typeindex>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {

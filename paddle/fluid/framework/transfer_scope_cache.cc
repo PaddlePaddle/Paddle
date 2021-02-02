@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 
-#include "paddle/fluid/framework/op_kernel_type.h"
-#include "paddle/fluid/framework/scope.h"
-
 namespace paddle {
 namespace framework {
 

@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <stdio.h>
 #include <atomic>
 #include <memory>

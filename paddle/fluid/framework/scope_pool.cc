@@ -13,9 +13,6 @@
 // limitations under the License.
 #include "paddle/fluid/framework/scope_pool.h"
 
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/enforce.h"
-
 namespace paddle {
 namespace framework {
 

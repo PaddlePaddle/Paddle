@@ -20,7 +20,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {

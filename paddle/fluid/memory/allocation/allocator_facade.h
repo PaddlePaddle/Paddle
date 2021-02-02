@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include <stdint.h>
 #include <memory>
-
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -31,7 +29,6 @@ namespace allocation {
 // NOTE(yy): To create a stable ABI and make compilation faster. Here we use
 // a Pimpl trick;
 class AllocatorFacadePrivate;
-
 class AllocatorFacade {
  public:
   ~AllocatorFacade();

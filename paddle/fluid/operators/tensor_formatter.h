@@ -13,7 +13,7 @@
    limitations under the License. */
 
 #pragma once
-#include <stdint.h>
+#include <stdint.h
 #include <iosfwd>
 #include <string>
 

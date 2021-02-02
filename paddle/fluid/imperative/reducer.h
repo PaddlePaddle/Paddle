@@ -14,12 +14,10 @@
 
 #pragma once
 
-#include <sys/types.h>
 #include <algorithm>
 #include <iostream>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <queue>
 #include <string>
 #include <unordered_map>
@@ -28,10 +26,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace platform {

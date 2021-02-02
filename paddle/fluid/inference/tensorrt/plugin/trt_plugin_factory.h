@@ -15,7 +15,6 @@
 #pragma once
 
 #include <NvInfer.h>
-#include <NvInferRuntime.h>
 #include <cstring>
 #include <list>
 #include <memory>

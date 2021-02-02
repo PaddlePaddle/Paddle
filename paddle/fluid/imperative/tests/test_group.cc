@@ -14,16 +14,7 @@
 
 #include <sstream>
 #include <string>
-#include <type_traits>
-
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "gtest/gtest_pred_impl.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_impl.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/imperative/reducer.h"

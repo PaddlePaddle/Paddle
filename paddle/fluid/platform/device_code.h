@@ -20,12 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "cuda.h"
-#include "nvrtc.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
 #include "paddle/fluid/platform/dynload/nvrtc.h"

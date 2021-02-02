@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <ctime>
 #include <fstream>
-#include <future>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -36,7 +35,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
 
 namespace paddle {

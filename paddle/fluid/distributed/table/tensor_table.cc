@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/distributed/table/tensor_table.h"
 
-#include "gflags/gflags_declare.h"
-#include "glog/logging.h"
-
 DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {

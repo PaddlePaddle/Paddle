@@ -18,15 +18,12 @@
 #include <utility>
 #include <vector>
 
-#include "gflags/gflags_declare.h"
-#include "glog/logging.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/place.h"
 
 DECLARE_bool(use_mkldnn);
 

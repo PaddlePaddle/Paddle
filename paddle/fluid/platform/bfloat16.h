@@ -15,9 +15,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <iosfwd>
 #include <limits>
-#include <type_traits>
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else

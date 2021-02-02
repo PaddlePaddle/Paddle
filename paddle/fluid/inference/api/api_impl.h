@@ -17,7 +17,6 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <vector>
 

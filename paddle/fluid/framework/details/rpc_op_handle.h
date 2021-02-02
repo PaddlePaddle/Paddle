@@ -23,13 +23,11 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 class OpDesc;
 class Scope;
-
 namespace ir {
 class Node;
 }  // namespace ir

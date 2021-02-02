@@ -14,11 +14,6 @@
 
 #include "paddle/fluid/memory/allocation/buffered_allocator.h"
 
-#include <mutex>
-
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/lock_guard_ptr.h"
-
 namespace paddle {
 namespace memory {
 namespace allocation {

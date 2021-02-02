@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <netdb.h>
-#include <stdint.h>
 #include <iostream>
 #include <string>
 #include <vector>

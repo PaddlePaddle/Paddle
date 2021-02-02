@@ -13,9 +13,6 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
 
-#include "gflags/gflags_declare.h"
-#include "glog/logging.h"
-#include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_NCCL
 DECLARE_bool(sync_nccl_allreduce);

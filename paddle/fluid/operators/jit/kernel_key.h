@@ -13,9 +13,6 @@
  * limitations under the License. */
 
 #pragma once
-#include <stdint.h>
-#include <unordered_map>
-
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/platform/place.h"
 

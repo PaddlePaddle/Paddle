@@ -15,22 +15,15 @@ limitations under the License. */
 
 #include <algorithm>
 #include <utility>
-
-#include "glog/logging.h"
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/hostdevice.h"
 #ifdef PADDLE_WITH_CUDA
 #ifdef __NVCC__
 #include <cuda.h>
 #include <cuda_fp16.h>
-
 #include "cub/cub.cuh"
 #endif
 #endif

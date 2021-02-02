@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <dlfcn.h>
 #include <nvrtc.h>
 #include <mutex>  // NOLINT
 

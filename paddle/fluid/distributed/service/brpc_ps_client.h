@@ -14,10 +14,6 @@
 
 #pragma once
 
-#include <stdint.h>
-#include <sys/types.h>
-#include <atomic>
-#include <future>
 #include <memory>
 #include <string>
 #include <vector>
@@ -27,7 +23,6 @@
 #include "brpc/server.h"
 #include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
-#include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"

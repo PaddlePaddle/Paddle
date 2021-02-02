@@ -12,15 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
-
-#include "gflags/gflags_declare.h"
-#include "glog/logging.h"
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
-#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/platform/place.h"
 
 #ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);

@@ -16,7 +16,6 @@
 
 #include <vector>
 
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 namespace paddle {

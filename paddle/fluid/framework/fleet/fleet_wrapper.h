@@ -14,15 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include <functional>
-#include <future>
 #include <memory>
 #ifdef PADDLE_WITH_PSLIB
 #include <archive.h>
 #include <pslib.h>
 #endif
 #include <ThreadPool.h>
-#include <stdint.h>
 #include <atomic>
 #include <ctime>
 #include <map>
@@ -31,14 +28,12 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "driver_types.h"
 #include "paddle/fluid/framework/heter_service.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

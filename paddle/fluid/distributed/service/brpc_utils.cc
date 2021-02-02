@@ -13,21 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/service/brpc_utils.h"
-
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <stddef.h>
-
-#include "butil/iobuf.h"
-#include "butil/iobuf_inl.h"
-#include "glog/logging.h"
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

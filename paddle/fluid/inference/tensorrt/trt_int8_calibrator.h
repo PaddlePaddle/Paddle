@@ -17,8 +17,6 @@
 #include <NvInfer.h>
 #include <cuda_runtime_api.h>
 #include <atomic>
-#include <condition_variable>
-#include <cstddef>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>

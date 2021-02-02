@@ -16,10 +16,7 @@
 
 #include <string>
 
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

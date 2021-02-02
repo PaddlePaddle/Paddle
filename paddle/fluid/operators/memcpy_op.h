@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {

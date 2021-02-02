@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <stddef.h>
-#include <stdint.h>
 #include <atomic>
 #include <fstream>
 #include <map>
@@ -29,8 +27,6 @@ limitations under the License. */
 #include <utility>        // NOLINT
 #include <vector>
 
-#include "driver_types.h"
-#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/heter_service.h"
 #include "paddle/fluid/framework/lod_tensor.h"
