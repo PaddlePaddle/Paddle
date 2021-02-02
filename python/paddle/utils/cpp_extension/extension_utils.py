@@ -27,8 +27,9 @@ import subprocess
 from contextlib import contextmanager
 from setuptools.command import bdist_egg
 
-import paddle
-from paddle.fluid.framework import OpProtoHolder
+from .. import load_op_library
+from ...fluid import core
+from ...sysconfig import get_include, get_lib
 
 OS_NAME = platform.system()
 IS_WINDOWS = OS_NAME == 'Windows'
@@ -89,7 +90,7 @@ def custom_write_stub(resource, pyfile):
     _, op_info = CustomOpInfo.instance().last()
     so_path = op_info.build_directory
 
-    new_custom_op = paddle.utils.load_op_library(so_path)
+    new_custom_op = load_op_library(so_path)
     assert len(new_custom_op) == 1
 
     # NOTE: To avoid importing .so file instead of python file because they have same name,
@@ -207,7 +208,7 @@ def find_paddle_includes(use_cuda=False):
     Return Paddle necessary include dir path.
     """
     # pythonXX/site-packages/paddle/include
-    paddle_include_dir = paddle.sysconfig.get_include()
+    paddle_include_dir = get_include()
     third_party_dir = os.path.join(paddle_include_dir, 'third_party')
 
     include_dirs = [paddle_include_dir, third_party_dir]
@@ -255,7 +256,7 @@ def find_cuda_home():
             else:
                 cuda_home = "/usr/local/cuda"
     # step 3. check whether path is valid
-    if not os.path.exists(cuda_home) and paddle.is_compiled_with_cuda():
+    if not os.path.exists(cuda_home) and core.is_compiled_with_cuda():
         cuda_home = None
         warnings.warn(
             "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specific it."
@@ -269,7 +270,7 @@ def find_paddle_libraries(use_cuda=False):
     Return Paddle necessary library dir path.
     """
     # pythonXX/site-packages/paddle/libs
-    paddle_lib_dirs = [paddle.sysconfig.get_lib()]
+    paddle_lib_dirs = [get_lib()]
     if use_cuda:
         cuda_dirs = find_cuda_includes()
         paddle_lib_dirs.extend(cuda_dirs)
@@ -334,6 +335,7 @@ def parse_op_info(op_name):
     Parse input names and outpus detail information from registered custom op
     from OpInfoMap.
     """
+    from paddle.fluid.framework import OpProtoHolder
     if op_name not in OpProtoHolder.instance().op_proto_map:
         raise ValueError(
             "Please load {} shared library file firstly by `paddle.utils.load_op_library(...)`".
@@ -359,7 +361,7 @@ def _import_module_from_library(name, build_directory):
             ext_path))
 
     # load custom op_info and kernels from .so shared library
-    op_names = paddle.utils.load_op_library(ext_path)
+    op_names = load_op_library(ext_path)
     assert len(op_names) == 1
 
     # generate Python api in ext_path

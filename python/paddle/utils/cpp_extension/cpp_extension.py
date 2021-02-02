@@ -52,6 +52,10 @@ def setup(**attr):
     assert 'easy_install' not in cmdclass
     cmdclass['easy_install'] = EasyInstallCommand
 
+    # Always set zip_safe=False to make compatible in PY2 and PY3
+    # See http://peak.telecommunity.com/DevCenter/setuptools#setting-the-zip-safe-flag
+    attr['zip_safe'] = False
+
     # switch `write_stub` to inject paddle api in .egg
     with bootstrap_context():
         setuptools.setup(**attr)
@@ -287,8 +291,9 @@ class EasyInstallCommand(easy_install, object):
     def __init__(self, *args, **kwargs):
         super(EasyInstallCommand, self).__init__(*args, **kwargs)
 
-    def run(self):
-        super(EasyInstallCommand, self).run()
+    # NOTE(Aurelius84): Add args and kwargs to make compatible with PY2/PY3
+    def run(self, *args, **kwargs):
+        super(EasyInstallCommand, self).run(*args, **kwargs)
         # NOTE: To avoid failing import .so file instead of
         # python file because they have same name, we rename
         # .so shared library to another name.
