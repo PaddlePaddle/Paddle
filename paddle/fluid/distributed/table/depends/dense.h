@@ -214,7 +214,6 @@ class DGeneralOptimizer : public DenseOptimizer {
     values_ = values;
 
     FLAGS_eager_delete_tensor_gb = -1;
-
     auto& tensor_config = program_config.tensor();
     if (tensor_config.has_main_program_id()) {
       auto main_program_id_ = tensor_config.main_program_id();
@@ -233,14 +232,11 @@ class DGeneralOptimizer : public DenseOptimizer {
     FLAGS_eager_delete_tensor_gb = -1;
     std::unique_ptr<framework::Scope> local_scope = scope_->NewTmpScope();
 
-    std::stringstream ss;
-
     auto blas = GetBlas<float>();
     auto* grad_tensor = local_scope->Var("Grad")->GetMutable<LoDTensor>();
     grad_tensor->Resize(framework::make_ddim({1, update_numel}));
     auto* grad_data = grad_tensor->mutable_data<float>(place_);
     blas.VCOPY(update_numel, update_values + begin, grad_data);
-    ss << "Grad: " << grad_data[0];
 
     int size = static_cast<int>(common_.params().size());
     for (int x = 0; x < size; ++x) {
@@ -250,33 +246,26 @@ class DGeneralOptimizer : public DenseOptimizer {
         var_tensor->Resize(framework::make_ddim({1}));
         float* lr_data = var_tensor->mutable_data<float>(place_);
         lr_data[0] = *(global_learning_rate_) * (*learning_rate);
-        ss << ", " << varname << ": " << lr_data[0];
       } else {
         var_tensor->Resize(framework::make_ddim({1, update_numel}));
         auto* var_data = var_tensor->mutable_data<float>(place_);
         float* param_data = values_->at(x).data();
         blas.VCOPY(update_numel, param_data, var_data);
-        ss << ", " << varname << ": " << var_data[0];
       }
     }
     executor_->RunPreparedContext(exec_context_.get(), local_scope.get(), false,
                                   false);
-    ss << "; after update; ";
 
     for (int x = 0; x < size; ++x) {
       auto& varname = common_.params()[x];
-      auto* var = local_scope->FindVar(varname);
-      PADDLE_ENFORCE_NE(var, nullptr, "var is null");
       if (varname == "LearningRate") {
         continue;
       } else {
-        const float* var_data = var->Get<LoDTensor>().data<float>();
+        const float* var_data =
+            local_scope->FindVar(varname)->Get<LoDTensor>().data<float>();
         blas.VCOPY(update_numel, var_data, values_->at(x).data());
       }
-      ss << ", " << varname << ": " << values_->at(x).data()[0];
     }
-    ss << "\n";
-    VLOG(1) << ss.str();
   }
 
   float* learning_rate;

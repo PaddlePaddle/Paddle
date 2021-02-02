@@ -262,19 +262,12 @@ class SGeneralOptimizer : public SparseOptimizer {
 
     auto blas = GetBlas<float>();
     // Grad
-    auto* grad_tensor = scope_->Var("Grad")->GetMutable<LoDTensor>();
+    auto* grad_tensor = local_scope->Var("Grad")->GetMutable<LoDTensor>();
     grad_tensor->Resize(
         framework::make_ddim({static_cast<int64_t>(update_num),
                               static_cast<int64_t>(update_numel)}));
     auto* grad_data = grad_tensor->mutable_data<float>(place_);
     blas.VCOPY(update_num * update_numel, update_values, grad_data);
-
-    std::stringstream ss;
-    ss << "Grad: ";
-    for (int i = 0; i < update_numel; i++) {
-      ss << grad_data[i] << " ";
-    }
-    ss << "\n";
 
     int size = static_cast<int>(common_.params().size());
     for (int i = 0; i < size; i++) {
@@ -283,30 +276,18 @@ class SGeneralOptimizer : public SparseOptimizer {
       if (varname == "LearningRate") {
         var->Resize(framework::make_ddim({1}));
         float* lr_data = var->mutable_data<float>(place_);
-        auto* values = block->Get(keys[0]);
+        auto* values = block->Get(keys[offsets[0]]);
         lr_data[0] = *(global_learning_rate_) * (values + value_offsets_[i])[0];
       } else {
-        VLOG(0) << "copy1 " << varname << " " << update_num << " "
-                << value_dims_[i];
         var->Resize(
             framework::make_ddim({static_cast<int64_t>(update_num),
                                   static_cast<int64_t>(value_dims_[i])}));
-        VLOG(0) << "copy2 " << varname << " " << update_num << " "
-                << value_dims_[i];
         auto* var_data = var->mutable_data<float>(place_);
-        VLOG(0) << "copy3 " << varname << " " << update_num << " "
-                << value_dims_[i];
         for (size_t x = 0; x < update_num; x++) {
           auto id = keys[offsets[x]];
           auto* values = block->Get(id);
           blas.VCOPY(value_dims_[i], values + value_offsets_[i],
                      var_data + x * value_dims_[i]);
-          if (x == 0) {
-            ss << varname << ": ";
-            for (int j = 0; j < update_numel; j++) {
-              ss << var_data[j] << " ";
-            }
-          }
         }
       }
     }
@@ -316,26 +297,18 @@ class SGeneralOptimizer : public SparseOptimizer {
 
     for (int i = 0; i < size; i++) {
       auto& varname = value_names_[i];
-      auto* var = local_scope->FindVar(varname);
-      PADDLE_ENFORCE_NE(var, nullptr, "varname is null");
       if (varname == "LearningRate") {
         continue;
       }
-      const float* var_data = var->Get<LoDTensor>().data<float>();
+      const float* var_data =
+          local_scope->FindVar(varname)->Get<LoDTensor>().data<float>();
       for (size_t x = 0; x < update_num; x++) {
         auto id = keys[offsets[x]];
         auto* values = block->Get(id);
         blas.VCOPY(value_dims_[i], var_data + x * value_dims_[i],
                    values + value_offsets_[i]);
-        if (x == 0) {
-          ss << varname << ": ";
-          for (int j = 0; j < update_numel; j++) {
-            ss << var_data[j] << " ";
-          }
-        }
       }
     }
-    VLOG(0) << ss.str();
   }
 
   framework::Executor* executor_;
