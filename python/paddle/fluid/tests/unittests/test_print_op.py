@@ -102,7 +102,7 @@ class TestPrintOpError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.static.Print, x2)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_cuda(),
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
                  "paddle.core is not compiled with CUDA")
 class TestPrintOpGPU(TestPrintOpCPU):
     def setUp(self):
