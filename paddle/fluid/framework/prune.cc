@@ -17,9 +17,7 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <queue>
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

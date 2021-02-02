@@ -14,12 +14,10 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 
