@@ -176,6 +176,29 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
+  if (use_dla_) {
+    if (!enable_int8 && !enable_fp16) {
+      LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
+                      "set float32, so DLA is not used.";
+    } else if (infer_builder_->getNbDLACores() == 0) {
+      LOG(WARNING)
+          << "TensorRT DLA is set by config, but your device does not have "
+             "DLA, so DLA is not used.";
+    } else {
+      if (dla_core_ < 0 || dla_core_ >= infer_builder_->getNbDLACores()) {
+        dla_core_ = 0;
+        LOG(WARNING) << "Invalid DLACore, must be 0 < DLACore < "
+                     << infer_builder_->getNbDLACores() << ", but got "
+                     << dla_core_ << ", so use use 0 as default.";
+      }
+      infer_builder_->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
+      infer_builder_->setDLACore(dla_core_);
+      infer_builder_->allowGPUFallback(true);
+      LOG(INFO) << "TensorRT DLA enabled in FreezeNetwork(), DLACore "
+                << dla_core_;
+    }
+  }
+
   if (with_dynamic_shape_) {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
