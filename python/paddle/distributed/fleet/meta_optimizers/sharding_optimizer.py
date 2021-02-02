@@ -319,6 +319,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         #                     attrs={
         #                         'op_role': core.op_proto_and_checker_maker.OpRole.Backward,
         #                         'op_role_var': op_role_var})
+        main_block._sync_with_cpp()
 
         with open("start_sharding_%d" % self.role_maker._worker_index(),
                   'w') as f:
