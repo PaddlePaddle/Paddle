@@ -33,6 +33,7 @@ class PlacePrinter : public boost::static_visitor<> {
     os_ << "CUDAPlace(" << p.device << ")";
   }
   void operator()(const XPUPlace &p) { os_ << "XPUPlace(" << p.device << ")"; }
+  void operator()(const NPUPlace &p) { os_ << "NPUPlace(" << p.device << ")"; }
   void operator()(const CUDAPinnedPlace &p) { os_ << "CUDAPinnedPlace"; }
 
  private:
@@ -47,6 +48,10 @@ bool is_gpu_place(const Place &p) {
 
 bool is_xpu_place(const Place &p) {
   return boost::apply_visitor(IsXPUPlace(), p);
+}
+
+bool is_npu_place(const Place &p) {
+  return boost::apply_visitor(IsNPUPlace(), p);
 }
 
 bool is_cpu_place(const Place &p) {
@@ -67,6 +72,8 @@ bool is_same_place(const Place &p1, const Place &p2) {
       return true;
     } else if (is_xpu_place(p1)) {
       return BOOST_GET_CONST(XPUPlace, p1) == BOOST_GET_CONST(XPUPlace, p2);
+    } else if (is_npu_place(p1)) {
+      return BOOST_GET_CONST(NPUPlace, p1) == BOOST_GET_CONST(NPUPlace, p2);
     } else {
       return BOOST_GET_CONST(CUDAPlace, p1) == BOOST_GET_CONST(CUDAPlace, p2);
     }
