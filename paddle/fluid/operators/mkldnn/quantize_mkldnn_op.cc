@@ -64,9 +64,11 @@ class QuantOpKernel : public framework::OpKernel<T> {
     bool is_negative_input = ctx.Attr<bool>("is_negative_input");
     bool bfloat16 = ctx.Attr<bool>("bfloat16");
 
-    std::string key = platform::CreateKey(
-        platform::ThreadIDasStr(), src_tz, scale_data, scale_shift,
-        is_negative_input, ctx.OutputName("Output"));
+    std::string key =
+        platform::CreateKey(dev_ctx, src_tz, scale_data, scale_shift,
+                            is_negative_input, ctx.OutputName("Output"));
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+
     const std::string key_prim = key + "@r";
     const std::string key_src_mem = key + "@s";
     const std::string key_dst_mem = key + "@d";
@@ -138,9 +140,13 @@ class QuantOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    mkldnn::stream astream(engine);
-    reorder_p->execute(astream, *src_memory, *dst_memory);
-    astream.wait();
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    {
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+      reorder_p->execute(astream, *src_memory, *dst_memory);
+      astream.wait();
+    }
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory));

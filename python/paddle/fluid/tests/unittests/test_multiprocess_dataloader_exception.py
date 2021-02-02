@@ -80,14 +80,6 @@ class TestDataLoaderAssert(unittest.TestCase):
             except AssertionError:
                 pass
 
-            # batch_sampler is not instance of BatchSampler
-            try:
-                loader = DataLoader(
-                    dataset=dataset, places=place, batch_sampler=dataset)
-                self.assertTrue(False)
-            except AssertionError:
-                pass
-
             # set batch_sampler and shuffle/batch_size/drop_last
             try:
                 loader = DataLoader(
@@ -188,7 +180,7 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                 indices_queue.put(None)
                 _worker_loop(loader._dataset, 0, indices_queue,
                              loader._data_queue, loader._workers_done_event,
-                             _collate_fn, _init_fn, 0, 1,
+                             True, _collate_fn, _init_fn, 0, 1,
                              loader._use_shared_memory)
                 self.assertTrue(False)
         except AssertionError:
@@ -232,7 +224,7 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                 loader._workers_done_event.set()
                 _worker_loop(loader._dataset, 0, indices_queue,
                              loader._data_queue, loader._workers_done_event,
-                             _collate_fn, _init_fn, 0, 1,
+                             True, _collate_fn, _init_fn, 0, 1,
                              loader._use_shared_memory)
                 self.assertTrue(True)
         except AssertionError:

@@ -216,25 +216,6 @@ def __bootstrap__():
         read_env_flags.append('tracer_mkldnn_ops_on')
         read_env_flags.append('tracer_mkldnn_ops_off')
 
-    if core.is_compiled_with_dist():
-        #env for rpc
-        read_env_flags.append('rpc_deadline')
-        read_env_flags.append('rpc_retry_times')
-        read_env_flags.append('rpc_server_profile_path')
-        read_env_flags.append('enable_rpc_profiler')
-        read_env_flags.append('rpc_send_thread_num')
-        read_env_flags.append('rpc_get_thread_num')
-        read_env_flags.append('rpc_prefetch_thread_num')
-        read_env_flags.append('rpc_disable_reuse_port')
-        read_env_flags.append('rpc_retry_bind_port')
-
-        read_env_flags.append('worker_update_interval_secs')
-
-        if core.is_compiled_with_brpc():
-            read_env_flags.append('max_body_size')
-            #set brpc max body size
-            os.environ['FLAGS_max_body_size'] = "2147483647"
-
     if core.is_compiled_with_cuda():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use',
@@ -254,7 +235,7 @@ def __bootstrap__():
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
-    core.init_devices(not in_test)
+    core.init_devices()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.

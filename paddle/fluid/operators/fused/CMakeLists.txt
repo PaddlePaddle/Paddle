@@ -1,4 +1,8 @@
 include(operators)
+if(WITH_UNITY_BUILD)
+    # Load Unity Build rules for operators in paddle/fluid/operators/fused.
+    include(unity_build_rule.cmake)
+endif()
 register_operators(EXCLUDES
     fused_bn_activation_op
     conv_fusion_op
@@ -6,14 +10,19 @@ register_operators(EXCLUDES
     fusion_conv_inception_op
     fused_fc_elementwise_layernorm_op
     multihead_matmul_op
+    skip_layernorm_op
     fused_embedding_eltwise_layernorm_op
     fusion_group_op
     fusion_gru_op
+    fusion_lstm_op
     fused_bn_add_activation_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
+op_library(fusion_lstm_op)
 file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(fusion_gru);\n")
+file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(fusion_lstm);\n")
+
 
 if (WITH_GPU)
     # fused_bn_activation_op needs cudnn 7.4.1 above
@@ -40,6 +49,8 @@ if (WITH_GPU)
     # multihead_matmul_op
     op_library(multihead_matmul_op)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(multihead_matmul);\n")
+    op_library(skip_layernorm_op)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(skip_layernorm);\n")
     op_library(fused_embedding_eltwise_layernorm_op)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_embedding_eltwise_layernorm);\n")
     # fusion_group

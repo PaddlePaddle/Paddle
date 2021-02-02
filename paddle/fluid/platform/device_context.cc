@@ -12,7 +12,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include <set>
 #include <string>
-#include <thread>  //NOLINT
 #include <unordered_set>
 #include <vector>
 
@@ -24,30 +23,45 @@ limitations under the License. */
 #endif
 
 #include "glog/logging.h"
-#include "unsupported/Eigen/CXX11/ThreadPool"
 
 namespace paddle {
 namespace memory {
 
 AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
   auto place = dev_ctx.GetPlace();
+  if (size == 0) {
+    return Alloc(place, size);
+  }
+
+  if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
-  if (size == 0 || !platform::is_gpu_place(place)) {
-    return Alloc(place, size);
-  }
-  auto* default_dev_ctx = static_cast<platform::CUDADeviceContext*>(
-      platform::DeviceContextPool::Instance().Get(place));
-  auto& desired_dev_ctx =
-      static_cast<const platform::CUDADeviceContext&>(dev_ctx);
-  if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
-    return Alloc(place, size);
-  } else {
-    return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
-        desired_dev_ctx, size);
-  }
+    auto* default_dev_ctx = static_cast<platform::CUDADeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    auto& desired_dev_ctx =
+        static_cast<const platform::CUDADeviceContext&>(dev_ctx);
+    if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
+      return Alloc(place, size);
+    } else {
+      return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
+          desired_dev_ctx, size);
+    }
 #else
-  return Alloc(place, size);
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't use CUDA device since it's not compiled with CUDA,"
+        "Please recompile or reinstall Paddle with GPU support."));
 #endif
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+    // TODO(liuyuhui): Consider xpu stream later
+    return Alloc(place, size);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't use XPU device since it's not compiled with XPU,"
+        "Please recompile or reinstall Paddle with XPU support."));
+#endif
+  } else {
+    return Alloc(place, size);
+  }
 }
 
 }  // namespace memory
@@ -55,6 +69,16 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
 
 namespace paddle {
 namespace platform {
+
+#ifdef PADDLE_WITH_CUDA
+bool allow_tf32_cublas = true;
+void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
+bool AllowTF32Cublas() { return allow_tf32_cublas; }
+
+bool allow_tf32_cudnn = true;
+void SetAllowTF32Cudnn(bool active) { allow_tf32_cudnn = active; }
+bool AllowTF32Cudnn() { return allow_tf32_cudnn; }
+#endif  // PADDLE_WITH_CUDA
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
@@ -133,30 +157,14 @@ DeviceContextPool::DeviceContextPool(
 
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
-  InitPoolDevice();
 }
 
 CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::DefaultDevice());
-  InitPoolDevice();
-}
-
-void CPUDeviceContext::InitPoolDevice() {
-  using EigenEnv = Eigen::StlThreadEnvironment;
-  using EigenThreadPool = Eigen::ThreadPoolTempl<EigenEnv>;
-  // int num_threads = std::thread::hardware_concurrency();
-  int num_threads = 1;
-  eigen_threadpool_.reset(new EigenThreadPool(num_threads));
-  eigen_pool_device_.reset(
-      new Eigen::ThreadPoolDevice(eigen_threadpool_.get(), num_threads));
 }
 
 Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
   return eigen_device_.get();
-}
-
-Eigen::ThreadPoolDevice* CPUDeviceContext::eigen_pool_device() const {
-  return eigen_pool_device_.get();
 }
 
 Place CPUDeviceContext::GetPlace() const { return place_; }
@@ -164,7 +172,7 @@ Place CPUDeviceContext::GetPlace() const { return place_; }
 #ifdef PADDLE_WITH_XPU
 XPUDeviceContext::XPUDeviceContext() { context_ = xpu::create_context(); }
 
-XPUDeviceContext::~XPUDeviceContext() { xpu::destroy_context(context_); }
+XPUDeviceContext::~XPUDeviceContext() {}
 
 XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
   int dev_id = -1;
@@ -181,6 +189,25 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
                         "Baidu Kunlun Card is properly installed.",
                         ret));
   context_ = xpu::create_context();
+  const int MAX_XPU_NUM = 16;
+  const int l3_size = 13.5 * 1024 * 1024;
+  static void* l3ptrs[MAX_XPU_NUM] = {nullptr};
+
+  auto selected_xpus = GetXPUSelectedDevices();
+  for (unsigned int i = 0; i < selected_xpus.size(); i++) {
+    if (place.device == selected_xpus[i]) {
+      if (l3ptrs[place.device] == nullptr) {
+        xpu_malloc(static_cast<void**>(&l3ptrs[place.device]), l3_size,
+                   XPU_MEM_L3);
+      }
+      if (l3ptrs[place.device] != nullptr) {
+        context_->_l3_mgr.set(l3ptrs[place.device], l3_size);
+        VLOG(3) << "xpu place " << place.device << " set l3 size " << l3_size;
+      }
+      break;
+    }
+  }
+
   ret = xpu_set_device(dev_id);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
@@ -196,7 +223,7 @@ void XPUDeviceContext::Wait() const {
                         "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
-  xpu_wait();
+  xpu_wait(context_->xpu_stream);
 }
 
 Place XPUDeviceContext::GetPlace() const { return place_; }
@@ -336,7 +363,9 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   runtime_version_ = GetCUDARuntimeVersion(place_.device);
 
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
-                          << ", CUDA Capability: " << compute_capability_
+                          << ", GPU Compute Capability: "
+                          << compute_capability_ / 10 << "."
+                          << compute_capability_ % 10
                           << ", Driver API Version: " << driver_version_ / 1000
                           << "." << (driver_version_ % 100) / 10
                           << ", Runtime API Version: "
@@ -441,18 +470,32 @@ Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_MKLDNN
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
-    : CPUDeviceContext(place),
-      engine_(mkldnn::engine::kind::cpu, 0),
-      p_blobmap_() {
+    : CPUDeviceContext(place), p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
   p_mutex_.reset(new std::mutex());
 }
 
-MKLDNNDeviceContextThreadLocals::Body::Body() {
+MKLDNNDeviceContextThreadLocals::Body::Body()
+    : cur_engine(mkldnn::engine::kind::cpu, 0), cur_stream(cur_engine) {
   cur_mkldnn_session_id = kMKLDNNSessionID_Default;
   cur_input_shape_str = "";
   cur_input_shape_cache_capacity = 1;
   cur_paddle_data_layout = paddle::framework::DataLayout::kNCHW;
+}
+
+// When Thread finish we clear oneDNN cache
+// This is needed when we have one executor used by many threads
+// e.g. test_analyzer_detect. Thread ID is not part of caching key
+// (for naive executor) so we need to clear cache when one thread finish
+// and other is to start inference
+// TODO(jczaja): Ideally it would be good to clear only part of cache
+// related to thread that is to be terminated
+MKLDNNDeviceContextThreadLocals::Body::~Body() {
+  auto cpu_place = paddle::platform::CPUPlace();
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::MKLDNNDeviceContext* dev_ctx =
+      (platform::MKLDNNDeviceContext*)pool.Get(cpu_place);
+  dev_ctx->ResetBlobMap();
 }
 
 void MKLDNNDeviceContextThreadLocals::Body::set_cur_mkldnn_session_id(
@@ -480,6 +523,23 @@ void MKLDNNDeviceContextThreadLocals::Body::set_cur_paddle_data_layout(
 framework::DataLayout
 MKLDNNDeviceContextThreadLocals::Body::get_cur_paddle_data_layout(void) {
   return cur_paddle_data_layout;
+}
+
+void MKLDNNDeviceContextThreadLocals::Body::log_lib_version(void) {
+  if (!said_once) {
+    said_once = true;
+    auto dv = dnnl::version();
+    LOG(INFO) << "oneDNN v" << dv->major << "." << dv->minor << "."
+              << dv->patch;
+  }
+}
+
+const mkldnn::engine& MKLDNNDeviceContextThreadLocals::Body::get_engine(void) {
+  return cur_engine;
+}
+
+mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
+  return cur_stream;
 }
 
 void MKLDNNDeviceContext::ResetBlobMap() {
@@ -564,6 +624,16 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   VLOG(2) << "SetBlob: sid=" << sid << ", add blob=" << name << "\n";
   // lock will be automatically released when out of scope
   return;
+}
+
+unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) {
+  unsigned int num_entries = 0;
+  for (auto const& l3 : *p_blobmap_) {
+    for (auto const& l2 : *(l3.second)) {
+      num_entries += (l2.second)->size();
+    }
+  }
+  return num_entries;
 }
 
 MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(

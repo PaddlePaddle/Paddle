@@ -6,6 +6,8 @@ set(PY_FILES paddle/__init__.py
 
 if(WITH_GPU)
   SET(PACKAGE_NAME "paddlepaddle-gpu")
+elseif(WITH_ROCM)
+  SET(PACKAGE_NAME "paddlepaddle-rocm")
 else()
   SET(PACKAGE_NAME "paddlepaddle")
 endif()
@@ -106,7 +108,7 @@ if(APPLE)
     message(FATAL_ERROR "install_name_tool not found, please check.\n")
   endif()
 endif()
-if(LINUX AND NOT WITH_SW)
+if(LINUX AND NOT WITH_SW AND NOT WITH_ARM)
   find_program(PATCHELF_EXECUTABLE patchelf)
   if(NOT PATCHELF_EXECUTABLE)
     message(FATAL_ERROR "patchelf not found, please install it.\n"

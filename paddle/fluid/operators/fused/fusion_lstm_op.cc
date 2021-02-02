@@ -18,6 +18,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -145,8 +148,16 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType FusionLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
+  framework::LibraryType library = framework::LibraryType::kPlain;
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+#ifdef PADDLE_WITH_MKLDNN
+  if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+  }
+#endif
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
 }
 
 void FusionLSTMOpMaker::Make() {
@@ -235,6 +246,9 @@ void FusionLSTMOpMaker::Make() {
                        "`tanh` by default.")
       .SetDefault("tanh")
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
   AddComment(R"DOC(
 Fusion Long-Short Term Memory (LSTM) Operator.
 This operator fuse the X into LSTM, more details can refer to LSTM op.

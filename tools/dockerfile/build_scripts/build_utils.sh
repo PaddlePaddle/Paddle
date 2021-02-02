@@ -1,4 +1,19 @@
 #!/bin/bash
+
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Helper utilities for build
 
 PYTHON_DOWNLOAD_URL=https://www.python.org/ftp/python
@@ -51,7 +66,7 @@ function do_cpython_build {
     # -Wformat added for https://bugs.python.org/issue17547 on Python 2.6
 
     if [ $(lex_pyver $py_ver) -ge $(lex_pyver 3.6) ]; then
-        wget https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz
+        wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz
         tar -zxf sqlite-autoconf-3250300.tar.gz
         cd sqlite-autoconf-3250300
         ./configure --prefix=/usr/local
@@ -88,8 +103,8 @@ function do_cpython_build {
         ln -s python3.8 ${prefix}/bin/python
     fi
     # NOTE Make libpython shared library visible to python calls below
-    LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/python get-pip.py
-    LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/pip install wheel==0.32.2
+    LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python get-pip.py
+    LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/pip install wheel==0.32.2
     cd /
     ls ${MY_DIR}
     local abi_tag=$(LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/python ${MY_DIR}/python-tag-abi-tag.py)
@@ -115,6 +130,12 @@ function build_cpython {
 
 function build_cpythons {
     for py_ver in $@; do
+        if [ ${py_ver} == "2.7.15" ]; then
+            GET_PIP_URL="https://bootstrap.pypa.io/2.7/get-pip.py"
+        elif [ ${py_ver} == "3.5.1" ]  ;then
+            GET_PIP_URL="https://bootstrap.pypa.io/3.5/get-pip.py"
+        fi
+
         check_var $GET_PIP_URL
         curl -sLO $GET_PIP_URL
         build_cpython $py_ver
@@ -124,9 +145,10 @@ function build_cpythons {
 
 
 function do_openssl_build {
-    ./config no-ssl2 no-shared -fPIC --prefix=/usr/local/ssl > /dev/null
+    ./config -fPIC --prefix=/usr/local/ssl > /dev/null
     make > /dev/null
     make install > /dev/null
+    
 }
 
 
@@ -160,6 +182,9 @@ function do_curl_build {
     LIBS=-ldl ./configure --with-ssl --disable-shared > /dev/null
     make > /dev/null
     make install > /dev/null
+    ln -s /usr/local/ssl/lib/libcrypto.so /usr/lib/libcrypto.so
+    ln -s /usr/local/ssl/lib/libssl.so /usr/lib/libssl.so
+    ln -s /usr/local/ssl/bin/openssl /usr/local/bin/openssl
 }
 
 

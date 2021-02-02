@@ -71,6 +71,9 @@ class TestVisonModels(unittest.TestCase):
     def test_resnet152(self):
         self.models_infer('resnet152')
 
+    def test_vgg16_num_classes(self):
+        vgg16 = models.__dict__['vgg16'](pretrained=False, num_classes=10)
+
     def test_lenet(self):
         input = InputSpec([None, 1, 28, 28], 'float32', 'x')
         lenet = paddle.Model(models.__dict__['LeNet'](), input)

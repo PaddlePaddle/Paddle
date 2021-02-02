@@ -58,7 +58,7 @@ class _ChromeTraceFormatter(object):
         event = {}
         event['ph'] = ph
         event['cat'] = category
-        event['name'] = name
+        event['name'] = name.replace("ParallelExecutor::Run/", "")
         event['pid'] = pid
         event['tid'] = tid
         event['ts'] = timestamp

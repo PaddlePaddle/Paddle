@@ -120,7 +120,7 @@ class MultiHeadAttention(Layer):
             query = paddle.rand((2, 4, 128))
             # self attention mask: [batch_size, num_heads, query_len, query_len]
             attn_mask = paddle.rand((2, 2, 4, 4))
-            multi_head_attn = paddle.MultiHeadAttention(128, 2)
+            multi_head_attn = paddle.nn.MultiHeadAttention(128, 2)
             output = multi_head_attn(query, None, None, attn_mask=attn_mask)  # [2, 4, 128]
     """
 
@@ -157,7 +157,7 @@ class MultiHeadAttention(Layer):
             embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
 
     def _prepare_qkv(self, query, key, value, cache=None):
-        """
+        r"""
         Prapares linear projected queries, keys and values for usage of subsequnt
         multiple parallel attention. If `cache` is not None, using cached results
         to reduce redundant calculations.
@@ -212,7 +212,7 @@ class MultiHeadAttention(Layer):
         return (q, k, v) if cache is None else (q, k, v, cache)
 
     def compute_kv(self, key, value):
-        """
+        r"""
         Applies linear projection on input keys and values, then splits heads
         (reshape and transpose) to get keys and values from different representation
         subspaces. The results are used as key-values pairs for subsequent multiple
@@ -311,8 +311,8 @@ class MultiHeadAttention(Layer):
             # incremental_state with initial value, mainly for usage like UniLM
             return self.Cache(key, value)
 
-    def forward(self, query, key, value, attn_mask=None, cache=None):
-        """
+    def forward(self, query, key=None, value=None, attn_mask=None, cache=None):
+        r"""
         Applies multi-head attention to map queries and a set of key-value pairs
         to outputs.
 
@@ -498,8 +498,8 @@ class TransformerEncoderLayer(Layer):
         self.dropout2 = Dropout(dropout, mode="upscale_in_train")
         self.activation = getattr(F, activation)
 
-    def forward(self, src, src_mask=None):
-        """
+    def forward(self, src, src_mask=None, cache=None):
+        r"""
         Applies a Transformer encoder layer on the input.
 
         Parameters:
@@ -514,16 +514,30 @@ class TransformerEncoderLayer(Layer):
                 have 0 values. The data type should be float32 or float64. It can
                 be None when nothing wanted or needed to be prevented attention to.
                 Default None
+            cache (Tensor, optional): It is an instance of `MultiHeadAttention.Cache`.
+                See `TransformerEncoderLayer.gen_cache` for more details. It is
+                only used for inference and should be None for training. Default
+                None.
 
         Returns:
-            Tensor: The output of Transformer encoder layer. It is a tensor that \
-                has the same shape and data type as `enc_input`.
+            Tensor|tuple: It is a tensor that has the same shape and data type \
+                as `enc_input`, representing the output of Transformer encoder \
+                layer. Or a tuple if `cache` is not None, except for encoder \
+                layer output, the tuple includes the new cache which is same \
+                as input `cache` argument but `incremental_cache` has an \
+                incremental length. See `MultiHeadAttention.gen_cache` and \
+                `MultiHeadAttention.forward` for more details.
         """
         residual = src
         if self.normalize_before:
             src = self.norm1(src)
         # TODO(guosheng): Add cache for encoder for the usage like UniLM
-        src = self.self_attn(src, src, src, src_mask)
+        if cache is None:
+            src = self.self_attn(src, src, src, src_mask)
+        else:
+            src, incremental_cache = self.self_attn(src, src, src, src_mask,
+                                                    cache)
+
         src = residual + self.dropout1(src)
         if not self.normalize_before:
             src = self.norm1(src)
@@ -535,7 +549,28 @@ class TransformerEncoderLayer(Layer):
         src = residual + self.dropout2(src)
         if not self.normalize_before:
             src = self.norm2(src)
-        return src
+        return src if cache is None else (src, incremental_cache)
+
+    def gen_cache(self, src):
+        r"""
+        Generates cache for `forward` usage. The generated cache is an 
+        instance of `MultiHeadAttention.Cache`.
+
+        Parameters:
+            src (Tensor): The input of Transformer encoder. It is a tensor
+                with shape `[batch_size, source_length, d_model]`. The data 
+                type should be float32 or float64.
+
+        Returns:
+            incremental_cache: It is an instance of `MultiHeadAttention.Cache` \
+                produced by `self_attn.gen_cache`, it reserves two tensors 
+                shaped `[batch_size, nhead, 0, d_model // nhead]`. See \
+                `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
+                for more details.
+        """
+        incremental_cache = self.self_attn.gen_cache(
+            src, type=self.self_attn.Cache)
+        return incremental_cache
 
 
 class TransformerEncoder(Layer):
@@ -574,8 +609,8 @@ class TransformerEncoder(Layer):
         self.num_layers = num_layers
         self.norm = norm
 
-    def forward(self, src, src_mask=None):
-        """
+    def forward(self, src, src_mask=None, cache=None):
+        r"""
         Applies a stack of N Transformer encoder layers on inputs. If `norm` is
         provided, also applies layer normalization on the output of last encoder
         layer.
@@ -592,20 +627,55 @@ class TransformerEncoder(Layer):
                 have 0 values. The data type should be float32 or float64. It can
                 be None when nothing wanted or needed to be prevented attention to.
                 Default None
+            cache (list, optional): It is a list, and each element in the list
+                is `incremental_cache` produced by `TransformerEncoderLayer.gen_cache`. 
+                See `TransformerEncoder.gen_cache` for more details. It is only
+                used for inference and should be None for training. Default None.
 
         Returns:
-            Tensor: The output of Transformer encoder. It is a tensor that \
-                has the same shape and data type as `src`.
+            Tensor|tuple: It is a tensor that has the same shape and data type \
+                as `src`, representing the output of Transformer encoder. \
+                Or a tuple if `cache` is not None, except for encoder output, \
+                the tuple includes the new cache which is same as input `cache` \
+                argument but `incremental_cache` in it has an incremental length. \
+                See `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
+                for more details.
         """
         output = src
-
-        for mod in self.layers:
-            output = mod(output, src_mask=src_mask)
+        new_caches = []
+        for i, mod in enumerate(self.layers):
+            if cache is None:
+                output = mod(output, src_mask=src_mask)
+            else:
+                output, new_cache = mod(output,
+                                        src_mask=src_mask,
+                                        cache=cache[i])
+                new_caches.append(new_cache)
 
         if self.norm is not None:
             output = self.norm(output)
 
-        return output
+        return output if cache is None else (output, new_caches)
+
+    def gen_cache(self, src):
+        r"""
+        Generates cache for `forward` usage. The generated cache is a list, and
+        each element in it is `incremental_cache` produced by 
+        `TransformerEncoderLayer.gen_cache`. See `TransformerEncoderLayer.gen_cache`
+        for more details.
+
+        Parameters:
+            src (Tensor): The input of Transformer encoder. It is a tensor
+                with shape `[batch_size, source_length, d_model]`. The data type
+                should be float32 or float64.
+
+        Returns:
+            list: It is a list, and each element in the list is `incremental_cache` 
+            produced by `TransformerEncoderLayer.gen_cache`. See 
+            `TransformerEncoderLayer.gen_cache` for more details.
+        """
+        cache = [layer.gen_cache(src) for layer in self.layers]
+        return cache
 
 
 class TransformerDecoderLayer(Layer):
@@ -643,7 +713,7 @@ class TransformerDecoderLayer(Layer):
             for linear in FFN. Otherwise, the three sub-layers all uses it as
             `weight_attr` to create parameters. Default: None, which means the
             default weight parameter property is used. See usage for details
-            in :ref:`api_fluid_ParamAttr` . 
+            in :ref:`api_paddle_fluid_param_attr_ParamAttr` . 
         bias_attr (ParamAttr|tuple|bool, optional): To specify the bias parameter property.
             If it is a tuple, `bias_attr[0]` would be used as `bias_attr` for
             self attention, `bias_attr[1]` would be used as `bias_attr` for
@@ -725,7 +795,7 @@ class TransformerDecoderLayer(Layer):
         self.activation = getattr(F, activation)
 
     def forward(self, tgt, memory, tgt_mask=None, memory_mask=None, cache=None):
-        """
+        r"""
         Applies a Transformer decoder layer on the input.
 
         Parameters:
@@ -801,7 +871,7 @@ class TransformerDecoderLayer(Layer):
                                                 static_cache))
 
     def gen_cache(self, memory):
-        """
+        r"""
         Generates cache for `forward` usage. The generated cache is a tuple
         composed of an instance of `MultiHeadAttention.Cache` and an instance
         of `MultiHeadAttention.StaticCache`.
@@ -873,7 +943,7 @@ class TransformerDecoder(Layer):
         self.norm = norm
 
     def forward(self, tgt, memory, tgt_mask=None, memory_mask=None, cache=None):
-        """
+        r"""
         Applies a stack of N Transformer decoder layers on inputs. If `norm` is
         provided, also applies layer normalization on the output of last decoder
         layer.
@@ -937,7 +1007,7 @@ class TransformerDecoder(Layer):
         return output if cache is None else (output, new_caches)
 
     def gen_cache(self, memory, do_zip=False):
-        """
+        r"""
         Generates cache for `forward` usage. The generated cache is a list, and
         each element in it is a tuple( :code:`(incremental_cache, static_cache)` )
         produced by `TransformerDecoderLayer.gen_cache`. See `TransformerDecoderLayer.gen_cache`
@@ -1139,7 +1209,7 @@ class Transformer(Layer):
         self.nhead = nhead
 
     def forward(self, src, tgt, src_mask=None, tgt_mask=None, memory_mask=None):
-        """
+        r"""
         Applies a Transformer model on the inputs.
 
         Parameters:
@@ -1199,7 +1269,7 @@ class Transformer(Layer):
                 transformer_paddle = Transformer(
                     d_model, n_head, dim_feedforward=dim_feedforward)
                 mask = transformer_paddle.generate_square_subsequent_mask(length)
-                print(mask.numpy())
+                print(mask)
 
                 # [[  0. -inf -inf -inf -inf]
                 # [  0.   0. -inf -inf -inf]

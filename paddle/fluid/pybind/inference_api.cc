@@ -69,7 +69,8 @@ void BindMkldnnQuantizerConfig(py::module *m);
 #endif
 
 template <typename T>
-PaddleBuf PaddleBufCreate(py::array_t<T> data) {
+PaddleBuf PaddleBufCreate(
+    py::array_t<T, py::array::c_style | py::array::forcecast> data) {
   PaddleBuf buf(data.size() * sizeof(T));
   std::copy_n(static_cast<const T *>(data.data()), data.size(),
               static_cast<T *>(buf.data()));
@@ -77,7 +78,9 @@ PaddleBuf PaddleBufCreate(py::array_t<T> data) {
 }
 
 template <typename T>
-void PaddleBufReset(PaddleBuf &buf, py::array_t<T> data) {  // NOLINT
+void PaddleBufReset(
+    PaddleBuf &buf,                                                    // NOLINT
+    py::array_t<T, py::array::c_style | py::array::forcecast> data) {  // NOLINT
   buf.Resize(data.size() * sizeof(T));
   std::copy_n(static_cast<const T *>(data.data()), data.size(),
               static_cast<T *>(buf.data()));
@@ -85,7 +88,8 @@ void PaddleBufReset(PaddleBuf &buf, py::array_t<T> data) {  // NOLINT
 
 template <typename T>
 PaddleTensor PaddleTensorCreate(
-    py::array_t<T> data, const std::string name = "",
+    py::array_t<T, py::array::c_style | py::array::forcecast> data,
+    const std::string name = "",
     const std::vector<std::vector<size_t>> &lod = {}, bool copy = true) {
   PaddleTensor tensor;
 
@@ -137,8 +141,9 @@ py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
 }
 
 template <typename T>
-void ZeroCopyTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
-                          py::array_t<T> data) {
+void ZeroCopyTensorCreate(
+    ZeroCopyTensor &tensor,  // NOLINT
+    py::array_t<T, py::array::c_style | py::array::forcecast> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
   tensor.Reshape(std::move(shape));
@@ -146,8 +151,9 @@ void ZeroCopyTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
 }
 
 template <typename T>
-void PaddleInferTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
-                             py::array_t<T> data) {
+void PaddleInferTensorCreate(
+    paddle_infer::Tensor &tensor,  // NOLINT
+    py::array_t<T, py::array::c_style | py::array::forcecast> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
   tensor.Reshape(std::move(shape));
@@ -193,6 +199,9 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
     case PaddleDType::UINT8:
       tensor.copy_to_cpu<uint8_t>(static_cast<uint8_t *>(array.mutable_data()));
       break;
+    case PaddleDType::INT8:
+      tensor.copy_to_cpu<int8_t>(static_cast<int8_t *>(array.mutable_data()));
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported data type. Now only supports INT32, INT64, UINT8 and "
@@ -216,6 +225,12 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
       break;
     case PaddleDType::FLOAT32:
       tensor.CopyToCpu<float>(static_cast<float *>(array.mutable_data()));
+      break;
+    case PaddleDType::UINT8:
+      tensor.CopyToCpu(static_cast<uint8_t *>(array.mutable_data()));
+      break;
+    case PaddleDType::INT8:
+      tensor.CopyToCpu(static_cast<int8_t *>(array.mutable_data()));
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -489,6 +504,9 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("disable_trt_plugin_fp16") = false)
       .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
       .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
+      .def("enable_tensorrt_dla", &AnalysisConfig::EnableTensorRtDLA,
+           py::arg("dla_core") = 0)
+      .def("tensorrt_dla_enabled", &AnalysisConfig::tensorrt_dla_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,

@@ -93,6 +93,15 @@ class GatherGradOp : public framework::OperatorWithKernel {
                                        ctx, framework::GradVarName("Out")),
                                    ctx.device_context());
   }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "Axis") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class GatherOpMaker : public framework::OpProtoAndCheckerMaker {

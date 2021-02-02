@@ -471,5 +471,36 @@ class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
             self.func(p)
 
 
+class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 4, 3, 3]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+
+        # condition of depthwise conv: 
+        # use_cudnn == False
+        # groups == filters
+        # num_filters % num_channels == 0
+        y = layers.conv2d(
+            x, shape[1], 1, groups=shape[1], bias_attr=False, use_cudnn=False)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = []
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 if __name__ == "__main__":
     unittest.main()

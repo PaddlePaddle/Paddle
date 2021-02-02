@@ -51,7 +51,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto pool_p = handler.AcquireForwardPrimitive();
 
-    mkldnn::stream astream(dev_ctx.GetEngine());
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if ((ctx.Attr<bool>("is_test") == false) &&
         (ctx.Attr<std::string>("pooling_type") == "max")) {
       // Training
@@ -140,7 +140,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // Get an unique name from "argument" name of "Out" variable
     // This name will be used as key when referring info from device context
     const std::string key = platform::CreateKey(
-        diff_src_tz, pooling_type, ksize, strides, paddings,
+        dev_ctx, diff_src_tz, pooling_type, ksize, strides, paddings,
         memory::data_type::f32, in_x->format(), ctx.InputName("Out"));
 
     platform::PoolingMKLDNNHandler<T> handler(
@@ -154,7 +154,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     auto pool_bwd_p = handler.AcquireBackwardPrimitive();
 
-    mkldnn::stream astream(dev_ctx.GetEngine());
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (pooling_type == "max") {
       // Max - pooling needs Workspace
       auto workspace_memory = handler.AcquireWorkspaceMemory();
@@ -181,7 +181,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(pool2d, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::PoolMKLDNNOpKernel<float>,
                    ops::PoolMKLDNNOpKernel<int8_t>,
-                   ops::PoolMKLDNNOpKernel<uint8_t>);
+                   ops::PoolMKLDNNOpKernel<uint8_t>,
+                   ops::PoolMKLDNNOpKernel<paddle::platform::bfloat16>);
 
 REGISTER_OP_KERNEL(pool2d_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::PoolMKLDNNGradOpKernel<float>);

@@ -36,6 +36,8 @@ TEST(SkipLayerNormFusePass, basic) {
   layers.layer_norm(elementwise_out, scale, bias);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+  graph->Set(kEmbEltwiseLayernormPass, new bool(true));
+  graph->Set(kMultiheadMatmulPass, new bool(true));
   auto pass = PassRegistry::Instance().Get("skip_layernorm_fuse_pass");
   int num_nodes_before = graph->Nodes().size();
   VLOG(3) << DebugString(graph);

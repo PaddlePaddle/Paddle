@@ -14,6 +14,7 @@
 
 # TODO: define the initializers to create a Parameter in neural network
 from ...fluid.initializer import Bilinear  #DEFINE_ALIAS
+from ...fluid.initializer import set_global_initializer  #DEFINE_ALIAS
 
 from . import constant
 from .constant import Constant  #DEFINE_ALIAS
@@ -22,7 +23,7 @@ from . import kaiming
 from .kaiming import KaimingNormal  #DEFINE_ALIAS
 from .kaiming import KaimingUniform  #DEFINE_ALIAS
 
-__all__ = ['Bilinear', ]
+__all__ = ['Bilinear', 'set_global_initializer']
 
 __all__ += constant.__all__
 __all__ += kaiming.__all__

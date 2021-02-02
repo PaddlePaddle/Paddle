@@ -109,9 +109,13 @@ class MulPrimitiveFactory {
 
     auto reorder = mkldnn::reorder(reorder_pd);
 
-    mkldnn::stream astream(engine_);
-    reorder.execute(astream, src_mem, dst_mem);
-    astream.wait();
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    {
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+      reorder.execute(astream, src_mem, dst_mem);
+      astream.wait();
+    }
 
     return dst_mem;
   }
@@ -180,7 +184,7 @@ class MulPrimitiveFactory {
   }
 
   void Execute() {
-    mkldnn::stream astream(engine_);
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     (*mul_).execute(astream, {{MKLDNN_ARG_SRC, *x_input_},
                               {MKLDNN_ARG_WEIGHTS, *y_input_},
                               {MKLDNN_ARG_DST, *output_}});
@@ -266,9 +270,13 @@ class MulPrimitiveFactory {
 
     auto reorder = mkldnn::reorder(src_mem, dst_mem);
 
-    mkldnn::stream astream(engine_);
-    reorder.execute(astream, src_mem, dst_mem);
-    astream.wait();
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    {
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+      reorder.execute(astream, src_mem, dst_mem);
+      astream.wait();
+    }
 
     return dst_mem;
   }
@@ -296,9 +304,11 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const MKLDNNDeviceContext &dev_ctx, const ExecutionContext &ctx,
     const Tensor *input_x, const Tensor *input_y,
     const mkldnn::engine &mkldnn_engine) {
-  const std::string key = platform::CreateKey(
-      input_x->type(), framework::vectorize(input_x->dims()), input_y->type(),
-      framework::vectorize(input_y->dims()), ctx.OutputName("Out"));
+  std::string key = platform::CreateKey(
+      dev_ctx, input_x->type(), framework::vectorize(input_x->dims()),
+      input_y->type(), framework::vectorize(input_y->dims()),
+      ctx.OutputName("Out"));
+  key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
   auto prim_creator = std::static_pointer_cast<MulPrimitiveFactory<XT, YT, OT>>(
       dev_ctx.GetBlob(key));
@@ -342,8 +352,9 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL Mul must use CPUPlace"));
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    const auto &mkldnn_engine = dev_ctx.GetEngine();
+    auto &mkldnn_engine = dev_ctx.GetEngine();
 
     const Tensor *x = ctx.Input<Tensor>("X");
     const Tensor *y = ctx.Input<Tensor>("Y");

@@ -9,12 +9,18 @@ endif()
 
 cc_library(malloc SRCS malloc.cc DEPS
     place enforce allocator_facade profiler ${MKLDNN_CTX_DEPS})
-cc_library(memcpy SRCS memcpy.cc DEPS place)
+cc_library(memcpy SRCS memcpy.cc DEPS place device_context)
 
 cc_library(memory DEPS malloc memcpy)
 
 if (WITH_GPU)
     nv_test(malloc_test
+            SRCS malloc_test.cu
+            DEPS device_context malloc)
+endif()
+
+if (WITH_ROCM)
+    hip_test(malloc_test
             SRCS malloc_test.cu
             DEPS device_context malloc)
 endif()

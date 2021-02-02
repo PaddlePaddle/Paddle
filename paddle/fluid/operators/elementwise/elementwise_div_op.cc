@@ -15,7 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 
 namespace paddle {
 namespace operators {
@@ -130,13 +133,21 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex64>,
+    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_div_grad,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex64>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex128>);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_div_grad_grad,
@@ -147,4 +158,17 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>);
+                                        int64_t>,
+    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex64>,
+    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex128>);
+
+REGISTER_OP_VERSION(elementwise_div)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_div for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_div.",
+            1.0f));

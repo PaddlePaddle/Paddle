@@ -172,9 +172,8 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto dst_tz = paddle::framework::vectorize<int64_t>(output->dims());
 
     // Get unique name for storing MKLDNN primitives
-
     const std::string key =
-        platform::CreateKey(src_tz, ctx.OutputName("Output"));
+        platform::CreateKey(dev_ctx, src_tz, ctx.OutputName("Output"));
 
     std::vector<mkldnn::primitive> pipeline;
 
@@ -243,7 +242,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto conv_p = handler.AcquireConvolution();
 
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (bias) {
       const T* bias_data = bias->data<T>();
       auto user_bias_md = platform::MKLDNNMemDesc(

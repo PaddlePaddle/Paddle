@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_elementwise_add_mkldnn_fuse_pass.h"
+
 #include <functional>
 #include <list>
 #include <map>
 #include <memory>
 #include <tuple>
+
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -345,5 +347,5 @@ REGISTER_PASS(conv_elementwise_add_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_elementwise_add_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
-            .EQ("elementwise_add", 0));
+            .LE("conv2d", 1)
+            .LE("elementwise_add", 1));
