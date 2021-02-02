@@ -25,12 +25,6 @@ class TestDistMnistAsync2x2(TestFleetBase):
         self._mode = "async"
         self._reader = "pyreader"
 
-    def build_optimizer(self, avg_cost, strategy):
-        optimizer = fluid.optimizer.AdagradOptimizer(
-            learning_rate=LEARNING_RATE)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-        optimizer.minimize(avg_cost)
-
     def check_with_place(self,
                          model_file,
                          delta=1e-3,
@@ -42,7 +36,8 @@ class TestDistMnistAsync2x2(TestFleetBase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
-            "CPU_NUM": "2"
+            "CPU_NUM": "2",
+            "Optimizer": "adagrad"
         }
 
         required_envs.update(need_envs)
