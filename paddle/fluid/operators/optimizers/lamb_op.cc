@@ -152,17 +152,6 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Moment2", "(Tensor) Input second moment.");
     AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator.");
     AddInput("Beta2Pow", "(Tensor) Input beta2 power accumulator.");
-
-    AddInput("Beta1Tensor",
-             "(Tensor<float32>, optional) If provided, Adam will use this "
-             "as beta1, this has a higher priority than attr(beta1), the "
-             "shape of this tensor MUST BE [1].")
-        .AsDispensable();
-    AddInput("Beta2Tensor",
-             "(Tensor<float32>, optional) If provided, Adam will use this "
-             "as beta2, this has a higher priority than attr(beta2), the "
-             "shape of this tensor MUST BE [1].")
-        .AsDispensable();
     AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter.");
