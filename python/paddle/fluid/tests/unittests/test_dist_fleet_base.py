@@ -112,8 +112,6 @@ class FleetDistRunnerBase(object):
 
     def build_optimizer(self, avg_cost, strategy):
         use_grad_clip = int(os.getenv('GRAD_CLIP', 0))
-        optimizer_name = os.getenv("Optimizer", "sgd")
-
         if use_grad_clip:
             # 1: clip_by_value; 2: clip_by_norm; 3:clip_by_global_norm
             if use_grad_clip == 1:
@@ -127,11 +125,10 @@ class FleetDistRunnerBase(object):
                     clip=fluid.clip.GradientClipByGlobalNorm(2.0))
 
         use_decay = int(os.getenv("USE_DECAY", "0"))
-        lr = LEARNING_RATE
         if use_decay:
             scheduler = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=LEARNING_RATE, gamma=0.999, verbose=True)
-            lr = scheduler
+            optimizer = fluid.optimizer.SGD(scheduler)
             """
             # learning rate decay method before 2.0
             optimizer = fluid.optimizer.SGD(
@@ -141,13 +138,8 @@ class FleetDistRunnerBase(object):
                     decay_rate=0.969,
                     staircase=True)) 
             """
-
-        if optimizer_name == "sgd":
-            optimizer = fluid.optimizer.SGD(learning_rate=lr)
-        elif optimizer_name == "adam":
-            optimizer = fluid.optimizer.Adam(learning_rate=lr)
         else:
-            optimizer = fluid.optimizer.AdagradOptimizer(learning_rate=lr)
+            optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
