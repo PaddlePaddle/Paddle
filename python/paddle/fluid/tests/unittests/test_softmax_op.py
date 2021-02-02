@@ -139,17 +139,26 @@ class TestSoftmaxOp6(TestSoftmaxOp):
         return 3
 
 
+def rocm_plugin(self):
+    if core.is_compiled_with_rocm():
+        self.dtype = np.float32
+    else:
+        self.dtype = np.float64
+
+
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp(TestSoftmaxOp):
     def init_kernel_type(self):
         self.use_cudnn = True
+        rocm_plugin(self)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp2(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5]
 
 
@@ -157,6 +166,7 @@ class TestSoftmaxCUDNNOp2(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp3(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -167,6 +177,7 @@ class TestSoftmaxCUDNNOp3(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp4(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -177,6 +188,7 @@ class TestSoftmaxCUDNNOp4(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp5(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -187,6 +199,7 @@ class TestSoftmaxCUDNNOp5(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp6(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -197,6 +210,7 @@ class TestSoftmaxCUDNNOp6(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp7(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5, 6]
 
 
@@ -204,6 +218,7 @@ class TestSoftmaxCUDNNOp7(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp8(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -214,6 +229,7 @@ class TestSoftmaxCUDNNOp8(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp9(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -224,6 +240,7 @@ class TestSoftmaxCUDNNOp9(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp10(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -234,6 +251,7 @@ class TestSoftmaxCUDNNOp10(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp11(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -244,6 +262,7 @@ class TestSoftmaxCUDNNOp11(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp12(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
+        rocm_plugin(self)
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -337,9 +356,11 @@ class TestSoftmaxAPI(unittest.TestCase):
         out_ref = ref_softmax(self.x_np, axis=0, dtype=None)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
-
-        out = self.softmax(x, dtype=np.float64)
-        out_ref = ref_softmax(self.x_np, axis=-1, dtype=np.float64)
+        platform_init_dtype = np.float64
+        if core.is_compiled_with_rocm():
+            platform_init_dtype = np.float32
+        out = self.softmax(x, dtype=platform_init_dtype)
+        out_ref = ref_softmax(self.x_np, axis=-1, dtype=platform_init_dtype)
         self.assertEqual(np.allclose(out_ref, out.numpy()), True)
 
         paddle.enable_static()
