@@ -21,6 +21,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from paddle.fluid import core
 from paddle.fluid.framework import switch_main_program
 from simple_nets import simple_fc_net, init_data
 from paddle.static import Program, program_guard
@@ -102,8 +103,8 @@ class TestPrintOpError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.static.Print, x2)
 
 
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "paddle.core is not compiled with CUDA")
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestPrintOpGPU(TestPrintOpCPU):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
