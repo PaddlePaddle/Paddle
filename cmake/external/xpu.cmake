@@ -79,3 +79,9 @@ if(NOT XPU_SDK_ROOT)
 else()
   ADD_CUSTOM_TARGET(extern_xpu DEPENDS xpulib)
 endif()
+
+# Ensure that xpu/api.h can be included without dependency errors.
+file(GENERATE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/.xpu_headers_dummy.cc CONTENT "")
+add_library(xpu_headers_dummy STATIC ${CMAKE_CURRENT_BINARY_DIR}/.xpu_headers_dummy.cc)
+add_dependencies(xpu_headers_dummy extern_xpu)
+link_libraries(xpu_headers_dummy)
