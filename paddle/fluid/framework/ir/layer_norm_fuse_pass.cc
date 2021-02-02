@@ -37,7 +37,7 @@ void validateReduceOpAttrs(const Node* node, const std::string& name) {
     auto dims = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
     PADDLE_ENFORCE_EQ(dims.size(), 1, platform::errors::PreconditionNotMet(
                                           "The LayerNorm fusion ", name,
-                                          " reduction must happen over only "
+                                          " reduction must happen only over "
                                           "single dimension."));
     PADDLE_ENFORCE_EQ(dims.front(), -1, platform::errors::PreconditionNotMet(
                                             "The LayerNorm fusion ", name,
