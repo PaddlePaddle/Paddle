@@ -140,7 +140,7 @@ class TestSoftmaxOp6(TestSoftmaxOp):
 
 
 #TODO(joejiong): temporary helper function,
-#it will be removed after rocm platform fix double data type related functionality.
+#it will be removed after rocm platform fix double type related functionality.
 def rocm_plugin(self):
     if core.is_compiled_with_rocm():
         self.dtype = np.float32
