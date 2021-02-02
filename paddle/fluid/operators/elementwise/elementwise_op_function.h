@@ -96,10 +96,45 @@ inline void get_mid_dims(const framework::DDim &x_dims,
   }
 }
 
-inline void get_anchors(const framework::DDim &x_dims,
-                        const framework::DDim &y_dims, const int axis, int *pre,
-                        int *n, int *post, int *m) {
-  // TODO(limingshu : arr changeing mechanism)
+inline void get_partial_value(const framework::DDim &x_dims,
+                              const framework::DDim &y_dims, int *pre, int *n,
+                              int *post, int *m, bool is_xsize_larger) {
+  int i = 0;
+  int anchor_n = 0;
+  int anchor_m = 0;
+  int anchor_post = 0;
+  *pre = 1;
+  *n = 1;
+  *post = 1;
+  *m = 1;
+  auto tmp_dims = (is_xsize_larger) ? x_dims : y_dims;
+
+  for (i = 0; i < ; ++i) {
+    if (x_dims[i] == y_dims[i]) {
+      (*pre) *= tmp_dims[i];
+    } else {
+      anchor_n = i;
+      break;
+    }
+  }
+  for (i; i < tmp_dims.size(); ++i) {
+      if ((x_dims[i] == y_dims[i]) {
+      anchor_post = i;
+      break;
+      }
+  }
+  for (i; i < tmp_dims.size(); ++i) {
+      if ((x_dims[i] != y_dims[i]) {
+      anchor_m = i;
+      break;
+    }
+  }
+  for (int j = anchor_n; j < anchor_post; ++j) {
+    (*n) *= tmp_dims[j];
+  }
+  for (int j = anchor_m; j < tmp_dims.size(); ++j) {
+    (*m) *= tmp_dims[j];
+  }
 }
 
 inline int GetElementwiseIndex(const int *x_dims_array, const int max_dim,
@@ -239,6 +274,21 @@ void ComputeElementwiseCUDA(const framework::Tensor *x,
 }
 
 template <typename Functor, typename T, typename OutType = T>
+__global__ void CommonForwardBroadcastCUDAKernel2(const T *x_data,
+                                                  const T *y_data,
+                                                  OutType *out_data, int pre,
+                                                  int n, int post, int m,
+                                                  Functor func) {
+  int large_arr_idx = threadIdx.x + blockDim.x * blockIdx.x;
+  int small_arr_idx =
+      (large_arr_idx / n / post / m) * post + large_arr_idx / m % post;
+  if (large_arr_idx / n / post / m < pre) {
+    out_data[large_arr_idx] =
+        func(x_data[large_arr_idx], y_data[small_arr_idx]);
+  }
+}
+
+template <typename Functor, typename T, typename OutType = T>
 __global__ void CommonForwardBroadcastCUDAKernel(
     const int *x_strides_array, const int *y_strides_array,
     const int *out_dims_array, const T *x, const T *y, OutType *out,
@@ -261,21 +311,6 @@ __global__ void CommonForwardBroadcastCUDAKernel(
     } else {
       out[out_index] = func(y[y_index], x[x_index]);
     }
-  }
-}
-
-template <typename Functor, typename T, typename OutType>
-__global__ void CommonForwardBroadcastCUDAKernel2(const T *x_data,
-                                                  const T *y_data,
-                                                  OutType *out_data, int pre,
-                                                  int n, int post, int m,
-                                                  Functor func) {
-  int large_arr_idx = threadIdx.x + blockDim.x * blockIdx.x;
-  int small_arr_idx =
-      (large_arr_idx / n / post / m) * post + large_arr_idx / m % post;
-  if (large_arr_idx / n / post / m < pre) {
-    out_data[large_arr_idx] =
-        func(x_data[large_arr_idx], y_data[small_arr_idx]);
   }
 }
 
@@ -1960,6 +1995,8 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
   // case 1: x=[2,3,1,5], y=[2,1,4,1]
   // case 2: x=[2,3,4], y=[1,1,4]
   if (is_run_common_broadcast == 1) {
+    int m = 1;
+    get_partial_value(x_dims, y_dims, &pre, &n, &post, &m, is_xsize_larger);
     CommonElementwiseBroadcastForward<Functor, DeviceContext, T, OutType>(
         ctx, x, y, z, x_dims, y_dims, func, axis, is_xsize_larger);
     return;
