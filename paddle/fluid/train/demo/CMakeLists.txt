@@ -69,7 +69,7 @@ endif(APPLE)
 target_link_libraries(demo_trainer
         ${MACOS_LD_FLAGS}
         ${ARCHIVE_START}
-        ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.so
+        ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_inference.so
         ${ARCHIVE_END}
         ${MATH_LIB}
         ${MKLDNN_LIB}
