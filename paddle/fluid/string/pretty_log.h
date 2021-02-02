@@ -17,6 +17,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/string/printf.h"
 

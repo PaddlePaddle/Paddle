@@ -14,6 +14,8 @@
 
 #include <thread>  // NOLINT
 
+#include "paddle/fluid/imperative/nccl_context.h"
+
 #include "gtest/gtest.h"
 
 namespace imperative = paddle::imperative;

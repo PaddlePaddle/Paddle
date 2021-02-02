@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gtest/gtest.h>
+
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
 #ifdef PADDLE_WITH_CUDA

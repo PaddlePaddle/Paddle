@@ -41,6 +41,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
+#include "paddle/fluid/distributed/service/ps_client.h"
+
 namespace paddle {
 namespace distributed {
 class PSClient;
