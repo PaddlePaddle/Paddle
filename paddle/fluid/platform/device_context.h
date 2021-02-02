@@ -19,7 +19,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/memory/malloc.h"
-#include "vector_types.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"

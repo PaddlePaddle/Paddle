@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
+#include <algorithm>
 
 #include "paddle/fluid/platform/enforce.h"
 

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
 
+#include <algorithm>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 
