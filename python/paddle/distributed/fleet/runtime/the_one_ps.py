@@ -76,14 +76,12 @@ class CommonAccessor:
                                  ("Moment2", None), ("Beta1Pow", 1),
                                  ("Beta2Pow", 1), ("LearningRate", 1)]
         opt_input_map["sum"] = [("Param", None)]
-        #  opt_input_map["adagrad"] = [("Param", None), ("Moment", None), ("LearningRate", 1)]
 
         opt_attr_map = {}
         opt_attr_map["sgd"] = []
         opt_attr_map["sum"] = []
         opt_attr_map["adam"] = [("beta1", "f"), ("beta2", "f"),
                                 ("epsilon", "f")]
-        #  opt_attr_map["adagrad"] = [("epsilon", "f")]
 
         opt_init_map = {}
         opt_init_map["gaussian_random"] = ["seed", "mean", "std"]
@@ -165,7 +163,6 @@ class CommonAccessor:
                 else:
                     param_varnames.append((name, None))
             attr_varnames = []
-            print(param_varnames)
             self.accessor_class = "general_optimizer"
 
         for (formal_name, shape) in param_varnames:
@@ -684,7 +681,6 @@ class TheOnePSRuntime(RuntimeBase):
                 tensor.startup_program_id = startup_program_id
                 tensor.feed_var_name = optimize_info["feed_var_name"]
                 tensor.fetch_var_name = optimize_info["fetch_var_name"]
-                #  tensor.tensor_table_class = optimize_info["tensor_table_class"]
 
             for idx, (name, ctx) in enumerate(send_ctx.items()):
                 table = Table()
