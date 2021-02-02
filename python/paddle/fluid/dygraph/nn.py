@@ -31,7 +31,6 @@ from ..data_feeder import check_variable_and_dtype, check_type
 import numpy as np
 import numbers
 import logging
-import os
 import paddle.utils.deprecated as deprecated
 
 __all__ = [
@@ -1311,8 +1310,10 @@ class BatchNorm(layers.Layer):
 
         self._has_reserve_space = False
         if data_layout == 'NHWC':
-            flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
-            if flag is not None and flag.lower() in ['true', '1']:
+            flag = paddle.fluid.get_flags(
+                'FLAGS_cudnn_batchnorm_spatial_persistent')
+            flag = flag['FLAGS_cudnn_batchnorm_spatial_persistent']
+            if flag:
                 self._has_reserve_space = True
 
         self._in_place = in_place
