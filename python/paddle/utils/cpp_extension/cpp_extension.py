@@ -212,7 +212,6 @@ class BuildExtension(build_ext, object):
                             old_obj = objects[i]
                             objects[i] = old_obj[:-1] + 'cu.o'
                     # if user set build_directory, output objects there.
-                    print("build_directory:", build_directory)
                     if build_directory is not None:
                         objects = [
                             os.path.join(build_directory, os.path.basename(obj))
@@ -220,7 +219,6 @@ class BuildExtension(build_ext, object):
                         ]
                     # ensure to use abspath
                     objects = [os.path.abspath(obj) for obj in objects]
-                    print(objects)
                 finally:
                     self.compiler.object_filenames = origina_func
 

@@ -325,7 +325,7 @@ def get_build_directory():
             format(root_extensions_directory))
 
     if not os.path.exists(root_extensions_directory):
-        os.makedirs(root_extensions_directory, exist_ok=True)
+        os.makedirs(root_extensions_directory)
 
     return root_extensions_directory
 
