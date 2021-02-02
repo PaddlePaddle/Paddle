@@ -339,7 +339,7 @@ void RecvBroadCastCommID(int server_fd, std::string endpoint,
 INSTANT_TEMPLATE(ncclUniqueId)
 #endif
 #ifdef PADDLE_WITH_XPU_BKCL
-INSTANT_TEMPLATE(bkclUniqueId)
+INSTANT_TEMPLATE(BKCLUniqueId)
 #endif
 }  // namespace platform
 }  // namespace paddle
