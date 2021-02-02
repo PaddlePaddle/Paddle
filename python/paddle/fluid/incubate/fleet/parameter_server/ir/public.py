@@ -1156,8 +1156,6 @@ def _get_optimize_ops(_program):
 def _get_optimize_program(main_program, compiled_config, inner_opt):
     _main = fluid.framework.Program()
     _startup = fluid.framework.Program()
-    feed_var = []
-    fetch_var = []
 
     global_block = main_program.global_block()
     params = compiled_config.origin_merged_dense_pairs + compiled_config.origin_merged_sparse_pairs
@@ -1171,9 +1169,6 @@ def _get_optimize_program(main_program, compiled_config, inner_opt):
         grad = paddle.static.data(
             name='Grad', shape=[None, None], dtype='float32')
         param.optimize_attr = {"learning_rate": 1.0}
-        feed_var.append(param.name)
-        feed_var.append(grad.name)
-        fetch_var.append(param.name)
         param_and_grad = (param, grad)
 
         keys = inner_opt._accumulators.keys()
@@ -1184,23 +1179,12 @@ def _get_optimize_program(main_program, compiled_config, inner_opt):
                 type=var.type,
                 dtype=var.dtype,
                 shape=param.shape)
-            feed_var.append(var.name)
-            fetch_var.append(var.name)
             inner_opt._accumulators[key][param.name] = var
 
         with _main._optimized_guard(param_and_grad), paddle.static.name_scope(
                 "optimizer"):
-            # if isinstance(inner_opt, paddle.incubate.optimizer.LookAhead):
-            #     var = _main.global_block().create_var(
-            #         name=inner_opt._global_step_var.name,
-            #         type=inner_opt._global_step_var.type,
-            #         dtype=inner_opt._global_step_var.dtype,
-            #         shape=inner_opt._global_step_var.shape)
-            #     inner_opt._global_step_var = var
-            #     feed_var.append(var.name)
             inner_opt._create_global_learning_rate()
             global_lr = inner_opt._global_learning_rate()
-            feed_var.append(global_lr.name)
             optimize_op = inner_opt._append_optimize_op(_main.global_block(),
                                                         param_and_grad)
 
@@ -1212,13 +1196,12 @@ def _get_optimize_program(main_program, compiled_config, inner_opt):
                         _startup.global_block()._rename_var(origin_varname,
                                                             input_name)
 
-    return _main, _startup, feed_var, fetch_var
+    return _main, _startup
 
 
 def _add_optimize_table_pass(main_program, compiled_config, inner_opt):
-
-    _main, _startup, feed_var_name, fetch_var_name = _get_optimize_program(
-        main_program, compiled_config, inner_opt)
+    _main, _startup = _get_optimize_program(main_program, compiled_config,
+                                            inner_opt)
 
     compiled_config.optimize_info = {
         "feed_var_name": "feed_var_name",
@@ -1227,11 +1210,6 @@ def _add_optimize_table_pass(main_program, compiled_config, inner_opt):
         "startup_program": _startup,
         "class": "OptimizeTable"
     }
-
-    print(str(_main))
-    print(str(_startup))
-    print(feed_var_name)
-    print(fetch_var_name)
 
 
 def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
