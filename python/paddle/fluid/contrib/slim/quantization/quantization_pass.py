@@ -74,6 +74,11 @@ _out_scale_op_list = [
     "bilinear_interp",
     "nearest_interp",
     "trilinear_interp",
+    "flatten",
+    "flatten2",
+    "transpose",
+    "pad2d",
+    "reshape",
 ]
 
 # list op real input and output names, to avoid processing input such as AxisTensor.
@@ -121,6 +126,9 @@ _op_real_in_out_name = {
     "hard_sigmoid": [["X"], ["Out"]],
     "gru": [["Input", "Weight"], ["Hidden"]],
     "lstm": [["Input", "Weight"], ["Hidden"]],
+    "pad2d": [["X"], ["Out"]],
+    "flatten": [["X"], ["Out"]],
+    "flatten2": [["X"], ["Out"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
@@ -1691,7 +1699,8 @@ class AddQuantDequantPass(object):
         "less_than", "mean", "not_equal", "reshape", "reshape2",
         "bilinear_interp", "nearest_interp", "trilinear_interp", "slice",
         "squeeze", "elementwise_sub", "mul", "matmul", "relu", "relu6",
-        "leaky_relu", "tanh", "swish"
+        "leaky_relu", "tanh", "swish", "scale", "transpose", "transpose2",
+        "sigmoid", "pad2d", "flatten", "flatten2", "batch_norm"
     ]
 
     # To be compatible with PaddleSlim, not remove _activation_type for now

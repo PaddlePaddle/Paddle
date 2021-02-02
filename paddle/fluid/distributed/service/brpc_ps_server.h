@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <vector>
+#include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/server.h"
 
 namespace paddle {
@@ -43,7 +44,6 @@ class BrpcPsServer : public PSServer {
 
  private:
   virtual int32_t initialize();
-
   mutable std::mutex mutex_;
   std::condition_variable cv_;
   bool stoped_ = false;

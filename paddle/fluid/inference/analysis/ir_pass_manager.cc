@@ -143,6 +143,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->optim_input_shape()));
       pass->Set("trt_disabled_ops", new std::vector<std::string>(
                                         argument->tensorrt_disabled_ops()));
+      pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
+      pass->Set("trt_dla_core", new int(argument->tensorrt_dla_core()));
       // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
       // not
       // run fp16.

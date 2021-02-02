@@ -154,7 +154,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     auto resampling_prim = handler.AcquireForwardPrimitive();
     const std::unordered_map<int, dnnl::memory> args = {
         {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     resampling_prim->execute(astream, args);
     astream.wait();
 

@@ -35,7 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
@@ -111,7 +111,7 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
 
 bool CPUAllocator::UseGpu() const { return false; }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 void* GPUAllocator::Alloc(size_t* index, size_t size) {
   // CUDA documentation doesn't explain if cudaMalloc returns nullptr
@@ -121,7 +121,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
   void* p;
   auto result = platform::RecordedCudaMalloc(&p, size, gpu_id_);
 
-  if (result == cudaSuccess) {
+  if (result == gpuSuccess) {
     *index = 0;
     gpu_alloc_size_ += size;
     return p;
@@ -193,10 +193,14 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   }
 
   void* p;
-  // PINNED memory is visible to all CUDA contexts.
+// PINNED memory is visible to all CUDA contexts.
+#ifdef PADDLE_WITH_HIP
+  hipError_t result = hipHostMalloc(&p, size);
+#else
   cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
+#endif
 
-  if (result == cudaSuccess) {
+  if (result == gpuSuccess) {
     *index = 1;  // PINNED memory
     cuda_pinnd_alloc_size_ += size;
     return p;
@@ -209,7 +213,7 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 }
 
 void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
-  cudaError_t err;
+  gpuError_t err;
   PADDLE_ENFORCE_EQ(index, 1, platform::errors::InvalidArgument(
                                   "The index should be 1, but got %d", index));
 
@@ -219,6 +223,15 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
                         "allocated cuda pinned memory (%d)",
                         size, cuda_pinnd_alloc_size_));
   cuda_pinnd_alloc_size_ -= size;
+#ifdef PADDLE_WITH_HIP
+  err = hipHostFree(p);
+  if (err != hipErrorDeinitialized) {
+    PADDLE_ENFORCE_EQ(
+        err, hipSuccess,
+        platform::errors::Fatal(
+            "hipFreeHost failed in GPUPinnedAllocator, error code is %d", err));
+  }
+#else
   err = cudaFreeHost(p);
 
   // Purposefully allow cudaErrorCudartUnloading, because
@@ -233,6 +246,7 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
             "cudaFreeHost failed in GPUPinnedAllocator, error code is %d",
             err));
   }
+#endif
 }
 
 bool CUDAPinnedAllocator::UseGpu() const { return false; }
