@@ -19,12 +19,12 @@ import numpy as np
 from paddle.utils.cpp_extension import load
 from utils import paddle_includes, extra_compile_args
 
-# Compile and load custom op Just-In-Time, add paddle_includes, extra_compile_args for Coverage CI
+# Compile and load custom op Just-In-Time.
 relu2 = load(
     name='relu2',
     sources=['relu_op.cc', 'relu_op.cu'],
-    extra_include_paths=paddle_includes,
-    extra_cflags=extra_compile_args)
+    extra_include_paths=paddle_includes,  # add for Coverage CI
+    extra_cflags=extra_compile_args)  # add for Coverage CI
 
 
 class TestJITLoad(unittest.TestCase):
