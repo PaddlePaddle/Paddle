@@ -33,6 +33,7 @@ struct FeatureValue {
   float lr_g2sum;
   int mf_size;
   float mf[MF_DIM + 1];
+  uint64_t cpu_ptr;
 
   friend std::ostream& operator<<(std::ostream& out, FeatureValue& val) {
     out << "show: " << val.show << " clk: " << val.clk << " slot: " << val.slot

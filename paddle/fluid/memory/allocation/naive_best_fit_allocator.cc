@@ -21,7 +21,10 @@
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
-#ifdef PADDLE_WITH_CUDA
+
+#include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/string/split.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -211,7 +214,7 @@ size_t Used<platform::XPUPlace>(const platform::XPUPlace &place) {
 #endif
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class GPUBuddyAllocatorList {
  private:
   GPUBuddyAllocatorList() : devices_(platform::GetSelectedDevices()) {
@@ -278,7 +281,7 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
 
 template <>
 size_t Used<platform::CUDAPlace>(const platform::CUDAPlace &place) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP)
   return GetGPUBuddyAllocator(place.device)->Used();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -289,7 +292,7 @@ size_t Used<platform::CUDAPlace>(const platform::CUDAPlace &place) {
 template <>
 void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
                                  size_t size) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto *buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto *ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
@@ -306,7 +309,11 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
         string::HumanReadableSize(Used<platform::CUDAPlace>(place))));
   } else {
     if (FLAGS_init_allocated_mem) {
+#ifdef PADDLE_WITH_HIP
+      hipMemset(ptr, 0xEF, size);
+#else
       cudaMemset(ptr, 0xEF, size);
+#endif
     }
   }
   return ptr;
@@ -319,7 +326,7 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
 template <>
 void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
                                size_t size) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   GetGPUBuddyAllocator(place.device)->Free(p);
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -329,7 +336,7 @@ void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
 
 template <>
 uint64_t Release<platform::CUDAPlace>(const platform::CUDAPlace &place) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return GetGPUBuddyAllocator(place.device)->Release();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -337,7 +344,7 @@ uint64_t Release<platform::CUDAPlace>(const platform::CUDAPlace &place) {
 #endif
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 BuddyAllocator *GetCUDAPinnedBuddyAllocator() {
   static std::once_flag init_flag;
   static BuddyAllocator *ba = nullptr;
@@ -355,7 +362,7 @@ BuddyAllocator *GetCUDAPinnedBuddyAllocator() {
 
 template <>
 size_t Used<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return GetCUDAPinnedBuddyAllocator()->Used();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -366,7 +373,7 @@ size_t Used<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place) {
 template <>
 void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
                                        size_t size) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto *buddy_allocator = GetCUDAPinnedBuddyAllocator();
   void *ptr = buddy_allocator->Alloc(size);
 
@@ -387,7 +394,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
 template <>
 void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
                                      void *p, size_t size) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   GetCUDAPinnedBuddyAllocator()->Free(p);
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -398,7 +405,7 @@ void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
 template <>
 uint64_t Release<platform::CUDAPinnedPlace>(
     const platform::CUDAPinnedPlace &place) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return GetCUDAPinnedBuddyAllocator()->Release();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -444,7 +451,7 @@ size_t Usage::operator()(const platform::CPUPlace &cpu) const {
 }
 
 size_t Usage::operator()(const platform::CUDAPlace &gpu) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return Used(gpu);
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -453,7 +460,7 @@ size_t Usage::operator()(const platform::CUDAPlace &gpu) const {
 }
 
 size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return Used(cuda_pinned);
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(

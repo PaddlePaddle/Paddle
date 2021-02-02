@@ -16,7 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
-#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 
 #ifdef PADDLE_WITH_PSLIB
 
@@ -35,7 +35,7 @@ class HeterPs : public HeterPsBase {
                            size_t len) override;
   virtual void build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
                         size_t len, size_t chunk_size, int stream_num) override;
-  virtual void dump() override;
+  virtual void end_pass() override;
   virtual int get_index_by_devid(int devid) override;
   virtual void show_one_table(int gpu_num) override;
   virtual void push_sparse(int num, FeatureKey* d_keys,
