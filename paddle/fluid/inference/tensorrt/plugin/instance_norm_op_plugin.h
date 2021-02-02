@@ -65,6 +65,10 @@ class InstanceNormPlugin : public PluginTensorRT {
                           "The instanceNorm's scale and bias should be the "
                           "same size. Got scale size = %d, but bias size = %d",
                           scale.size(), bias.size()));
+    platform::dynload::cudnnCreate(&handle_);
+    platform::dynload::cudnnCreateTensorDescriptor(&x_desc_);
+    platform::dynload::cudnnCreateTensorDescriptor(&y_desc_);
+    platform::dynload::cudnnCreateTensorDescriptor(&b_desc_);
   }
 
   // It was used for tensorrt deserialization.
@@ -74,9 +78,19 @@ class InstanceNormPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &eps_);
     DeserializeValue(&serialData, &serialLength, &scale_);
     DeserializeValue(&serialData, &serialLength, &bias_);
+
+    platform::dynload::cudnnCreate(&handle_);
+    platform::dynload::cudnnCreateTensorDescriptor(&x_desc_);
+    platform::dynload::cudnnCreateTensorDescriptor(&y_desc_);
+    platform::dynload::cudnnCreateTensorDescriptor(&b_desc_);
   }
 
-  ~InstanceNormPlugin() {}
+  ~InstanceNormPlugin() {
+    platform::dynload::cudnnDestroy(handle_);
+    platform::dynload::cudnnDestroyTensorDescriptor(x_desc_);
+    platform::dynload::cudnnDestroyTensorDescriptor(y_desc_);
+    platform::dynload::cudnnDestroyTensorDescriptor(b_desc_);
+  }
   int initialize() override;
 
   InstanceNormPlugin *clone() const override {
