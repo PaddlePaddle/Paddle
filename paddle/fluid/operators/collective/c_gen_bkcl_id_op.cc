@@ -46,7 +46,7 @@ static void CopyBKCLIDToVar(const std::vector<BKCLUniqueId>& bkcl_ids,
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("Variable with name %s is not found",
                                         var_name.c_str()));
-    auto bckl_id = var->GetMutable<BKCLUniqueId>();
+    auto bkcl_id = var->GetMutable<BKCLUniqueId>();
     memcpy(bkcl_id, &bkcl_ids[i], sizeof(BKCLUniqueId));
   }
 }
