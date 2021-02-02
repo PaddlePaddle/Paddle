@@ -196,6 +196,7 @@ class Fleet(object):
         else:
             if isinstance(role_maker, RoleMakerBase):
                 self._role_maker = role_maker
+                self._is_collective = role_maker._is_collective
             else:
                 raise ValueError(
                     "`role_maker` should be subclass of `RoleMakerBase`, but got {}".
@@ -1018,9 +1019,22 @@ class Fleet(object):
                 if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
                     run_example_code()       
         """
+
         # imitate target optimizer retrieval
-        return self.user_defined_optimizer.amp_init(place, scope, test_program,
-                                                    use_fp16_test)
+        amp_optimizer = None
+        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
+            if hasattr(optimizer, 'amp_init'):
+                amp_optimizer = optimizer
+                break
+
+        if amp_optimizer is None:
+            if hasattr(self.user_defined_optimizer, 'amp_init'):
+                amp_optimizer = self.user_defined_optimizer
+
+        assert amp_optimizer is not None, \
+            "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
+
+        return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
 
     def _final_strategy(self):
         if "valid_strategy" not in self._context:
