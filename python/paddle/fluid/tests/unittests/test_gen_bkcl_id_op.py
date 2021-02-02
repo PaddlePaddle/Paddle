@@ -36,29 +36,29 @@ def run_gen_bkc_id(attr):
 
     with paddle.static.program_guard(main_program, startup_program):
         bkcl_id_var = startup_program.global_block().create_var(
-            name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
+            name="BKCLID", persistable=True, type=core.VarDesc.VarType.RAW)
 
         for i in range(1, bkcl_comm_num):
             startup_program.global_block().create_var(
-                name="NCCLID_{}".format(i),
+                name="BKCLID_{}".format(i),
                 persistable=True,
                 type=core.VarDesc.VarType.RAW)
 
         if use_hallreduce:
             for i in range(0, bkcl_comm_num):
                 startup_program.global_block().create_var(
-                    name="Hierarchical_inter_NCCLID_{}".format(i),
+                    name="Hierarchical_inter_BKCLID_{}".format(i),
                     persistable=True,
                     type=core.VarDesc.VarType.RAW)
                 startup_program.global_block().create_var(
-                    name="Hierarchical_exter_NCCLID_{}".format(i),
+                    name="Hierarchical_exter_BKCLID_{}".format(i),
                     persistable=True,
                     type=core.VarDesc.VarType.RAW)
 
         startup_program.global_block().append_op(
             type="gen_bkcl_id",
             inputs={},
-            outputs={"NCCLID": bkcl_id_var},
+            outputs={"BKCLID": bkcl_id_var},
             attrs=attr)
 
     place = paddle.CPUPlace()
