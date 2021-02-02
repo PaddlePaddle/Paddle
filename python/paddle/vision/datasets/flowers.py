@@ -128,14 +128,12 @@ class Flowers(Dataset):
 
         scio = try_import('scipy.io')
 
-        # double check data download for unittest fail
-        if not os.path.exists(self.label_file):
-            self.label_file = _check_exists_and_download(
-                None, LABEL_URL, LABEL_MD5, 'flowers', True)
+        # double check data download
+        self.label_file = _check_exists_and_download(self.label_file, LABEL_URL,
+                                                     LABEL_MD5, 'flowers', True)
 
-        if not os.path.exists(self.setid_file):
-            self.setid_file = _check_exists_and_download(
-                None, SETID_URL, SETID_MD5, 'flowers', True)
+        self.setid_file = _check_exists_and_download(self.setid_file, SETID_URL,
+                                                     SETID_MD5, 'flowers', True)
 
         self.labels = scio.loadmat(self.label_file)['labels'][0]
         self.indexes = scio.loadmat(self.setid_file)[self.flag][0]
