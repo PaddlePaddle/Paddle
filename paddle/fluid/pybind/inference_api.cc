@@ -408,6 +408,7 @@ void BindNativeConfig(py::module *m) {
   py::class_<NativeConfig, PaddlePredictor::Config>(*m, "NativeConfig")
       .def(py::init<>())
       .def_readwrite("use_gpu", &NativeConfig::use_gpu)
+      .def_readwrite("use_xpu", &NativeConfig::use_xpu)
       .def_readwrite("device", &NativeConfig::device)
       .def_readwrite("fraction_of_gpu_memory",
                      &NativeConfig::fraction_of_gpu_memory)

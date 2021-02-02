@@ -223,11 +223,12 @@ def infer(target, save_dirname=None):
 
         infer_config = fluid.core.NativeConfig()
         infer_config.model_dir = 'word2vec.inference.model'
-        use_cuda = (target == "cuda")
-        infer_config.use_gpu = use_cuda
-        if use_cuda:
+        if target == "cuda":
+            infer_config.use_gpu = True
             infer_config.device = 0
             infer_config.fraction_of_gpu_memory = 0.15
+        elif target == "xpu":
+            infer_config.use_xpu = True
         compiled_program = fluid.compiler.CompiledProgram(inference_program)
         compiled_program._with_inference_optimize(infer_config)
         assert compiled_program._is_inference is True
