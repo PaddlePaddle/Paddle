@@ -388,7 +388,7 @@ class TestElementwiseAddOp_same_shape_ysize_large(TestElementwiseAddOp):
         self.out = self.x + self.y
 
     def init_axis(self):
-        self.axis = 2
+        self.axis = 0
 
 
 class TestElementwiseAddOpError(unittest.TestCase):
