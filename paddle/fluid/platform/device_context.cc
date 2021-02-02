@@ -228,6 +228,27 @@ Place XPUDeviceContext::GetPlace() const { return place_; }
 xpu::Context* XPUDeviceContext::x_context() const { return context_; }
 #endif
 
+#ifdef PADDLE_WITH_ASCEND_CL
+NPUDeviceContext::NPUDeviceContext(NPUPlace place) : place_(place) {
+  NPUDeviceGuard guard(place_.device);
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateContext(context_, place_.device)
+}
+
+NPUDeviceContext::~NPUDeviceContext() {
+  NPUDeviceGuard guard(place_.device);
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyContext(context_));
+}
+
+void NPUDeviceContext::Wait() const {
+  NPUDeviceGuard guard(place_.device);
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeDevice());
+}
+
+Place NPUDeviceContext::GetPlace() const { return place_; }
+
+aclrtContext* NPUDeviceContext::context() const { return &context_; }
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 
 class EigenCudaStreamDevice : public Eigen::StreamInterface {
