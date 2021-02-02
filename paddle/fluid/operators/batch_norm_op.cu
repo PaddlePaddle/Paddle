@@ -81,8 +81,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
             ? DataLayout::kNHWC
             : DataLayout::kNCHW;
-    bool train_not_half =
-        dtype == CUDNN_DATA_FLOAT && data_layout == DataLayout::kNCHW;
+
     Tensor transformed_x(x->type());
     Tensor transformed_y(y->type());
     if (data_layout == DataLayout::kNHWC &&
@@ -574,8 +573,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
             ? DataLayout::kNHWC
             : DataLayout::kNCHW;
-    bool train_not_half =
-        dtype == CUDNN_DATA_FLOAT && data_layout == DataLayout::kNCHW;
+
     Tensor transformed_x(x->type());
     Tensor transformed_d_y(d_y->type());
     Tensor transformed_d_x(d_x->type());
@@ -792,7 +790,6 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
     } else {
-      // Take this branch when using a pre-trained model
       const auto *running_mean = ctx.Input<Tensor>("Mean");
       const auto *running_var = ctx.Input<Tensor>("Variance");
 
