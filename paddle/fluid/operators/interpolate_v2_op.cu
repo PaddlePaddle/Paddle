@@ -124,6 +124,9 @@ __global__ void KeLinearInterpFw(const T* in, const size_t in_img_w,
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   bool align_flag = (align_mode == 0 && !align_corners);
+  T zero = static_cast<T>(0);
+  T half = static_cast<T>(0.5);
+  T one = static_cast<T>(1);
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
     int out_id_w = tid % output_w;
@@ -145,11 +148,12 @@ __global__ void KeLinearInterpFw(const T* in, const size_t in_img_w,
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;  // w
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;  // w_id
 
-    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
-    src_w = (src_w > 0) ? src_w : 0;
-    T w1lambda =
-        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
-    T w2lambda = 1.f - w1lambda;
+    T src_w = static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
+    src_w = (src_w > zero) ? src_w : zero;
+    T w1lambda = align_flag
+                     ? src_w - static_cast<T>(in_img_idx)
+                     : static_cast<T>(ratio_w * out_img_idx - in_img_idx);
+    T w2lambda = one - w1lambda;
 
     if (data_layout == DataLayout::kNCHW) {
       const T* in_pos =
@@ -180,6 +184,9 @@ __global__ void KeLinearInterpBw(T* in, const size_t in_img_w,
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   bool align_flag = (align_mode == 0 && !align_corners);
+  T zero = static_cast<T>(0);
+  T half = static_cast<T>(0.5);
+  T one = static_cast<T>(1);
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
     int out_id_w = tid % output_w;
@@ -195,16 +202,19 @@ __global__ void KeLinearInterpBw(T* in, const size_t in_img_w,
       channel_id = tid % num_channels;
     }
 
-    int in_img_idx = align_flag ? ratio_w * (out_img_idx + 0.5) - 0.5
-                                : ratio_w * out_img_idx;
+    int in_img_idx =
+        align_flag ? static_cast<int>(
+                         ratio_w * static_cast<T>(out_img_idx + 0.5) - half)
+                   : static_cast<int>(ratio_w * static_cast<T>(out_img_idx));
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;  // w
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;  // w_id
 
-    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
-    src_w = (src_w > 0) ? src_w : 0;
-    T w1lambda =
-        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
-    T w2lambda = 1.f - w1lambda;
+    T src_w = ratio_w * static_cast<T>(out_img_idx + 0.5) - half;
+    src_w = (src_w > zero) ? src_w : zero;
+    T w1lambda = align_flag ? src_w - static_cast<T>(in_img_idx)
+                            : ratio_w * static_cast<T>(out_img_idx) -
+                                  static_cast<T>(in_img_idx);
+    T w2lambda = one - w1lambda;
 
     T* in_pos;
     if (data_layout == DataLayout::kNCHW) {
@@ -237,6 +247,9 @@ __global__ void KeBilinearInterpFw(
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   bool align_flag = (align_mode == 0 && !align_corners);
+  T zero = static_cast<T>(0);
+  T half = static_cast<T>(0.5);
+  T one = static_cast<T>(1);
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
     int out_id_w = tid % output_w;
@@ -259,22 +272,24 @@ __global__ void KeBilinearInterpFw(
                          : static_cast<int>(ratio_h * out_img_idy);
     in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    T src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
-    src_h = (src_h > 0) ? src_h : 0;
-    T h1lambda =
-        align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy;
-    T h2lambda = 1.f - h1lambda;
+    T src_h = static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
+    src_h = (src_h > zero) ? src_h : zero;
+    T h1lambda = align_flag
+                     ? src_h - static_cast<T>(in_img_idy)
+                     : static_cast<T>(ratio_h * out_img_idy - in_img_idy);
+    T h2lambda = one - h1lambda;
 
     int in_img_idx = align_flag
                          ? static_cast<int>(ratio_w * (out_img_idx + 0.5) - 0.5)
                          : static_cast<int>(ratio_w * out_img_idx);
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
-    src_w = (src_w > 0) ? src_w : 0;
-    T w1lambda =
-        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
-    T w2lambda = 1.f - w1lambda;
+    T src_w = static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
+    src_w = (src_w > zero) ? src_w : zero;
+    T w1lambda = align_flag
+                     ? src_w - static_cast<T>(in_img_idx)
+                     : static_cast<T>(ratio_w * out_img_idx - in_img_idx);
+    T w2lambda = one - w1lambda;
 
     if (data_layout == DataLayout::kNCHW) {
       const T* in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
@@ -313,6 +328,9 @@ __global__ void KeBilinearInterpBw(
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   bool align_flag = (align_mode == 0 && !align_corners);
+  T zero = static_cast<T>(0);
+  T half = static_cast<T>(0.5);
+  T one = static_cast<T>(1);
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
     int out_id_w = tid % output_w;
@@ -330,25 +348,31 @@ __global__ void KeBilinearInterpBw(
       channel_id = tid % num_channels;
     }
 
-    int in_img_idy = align_flag ? ratio_h * (out_img_idy + 0.5) - 0.5
-                                : ratio_h * out_img_idy;
+    int in_img_idy =
+        align_flag ? static_cast<int>(
+                         ratio_h * static_cast<T>(out_img_idy + 0.5) - half)
+                   : static_cast<int>(ratio_h * static_cast<T>(out_img_idy));
     in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    T src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
-    src_h = (src_h > 0) ? src_h : 0;
-    T h1lambda =
-        align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy;
-    T h2lambda = 1.f - h1lambda;
+    T src_h = ratio_h * static_cast<T>(out_img_idy + 0.5) - half;
+    src_h = (src_h > zero) ? src_h : zero;
+    T h1lambda = align_flag ? src_h - static_cast<T>(in_img_idy)
+                            : ratio_h * static_cast<T>(out_img_idy) -
+                                  static_cast<T>(in_img_idy);
+    T h2lambda = one - h1lambda;
 
-    int in_img_idx = align_flag ? ratio_w * (out_img_idx + 0.5) - 0.5
-                                : ratio_w * out_img_idx;
+    int in_img_idx =
+        align_flag ? static_cast<int>(
+                         ratio_w * static_cast<T>(out_img_idx + 0.5) - half)
+                   : static_cast<int>(ratio_w * static_cast<T>(out_img_idx));
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
-    src_w = (src_w > 0) ? src_w : 0;
-    T w1lambda =
-        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
-    T w2lambda = 1.f - w1lambda;
+    T src_w = ratio_w * static_cast<T>(out_img_idx + 0.5) - half;
+    src_w = (src_w > zero) ? src_w : zero;
+    T w1lambda = align_flag ? src_w - static_cast<T>(in_img_idx)
+                            : ratio_w * static_cast<T>(out_img_idx) -
+                                  static_cast<T>(in_img_idx);
+    T w2lambda = one - w1lambda;
 
     T* in_pos;
     if (data_layout == DataLayout::kNCHW) {
@@ -394,6 +418,9 @@ __global__ void KeTrilinearInterpFw(
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   bool align_flag = (align_mode == 0 && !align_corners);
+  T zero = static_cast<T>(0);
+  T half = static_cast<T>(0.5);
+  T one = static_cast<T>(1);
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
     int out_id_w = tid % output_w;
@@ -419,33 +446,36 @@ __global__ void KeTrilinearInterpFw(
                          : static_cast<int>(ratio_d * out_img_idt);
     in_img_idt = (in_img_idt > 0) ? in_img_idt : 0;
     int d_id = (in_img_idt < in_img_d - 1) ? 1 : 0;
-    T src_d = ratio_d * (out_img_idt + 0.5) - 0.5;
-    src_d = (src_d > 0) ? src_d : 0;
-    T d1lambda =
-        align_flag ? src_d - in_img_idt : ratio_d * out_img_idt - in_img_idt;
-    T d2lambda = 1.f - d1lambda;
+    T src_d = static_cast<T>(ratio_d * (out_img_idt + 0.5) - 0.5);
+    src_d = (src_d > zero) ? src_d : zero;
+    T d1lambda = align_flag
+                     ? src_d - static_cast<T>(in_img_idt)
+                     : static_cast<T>(ratio_d * out_img_idt - in_img_idt);
+    T d2lambda = one - d1lambda;
 
     int in_img_idy = align_flag
                          ? static_cast<int>(ratio_h * (out_img_idy + 0.5) - 0.5)
                          : static_cast<int>(ratio_h * out_img_idy);
     in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    T src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
-    src_h = (src_h > 0) ? src_h : 0;
-    T h1lambda =
-        align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy;
-    T h2lambda = 1.f - h1lambda;
+    T src_h = static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
+    src_h = (src_h > zero) ? src_h : zero;
+    T h1lambda = align_flag
+                     ? src_h - static_cast<T>(in_img_idy)
+                     : static_cast<T>(ratio_h * out_img_idy - in_img_idy);
+    T h2lambda = one - h1lambda;
 
     int in_img_idx = align_flag
                          ? static_cast<int>(ratio_w * (out_img_idx + 0.5) - 0.5)
                          : static_cast<int>(ratio_w * out_img_idx);
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
-    src_w = (src_w > 0) ? src_w : 0;
-    T w1lambda =
-        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
-    T w2lambda = 1.f - w1lambda;
+    T src_w = static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
+    src_w = (src_w > zero) ? src_w : zero;
+    T w1lambda = align_flag
+                     ? src_w - static_cast<T>(in_img_idx)
+                     : static_cast<T>(ratio_w * out_img_idx - in_img_idx);
+    T w2lambda = one - w1lambda;
 
     if (data_layout == DataLayout::kNCHW) {
       int in_pos1_idx = out_id_h * input_w + channel_id * in_img_size +
@@ -505,6 +535,9 @@ __global__ void KeTrilinearInterpBw(
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   bool align_flag = (align_mode == 0 && !align_corners);
+  T zero = static_cast<T>(0);
+  T half = static_cast<T>(0.5);
+  T one = static_cast<T>(1);
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
     int out_id_w = tid % output_w;
@@ -525,38 +558,44 @@ __global__ void KeTrilinearInterpBw(
       channel_id = tid % num_channels;
     }
 
-    int in_img_idt = align_flag
-                         ? static_cast<int>(ratio_d * (out_img_idt + 0.5) - 0.5)
-                         : static_cast<int>(ratio_d * out_img_idt);
+    int in_img_idt =
+        align_flag ? static_cast<int>(
+                         ratio_d * static_cast<T>(out_img_idt + 0.5) - half)
+                   : static_cast<int>(ratio_d * static_cast<T>(out_img_idt));
     in_img_idt = (in_img_idt > 0) ? in_img_idt : 0;
     int d_id = (in_img_idt < in_img_d - 1) ? 1 : 0;
-    T src_d = ratio_d * (out_img_idt + 0.5) - 0.5;
-    src_d = (src_d > 0) ? src_d : 0;
-    T d1lambda =
-        align_flag ? src_d - in_img_idt : ratio_d * out_img_idt - in_img_idt;
-    T d2lambda = 1.f - d1lambda;
+    T src_d = ratio_d * static_cast<T>(out_img_idt + 0.5) - half;
+    src_d = (src_d > zero) ? src_d : zero;
+    T d1lambda = align_flag ? src_d - static_cast<T>(in_img_idt)
+                            : ratio_d * static_cast<T>(out_img_idt) -
+                                  static_cast<T>(in_img_idt);
+    T d2lambda = one - d1lambda;
 
-    int in_img_idy = align_flag
-                         ? static_cast<int>(ratio_h * (out_img_idy + 0.5) - 0.5)
-                         : static_cast<int>(ratio_h * out_img_idy);
+    int in_img_idy =
+        align_flag ? static_cast<int>(
+                         ratio_h * static_cast<T>(out_img_idy + 0.5) - half)
+                   : static_cast<int>(ratio_h * static_cast<T>(out_img_idy));
     in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    T src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
-    src_h = (src_h > 0) ? src_h : 0;
-    T h1lambda =
-        align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy;
-    T h2lambda = 1.f - h1lambda;
+    T src_h = ratio_h * static_cast<T>(out_img_idy + 0.5) - half;
+    src_h = (src_h > zero) ? src_h : zero;
+    T h1lambda = align_flag ? src_h - static_cast<T>(in_img_idy)
+                            : ratio_h * static_cast<T>(out_img_idy) -
+                                  static_cast<T>(in_img_idy);
+    T h2lambda = one - h1lambda;
 
-    int in_img_idx = align_flag
-                         ? static_cast<int>(ratio_w * (out_img_idx + 0.5) - 0.5)
-                         : static_cast<int>(ratio_w * out_img_idx);
+    int in_img_idx =
+        align_flag ? static_cast<int>(
+                         ratio_w * static_cast<T>(out_img_idx + 0.5) - half)
+                   : static_cast<int>(ratio_w * static_cast<T>(out_img_idx));
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
-    src_w = (src_w > 0) ? src_w : 0;
-    T w1lambda =
-        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
-    T w2lambda = 1.f - w1lambda;
+    T src_w = ratio_w * static_cast<T>(out_img_idx + 0.5) - half;
+    src_w = (src_w > zero) ? src_w : zero;
+    T w1lambda = align_flag ? src_w - static_cast<T>(in_img_idx)
+                            : ratio_w * static_cast<T>(out_img_idx) -
+                                  static_cast<T>(in_img_idx);
+    T w2lambda = one - w1lambda;
 
     if (data_layout == DataLayout::kNCHW) {
       int in_pos1_idx = out_id_h * input_w + channel_id * in_img_size +
@@ -624,13 +663,13 @@ __device__ __forceinline__ static T Kecubic_interp(const T x0, const T x1,
                                                    const T x2, const T x3,
                                                    T t) {
   T coeffs[4];
-  T a = -0.75;
+  T a = static_cast<T>(-0.75);
   T x_1 = t;
-  T x_2 = 1.0 - t;
-  coeffs[0] = cubic_convolution2<T>(x_1 + 1.0, a);
+  T x_2 = static_cast<T>(1.0) - t;
+  coeffs[0] = cubic_convolution2<T>(x_1 + static_cast<T>(1.0), a);
   coeffs[1] = cubic_convolution1<T>(x_1, a);
   coeffs[2] = cubic_convolution1<T>(x_2, a);
-  coeffs[3] = cubic_convolution2<T>(x_2 + 1.0, a);
+  coeffs[3] = cubic_convolution2<T>(x_2 + static_cast<T>(1.0), a);
   return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];
 }
 
@@ -666,14 +705,14 @@ __global__ void KeBicubicInterpFw(
     T in_img_idy = align_corners
                        ? static_cast<T>(ratio_h * out_img_idy)
                        : static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
-    int input_y = floorf(in_img_idy);
-    const T y_t = in_img_idy - input_y;
+    int input_y = floorf(static_cast<float>(in_img_idy));
+    const T y_t = in_img_idy - static_cast<T>(input_y);
 
     T in_img_idx = align_corners
                        ? static_cast<T>(ratio_w * out_img_idx)
                        : static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    int input_x = floorf(in_img_idx);
-    const T x_t = in_img_idx - input_x;
+    int input_x = floorf(static_cast<float>(in_img_idx));
+    const T x_t = in_img_idx - static_cast<T>(input_x);
 
     T coefficients[4];
     const T* in_pos_0;
@@ -778,15 +817,15 @@ __global__ void KeBicubicInterpBw(
     T in_img_idy = align_corners
                        ? static_cast<T>(ratio_h * out_img_idy)
                        : static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
-    int input_y = floorf(in_img_idy);
-    const T y_t = in_img_idy - input_y;
+    int input_y = floorf(static_cast<float>(in_img_idy));
+    const T y_t = in_img_idy - static_cast<T>(input_y);
 
     T in_img_idx = align_corners
                        ? static_cast<T>(ratio_w * out_img_idx)
                        : static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    int input_x = floorf(in_img_idx);
+    int input_x = floorf(static_cast<float>(in_img_idx));
 
-    const T x_t = in_img_idx - input_x;
+    const T x_t = in_img_idx - static_cast<T>(input_x);
 
     T x_coeffs[4];
     T y_coeffs[4];
@@ -1266,7 +1305,7 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
     KeLinearInterpBw<T><<<config.block_per_grid, config.thread_per_block, 0,
                           ctx.cuda_device_context().stream()>>>(
         input_grad_data, in_w, in_cw, output_grad_data, out_w, n, out_cw, c,
-        ratio_w, align_corners, align_mode, data_layout);
+        static_cast<T>(ratio_w), align_corners, align_mode, data_layout);
   }
 }
 
@@ -1389,8 +1428,8 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
     KeBilinearInterpBw<T><<<config.block_per_grid, config.thread_per_block, 0,
                             ctx.cuda_device_context().stream()>>>(
         input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
-        n, out_chw, c, ratio_h, ratio_w, align_corners, align_mode,
-        data_layout);
+        n, out_chw, c, static_cast<T>(ratio_h), static_cast<T>(ratio_w),
+        align_corners, align_mode, data_layout);
   } else if ("bicubic" == interp_method) {
     KeBicubicInterpBw<T><<<config.block_per_grid, 512, 0,
                            ctx.cuda_device_context().stream()>>>(
@@ -1528,7 +1567,8 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
     KeTrilinearInterpBw<T><<<config.block_per_grid, config.thread_per_block, 0,
                              ctx.cuda_device_context().stream()>>>(
         input_grad_data, in_d, in_h, in_w, n, in_cdhw, output_grad_data, out_d,
-        out_h, out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w, align_corners,
+        out_h, out_w, n, out_cdhw, c, static_cast<T>(ratio_d),
+        static_cast<T>(ratio_h), static_cast<T>(ratio_w), align_corners,
         align_mode, data_layout);
   }
 }
@@ -1582,10 +1622,12 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(bilinear_interp_v2,
                         ops::InterpolateOpV2CUDAKernel<float>,
+                        ops::InterpolateOpV2CUDAKernel<plat::float16>,
                         ops::InterpolateOpV2CUDAKernel<double>,
                         ops::InterpolateOpV2CUDAKernel<int>);
 REGISTER_OP_CUDA_KERNEL(bilinear_interp_v2_grad,
                         ops::InterpolateV2GradOpCUDAKernel<float>,
+                        ops::InterpolateV2GradOpCUDAKernel<plat::float16>,
                         ops::InterpolateV2GradOpCUDAKernel<double>);
 REGISTER_OP_CUDA_KERNEL(nearest_interp_v2,
                         ops::InterpolateOpV2CUDAKernel<float>,

@@ -449,26 +449,28 @@ static void TrilinearInterpolation(
 
 template <typename T>
 HOSTDEVICE inline T cubic_convolution1(T x, T A) {
-  return ((A + 2) * x - (A + 3)) * x * x + 1;
+  return ((A + static_cast<T>(2)) * x - (A + static_cast<T>(3))) * x * x +
+         static_cast<T>(1);
 }
 
 template <typename T>
 HOSTDEVICE inline T cubic_convolution2(T x, T A) {
-  return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
+  return ((A * x - static_cast<T>(5) * A) * x + static_cast<T>(8) * A) * x -
+         static_cast<T>(4) * A;
 }
 
 template <typename T>
 HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
-  T A = -0.75;
+  T A = static_cast<T>(-0.75);
 
   T x1 = t;
-  coeffs[0] = cubic_convolution2<T>(x1 + 1.0, A);
+  coeffs[0] = cubic_convolution2<T>(x1 + static_cast<T>(1.0), A);
   coeffs[1] = cubic_convolution1<T>(x1, A);
 
   // opposite coefficients
-  T x2 = 1.0 - t;
+  T x2 = static_cast<T>(1.0) - t;
   coeffs[2] = cubic_convolution1<T>(x2, A);
-  coeffs[3] = cubic_convolution2<T>(x2 + 1.0, A);
+  coeffs[3] = cubic_convolution2<T>(x2 + static_cast<T>(1.0), A);
 }
 
 template <typename T>
