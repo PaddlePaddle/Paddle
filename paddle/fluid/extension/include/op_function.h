@@ -26,16 +26,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
 
+/**
+ * Op Function Related Define.
+ *
+ * Used to maintain operator core information independent of the framework.
+ *
+ */
+
 namespace paddle {
 
 using Tensor = framework::Tensor;
-
-using FuncInfo = std::pair<size_t, size_t>;
-using TraitsFunc = FuncInfo (*)();
-using KernelFunc = std::vector<Tensor> (*)(std::vector<const Tensor*> inputs,
-                                           std::vector<boost::any> attrs);
-using InferShapeFunc = std::vector<std::vector<int64_t>> (*)(
-    std::vector<std::vector<int64_t>> input_shapes);
 
 #define DISABLE_COPY_AND_ASSIGN(classname)         \
  private:                                          \
@@ -46,6 +46,10 @@ using InferShapeFunc = std::vector<std::vector<int64_t>> (*)(
 
 //////////////////// Kernel Function traits (PD_TRAITS) ///////////////////
 
+// Record forward function traits
+using FuncInfo = std::pair<size_t, size_t>;
+using TraitsFunc = FuncInfo (*)();
+
 template <typename T, typename Enabled = void>
 struct KernelFuncTraits;
 
@@ -53,6 +57,7 @@ template <typename Return, typename... Args>
 struct KernelFuncTraits<Return (*)(Args...)> {
   static FuncInfo GetFuncInfo() {
     // TODO(chenweihang): parse tensor args num & attribute num
+    // Now only Tensor is input by default
     return std::make_pair(Arity, 0);
   }
 
@@ -66,7 +71,14 @@ struct KernelFuncTraits<Return (*)(Args...)> {
   using Arg = typename std::tuple_element<Index, ArgsTuple>::type;
 };
 
+#define OP_INFO(...) \
+  ::paddle::KernelFuncTraits<decltype(&__VA_ARGS__)>::GetFuncInfo
+
 ////////////////////// Kernel Function (PD_KERNEL) ////////////////////////
+
+// Record Op kernel core function
+using KernelFunc = std::vector<Tensor> (*)(std::vector<const Tensor*> inputs,
+                                           std::vector<boost::any> attrs);
 
 template <typename T>
 struct TypeTag {};
@@ -101,7 +113,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
-  // for int attribute input
+  // for int attribute input (not used now)
   template <typename... Tail>
   struct ComputeCallHelper<int, Tail...> {
     template <int in_idx, int attr_idx, typename... PreviousArgs>
@@ -132,7 +144,14 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   };
 };
 
+#define PD_KERNEL(...) \
+  ::paddle::KernelFuncImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
+
 /////////////// InferShape Function (PD_INFER_SHAPE) ///////////////
+
+// Record Op infershape core function
+using InferShapeFunc = std::vector<std::vector<int64_t>> (*)(
+    std::vector<std::vector<int64_t>> input_shapes);
 
 template <typename F, F f>
 struct InferShapeFuncImpl;
@@ -170,6 +189,9 @@ struct InferShapeFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 };
+
+#define PD_INFER_SHAPE(...) \
+  ::paddle::InferShapeFuncImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::InferShape
 
 ////////////////////// Op Execution Function //////////////////////
 
@@ -245,18 +267,6 @@ class Registrar {
 struct OperatorFunctionRegistrar : public Registrar {
   OperatorFunctionRegistrar(const char* op_type, TraitsFunc&& traits_func,
                             KernelFunc&& forward_func,
-                            KernelFunc&& backward_func) {
-    OpFunction op_func;
-    FuncInfo func_info = traits_func();
-    op_func.SetNumTensorArgs(func_info.first);
-    op_func.SetNumAttributes(func_info.second);
-    op_func.SetForwardFunc(forward_func);
-    op_func.SetBackwardFunc(backward_func);
-    OpFunctionMap::Instance().Insert(op_type, op_func);
-  }
-
-  OperatorFunctionRegistrar(const char* op_type, TraitsFunc&& traits_func,
-                            KernelFunc&& forward_func,
                             KernelFunc&& backward_func,
                             InferShapeFunc&& infer_shape_func) {
     OpFunction op_func;
@@ -268,28 +278,9 @@ struct OperatorFunctionRegistrar : public Registrar {
     op_func.SetInferShapeFunc(infer_shape_func);
     OpFunctionMap::Instance().Insert(op_type, op_func);
   }
-
-  OperatorFunctionRegistrar(const char* op_type, TraitsFunc&& traits_func,
-                            KernelFunc&& forward_func) {
-    OpFunction op_func;
-    FuncInfo func_info = traits_func();
-    op_func.SetNumTensorArgs(func_info.first);
-    op_func.SetNumAttributes(func_info.second);
-    op_func.SetForwardFunc(forward_func);
-    OpFunctionMap::Instance().Insert(op_type, op_func);
-  }
 };
 
 /////////////////////// Op register marco /////////////////////////
-
-#define OP_INFO(...) \
-  ::paddle::KernelFuncTraits<decltype(&__VA_ARGS__)>::GetFuncInfo
-
-#define PD_KERNEL(...) \
-  ::paddle::KernelFuncImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
-
-#define PD_INFER_SHAPE(...) \
-  ::paddle::InferShapeFuncImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::InferShape
 
 #define ADD_OPERATOR(op_type, traits_func, forward_func, backward_func,        \
                      infer_shape_func)                                         \
@@ -300,25 +291,6 @@ struct OperatorFunctionRegistrar : public Registrar {
   int TouchOperatorFunctionRegistrar_##op_type() {                             \
     __operator_function_registrar_##op_type##__.Touch();                       \
     return 0;                                                                  \
-  }
-
-#define ADD_DYNAMIC_OPERATOR(op_type, traits_func, forward_func, \
-                             backward_func)                      \
-  static ::paddle::OperatorFunctionRegistrar                     \
-      __operator_function_registrar_##op_type##__(               \
-          #op_type, traits_func, forward_func, backward_func);   \
-  int TouchOperatorFunctionRegistrar_##op_type() {               \
-    __operator_function_registrar_##op_type##__.Touch();         \
-    return 0;                                                    \
-  }
-
-#define ADD_INFER_OPERATOR(op_type, traits_func, forward_func)           \
-  static ::paddle::OperatorFunctionRegistrar                             \
-      __operator_function_registrar_##op_type##__(#op_type, traits_func, \
-                                                  forward_func);         \
-  int TouchOperatorFunctionRegistrar_##op_type() {                       \
-    __operator_function_registrar_##op_type##__.Touch();                 \
-    return 0;                                                            \
   }
 
 }  // namespace paddle

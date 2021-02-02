@@ -169,7 +169,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
 }
 
 template <typename DeviceContext, typename T, size_t D>
-void CropKernelFunction(const framework::ExecutionContext& context) {
+void CropTensorFunction(const framework::ExecutionContext& context) {
   auto* x = context.Input<Tensor>("X");
   auto* out = context.Output<Tensor>("Out");
   auto x_dims = x->dims();
@@ -230,22 +230,22 @@ class CropTensorKernel : public framework::OpKernel<T> {
                      rank));
     switch (rank) {
       case 1:
-        CropKernelFunction<DeviceContext, T, 1>(context);
+        CropTensorFunction<DeviceContext, T, 1>(context);
         break;
       case 2:
-        CropKernelFunction<DeviceContext, T, 2>(context);
+        CropTensorFunction<DeviceContext, T, 2>(context);
         break;
       case 3:
-        CropKernelFunction<DeviceContext, T, 3>(context);
+        CropTensorFunction<DeviceContext, T, 3>(context);
         break;
       case 4:
-        CropKernelFunction<DeviceContext, T, 4>(context);
+        CropTensorFunction<DeviceContext, T, 4>(context);
         break;
       case 5:
-        CropKernelFunction<DeviceContext, T, 5>(context);
+        CropTensorFunction<DeviceContext, T, 5>(context);
         break;
       case 6:
-        CropKernelFunction<DeviceContext, T, 6>(context);
+        CropTensorFunction<DeviceContext, T, 6>(context);
         break;
     }
   }

@@ -19,15 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-namespace detail {
-
-// default prefix
-
-constexpr char kCustomOpInputPrefix[] = "X";
-constexpr char kCustomOpOutputPrefix[] = "Out";
-
-}  // namespace detail
-
 // load op api
 void LoadCustomOperator(const std::string& dso_name);
 

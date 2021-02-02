@@ -159,7 +159,7 @@ cc_test(op_call_stack_test SRCS op_call_stack_test.cc DEPS op_call_stack)
 
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
-cc_library(custom_operator SRCS custom_operator.cc DEPS operator op_registry device_context)
+cc_library(custom_operator SRCS custom_operator.cc DEPS operator op_registry device_context dynamic_loader)
 
 if(WITH_PYTHON)
   py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)

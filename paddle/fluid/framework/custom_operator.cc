@@ -38,6 +38,11 @@ namespace framework {
 
 namespace detail {
 
+// default prefix
+constexpr char kCustomOpInputPrefix[] = "X";
+constexpr char kCustomOpOutputPrefix[] = "Out";
+
+// dynamic lib load func
 template <typename T>
 static T* DynLoad(void* handle, std::string name) {
   T* func = reinterpret_cast<T*>(dlsym(handle, name.c_str()));
@@ -60,10 +65,10 @@ static T* DynLoad(void* handle, std::string name) {
 // custom op kernel call function define
 static void RunKernelFunc(const framework::ExecutionContext& ctx,
                           paddle::KernelFunc func) {
-  VLOG(0) << "Before run KernelFunc.";
+  VLOG(1) << "Custom Operator: Start run KernelFunc.";
   std::vector<const Tensor*> ins;
   for (auto name : ctx.InNameList()) {
-    VLOG(0) << "input name: " << name;
+    VLOG(1) << "Custom Operator: input name - " << name;
     auto* x = ctx.Input<Tensor>(name);
     PADDLE_ENFORCE_NOT_NULL(
         x, platform::errors::NotFound("Input tensor (%s) is nullptr.", name));
@@ -74,10 +79,10 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
   }
   std::vector<boost::any> attrs;
 
-  VLOG(0) << "Run KernelFunc.";
+  VLOG(1) << "Custom Operator: Run KernelFunc.";
   auto outs = func(ins, attrs);
 
-  VLOG(0) << "Share outputs into ExecutionContext.";
+  VLOG(1) << "Custom Operator: Share outputs into ExecutionContext.";
   auto out_name = ctx.OutNameList();
   PADDLE_ENFORCE_EQ(
       out_name.size(), 1UL,
@@ -95,16 +100,32 @@ class CustomOperator : public OperatorWithKernel {
  public:
   using OperatorWithKernel::OperatorWithKernel;
 
-  // dummy infershape
+  // Dummy infershape
+  // Because it is a pure virtual function, it must be implemented
   void InferShape(framework::InferShapeContext* ctx) const override {
-    VLOG(0) << "Infer shape of custom operator.";
+    VLOG(1) << "Custom Operator: Dummy infer shape of custom operator.";
   }
 
+  /**
+   * NOTE: [Skip the Kernel Selection]
+   * Custom Op only registers one Op kernel on each device, so that the
+   * data type selection and promotion that depends on GetExpectedKernelType,
+   * as well as the adaptation of various other special situations,
+   * need users to implement, to avoid users needs to implement
+   * GetExpectedKernelType function when expanding other cases.
+   * The RAW type is used here as the data type, indicating that
+   * it can only be determined at runtime.
+   */
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     return framework::OpKernelType(proto::VarType::RAW, ctx.GetPlace());
   }
 
+  /**
+   * NOTE: [Skip Input Variable Cast for DataType]
+   * Because the kernel data type is RAW, we should skip the cast for
+   * data type difference when PrepareData.
+   */
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) {
@@ -125,7 +146,15 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
     // only one output, as vector<Tensor>
     AddOutput(detail::kCustomOpOutputPrefix, "The output of Custom Operator.")
         .AsDuplicable();
-    AddComment(R"DOC(Custom Operator.)DOC");
+    AddComment(R"DOC(
+Custom Operator.
+
+According to the Tensor operation function implemented by the user 
+independently of the framework, it is encapsulated into a framework 
+operator to adapt to various execution scenarios such as dynamic graph, 
+mode static graph mode, and inference mode.
+
+)DOC");
   }
 
  private:
@@ -137,15 +166,18 @@ class CustomGradOperator : public OperatorWithKernel {
   using OperatorWithKernel::OperatorWithKernel;
 
   // dummy infershape
+  // Because it is a pure virtual function, it must be implemented
   void InferShape(framework::InferShapeContext* ctx) const override {
-    VLOG(0) << "Infer shape of custom grad operator.";
+    VLOG(1) << "Custom Operator: Dummy infer shape of custom grad operator.";
   }
 
+  // See Note [Skip the Kernel Selection]
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     return framework::OpKernelType(proto::VarType::RAW, ctx.GetPlace());
   }
 
+  // See Note [Skip Input Variable Cast for DataType]
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) {
@@ -172,7 +204,7 @@ void RegisterOperator(const std::string& name, size_t input_num,
   info.infer_shape_ = [input_num, infer_shape_func](InferShapeContext* ctx) {
     std::vector<std::vector<int64_t>> input_shapes;
 
-    VLOG(0) << "InferShape: get input ddim.";
+    VLOG(1) << "Custom Operator: InferShape - get input ddim.";
     for (size_t i = 0; i < input_num; ++i) {
       std::string name = detail::kCustomOpInputPrefix + std::to_string(i);
       OP_INOUT_CHECK(ctx->HasInput(name), "Input", name, "Custom");
@@ -180,10 +212,10 @@ void RegisterOperator(const std::string& name, size_t input_num,
       input_shapes.emplace_back(framework::vectorize(ddim));
     }
 
-    VLOG(0) << "InferShape: calc output ddim";
+    VLOG(1) << "Custom Operator: InferShape - calc output ddim.";
     auto output_shapes = infer_shape_func(input_shapes);
 
-    VLOG(0) << "InferShape: set output ddim";
+    VLOG(1) << "Custom Operator: InferShape - set output ddim.";
     std::vector<framework::DDim> dims;
     for (auto& shape : output_shapes) {
       dims.emplace_back(framework::make_ddim(shape));
@@ -194,7 +226,6 @@ void RegisterOperator(const std::string& name, size_t input_num,
   // OpMaker
   info.proto_ = new proto::OpProto;
   info.checker_ = new OpAttrChecker();
-  VLOG(0) << "proto type: " << name;
   CustomOpMaker custom_maker(input_num);
   info.proto_->set_type(name);
   custom_maker(info.proto_, info.checker_);
@@ -204,6 +235,7 @@ void RegisterOperator(const std::string& name, size_t input_num,
           "Fail to initialize %s's OpProto, because %s is not initialized.",
           name, info.proto_->InitializationErrorString()));
 
+  // TODO(chenweihang): Extended support to use non-Default GradOpMaker
   // GradOpDescMaker
   info.grad_op_maker_ = [](
       const OpDesc& fwd_op, const std::unordered_set<std::string>& no_grad_set,
@@ -229,14 +261,15 @@ void RegisterOperator(const std::string& name, size_t input_num,
   /* Grad op register */
   OpInfo grad_info;
 
-  // Op
+  // Grad Op
   grad_info.creator_ = [](
       const std::string& type, const VariableNameMap& inputs,
       const VariableNameMap& outputs, const AttributeMap& attrs) {
     return new CustomGradOperator(type, inputs, outputs, attrs);
   };
 
-  // InferShape
+  // Grad InferShape
+  // Default Version for DefaultGradOpMaker
   grad_info.infer_shape_ = [input_num](InferShapeContext* ctx) {
     for (size_t i = 0; i < input_num; ++i) {
       std::string name = detail::kCustomOpInputPrefix + std::to_string(i);
@@ -254,18 +287,23 @@ void RegisterOperatorKernelWithPlace(const std::string& name,
                                      const proto::VarType::Type type,
                                      const platform::Place& place) {
   OpKernelType key(type, place);
-  VLOG(0) << "op kernel key: " << key;
+  VLOG(1) << "Custom Operator: op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] =
       [kernel_func](const framework::ExecutionContext& ctx) {
-        VLOG(0) << "run custom kernel func in lambda.";
+        VLOG(1) << "Custom Operator: run custom kernel func in lambda.";
         RunKernelFunc(ctx, kernel_func);
       };
 }
 
 void RegisterOperatorKernel(const std::string& name,
                             const paddle::KernelFunc& kernel_func) {
-  VLOG(0) << "op name in kernel: " << name;
-  // dummy op kernel key
+  VLOG(1) << "Custom Operator: op name in kernel: " << name;
+  // Dummy op kernel key
+  // TODO(chenweihang): Because engine need get device context based
+  // op_kernel_key.place_, so we should register kernel for each
+  // device.
+  // But this is not entirely correct, if user only give a cpu kernel,
+  // but call api in gpu device, it will cause error.
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
                                   platform::CPUPlace());
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
@@ -282,13 +320,13 @@ void LoadCustomOperator(const std::string& dso_name) {
   auto& op_func_map = get_op_func_map();
   auto& op_funcs = op_func_map.GetMap();
 
-  VLOG(0) << "size of op funcs map: " << op_funcs.size();
+  VLOG(1) << "Custom Operator: size of op funcs map - " << op_funcs.size();
   for (auto& pair : op_funcs) {
     // pair.first: op_type
     // pair.second: OpFunction
 
     // 1. register op
-    VLOG(0) << "pair first - op name: " << pair.first;
+    VLOG(0) << "Custom Operator: pair first -> op name: " << pair.first;
     RegisterOperator(pair.first, pair.second.GetNumTensorArgs(),
                      pair.second.GetInferShapeFunc());
 
