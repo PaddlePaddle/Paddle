@@ -32,7 +32,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static void GenBKCLID(std::vector<bkclUniqueId>* bkcl_ids) {
+static void GenBKCLID(std::vector<BKCLUniqueId>* bkcl_ids) {
   for (size_t i = 0; i < bkcl_ids->size(); ++i) {
     BKCLResult_t ret = bkcl_get_unique_id(&(*bkcl_ids)[i]);
     PADDLE_ENFORCE_EQ(BKCL_SUCCESS, ret,
@@ -41,7 +41,7 @@ static void GenBKCLID(std::vector<bkclUniqueId>* bkcl_ids) {
   }
 }
 
-static void CopyBKCLIDToVar(const std::vector<bkclUniqueId>& bkcl_ids,
+static void CopyBKCLIDToVar(const std::vector<BKCLUniqueId>& bkcl_ids,
                             std::function<std::string(size_t)> func,
                             const framework::Scope& scope) {
   for (size_t i = 0; i < bkcl_ids.size(); ++i) {
@@ -50,8 +50,8 @@ static void CopyBKCLIDToVar(const std::vector<bkclUniqueId>& bkcl_ids,
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("Variable with name %s is not found",
                                         var_name.c_str()));
-    auto = var->GetMutable<bkclUniqueId>();
-    memcpy(bkcl_id, &bkcl_ids[i], sizeof(bkclUniqueId));
+    auto = var->GetMutable<BKCLUniqueId>();
+    memcpy(bkcl_id, &bkcl_ids[i], sizeof(BKCLUniqueId));
   }
 }
 
@@ -121,7 +121,7 @@ class GenBKCLIdOp : public framework::OperatorBase {
             << ", trainers:" << ss.str();
 
     int server_fd = -1;
-    std::vector<bkclUniqueId> bkcl_ids;
+    std::vector<BKCLUniqueId> bkcl_ids;
     bkcl_ids.resize(bkcl_comm_num);
 
     /// 1. init flat
@@ -141,53 +141,11 @@ class GenBKCLIdOp : public framework::OperatorBase {
     }
     CopyBKCLIDToVar(bkcl_ids, func, scope);
 
-    // TODO(liuyuhui)
-    // /// 2. hierarchical inter bkclid
-    // func = platform::GetHierarchicalInterBKCLVarName;
-    // if (inter_trainer_id == 0) {
-    //   std::ostringstream ss;
-    //   ss << endpoint;
-    //   std::vector<std::string> inter_endpoints;
-    //   for (int i = trainer_id + 1; i < trainer_id + inter_nranks &&
-    //                                i < static_cast<int>(trainers.size());
-    //        i++) {
-    //     ss << ",";
-    //     inter_endpoints.push_back(trainers[i]);
-    //     ss << trainers[i];
-    //   }
-    //   VLOG(1) << "Hierarchical inter ring endpoints:" << ss.str();
-
-    //   GenBKCLID(&bkcl_ids);
-    //   platform::SendBroadCastCommID(inter_endpoints, &bkcl_ids);
-    //   CopyBKCLIDToVar(bkcl_ids, func, scope);
-    // } else if (inter_trainer_id > 0) {
-    //   VLOG(1) << "Hierarchical inter ring";
-    //   platform::RecvBroadCastCommID(server_fd, endpoint, &bkcl_ids);
-    //   CopyBKCLIDToVar(bkcl_ids, func, scope);
-    // }
-
-    // /// 3. hierarchical exter bkclid
-    // func = platform::GetHierarchicalExterBKCLVarName;
-    // if (exter_trainer_id == 0) {
-    //   std::ostringstream ss;
-    //   std::vector<std::string> exter_endpoints;
-    //   ss << endpoint;
-    //   for (size_t i = inter_nranks; i < trainers.size(); i += inter_nranks) {
-    //     ss << ",";
-    //     exter_endpoints.push_back(trainers[i]);
-    //     ss << trainers[i];
-    //   }
-    //   VLOG(1) << "Hierarchical exter ring endpoints:" << ss.str();
-
-    //   GenBKCLID(&bkcl_ids);
-    //   platform::SendBroadCastCommID(exter_endpoints, &bkcl_ids);
-    //   CopyBKCLIDToVar(bkcl_ids, func, scope);
-    // } else if (exter_trainer_id > 0) {
-    //   VLOG(1) << "Hierarchical exter ring";
-    //   platform::RecvBroadCastCommID(server_fd, endpoint, &bkcl_ids);
-    //   CopyBKCLIDToVar(bkcl_ids, func, scope);
-    // }
-
+    /*TODO(liuyuhui) Baidu Kunlun Communication Library(BKCL) don't support
+    hierarchical communication
+    as NVIDIA Collective Communications Library(NCCL) in multi Nvidia GPU cards,
+    and will support it later.
+    */
     // close socket server
     if (trainer_id != 0) {
       platform::CloseSocket(server_fd);

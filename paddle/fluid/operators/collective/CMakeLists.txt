@@ -11,8 +11,7 @@ foreach(src ${OPS})
     set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS ${COLLECTIVE_COMPILE_FLAGS})
 endforeach()
 
-register_operators(EXCLUDES c_gen_nccl_id_op gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
-register_operators(EXCLUDES c_gen_bkcl_id_op gen_bkcl_id_op DEPS ${COLLECTIVE_DEPS})
+register_operators(EXCLUDES gen_bkcl_id_op c_gen_nccl_id_op gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
 
 if(WITH_NCCL)
     set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper)
@@ -26,7 +25,7 @@ endif()
 
 if(WITH_XPU_BKCL)
     set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper)
-    op_library(c_gen_bkcl_id_op DEPS ${COLLECTIVE_DEPS})
+    # op_library(c_gen_bkcl_id_op DEPS ${COLLECTIVE_DEPS})
     op_library(gen_bkcl_id_op DEPS ${COLLECTIVE_DEPS})
 endif()
 
