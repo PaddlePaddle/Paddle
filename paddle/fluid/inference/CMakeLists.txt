@@ -17,7 +17,7 @@ if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake function for inference
 endif()
 
-cc_library(paddle_inference_api_internal
+cc_library(paddle_inference_io
     SRCS io.cc
     DEPS paddle_framework ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 

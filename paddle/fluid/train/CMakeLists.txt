@@ -12,7 +12,7 @@ function(train_test TARGET_NAME)
     else()
         cc_test(test_train_${TARGET_NAME}
                 SRCS test_train_${TARGET_NAME}.cc
-                DEPS paddle_inference_api
+                DEPS paddle_inference_io
                 ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
     endif()
     if(TEST test_train_${TARGET_NAME})
