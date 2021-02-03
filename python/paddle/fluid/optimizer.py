@@ -4514,6 +4514,11 @@ class PipelineOptimizer(object):
             # device = op.attr(self._op_device_key)
             if not self._is_optimize_op(op) and not first_optimize_op_index:
                 first_optimize_op_index = index + 1
+                if block.ops[
+                        first_optimize_op_index].type == 'c_sync_comm_stream':
+                    block.ops[first_optimize_op_index]._set_attr(
+                        self._op_role_key, self._op_role.Backward)
+                    first_optimize_op_index += 1
 
             if self._is_backward_op(op) and (
                     self._op_role_var_key in op.attr_names):
