@@ -98,8 +98,8 @@ struct BoxDecodeAndClipFunctor {
     T axmax = anchor[k + 2];
     T aymax = anchor[k + 3];
 
-    T w = axmax - axmin + 1.0;
-    T h = aymax - aymin + 1.0;
+    T w = axmax - axmin;
+    T h = aymax - aymin;
     T cx = axmin + 0.5 * w;
     T cy = aymin + 0.5 * h;
 
@@ -123,13 +123,13 @@ struct BoxDecodeAndClipFunctor {
 
     T oxmin = d_cx - d_w * 0.5;
     T oymin = d_cy - d_h * 0.5;
-    T oxmax = d_cx + d_w * 0.5 - 1.;
-    T oymax = d_cy + d_h * 0.5 - 1.;
+    T oxmax = d_cx + d_w * 0.5;
+    T oymax = d_cy + d_h * 0.5;
 
-    proposals[i * 4] = Max(Min(oxmin, im_info[1] - 1.), 0.);
-    proposals[i * 4 + 1] = Max(Min(oymin, im_info[0] - 1.), 0.);
-    proposals[i * 4 + 2] = Max(Min(oxmax, im_info[1] - 1.), 0.);
-    proposals[i * 4 + 3] = Max(Min(oymax, im_info[0] - 1.), 0.);
+    proposals[i * 4] = Max(Min(oxmin, im_info[1]), 0.);
+    proposals[i * 4 + 1] = Max(Min(oymin, im_info[0]), 0.);
+    proposals[i * 4 + 2] = Max(Min(oxmax, im_info[1]), 0.);
+    proposals[i * 4 + 3] = Max(Min(oymax, im_info[0]), 0.);
   }
 
   __device__ __forceinline__ T Min(T a, T b) const { return a > b ? b : a; }
@@ -158,17 +158,17 @@ static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
     T xmax = bboxes[k + 2];
     T ymax = bboxes[k + 3];
 
-    T w = xmax - xmin + 1.0;
-    T h = ymax - ymin + 1.0;
-    T cx = xmin + w / 2.;
-    T cy = ymin + h / 2.;
+    T w = xmax - xmin;
+    T h = ymax - ymin;
+    // T cx = xmin + w / 2.;
+    // T cy = ymin + h / 2.;
 
-    if (is_scale) {
-      w = (xmax - xmin) / im_info[2] + 1.;
-      h = (ymax - ymin) / im_info[2] + 1.;
-    }
+    // if (is_scale) {
+    //  w = (xmax - xmin) / im_info[2] + 1.;
+    //  h = (ymax - ymin) / im_info[2] + 1.;
+    //}
 
-    if (w >= min_size && h >= min_size && cx <= im_w && cy <= im_h) {
+    if (w >= min_size && h >= min_size) {
       keep_index[threadIdx.x] = i;
     }
     __syncthreads();
@@ -190,10 +190,10 @@ static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
 static __device__ float IoU(const float *a, const float *b) {
   float left = max(a[0], b[0]), right = min(a[2], b[2]);
   float top = max(a[1], b[1]), bottom = min(a[3], b[3]);
-  float width = max(right - left + 1, 0.f), height = max(bottom - top + 1, 0.f);
+  float width = max(right - left, 0.f), height = max(bottom - top, 0.f);
   float inter_s = width * height;
-  float s_a = (a[2] - a[0] + 1) * (a[3] - a[1] + 1);
-  float s_b = (b[2] - b[0] + 1) * (b[3] - b[1] + 1);
+  float s_a = (a[2] - a[0]) * (a[3] - a[1]);
+  float s_b = (b[2] - b[0]) * (b[3] - b[1]);
   return inter_s / (s_a + s_b - inter_s);
 }
 

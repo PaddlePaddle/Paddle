@@ -49,8 +49,8 @@ class TestDistributeFPNProposalsOp(OpTest):
         self.images_shape = [512, 512]
 
     def boxes_area(self, boxes):
-        w = (boxes[:, 2] - boxes[:, 0] + 1)
-        h = (boxes[:, 3] - boxes[:, 1] + 1)
+        w = (boxes[:, 2] - boxes[:, 0])
+        h = (boxes[:, 3] - boxes[:, 1])
         areas = w * h
         assert np.all(areas >= 0), 'Negative areas founds'
         return areas
@@ -59,7 +59,7 @@ class TestDistributeFPNProposalsOp(OpTest):
         s = np.sqrt(self.boxes_area(rois))
         s0 = self.canonical_scale
         lvl0 = self.canonical_level
-        target_lvls = np.floor(lvl0 + np.log2(s / s0 + 1e-6))
+        target_lvls = np.floor(lvl0 + np.log2(s / s0 + 1e-8))
         target_lvls = np.clip(target_lvls, lvl_min, lvl_max)
         return target_lvls
 

@@ -61,7 +61,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   Tensor keep_index, keep_num_t;
   keep_index.mutable_data<int>({pre_nms_num}, ctx.GetPlace());
   keep_num_t.mutable_data<int>({1}, ctx.GetPlace());
-  min_size = std::max(min_size, 1.0f);
+  // min_size = std::max(min_size, 1.0f);
   auto stream = ctx.stream();
   FilterBBoxes<T, 512><<<1, 512, 0, stream>>>(
       proposals.data<T>(), im_info.data<T>(), min_size, pre_nms_num,
