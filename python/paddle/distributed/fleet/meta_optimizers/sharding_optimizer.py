@@ -124,6 +124,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         # step5: remove unneeded ops and vars from block
         self._prune_main_program(main_block)
         self._prune_startup_program(startup_block)
+        if self.hybrid_dp:
+            self._initialization_broadcast(startup_program)
 
         # check op dependecy
         check_broadcast(main_block)
@@ -147,6 +149,14 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._startup_program, self.current_endpoint,
             self.sharding_group_endpoints, self.sharding_rank,
             self.sharding_ring_id, True)
+
+        # inner & outer model parallelism
+        if self._as_outer_parallelism:
+            self._collective_helper._init_communicator(
+                self._startup_program, self.current_endpoint,
+                self.mp_group_endpoints, self.mp_rank,
+                self.mp_group_id, True)
+
         # dp
         if self.hybrid_dp:
             self._collective_helper._init_communicator(
@@ -247,8 +257,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         """
         weightdecay_helper = WeightDecayHelper()
         weightdecay_helper.prune_weight_decay(block, self._shard)
+        # NOTE (JZ-LIANG) the sync of FoundInfinite should among one entire Model Parallelism
+        # group. and each Data Parallelism group should have its own sync of FoundInfinite
+        FoundInfinite_ring_id = self.sharding_ring_id
+        if self._as_outer_parallelism:
+            FoundInfinite_ring_id = self.mp_group_id
         FP16Utils.prune_fp16(block, self._shard, self._reduced_grads_to_param,
-                             self.sharding_ring_id)
+                             FoundInfinite_ring_id)
+
         gradientclip_helper = GradientClipHelper(self.sharding_ring_id)
         gradientclip_helper.prune_gradient_clip(block, self._shard)
 
@@ -500,6 +516,13 @@ class ShardingOptimizer(MetaOptimizerBase):
                 self.sharding_group_size,
                 self.dp_group_size)
 
+            # sharding parallelism is the only model parallelism in the current setting
+            self.mp_group_id = self.sharding_ring_id
+            self.mp_rank = self.sharding_rank
+            self.mp_group_size = self.sharding_group_size
+            self.mp_group_endpoints = self.sharding_group_endpoints[:]
+
+
             logging.info("Using Sharing&DP mode !")
         else:
             if self._as_outer_parallelism:
@@ -516,6 +539,12 @@ class ShardingOptimizer(MetaOptimizerBase):
                     ep for idx, ep in enumerate(self.endpoints)
                     if idx % self._inner_parallelism_size == _offset
                 ]
+
+                # the current entire model parallelism group is the combination of innert & sharding parallelism
+                self.mp_group_id = 2
+                self.mp_rank = self.global_rank
+                self.mp_group_size = self.role_maker._worker_num()
+                self.mp_group_endpoints = self.endpoints[:]
                 logging.info("Using Sharing as Outer parallelism mode !")
 
                 # print(
@@ -544,6 +573,13 @@ class ShardingOptimizer(MetaOptimizerBase):
                 self.sharding_rank = self.global_rank
                 self.sharding_group_size = self.role_maker._worker_num()
                 self.sharding_group_endpoints = self.endpoints
+
+                # sharding parallelism is the only model parallelism in the current setting
+                self.mp_group_id = self.sharding_ring_id
+                self.mp_rank = self.sharding_rank
+                self.mp_group_size = self.sharding_group_size
+                self.mp_group_endpoints = self.sharding_group_endpoints[:]
+
                 logging.info("Using Sharing alone mode !")
 
             self.dp_ring_id = -1
@@ -552,15 +588,46 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.dp_group_endpoints = None
 
         logging.info("global word size: {}".format(self.global_word_size))
-        logging.info("global rank: {}".format(self.global_rank))
+        logging.info("global rank: {}".format(self.global_rank))     
         logging.info("sharding group_size: {}".format(self.sharding_group_size))
         logging.info("sharding rank: {}".format(self.sharding_rank))
+        logging.info("current model parallelism group_size: {}".format(self.mp_group_size))
+        logging.info("current model parallelism rank: {}".format(self.mp_rank))  
         logging.info("dp group size: {}".format(self.dp_group_size))
         logging.info("dp rank: {}".format(self.dp_rank))
         logging.info("current endpoint: {}".format(self.current_endpoint))
+        logging.info("global word endpoints: {}".format(self.endpoints))
         logging.info("sharding group endpoints: {}".format(
             self.sharding_group_endpoints))
+        logging.info("current model parallelism group endpoints: {}".format(
+            self.mp_group_endpoints))
         logging.info("dp group endpoints: {}".format(self.dp_group_endpoints))
-        logging.info("global word endpoints: {}".format(self.endpoints))
 
         return
+
+    def _initialization_broadcast(self, startup_prog):
+        """
+        this funtion is to ensure the initialization between dp group to be 
+        identical when hybrid-dp is used.
+        """
+        block = startup_prog.global_block()
+        params = []
+        for param in block.iter_parameters():
+            params.append(param)
+            block.append_op(
+                type='c_broadcast',
+                inputs={'X': param},
+                outputs={'Out': param},
+                attrs={
+                    'ring_id': self.dp_ring_id,
+                    'root': 0,
+                    OP_ROLE_KEY: OpRole.Forward
+                })
+        block.append_op(
+            type='c_sync_comm_stream',
+            inputs={'X': params},
+            outputs={'Out': params},
+            attrs={'ring_id': self.dp_ring_id,
+                   OP_ROLE_KEY: OpRole.Forward})
+
+
