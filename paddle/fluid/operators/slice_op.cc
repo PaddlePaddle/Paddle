@@ -17,7 +17,6 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/tensorrt/engine.h"
 
 namespace paddle {
 namespace operators {
