@@ -30,17 +30,15 @@
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/string/string_helper.h"
 
-#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
-#endif
 
 #include "paddle/fluid/imperative/parallel_context.h"
 
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL)
+#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_XPU_BKCL)
 template <typename DeviceContext, typename T>
 static void ConcatTensorsForAllReduce(
     const DeviceContext &context,
@@ -130,6 +128,69 @@ static void SplitTensorsWithType(
   }
 }
 
+#ifdef PADDLE_WITH_XPU_BKCL
+template <>
+void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
+    const platform::XPUDeviceContext &context,
+    framework::Variable *p_dense_contents,
+    std::vector<framework::Tensor> *p_dense_tensors) {
+  auto *in = p_dense_contents->GetMutable<framework::LoDTensor>();
+  std::vector<framework::Tensor *> outs;
+  std::vector<const framework::Tensor *> shape_refer;
+
+  outs.reserve(p_dense_tensors->size());
+  shape_refer.reserve(p_dense_tensors->size());
+
+  for (auto &tensor : *p_dense_tensors) {
+    outs.emplace_back(&tensor);
+    shape_refer.emplace_back(&tensor);
+  }
+  operators::math::SplitFunctor<platform::XPUDeviceContext, float>
+      split_functor_;
+  split_functor_(context, *in, shape_refer, 0, &outs);
+}
+
+// context is used to select the stream for concat
+template <>
+void ConcatTensorsWithType<platform::XPUDeviceContext>(
+    const platform::XPUDeviceContext &context,
+    const std::vector<framework::Tensor> &dense_tensors_,
+    framework::Variable *p_dense_contents,
+    framework::proto::VarType::Type type) {
+  switch (type) {
+    case framework::proto::VarType::FP32:
+      ConcatTensorsForAllReduce<platform::XPUDeviceContext, float>(
+          context, dense_tensors_, p_dense_contents);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when it concats tensors for "
+          "allreduce.",
+          framework::DataTypeToString(type)));
+  }
+}
+
+// context is used to select the stream for split
+template <>
+void SplitTensorsWithType<platform::XPUDeviceContext>(
+    const platform::XPUDeviceContext &context,
+    framework::Variable *p_dense_contents,
+    std::vector<framework::Tensor> *p_dense_tensors,
+    framework::proto::VarType::Type type) {
+  switch (type) {
+    case framework::proto::VarType::FP32:
+      SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
+          context, p_dense_contents, p_dense_tensors);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when it splits tensors for "
+          "allreduce.",
+          framework::DataTypeToString(type)));
+  }
+}
+#endif
+
 void Group::ConcatTensors(const platform::DeviceContext &context) {
   VLOG(3) << "Before concat, set output tensor size is " << all_length_;
   auto tensor = dense_contents_.GetMutable<framework::LoDTensor>();
@@ -146,6 +207,16 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't concat grad tensors since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
+#endif
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU_BKCL
+    ConcatTensorsWithType(
+        static_cast<const platform::XPUDeviceContext &>(context),
+        dense_tensors_, &dense_contents_, dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't concat xpu grads since it's not compiled with BKCL,"
+        "Please recompile or reinstall Paddle with BKCL support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
     ConcatTensorsWithType(
@@ -168,6 +239,16 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't split grad tensor since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
+#endif
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU_BKCL
+    SplitTensorsWithType(
+        static_cast<const platform::XPUDeviceContext &>(context),
+        &dense_contents_, &dense_tensors_, dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't split xpu grad since it's not compiled with BKCL,"
+        "Please recompile or reinstall Paddle with BKCL support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
     SplitTensorsWithType(

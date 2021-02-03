@@ -27,6 +27,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/bfloat16.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -256,6 +259,38 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   }
 }
 
+// NOTE(wangxi): When copying data to the accelerator card,
+// we need set_device(dev_id) first.
+template <typename P>
+static int GetDeviceId(const P &place) {
+  // for CPUPlace and CUDAPinnedPlace.
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "Paddle can't Get CPUPlace or CUDAPinnedPlace Device Id."));
+}
+
+template <>
+int GetDeviceId<platform::CUDAPlace>(const platform::CUDAPlace &place) {
+  return place.GetDeviceId();
+}
+
+template <>
+int GetDeviceId<platform::XPUPlace>(const platform::XPUPlace &place) {
+  return place.GetDeviceId();
+}
+
+// NOTE(wangxi16): Used by VarBase __setitem__
+template <>
+int GetDeviceId<platform::Place>(const platform::Place &place) {
+  if (paddle::platform::is_gpu_place(place)) {
+    return GetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place));
+  } else if (paddle::platform::is_xpu_place(place)) {
+    return GetDeviceId(BOOST_GET_CONST(platform::XPUPlace, place));
+  }
+  // for CPUPlace and CUDAPinnedPlace.
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "Paddle can't Get CPUPlace or CUDAPinnedPlace Device Id."));
+}
+
 template <typename T, typename P>
 void SetTensorFromPyArrayT(
     framework::Tensor *self,
@@ -279,6 +314,7 @@ void SetTensorFromPyArrayT(
     }
   } else if (paddle::platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
+    platform::XPUDeviceGuard guard(GetDeviceId(place));
     auto dst = self->mutable_data<T>(place);
     xpu_memcpy(dst, array.data(), array.nbytes(),
                XPUMemcpyKind::XPU_HOST_TO_DEVICE);
@@ -290,7 +326,7 @@ void SetTensorFromPyArrayT(
   } else {
 #ifdef PADDLE_WITH_CUDA
     if (paddle::platform::is_gpu_place(place)) {
-      // TODO(zhiqiu): set SetDeviceId before calling cuda APIs.
+      platform::CUDADeviceGuard guard(GetDeviceId(place));
       auto dst = self->mutable_data<T>(place);
       paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
                                       cudaMemcpyHostToDevice);
