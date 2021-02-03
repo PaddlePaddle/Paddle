@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/cpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA
 DECLARE_uint64(initial_gpu_memory_in_mb);

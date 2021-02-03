@@ -17,9 +17,10 @@ limitations under the License. */
 #include <google/protobuf/text_format.h>
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/fluid/distributed/service/brpc_ps_client.h"
+
 
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 #define STEP_COUNTER "@PS_STEP_COUNTER@"

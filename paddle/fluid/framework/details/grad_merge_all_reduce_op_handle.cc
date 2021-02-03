@@ -13,7 +13,6 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
 
-
 #ifdef PADDLE_WITH_NCCL
 DECLARE_bool(sync_nccl_allreduce);
 #endif
