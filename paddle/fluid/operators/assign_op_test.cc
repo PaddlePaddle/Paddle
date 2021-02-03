@@ -14,20 +14,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/assign_op.h"
 
 #include <gtest/gtest.h>
-#include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/framework/mixed_vector.h"
-
-namespace paddle {
-namespace framework {
-template <typename T>
-class Vector;
-}  // namespace framework
-}  // namespace paddle
 
 TEST(AssignOp, AssignLoDTensor) {
   paddle::platform::CPUPlace cpu_place;
