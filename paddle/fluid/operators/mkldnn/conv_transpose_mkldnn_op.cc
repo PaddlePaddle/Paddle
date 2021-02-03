@@ -25,16 +25,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 using framework::DataLayout;
 
-inline void GetWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
-                         const int groups) {
-  if (groups > 1) {
-    weights_tz.push_back(0);
-    std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
-    weights_tz[0] = groups;
-    weights_tz[1] = weights_tz[1] / groups;
-  }
-}
-
 template <typename T, typename K, typename T_out>
 class ConvTransposeMKLDNNHandlerT
     : public platform::MKLDNNHandlerT<T, mkldnn::deconvolution_forward> {
@@ -141,7 +131,7 @@ class ConvTransposeMKLDNNHandlerT
     weights_tz[0] = iohw_weights_tz[1];
     weights_tz[1] = iohw_weights_tz[0];
     int g = std::max(groups, 1);
-    GetWeightsTz(weights_tz, g);
+    platform::GetWeightsTz(weights_tz, g);
 
     auto dst_tz = paddle::framework::vectorize<int64_t>(output->dims());
 
@@ -256,7 +246,7 @@ class ConvTransposeMKLDNNHandlerT
       weights_tz[0] = iohw_weights_tz[1];
       weights_tz[1] = iohw_weights_tz[0];
       int g = std::max(groups, 1);
-      GetWeightsTz(weights_tz, g);
+      platform::GetWeightsTz(weights_tz, g);
 
       auto user_src_md = platform::MKLDNNMemDesc(
           weights_tz, platform::MKLDNNGetDataType<K>(),
