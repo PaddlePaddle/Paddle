@@ -14,22 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/fc.h"
 
-#include "paddle/fluid/operators/jit/helper.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
-
-namespace paddle {
-namespace operators {
-namespace jit {
-template <typename T>
-struct VAddReluTuple;
-template <typename T>
-struct VAddTuple;
-}  // namespace jit
-}  // namespace operators
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
 
 namespace paddle {
 namespace operators {

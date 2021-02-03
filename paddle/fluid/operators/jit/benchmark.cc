@@ -18,7 +18,7 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/jit/helper.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"

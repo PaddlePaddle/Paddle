@@ -18,7 +18,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/jit/helper.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/place.h"
 
