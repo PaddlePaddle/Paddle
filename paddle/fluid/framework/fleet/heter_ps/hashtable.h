@@ -47,6 +47,7 @@ class HashTable {
   void get(const KeyType* d_keys, ValType* d_vals, size_t len,
            cudaStream_t stream);
   void show();
+  int size() { return container_->size(); }
 
   template <typename GradType, typename Sgd>
   void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
