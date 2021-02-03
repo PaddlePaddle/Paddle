@@ -182,6 +182,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
   framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(ctx.GetPlace())) {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -193,15 +194,13 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, data_type)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
 }
 
 framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(

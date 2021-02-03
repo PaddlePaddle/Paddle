@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <glog/logging.h>
 #include <limits>
 #include <memory>
 #include <vector>
+#include "common_value.h"  // NOLINT
 #include "thrust/pair.h"
 //#include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
@@ -47,11 +49,13 @@ class HashTable {
   void get(const KeyType* d_keys, ValType* d_vals, size_t len,
            cudaStream_t stream);
   void show();
-  int size() { return container_->size(); }
+  void dump_to_cpu(int devid, cudaStream_t stream);
 
   template <typename GradType, typename Sgd>
   void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
               Sgd sgd, cudaStream_t stream);
+
+  int size() { return container_->size(); }
 
  private:
   TableContainer<KeyType, ValType>* container_;
@@ -61,5 +65,5 @@ class HashTable {
 };
 }  // end namespace framework
 }  // end namespace paddle
-#include "hashtable.tpp"
+#include "hashtable_inl.h"
 #endif

@@ -48,7 +48,7 @@ int HeterPs::get_index_by_devid(int devid) {
   return comm_->get_index_by_devid(devid);
 }
 
-void HeterPs::dump() {}
+void HeterPs::end_pass() { comm_->end_pass(); }
 
 void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }
 

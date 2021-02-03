@@ -471,7 +471,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
     }
 
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     conv_p->execute(astream, args);
     astream.wait();
 
@@ -553,7 +553,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
         dev_ctx.GetBlob(prim_key));
 
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     if (conv_p == nullptr || !is_test) {
       float fuse_alpha = ctx.Attr<float>("fuse_alpha");
@@ -1045,7 +1045,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         user_weights_md, to_void_cast<T>(filter_data));
     auto user_diff_dst_memory_p = handler.AcquireDiffDstMemory(
         user_diff_dst_md, to_void_cast<T>(output_grad_data));
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (filter_grad) {
       auto src_memory_p = handler.AcquireSrcMemoryFromWeightsPrimitive(
           user_src_memory_p, pipeline);

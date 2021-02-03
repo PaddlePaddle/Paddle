@@ -14,7 +14,6 @@ limitations under the License. */
 #pragma once
 #include <queue>
 
-
 #ifdef PADDLE_WITH_PSLIB
 namespace paddle {
 namespace framework {
@@ -181,87 +180,83 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
-                                                        int gpu_num,
-                                                        int *h_left,
-                                                        int *h_right,
-                                                        KeyType* src_key,
-                                                        GradType* src_val) {
-    int need_copy_val = 0;
-    if (src_val) {
-      need_copy_val = 1;
+void HeterComm<KeyType, ValType, GradType>::walk_to_dest(
+    int start_index, int gpu_num, int* h_left, int* h_right, KeyType* src_key,
+    GradType* src_val) {
+  int need_copy_val = 0;
+  if (src_val) {
+    need_copy_val = 1;
+  }
+  std::queue<CopyTask> que;
+  for (int i = 0; i < gpu_num; i++) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
     }
-    std::queue<CopyTask> que;
-    for (int i = 0; i < gpu_num; i++) {
-      if (h_left[i] == -1 || h_right[i] == -1) {
-        continue;
-      }
-      int size = path_[start_index][i].nodes_.size();
-      auto &node = path_[start_index][i].nodes_[0];
-      CopyTask t(&path_[start_index][i], 0);
-      que.push(t);
-      cudaMemcpyAsync(node.key_storage, reinterpret_cast<char*>(src_key + h_left[i]),
-                      node.key_bytes_len, cudaMemcpyDefault, node.in_stream);
+    int size = path_[start_index][i].nodes_.size();
+    auto& node = path_[start_index][i].nodes_[0];
+    CopyTask t(&path_[start_index][i], 0);
+    que.push(t);
+    cudaMemcpyAsync(node.key_storage,
+                    reinterpret_cast<char*>(src_key + h_left[i]),
+                    node.key_bytes_len, cudaMemcpyDefault, node.in_stream);
+    if (need_copy_val) {
+      cudaMemcpyAsync(node.val_storage,
+                      reinterpret_cast<char*>(src_val + h_left[i]),
+                      node.val_bytes_len, cudaMemcpyDefault, node.in_stream);
+    }
+  }
+  while (!que.empty()) {
+    CopyTask& cur_task = que.front();
+    que.pop();
+    if (cur_task.path->nodes_[cur_task.step].sync) {
+      cudaStreamSynchronize(cur_task.path->nodes_[cur_task.step].in_stream);
+    }
+    if (cur_task.step != cur_task.path->nodes_.size() - 1) {
+      int cur_step = cur_task.step;
+      CopyTask c(cur_task.path, cur_step + 1);
+      que.push(c);
+      cudaMemcpyAsync(cur_task.path->nodes_[cur_step + 1].key_storage,
+                      cur_task.path->nodes_[cur_step].key_storage,
+                      cur_task.path->nodes_[cur_step + 1].key_bytes_len,
+                      cudaMemcpyDefault,
+                      cur_task.path->nodes_[cur_step + 1].in_stream);
       if (need_copy_val) {
-        cudaMemcpyAsync(node.val_storage, reinterpret_cast<char*>(src_val + h_left[i]),
-                        node.val_bytes_len, cudaMemcpyDefault, node.in_stream);
-      }
-    }
-    while(!que.empty()) {
-      CopyTask &cur_task = que.front();
-      que.pop();
-      if (cur_task.path->nodes_[cur_task.step].sync) {
-        cudaStreamSynchronize(cur_task.path->nodes_[cur_task.step].in_stream);
-      }
-      if (cur_task.step != cur_task.path->nodes_.size() - 1){
-        int cur_step = cur_task.step;
-        CopyTask c(cur_task.path, cur_step + 1);
-        que.push(c);
-        cudaMemcpyAsync(cur_task.path->nodes_[cur_step+1].key_storage,
-                        cur_task.path->nodes_[cur_step].key_storage,
-                        cur_task.path->nodes_[cur_step+1].key_bytes_len,
+        cudaMemcpyAsync(cur_task.path->nodes_[cur_step + 1].val_storage,
+                        cur_task.path->nodes_[cur_step].val_storage,
+                        cur_task.path->nodes_[cur_step + 1].val_bytes_len,
                         cudaMemcpyDefault,
-                        cur_task.path->nodes_[cur_step+1].in_stream);
-        if (need_copy_val) {
-          cudaMemcpyAsync(cur_task.path->nodes_[cur_step+1].val_storage,
-                          cur_task.path->nodes_[cur_step].val_storage,
-                          cur_task.path->nodes_[cur_step+1].val_bytes_len,
-                          cudaMemcpyDefault,
-                          cur_task.path->nodes_[cur_step+1].in_stream);
-        } 
+                        cur_task.path->nodes_[cur_step + 1].in_stream);
       }
     }
   }
+}
 
 template <typename KeyType, typename ValType, typename GradType>
-void HeterComm<KeyType, ValType, GradType>::walk_to_src(int start_index,
-                                                        int gpu_num,
-                                                        int *h_left,
-                                                        int *h_right,
-                                                        ValType* src_val) {
+void HeterComm<KeyType, ValType, GradType>::walk_to_src(
+    int start_index, int gpu_num, int* h_left, int* h_right, ValType* src_val) {
   std::queue<CopyTask> que;
   for (int i = 0; i < gpu_num; i++) {
     if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
     }
     int cur_step = path_[start_index][i].nodes_.size() - 1;
-    auto &node = path_[start_index][i].nodes_[cur_step];
-    if(cur_step==0){
+    auto& node = path_[start_index][i].nodes_[cur_step];
+    if (cur_step == 0) {
       cudaMemcpyAsync(reinterpret_cast<char*>(src_val + h_left[i]),
-                      node.val_storage, node.val_bytes_len,
-                      cudaMemcpyDefault, node.out_stream);
+                      node.val_storage, node.val_bytes_len, cudaMemcpyDefault,
+                      node.out_stream);
     } else {
-      CopyTask t(&path_[start_index][i], cur_step-1);
+      CopyTask t(&path_[start_index][i], cur_step - 1);
       que.push(t);
-      cudaMemcpyAsync(path_[start_index][i].nodes_[cur_step-1].val_storage,
+      cudaMemcpyAsync(path_[start_index][i].nodes_[cur_step - 1].val_storage,
                       node.val_storage,
-                      path_[start_index][i].nodes_[cur_step-1].val_bytes_len,
+                      path_[start_index][i].nodes_[cur_step - 1].val_bytes_len,
                       cudaMemcpyDefault,
-                      path_[start_index][i].nodes_[cur_step-1].out_stream);
+                      path_[start_index][i].nodes_[cur_step - 1].out_stream);
     }
   }
-  while(!que.empty()) {
-    CopyTask &cur_task = que.front();
+  while (!que.empty()) {
+    CopyTask& cur_task = que.front();
     que.pop();
     int cur_step = cur_task.step;
     if (cur_task.path->nodes_[cur_step].sync) {
@@ -270,12 +265,12 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_src(int start_index,
     if (cur_step > 0) {
       CopyTask c(cur_task.path, cur_step - 1);
       que.push(c);
-      cudaMemcpyAsync(cur_task.path->nodes_[cur_step-1].val_storage,
+      cudaMemcpyAsync(cur_task.path->nodes_[cur_step - 1].val_storage,
                       cur_task.path->nodes_[cur_step].val_storage,
-                      cur_task.path->nodes_[cur_step-1].val_bytes_len,
+                      cur_task.path->nodes_[cur_step - 1].val_bytes_len,
                       cudaMemcpyDefault,
-                      cur_task.path->nodes_[cur_step-1].out_stream);
-    }else if (cur_step == 0) {
+                      cur_task.path->nodes_[cur_step - 1].out_stream);
+    } else if (cur_step == 0) {
       int end_index = cur_task.path->nodes_.back().gpu_num;
       cudaMemcpyAsync(reinterpret_cast<char*>(src_val + h_left[end_index]),
                       cur_task.path->nodes_[cur_step].val_storage,
@@ -611,7 +606,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
                    shard_len * sizeof(GradType), local_storage);
   }
 
-  walk_to_dest(gpu_num, total_gpu, h_left, h_right, d_shard_keys_ptr, d_shard_grads_ptr);
+  walk_to_dest(gpu_num, total_gpu, h_left, h_right, d_shard_keys_ptr,
+               d_shard_grads_ptr);
 
   for (int i = 0; i < total_gpu; ++i) {
     if (h_left[i] == -1 || h_right[i] == -1) {
@@ -630,6 +626,34 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
     cudaStreamSynchronize(resource_->remote_stream(i));
   }
 }
+
+template <typename KeyType, typename ValType, typename GradType>
+void HeterComm<KeyType, ValType, GradType>::end_pass() {
+  int total_gpu = resource_->total_gpu();
+  std::vector<std::thread> threads;
+
+  auto dump_to_cpu_func = [this](int index) {
+    auto stream = resource_->local_stream(index, 0);
+    int dev_id = resource_->dev_id(index);
+    platform::CUDADeviceGuard guard(dev_id);
+    tables_[index]->dump_to_cpu(dev_id, stream);
+  };
+
+  for (int i = 0; i < total_gpu; ++i) {
+    threads.push_back(std::thread(dump_to_cpu_func, i));
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+}
+
+// template <typename KeyType, typename ValType, typename GradType>
+// void HeterComm<KeyType, ValType, GradType>::dump_to_cpu(int index) {
+//  auto stream = resource_->local_stream(index, 0);
+//  int dev_id = resource_->dev_id(index);
+//  platform::CUDADeviceGuard guard(dev_id);
+//  tables_[index]->dump_to_cpu(dev_id, stream);
+//}
 
 }  // end namespace framework
 }  // end namespace paddle

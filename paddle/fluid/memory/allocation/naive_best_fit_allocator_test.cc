@@ -41,7 +41,7 @@ TEST(NaiveBestFitAllocatorTest, CpuAlloc) {
   alloc.Release(platform::CPUPlace());
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(NaiveBestFitAllocatorTest, GpuAlloc) {
   NaiveBestFitAllocator alloc{platform::CUDAPlace(0)};
   {
