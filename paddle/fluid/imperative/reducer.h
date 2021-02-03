@@ -44,7 +44,7 @@ class VariableWrapper;
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL)
+#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_XPU_BKCL)
 class Group {
  public:
   // Here, we use dense_contents_ & sparse_contents_ to
