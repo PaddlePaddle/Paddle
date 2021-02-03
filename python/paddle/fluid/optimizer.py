@@ -4536,7 +4536,7 @@ class PipelineOptimizer(object):
                     param_grad_var = block.var(param_grad_name)
                     param_grad_var.persistable = True
                     block._insert_op(
-                        index=0,
+                        index=first_optimize_op_index + offset,
                         type='fill_constant',
                         inputs={},
                         outputs={'Out': [param_grad_var]},
@@ -4548,6 +4548,7 @@ class PipelineOptimizer(object):
                             # a trick to run this op once per mini-batch
                             self._op_role_key: self._op_role.Optimize.LRSched,
                         })
+                    offset += 1
                     grad_name = op_role_var[i + 1]  # with _0 suffix
                     grad_var = block.vars[grad_name]  # without _0 suffix
                     real_grad_name = grad_name[0:grad_name.find(
