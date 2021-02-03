@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/framework/mixed_vector.h"
 
 namespace paddle {
 namespace framework {
