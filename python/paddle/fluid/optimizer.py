@@ -4611,6 +4611,18 @@ class PipelineOptimizer(object):
                                 # self._op_role_var_key: op_role_var
                             })
                         offset += 1
+                        block._insert_op(
+                            index=first_optimize_op_index + offset,
+                            type='cast',
+                            inputs={'X': real_grad_var},
+                            outputs={'Out': fp32_grad_var},
+                            attrs={
+                                'in_dtype': real_grad_var.dtype,
+                                'out_dtype': fp32_grad_var.dtype,
+                                # self._op_device_key: device,
+                                self._op_role_key: self._op_role.Backward,
+                                # self._op_role_var_key: op_role_var
+                            })
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
