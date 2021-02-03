@@ -63,6 +63,9 @@ nvinfer1::Dims SplitPlugin::getOutputDimensions(
 }
 
 int SplitPlugin::initialize() {
+  if (is_initialized_) {
+    return 0;
+  }
   PADDLE_ENFORCE_LE(axis_, nvinfer1::Dims::MAX_DIMS,
                     platform::errors::InvalidArgument(
                         "Axis dimension exceeds max dimension in TensorRT. "
@@ -90,6 +93,7 @@ int SplitPlugin::initialize() {
   d_segment_offsets_ = segment_offsets;
   segment_offsets_ = std::move(segment_offsets);
   d_output_ptrs_.resize(this->getNbOutputs(), nullptr);
+  is_initialized_ = true;
   return 0;
 }
 

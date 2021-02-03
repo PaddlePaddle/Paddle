@@ -40,7 +40,9 @@ class SplitPlugin : public PluginTensorRT {
   }
 
   SplitPlugin* clone() const override {
-    return new SplitPlugin(axis_, output_length_, with_fp16_);
+    auto* ptr = new SplitPlugin(axis_, output_length_, with_fp16_);
+    ptr->initialize();
+    return ptr;
   }
 
   const char* getPluginType() const override { return "split_plugin"; }
@@ -75,6 +77,7 @@ class SplitPlugin : public PluginTensorRT {
   std::vector<int> segment_offsets_;
   thrust::device_vector<int> d_segment_offsets_;
   thrust::device_vector<float*> d_output_ptrs_;
+  bool is_initialized_{false};
 };
 
 #if IS_TRT_VERSION_GE(6000)
