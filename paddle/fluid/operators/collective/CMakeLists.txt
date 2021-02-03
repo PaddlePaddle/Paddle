@@ -19,7 +19,7 @@ if(WITH_NCCL)
     op_library(gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
 endif()
 
-if(WITH_BKCL)
+if(WITH_XPU_BKCL)
     set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} collective_helper)
 endif()
 
