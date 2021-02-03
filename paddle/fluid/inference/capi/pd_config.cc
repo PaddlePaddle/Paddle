@@ -111,6 +111,14 @@ void PD_EnableUseGpu(PD_AnalysisConfig* config, int memory_pool_init_size_mb,
                               device_id);
 }
 
+void PD_EnableXpu(PD_AnalysisConfig* config, int l3_workspace_size) {
+  PADDLE_ENFORCE_NOT_NULL(
+      config,
+      paddle::platform::errors::InvalidArgument(
+          "The pointer of analysis configuration shouldn't be nullptr"));
+  config->config.EnableXpu(l3_workspace_size);
+}
+
 void PD_DisableGpu(PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
@@ -127,12 +135,28 @@ bool PD_UseGpu(const PD_AnalysisConfig* config) {
   return config->config.use_gpu();
 }
 
+bool PD_UseXpu(const PD_AnalysisConfig* config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      config,
+      paddle::platform::errors::InvalidArgument(
+          "The pointer of analysis configuration shouldn't be nullptr"));
+  return config->config.use_xpu();
+}
+
 int PD_GpuDeviceId(const PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
       paddle::platform::errors::InvalidArgument(
           "The pointer of analysis configuration shouldn't be nullptr"));
   return config->config.gpu_device_id();
+}
+
+int PD_XpuDeviceId(const PD_AnalysisConfig* config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      config,
+      paddle::platform::errors::InvalidArgument(
+          "The pointer of analysis configuration shouldn't be nullptr"));
+  return config->config.xpu_device_id();
 }
 
 int PD_MemoryPoolInitSizeMb(const PD_AnalysisConfig* config) {
