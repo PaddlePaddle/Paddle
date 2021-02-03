@@ -198,6 +198,26 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
           inplace_map);
 }
 
+void Tracer::SetExpectedPlace(platform::Place place) {
+  // NOTE(wangxi): set device id before launch device kernel
+  if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+    platform::SetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place).device);
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU if use CUDAPlace."));
+#endif
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+    platform::SetXPUDeviceId(BOOST_GET_CONST(platform::XPUPlace, place).device);
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with XPU if use XPUPlace."));
+#endif
+  }
+  expected_place_ = place;
+}
+
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
                                  const NameVarBaseMap& outs,
                                  bool trace_backward) {
