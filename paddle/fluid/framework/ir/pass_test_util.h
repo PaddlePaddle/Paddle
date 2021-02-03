@@ -18,9 +18,13 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -112,6 +116,37 @@ ProgramDesc BuildProgramDesc(const std::vector<std::string>& transient_vars,
 bool RunPassAndAssert(Graph* graph, const std::string& pass_name,
                       const std::string& from, const std::string& to,
                       int removed_nodes_count, int added_nodes_count = 0);
+
+///
+/// @brief      Initializes the tensor memory holder.
+///
+/// @param[in]  scope     The scope that manages the variable.
+/// @param[in]  place     The place where memory will be allocated.
+/// @param[in]  var_name  The variable name.
+/// @param[in]  dims      The dimensions of allocated tensor.
+///
+/// @tparam     T         Tensor data type.
+///
+template <typename T>
+void InitLoDTensorHolder(Scope* scope, const paddle::platform::Place& place,
+                         const std::string& var_name,
+                         const std::vector<int64_t>& dims,
+                         const T* data = nullptr);
+
+///
+/// @brief      Retrieve operator descriptor from program.
+///
+/// @param[in]  prog             The program descriptor containing the op we
+///                              search for.
+/// @param[in]  op_type          The wanted operator type name.
+/// @param[in]  output_name      The wanted operator output name.
+/// @param[in]  output_arg_name  The wanted operator output argument name.
+///
+/// @return     The operator descriptor.
+///
+OpDesc* GetOp(const ProgramDesc& prog, const std::string& op_type,
+              const std::string& output_name,
+              const std::string& output_arg_name);
 
 }  // namespace test
 }  // namespace ir

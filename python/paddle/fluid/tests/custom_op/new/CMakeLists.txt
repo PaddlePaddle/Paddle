@@ -27,5 +27,5 @@ foreach(src ${TEST_OPS})
 endforeach()
 
 # Compiling .so will cost some time, but running process is very fast.
-set_tests_properties(test_new_custom_op PROPERTIES TIMEOUT 180)
+set_tests_properties(test_new_custom_op_setup PROPERTIES TIMEOUT 180)
 set_tests_properties(test_new_custom_op_jit PROPERTIES TIMEOUT 180)

@@ -17,10 +17,10 @@ import unittest
 import paddle
 import numpy as np
 from paddle.utils.cpp_extension import load
-from utils import paddle_includes, extra_compile_args
+from ..utils import paddle_includes, extra_compile_args
 
 # Compile and load custom op Just-In-Time.
-new_relu2 = load(
+relu2 = load(
     name='relu2',
     sources=['relu_op.cc', 'relu_op.cu'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
@@ -32,7 +32,7 @@ class TestJITLoad(unittest.TestCase):
         raw_data = np.array([[-1, 1, 0], [1, -1, -1]]).astype('float32')
         x = paddle.to_tensor(raw_data, dtype='float32')
         # use custom api
-        out = new_relu2(x)
+        out = relu2(x)
         self.assertTrue(
             np.array_equal(out.numpy(),
                            np.array([[0, 1, 0], [1, 0, 0]]).astype('float32')))

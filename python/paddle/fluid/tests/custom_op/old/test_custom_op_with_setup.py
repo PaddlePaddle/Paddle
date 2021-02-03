@@ -14,7 +14,6 @@
 
 import os
 import unittest
-
 from test_custom_op import CustomOpTest, load_so
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
