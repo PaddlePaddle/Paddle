@@ -231,7 +231,7 @@ xpu::Context* XPUDeviceContext::x_context() const { return context_; }
 #ifdef PADDLE_WITH_ASCEND_CL
 NPUDeviceContext::NPUDeviceContext(NPUPlace place) : place_(place) {
   NPUDeviceGuard guard(place_.device);
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateContext(context_, place_.device)
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateContext(&context_, place_.device));
 }
 
 NPUDeviceContext::~NPUDeviceContext() {
@@ -246,7 +246,9 @@ void NPUDeviceContext::Wait() const {
 
 Place NPUDeviceContext::GetPlace() const { return place_; }
 
-aclrtContext* NPUDeviceContext::context() const { return &context_; }
+aclrtContext* NPUDeviceContext::context() const {
+  return const_cast<aclrtContext*>(&context_);
+}
 #endif
 
 #ifdef PADDLE_WITH_CUDA

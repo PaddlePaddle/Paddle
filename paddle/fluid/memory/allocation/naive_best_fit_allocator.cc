@@ -23,6 +23,7 @@
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
@@ -240,7 +241,7 @@ class NPUBuddyAllocatorList {
     return instance;
   }
 
-  BuddyAllocator *Get(int c) {
+  BuddyAllocator *Get(int npu_id) {
     auto pos = std::distance(
         devices_.begin(), std::find(devices_.begin(), devices_.end(), npu_id));
     PADDLE_ENFORCE_LT(pos, devices_.size(),
@@ -254,7 +255,7 @@ class NPUBuddyAllocatorList {
       allocators_[pos].reset(new BuddyAllocator(
           std::unique_ptr<detail::SystemAllocator>(
               new detail::NPUAllocator(devices_[pos])),
-          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
+          platform::NPUMinChunkSize(), platform::NPUMaxChunkSize()));
       VLOG(10) << "\n\nNOTE:\n"
                << "You can set GFlags environment variable "
                << "'FLAGS_fraction_of_gpu_memory_to_use' "
@@ -278,20 +279,30 @@ class NPUBuddyAllocatorList {
   std::vector<std::unique_ptr<BuddyAllocator>> allocators_;
 };
 
-BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
-  return GPUBuddyAllocatorList::Instance()->Get(gpu_id);
+BuddyAllocator *GetNPUBuddyAllocator(int npu_id) {
+  return NPUBuddyAllocatorList::Instance()->Get(npu_id);
 }
 #endif
 
 template <>
+size_t Used<platform::NPUPlace>(const platform::NPUPlace &place) {
+#ifdef PADDLE_WITH_ASCEND_CL
+  return GetNPUBuddyAllocator(place.device)->Used();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'NPUPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
 void *Alloc<platform::NPUPlace>(const platform::NPUPlace &place, size_t size) {
 #ifdef PADDLE_WITH_ASCEND_CL
-  auto *buddy_allocator = GetGPUBuddyAllocator(place.device);
+  auto *buddy_allocator = GetNPUBuddyAllocator(place.device);
   auto *ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
-    platform::CUDADeviceGuard(place.device);
+    platform::NPUDeviceGuard(place.device);
     size_t avail, total;
-    platform::GpuMemoryUsage(&avail, &total);
+    platform::NPUMemoryUsage(&avail, &total);
     PADDLE_THROW(platform::errors::ResourceExhausted(
         "Cannot allocate %s in GPU %d, avaliable %s, total %s, GpuMinChunkSize "
         "%s, GpuMaxChunkSize %s, GPU memory used: %s.",
@@ -299,10 +310,10 @@ void *Alloc<platform::NPUPlace>(const platform::NPUPlace &place, size_t size) {
         string::HumanReadableSize(avail), string::HumanReadableSize(total),
         string::HumanReadableSize(buddy_allocator->GetMinChunkSize()),
         string::HumanReadableSize(buddy_allocator->GetMaxChunkSize()),
-        string::HumanReadableSize(Used<platform::CUDAPlace>(place))));
+        string::HumanReadableSize(Used<platform::NPUPlace>(place))));
   } else {
     if (FLAGS_init_allocated_mem) {
-      cudaMemset(ptr, 0xEF, size);
+      aclrtMemset(ptr, size, 0xEF, size);
     }
   }
   return ptr;
@@ -316,7 +327,7 @@ template <>
 void Free<platform::NPUPlace>(const platform::NPUPlace &place, void *p,
                               size_t size) {
 #ifdef PADDLE_WITH_ASCEND_CL
-  GetGPUBuddyAllocator(place.device)->Free(p);
+  GetNPUBuddyAllocator(place.device)->Free(p);
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'CUDAPlace' is not supported in CPU only device."));
@@ -326,17 +337,7 @@ void Free<platform::NPUPlace>(const platform::NPUPlace &place, void *p,
 template <>
 uint64_t Release<platform::NPUPlace>(const platform::NPUPlace &place) {
 #ifdef PADDLE_WITH_ASCEND_CL
-  return GetGPUBuddyAllocator(place.device)->Release();
-#else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "'CUDAPlace' is not supported in CPU only device."));
-#endif
-}
-
-template <>
-size_t Used<platform::NPUPlace>(const platform::NPUPlace &place) {
-#ifdef PADDLE_WITH_ASCEND_CL
-  return GetGPUBuddyAllocator(place.device)->Used();
+  return GetNPUBuddyAllocator(place.device)->Release();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'CUDAPlace' is not supported in CPU only device."));

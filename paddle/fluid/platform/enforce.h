@@ -1016,20 +1016,21 @@ DEFINE_NPU_STATUS_TYPE(aclError, ACL_ERROR_NONE);
 
 inline std::string build_npu_error_msg(aclError stat) {
   std::string s = " ACL error, the error code is : " + stat;
+  return s;
 }
 
-#define PADDLE_ENFORCE_NPU_SUCCESS(COND)                         \
-  do {                                                           \
-    auto __cond__ = (COND);                                      \
-    using __NPU_STATUS_TYPE__ = decltype(__cond__);              \
-    constexpr auto __success_type__ =                            \
-        ::paddle::platform::details::NPUStatusType<              \
-            __NPU_STATUS_TYPE__>::kSuccess;                      \
-    if (UNLIKELY(__cond__ != __success_type__)) {                \
-      auto __summary__ = ::paddle::platform::errors::External(   \
-          ::paddle::platform::build_nvidia_error_msg(__cond__)); \
-      __THROW_ERROR_INTERNAL__(__summary__);                     \
-    }                                                            \
+#define PADDLE_ENFORCE_NPU_SUCCESS(COND)                       \
+  do {                                                         \
+    auto __cond__ = (COND);                                    \
+    using __NPU_STATUS_TYPE__ = decltype(__cond__);            \
+    constexpr auto __success_type__ =                          \
+        ::paddle::platform::details::NPUStatusType<            \
+            __NPU_STATUS_TYPE__>::kSuccess;                    \
+    if (UNLIKELY(__cond__ != __success_type__)) {              \
+      auto __summary__ = ::paddle::platform::errors::External( \
+          ::paddle::platform::build_npu_error_msg(__cond__));  \
+      __THROW_ERROR_INTERNAL__(__summary__);                   \
+    }                                                          \
   } while (0)
 #endif  // PADDLE_WITH_ASCEND_CL
 

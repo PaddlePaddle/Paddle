@@ -167,7 +167,7 @@ class NPUDeviceContext : public DeviceContext {
   virtual ~NPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
   Place GetPlace() const override;
-  aclrtContext* npu_context() const;
+  aclrtContext* context() const;
 
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
@@ -181,7 +181,7 @@ class NPUDeviceContext : public DeviceContext {
 #endif
 
  private:
-  XPUPlace place_;
+  NPUPlace place_;
   aclrtContext context_;
 #ifdef PADDLE_WITH_ASCEND_HCCL
   HCCLContext_t hccl_context_;

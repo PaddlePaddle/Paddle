@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/npu_info.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -246,7 +247,7 @@ void* NPUAllocator::Alloc(size_t* index, size_t size) {
   void* p;
   auto result = platform::RecordedNPUMalloc(&p, size, npu_id_);
 
-  if (result == cudaSuccess) {
+  if (result == ACL_ERROR_NONE) {
     *index = 0;
     npu_alloc_size_ += size;
     return p;
@@ -297,7 +298,7 @@ void NPUAllocator::Free(void* p, size_t size, size_t index) {
   platform::RecordedNPUFree(p, size, npu_id_);
 }
 
-bool GPUAllocator::UseGpu() const { return false; }
+bool NPUAllocator::UseGpu() const { return false; }
 #endif
 
 }  // namespace detail

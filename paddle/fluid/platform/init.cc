@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/string/split.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -37,11 +38,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_header.h"
 #include "paddle/fluid/platform/xpu_info.h"
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "acl/acl.h"
-#include "paddle/fluid/platform/npu_info.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
@@ -157,7 +153,7 @@ void InitDevices() {
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
-  auto instance = AclInstance::Instance();  // NOLINT
+  platform::AclInstance::Instance();  // NOLINT
   try {
     // use user specified XPUs in single-node multi-process mode.
     devices = platform::GetSelectedNPUDevices();

@@ -13,10 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/npu_allocator.h"
-#include <cuda.h>
-#include <cuda_runtime.h>
 #include <string>
-#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/npu_info.h"
 
@@ -25,7 +22,7 @@ namespace memory {
 namespace allocation {
 
 bool NPUAllocator::IsAllocThreadSafe() const { return true; }
-void CUDAAllocator::FreeImpl(Allocation* allocation) {
+void NPUAllocator::FreeImpl(Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
       BOOST_GET_CONST(platform::NPUPlace, allocation->place()), place_,
       platform::errors::PermissionDenied(
@@ -40,7 +37,7 @@ Allocation* NPUAllocator::AllocateImpl(size_t size) {
                  [this] { platform::SetNPUDeviceId(place_.device); });
 
   void* ptr;
-  auto result = platform::RecordedCudaMalloc(&ptr, size, place_.device);
+  auto result = platform::RecordedNPUMalloc(&ptr, size, place_.device);
   if (LIKELY(result == ACL_ERROR_NONE)) {
     return new Allocation(ptr, size, platform::Place(place_));
   }

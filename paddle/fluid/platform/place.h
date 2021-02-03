@@ -88,15 +88,15 @@ struct NPUPlace {
 struct IsCUDAPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const XPUPlace &) const { return false; }
-  bool operator()(const NPUPlace &xpu) const { return false; }
-  bool operator()(const CUDAPlace &gpu) const { return true; }
+  bool operator()(const NPUPlace &) const { return false; }
+  bool operator()(const CUDAPlace &) const { return true; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
 
 struct IsCPUPlace : public boost::static_visitor<bool> {
-  bool operator()(const CPUPlace &cpu) const { return true; }
+  bool operator()(const CPUPlace &) const { return true; }
   bool operator()(const XPUPlace &) const { return false; }
-  bool operator()(const NPUPlace &xpu) const { return false; }
+  bool operator()(const NPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
@@ -104,23 +104,23 @@ struct IsCPUPlace : public boost::static_visitor<bool> {
 struct IsCUDAPinnedPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const XPUPlace &) const { return false; }
-  bool operator()(const NPUPlace &xpu) const { return false; }
+  bool operator()(const NPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &cuda_pinned) const { return true; }
 };
 
 struct IsXPUPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
-  bool operator()(const XPUPlace &xpu) const { return true; }
-  bool operator()(const NPUPlace &xpu) const { return false; }
+  bool operator()(const XPUPlace &) const { return true; }
+  bool operator()(const NPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
 
 struct IsNPUPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
-  bool operator()(const XPUPlace &xpu) const { return false; }
-  bool operator()(const NPUPlace &xpu) const { return true; }
+  bool operator()(const XPUPlace &) const { return false; }
+  bool operator()(const NPUPlace &) const { return true; }
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
