@@ -175,6 +175,10 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
                  "If <=0, then grid points are adaptive to roi_width "
                  "and pooled_w, likewise for height")
         .SetDefault(-1);
+    AddAttr<bool>("aligned",
+                  "(bool, default False),"
+                  "If true, pixel shift it by -0.5 for align more perfectly")
+        .SetDefault(false);
     AddComment(R"DOC(
 **RoIAlign Operator**
 

@@ -48,10 +48,10 @@ __global__ void GPUDistFpnProposalsHelper(
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
     // get the target level of current rois
-    T roi_area = RoIArea(offset_roi, false);
+    T roi_area = RoIArea(offset_roi, true);
     T roi_scale = sqrt(roi_area);
     int tgt_lvl = floor(
-        log2(roi_scale / static_cast<T>(refer_scale) + (T)1e-6) + refer_level);
+        log2(roi_scale / static_cast<T>(refer_scale) + (T)1e-8) + refer_level);
     tgt_lvl = min(max_level, max(tgt_lvl, min_level));
     target_lvls[i] = tgt_lvl;
     // compute number of rois in the same batch and same target level
