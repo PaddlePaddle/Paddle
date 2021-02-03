@@ -26,3 +26,5 @@ endforeach()
 
 # Compiling .so will cost some time, but running process is very fast.
 set_tests_properties(test_custom_op_with_setup PROPERTIES TIMEOUT 180)
+set_tests_properties(test_jit_load PROPERTIES TIMEOUT 180)
+set_tests_properties(test_setup_install PROPERTIES TIMEOUT 180)
