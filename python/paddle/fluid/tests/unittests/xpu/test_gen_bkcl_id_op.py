@@ -15,6 +15,8 @@
 import unittest
 import os
 import copy
+import sys
+sys.path.append("..")
 from launch_function_helper import wait, _find_free_port
 from multiprocessing import Pool, Process
 from threading import Thread
