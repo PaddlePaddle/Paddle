@@ -47,12 +47,14 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = []
 
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+        paddle.disable_static()
 
 
 class TestConvTranspose2DoubleGradCheck_AsyPadding(
