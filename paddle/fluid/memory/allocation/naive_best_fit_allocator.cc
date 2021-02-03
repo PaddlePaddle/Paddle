@@ -136,7 +136,7 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
                         ret));
   ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   if (ret != XPU_SUCCESS) {
-    std::cout << "xpu memory malloc(" << size ") failed, try again\n";
+    std::cout << "xpu memory malloc(" << size << ") failed, try again\n";
     xpu_wait();
     ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   }
