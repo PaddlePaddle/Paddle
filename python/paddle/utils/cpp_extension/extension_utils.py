@@ -59,13 +59,14 @@ def custom_write_stub(resource, pyfile):
     _stub_template = textwrap.dedent("""
         import os
         import sys
+        import types
         import paddle
         
         def inject_ext_module(module_name, api_name):
             if module_name in sys.modules:
                 return sys.modules[module_name]
 
-            new_module = imp.new_module(module_name)
+            new_module = types.ModuleType(module_name)
             setattr(new_module, api_name, eval(api_name))
 
             return new_module
@@ -540,4 +541,5 @@ def run_cmd(command, wait=True):
     """
     Execute command with subprocess.
     """
-    return subprocess.check_call(command, shell=True)
+    return subprocess.check_call(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
