@@ -30,7 +30,8 @@ def conv_indent(indent):
     return "".join([" "] * indent)
 
 
-PSERVER_SAVE_SUFFIX = "_txt"
+#PSERVER_SAVE_SUFFIX = "_txt"
+PSERVER_SAVE_SUFFIX = "_all"
 
 
 class Accessor:
@@ -815,8 +816,9 @@ class TheOnePSRuntime(RuntimeBase):
         begin = time.time()
         for var_name in load_varnames:
             table_id = sparse_table_maps[var_name]
-            path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
-                                "{}.block{}.txt".format(var_name, pserver_id))
+            #path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
+            #                    "{}.block{}.txt".format(var_name, pserver_id))
+            path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX)
             meta = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
                                 "{}.block{}.meta".format(var_name, pserver_id))
             self._server.load_sparse(path, meta, table_id)

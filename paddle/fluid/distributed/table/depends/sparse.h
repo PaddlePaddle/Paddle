@@ -29,6 +29,8 @@
 namespace paddle {
 namespace distributed {
 
+enum SaveMode { all, base, delta };
+
 class SparseOptimizer {
  public:
   explicit SparseOptimizer(
@@ -45,6 +47,138 @@ class SparseOptimizer {
                       ValueBlock* block) = 0;
 
   virtual void set_global_lr(float* lr) { global_learning_rate_ = lr; }
+
+  virtual int64_t save(const int mode,
+                    const int shard_idx,
+                    const std::string prefix,
+                    const std::vector<std::shared_ptr<ValueBlock>>& shard_values) = 0;
+
+  int64_t SaveToBin(const int mode,
+                     const std::vector<std::string>& var_names,
+                     const std::vector<int>& offsets,
+                     const std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
+    auto place = platform::CPUPlace();
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
+
+    int64_t ids_num = 0;
+    for (auto &block : shard_values) {
+      ids_num += block->values_.size();
+    }
+
+    std::vector<std::shared_ptr<framework::Variable>> vars;
+    std::vector<float *> tensors;
+    std::vector<int64_t> ids;
+
+    for(auto i = 0; i < var_names.size(); ++i) {
+      auto var = std::make_shared<framework::Variable>();
+      auto *slr = var->GetMutable<framework::SelectedRows>();
+      auto *src_t = slr->mutable_value();
+
+      src_t->Resize({ids_num, update_numel});
+      auto *value = src_t->mutable_data<float>(place);
+
+      vars.push_back(var);
+      tensors.push_back(value);
+    }
+
+    int64_t not_save_num = 0;
+    auto param_offset = 0;
+    for(auto& block : shard_values) {
+      for(auto value: block->values_ ) {
+        // if (mode == SaveMode::delta && !value.second->need_save_) {
+        //   not_save_num++;
+        //   continue;
+        // }
+        // if (!value.second->is_entry_) {
+        //   continue;
+        // }
+        ids.emplace_back(value.first);
+        for(auto i = 0; i < var_names.size(); ++i) {
+          auto offset = offsets[i];
+          std::copy_n(value.second->data_.data() + offset, update_numel,
+                      tensors[i] + param_offset * update_numel);
+        }
+        param_offset += 1;
+      }
+    }
+    for(auto &var : vars) {
+      auto *slr = var->GetMutable<framework::SelectedRows>();
+      slr->set_rows(ids);
+      slr->set_height(ids.size());
+    }
+    for (int i = 0; i < static_cast<int>(var_names.size()); ++i) {
+      auto &filename = var_names[i];
+      auto &selectedRows = vars[i]->Get<framework::SelectedRows>();
+
+      std::ofstream fout(filename, std::ios::binary);
+      PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
+                        platform::errors::Unavailable(
+                            "Cannot open %s to save variables.", filename));
+
+      framework::SerializeToStream(fout, selectedRows, dev_ctx);
+      fout.close();
+    } 
+    return ids_num - not_save_num;
+  }
+  
+  virtual void load(const int shard_idx,
+                    const std::string prefix,
+                    std::vector<std::shared_ptr<ValueBlock>>& shard_values) = 0;  
+
+  void LoadFromBin(const std::vector<std::string>& filenames,
+                   const std::vector<int>& offsets,
+                   std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
+    std::vector<std::shared_ptr<framework::Variable>> variables;
+    auto place = platform::CPUPlace();
+
+    for (int i = 0; i < static_cast<int>(filenames.size()); ++i) {
+      auto var = std::make_shared<framework::Variable>();
+      variables.push_back(var);
+      auto &filename = filenames[i];
+      std::ifstream fin(filename, std::ios::binary);
+      auto *selectedRows = var->GetMutable<framework::SelectedRows>();
+
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place);
+
+      framework::DeserializeFromStream(fin, selectedRows, dev_ctx);
+    }
+
+    std::vector<const float *> tensors;
+
+    for (int i = 0; i < static_cast<int>(filenames.size()); ++i) {
+      auto &slr = variables[i]->Get<framework::SelectedRows>();
+      auto src_t = slr.value();
+      const auto *value = src_t.data<float>();
+      tensors.push_back(value);
+    }
+
+    auto rows = variables[0]->Get<framework::SelectedRows>().rows();
+    if(variables.size() > 1) {
+      for(auto i = 1; i < static_cast<int64_t>(variables.size()); ++i) {
+        auto num = variables[i]->Get<framework::SelectedRows>().rows().size();
+          PADDLE_ENFORCE_EQ(num, rows.size(),
+                            platform::errors::InvalidArgument("rows' num me be equal to %s", rows.size()));
+      }
+    }
+    auto shard_num = shard_values.size();
+    auto param_offset = 0;
+    for (auto i = 0; i < static_cast<int64_t>(rows.size()); ++i) {
+      auto id = rows[i];
+      auto shard_id = id % shard_num;
+      auto block = shard_values[shard_id];
+      float* val = block->Init(id, false);
+
+      // copy param and optimizer param.
+      for(auto j = 0; j < static_cast<int64_t>(offsets.size()); ++j) {
+        auto offset = offsets[j];
+        std::copy_n(tensors[j] + param_offset * update_numel, update_numel, val + offset);
+      }
+      param_offset++;
+    }
+  }
 
   const std::vector<std::string>& value_names_;
   const std::vector<int>& value_dims_;
@@ -81,6 +215,23 @@ class SSUM : public SparseOptimizer {
       float* param = value + param_offset;
       blas.VADD(update_numel, update_values + x * update_numel, param, param);
     }
+  }
+
+  int64_t save(const int mode,
+               const int shard_idx,
+               const std::string prefix,
+               const std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
+    std::vector<std::string> var_names{prefix + "." + "param.block" + std::to_string(shard_idx)};
+    std::vector<int> offsets {param_offset};
+    return SaveToBin(mode, var_names, offsets, shard_values);
+  }
+
+  void load(const int shard_idx,
+            const std::string prefix,
+            std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
+    std::vector<std::string> var_names{prefix + "." + "param.block" + std::to_string(shard_idx)};
+    std::vector<int> offsets {param_offset};
+    LoadFromBin(var_names, offsets, shard_values);
   }
 };
 
@@ -119,6 +270,23 @@ class SSGD : public SparseOptimizer {
       blas.SCAL(update_numel, learning_rate, grads.data());
       blas.VSUB(update_numel, param, grads.data(), param);
     }
+  }
+
+  int64_t save(const int mode,
+               const int shard_idx,
+               const std::string prefix,
+               const std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
+    std::vector<std::string> var_names{prefix + "." + "param.block" + std::to_string(shard_idx)};
+    std::vector<int> offsets {param_offset};
+    return SaveToBin(mode, var_names, offsets, shard_values);
+  }
+
+  void load(const int shard_idx,
+            const std::string prefix,
+            std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
+    std::vector<std::string> var_names{prefix + "." + "param.block" + std::to_string(shard_idx)};
+    std::vector<int> offsets {param_offset};
+    LoadFromBin(var_names, offsets, shard_values);
   }
 
   int lr_offset;
@@ -174,13 +342,7 @@ class SAdam : public SparseOptimizer {
       float* param = values + param_offset;
       float* moment1 = values + m1_offset;
       float* moment2 = values + m2_offset;
-      // float* beta1_pow = values + beta1_pow_offset;
-      // float* beta2_pow = values + beta2_pow_offset;
 
-      // beta1_pow[0] = beta1_pow[0] * beta1;
-      // beta2_pow[0] = beta2_pow[0] * beta2;
-
-      // lr_ *= sqrt(1 - beta2_pow[0]) / (1 - beta1_pow[0]);
       lr_ *= sqrt(1 - beta2_pow) / (1 - beta1_pow); 
 
       std::vector<float> grad, grad2, tmp;
@@ -201,7 +363,6 @@ class SAdam : public SparseOptimizer {
       blas.VADD(update_numel, moment2, grad2.data(), moment2);
 
       float* tmp_ = tmp.data();
-      // float eps_ = epsilon * sqrt(1 - beta2_pow[0]);
       // float eps_ = epsilon * sqrt(1 - beta2_pow);
       float eps_ = epsilon;
 
@@ -212,6 +373,44 @@ class SAdam : public SparseOptimizer {
       blas.SCAL(update_numel, lr_, tmp_);
       blas.VSUB(update_numel, param, tmp_, param);
     }
+  }
+
+  int64_t save(const int mode,
+            const int shard_idx,
+            const std::string prefix,
+            const std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
+    // save beta1_pow & beta2_pow;
+    std::ofstream beta1_out(prefix + "." + "beta1_pow.block" + std::to_string(shard_idx), std::ios::binary);
+    beta1_out.write(reinterpret_cast<const char *>(&beta1_pow), sizeof(float)); 
+    beta1_out.close();
+    
+    std::ofstream beta2_out(prefix + "." + "beta2_pow.block" + std::to_string(shard_idx), std::ios::binary);
+    beta2_out.write(reinterpret_cast<const char *>(&beta2_pow), sizeof(float));    
+    beta2_out.close();
+
+    std::vector<std::string> var_names{prefix + "." + "param.block" + std::to_string(shard_idx), 
+                                       prefix + "." + "moment1.block" + std::to_string(shard_idx), 
+                                       prefix + "." + "moment2.block" + std::to_string(shard_idx)};
+    std::vector<int> offsets {param_offset, m1_offset, m2_offset};
+    return SaveToBin(mode, var_names, offsets, shard_values);
+  }
+
+  void load(const int shard_idx,
+            const std::string prefix,
+            std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
+    // load beta1_pow && beta2_pow;
+    std::ifstream beta1_fin(prefix + "." + "beta1_pow.block" + std::to_string(shard_idx), std::ios::binary);
+    beta1_fin.read(reinterpret_cast<char *>(&beta1_pow), sizeof(float));
+
+    std::ifstream beta2_fin(prefix + "." + "beta2_pow.block" + std::to_string(shard_idx), std::ios::binary);
+    beta2_fin.read(reinterpret_cast<char *>(&beta2_pow), sizeof(float));
+
+    std::vector<std::string> var_names{ prefix + "." + "param.block" + std::to_string(shard_idx),
+                                       prefix + "." + "moment1.block" + std::to_string(shard_idx),
+                                       prefix + "." + "moment2.block" + std::to_string(shard_idx) };
+    std::vector<int> offsets {param_offset, m1_offset, m2_offset};
+
+    LoadFromBin(var_names, offsets, shard_values);
   }
 
   int lr_offset;
@@ -278,6 +477,25 @@ class SAdagrad : public SparseOptimizer {
       blas.SCAL(update_numel, lr_, tmp_);
       blas.VSUB(update_numel, param, tmp_, param);
     }
+  }
+
+  int64_t save(const int mode,
+               const int shard_idx,
+               const std::string prefix,
+               const std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
+    std::vector<std::string> var_names{ prefix + "." + "param.block" + std::to_string(shard_idx), 
+                                       prefix + "." + "moment.block" + std::to_string(shard_idx)};
+    std::vector<int> offsets {param_offset, m_offset};
+    return SaveToBin(mode, var_names, offsets, shard_values);
+  }
+
+  void load(const int shard_idx,
+            const std::string prefix,
+            std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
+    std::vector<std::string> var_names{ prefix + "." + "param.block" + std::to_string(shard_idx),
+                                       prefix + "." + "moment.block" + std::to_string(shard_idx)};
+    std::vector<int> offsets {param_offset, m_offset};
+    LoadFromBin(var_names, offsets, shard_values);
   }
 
   int lr_offset;

@@ -30,7 +30,7 @@ class ValueBlock;
 namespace paddle {
 namespace distributed {
 
-enum SaveMode { all, base, delta };
+// enum SaveMode { all, base, delta };
 
 struct Meta {
   std::string param;
@@ -316,8 +316,16 @@ int32_t CommonSparseTable::load(const std::string& path,
                                 const std::string& param) {
   rwlock_->WRLock();
   VLOG(0) << "sparse table load with " << path << " with meta " << param;
-  LoadFromText(path, param, _shard_idx, _shard_num, task_pool_size_,
-               &shard_values_);
+  // LoadFromText(path, param, _shard_idx, _shard_num, task_pool_size_,
+  //              &shard_values_);
+
+  auto varname = _config.common().table_name();
+  auto prefix = string::Sprintf("%s/%s", path, varname);
+
+  optimizer_->load(_shard_idx, prefix, shard_values_);
+
+  //TODO: load meta info of each sign.
+
   rwlock_->UNLock();
   return 0;
 }
@@ -333,22 +341,27 @@ int32_t CommonSparseTable::save(const std::string& dirname,
       string::Sprintf("%s/%s%s", dirname, varname, PSERVER_SAVE_SUFFIX);
   MkDirRecursively(var_store.c_str());
 
-  VLOG(3) << "save " << varname << " in dir: " << var_store << " begin";
-  std::vector<std::string> params(_config.common().params().begin(),
-                                  _config.common().params().end());
-  std::string shard_var_pre =
-      string::Sprintf("%s.block%d", varname, _shard_idx);
+  std::string prefix = string::Sprintf("%s/%s", var_store, varname);
 
-  std::string value_ = string::Sprintf("%s/%s.txt", var_store, shard_var_pre);
+  auto total_ins = optimizer_->save(mode, _shard_idx, prefix, shard_values_);
+  // VLOG(3) << "save " << varname << " in dir: " << var_store << " begin";
+  // std::vector<std::string> params(_config.common().params().begin(),
+  //                                 _config.common().params().end());
+  // std::string shard_var_pre =
+  //     string::Sprintf("%s.block%d", varname, _shard_idx);
 
-  std::unique_ptr<std::ofstream> value_out(new std::ofstream(value_));
+  // std::string value_ = string::Sprintf("%s/%s.txt", var_store, shard_var_pre);
 
-  int64_t total_ins = 0;
-  for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
-    // save values
-    total_ins += SaveToText(value_out.get(), shard_values_[shard_id], mode);
-  }
-  value_out->close();
+  // std::unique_ptr<std::ofstream> value_out(new std::ofstream(value_));
+
+  // int64_t total_ins = 0;
+  // for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
+  //   // save values
+  //   total_ins += SaveToText(value_out.get(), shard_values_[shard_id], mode);
+  // }
+  // value_out->close();
+
+  //TODO: save meta info of each sign.
 
   // save meta
   std::stringstream stream;
@@ -360,7 +373,7 @@ int32_t CommonSparseTable::save(const std::string& dirname,
   stream << "row_dims="
          << paddle::string::join_strings(_config.common().dims(), ',') << "\n";
   stream << "count=" << total_ins << "\n";
-  std::string meta_ = string::Sprintf("%s/%s.meta", var_store, shard_var_pre);
+  std::string meta_ = string::Sprintf("%s.block%s.meta", prefix, _shard_idx);
   std::unique_ptr<std::ofstream> meta_out(new std::ofstream(meta_));
   meta_out->write(stream.str().c_str(), sizeof(char) * stream.str().size());
   meta_out->close();
