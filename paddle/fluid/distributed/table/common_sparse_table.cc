@@ -21,9 +21,7 @@
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
 
-#define PSERVER_SAVE_SUFFIX "_all"
-#define PSERVER_SAVE_BASE_SUFFIX "_base"
-#define PSERVER_SAVE_DELTA_SUFFIX "_delta"
+#define PSERVER_SAVE_SUFFIX "_txt"
 
 namespace paddle {
 namespace distributed {
@@ -321,17 +319,9 @@ int32_t CommonSparseTable::save(const std::string& dirname,
   int mode = std::stoi(param);
   VLOG(0) << "sparse table save: " << dirname << " mode: " << mode;
 
-  std::string save_suffix;
-  if (mode == SaveMode::all) {
-    save_suffix = PSERVER_SAVE_SUFFIX;
-  } else if (mode == SaveMode::base) {
-    save_suffix = PSERVER_SAVE_BASE_SUFFIX;
-  } else if (mode == SaveMode::delta) {
-    save_suffix = PSERVER_SAVE_DELTA_SUFFIX;
-  }
   auto varname = _config.common().table_name();
   std::string var_store =
-      string::Sprintf("%s/%s%s", dirname, varname, save_suffix);
+      string::Sprintf("%s/%s%s", dirname, varname, PSERVER_SAVE_SUFFIX);
   MkDirRecursively(var_store.c_str());
 
   VLOG(3) << "save " << varname << " in dir: " << var_store << " begin";

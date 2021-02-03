@@ -47,6 +47,15 @@ namespace distributed {
 
 enum Mode { training, infer };
 
+inline bool count_entry(std::shared_ptr<VALUE> value, int threshold) {
+  return value->count_ >= threshold;
+}
+
+inline bool probility_entry(std::shared_ptr<VALUE> value, float threshold) {
+  UniformInitializer uniform = UniformInitializer({"0", "0", "1"});
+  return uniform.GetValue() >= threshold;
+}
+
 struct VALUE {
   explicit VALUE(size_t length, bool is_entry = true)
       : length_(length), count_(0), unseen_days_(0) {
@@ -59,19 +68,10 @@ struct VALUE {
   size_t length_;
   std::vector<float> data_;
   int count_;
-  int unseen_days_;
-  bool need_save_;
-  bool is_entry_;
+  int unseen_days_;  // use to check knock-out
+  bool need_save_;   // whether need to save
+  bool is_entry_;    // whether knock-in
 };
-
-inline bool count_entry(std::shared_ptr<VALUE> value, int threshold) {
-  return value->count_ >= threshold;
-}
-
-inline bool probility_entry(std::shared_ptr<VALUE> value, float threshold) {
-  UniformInitializer uniform = UniformInitializer({"0", "0", "1"});
-  return uniform.GetValue() >= threshold;
-}
 
 class ValueBlock {
  public:
