@@ -95,6 +95,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_program._pipeline_opt['local_rank'] = pp_rank
             main_program._pipeline_opt[
                 'global_rank'] = self.role_maker._worker_index()
+            main_program._pipeline_opt['use_sharding'] = True
             main_program._pipeline_opt['ring_id'] = 1
             optimize_ops, params_grads, program_list = pp_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set)
@@ -118,7 +119,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                 if main_block.has_var(param.name):
                     new_params_grads.append((param, grad))
             params_grads = new_params_grads
-            print("params_grads:", params_grads)
 
         else:
             main_block = loss.block
@@ -126,23 +126,10 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._main_program = main_block.program
         self._startup_program = startup_program
 
+        pp_optimizer._rename_gradient_var_name(main_block)
+
         # step1: set_up
         self._set_up(params_grads)
-
-        ## crop ops
-        #for idx, op in reversed(list(enumerate(main_block.ops))):
-        #    if op.type == 'fill_constant' and int(op.attr('op_role')) == 16:
-        #        out_name = op.output_arg_names[0]
-        #        if not 'GRAD' in out_name: continue
-        #        param_name = out_name.strip("@GRAD")
-        #        #if main_block.has_var(out_name): continue
-        #        if self._shard.has_param(param_name): continue
-        #        main_block._remove_op(idx)
-        #    #if is_update_op(op):
-        #    #    op_role_var = op.attr('op_role_var')
-        #    #    param_name = op_role_var[0]
-        #    #    if not self._shard.has_param(param_name):
-        #    #        main_block._remove_op(idx)
 
         # step2: split_program
         self._split_program(main_block)
@@ -153,112 +140,120 @@ class ShardingOptimizer(MetaOptimizerBase):
         startup_block._sync_with_cpp()
 
         # step4: insert reduce_sum for grad
-        insert_scale_loss_grad_ops(
-            main_block, scale=1.0 / self.role_maker._worker_num())
+        sharding_group_size = self.user_defined_strategy.sharding_configs[
+            'sharding_group_size']
+        insert_scale_loss_grad_ops(main_block, scale=1.0 / sharding_group_size)
         main_block._sync_with_cpp()
 
         # step5: remove unneeded ops and vars from block
         self._prune_main_program(main_block)
         self._prune_startup_program(startup_block)
 
-        # crop ops
-        for idx, op in reversed(list(enumerate(main_block.ops))):
-            # if op.type == 'fill_constant' and int(op.attr('op_role')) == 16:
-            #     out_name = op.output_arg_names[0]
-            #     if not 'GRAD' in out_name: continue
-            #     param_name = out_name.strip("@GRAD")
-            #     #if main_block.has_var(out_name): continue
-            #     if self._shard.has_param(param_name): continue
-            #     main_block._remove_op(idx)
-            if is_update_op(op):
-                op_role_var = op.attr('op_role_var')
-                param_name = op_role_var[0]
-                if not self._shard.has_param(param_name):
-                    main_block._remove_op(idx)
+        if self.use_pipeline:
+            # crop ops
+            for idx, op in reversed(list(enumerate(main_block.ops))):
+                # if op.type == 'fill_constant' and int(op.attr('op_role')) == 16:
+                #     out_name = op.output_arg_names[0]
+                #     if not 'GRAD' in out_name: continue
+                #     param_name = out_name.strip("@GRAD")
+                #     #if main_block.has_var(out_name): continue
+                #     if self._shard.has_param(param_name): continue
+                #     main_block._remove_op(idx)
+                if is_update_op(op):
+                    op_role_var = op.attr('op_role_var')
+                    param_name = op_role_var[0]
+                    if not self._shard.has_param(param_name):
+                        main_block._remove_op(idx)
 
-        for param_name, grad_name in params_grads:
-            if not self._shard.has_param(param_name): continue
-            #if not main_block.has_var(grad_name): continue
-            assert main_block.has_var(grad_name)
-            grad_var = main_block.vars[grad_name]
-            grad_var.persistable = True
-            main_block._insert_op(
-                index=0,
-                type='fill_constant',
-                inputs={},
-                outputs={'Out': [grad_var]},
-                attrs={
-                    'shape': grad_var.shape,
-                    'dtype': grad_var.dtype,
-                    'value': float(0),
-                    #self._op_device_key: device,
-                    # a trick to run this op once per mini-batch
-                    'op_role': core.op_proto_and_checker_maker.OpRole.LRSched,
-                })
+            param_list = []
+            for param_name, grad_name in params_grads:
+                if self._shard.has_param(param_name):
+                    param_list.append(param_name)
+            #pp_optimizer._clear_gradients(main_block, param_list) 
+            pp_optimizer._accumulate_gradients(main_block)
+            #if not self._shard.has_param(param_name): continue
+            ##if not main_block.has_var(grad_name): continue
+            #assert main_block.has_var(grad_name)
+            #grad_var = main_block.vars[grad_name]
+            #grad_var.persistable = True
+            #main_block._insert_op(
+            #    index=0,
+            #    type='fill_constant',
+            #    inputs={},
+            #    outputs={'Out': [grad_var]},
+            #    attrs={
+            #        'shape': grad_var.shape,
+            #        'dtype': grad_var.dtype,
+            #        'value': float(0),
+            #        #self._op_device_key: device,
+            #        # a trick to run this op once per mini-batch
+            #        'op_role': core.op_proto_and_checker_maker.OpRole.LRSched,
+            #    })
 
-        def _create_var(block, ref_var, name):
-            """
-            Create a new var for block, which has the same type,
-            shape and dtype as ref_var, then rename it with the
-            name `name`.
-            """
-            new_var = block.create_var(
-                name=name,
-                shape=ref_var.shape,
-                dtype=ref_var.dtype,
-                type=ref_var.type,
-                lod_level=ref_var.lod_level,
-                persistable=ref_var.persistable,
-                is_data=ref_var.is_data,
-                need_check_feed=ref_var.desc.need_check_feed())
-            new_var.stop_gradient = ref_var.stop_gradient
-            return new_var
+        #def _create_var(block, ref_var, name):
+        #    """
+        #    Create a new var for block, which has the same type,
+        #    shape and dtype as ref_var, then rename it with the
+        #    name `name`.
+        #    """
+        #    new_var = block.create_var(
+        #        name=name,
+        #        shape=ref_var.shape,
+        #        dtype=ref_var.dtype,
+        #        type=ref_var.type,
+        #        lod_level=ref_var.lod_level,
+        #        persistable=ref_var.persistable,
+        #        is_data=ref_var.is_data,
+        #        need_check_feed=ref_var.desc.need_check_feed())
+        #    new_var.stop_gradient = ref_var.stop_gradient
+        #    return new_var
 
-        def _rename_arg(op, old_name, new_name):
-            op_desc = op.desc
-            if isinstance(op_desc, tuple):
-                op_desc = op_desc[0]
-            op_desc._rename_input(old_name, new_name)
-            op_desc._rename_output(old_name, new_name)
+        #def _rename_arg(op, old_name, new_name):
+        #    op_desc = op.desc
+        #    if isinstance(op_desc, tuple):
+        #        op_desc = op_desc[0]
+        #    op_desc._rename_input(old_name, new_name)
+        #    op_desc._rename_output(old_name, new_name)
 
-        for param_name, grad_name in params_grads:
-            if not self._shard.has_param(param_name): continue
-            #if not main_block.has_var(grad_name): continue
-            assert main_block.has_var(grad_name)
-            use_fp16 = False
-            fp16_grad_name = param_name + '.cast_fp16@GRAD'
-            if main_block.has_var(grad_name):
-                fp16_grad_var = main_block.vars[fp16_grad_name]
-                use_fp16 = True
-            grad_var = main_block.vars[grad_name]
-            if use_fp16:
-                cast_grad_var_name = paddle.fluid.unique_name.generate(
-                    grad_name)
-                cast_var = _create_var(main_block, fp16_grad_var,
-                                       cast_grad_var_name)
-                cast_var.persistable = False
-                main_block.append_op(
-                    #index=offset + 1,
-                    type='cast',
-                    inputs={'X': grad_var},
-                    outputs={'Out': cast_var},
-                    attrs={
-                        'in_dtype': grad_var.dtype,
-                        'out_dtype': cast_var.dtype,
-                        'op_role':
-                        core.op_proto_and_checker_maker.OpRole.Backward,
-                    })
-                #offset += 1
-                main_block.append_op(
-                    #index=offset + 1,
-                    type='sum',
-                    inputs={'X': [fp16_grad_var, cast_var]},
-                    outputs={'Out': fp16_grad_var},
-                    attrs={
-                        'op_role':
-                        core.op_proto_and_checker_maker.OpRole.Backward,
-                        'op_role_var': op_role_var
-                    })
+        #print("params_grads:", params_grads)
+        #for param_name, grad_name in params_grads:
+        #    if not self._shard.has_param(param_name): continue
+        #    #if not main_block.has_var(grad_name): continue
+        #    assert main_block.has_var(grad_name)
+        #    use_fp16 = False
+        #    fp16_grad_name = param_name + '.cast_fp16@GRAD'
+        #    if main_block.has_var(grad_name):
+        #        fp16_grad_var = main_block.vars[fp16_grad_name]
+        #        use_fp16 = True
+        #    grad_var = main_block.vars[grad_name]
+        #    if use_fp16:
+        #        cast_grad_var_name = paddle.fluid.unique_name.generate(
+        #            grad_name)
+        #        cast_var = _create_var(main_block, fp16_grad_var,
+        #                               cast_grad_var_name)
+        #        cast_var.persistable = False
+        #        main_block.append_op(
+        #            #index=offset + 1,
+        #            type='cast',
+        #            inputs={'X': grad_var},
+        #            outputs={'Out': cast_var},
+        #            attrs={
+        #                'in_dtype': grad_var.dtype,
+        #                'out_dtype': cast_var.dtype,
+        #                'op_role':
+        #                core.op_proto_and_checker_maker.OpRole.Backward,
+        #            })
+        #        #offset += 1
+        #        main_block.append_op(
+        #            #index=offset + 1,
+        #            type='sum',
+        #            inputs={'X': [fp16_grad_var, cast_var]},
+        #            outputs={'Out': fp16_grad_var},
+        #            attrs={
+        #                'op_role':
+        #                core.op_proto_and_checker_maker.OpRole.Backward,
+        #                'op_role_var': op_role_var
+        #            })
 
         # for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
         #     offset = index
