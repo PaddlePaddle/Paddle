@@ -197,12 +197,12 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
 template <>
 uint64_t Release<platform::XPUPlace>(const platform::XPUPlace &place) {
 #ifdef PADDLE_WITH_XPU
-  PADDLE_THROW(
-      platform::errors::PermissionDenied("Release XPU pool is not supported."));
+  LOG(WARNING) << "Release XPU pool is not supported now, no action here.";
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
 #endif
+  return -1;
 }
 
 template <>

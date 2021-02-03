@@ -1991,9 +1991,13 @@ class OpProtoHolder(object):
 
     def update_op_proto(self):
         op_protos = get_all_op_protos()
+        custom_op_names = []
         for proto in op_protos:
             if proto.type not in self.op_proto_map:
                 self.op_proto_map[proto.type] = proto
+                custom_op_names.append(proto.type)
+
+        return custom_op_names
 
     @staticmethod
     def generated_op_attr_names():
@@ -2053,9 +2057,9 @@ class Operator(object):
         'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
-        'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
-        'c_sync_comm_stream', 'queue_generator', 'dequeue', 'enqueue',
-        'heter_listen_and_serv'
+        'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id',
+        'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
+        'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv'
     }
 
     def __init__(self,
@@ -5702,6 +5706,9 @@ def load_op_library(lib_filename):
 
     Args:
         lib_filename (str): name of dynamic library.
+    
+    Returns:
+        list[str]: new registered custom op names.
 
     Examples:
         .. code-block:: python
@@ -5711,7 +5718,7 @@ def load_op_library(lib_filename):
 
     """
     core.load_op_library(lib_filename)
-    OpProtoHolder.instance().update_op_proto()
+    return OpProtoHolder.instance().update_op_proto()
 
 
 def switch_device(device):
