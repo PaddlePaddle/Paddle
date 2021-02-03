@@ -241,10 +241,12 @@ class MKLDNNHandlerT {
     astream.wait();
   }
 
+  template <typename F = T>
   std::shared_ptr<mkldnn::memory> AcquireMemoryWithReorder(
       const mkldnn::memory::desc& user_md,
       const mkldnn::memory::desc& target_md, void* ptr,
-      const std::string& suffix, bool is_persistent = false) {
+      const std::string& suffix, bool is_persistent = false,
+      std::function<std::shared_ptr<F>(const F*)> custom_func = {}) {
     const auto target_key = key_ + suffix + "_target";
     const auto key_reorder_p = key_ + suffix + "reorder_p";
     const auto user_key = key_ + suffix + "_user";
@@ -253,6 +255,11 @@ class MKLDNNHandlerT {
         std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(target_key));
 
     if (target_memory_p == nullptr) {
+      if (custom_func) {
+        auto reordered_data = custom_func(reinterpret_cast<const F*>(ptr));
+        dev_ctx_.SetBlob(key_reorder_p + "-custom_reorder", reordered_data);
+        ptr = reinterpret_cast<void*>(reordered_data.get());
+      }
       auto user_memory_p =
           std::make_shared<dnnl::memory>(user_md, engine_, ptr);
       if (user_md != target_md) {
