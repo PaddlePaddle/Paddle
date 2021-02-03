@@ -16,6 +16,7 @@ import os
 import unittest
 
 from test_custom_op import CustomOpTest, load_so
+from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 
 def compile_so():
@@ -24,7 +25,8 @@ def compile_so():
     """
     # build .so with setup.py
     file_dir = os.path.dirname(os.path.abspath(__file__))
-    os.system('cd {} && python setup.py build'.format(file_dir))
+    cmd = 'cd {} && python setup_build.py build'.format(file_dir)
+    run_cmd(cmd)
 
 
 if __name__ == '__main__':
