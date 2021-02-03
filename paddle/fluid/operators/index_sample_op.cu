@@ -81,10 +81,6 @@ class IndexSampleKernel<platform::CUDADeviceContext, T>
                               framework::proto::VarType::INT32),
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
-        platform::errors::InvalidArgument("It must use CUDAPlace."));
-
     const auto* in_data = input->data<T>();
     auto* out_data = output->mutable_data<T>(ctx.GetPlace());
     auto stream =
@@ -115,7 +111,6 @@ class IndexSampleKernel<platform::CUDADeviceContext, T>
           index_data, in_data, out_data, index_length, input_length,
           batch_size);
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
   }
 };
 
