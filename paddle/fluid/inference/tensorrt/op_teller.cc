@@ -104,6 +104,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "scale",
       "stack",
       "nearest_interp",
+      "yolo_box",
+      "transpose2",
       "multiclass_nms",
   };
 };
@@ -155,8 +157,17 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
 
       auto registry = GetPluginRegistry();
       if (registry == nullptr) return false;
-      auto creator = registry->getPluginCreator("BatchedNMS_TRT", "1");
-      if (creator == nullptr) return false;
+    }
+    if (op_type == "transpose2") {
+      bool has_attrs = desc.HasAttr("axis");
+      return has_attrs;
+    }
+    if (op_type == "yolo_box") {
+      bool has_attrs =
+          (desc.HasAttr("class_num") && desc.HasAttr("anchors") &&
+           desc.HasAttr("downsample_ratio") && desc.HasAttr("conf_thresh") &&
+           desc.HasAttr("clip_bbox") && desc.HasAttr("scale_x_y"));
+      return has_attrs;
     }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }

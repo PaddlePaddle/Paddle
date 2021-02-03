@@ -1103,6 +1103,8 @@ USE_TRT_CONVERTER(scale);
 USE_TRT_CONVERTER(stack);
 USE_TRT_CONVERTER(clip);
 USE_TRT_CONVERTER(nearest_interp);
+USE_TRT_CONVERTER(yolo_box);
+USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(multiclass_nms);
 #endif
 
