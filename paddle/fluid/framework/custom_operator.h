@@ -19,8 +19,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// load op api
+// Load custom op api: used after user compiled
 void LoadCustomOperator(const std::string& dso_name);
+
+// Register custom op api: used compile directly
+void RegisterCustomOperator();
 
 }  // namespace framework
 }  // namespace paddle

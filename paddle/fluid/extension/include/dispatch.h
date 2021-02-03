@@ -21,7 +21,8 @@ namespace paddle {
 #define PD_PRIVATE_CASE_TYPE_USING_HINT(NAME, enum_type, type, HINT, ...) \
   case enum_type: {                                                       \
     using HINT = type;                                                    \
-    return __VA_ARGS__();                                                 \
+    __VA_ARGS__();                                                        \
+    break;                                                                \
   }
 
 #define PD_PRIVATE_CASE_TYPE(NAME, enum_type, type, ...) \

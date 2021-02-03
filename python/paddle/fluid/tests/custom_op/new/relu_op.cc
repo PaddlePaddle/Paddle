@@ -38,13 +38,13 @@ void relu_cpu_backward_kernel(const data_t* grad_out_data,
 }
 
 std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PaddlePlace(paddle::PlaceType::kCPU));
-  out.Reshape(x.shape());
+  auto out = paddle::Tensor();
+  out.Resize(x.dims());
 
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "relu_cpu_forward", ([&] {
         relu_cpu_forward_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(x.place()), x.size());
+            x.data<data_t>(), out.mutable_data<data_t>(x.place()), x.numel());
       }));
 
   return {out};
@@ -53,15 +53,15 @@ std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
 std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& grad_out,
                                               const paddle::Tensor& out,
                                               const paddle::Tensor& x) {
-  auto grad_x = paddle::Tensor(paddle::PaddlePlace(paddle::PlaceType::kCPU));
-  grad_x.Reshape(x.shape());
+  auto grad_x = paddle::Tensor();
+  grad_x.Resize(x.dims());
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
                                relu_cpu_backward_kernel<data_t>(
                                    grad_out.data<data_t>(),
                                    out.data<data_t>(),
                                    grad_x.mutable_data<data_t>(x.place()),
-                                   out.size());
+                                   out.numel());
                              }));
 
   return {grad_x};

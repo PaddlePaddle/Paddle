@@ -310,14 +310,8 @@ void RegisterOperatorKernel(const std::string& name,
                                   platform::CUDAPlace());
 }
 
-// load op api
-void LoadCustomOperator(const std::string& dso_name) {
-  void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
-
-  typedef OpFunctionMap& get_op_func_map_t();
-  auto* get_op_func_map =
-      detail::DynLoad<get_op_func_map_t>(handle, "PD_GetOpFunctionMap");
-  auto& op_func_map = get_op_func_map();
+void RegisterOperatorWithOpFunctionMap(
+    const paddle::OpFunctionMap& op_func_map) {
   auto& op_funcs = op_func_map.GetMap();
 
   VLOG(1) << "Custom Operator: size of op funcs map - " << op_funcs.size();
@@ -326,7 +320,7 @@ void LoadCustomOperator(const std::string& dso_name) {
     // pair.second: OpFunction
 
     // 1. register op
-    VLOG(0) << "Custom Operator: pair first -> op name: " << pair.first;
+    VLOG(1) << "Custom Operator: pair first -> op name: " << pair.first;
     RegisterOperator(pair.first, pair.second.GetNumTensorArgs(),
                      pair.second.GetInferShapeFunc());
 
@@ -334,6 +328,28 @@ void LoadCustomOperator(const std::string& dso_name) {
     RegisterOperatorKernel(pair.first, pair.second.GetForwardFunc());
     RegisterOperatorKernel(pair.first + "_grad", pair.second.GetBackwardFunc());
   }
+}
+
+////////////////////// User APIs ///////////////////////
+
+// load op api
+void LoadCustomOperator(const std::string& dso_name) {
+  void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
+
+  typedef OpFunctionMap& get_op_func_map_t();
+  auto* get_op_func_map =
+      detail::DynLoad<get_op_func_map_t>(handle, "PD_GetOpFunctionMap");
+  auto& op_func_map = get_op_func_map();
+
+  RegisterOperatorWithOpFunctionMap(op_func_map);
+}
+
+// Register op api
+void RegisterCustomOperator() {
+  // Get OpFunctionMap directly
+  auto& op_func_map = paddle::OpFunctionMap::Instance();
+
+  RegisterOperatorWithOpFunctionMap(op_func_map);
 }
 
 }  // namespace framework

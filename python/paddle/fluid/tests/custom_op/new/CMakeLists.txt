@@ -1,12 +1,12 @@
 if(WITH_ROCM)
-    hip_library(relu_op_shared SHARED SRCS relu_op.cc relu_op.cu DEPS paddle_framework_shared)
+    hip_library(relu_op_shared_new SHARED SRCS relu_op.cc relu_op.cu DEPS paddle_framework_shared)
 elseif(WITH_GPU)
-    nv_library(relu_op_shared SHARED SRCS relu_op.cc relu_op.cu DEPS paddle_framework_shared)
+    nv_library(relu_op_shared_new SHARED SRCS relu_op.cc relu_op.cu DEPS paddle_framework_shared)
 else()
-    cc_library(relu_op_shared SHARED SRCS relu_op.cc DEPS paddle_framework_shared)
+    cc_library(relu_op_shared_new SHARED SRCS relu_op.cc DEPS paddle_framework_shared)
 endif()
-set_target_properties(relu_op_shared PROPERTIES OUTPUT_NAME relu2_op)
-target_link_libraries(relu_op_shared ${FLUID_FRAMEWORK_SHARED_LIB})
+set_target_properties(relu_op_shared_new PROPERTIES OUTPUT_NAME relu2_op)
+target_link_libraries(relu_op_shared_new ${FLUID_FRAMEWORK_SHARED_LIB})
 
 # remove the linked glog and gflags when compling relu_op_shared
 # otherwise, there is running error:
@@ -14,10 +14,10 @@ target_link_libraries(relu_op_shared ${FLUID_FRAMEWORK_SHARED_LIB})
 # 'third_party/glog/src/extern_glog/src/logging.cc'.
 # One possibility: file 'third_party/glog/src/extern_glog/src/logging.cc'
 # is being linked both statically and dynamically into this executable.
-get_target_property(TARGET_LIBRARIES relu_op_shared LINK_LIBRARIES)
+get_target_property(TARGET_LIBRARIES relu_op_shared_new LINK_LIBRARIES)
 LIST(REMOVE_ITEM TARGET_LIBRARIES glog)
 LIST(REMOVE_ITEM TARGET_LIBRARIES gflags)
-set_property(TARGET relu_op_shared PROPERTY LINK_LIBRARIES  ${TARGET_LIBRARIES} )
+set_property(TARGET relu_op_shared_new PROPERTY LINK_LIBRARIES  ${TARGET_LIBRARIES} )
 
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
@@ -27,4 +27,5 @@ foreach(src ${TEST_OPS})
 endforeach()
 
 # Compiling .so will cost some time, but running process is very fast.
-set_tests_properties(test_custom_op_with_setup PROPERTIES TIMEOUT 180)
+set_tests_properties(test_new_custom_op PROPERTIES TIMEOUT 180)
+set_tests_properties(test_new_custom_op_jit PROPERTIES TIMEOUT 180)
