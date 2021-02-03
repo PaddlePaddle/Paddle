@@ -574,12 +574,12 @@ class TestParallelDyGraphRunnerBase(object):
         args.trainer_id = paddle.distributed.get_rank()
 
         # 3. init parallel env
-        if args.update_method == "nccl2":
+        if args.update_method == "nccl2" or "bkcl":
             fleet.init(is_collective=True)
 
         # 4. train model
         model, train_reader, opt = self.get_model()
-        if args.update_method == "nccl2":
+        if args.update_method == "nccl2" or "bkcl":
             opt = fleet.distributed_optimizer(opt)
             model = fleet.distributed_model(model)
 

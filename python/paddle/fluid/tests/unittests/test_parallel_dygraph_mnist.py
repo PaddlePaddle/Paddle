@@ -94,7 +94,7 @@ class TestFleetDygraphMnistXPU(TestDistBase):
         if fluid.core.is_compiled_with_xpu():
             self.check_with_place(
                 "parallel_dygraph_mnist.py",
-                delta=3,
+                delta=1e-1,
                 check_error_log=True,
                 log_name=flag_name)
 
