@@ -67,8 +67,9 @@ elseif(WITH_ASCEND_CL)
   set(ATLAS_ATC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/atc/lib64)
   
   set(atlas_acl_lib ${ATLAS_ACL_DIR}/libascendcl.so)
-  set(ATLAS_ACL_INC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/x86_64-linux/acllib/include)
+  set(ATLAS_ACL_INC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/acllib/include)
   message(STATUS "ATLAS_ACL_INC_DIR ${ATLAS_ACL_INC_DIR}")
+  message(STATUS "ATLAS_ACL_LIB_DIR ${ATLAS_ACL_DIR}")
   INCLUDE_DIRECTORIES(${ATLAS_ACL_INC_DIR})
 
   ADD_LIBRARY(atlas_acl SHARED IMPORTED GLOBAL)

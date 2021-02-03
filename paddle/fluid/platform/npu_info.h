@@ -119,10 +119,9 @@ class NPUDeviceGuard {
 
 class AclInstance {
  public:
-  // NOTE(zhiiu): Commonly, exception in destructor is not recommended, but 
-  // PADDLE_ENFORCE_NPU_SUCCESS will terminate the program.
-  // So it it ok?
-  ~AclInstance() { PADDLE_ENFORCE_NPU_SUCCESS(aclFinalize()); }
+  // NOTE(zhiiu): Commonly, exception in destructor is not recommended, so
+  // no PADDLE_ENFORCE here
+  ~AclInstance() { aclFinalize(); }
   AclInstance(const AclInstance &o) = delete;
   const AclInstance &operator=(const AclInstance &o) = delete;
 
