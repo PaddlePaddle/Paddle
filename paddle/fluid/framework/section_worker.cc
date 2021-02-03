@@ -107,7 +107,7 @@ void SectionWorker::TrainFiles() {
     int op_role = op->Attr<int>(std::string("op_role"));
     if (op_role == static_cast<int>(OpRole::kOptimize)) {
       VLOG(3) << "Update: running op " << op->Type();
-      op->Run(*microbatch_scopes_[0], place_);
+      op->Run(*microbatch_scopes_[num_microbatches_ - 1], place_);
       if (gc) {
         DeleteUnusedTensors(*microbatch_scopes_[0], op.get(), unused_vars_,
                             gc.get());
