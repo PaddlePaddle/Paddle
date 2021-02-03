@@ -20,9 +20,13 @@ import paddle
 import subprocess
 import numpy as np
 from paddle.utils.cpp_extension.extension_utils import run_cmd
+from paddle.utils.cpp_extension.extension_utils import use_new_custom_op_load_method
+
+# switch to old custom op method
+use_new_custom_op_load_method(False)
 
 
-class TestNewCustomOpSetUpInstall(unittest.TestCase):
+class TestSetUpInstall(unittest.TestCase):
     def setUp(self):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         # compile, install the custom op egg into site-packages under background
@@ -38,17 +42,18 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         custom_egg_path = [
             x for x in os.listdir(site_dir) if 'custom_relu2' in x
         ]
-        assert len(custom_egg_path) == 1
+        assert len(custom_egg_path) == 1, "Matched egg number is %d." % len(
+            custom_egg_path)
         sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
 
     def test_api(self):
         # usage: import the package directly
-        import custom_relu2_new
+        import custom_relu2
 
         raw_data = np.array([[-1, 1, 0], [1, -1, -1]]).astype('float32')
         x = paddle.to_tensor(raw_data, dtype='float32')
         # use custom api
-        out = custom_relu2_new.relu2(x)
+        out = custom_relu2.relu2(x)
 
         self.assertTrue(
             np.array_equal(out.numpy(),

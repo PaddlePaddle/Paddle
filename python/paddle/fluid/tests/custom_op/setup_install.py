@@ -13,21 +13,19 @@
 # limitations under the License.
 import os
 
-from ..utils import paddle_includes, extra_compile_args
-from paddle.utils.cpp_extension import CppExtension, CUDAExtension, BuildExtension, setup
+from utils import paddle_includes, extra_compile_args
+from paddle.utils.cpp_extension import CUDAExtension, setup
+from paddle.utils.cpp_extension.extension_utils import use_new_custom_op_load_method
 
-file_dir = os.path.dirname(os.path.abspath(__file__))
+# switch to old custom op method
+use_new_custom_op_load_method(False)
 
 setup(
-    name='relu2_op_shared',
+    name='custom_relu2',
     ext_modules=[
         CUDAExtension(
-            name='librelu2_op_from_setup',
+            name='custom_relu2',
             sources=['relu_op.cc', 'relu_op.cu'],
             include_dirs=paddle_includes,
             extra_compile_args=extra_compile_args)
-    ],
-    cmdclass={
-        'build_ext': BuildExtension.with_options(
-            no_python_abi_suffix=True, output_dir=file_dir)  # for unittest
-    })
+    ])

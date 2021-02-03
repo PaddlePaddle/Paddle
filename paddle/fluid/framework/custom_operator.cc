@@ -333,7 +333,7 @@ void RegisterOperatorWithOpFunctionMap(
 ////////////////////// User APIs ///////////////////////
 
 // load op api
-void LoadCustomOperator(const std::string& dso_name) {
+void LoadAndRegisterCustomOperator(const std::string& dso_name) {
   void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
 
   typedef OpFunctionMap& get_op_func_map_t();

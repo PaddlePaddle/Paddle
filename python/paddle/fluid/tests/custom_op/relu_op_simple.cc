@@ -100,8 +100,8 @@ std::vector<std::vector<int64_t>> ReluInferShape(std::vector<int64_t> x_shape) {
   return {x_shape};
 }
 
-ADD_OPERATOR(relu2,
-             OP_INFO(ReluForward),
-             PD_KERNEL(ReluForward),
-             PD_KERNEL(ReluBackward),
-             PD_INFER_SHAPE(ReluInferShape));
+BUILD_OPERATOR(relu2,
+               OP_INFO(ReluForward),
+               PD_KERNEL(ReluForward),
+               PD_KERNEL(ReluBackward),
+               PD_INFER_SHAPE(ReluInferShape));

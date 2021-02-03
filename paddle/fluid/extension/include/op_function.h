@@ -126,9 +126,8 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
                                                             attr_idx + 1>(
             inputs, attrs, pargs..., arg);
       } catch (boost::bad_any_cast&) {
-        std::ostringstream err;
-        err << "Attribute cast error in custom operator. Expected int value.";
-        throw std::runtime_error(err.str());
+        throw std::runtime_error(
+            "Attribute cast error in custom operator. Expected int value.");
       }
     }
   };
@@ -241,9 +240,10 @@ class OpFunctionMap {
   }
 
   void Insert(const std::string& op_type, const OpFunction& op_func) {
-    PADDLE_ENFORCE_NE(map_.find(op_type) != map_.end(), true,
-                      platform::errors::AlreadyExists(
-                          "Operator (%s) has been registered.", op_type));
+    if (map_.find(op_type) != map_.end()) {
+      throw std::runtime_error("Operator `" + op_type +
+                               "` has been registered.");
+    }
     map_.insert({op_type, op_func});
   }
 
@@ -287,8 +287,8 @@ struct OperatorFunctionRegistrar : public Registrar {
 
 /////////////////////// Op register marco /////////////////////////
 
-#define ADD_OPERATOR(op_type, traits_func, forward_func, backward_func,        \
-                     infer_shape_func)                                         \
+#define BUILD_OPERATOR(op_type, traits_func, forward_func, backward_func,      \
+                       infer_shape_func)                                       \
   static ::paddle::OperatorFunctionRegistrar                                   \
       __operator_function_registrar_##op_type##__(#op_type, traits_func,       \
                                                   forward_func, backward_func, \

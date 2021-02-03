@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 
 // Load custom op api: used after user compiled
-void LoadCustomOperator(const std::string& dso_name);
+void LoadAndRegisterCustomOperator(const std::string& dso_name);
 
 // Register custom op api: used compile directly
 void RegisterCustomOperator();

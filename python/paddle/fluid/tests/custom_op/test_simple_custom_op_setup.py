@@ -22,11 +22,11 @@ import numpy as np
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 
-class TestSetUpInstall(unittest.TestCase):
+class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def setUp(self):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         # compile, install the custom op egg into site-packages under background
-        cmd = 'cd {} && python setup_install.py install'.format(cur_dir)
+        cmd = 'cd {} && python setup_install_simple.py install'.format(cur_dir)
         run_cmd(cmd)
 
         # NOTE(Aurelius84): Normally, it's no need to add following codes for users.
@@ -36,19 +36,20 @@ class TestSetUpInstall(unittest.TestCase):
         # See: https://stackoverflow.com/questions/56974185/import-runtime-installed-module-using-pip-in-python-3
         site_dir = site.getsitepackages()[0]
         custom_egg_path = [
-            x for x in os.listdir(site_dir) if 'custom_relu2' in x
+            x for x in os.listdir(site_dir) if 'simple_setup_relu2' in x
         ]
-        assert len(custom_egg_path) == 1
+        assert len(custom_egg_path) == 1, "Matched egg number is %d." % len(
+            custom_egg_path)
         sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
 
     def test_api(self):
         # usage: import the package directly
-        import custom_relu2
+        import simple_setup_relu2
 
         raw_data = np.array([[-1, 1, 0], [1, -1, -1]]).astype('float32')
         x = paddle.to_tensor(raw_data, dtype='float32')
         # use custom api
-        out = custom_relu2.relu2(x)
+        out = simple_setup_relu2.relu2(x)
 
         self.assertTrue(
             np.array_equal(out.numpy(),
