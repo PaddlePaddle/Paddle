@@ -472,6 +472,9 @@ def save_persistables(exe, dirname, main_program, filename=None):
     This function handles the model saving for sharding training.
     """
 
+    if main_program._pipeline_opt:
+        main_program = main_program._pipeline_opt['section_program']['program']
+
     def is_opt_vars(var):
         # NOTE(liangjianzhong): The checks should be updated when add new compatible optimizer
         # now only Momentum and adam are compatible with sharding
