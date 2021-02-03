@@ -13,8 +13,6 @@
 // limitations under the License.
 #include "paddle/fluid/platform/timer.h"
 
-#include <unistd.h>
-
 #include "gtest/gtest.h"
 
 TEST(Timer, Reset) {

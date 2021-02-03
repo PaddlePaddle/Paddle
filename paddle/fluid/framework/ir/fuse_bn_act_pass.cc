@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/fuse_bn_act_pass.h"
 #include <string>
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
