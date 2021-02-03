@@ -19,16 +19,6 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
-namespace paddle {
-namespace framework {
-namespace ir {
-class Graph;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 namespace ir {
 

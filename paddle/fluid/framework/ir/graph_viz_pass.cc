@@ -16,15 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/inference/analysis/dot.h"
-namespace paddle {
-namespace paddle {
-namespace inference {
-namespace analysis {
-class Dot;
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
-}  // namespace paddle
 
 namespace paddle {
 namespace framework {
