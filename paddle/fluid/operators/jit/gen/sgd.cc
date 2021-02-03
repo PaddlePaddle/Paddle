@@ -16,10 +16,8 @@
 
 #include <stddef.h>  // offsetof
 
-#include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {

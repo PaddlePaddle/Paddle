@@ -14,12 +14,6 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
 
-#include <sys/types.h>
-
-#include "paddle/fluid/framework/grad_op_desc_maker.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
-
 namespace paddle {
 namespace framework {
 class OpDesc;

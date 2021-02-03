@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/place.h"
 
-#include "gflags/gflags.h"
-
 DEFINE_bool(benchmark, false,
             "Doing memory benchmark. It will make deleting scope synchronized, "
             "and add some memory usage logs."

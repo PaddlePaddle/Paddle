@@ -14,13 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/fc.h"
 
-#include <string.h>
-
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/jit/helper.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {

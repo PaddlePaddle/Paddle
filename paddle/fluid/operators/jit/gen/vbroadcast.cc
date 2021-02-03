@@ -14,10 +14,8 @@
 
 #include "paddle/fluid/operators/jit/gen/vbroadcast.h"
 
-#include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {

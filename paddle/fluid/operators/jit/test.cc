@@ -12,23 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <sys/types.h>
 #include <iostream>
 #include <random>
-#include <type_traits>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/operators/jit/helper.h"
-#include "paddle/fluid/operators/jit/kernel_base.h"
-#include "paddle/fluid/operators/jit/kernel_pool.h"
-#include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
 DEFINE_double(acc, 1e-5, "Test accuracy threshold.");

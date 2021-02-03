@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/operators/math/blas.h"
 
-#include "paddle/fluid/platform/enforce.h"
-
 namespace paddle {
 namespace operators {
 namespace math {

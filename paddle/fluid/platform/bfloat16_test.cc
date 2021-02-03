@@ -11,13 +11,8 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/bfloat16.h"
 
-#include <math.h>
-
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
 

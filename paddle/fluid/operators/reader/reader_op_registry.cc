@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
-#include "paddle/fluid/framework/shape_inference.h"
-#include "paddle/fluid/platform/enforce.h"
-
 namespace paddle {
 namespace framework {
 class VarDesc;

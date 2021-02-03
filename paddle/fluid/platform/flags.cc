@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <stdint.h>
-
 #include "gflags/gflags.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"

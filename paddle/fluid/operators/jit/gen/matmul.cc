@@ -16,8 +16,6 @@
 
 #include <stddef.h>  // offsetof
 
-#include "paddle/fluid/operators/jit/gen_base.h"
-#include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 

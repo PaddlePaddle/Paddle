@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/timer.h"
 
-#include <stdlib.h>
-
 namespace paddle {
 namespace platform {
 

@@ -13,13 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/gru_op.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor_impl.h"
-#include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/operators/math/gru_compute.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/math/sequence2batch.h"
+
 
 namespace paddle {
 namespace platform {

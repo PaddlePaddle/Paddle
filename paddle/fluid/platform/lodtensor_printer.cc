@@ -14,9 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
-#include <iosfwd>
-
-#include "glog/logging.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {

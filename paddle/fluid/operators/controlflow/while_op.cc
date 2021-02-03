@@ -12,22 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
-
-#include "glog/logging.h"
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/grad_op_desc_maker.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_info.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

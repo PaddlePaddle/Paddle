@@ -14,10 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence2batch.h"
 
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_impl.h"
-
 namespace paddle {
 namespace platform {
 class CPUDeviceContext;

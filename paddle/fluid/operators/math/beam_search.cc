@@ -14,13 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
 
-#include <stdint.h>
-#include <iosfwd>
-#include <string>
-
-#include "glog/logging.h"
-#include "paddle/fluid/platform/enforce.h"
-
 namespace paddle {
 namespace framework {
 class LoDTensor;

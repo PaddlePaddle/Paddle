@@ -14,12 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_floordiv_op.h"
 
-#include <stdint.h>
 #include <string>
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 namespace paddle {

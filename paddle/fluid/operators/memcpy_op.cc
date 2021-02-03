@@ -14,18 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/memcpy_op.h"
 
-#include <stdint.h>
 #include <string>
-
-#include "paddle/fluid/framework/op_kernel_type.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/var_type_inference.h"
-#include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {

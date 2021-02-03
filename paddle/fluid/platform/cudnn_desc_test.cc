@@ -16,8 +16,6 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/framework/tensor.h"
-
 namespace paddle {
 namespace platform {
 

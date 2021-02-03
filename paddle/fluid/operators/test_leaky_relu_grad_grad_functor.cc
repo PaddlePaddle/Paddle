@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/operators/test_leaky_relu_grad_grad_functor.h"
 
-#include "gtest/gtest.h"
-
 namespace paddle {
 namespace operators {
 
