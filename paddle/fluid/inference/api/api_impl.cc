@@ -80,7 +80,12 @@ bool NativePaddlePredictor::Init(
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   if (config_.use_gpu) {
+    PADDLE_ENFORCE_EQ(config_.use_xpu, false,
+                      platform::errors::InvalidArgument(
+                          "Only one choice can be made between CPU and XPU."));
     place_ = paddle::platform::CUDAPlace(config_.device);
+  } else if (config_.use_xpu) {
+    place_ = paddle::platform::XPUPlace(config_.device);
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -240,7 +245,11 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
       std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
                   inputs[i].data.length());
-    } else {
+    } else if (platform::is_gpu_place(place_)) {
+      PADDLE_ENFORCE_EQ(
+          platform::is_xpu_place(place_), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between CPU and XPU."));
 #ifdef PADDLE_WITH_CUDA
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
@@ -253,6 +262,16 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 #else
       PADDLE_THROW(platform::errors::Unavailable(
           "Not compile with CUDA, should not reach here."));
+#endif
+    } else {
+#ifdef PADDLE_WITH_XPU
+      auto dst_xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      memory::Copy(dst_xpu_place, static_cast<void *>(input_ptr),
+                   platform::CPUPlace(), inputs[i].data.data(),
+                   inputs[i].data.length());
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Not compile with XPU, should not reach here."));
 #endif
     }
 
