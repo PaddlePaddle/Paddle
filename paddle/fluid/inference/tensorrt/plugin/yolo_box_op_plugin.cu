@@ -52,7 +52,17 @@ YoloBoxPlugin::YoloBoxPlugin(const nvinfer1::DataType data_type,
              cudaMemcpyHostToDevice);
 }
 
-YoloBoxPlugin::YoloBoxPlugin(const void* data, size_t length) {}
+YoloBoxPlugin::YoloBoxPlugin(const void* data, size_t length) {
+  DeserializeValue(&data, &length, &data_type_);
+  DeserializeValue(&data, &length, &anchors_);
+  DeserializeValue(&data, &length, &class_num_);
+  DeserializeValue(&data, &length, &conf_thresh_);
+  DeserializeValue(&data, &length, &downsample_ratio_);
+  DeserializeValue(&data, &length, &clip_bbox_);
+  DeserializeValue(&data, &length, &scale_x_y_);
+  DeserializeValue(&data, &length, &input_h_);
+  DeserializeValue(&data, &length, &input_w_);
+}
 
 const char* YoloBoxPlugin::getPluginType() const { return "yolo_box_plugin"; }
 
@@ -240,9 +250,31 @@ int YoloBoxPlugin::initialize() { return 0; }
 
 void YoloBoxPlugin::terminate() {}
 
-size_t YoloBoxPlugin::getSerializationSize() const { return 0; }
+size_t YoloBoxPlugin::getSerializationSize() const {
+  size_t serialize_size = 0;
+  serialize_size += SerializedSize(data_type_);
+  serialize_size += SerializedSize(anchors_);
+  serialize_size += SerializedSize(class_num_);
+  serialize_size += SerializedSize(conf_thresh_);
+  serialize_size += SerializedSize(downsample_ratio_);
+  serialize_size += SerializedSize(clip_bbox_);
+  serialize_size += SerializedSize(scale_x_y_);
+  serialize_size += SerializedSize(input_h_);
+  serialize_size += SerializedSize(input_w_);
+  return serialize_size;
+}
 
-void YoloBoxPlugin::serialize(void* buffer) const {}
+void YoloBoxPlugin::serialize(void* buffer) const {
+  SerializeValue(&buffer, data_type_);
+  SerializeValue(&buffer, anchors_);
+  SerializeValue(&buffer, class_num_);
+  SerializeValue(&buffer, conf_thresh_);
+  SerializeValue(&buffer, downsample_ratio_);
+  SerializeValue(&buffer, clip_bbox_);
+  SerializeValue(&buffer, scale_x_y_);
+  SerializeValue(&buffer, input_h_);
+  SerializeValue(&buffer, input_w_);
+}
 
 void YoloBoxPlugin::destroy() {
   cudaFree(anchors_device_);
@@ -353,7 +385,11 @@ nvinfer1::IPluginV2Ext* YoloBoxPluginCreator::createPlugin(
 }
 
 nvinfer1::IPluginV2Ext* YoloBoxPluginCreator::deserializePlugin(
-    const char* name, const void* serial_data, size_t serial_length) {}
+    const char* name, const void* serial_data, size_t serial_length) {
+  auto plugin = new YoloBoxPlugin(serial_data, serial_length);
+  plugin->setPluginNamespace(namespace_.c_str());
+  return plugin;
+}
 
 }  // namespace plugin
 }  // namespace tensorrt
