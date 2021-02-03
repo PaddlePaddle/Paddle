@@ -20,14 +20,11 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
-#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/imperative/reducer.h"
-#endif
 
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL)
 TEST(TestGroup, TestPrintGroupMessage) {
   Group group;
   std::stringstream stream1, stream2;
@@ -80,8 +77,10 @@ void GroupConcatSplit(Place place, size_t size) {
     }
 
     if (std::is_same<Place, platform::CUDAPlace>::value) {
+#if defined(PADDLE_WITH_NCCL)
       paddle::memory::Copy(place, data, cpu_place, value.data(),
                            sizeof(T) * value.size(), 0);
+#endif
     } else {
       paddle::memory::Copy(place, data, cpu_place, value.data(),
                            sizeof(T) * value.size());
@@ -134,6 +133,7 @@ void GroupConcatSplit(Place place, size_t size) {
   }
 }
 
+#if defined(PADDLE_WITH_NCCL)
 TEST(TestGroup, TestConcatSplit) {
   platform::CUDAPlace cuda_place(0);
   platform::CPUPlace cpu_place;
@@ -162,6 +162,21 @@ TEST(TestGroup, TestConcatSplitException) {
 
   int size = 3;
   ASSERT_ANY_THROW(GroupConcatSplit<float>(place, size));
+}
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+TEST(TestGroup, TestXPUConcatSplit) {
+  platform::XPUPlace xpu_place(0);
+  platform::CPUPlace cpu_place;
+
+  int size = 3;
+  GroupConcatSplit<float>(cpu_place, size);
+  GroupConcatSplit<float>(xpu_place, size);
+
+  size = 15;
+  GroupConcatSplit<float>(cpu_place, size);
+  GroupConcatSplit<float>(xpu_place, size);
 }
 #endif
 

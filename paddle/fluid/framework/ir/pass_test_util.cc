@@ -13,15 +13,19 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <cstring>
 #include <exception>
 #include <functional>
 #include <iterator>
 #include <list>
 #include <map>
 
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
-#include "paddle/fluid/framework/ir/mkldnn/pass_test_util.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/ir/pass_test_util.h"
+#include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
 namespace framework {
@@ -32,7 +36,7 @@ OpDesc* CreateOp(ProgramDesc* prog, const std::string& op_type_name,
                  const std::vector<InOutVarNamePair>& inputs,
                  const std::vector<InOutVarNamePair>& outputs,
                  bool use_mkldnn) {
-  auto op = prog->MutableBlock(0)->AppendOp();
+  auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(op_type_name);
   op->SetAttr("use_mkldnn", use_mkldnn);
 
@@ -43,6 +47,8 @@ OpDesc* CreateOp(ProgramDesc* prog, const std::string& op_type_name,
     op->SetOutput(output.first, {output.second});
   }
 
+  op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+              static_cast<int>(OpRole::kForward));
   return op;
 }
 
@@ -166,6 +172,49 @@ bool RunPassAndAssert(Graph* graph, const std::string& pass_name,
   int expected_nodes_num =
       original_nodes_num - removed_nodes_count + added_nodes_count;
   return expected_nodes_num == current_nodes_num;
+}
+
+template <typename T>
+void InitLoDTensorHolder(Scope* scope, const paddle::platform::Place& place,
+                         const std::string& var_name,
+                         const std::vector<int64_t>& dims, const T* data) {
+  auto var = scope->Var(var_name);
+  auto tensor = var->GetMutable<LoDTensor>();
+  auto* tensor_mem_ptr = tensor->mutable_data<T>(make_ddim(dims), place);
+  if (data != nullptr) {
+    std::memcpy(tensor_mem_ptr, data, tensor->memory_size());
+  } else {
+    std::memset(tensor_mem_ptr, 0, tensor->memory_size());
+  }
+}
+
+// Instantiate for below data types.
+template void InitLoDTensorHolder<float>(Scope*, const paddle::platform::Place&,
+                                         const std::string&,
+                                         const std::vector<int64_t>&,
+                                         const float*);
+template void InitLoDTensorHolder<int>(Scope*, const paddle::platform::Place&,
+                                       const std::string&,
+                                       const std::vector<int64_t>&, const int*);
+template void InitLoDTensorHolder<double>(Scope*,
+                                          const paddle::platform::Place&,
+                                          const std::string&,
+                                          const std::vector<int64_t>&,
+                                          const double*);
+
+OpDesc* GetOp(const ProgramDesc& prog, const std::string& op_type,
+              const std::string& output_name,
+              const std::string& output_arg_name) {
+  auto all_ops = prog.Block(0).AllOps();
+  for (auto* op_desc : all_ops) {
+    if (op_desc->Type() == op_type && op_desc->HasOutput(output_name)) {
+      const auto& arg_names = op_desc->Outputs().at(output_name);
+      for (const auto& name : arg_names) {
+        if (name == output_arg_name) return op_desc;
+      }
+    }
+  }
+  return nullptr;
 }
 
 }  // namespace test

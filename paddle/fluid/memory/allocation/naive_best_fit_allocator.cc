@@ -135,6 +135,11 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
                         "Baidu Kunlun Card is properly installed.",
                         ret));
   ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
+  if (ret != XPU_SUCCESS) {
+    std::cout << "xpu memory malloc(" << size << ") failed, try again\n";
+    xpu_wait();
+    ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
+  }
   PADDLE_ENFORCE_EQ(
       ret, XPU_SUCCESS,
       platform::errors::External(
@@ -197,12 +202,12 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
 template <>
 uint64_t Release<platform::XPUPlace>(const platform::XPUPlace &place) {
 #ifdef PADDLE_WITH_XPU
-  PADDLE_THROW(
-      platform::errors::PermissionDenied("Release XPU pool is not supported."));
+  LOG(WARNING) << "Release XPU pool is not supported now, no action here.";
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
 #endif
+  return -1;
 }
 
 template <>
