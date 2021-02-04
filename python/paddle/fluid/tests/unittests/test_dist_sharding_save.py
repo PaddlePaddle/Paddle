@@ -32,7 +32,6 @@ class TestDistMnistFleetSave(TestDistBase):
         self._sharding_save = True
         self._enforce_place = "GPU"
 
-
     def _rm_temp_files(self, dirname):
         shutil.rmtree(dirname)
 
@@ -40,9 +39,13 @@ class TestDistMnistFleetSave(TestDistBase):
 
         sharding_save_files = sorted(os.listdir(dirname))
 
-        check_files = ['fc_0.b_0', 'fc_0.b_0_velocity_0', 'fc_0.w_0', 'fc_0.w_0_velocity_0', 'fc_1.b_0', 
-        'fc_1.b_0_velocity_0', 'fc_1.w_0', 'fc_1.w_0_velocity_0', 'fc_2.b_0', 
-        'fc_2.b_0_velocity_0', 'fc_2.w_0', 'fc_2.w_0_velocity_0', 'learning_rate_0']
+        check_files = [
+            'fc_0.b_0', 'fc_0.b_0_velocity_0', 'fc_0.w_0',
+            'fc_0.w_0_velocity_0', 'fc_1.b_0', 'fc_1.b_0_velocity_0',
+            'fc_1.w_0', 'fc_1.w_0_velocity_0', 'fc_2.b_0',
+            'fc_2.b_0_velocity_0', 'fc_2.w_0', 'fc_2.w_0_velocity_0',
+            'learning_rate_0'
+        ]
 
         if sharding_save_files != check_files:
             self._rm_temp_files(dirname)
@@ -62,8 +65,8 @@ class TestDistMnistFleetSave(TestDistBase):
         tr0_losses, tr1_losses = self._run_cluster_nccl2(
             model_file,
             required_envs,
-            False,
-            check_error_log,
+            update_method='nccl2',
+            check_error_log=check_error_log,
             log_name=log_name)
 
         dirname = './ut_sharding_save_model'

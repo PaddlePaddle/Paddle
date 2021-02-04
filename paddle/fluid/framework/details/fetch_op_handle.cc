@@ -15,8 +15,6 @@
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 
 #include <string>
-#include <utility>
-#include <vector>
 
 #include "paddle/fluid/platform/profiler.h"
 

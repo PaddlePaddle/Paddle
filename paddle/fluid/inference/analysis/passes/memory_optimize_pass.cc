@@ -14,14 +14,12 @@
 
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 
-#include <algorithm>
-#include <functional>
-#include <limits>
-#include <set>
 #include <string>
 #include <utility>
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
