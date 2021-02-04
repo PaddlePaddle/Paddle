@@ -14,10 +14,8 @@
 
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 
-#include <algorithm>
 #include <memory>
 #include <string>
-#include <utility>
 
 #include "paddle/fluid/imperative/tracer.h"
 

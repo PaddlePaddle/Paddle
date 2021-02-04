@@ -166,7 +166,6 @@ def batch_norm(x,
           batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv, w, b)
           print(batch_norm_out)
     """
-
     assert len(x.shape) >= 2, "input dim must be larger than 1"
 
     # input ad out must share the memory
@@ -196,7 +195,6 @@ def batch_norm(x,
         batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
             x, weight, bias, running_mean, running_var, mean_out, variance_out,
             *attrs)
-
         return dygraph_utils._append_activation_in_dygraph(
             batch_norm_out, act=None)
 
@@ -230,13 +228,16 @@ def batch_norm(x,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     batch_norm_out = helper.create_variable_for_type_inference(dtype)
+    reserve_space = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
 
     outputs = {
         "Y": [batch_norm_out],
         "MeanOut": [running_mean],
         "VarianceOut": [running_var],
         "SavedMean": [saved_mean],
-        "SavedVariance": [saved_variance]
+        "SavedVariance": [saved_variance],
+        "ReserveSpace": [reserve_space]
     }
 
     helper.append_op(

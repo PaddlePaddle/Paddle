@@ -104,13 +104,14 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
                                        int nb_inputs) const override;
 
   void destroy() override { delete this; }
+  void terminate() override;
 
  private:
   std::vector<float> bias_;
   std::vector<float> scale_;
 
-  float* bias_gpu_;
-  float* scale_gpu_;
+  float* bias_gpu_{nullptr};
+  float* scale_gpu_{nullptr};
 
   int bias_size_;
   int scale_size_;

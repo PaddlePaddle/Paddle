@@ -89,8 +89,8 @@ class TestDistMnistFleetSave(TestDistBase):
         tr0_losses, tr1_losses = self._run_cluster_nccl2(
             model_file,
             required_envs,
-            False,
-            check_error_log,
+            update_method='nccl2',
+            check_error_log=check_error_log,
             log_name=log_name)
 
         dirname = '/tmp'

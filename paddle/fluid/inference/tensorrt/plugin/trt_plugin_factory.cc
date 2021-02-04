@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {

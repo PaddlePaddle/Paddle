@@ -31,6 +31,7 @@
 namespace paddle {
 namespace framework {
 class VarDesc;
+
 namespace details {
 class ComputationOpHandle;
 class ShareTensorBufferOpHandle;
