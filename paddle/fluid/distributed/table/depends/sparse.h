@@ -63,7 +63,8 @@ class SparseOptimizer {
 
     int64_t ids_num = 0;
     for (auto &block : shard_values) {
-      ids_num += block->values_.size();
+      auto count = block->GetEntryCount();
+      ids_num += count;
     }
 
     std::vector<std::shared_ptr<framework::Variable>> vars;
@@ -86,13 +87,13 @@ class SparseOptimizer {
     auto param_offset = 0;
     for(auto& block : shard_values) {
       for(auto value: block->values_ ) {
-        // if (mode == SaveMode::delta && !value.second->need_save_) {
-        //   not_save_num++;
-        //   continue;
-        // }
-        // if (!value.second->is_entry_) {
-        //   continue;
-        // }
+        if (mode == SaveMode::delta && !value.second->need_save_) {
+          not_save_num++;
+          continue;
+        }
+        if (!value.second->is_entry_) {
+          continue;
+        }
         ids.emplace_back(value.first);
         for(auto i = 0; i < var_names.size(); ++i) {
           auto offset = offsets[i];
@@ -163,11 +164,14 @@ class SparseOptimizer {
                             platform::errors::InvalidArgument("rows' num me be equal to %s", rows.size()));
       }
     }
+
     auto shard_num = shard_values.size();
+    std::vector<uint64_t> shard_counts(shard_num, 0);
     auto param_offset = 0;
     for (auto i = 0; i < static_cast<int64_t>(rows.size()); ++i) {
       auto id = rows[i];
       auto shard_id = id % shard_num;
+      shard_counts[shard_id]++;
       auto block = shard_values[shard_id];
       float* val = block->Init(id, false);
 
@@ -177,6 +181,9 @@ class SparseOptimizer {
         std::copy_n(tensors[j] + param_offset * update_numel, update_numel, val + offset);
       }
       param_offset++;
+    }
+    for(auto i = 0; i < shard_values.size(); ++i) {
+      shard_values[i]->SetEntryCount(shard_counts[i]);
     }
   }
 

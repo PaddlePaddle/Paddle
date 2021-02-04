@@ -134,6 +134,7 @@ class ValueBlock {
         }
       }
     }
+    entry_count_ = 0;
   }
 
   ~ValueBlock() {}
@@ -183,6 +184,7 @@ class ValueBlock {
                                      value_dims_[x]);
         }
         value->need_save_ = true;
+        entry_count_++;
       }
     } else {
       value->need_save_ = true;
@@ -210,6 +212,14 @@ class ValueBlock {
     value->is_entry_ = state;
   }
 
+  void SetEntryCount(const uint64_t count) {
+    entry_count_ = count;
+  }
+ 
+  uint64_t GetEntryCount() {
+    return entry_count_;
+  }
+
   void Shrink(const float decay_rate, const float count_threshold, const int unseen_threshold) {
     for (auto iter = values_.begin(); iter != values_.end();) {
       auto &value = iter->second;
@@ -218,6 +228,7 @@ class ValueBlock {
       value->unseen_days_++;
       if ((unseen_threshold > 1 && value->unseen_days_ >= unseen_threshold) 
           || (count_threshold > 1.0 && value->count_ <= count_threshold)) {
+        if (value->is_entry_) entry_count_--;
         iter = values_.erase(iter);
       } else {
         ++iter;
@@ -246,6 +257,8 @@ class ValueBlock {
   const std::vector<int> &value_offsets_;
   const std::unordered_map<std::string, int> &value_idx_;
 
+  bool has_entry_ = false;
+  uint64_t entry_count_;
   std::function<bool(std::shared_ptr<VALUE>)> entry_func_;
   std::vector<std::shared_ptr<Initializer>> initializers_;
 };
