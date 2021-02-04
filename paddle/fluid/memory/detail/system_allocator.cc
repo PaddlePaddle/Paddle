@@ -286,6 +286,7 @@ void* NPUAllocator::Alloc(size_t* index, size_t size) {
 }
 
 void NPUAllocator::Free(void* p, size_t size, size_t index) {
+  VLOG(4) << "Free " << p << " size " << size;
   PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
                                   "The index should be 0, index is %d", index));
   PADDLE_ENFORCE_GE(npu_alloc_size_, size,

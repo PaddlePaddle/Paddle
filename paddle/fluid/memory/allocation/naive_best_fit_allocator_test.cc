@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 
+#include <unistd.h>
+
 #include <algorithm>
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
@@ -76,6 +78,7 @@ TEST(NaiveBestFitAllocatorTest, NpuAlloc) {
     size_t size = (1 << 20);
     auto allocation = alloc.Allocate(size);
   }
+  sleep(10);
   alloc.Release(platform::NPUPlace(0));
 
   size_t size = (1 << 20);

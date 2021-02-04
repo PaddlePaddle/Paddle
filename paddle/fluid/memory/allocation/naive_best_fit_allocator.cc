@@ -320,7 +320,7 @@ void *Alloc<platform::NPUPlace>(const platform::NPUPlace &place, size_t size) {
   return ptr;
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
-      "'CUDAPlace' is not supported in CPU only device."));
+      "'NPUPlace' is not supported in CPU only device."));
 #endif
 }
 
@@ -332,7 +332,7 @@ void Free<platform::NPUPlace>(const platform::NPUPlace &place, void *p,
   GetNPUBuddyAllocator(place.device)->Free(p);
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
-      "'CUDAPlace' is not supported in CPU only device."));
+      "'NPUPlace' is not supported in CPU only device."));
 #endif
 }
 
@@ -342,7 +342,7 @@ uint64_t Release<platform::NPUPlace>(const platform::NPUPlace &place) {
   return GetNPUBuddyAllocator(place.device)->Release();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
-      "'CUDAPlace' is not supported in CPU only device."));
+      "'NPUPlace' is not supported in CPU only device."));
 #endif
 }
 

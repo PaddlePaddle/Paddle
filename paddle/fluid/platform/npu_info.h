@@ -124,19 +124,26 @@ class AclInstance {
  public:
   // NOTE(zhiiu): Commonly, exception in destructor is not recommended, so
   // no PADDLE_ENFORCE here, call acl API directly.
-  ~AclInstance() {
-    for (size_t i = 0; i < devices_.size(); ++i) {
-      aclrtResetDevice(devices[i]);
-    }
-    auto status = aclFinalize();
-    VLOG(4) << "Call aclFinalize, status = " << status;
-  }
+  ~AclInstance() {}
   AclInstance(const AclInstance &o) = delete;
   const AclInstance &operator=(const AclInstance &o) = delete;
 
   static AclInstance &Instance() {
     static AclInstance instance;
     return instance;
+  }
+
+  void Finalize() {
+    // NOTE(zhiqiu): DO NOT perform finalize in destructor
+    // to avoid problems caused by destructor order of static
+    // object.
+    for (size_t i = 0; i < devices_.size(); ++i) {
+      auto status = aclrtResetDevice(devices[i]);
+      VLOG(4) << "Call aclrtResetDevice " << devices_[i]
+              << " status = " << status;
+    }
+    auto status = aclFinalize();
+    VLOG(4) << "Call aclFinalize, status = " << status;
   }
 
  private:
@@ -153,6 +160,7 @@ class AclInstance {
     devices_ = platform::GetSelectedNPUDevices();
     for (size_t i = 0; i < devices_.size(); ++i) {
       SetNPUDeviceId(devices[i]);
+      VLOG(4) << "Call aclrtSetDevice " << devices_[i];
     }
   }
   std::vector<int> devices_;
