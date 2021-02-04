@@ -278,6 +278,11 @@ void SetTensorFromPyArrayT(
     }
   } else if (paddle::platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
+    // NOTE(wangxi): When copying data to the accelerator card,
+    // we need set_device(dev_id) first.
+    platform::Place tmp_place = place;
+    platform::XPUDeviceGuard guard(
+        BOOST_GET_CONST(platform::XPUPlace, tmp_place).device);
     auto dst = self->mutable_data<T>(place);
     xpu_memcpy(dst, array.data(), array.nbytes(),
                XPUMemcpyKind::XPU_HOST_TO_DEVICE);
@@ -289,7 +294,11 @@ void SetTensorFromPyArrayT(
   } else {
 #ifdef PADDLE_WITH_CUDA
     if (paddle::platform::is_gpu_place(place)) {
-      // TODO(zhiqiu): set SetDeviceId before calling cuda APIs.
+      // NOTE(wangxi): When copying data to the accelerator card,
+      // we need set_device(dev_id) first.
+      platform::Place tmp_place = place;
+      platform::CUDADeviceGuard guard(
+          BOOST_GET_CONST(platform::CUDAPlace, tmp_place).device);
       auto dst = self->mutable_data<T>(place);
       paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
                                       cudaMemcpyHostToDevice);
