@@ -161,6 +161,17 @@ bool SupportsBfloat16() {
 #endif
 }
 
+bool SupportsBfloat16FastPerformance() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_bf16))
+    return true;
+  else
+    return false;
+#endif
+}
+
 bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
@@ -1730,6 +1741,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("supports_bfloat16", SupportsBfloat16);
+  m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
