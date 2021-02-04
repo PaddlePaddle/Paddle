@@ -65,6 +65,7 @@ class TestSetValueApi(TestSetValueBase):
 # 1. Test different type of item: int, python slice, Ellipsis
 # 1.1 item is int
 
+
 class TestSetValueItemInt(TestSetValueApi):
     def _call_setitem(self, x):
         x[0] = self.value
@@ -107,7 +108,7 @@ class TestSetValueItemSlice4(TestSetValueApi):
         self.data[0:, 1:2, :] = self.value
 
 
-# # 1.2.2 step > 1
+# 1.2.2 step > 1
 class TestSetValueItemSliceStep(TestSetValueApi):
     def set_shape(self):
         self.shape = [5, 5, 5]
@@ -146,8 +147,62 @@ class TestSetValueItemSliceStep4(TestSetValueApi):
         self.data[0:, 1:2:2, :] = self.value
 
 
+# 1.2.3 step < 0
+class TestSetValueItemSliceNegetiveStep(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [5, 2]
+
+    def set_value(self):
+        self.value = np.array([3, 4])
+
+    def _call_setitem(self, x):
+        x[5:2:-1] = self.value
+
+    def _get_answer(self):
+        self.data[5:2:-1] = self.value
+
+
+class TestSetValueItemSliceNegetiveStep2(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [5]
+
+    def set_value(self):
+        self.value = np.array([3, 4])
+
+    def _call_setitem(self, x):
+        x[1::-1] = self.value
+
+    def _get_answer(self):
+        self.data[1::-1] = self.value
+
+
+class TestSetValueItemSliceNegetiveStep3(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [3]
+
+    def set_value(self):
+        self.value = np.array([3, 4, 5])
+
+    def _call_setitem(self, x):
+        x[::-1] = self.value
+
+    def _get_answer(self):
+        self.data[::-1] = self.value
+
+
+class TestSetValueItemSliceNegetiveStep4(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [3, 4, 5]
+
+    def _call_setitem(self, x):
+        x[2:0:-1, 0:2, ::-1] = self.value
+
+    def _get_answer(self):
+        self.data[2:0:-1, 0:2, ::-1] = self.value
+
 
 # 1.3 item is Ellipsis
+
 
 class TestSetValueItemEllipsis1(TestSetValueApi):
     def _call_setitem(self, x):
@@ -183,6 +238,7 @@ class TestSetValueItemEllipsis4(TestSetValueApi):
 
 # 2. Test different type of value: int, float, numpy.ndarray, Tensor
 # 2.1 value is int32, int64, float32, float64, bool
+
 
 def create_test_value_int32(parent):
     class TestValueInt(parent):
@@ -574,9 +630,9 @@ class TestError(TestSetValueBase):
             y[0] = 1
 
     def _step_error(self):
-        with self.assertRaisesRegexp(ValueError, "only support step"):
+        with self.assertRaisesRegexp(ValueError, "step can not be 0"):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
-            x[0:1:-1] = self.value
+            x[0:1:0] = self.value
 
     def _ellipsis_error(self):
         with self.assertRaisesRegexp(

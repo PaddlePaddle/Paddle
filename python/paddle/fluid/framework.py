@@ -1906,15 +1906,18 @@ class Variable(object):
                 if start is None and end is None and step is None:
                     continue
 
-                start = 0 if start is None else start
                 step = 1 if step is None else step
 
                 # TODO: support cases when step < 1
-                if step < 1:
+                if step == 0:
                     raise ValueError(
-                        "When assign a value to a paddle.Tensor, only support step >= 1, "
+                        "When assign a value to a paddle.Tensor, step can not be 0, "
                         "but received step is {}.".format(step))
-                end = max_integer if end is None else end
+                if start is None:
+                    start = 0 if step > 0 else max_integer
+
+                if end is None:
+                    end = max_integer if step > 0 else (0 - max_integer)
             else:
                 start = slice_item
                 end = slice_item + 1 if slice_item != -1 else max_integer
