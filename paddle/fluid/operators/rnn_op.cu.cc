@@ -12,21 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <vector>
-
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
-#include "paddle/fluid/platform/dynload/cudnn.h"
-
-namespace paddle {
-namespace platform {
-class CUDADeviceContext;
-struct CUDAPlace;
-}  // namespace platform
-}  // namespace paddle
 
 namespace paddle {
 namespace operators {

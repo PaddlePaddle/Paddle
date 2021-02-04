@@ -20,14 +20,10 @@ limitations under the License. */
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <sys/socket.h>
-
-#include <algorithm>
-#include <ostream>
 #include <string>
+#include <thread>
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/split.h"
 

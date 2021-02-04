@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/common_dense_table.h"
-#include "paddle/fluid/distributed/common/utils.h"
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {

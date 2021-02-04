@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/cudnn_desc.h"
+
 #include <gtest/gtest.h>
 
 namespace paddle {
