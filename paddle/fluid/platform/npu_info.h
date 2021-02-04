@@ -41,6 +41,9 @@ std::vector<int> GetSelectedNPUDevices();
 //! Set the NPU device id for next execution.
 void SetNPUDeviceId(int device_id);
 
+//! Reset the NPU device id for next execution.
+void ResetNPUDeviceId(int device_id);
+
 //! Get the memory usage of current NPU device.
 void NPUMemoryUsage(size_t *available, size_t *total);
 
@@ -120,8 +123,11 @@ class NPUDeviceGuard {
 class AclInstance {
  public:
   // NOTE(zhiiu): Commonly, exception in destructor is not recommended, so
-  // no PADDLE_ENFORCE here
+  // no PADDLE_ENFORCE here, call acl API directly.
   ~AclInstance() {
+    for (size_t i = 0; i < devices_.size(); ++i) {
+      aclrtResetDevice(devices[i]);
+    }
     auto status = aclFinalize();
     VLOG(4) << "Call aclFinalize, status = " << status;
   }
@@ -135,7 +141,21 @@ class AclInstance {
 
  private:
   // forbid calling default constructor
-  AclInstance() { PADDLE_ENFORCE_NPU_SUCCESS(aclInit(nullptr)); }
+  AclInstance() {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclInit(nullptr));
+    // NOTE(zhiqiu): why set devices here?
+    // Because ACL creates a default context which contains 2 streams
+    // when calling aclrtSetDeviceId, so usually we do not need to
+    // create contexts explicitly. And, for each device, aclrtSetDeviceId
+    // need to call parily with aclrtResetDeviceId to destory the default
+    // context. Here, we use this singleton and static instance to manage
+    // the devices to make sure they will be resetted before program exit.
+    devices_ = platform::GetSelectedNPUDevices();
+    for (size_t i = 0; i < devices_.size(); ++i) {
+      SetNPUDeviceId(devices[i]);
+    }
+  }
+  std::vector<int> devices_;
 };
 
 }  // namespace platform

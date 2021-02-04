@@ -96,6 +96,15 @@ void SetNPUDeviceId(int id) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(id));
 }
 
+void ResetNPUDeviceId(int id) {
+  PADDLE_ENFORCE_LT(id, GetNPUDeviceCount(),
+                    platform::errors::InvalidArgument(
+                        "Device id must be less than NPU count, "
+                        "but received id is: %d. NPU count is: %d.",
+                        id, GetNPUDeviceCount()));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtResetDevice(id));
+}
+
 void NPUMemoryUsage(size_t *available, size_t *total) {
   size_t actual_available, actual_total;
   RecordedNPUMemGetInfo(available, total, &actual_available, &actual_total,
