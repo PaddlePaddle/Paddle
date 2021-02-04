@@ -137,20 +137,16 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
       }
     } else {
       auto scale_name = quant_dequant_op_outscale->Name();
-      const LoDTensor& scale_tensor =
-          scope->GetVar(scale_name)->Get<LoDTensor>();
-      float* scale_data = const_cast<float*>(scale_tensor.data<float>());
       // compute the abs max of the weight tensor
       float abs_max_weight = 0.;
       for (int j = 0; j < weight_tensor->numel(); j++) {
         abs_max_weight =
             std::max(abs_max_weight, std::abs(quantized_weight_data[j]));
       }
-      scale_data[0] = abs_max_weight;
-      PADDLE_ENFORCE_NE(scale_data[0], 0,
+      PADDLE_ENFORCE_NE(abs_max_weight, 0,
                         platform::errors::InvalidArgument(
                             "Weight scale should be nonzero, but get zero"));
-      weight_scale.push_back((range * range) / scale_data[0] / range);
+      weight_scale.push_back((range * range) / abs_max_weight / range);
     }
 
     nodes2rm.insert(quant_dequant_op_outscale);
