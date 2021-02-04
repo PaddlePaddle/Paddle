@@ -460,6 +460,10 @@ class PostTrainingQuantization(object):
         graph = _apply_pass(self._scope, graph, 'conv_bn_fuse_pass')
         graph = _apply_pass(self._scope, graph, 'depthwise_conv_bn_fuse_pass')
         graph = _apply_pass(self._scope, graph, 'conv_transpose_bn_fuse_pass')
+        graph = _apply_pass(self._scope, graph, 'conv_eltwiseadd_bn_fuse_pass')
+        graph = _apply_pass(self._scope, graph,
+                            'depthwise_conv_eltwiseadd_bn_fuse_pass')
+
         self._program = graph.to_program()
 
     def _collect_target_varnames(self):

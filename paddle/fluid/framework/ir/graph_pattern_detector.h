@@ -1598,6 +1598,41 @@ struct MultiGru : public PatternBase {
   PATTERN_DECL_NODE(h);
 };
 
+//
+// \brief   Pattern looking for subgraph representing layer normalization
+//          operation.
+//
+struct LayerNorm : public PatternBase {
+  LayerNorm(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "layer_norm") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(x_mean);
+  PATTERN_DECL_NODE(x_mean_out);
+  PATTERN_DECL_NODE(x_sub_mean);
+  PATTERN_DECL_NODE(x_sub_mean_out);
+  PATTERN_DECL_NODE(sqr_pow);
+  PATTERN_DECL_NODE(x_sub_mean_sqr);
+  PATTERN_DECL_NODE(x_sub_mean_sqr_out);
+  PATTERN_DECL_NODE(std_dev);
+  PATTERN_DECL_NODE(std_dev_out);
+  PATTERN_DECL_NODE(eps);
+  PATTERN_DECL_NODE(std_dev_eps);
+  PATTERN_DECL_NODE(std_dev_eps_out);
+  PATTERN_DECL_NODE(std_dev_eps_sqrt);
+  PATTERN_DECL_NODE(std_dev_eps_sqrt_out);
+  PATTERN_DECL_NODE(division);
+  PATTERN_DECL_NODE(division_out);
+  PATTERN_DECL_NODE(gamma);
+  PATTERN_DECL_NODE(scale);
+  PATTERN_DECL_NODE(scale_out);
+  PATTERN_DECL_NODE(beta);
+  PATTERN_DECL_NODE(shift);
+  PATTERN_DECL_NODE(shift_out);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.

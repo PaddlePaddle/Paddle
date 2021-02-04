@@ -14,7 +14,6 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_NCCL)
 #include <map>
 #include <memory>
 #include <string>
@@ -28,6 +27,7 @@
 namespace paddle {
 namespace platform {
 
+#if defined(PADDLE_WITH_NCCL)
 // In order to apply hierarchical communication with NCCL, we need
 // a communication ring contains NCCL communicators associated to a global
 // ncclUniqueId. E.g. for a hierarchical case,
@@ -120,8 +120,102 @@ class NCCLCommContext {
   NCCLCommContext() = default;
   DISABLE_COPY_AND_ASSIGN(NCCLCommContext);
 };
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+// In order to apply hierarchical communication with BKCL, we need
+// a communication ring contains BKCL communicators associated to a global
+// BKCLUniqueId. E.g. for a hierarchical case,
+//
+//    11 - 12   21 - 22
+//     |    |    |    |
+//    13 - 14 - 23 - 24
+//          |    |
+//    31 - 32 - 41 - 42
+//     |    |    |    |
+//    33 - 34   43 - 44
+//
+// we group (14,23,32,41) as the top, and (11,12,13,14), (21,22,23,24),
+// (31,32,33,34), (41,42,43,44) as bottoms respectively.
+//
+// We could also use a single communication ring for the flatten case
+//
+// The BKCLComm instance is created and reversed in the BKCLCommContext
+// singleton with a global user specified group id.
+class BKCLComm {
+ public:
+  virtual int ring_id() const = 0;
+  virtual int nranks() const = 0;
+  virtual int rank() const = 0;
+  virtual int device_id() const = 0;
+  virtual BKCLContext_t comm() const = 0;
+  virtual XPUStream stream() const = 0;
+  virtual XPUDeviceContext* dev_context() const = 0;
+  virtual ~BKCLComm() = default;
+};
+
+// A singleton BKCL communicator context reserves communication ring ids
+class BKCLCommContext {
+ public:
+  static BKCLCommContext& Instance() {
+    static BKCLCommContext comm_ctx;
+    return comm_ctx;
+  }
+
+  BKCLComm* CreateBKCLComm(BKCLUniqueId* bkcl_id, int nranks, int rank,
+                           int dev_id, int ring_id = 0);
+
+  void CreateAllBKCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
+
+  // a latter comm with the same dev_id and the same ring_id
+  // will override the former
+  BKCLComm* AssignBKCLComm(BKCLContext_t comm, int nranks, int rank, int dev_id,
+                           int ring_id = 0);
+
+  // retrieve a communicator by the ring id in multiprocessing mode
+  BKCLComm* Get(int ring_id) const {
+    PADDLE_ENFORCE_GT(
+        comm_map_.count(ring_id), 0,
+        platform::errors::InvalidArgument(
+            "Communicator in ring id %d has not been initialized.", ring_id));
+    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(), 1,
+                      platform::errors::InvalidArgument(
+                          "One device id should be specified to retrieve from "
+                          "multiple communicators."));
+    return comm_map_.at(ring_id).begin()->second.get();
+  }
+
+  // retrieve a communicator by the ring id and the device id
+  BKCLComm* Get(int ring_id, int dev_id) const {
+    PADDLE_ENFORCE_GT(
+        comm_map_.count(ring_id), 0,
+        platform::errors::InvalidArgument(
+            "Communicator of ring id %d has not been initialized.", ring_id));
+    PADDLE_ENFORCE_GT(
+        comm_map_.at(ring_id).count(dev_id), 0,
+        platform::errors::InvalidArgument(
+            "Communicator at device id %d has not been initialized in ring %d.",
+            dev_id, ring_id));
+    return comm_map_.at(ring_id).at(dev_id).get();
+  }
+
+  // retrieve a communicator by the ring id and place
+  BKCLComm* Get(int ring_id, Place place) const {
+    return Get(ring_id, BOOST_GET_CONST(XPUPlace, place).device);
+  }
+
+ private:
+  std::once_flag once_flag_;
+  std::mutex comm_map_mutex_;
+  // ring id to dev-BKCLComm
+  std::map<int, std::map<int, std::unique_ptr<BKCLComm>>> comm_map_;
+
+  void ReleaseBKCLComms();
+
+  BKCLCommContext() = default;
+  DISABLE_COPY_AND_ASSIGN(BKCLCommContext);
+};
+#endif
 
 }  // namespace platform
 }  // namespace paddle
-
-#endif

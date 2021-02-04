@@ -220,7 +220,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     y->set_layout(DataLayout::kMKLDNN);
     y->set_format(platform::GetMKLDNNFormat(*dst_memory));
 
-    mkldnn::stream astream(dev_ctx.GetEngine());
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     batch_norm_p->execute(astream,
                           {{MKLDNN_ARG_SRC, *src_memory},
                            {MKLDNN_ARG_SCALE_SHIFT, *scaleshift_memory},
@@ -321,7 +321,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // finally create batch_norm backward primitive
     auto batch_norm_bwd_p = handler.AcquireBackwardPrimitive();
 
-    mkldnn::stream astream(dev_ctx.GetEngine());
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     batch_norm_bwd_p->execute(
         astream, {{MKLDNN_ARG_SRC, *src_memory},
                   {MKLDNN_ARG_MEAN, *mean_memory},

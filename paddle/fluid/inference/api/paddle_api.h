@@ -162,7 +162,7 @@ struct PD_INFER_DECL PaddleTensor {
   std::vector<std::vector<size_t>> lod;  ///<  Tensor+LoD equals LoDTensor
 };
 
-enum class PaddlePlace { kUNK = -1, kCPU, kGPU };
+enum class PaddlePlace { kUNK = -1, kCPU, kGPU, kXPU };
 
 /// \brief Represents an n-dimensional array of values.
 /// The ZeroCopyTensor is used to store the input or output of the network.
@@ -361,6 +361,7 @@ class PD_INFER_DECL PaddlePredictor {
 struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
   NativeConfig();
   /// GPU related fields.
+  bool use_xpu{false};
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{

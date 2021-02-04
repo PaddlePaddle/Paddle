@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/service/brpc_utils.h"
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <limits>
 #include <memory>
 #include "paddle/fluid/platform/enforce.h"
@@ -308,6 +311,33 @@ void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
     delete[] temp_ptr;
 #endif
   }
+}
+
+std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port) {
+  // There are usually two forms of IP address: ip(int) / ip (hostname)
+  // If there're some problem with DNS, or ip triggers the bug of Brpc
+  // We will try to get the IP address of the domain name manually again
+  std::string ip_port = ip + ":" + std::to_string(port);
+  struct hostent* hp = NULL;
+  hp = gethostbyname(ip.c_str());
+
+  if (NULL == hp) {
+    LOG(ERROR) << "Brpc Start failed, ip_port= " << ip_port
+               << " , Error infomation: " << hstrerror(h_errno);
+  }
+
+  int i = 0;
+  char* int_ip = NULL;
+
+  while (hp->h_addr_list[i] != NULL) {
+    int_ip = inet_ntoa(*(struct in_addr*)hp->h_addr_list[i]);
+    VLOG(0) << "Brpc Get host by name, host:" << ip << " -> ip: " << int_ip;
+    break;
+  }
+
+  std::string str_ip = int_ip;
+  std::string int_ip_port = str_ip + ":" + std::to_string(port);
+  return int_ip_port;
 }
 
 }  // namespace distributed
