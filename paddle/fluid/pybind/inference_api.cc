@@ -369,7 +369,8 @@ void BindPaddlePlace(py::module *m) {
   py::enum_<PaddlePlace>(*m, "PaddlePlace")
       .value("UNK", PaddlePlace::kUNK)
       .value("CPU", PaddlePlace::kCPU)
-      .value("GPU", PaddlePlace::kGPU);
+      .value("GPU", PaddlePlace::kGPU)
+      .value("XPU", PaddlePlace::kXPU);
 }
 
 void BindPaddlePredictor(py::module *m) {
@@ -398,6 +399,7 @@ void BindNativeConfig(py::module *m) {
   py::class_<NativeConfig, PaddlePredictor::Config>(*m, "NativeConfig")
       .def(py::init<>())
       .def_readwrite("use_gpu", &NativeConfig::use_gpu)
+      .def_readwrite("use_xpu", &NativeConfig::use_xpu)
       .def_readwrite("device", &NativeConfig::device)
       .def_readwrite("fraction_of_gpu_memory",
                      &NativeConfig::fraction_of_gpu_memory)
@@ -459,7 +461,9 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("l3_workspace_size"))
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("use_gpu", &AnalysisConfig::use_gpu)
+      .def("use_xpu", &AnalysisConfig::use_xpu)
       .def("gpu_device_id", &AnalysisConfig::gpu_device_id)
+      .def("xpu_device_id", &AnalysisConfig::xpu_device_id)
       .def("memory_pool_init_size_mb",
            &AnalysisConfig::memory_pool_init_size_mb)
       .def("fraction_of_gpu_memory_for_pool",
