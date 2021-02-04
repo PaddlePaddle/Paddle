@@ -259,13 +259,12 @@ class ShardingOptimizer(MetaOptimizerBase):
         weightdecay_helper.prune_weight_decay(block, self._shard)
         # NOTE (JZ-LIANG) the sync of FoundInfinite should among one entire Model Parallelism
         # group. and each Data Parallelism group should have its own sync of FoundInfinite
-        FoundInfinite_ring_id = self.sharding_ring_id
+        Model_Paramllelism_ring_id = self.sharding_ring_id
         if self._as_outer_parallelism:
-            FoundInfinite_ring_id = self.mp_group_id
+            Model_Paramllelism_ring_id = self.mp_group_id
         FP16Utils.prune_fp16(block, self._shard, self._reduced_grads_to_param,
-                             FoundInfinite_ring_id)
-
-        gradientclip_helper = GradientClipHelper(self.sharding_ring_id)
+                             Model_Paramllelism_ring_id)
+        gradientclip_helper = GradientClipHelper(Model_Paramllelism_ring_id)
         gradientclip_helper.prune_gradient_clip(block, self._shard)
 
         # build prog deps
