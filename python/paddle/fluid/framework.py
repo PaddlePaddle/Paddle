@@ -1865,6 +1865,8 @@ class Variable(object):
         axes = []
         starts = []
         ends = []
+        steps = []
+
         max_integer = sys.maxsize
 
         def replace_ellipsis(item):
@@ -1907,20 +1909,22 @@ class Variable(object):
                 start = 0 if start is None else start
                 step = 1 if step is None else step
 
-                # TODO: support cases when step != 1
-                if step != 1:
+                # TODO: support cases when step < 1
+                if step < 1:
                     raise ValueError(
-                        "When assign a value to a paddle.Tensor, only support step is 1, "
+                        "When assign a value to a paddle.Tensor, only support step >= 1, "
                         "but received step is {}.".format(step))
                 end = max_integer if end is None else end
             else:
                 start = slice_item
                 end = slice_item + 1 if slice_item != -1 else max_integer
+                step = 1
             axes.append(dim)
             starts.append(start)
             ends.append(end)
+            steps.append(step)
 
-        attrs = {'axes': axes, 'starts': starts, 'ends': ends}
+        attrs = {'axes': axes, 'starts': starts, 'ends': ends, 'steps': steps}
 
         # 2. Parse value
         dtype = self.dtype
