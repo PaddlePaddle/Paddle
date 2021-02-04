@@ -73,14 +73,34 @@ inline void CheckAndUpdateSlice(const framework::DDim in_dims,
     start = std::max(start, static_cast<int64_t>(0));
     end = std::min(end, dim_value);
 
-    PADDLE_ENFORCE_GT(end, start, platform::errors::InvalidArgument(
-                                      "end should be greater than start, but "
-                                      "received end = %d, start = %d",
-                                      end, start));
-    // TODO(liym27): deal with steps is less than 1
+    int64_t step = (*steps)[i];
+    PADDLE_ENFORCE_NE(
+        step, 0, platform::errors::InvalidArgument(
+                     "Step should not be 0, but received step = %d.", step));
+    if (step > 0) {
+      start = std::min(start, dim_value);
+      end = std::max(end, static_cast<int64_t>(0));
+      PADDLE_ENFORCE_GT(
+          end, start,
+          platform::errors::InvalidArgument(
+              "When step > 0, end should be greater than start, but "
+              "received end = %d, start = %d.",
+              end, start));
+    } else {
+      // NOTE(liym27): When step < 0, start should less and equal to dim_value-1
+      // "end is -1" means contain the 0-th element of this axis.
+      start = std::min(start, dim_value - 1);
+      end = std::max(end, static_cast<int64_t>(-1));
+      PADDLE_ENFORCE_GT(
+          start, end,
+          platform::errors::InvalidArgument(
+              "When step < 0, start should be greater than end, but "
+              "received start = %d, end = %d.",
+              start, end));
+    }
+
     (*starts)[i] = start;
     (*ends)[i] = end;
-    (*steps)[i] = (*steps)[i];
   }
 }
 
@@ -93,12 +113,15 @@ inline framework::DDim GetSliceDims(const framework::DDim in_dims,
 
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes[i];
-
     int64_t start = starts[i];
     int64_t end = ends[i];
     int64_t step = steps[i];
 
-    slice_dims[axis] = (end - start + step - 1) / step;
+    if (step > 0) {
+      slice_dims[axis] = (end - start + step - 1) / step;
+    } else {
+      slice_dims[axis] = (end - start + step + 1) / step;
+    }
   }
   return slice_dims;
 }
@@ -141,6 +164,7 @@ class SetValueKernel : public framework::OpKernel<T> {
   template <size_t D>
   void SetValueCompute(const framework::ExecutionContext& ctx) const {
     auto* in = ctx.Input<framework::LoDTensor>("Input");
+    auto* value_tensor = ctx.Input<framework::LoDTensor>("ValueTensor");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
 
     auto dtype =
@@ -150,7 +174,6 @@ class SetValueKernel : public framework::OpKernel<T> {
     auto ends = ctx.Attr<std::vector<int64_t>>("ends");
     auto steps = ctx.Attr<std::vector<int64_t>>("steps");
     auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-    auto* value_tensor = ctx.Input<framework::LoDTensor>("ValueTensor");
 
     auto in_dims = in->dims();
     CheckAndUpdateSlice(in_dims, axes, &starts, &ends, &steps);
