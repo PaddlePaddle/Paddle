@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/extension/include/dtype.h"
 
 namespace paddle {
 
@@ -32,9 +32,9 @@ namespace paddle {
   [&] {                                                                      \
     const auto& dtype = TYPE;                                                \
     switch (dtype) {                                                         \
-      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::framework::proto::VarType::FP32,  \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::PaddleDType::FLOAT32,             \
                            float, __VA_ARGS__)                               \
-      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::framework::proto::VarType::FP64,  \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::PaddleDType::FLOAT64,             \
                            double, __VA_ARGS__)                              \
       default:                                                               \
         throw std::runtime_error("function not implemented for this type."); \

@@ -14,12 +14,18 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/place.h"
-
 namespace paddle {
 
-using CPU = platform::CPUPlace;
-using CUDA = platform::CUDAPlace;
-using XPU = platform::XPUPlace;
+enum class PlaceType { kUNK = -1, kCPU, kGPU };
+
+class PaddlePlace {
+public:
+    PaddlePlace() : pc_(PlaceType::kUNK){};
+    explicit PaddlePlace(PlaceType pc) : pc_(pc){}
+    const PlaceType& GetPlace() const { return pc_; };
+
+protected:
+    PlaceType pc_;
+};
 
 }  // namespace paddle

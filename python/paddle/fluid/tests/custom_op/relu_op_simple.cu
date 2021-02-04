@@ -35,11 +35,11 @@ __global__ void relu_cuda_backward_kernel(const data_t* dy,
   }
 }
 
-std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
-  auto out = paddle::Tensor();
-  out.Resize(x.dims());
+std::vector<paddle::CustomTensor> relu_cuda_forward(const paddle::CustomTensor& x) {
+  auto out = paddle::CustomTensor(paddle::PaddlePlace(paddle::PlaceType::kGPU));
+  out.Reshape(x.shape());
 
-  int numel = x.numel();
+  int numel = x.size();
   int block = 512;
   int grid = (numel + block - 1) / block;
   PD_DISPATCH_FLOATING_TYPES(
@@ -51,13 +51,13 @@ std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
   return {out};
 }
 
-std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& grad_out,
-                                               const paddle::Tensor& out,
-                                               const paddle::Tensor& x) {
-  auto grad_x = paddle::Tensor();
-  grad_x.Resize(x.dims());
+std::vector<paddle::CustomTensor> relu_cuda_backward(const paddle::CustomTensor& grad_out,
+                                               const paddle::CustomTensor& out,
+                                               const paddle::CustomTensor& x) {
+  auto grad_x = paddle::CustomTensor(paddle::PaddlePlace(paddle::PlaceType::kGPU));
+  grad_x.Reshape(x.shape());
 
-  int numel = out.numel();
+  int numel = out.size();
   int block = 512;
   int grid = (numel + block - 1) / block;
   PD_DISPATCH_FLOATING_TYPES(

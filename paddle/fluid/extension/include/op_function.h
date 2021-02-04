@@ -22,9 +22,10 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/place.h"
+#include <sstream>
+#include <boost/any.hpp>
+#include "paddle/fluid/extension/include/tensor.h"
+#include "paddle/fluid/extension/include/device.h"
 
 /**
  * Op Function Related Define.
@@ -35,7 +36,7 @@ limitations under the License. */
 
 namespace paddle {
 
-using Tensor = framework::Tensor;
+using Tensor = CustomTensor;
 
 #define DISABLE_COPY_AND_ASSIGN(classname)         \
  private:                                          \
@@ -77,7 +78,7 @@ struct KernelFuncTraits<Return (*)(Args...)> {
 ////////////////////// Kernel Function (PD_KERNEL) ////////////////////////
 
 // Record Op kernel core function
-using KernelFunc = std::vector<Tensor> (*)(std::vector<const Tensor*> inputs,
+using KernelFunc = std::vector<Tensor> (*)(std::vector<Tensor> inputs,
                                            std::vector<boost::any> attrs);
 
 template <typename T>
@@ -88,7 +89,7 @@ struct KernelFuncImpl;
 
 template <typename Return, typename... Args, Return (*impl_fn)(Args...)>
 struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
-  static Return Compute(std::vector<const Tensor*> inputs,
+  static Return Compute(std::vector<Tensor> inputs,
                         std::vector<boost::any> attrs) {
     return ComputeCallHelper<Args..., TypeTag<int>>::template Compute<0, 0>(
         inputs, attrs);
@@ -102,12 +103,12 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <typename... Tail>
   struct ComputeCallHelper<const Tensor&, Tail...> {
     template <int in_idx, int attr_idx, typename... PreviousArgs>
-    static Return Compute(std::vector<const Tensor*> inputs,
+    static Return Compute(std::vector<Tensor> inputs,
                           std::vector<boost::any> attrs,
                           const PreviousArgs&... pargs) {
       static_assert(attr_idx == 0,
                     "Input tensor should appear before attributes.");
-      const Tensor& arg = *(inputs[in_idx]);
+      const Tensor& arg = inputs[in_idx];
       return ComputeCallHelper<Tail...>::template Compute<in_idx + 1, attr_idx>(
           inputs, attrs, pargs..., arg);
     }
@@ -117,7 +118,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <typename... Tail>
   struct ComputeCallHelper<int, Tail...> {
     template <int in_idx, int attr_idx, typename... PreviousArgs>
-    static Return Compute(std::vector<const Tensor*> inputs,
+    static Return Compute(std::vector<Tensor> inputs,
                           std::vector<boost::any> attrs,
                           const PreviousArgs&... pargs) {
       try {
@@ -136,7 +137,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <typename T>
   struct ComputeCallHelper<TypeTag<T>> {
     template <int in_idx, int attr_idx>
-    static Return Compute(std::vector<const Tensor*> inputs,
+    static Return Compute(std::vector<Tensor> inputs,
                           std::vector<boost::any> attrs, const Args&... args) {
       return impl_fn(args...);
     }

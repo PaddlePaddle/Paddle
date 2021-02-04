@@ -32,6 +32,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/extension/include/tensor.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace framework {
@@ -61,12 +63,39 @@ static T* DynLoad(void* handle, std::string name) {
 }  // namespace detail
 
 ////////////////// Kernel Define ////////////////////
+// convert PaddlePlace to platform::Place
+platform::Place PaddlePlaceToPlatformPlace(const PaddlePlace& pc){
+    if(pc.GetPlace() == PlaceType::kCPU){
+        return platform::Place(platform::CPUPlace());
+    }else if(pc.GetPlace() == PlaceType::kGPU){
+#ifdef PADDLE_WITH_CUDA
+        return platform::Place(
+            platform::CUDAPlace(platform::GetCurrentDeviceId()));
+#endif
+    }else{
+        PADDLE_THROW("Place for CustomOp is undefined in Paddle");
+    }
+    return platform::Place();
+}
 
+PaddlePlace PlatformPlaceToPaddlePlace(const platform::Place& pc){
+    if(platform::is_cpu_place(pc)){
+        return PaddlePlace(PlaceType::kCPU);
+    }else if(platform::is_gpu_place(pc)){
+#ifdef PADDLE_WITH_CUDA
+        return PaddlePlace(PlaceType::kGPU);
+#endif
+    }else{
+        PADDLE_THROW("Place for CustomOp is undefined in Paddle");
+    }
+    return PaddlePlace(PlaceType::kUNK);
+}
 // custom op kernel call function define
+
 static void RunKernelFunc(const framework::ExecutionContext& ctx,
                           paddle::KernelFunc func) {
   VLOG(1) << "Custom Operator: Start run KernelFunc.";
-  std::vector<const Tensor*> ins;
+  std::vector<CustomTensor> custom_ins;
   for (auto name : ctx.InNameList()) {
     VLOG(1) << "Custom Operator: input name - " << name;
     auto* x = ctx.Input<Tensor>(name);
@@ -75,12 +104,16 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     PADDLE_ENFORCE_EQ(x->IsInitialized(), true,
                       platform::errors::InvalidArgument(
                           "Input tensor (%s) is not initialized."));
-    ins.push_back(x);
+    auto custom_in = CustomTensor(PlatformPlaceToPaddlePlace(x->place()));
+    custom_in.ShareDataFrom((void *)x);
+    custom_ins.emplace_back(custom_in);
   }
+
   std::vector<boost::any> attrs;
 
-  VLOG(1) << "Custom Operator: Run KernelFunc.";
-  auto outs = func(ins, attrs);
+  VLOG(0) << "Run ComputeFunc.";
+
+  auto outs = func(custom_ins, attrs);
 
   VLOG(1) << "Custom Operator: Share outputs into ExecutionContext.";
   auto out_name = ctx.OutNameList();
@@ -90,7 +123,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
           "Custom operator can only hold 1 output as vector<Tensor>."));
   auto true_outs = ctx.MultiOutput<Tensor>(out_name[0]);
   for (size_t i = 0; i < true_outs.size(); ++i) {
-    true_outs[i]->ShareDataWith(outs.at(i));
+      outs.at(i).ShareDataTo((true_outs)[i]);
   }
 }
 
@@ -282,11 +315,12 @@ void RegisterOperator(const std::string& name, size_t input_num,
   OpInfoMap::Instance().Insert(name + "_grad", grad_info);
 }
 
+
 void RegisterOperatorKernelWithPlace(const std::string& name,
                                      const paddle::KernelFunc& kernel_func,
                                      const proto::VarType::Type type,
-                                     const platform::Place& place) {
-  OpKernelType key(type, place);
+                                     const PaddlePlace& place) {
+  OpKernelType key(type, PaddlePlaceToPlatformPlace(place));
   VLOG(1) << "Custom Operator: op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] =
       [kernel_func](const framework::ExecutionContext& ctx) {
@@ -294,6 +328,7 @@ void RegisterOperatorKernelWithPlace(const std::string& name,
         RunKernelFunc(ctx, kernel_func);
       };
 }
+
 
 void RegisterOperatorKernel(const std::string& name,
                             const paddle::KernelFunc& kernel_func) {
@@ -305,9 +340,9 @@ void RegisterOperatorKernel(const std::string& name,
   // But this is not entirely correct, if user only give a cpu kernel,
   // but call api in gpu device, it will cause error.
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
-                                  platform::CPUPlace());
+                                  PaddlePlace(PlaceType::kCPU));
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
-                                  platform::CUDAPlace());
+                                  PaddlePlace(PlaceType::kGPU));
 }
 
 void RegisterOperatorWithOpFunctionMap(

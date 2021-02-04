@@ -14,13 +14,16 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/data_type.h"
-
 namespace paddle {
 
-using bfloat16 = platform::bfloat16;
-using float16 = platform::float16;
-using complex64 = platform::complex64;
-using complex128 = platform::complex128;
+enum PaddleDType {
+        FLOAT32,
+        FLOAT64,
+        INT64,
+        INT32,
+        UINT8,
+        INT8,
+        // TODO(Superjomn) support more data types if needed.
+    };
 
 }  // namespace paddle
