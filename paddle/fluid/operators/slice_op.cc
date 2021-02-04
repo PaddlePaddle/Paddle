@@ -124,7 +124,7 @@ class SliceOp : public framework::OperatorWithKernel {
 
           PADDLE_ENFORCE_LE(start, dim_value,
                             platform::errors::InvalidArgument(
-                                "start should less than or equal to the "
+                                "start should be less than or equal to the "
                                 "dimension value, but received "
                                 "start = %d, shape[%d] = %d.",
                                 starts[i], axes[i], out_dims[axes[i]]));
