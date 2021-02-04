@@ -519,7 +519,8 @@ class TestParallelDyGraphRunnerBase(object):
                 loss.backward()
 
                 opt.minimize(loss)
-                model.clear_gradients()
+                if not args.accumulate_gradient:
+                    model.clear_gradients()
         print_to_out(out_losses)
 
     def run_trainer_with_spawn(self, args):
@@ -555,7 +556,8 @@ class TestParallelDyGraphRunnerBase(object):
             loss.backward()
 
             opt.minimize(loss)
-            model.clear_gradients()
+            if not args.accumulate_gradient:
+                model.clear_gradients()
         return out_losses
 
     def run_use_fleet_api_trainer(self, args):
@@ -594,7 +596,8 @@ class TestParallelDyGraphRunnerBase(object):
             loss.backward()
 
             opt.step()
-            opt.clear_grad()
+            if not args.accumulate_gradient:
+                opt.clear_grad()
         print_to_out(out_losses)
 
 
@@ -625,6 +628,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_cuda', action='store_true')
     parser.add_argument('--use_xpu', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
+    parser.add_argument('--accumulate_gradient', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
     parser.add_argument('--hogwild', action='store_true')
@@ -722,6 +726,7 @@ class TestDistBase(unittest.TestCase):
         self._use_hallreduce = False
         self._save_model = False
         self._fuse_all_reduce = None
+        self._accumulate_gradient = False
         self._setup_config()
 
         global DIST_UT_PORT
@@ -844,6 +849,9 @@ class TestDistBase(unittest.TestCase):
         # not use dgc in single card
         if len(devices) > 1 and self._use_dgc:
             cmd += " --use_dgc"
+
+        if self._accumulate_gradient:
+            cmd += " --accumulate_gradient"
 
         env_local.update(envs)
         print("local_cmd: {}, env: {}".format(cmd, env_local))
@@ -1010,6 +1018,9 @@ class TestDistBase(unittest.TestCase):
 
         if self._use_dgc:
             tr_cmd += " --use_dgc"
+
+        if self._accumulate_gradient:
+            tr_cmd += " --accumulate_gradient"
 
         if self._pipeline_mode:
             tr_cmd += " --use_pipeline"

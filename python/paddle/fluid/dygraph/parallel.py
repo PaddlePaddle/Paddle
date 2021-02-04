@@ -307,17 +307,6 @@ def _split_tensors(coalesced_grads_and_grad_vars):
             assert g_var.shape == g_shape
 
 
-def scale_loss(loss):
-    if not ParallelEnv().world_size > 1:
-        return loss
-
-    loss_scale = to_variable(
-        np.array([ParallelEnv().world_size]).astype("float32"))
-    loss_scale.stop_gradient = True
-    scaled_loss = loss / loss_scale
-    return scaled_loss
-
-
 class DataParallel(layers.Layer):
     """
     Run the dygraph module with data parallelism.
