@@ -14,12 +14,8 @@
 
 #include "paddle/fluid/framework/ir/quant_conv2d_dequant_fuse_pass.h"
 
-#include <memory>
 #include <string>
-#include <unordered_set>
-#include <vector>
 
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {

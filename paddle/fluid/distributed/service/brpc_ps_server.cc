@@ -13,14 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
-#include <netdb.h>
 #include <thread>  // NOLINT
-#include "Eigen/Dense"
-#include "butil/endpoint.h"
-#include "iomanip"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace google {
+namespace protobuf {
+class Closure;
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
 
 namespace paddle {
 namespace distributed {

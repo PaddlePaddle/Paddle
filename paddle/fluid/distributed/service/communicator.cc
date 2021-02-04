@@ -15,24 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/distributed/service/communicator.h"
 
 #include <google/protobuf/text_format.h>
-#include <paddle/fluid/framework/program_desc.h>
-
-#include <algorithm>
-#include <chrono>  // NOLINT
-#include <map>
-#include <thread>  // NOLINT
-#include <unordered_set>
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/distributed/table/table.h"
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/split.h"
+#include "paddle/fluid/string/string_helper.h"
 
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 #define STEP_COUNTER "@PS_STEP_COUNTER@"

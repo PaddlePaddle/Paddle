@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/identity_scale_op_clean_pass.h"
-#include <string>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {

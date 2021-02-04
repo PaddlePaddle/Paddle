@@ -47,6 +47,8 @@ namespace platform {
 //
 // The NCCLComm instance is created and reversed in the NCCLCommContext
 // singleton with a global user specified group id.
+class CUDADeviceContext;
+
 class NCCLComm {
  public:
   virtual int ring_id() const = 0;
