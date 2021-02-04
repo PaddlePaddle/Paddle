@@ -27,9 +27,12 @@ class TestSetValueBase(unittest.TestCase):
         paddle.enable_static()
         self.set_dtype()
         self.set_value()
-        self.shape = [2, 3, 4]
+        self.set_shape()
         self.data = np.ones(self.shape).astype(self.dtype)
         self.program = paddle.static.Program()
+
+    def set_shape(self):
+        self.shape = [2, 3, 4]
 
     def set_value(self):
         self.value = 6
@@ -60,6 +63,8 @@ class TestSetValueApi(TestSetValueBase):
 
 
 # 1. Test different type of item: int, python slice, Ellipsis
+# 1.1 item is int
+
 class TestSetValueItemInt(TestSetValueApi):
     def _call_setitem(self, x):
         x[0] = self.value
@@ -68,6 +73,8 @@ class TestSetValueItemInt(TestSetValueApi):
         self.data[0] = self.value
 
 
+# 1.2 item is slice
+# 1.2.1 step is 1
 class TestSetValueItemSlice(TestSetValueApi):
     def _call_setitem(self, x):
         x[0:2] = self.value
@@ -99,6 +106,48 @@ class TestSetValueItemSlice4(TestSetValueApi):
     def _get_answer(self):
         self.data[0:, 1:2, :] = self.value
 
+
+# # 1.2.2 step > 1
+class TestSetValueItemSliceStep(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [5, 5, 5]
+
+    def _call_setitem(self, x):
+        x[0:2:2] = self.value
+
+    def _get_answer(self):
+        self.data[0:2:2] = self.value
+
+
+class TestSetValueItemSliceStep2(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [7, 5, 5]
+
+    def _call_setitem(self, x):
+        x[0:-1:3] = self.value
+
+    def _get_answer(self):
+        self.data[0:-1:3] = self.value
+
+
+class TestSetValueItemSliceStep3(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0:-1, 0:2, ::2] = self.value
+
+    def _get_answer(self):
+        self.data[0:-1, 0:2, ::2] = self.value
+
+
+class TestSetValueItemSliceStep4(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0:, 1:2:2, :] = self.value
+
+    def _get_answer(self):
+        self.data[0:, 1:2:2, :] = self.value
+
+
+
+# 1.3 item is Ellipsis
 
 class TestSetValueItemEllipsis1(TestSetValueApi):
     def _call_setitem(self, x):
@@ -134,7 +183,6 @@ class TestSetValueItemEllipsis4(TestSetValueApi):
 
 # 2. Test different type of value: int, float, numpy.ndarray, Tensor
 # 2.1 value is int32, int64, float32, float64, bool
-
 
 def create_test_value_int32(parent):
     class TestValueInt(parent):
@@ -526,9 +574,9 @@ class TestError(TestSetValueBase):
             y[0] = 1
 
     def _step_error(self):
-        with self.assertRaisesRegexp(ValueError, "only support step is 1"):
+        with self.assertRaisesRegexp(ValueError, "only support step"):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
-            x[0:1:2] = self.value
+            x[0:1:-1] = self.value
 
     def _ellipsis_error(self):
         with self.assertRaisesRegexp(

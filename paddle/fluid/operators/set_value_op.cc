@@ -86,6 +86,8 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>(
         "ends",
         "(list<int64_t>) Ending indices of corresponding axis in `axes`.");
+    AddAttr<std::vector<int64_t>>(
+        "steps", "(list<int64_t>) Stride step from the start to the end.");
 
     AddAttr<std::vector<int>>("bool_values", "store the bool values")
         .SetDefault({});
