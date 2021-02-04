@@ -186,7 +186,7 @@ class TestDistRunnerBase(object):
             fleet.save_inference_model(exe, infer_save_dir_fleet,
                                        feeded_var_names, [avg_cost])
 
-    def run_device_fleet_api_trainer(self, args):
+    def run_use_fleet_api_trainer(self, args):
         assert args.update_method == "nccl2" or "bkcl"
 
         self.lr = args.lr
@@ -207,7 +207,7 @@ class TestDistRunnerBase(object):
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        print_to_err("gpu_fleet", "fleet.node_num:")
+        print_to_err("use_fleet", "fleet.node_num:")
         # "fleet.node_id:", fleet.node_id(),
         # "fleet.trainer_num:", fleet.worker_num())
 
@@ -558,7 +558,7 @@ class TestParallelDyGraphRunnerBase(object):
             model.clear_gradients()
         return out_losses
 
-    def run_device_fleet_api_trainer(self, args):
+    def run_use_fleet_api_trainer(self, args):
         import paddle.distributed.fleet as fleet
         import paddle.distributed.fleet.base.role_maker as role_maker
         # 1. enable dygraph
@@ -614,7 +614,7 @@ def runtime_main(test_class):
     parser.add_argument('--enable_backward_deps', action='store_true')
     parser.add_argument('--use_hallreduce', action='store_true')
     parser.add_argument('--use_pipeline', action='store_true')
-    parser.add_argument('--device_fleet_api', action='store_true')
+    parser.add_argument('--use_fleet_api', action='store_true')
     parser.add_argument('--use_local_sgd', action='store_true')
     parser.add_argument('--ut4grad_allreduce', action='store_true')
     parser.add_argument(
@@ -652,8 +652,8 @@ def runtime_main(test_class):
     model = test_class()
     if args.role == "pserver" and args.update_method == "pserver":
         model.run_pserver(args)
-    elif args.device_fleet_api:
-        model.run_device_fleet_api_trainer(args)
+    elif args.use_fleet_api:
+        model.run_use_fleet_api_trainer(args)
     elif args.use_pipeline:
         model.run_pipeline_trainer(args)
     else:
@@ -716,7 +716,7 @@ class TestDistBase(unittest.TestCase):
         self._dygraph = False
         self._nccl_comm_num = 1
         self._enable_backward_deps = False
-        self._device_fleet_api = False
+        self._use_fleet_api = False
         self._use_local_sgd = False
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
@@ -1028,8 +1028,8 @@ class TestDistBase(unittest.TestCase):
         if self._fuse_all_reduce is not None:
             tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
 
-        if self._device_fleet_api:
-            tr_cmd += " --device_fleet_api"
+        if self._use_fleet_api:
+            tr_cmd += " --use_fleet_api"
             if self._use_local_sgd:
                 tr_cmd += " --use_local_sgd"
             if self._ut4grad_allreduce:

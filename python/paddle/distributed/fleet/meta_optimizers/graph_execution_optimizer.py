@@ -102,9 +102,9 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             comm_id_var = startup_program.global_block().create_var(
                 name="BKCLID", persistable=True, type=core.VarDesc.VarType.RAW)
 
-            #NOTE(liuyuhui) Baidu Kunlun Communication Library(BKCL) currently don‘t support multi machines.
+            #NOTE(liuyuhui) Baidu Kunlun Communication Library(BKCL) currently do not support multi machines.
             assert build_strategy.bkcl_comm_num == 1, \
-                "Baidu Kunlun Communication Library(BKCL) currently don‘t support multi machines."
+                "Baidu Kunlun Communication Library(BKCL) currently do not support multi machines."
             for i in range(1, build_strategy.bkcl_comm_num):
                 startup_program.global_block().create_var(
                     name="BKCLID_{}".format(i),
@@ -126,7 +126,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 })
         else:
             raise ValueError(
-                "comm_id must be generated in paddlepaddle-xpu or paddlepaddle-xpu."
+                "comm_id must be generated in paddlepaddle-xpu or paddlepaddle-gpu."
             )
 
     def _try_to_compile(self, startup_program, main_program, loss):
