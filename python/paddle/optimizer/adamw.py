@@ -190,14 +190,6 @@ class AdamW(Adam):
                 scaled_param = master_weight * decay_coeff
                 paddle.fluid.layers.assign(
                     input=scaled_param, output=master_weight)
-                # block.append_op(
-                #     type="cast",
-                #     inputs={"X": [scaled_param]},
-                #     outputs={"Out": [param]},
-                #     attrs={
-                #         "in_dtype": scaled_param.dtype,
-                #         "out_dtype": param.dtype
-                #     })
             else:
                 scaled_param = param * decay_coeff
                 paddle.fluid.layers.assign(input=scaled_param, output=param)
