@@ -75,7 +75,7 @@ See https://gist.github.com/goldsborough/d466f43e8ffc948ff92de7486c5216d6
 for instructions on how to install GCC 5 or higher.
 ******************************************************************************
 
-                              !! WARNING !!
+                              ** WARNING **
 '''
 
 
