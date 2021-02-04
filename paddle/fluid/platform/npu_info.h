@@ -121,7 +121,10 @@ class AclInstance {
  public:
   // NOTE(zhiiu): Commonly, exception in destructor is not recommended, so
   // no PADDLE_ENFORCE here
-  ~AclInstance() { aclFinalize(); }
+  ~AclInstance() {
+    auto status = aclFinalize();
+    VLOG(4) << "Call aclFinalize, status = " << status;
+  }
   AclInstance(const AclInstance &o) = delete;
   const AclInstance &operator=(const AclInstance &o) = delete;
 

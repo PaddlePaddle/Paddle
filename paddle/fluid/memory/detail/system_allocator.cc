@@ -298,7 +298,7 @@ void NPUAllocator::Free(void* p, size_t size, size_t index) {
   platform::RecordedNPUFree(p, size, npu_id_);
 }
 
-bool NPUAllocator::UseGpu() const { return false; }
+bool NPUAllocator::UseGpu() const { return true; }
 #endif
 
 }  // namespace detail

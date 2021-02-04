@@ -316,6 +316,7 @@ void *Alloc<platform::NPUPlace>(const platform::NPUPlace &place, size_t size) {
       aclrtMemset(ptr, size, 0xEF, size);
     }
   }
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   return ptr;
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -327,6 +328,7 @@ template <>
 void Free<platform::NPUPlace>(const platform::NPUPlace &place, void *p,
                               size_t size) {
 #ifdef PADDLE_WITH_ASCEND_CL
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetNPUBuddyAllocator(place.device)->Free(p);
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
