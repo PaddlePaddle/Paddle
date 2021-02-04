@@ -556,8 +556,7 @@ class TestParallelDyGraphRunnerBase(object):
             loss.backward()
 
             opt.minimize(loss)
-            if not args.accumulate_gradient:
-                model.clear_gradients()
+            model.clear_gradients()
         return out_losses
 
     def run_use_fleet_api_trainer(self, args):
