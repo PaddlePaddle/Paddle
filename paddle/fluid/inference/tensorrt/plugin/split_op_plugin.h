@@ -41,7 +41,7 @@ class SplitPlugin : public PluginTensorRT {
 
   SplitPlugin* clone() const override {
     auto* ptr = new SplitPlugin(axis_, output_length_, with_fp16_);
-    ptr->initialize();
+    ptr->shareData(this);
     return ptr;
   }
 
@@ -52,6 +52,7 @@ class SplitPlugin : public PluginTensorRT {
                                      int num_inputs) override;
 
   int initialize() override;
+  void terminate() override;
   int enqueue(int batchSize, const void* const* inputs, void** outputs,
               void* workspace, cudaStream_t stream) override;
 
@@ -77,7 +78,9 @@ class SplitPlugin : public PluginTensorRT {
   std::vector<int> segment_offsets_;
   thrust::device_vector<int> d_segment_offsets_;
   thrust::device_vector<float*> d_output_ptrs_;
-  bool is_initialized_{false};
+
+ private:
+  void shareData(const SplitPlugin* another);
 };
 
 #if IS_TRT_VERSION_GE(6000)
