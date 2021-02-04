@@ -610,10 +610,10 @@ EOF
         collect_failed_tests
         mactest_error=0
         retry_unittests_record=''
-        retry_time=3
+        retry_time=2
         exec_times=0
         exec_time_array=('first' 'second' 'third')
-        exec_retry_threshold=20
+        exec_retry_threshold=10
         if [ -n "$failed_test_lists" ];then
             mactest_error=1
             read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
@@ -1195,9 +1195,9 @@ set +x
         rm -f $tmp_dir/*
         exec_times=0
         retry_unittests_record=''
-        retry_time=3
+        retry_time=2
         exec_time_array=('first' 'second' 'third')
-        exec_retry_threshold=20
+        exec_retry_threshold=10
         if [ -n "$failed_test_lists" ];then
             read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
