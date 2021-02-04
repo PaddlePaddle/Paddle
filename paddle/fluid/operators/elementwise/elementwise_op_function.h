@@ -20,7 +20,6 @@ limitations under the License. */
 #include <functional>  // for multiplies
 #include <iterator>
 #include <vector>
-
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -36,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
+constexpr int ELEMWISE_WARP_SIZE = 32;
 #define BLOCK_X 32
 #define BLOCK_Y 32
 #endif
@@ -708,10 +708,10 @@ static __global__ void FastCommonGradBroadcastAllCUDAKernel(
       int x_offset = b_i * post + b_j;
       if (dy) {
         dy[y_offset] =
-            dy_op(x[x_offset], y[y_offset], out[y_offset], dout[y_offset]);
+            dy_op(x[x_offset], y[y_offset], out[x_offset], dout[x_offset]);
       }
       if (dx) {
-        val += dx_op(x[x_offset], y[y_offset], out[y_offset], dout[y_offset]);
+        val += dx_op(x[x_offset], y[y_offset], out[x_offset], dout[x_offset]);
       }
     }
     if (dx) {
@@ -1645,16 +1645,147 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(
   }
 }
 
+template <typename T>
+__forceinline__ __device__ T ElemWarpReduceSum(T val, unsigned mask) {
+  for (int offset = ELEMWISE_WARP_SIZE / 2; offset > 0; offset >>= 1)
+    val += paddle::platform::CudaShuffleDownSync(mask, val, offset);
+  return val;
+}
+
+template <typename T, typename DX_OP, typename DY_OP>
+static __global__ void ElemwiseGradBroadcast2WarpCUDAKernel(
+    const T *x, const T *y, const T *out, const T *dout, int pre, int n,
+    int post, bool is_xsize_larger, DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
+  const int tid = threadIdx.x % ELEMWISE_WARP_SIZE;
+  const int warp_id = threadIdx.x / ELEMWISE_WARP_SIZE;
+  const int j = blockIdx.x * ELEMWISE_WARP_SIZE + warp_id;
+
+  T val(0);
+  int ttid = tid;
+
+  if (is_xsize_larger) {
+    while (true) {
+      int i = ttid / post;
+      int k = ttid % post;
+      if (i >= pre) break;
+
+      int x_offset = i * n * post + j * post + k;
+
+      if (dx != nullptr) {
+        dx[x_offset] = dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+      }
+
+      if (dy != nullptr) {
+        val += dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+      }
+
+      ttid += ELEMWISE_WARP_SIZE;
+    }
+
+    if (dy) {
+      val = ElemWarpReduceSum(val, 0xffffffff);
+      if (tid == 0) dy[j] = val;
+    }
+  } else {  // x.dims < y.dims, broadcast for x.
+    while (true) {
+      int i = ttid / post;
+      int k = ttid % post;
+      if (i >= pre) break;
+
+      int y_offset = i * n * post + j * post + k;
+
+      if (dy != nullptr) {
+        dy[y_offset] = dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+      }
+
+      if (dx != nullptr) {
+        val += dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+      }
+
+      ttid += ELEMWISE_WARP_SIZE;
+    }
+
+    if (dx) {
+      val = ElemWarpReduceSum(val, 0xffffffff);
+      if (tid == 0) dx[j] = val;
+    }
+  }
+}
+
+template <typename T, typename DX_OP, typename DY_OP>
+static __global__ void ElemwiseGradBroadcast2ThreadCUDAKernel(
+    const T *x, const T *y, const T *out, const T *dout, int pre, int n,
+    int post, bool is_xsize_larger, DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
+  const int j = blockIdx.x * blockDim.x + threadIdx.x;
+
+  T val(0);
+
+  if (is_xsize_larger) {
+    for (int ttid = 0; ttid < pre * post; ttid++) {
+      int i = ttid / post;
+      int k = ttid % post;
+      if (i >= pre) break;
+
+      int x_offset = i * n * post + j * post + k;
+
+      if (dx != nullptr) {
+        dx[x_offset] = dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+      }
+
+      if (dy != nullptr) {
+        val += dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+      }
+    }
+
+    if (dy) dy[j] = val;
+  } else {  // x.dims < y.dims, broadcast for x.
+    for (int ttid = 0; ttid < pre * post; ttid++) {
+      int i = ttid / post;
+      int k = ttid % post;
+      if (i >= pre) break;
+
+      int y_offset = i * n * post + j * post + k;
+
+      if (dy != nullptr) {
+        dy[y_offset] = dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+      }
+
+      if (dx != nullptr) {
+        val += dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+      }
+    }
+
+    if (dx) dx[j] = val;
+  }
+}
+
 template <typename T, typename DX_OP, typename DY_OP>
 static void ElemwiseGradBroadcast2CUDA(cudaStream_t stream, const T *x,
                                        const T *y, const T *out, const T *dout,
                                        int pre, int n, int post,
                                        bool is_xsize_larger, DX_OP dx_op,
                                        DY_OP dy_op, T *dx, T *dy) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
-  int gird_size = n;
-  ElemwiseGradBroadcast2CUDAKernel<<<gird_size, block_size, 0, stream>>>(
-      x, y, out, dout, pre, n, post, is_xsize_larger, dx_op, dy_op, dx, dy);
+  int num = pre * post;
+  if (num >= 256) {
+    int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
+    int gird_size = n;
+    ElemwiseGradBroadcast2CUDAKernel<<<gird_size, block_size, 0, stream>>>(
+        x, y, out, dout, pre, n, post, is_xsize_larger, dx_op, dy_op, dx, dy);
+  } else if (num >= 32) {
+    // each warp handle one operation, each block handle 32 operation
+    int block_size = std::min(n * ELEMWISE_WARP_SIZE, ELEMWISE_MAX_BLOCK_DIM);
+    int warp_size = (block_size + ELEMWISE_WARP_SIZE - 1) / ELEMWISE_WARP_SIZE;
+    int gird_size = (n + warp_size - 1) / warp_size;
+    ElemwiseGradBroadcast2WarpCUDAKernel<<<gird_size, block_size, 0, stream>>>(
+        x, y, out, dout, pre, n, post, is_xsize_larger, dx_op, dy_op, dx, dy);
+  } else {
+    // each thread handle one operation
+    int block_size = std::min(n, ELEMWISE_MAX_BLOCK_DIM);
+    int gird_size = (n + block_size - 1) / block_size;
+    ElemwiseGradBroadcast2ThreadCUDAKernel<<<gird_size, block_size, 0,
+                                             stream>>>(
+        x, y, out, dout, pre, n, post, is_xsize_larger, dx_op, dy_op, dx, dy);
+  }
 }
 
 #endif
@@ -1674,6 +1805,7 @@ void CommonElementwiseBroadcastBackward(
   GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
                          y_dims_array.data(), out_dims_array.data(), max_dim,
                          axis);
+
   // for inplace strategy. memset will make dx and dout clear and get wrong
   // result.
   if (dx && dx->IsSharedBufferWith(dout)) {
@@ -1761,6 +1893,7 @@ void ElemwiseGradComputeWithBroadcast(
     get_mid_dims(y_dims, x_dims_trimed, axis_trim, &pre, &n, &post,
                  &is_run_common_broadcast);
   }
+
   // special case for common backward implementation.
   if (is_run_common_broadcast) {
     CommonElementwiseBroadcastBackward<DeviceContext, T, DX_OP, DY_OP>(
