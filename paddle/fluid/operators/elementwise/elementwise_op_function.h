@@ -205,8 +205,8 @@ void CommonForwardBroadcastCPU(const framework::Tensor *x,
 
 #ifdef __NVCC__
 template <typename Functor, typename T, typename OutType>
-__global__ void ElementwiseKernel(const T *x, const T *y, OutType *out, int pre,
-                                  int n, int post, int total, Functor func) {
+__global__ void ElementwiseKernel(const T *x, const T *y, OutType *out, int n,
+                                  int post, int total, Functor func) {
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int idx = tid / post % n;
   if (tid < total) {
@@ -215,9 +215,11 @@ __global__ void ElementwiseKernel(const T *x, const T *y, OutType *out, int pre,
 }
 
 template <typename Functor, typename T, typename OutType>
-__global__ void ElementwiseKernelSharedMemory(const T *x_data, const T *y_data,
-                                              OutType *out_data, int n,
-                                              int post, const size_t total,
+__global__ void ElementwiseKernelSharedMemory(const T *__restrict__ x_data,
+                                              const T *__restrict__ y_data,
+                                              OutType *__restrict__ out_data,
+                                              int n, int post,
+                                              const size_t total,
                                               Functor func) {
   const int share_size = 1024;
   __shared__ T s_data[share_size];
@@ -246,14 +248,20 @@ void ComputeElementwiseCUDA(const framework::Tensor *x,
   int blocks = (numel + threads - 1) / threads;
 
   if (is_xsize_larger) {
-    ElementwiseKernelSharedMemory<
-        Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+    ElementwiseKernel<Functor, T,
+                      OutType><<<blocks, threads, 0, ctx.stream()>>>(
         x_data, y_data, out_data, n, post, numel, func);
+    // ElementwiseKernelSharedMemory<
+    //     Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+    //     x_data, y_data, out_data, n, post, numel, func);
 
   } else {
-    ElementwiseKernelSharedMemory<
-        Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+    ElementwiseKernel<Functor, T,
+                      OutType><<<blocks, threads, 0, ctx.stream()>>>(
         y_data, x_data, out_data, n, post, numel, func);
+    // ElementwiseKernelSharedMemory<
+    //     Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+    //     y_data, x_data, out_data, n, post, numel, func);
   }
 }
 
