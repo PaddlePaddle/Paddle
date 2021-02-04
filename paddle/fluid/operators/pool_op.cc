@@ -144,6 +144,35 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "Out");
 }
 
+bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
+  if (ctx.Attr<bool>("adaptive") == false) return true;
+  // (jczaja): oneDNN is supporting only unchangable in size pool window
+  auto src_tz = paddle::framework::vectorize(ctx.Input<Tensor>("X")->dims());
+  std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
+  // Fast but not exhustive check
+  if ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
+      (src_tz[src_tz.size() - 2] % ksize[0] == 0))
+    return true;
+
+  // Exhustive check
+  auto IH = static_cast<double>(src_tz[src_tz.size() - 2]);
+  auto IW = static_cast<double>(src_tz[src_tz.size() - 1]);
+  auto OH = static_cast<double>(ksize[0]);
+  auto OW = static_cast<double>(ksize[1]);
+
+  auto SH = static_cast<int>(floor((IH * 2.0) / OH) - floor(IH / OH));
+  auto SW = static_cast<int>(floor((IW * 2.0) / OW) - floor(IW / OW));
+  auto KH = static_cast<int>(ceil((IH * 2.0) / OH) - floor(IH / OH));
+  auto KW = static_cast<int>(ceil((IW * 2.0) / OW) - floor(IW / OW));
+
+  auto PH = (SH * (static_cast<int>(OH) - 1) + KH - static_cast<int>(IH));
+  auto PW = (SW * (static_cast<int>(OW) - 1) + KW - static_cast<int>(IW));
+  // If there is additional padding needed then
+  // this is situation that oneDNN cannot comply with
+  // paddlepaddle reference implementation
+  return (PH == 0) && (PW == 0);
+}
+
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
@@ -157,7 +186,7 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx) && CanMKLDNNSupportPool(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
@@ -213,7 +242,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx) && CanMKLDNNSupportPool(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
