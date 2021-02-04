@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/var_desc.h"
+
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

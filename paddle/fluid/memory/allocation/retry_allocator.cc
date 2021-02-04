@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 
+#include "glog/logging.h"
+
 namespace paddle {
 namespace memory {
 namespace allocation {

@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_pooling.h"
 #include <gtest/gtest.h>
-#include <vector>
 
 template <typename DeviceContext, typename T>
 void TestSequencePoolingSum(const DeviceContext &context,

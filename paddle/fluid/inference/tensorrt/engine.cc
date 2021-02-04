@@ -18,16 +18,14 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <string>
 
+#include "cuda_runtime_api.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
-
-namespace plugin {
-class PluginTensorRT;
-}  // namespace plugin
 
 int TensorRTEngine::runtime_batch_ = 1;
 

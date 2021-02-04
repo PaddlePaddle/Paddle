@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_rank_table.h"
 
+#include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace framework {
 void LoDRankTable::Reset(const LoD& lod, size_t level) {

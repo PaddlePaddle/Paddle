@@ -14,9 +14,12 @@
 
 #include "paddle/fluid/framework/executor_cache.h"
 
-#include <string>
-#include <unordered_set>
-#include <vector>
+namespace paddle {
+namespace framework {
+class BlockDesc;
+class ProgramDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
