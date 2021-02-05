@@ -27,6 +27,18 @@ limitations under the License. */
 
 DECLARE_bool(use_mkldnn);
 
+namespace paddle {
+bool gpu_place_used(const paddle::PaddlePlace& place) {
+  return place == paddle::PaddlePlace::kGPU;
+}
+bool xpu_place_used(const paddle::PaddlePlace& place) {
+  return place == paddle::PaddlePlace::kXPU;
+}
+bool cpu_place_used(const paddle::PaddlePlace& place) {
+  return place == paddle::PaddlePlace::kCPU;
+}
+}  // namespace paddle
+
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor* input,
                  paddle::framework::DDim dims, T lower, T upper) {

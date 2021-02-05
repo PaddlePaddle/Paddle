@@ -15,7 +15,10 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <exception>
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include <string>
+
+#include "paddle/fluid/inference/api/paddle_analysis_config.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
 
 namespace paddle {
 

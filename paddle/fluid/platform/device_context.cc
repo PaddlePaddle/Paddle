@@ -11,13 +11,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include <set>
-#include <string>
-#include <unordered_set>
-#include <vector>
 
-#include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif

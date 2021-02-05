@@ -185,11 +185,23 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_gpu() const { return use_gpu_; }
   ///
+  /// \brief A boolean state telling whether the XPU is turned on.
+  ///
+  /// \return bool Whether the XPU is turned on.
+  ///
+  bool use_xpu() const { return use_xpu_; }
+  ///
   /// \brief Get the GPU device id.
   ///
   /// \return int The GPU device id.
   ///
-  int gpu_device_id() const { return device_id_; }
+  int gpu_device_id() const { return gpu_device_id_; }
+  ///
+  /// \brief Get the GPU device id.
+  ///
+  /// \return int The GPU device id.
+  ///
+  int xpu_device_id() const { return xpu_device_id_; }
   ///
   /// \brief Get the initial size in MB of the GPU memory pool.
   ///
@@ -579,7 +591,8 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // GPU related.
   bool use_gpu_{false};
-  int device_id_{0};
+  int gpu_device_id_{0};
+  int xpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
 
   bool use_cudnn_{false};

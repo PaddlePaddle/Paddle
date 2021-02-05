@@ -28,6 +28,7 @@
 namespace paddle {
 namespace framework {
 class SelectedRows;
+
 namespace details {
 struct VarHandle;
 }  // namespace details

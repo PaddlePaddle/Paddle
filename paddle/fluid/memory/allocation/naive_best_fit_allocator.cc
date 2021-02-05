@@ -14,16 +14,14 @@
 
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
+#include <mutex>
 
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
-#include "paddle/fluid/memory/detail/system_allocator.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -135,6 +133,11 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
                         "Baidu Kunlun Card is properly installed.",
                         ret));
   ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
+  if (ret != XPU_SUCCESS) {
+    std::cout << "xpu memory malloc(" << size << ") failed, try again\n";
+    xpu_wait();
+    ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
+  }
   PADDLE_ENFORCE_EQ(
       ret, XPU_SUCCESS,
       platform::errors::External(
@@ -197,12 +200,12 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
 template <>
 uint64_t Release<platform::XPUPlace>(const platform::XPUPlace &place) {
 #ifdef PADDLE_WITH_XPU
-  PADDLE_THROW(
-      platform::errors::PermissionDenied("Release XPU pool is not supported."));
+  LOG(WARNING) << "Release XPU pool is not supported now, no action here.";
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
 #endif
+  return -1;
 }
 
 template <>

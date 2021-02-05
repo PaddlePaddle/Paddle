@@ -16,20 +16,8 @@ limitations under the License. */
 
 #include <glog/logging.h>
 
-#include <algorithm>
-#include <memory>
 #include <queue>
-#include <set>
-#include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
-
-#include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {

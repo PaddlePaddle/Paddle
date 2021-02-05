@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
 #include <mutex>               // NOLINT
 #include <random>

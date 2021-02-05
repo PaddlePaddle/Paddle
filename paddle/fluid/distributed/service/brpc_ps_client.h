@@ -27,8 +27,21 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 
+namespace brpc {
+class Channel;
+class Controller;
+}  // namespace brpc
+namespace google {
+namespace protobuf {
+class Closure;
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
+
 namespace paddle {
 namespace distributed {
+
+struct Region;
 
 class DownpourPsClientService : public PsService {
  public:

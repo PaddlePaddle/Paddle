@@ -1207,15 +1207,6 @@ void BindImperative(py::module *m_ptr) {
             if (py::isinstance<platform::CUDAPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPlace *>();
               self.SetExpectedPlace(*p);
-
-// NOTE(zhiqiu): When switching cuda place, we need to set the
-// cuda device id.
-// Otherwise, some cuda API may be launched at other cuda place,
-// which may cost hundreds of MB of GPU memory due to the cuda
-// lib.
-#ifdef PADDLE_WITH_CUDA
-              platform::SetDeviceId(p->device);
-#endif
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
             } else if (py::isinstance<platform::XPUPlace>(obj)) {
@@ -1236,13 +1227,6 @@ void BindImperative(py::module *m_ptr) {
             } else if (py::isinstance<platform::Place>(obj)) {
               auto p = obj.cast<platform::Place *>();
               self.SetExpectedPlace(*p);
-              if (platform::is_gpu_place(*p)) {
-// NOTE(zhiqu): same as obj is CUDAPlace.
-#ifdef PADDLE_WITH_CUDA
-                platform::SetDeviceId(
-                    BOOST_GET_CONST(platform::CUDAPlace, *p).device);
-#endif
-              }
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
             } else {

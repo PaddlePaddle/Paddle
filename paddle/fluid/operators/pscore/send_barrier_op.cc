@@ -26,10 +26,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-
-namespace distributed {
-class Communicator;
-}  // namespace distributed
 }  // namespace paddle
 
 namespace paddle {
