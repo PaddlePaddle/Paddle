@@ -249,7 +249,6 @@ CPU_PARALLEL_JOB = [
     'test_deprecated_memory_optimize_interfaces',
     'test_default_scope_funcs',
     'test_default_dtype',
-    'test_datasets',
     'test_dataset_voc',
     'test_dataset_movielens',
     'test_dataset_imikolov',
