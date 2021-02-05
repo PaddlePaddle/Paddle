@@ -45,10 +45,12 @@ NVCC_COMPILE_FLAGS = [
 GCC_MINI_VERSION = (5, 4, 0)
 # Give warning if using wrong compiler
 WRONG_COMPILER_WARNING = '''
+                        *************************************
+                        *  Compiler Compatibility WARNING  *
+                        *************************************
 
-                            ** Compiler Compatibility  WARNING **
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-******************************************************************************
 Found that your compiler ({user_compiler}) is not compatible with the compiler 
 built Paddle for this platform, which is {paddle_compiler} on {platform}. Please
 use {paddle_compiler} to compile your custom op. Or you may compile Paddle from
@@ -56,24 +58,24 @@ source using {user_compiler}, and then also use it compile your custom op.
 
 See https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/zh/2.0/install/compile/linux-compile.html
 for help with compiling Paddle from source.
-******************************************************************************
 
-                            ** Compiler Compatibility WARNING **
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 '''
 # Give warning if used compiler version is incompatible
 ABI_INCOMPATIBILITY_WARNING = '''
+                            **********************************
+                            *    ABI Compatibility WARNING   *
+                            **********************************
 
-                               ** ABI Compatibility WARNING **
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-******************************************************************************
 Found that your compiler ({user_compiler} == {version}) may be ABI-incompatible with pre-insalled Paddle!
 Please use compiler that is ABI-compatible with GCC >= 5.4 (Recommended 8.2).
 
 See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html for ABI Compatibility
 information
-******************************************************************************
 
-                              ** ABI Compatibility WARNING **
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 '''
 
 
@@ -335,7 +337,7 @@ def is_cuda_file(path):
     return items[-1] in cuda_suffix
 
 
-def get_build_directory():
+def get_build_directory(verbose=False):
     """
     Return paddle extension root directory, default specific by `PADDLE_EXTENSION_DIR`
     """
@@ -349,9 +351,8 @@ def get_build_directory():
             # TODO(Aurelius84): consider wind32/macOs
             raise NotImplementedError("Only support Linux now.")
 
-        warnings.warn(
-            "$PADDLE_EXTENSION_DIR is not set, using path: {} by default.".
-            format(root_extensions_directory))
+        log_v("$PADDLE_EXTENSION_DIR is not set, using path: {} by default.".
+              format(root_extensions_directory), verbose)
 
     if not os.path.exists(root_extensions_directory):
         os.makedirs(root_extensions_directory)
@@ -609,15 +610,10 @@ def run_cmd(command, verbose=False):
     # execute command
     try:
         if verbose:
-            stdout_fileno = 1
-            return subprocess.run(command,
-                                  shell=True,
-                                  stdout=stdout_fileno,
-                                  stderr=subprocess.STDOUT,
-                                  check=True)
-        else:
             return subprocess.check_call(
-                command, shell=True, stdout=DEVNULL, stderr=subprocess.PIPE)
+                command, shell=True, stderr=subprocess.STDOUT)
+        else:
+            return subprocess.check_call(command, shell=True, stdout=DEVNULL)
     except Exception:
         _, error, _ = sys.exc_info()
         raise RuntimeError("Failed to run command: {}, errors: {}".format(
@@ -665,8 +661,7 @@ def check_abi_compatibility(compiler, verbose=False):
             else:
                 warnings.warn(
                     ABI_INCOMPATIBILITY_WARNING.format(
-                        user_compiler=user_compiler,
-                        version=version_info.strip()))
+                        user_compiler=compiler, version=version_info.strip()))
         # TODO(Aurelius84): check version compatibility on windows
         elif IS_WINDOWS:
             warnings.warn("We don't support Windows now.")

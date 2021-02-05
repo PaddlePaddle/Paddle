@@ -370,7 +370,7 @@ def load(name,
     """
 
     if build_directory is None:
-        build_directory = get_build_directory()
+        build_directory = get_build_directory(verbose)
 
     # ensure to use abs path
     build_directory = os.path.abspath(build_directory)
