@@ -155,6 +155,44 @@ int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
   return block->values_.size() - not_save_num;
 }
 
+int64_t saveStatToBin(std::string path, std::vector<std::shared_ptr<ValueBlock>>& blocks) {
+  size_t block_num = blocks.size();
+  if (block_num <= 0) {
+    return 0;
+  }
+
+  size_t total_size = 0;
+
+  std::ofstream fout(path, std::ios::binary);
+  fout.write(reinterpret_cast<const char*>(&block_num), sizeof(block_num));
+
+  for (size_t x = 0; x < blocks.size(); ++x) {
+    auto block_size = blocks[x]->values_.size();
+    std::vector<uint64_t> ids(block_size);
+    auto ids_iter = ids.begin();
+    // collect ids
+    for (auto value : blocks[x]->values_) {
+      *ids_iter = value.first;
+      ++ids_iter;
+    }
+
+    fout.write(reinterpret_cast<const char*>(&block_size), sizeof(block_size));
+    fout.write(reinterpret_cast<const char*>(&ids[0]), sizeof(uint64_t) * block_size);
+
+    for (auto value : blocks[x]->values_) {
+      fout.write(reinterpret_cast<const char*>(&value.second->count_), sizeof(value.second->count_));
+      fout.write(reinterpret_cast<const char*>(&value.second->unseen_days_), sizeof(value.second->unseen_days_));
+      fout.write(reinterpret_cast<const char*>(&value.second->is_entry_), sizeof(value.second->is_entry_));
+    }
+
+    total_size += block_size;
+  }
+
+  fout.close();
+
+  return total_size;
+}
+
 int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
                      const int pserver_id, const int pserver_num,
                      const int local_shard_num,
@@ -170,7 +208,7 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
     auto id = std::stoull(values[0]);
 
     if (id % pserver_num != pserver_id) {
-      VLOG(0) << "will not load " << values[0] << " from " << valuepath
+      VLOG(3) << "will not load " << values[0] << " from " << valuepath
               << ", please check id distribution";
       continue;
     }
@@ -196,6 +234,53 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
       blas.VCOPY(meta.dims[x], kvalues[x].data(), block_values[x]);
     }
   }
+
+  return 0;
+}
+
+int64_t LoadStatFromBin(const std::string& path, const int pserver_id, 
+                         const int pserver_num, const int local_shard_num,
+                         std::vector<std::shared_ptr<ValueBlock>>& blocks) {
+  std::ifstream fin(path, std::ios::binary);
+
+  size_t block_size;
+  size_t block_num;
+  size_t length = sizeof(int) + sizeof(int) + sizeof(bool);
+
+  fin.read(reinterpret_cast<char*>(&block_num), sizeof(block_num));
+  for(size_t x = 0; x < block_num; ++x) {
+    fin.read(reinterpret_cast<char*>(&block_size), sizeof(block_size));
+
+    std::vector<uint64_t> ids(block_size);
+    fin.read(reinterpret_cast<char*>(&ids[0]), sizeof(uint64_t) * block_size);
+
+    std::vector<char> values(length * block_size);
+    auto* ptr = reinterpret_cast<char*>(&values[0]);
+    fin.read(ptr, length * block_size);
+
+    for (size_t i = 0; i < block_size; ++i) {
+      auto& id = ids[i];
+
+      if (id % pserver_num != pserver_id) {
+        VLOG(3) << "will not load " << id << " from " << path
+                << ", please check id distribution";
+        ptr += length;
+        continue;
+      }
+
+      auto shard_id = id % local_shard_num;
+      auto block = blocks.at(shard_id);
+      auto value_instant = block->Init(id, false);
+      value_instant->count_ = *(reinterpret_cast<int*>(ptr));
+      ptr += sizeof(int);
+      value_instant->unseen_days_ = *(reinterpret_cast<int*>(ptr));
+      ptr += sizeof(int);
+      value_instant->is_entry_ = *(reinterpret_cast<bool*>(ptr));
+      ptr += sizeof(bool);
+    }
+  }
+
+  fin.close();
 
   return 0;
 }
@@ -324,7 +409,8 @@ int32_t CommonSparseTable::load(const std::string& path,
 
   optimizer_->load(_shard_idx, prefix, shard_values_);
 
-  //TODO: load meta info of each sign.
+  LoadStatFromBin(string::Sprintf("%s.stat.block%s", prefix, _shard_idx),
+                   _shard_idx, _shard_num, task_pool_size_, shard_values_);
 
   rwlock_->UNLock();
   return 0;
@@ -361,7 +447,10 @@ int32_t CommonSparseTable::save(const std::string& dirname,
   // }
   // value_out->close();
 
-  //TODO: save meta info of each sign.
+  if (mode != SaveMode::delta) {
+    saveStatToBin(string::Sprintf("%s.stat.block%s", prefix, _shard_idx), 
+                   shard_values_);
+  }
 
   // save meta
   std::stringstream stream;
