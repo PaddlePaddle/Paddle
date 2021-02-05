@@ -45,6 +45,9 @@ def _build_saved_state_dict(state_dict):
         if isinstance(value, (Variable, core.VarBase)):
             save_dict[key] = value.numpy()
             name_table[key] = value.name
+        # FIXME: make Tensor serializable
+        elif isinstance(value, dict):
+            save_dict[key] = _build_saved_state_dict(value)
         else:
             save_dict[key] = value
     save_dict["StructuredToParameterName@@"] = name_table

@@ -141,6 +141,15 @@ class TestSaveLoad(unittest.TestCase):
         paddle.save(layer_state_dict, layer_save_path)
         paddle.save(opt_state_dict, opt_save_path)
 
+        # test save dict in dict
+        checkpoint_save_path = "test_paddle_save_load.linear_checkpoint.pdparams"
+        checkpoint = {
+            'state_dict': layer_state_dict,
+            'opt_state_dict': opt_state_dict,
+            'epoch': 100,
+        }
+        paddle.save(checkpoint, checkpoint_save_path)
+
         # load
         load_layer_state_dict = paddle.load(layer_save_path)
         load_opt_state_dict = paddle.load(opt_save_path)
