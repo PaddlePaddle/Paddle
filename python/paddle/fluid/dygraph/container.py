@@ -72,9 +72,10 @@ class Sequential(Layer):
         else:
             if name >= len(self._sub_layers):
                 raise IndexError('index {} is out of range'.format(name))
-            elif name < 0:
-                while name < 0:
-                    name += len(self._sub_layers)
+            elif name < 0 and name >= -len(self._sub_layers):
+                name += len(self._sub_layers)
+            else:
+                raise IndexError('index {} is out of range'.format(name))
             return self._sub_layers[str(name)]
 
     def __setitem__(self, name, layer):

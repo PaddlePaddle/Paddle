@@ -29,8 +29,11 @@ class TestDataFeeder(unittest.TestCase):
         tmp = sequential[3:5]
         self.assertEqual(len(tmp), 2)
 
-        tmp = sequential[-101]
-        self.assertEqual(tmp, sequential[9])
+        with self.assertRaises(IndexError):
+            tmp = sequential[10]
+
+        with self.assertRaises(IndexError):
+            tmp = sequential[-11]
 
 
 if __name__ == '__main__':
