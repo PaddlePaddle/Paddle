@@ -138,7 +138,7 @@ class AclInstance {
     // to avoid problems caused by destructor order of static
     // object.
     for (size_t i = 0; i < devices_.size(); ++i) {
-      auto status = aclrtResetDevice(devices[i]);
+      auto status = aclrtResetDevice(devices_[i]);
       VLOG(4) << "Call aclrtResetDevice " << devices_[i]
               << " status = " << status;
     }
@@ -150,6 +150,7 @@ class AclInstance {
   // forbid calling default constructor
   AclInstance() {
     PADDLE_ENFORCE_NPU_SUCCESS(aclInit(nullptr));
+    VLOG(4) << "Call aclrtSetDevice ";
     // NOTE(zhiqiu): why set devices here?
     // Because ACL creates a default context which contains 2 streams
     // when calling aclrtSetDeviceId, so usually we do not need to
@@ -158,9 +159,9 @@ class AclInstance {
     // context. Here, we use this singleton and static instance to manage
     // the devices to make sure they will be resetted before program exit.
     devices_ = platform::GetSelectedNPUDevices();
-    for (size_t i = 0; i < devices_.size(); ++i) {
-      SetNPUDeviceId(devices[i]);
-      VLOG(4) << "Call aclrtSetDevice " << devices_[i];
+    for (auto it = devices_.rbegin(); it != devices_.rend(); ++it) {
+      SetNPUDeviceId(*it);
+      VLOG(4) << "Call aclrtSetDevice " << *it;
     }
   }
   std::vector<int> devices_;
