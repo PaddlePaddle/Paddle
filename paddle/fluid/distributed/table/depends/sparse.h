@@ -173,12 +173,13 @@ class SparseOptimizer {
       auto shard_id = id % shard_num;
       shard_counts[shard_id]++;
       auto block = shard_values[shard_id];
-      float* val = block->Init(id, false);
+      auto value = block->Init(id, false);
+      value->initialize();
 
       // copy param and optimizer param.
       for(auto j = 0; j < static_cast<int64_t>(offsets.size()); ++j) {
         auto offset = offsets[j];
-        std::copy_n(tensors[j] + param_offset * update_numel, update_numel, val + offset);
+        std::copy_n(tensors[j] + param_offset * update_numel, update_numel, value->data_.data() + offset);
       }
       param_offset++;
     }

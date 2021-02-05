@@ -48,14 +48,15 @@ namespace distributed {
 enum Mode { training, infer };
 
 struct VALUE {
-  explicit VALUE(size_t length)
-      : length_(length),
-        count_(0),
-        unseen_days_(0),
-        need_save_(false),
-        is_entry_(false) {
-    data_.resize(length);
-    memset(data_.data(), 0, sizeof(float) * length);
+  explicit VALUE(size_t length, bool is_entry = true)
+      : length_(length), count_(0), unseen_days_(0) {
+    is_entry_ = is_entry;
+    need_save_ = false;
+  }
+ 
+  void initialize() {
+    data_.resize(length_);
+    memset(data_.data(), 0.0, sizeof(float) * length_);    
   }
 
   size_t length_;
@@ -156,7 +157,7 @@ class ValueBlock {
   }
 
   // pull
-  float *Init(const uint64_t &id, const bool with_update = true) {
+  std::shared_ptr<VALUE> Init(const uint64_t &id, const bool with_update = true) {
     if (!Has(id)) {
       values_[id] = std::make_shared<VALUE>(value_length_);
     }
@@ -166,8 +167,7 @@ class ValueBlock {
     if (with_update) {
       AttrUpdate(value);
     }
-
-    return value->data_.data();
+    return values_[id];
   }
 
   void AttrUpdate(std::shared_ptr<VALUE> value) {
@@ -179,6 +179,7 @@ class ValueBlock {
       value->is_entry_ = entry_func_(value);
       if (value->is_entry_) {
         // initialize
+        value->initialize();
         for (int x = 0; x < value_names_.size(); ++x) {
           initializers_[x]->GetValue(value->data_.data() + value_offsets_[x],
                                      value_dims_[x]);

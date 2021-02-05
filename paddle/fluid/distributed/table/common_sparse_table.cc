@@ -181,9 +181,9 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
     std::vector<std::vector<float>> kvalues;
     ProcessALine(values, meta, &kvalues);
 
-    block->Init(id, false);
+    auto value_instant = block->Init(id, false);
+    value_instant->initialize();
 
-    auto value_instant = block->GetValue(id);
     if (values.size() == 5) {
       value_instant->count_ = std::stoi(values[1]);
       value_instant->unseen_days_ = std::stoi(values[2]);
@@ -439,9 +439,13 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values, const uint64_t* keys,
           for (int i = 0; i < offsets.size(); ++i) {
             auto offset = offsets[i];
             auto id = keys[offset];
-            auto* value = block->Init(id);
-            std::copy_n(value + param_offset_, param_dim_,
-                        pull_values + param_dim_ * offset);
+            auto val = block->Init(id);
+            if(val->is_entry_) {
+              std::copy_n(val->data_.data() + param_offset_, param_dim_,
+                          pull_values + param_dim_ * offset);
+            } else {
+              memset(pull_values + param_dim_ * offset, 0.0, param_dim_ * sizeof(float));
+            }
           }
 
           return 0;
@@ -534,9 +538,10 @@ int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
           for (int i = 0; i < offsets.size(); ++i) {
             auto offset = offsets[i];
             auto id = keys[offset];
-            auto* value = block->Init(id, false);
+            auto val = block->Init(id, false);
+            val->initialize();
             std::copy_n(values + param_dim_ * offset, param_dim_,
-                        value + param_offset_);
+                        val->data_.data() + param_offset_);
             block->SetEntry(id, true);
           }
           return 0;
