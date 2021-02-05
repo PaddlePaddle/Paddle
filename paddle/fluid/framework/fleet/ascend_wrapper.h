@@ -67,12 +67,18 @@ class AscendInstance {
   ge::Status InitGEForUT() { return ge::GEInitialize(GetDefaultInitOptions()); }
 
   void InitGlobalResouces() {
-    LOG(INFO) << "Begin InitGlobalResouces";
+    LOG(INFO) << "Begin ascend InitGlobalResouces";
     session_.reset(new ge::Session(GetDefaultInitSessionOptions()));
     if (session_ == nullptr) {
       LOG(FATAL) << "new session error:" << session_;
     }
-    LOG(INFO) << "End InitGlobalResouces";
+    LOG(INFO) << "End ascend InitGlobalResouces";
+  }
+
+  void DestroyGlobalResouces() {
+    LOG(INFO) << "Begin ascend DestroyGlobalResouces";
+    session_ = nullptr;
+    LOG(INFO) << "Begin ascend DestroyGlobalResouces";
   }
 
   static std::shared_ptr<AscendInstance> GetInstance() {
