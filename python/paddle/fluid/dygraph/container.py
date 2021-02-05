@@ -82,7 +82,7 @@ class Sequential(Layer):
 
     def __setitem__(self, idx, layer):
         if isinstance(idx, str):
-            setattr(self, idx, layer)
+            setattr(self, str(idx), layer)
         else:
             key = list(self._sub_layers.keys())[self._get_abs_index(idx)]
             setattr(self, key, layer)
