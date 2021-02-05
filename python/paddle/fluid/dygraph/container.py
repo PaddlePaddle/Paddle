@@ -67,8 +67,26 @@ class Sequential(Layer):
             model3[1:] # select sub seqs
             
             del model3[0] # del l1
+            
+            model3 = paddle.nn.Sequential(
+                ('l1', paddle.nn.Linear(10, 2)),
+                ('l2', paddle.nn.Linear(2, 3)),
+                ('l3', paddle.nn.Linear(3, 2))
+            )
             del model3['l1'] # del l1
+            
+            model3 = paddle.nn.Sequential(
+                ('l1', paddle.nn.Linear(10, 2)),
+                ('l2', paddle.nn.Linear(2, 3)),
+                ('l3', paddle.nn.Linear(3, 2))
+            )
             del model3[-1] # del l3
+            
+            model3 = paddle.nn.Sequential(
+                ('l1', paddle.nn.Linear(10, 2)),
+                ('l2', paddle.nn.Linear(2, 3)),
+                ('l3', paddle.nn.Linear(3, 2))
+            )
             del model3[-2:] # del l2 l3
 
     """
