@@ -47,28 +47,28 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
 
     # elementwise_add grad is just passing upper gradients to either X or Y or both
     def test_check_grad_normal(self):
-        self.check_grad_with_place(core.CPUPlace(),
-                    ["X", "Y"],
-                    "Out",
-                    check_dygraph=False,
-                    user_defined_grads=[self.x_bf16, self.x_bf16],
-                    user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad_with_place(
+            core.CPUPlace(), ["X", "Y"],
+            "Out",
+            check_dygraph=False,
+            user_defined_grads=[self.x_bf16, self.x_bf16],
+            user_defined_grad_outputs=[self.x_bf16])
 
     def test_check_grad_ingore_x(self):
-        self.check_grad_with_place(core.CPUPlace(),
-                    ["Y"],
-                    "Out",
-                    check_dygraph=False,
-                    user_defined_grads=[self.y_bf16],
-                    user_defined_grad_outputs=[self.y_bf16])
+        self.check_grad_with_place(
+            core.CPUPlace(), ["Y"],
+            "Out",
+            check_dygraph=False,
+            user_defined_grads=[self.y_bf16],
+            user_defined_grad_outputs=[self.y_bf16])
 
     def test_check_grad_ingore_y(self):
-        self.check_grad_with_place(core.CPUPlace(),
-                    ["X"],
-                    "Out",
-                    check_dygraph=False,
-                    user_defined_grads=[self.x_bf16],
-                    user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad_with_place(
+            core.CPUPlace(), ["X"],
+            "Out",
+            check_dygraph=False,
+            user_defined_grads=[self.x_bf16],
+            user_defined_grad_outputs=[self.x_bf16])
 
 
 if __name__ == '__main__':
