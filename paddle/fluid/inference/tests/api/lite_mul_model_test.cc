@@ -73,6 +73,7 @@ TEST(AnalysisPredictor, lite_xpu) {
   config.EnableXpu();
   config.SetModel(FLAGS_infer_model + "/" + "mul_model");
   config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
+  test_main(config);
 }
 #endif
 
