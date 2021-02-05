@@ -21,7 +21,6 @@ import glob
 import logging
 import collections
 import textwrap
-import platform
 import warnings
 import subprocess
 
@@ -36,46 +35,45 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger("utils.cpp_extension")
 
-OS_NAME = platform.system()
-IS_WINDOWS = OS_NAME == 'Windows'
+OS_NAME = sys.platform
+IS_WINDOWS = OS_NAME.startswith('win')
 NVCC_COMPILE_FLAGS = [
     '-ccbin', 'cc', '-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU', '-DPADDLE_USE_DSO',
     '-Xcompiler', '-fPIC', '-w', '--expt-relaxed-constexpr', '-O3', '-DNVCC'
 ]
 
 GCC_MINI_VERSION = (5, 4, 0)
+# Give warning if using wrong compiler
 WRONG_COMPILER_WARNING = '''
 
-                            ** WARNING **
+                            ** Compiler Compatibility  WARNING **
 
 ******************************************************************************
-Your compiler ({user_compiler}) is not compatible with the compiler Paddle was
-built with for this platform, which is {paddle_compiler} on {platform}. Please
-use {paddle_compiler} to to compile your extension. Alternatively, you may
-compile Paddle from source using {user_compiler}, and then you can also use
-{user_compiler} to compile your extension.
+Found that your compiler ({user_compiler}) is not compatible with the compiler 
+built Paddle for this platform, which is {paddle_compiler} on {platform}. Please
+use {paddle_compiler} to compile your custom op. Or you may compile Paddle from
+source using {user_compiler}, and then also use it compile your custom op.
 
-See XXXXX for help
-with compiling Paddle from source.
+See https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/zh/2.0/install/compile/linux-compile.html
+for help with compiling Paddle from source.
 ******************************************************************************
 
-                            ** WARNING **
+                            ** Compiler Compatibility WARNING **
 '''
-
+# Give warning if used compiler version is incompatible
 ABI_INCOMPATIBILITY_WARNING = '''
 
-                               ** WARNING **
+                               ** ABI Compatibility WARNING **
 
 ******************************************************************************
-Your compiler ({}) may be ABI-incompatible with Paddle!
-Please use a compiler that is ABI-compatible with GCC 5.4 and above.
-See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html.
+Found that your compiler ({user_compiler} == {version}) may be ABI-incompatible with pre-insalled Paddle!
+Please use compiler that is ABI-compatible with GCC >= 5.4 (Recommended 8.2).
 
-See https://gist.github.com/goldsborough/d466f43e8ffc948ff92de7486c5216d6
-for instructions on how to install GCC 5 or higher.
+See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html for ABI Compatibility
+information
 ******************************************************************************
 
-                              ** WARNING **
+                              ** ABI Compatibility WARNING **
 '''
 
 
@@ -354,7 +352,7 @@ def get_build_directory():
     root_extensions_directory = os.environ.get('PADDLE_EXTENSION_DIR')
     if root_extensions_directory is None:
         dir_name = "paddle_extensions"
-        if OS_NAME == 'Linux':
+        if OS_NAME.startswith('linux'):
             root_extensions_directory = os.path.join(
                 os.path.expanduser('~/.cache'), dir_name)
         else:
@@ -614,11 +612,11 @@ def run_cmd(command, verbose=False):
     # logging
     log_v("execute command: {}".format(command), verbose)
     try:
-        from subprocess import DEVNULL  # py3k
+        from subprocess import DEVNULL  # py3
     except ImportError:
         DEVNULL = open(os.devnull, 'wb')
-    # if verbose:
-    #     DEVNULL = subprocess.PIPE
+    if verbose:
+        DEVNULL = subprocess.PIPE
 
     return subprocess.check_call(
         command, shell=True, stdout=DEVNULL, stderr=subprocess.PIPE)
@@ -663,7 +661,10 @@ def check_abi_compatibility(compiler, verbose=False):
             if tuple(map(int, version)) >= GCC_MINI_VERSION:
                 return True
             else:
-                warnings.warn(ABI_INCOMPATIBILITY_WARNING.format(compiler))
+                warnings.warn(
+                    ABI_INCOMPATIBILITY_WARNING.format(
+                        user_compiler=user_compiler,
+                        version=version_info.strip()))
         # TODO(Aurelius84): check version compatibility on windows
         elif IS_WINDOWS:
             warnings.warn("We don't support Windows now.")

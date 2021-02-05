@@ -15,6 +15,7 @@
 import unittest
 import paddle
 import os
+import warnings
 
 import paddle.utils.cpp_extension.extension_utils as utils
 
@@ -40,9 +41,52 @@ class TestCheckLinux(TestABIBase):
                                  gt)
 
     def test_gcc_version(self):
+        # clear environ
+        self.del_environ()
+        compiler = 'g++'
         if utils.OS_NAME.startswith('linux'):
             # all CI gcc version > 5.4.0
-            self.assertTrue(utils.check_abi_compatibility())
+            self.assertTrue(
+                utils.check_abi_compatibility(
+                    compiler, verbose=True))
+
+    def test_wrong_compiler_warning(self):
+        # clear environ
+        self.del_environ()
+        compiler = 'nvcc'  # fake wrong compiler
+        if utils.OS_NAME.startswith('linux'):
+            with warnings.catch_warnings(record=True) as error:
+                flag = utils.check_abi_compatibility(compiler, verbose=True)
+                # check return False
+                self.assertFalse(flag)
+                # check Compiler Compatibility WARNING
+                self.assertTrue(len(error) == 1)
+                self.assertTrue(
+                    "Compiler Compatibility WARNING" in str(error[0].message))
+
+    def test_exception(self):
+        # clear environ
+        self.del_environ()
+        compiler = 'python'  # fake command
+        if utils.OS_NAME.startswith('linux'):
+            # all CI gcc version > 5.4.0
+            def fake():
+                return [compiler]
+
+            # mock a fake function
+            raw_func = utils._expected_compiler_current_platform
+            utils._expected_compiler_current_platform = fake
+            with warnings.catch_warnings(record=True) as error:
+                flag = utils.check_abi_compatibility(compiler, verbose=True)
+                # check return False
+                self.assertFalse(flag)
+                # check Compiler Compatibility WARNING
+                self.assertTrue(len(error) == 1)
+                self.assertTrue("Failed to check compiler version for" in
+                                str(error[0].message))
+
+            # restore
+            utils._expected_compiler_current_platform = raw_func
 
 
 class TestCheckMacOs(TestABIBase):
@@ -65,9 +109,18 @@ class TestCheckWindows(TestABIBase):
     def test_gcc_version(self):
         # clear environ
         self.del_environ()
+
         if utils.IS_WINDOWS:
             # we skip windows now
             self.assertTrue(utils.check_abi_compatibility())
+
+
+class TestJITCompilerException(unittest.TestCase):
+    def test_exception(self):
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "Failed to check Python interpreter"):
+            file_path = os.path.abspath(__file__)
+            utils._jit_compile(file_path, interpreter='fake_cmd', verbose=True)
 
 
 if __name__ == '__main__':
