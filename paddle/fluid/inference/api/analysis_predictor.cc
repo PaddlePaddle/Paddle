@@ -782,11 +782,17 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
-    PADDLE_ENFORCE_EQ(config_.use_gpu(), false,
-                      platform::errors::InvalidArgument(
-                          "Only one choice can be made between CPU and XPU."));
-    auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
-    res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
+    if (config_.lite_engine_enabled()) {
+      // Currently, Paddle-Lite's XPU user interface only supports the transfer
+      // of host data pointers. If it is currently used as a subgraph, execution
+      // efficiency will be sacrificed, so it is temporarily set to cpu place.
+      // And, the current lite engine of xpu must execute all parts of the
+      // model.
+      res->SetPlace(PaddlePlace::kCPU);
+    } else {
+      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
+    }
   } else {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -808,8 +814,17 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
-    auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
-    res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
+    if (config_.lite_engine_enabled()) {
+      // Currently, Paddle-Lite's XPU user interface only supports the transfer
+      // of host data pointers. If it is currently used as a subgraph, execution
+      // efficiency will be sacrificed, so it is temporarily set to cpu place.
+      // And, the current lite engine of xpu must execute all parts of the
+      // model.
+      res->SetPlace(PaddlePlace::kCPU);
+    } else {
+      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
+    }
   } else {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
