@@ -54,6 +54,22 @@ class Sequential(Layer):
             model2['l1']  # access l1 layer
             model2.add_sublayer('l3', paddle.nn.Linear(3, 3))  # add sublayer
             res2 = model2(data)  # sequential execution
+            
+            # create Sequential with name Layer pairs
+            model3 = paddle.nn.Sequential(
+                ('l1', paddle.nn.Linear(10, 2)),
+                ('l2', paddle.nn.Linear(2, 3)),
+                ('l3', paddle.nn.Linear(3, 2))
+            )
+            model3[-1] # access l3 layer
+            model3['l1'] # access l1 layer
+            model3[-1] = paddle.nn.Linear(3, 4) # replace l3
+            model3[1:] # select sub seqs
+            
+            del model3[0] # del l1
+            del model3['l1'] # del l1
+            del model3[-1] # del l3
+            del model3[-2:] # del l2 l3
 
     """
 
