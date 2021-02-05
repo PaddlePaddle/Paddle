@@ -20,12 +20,17 @@ limitations under the License. */
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <algorithm>
 #include <string>
-#include <thread>
+#include <thread>  // NOLINT
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/split.h"
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "xpu/bkcl.h"
+#endif
 
 namespace paddle {
 namespace platform {
