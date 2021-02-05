@@ -30,9 +30,12 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
         self.axis = -1
 
         self.generate_data()
+        self.x_bf16 = convert_float_to_uint16(self.x)
+        self.y_bf16 = convert_float_to_uint16(self.y)
+
         self.inputs = {
-            'X': convert_float_to_uint16(self.x),
-            'Y': convert_float_to_uint16(self.y)
+            'X': self.x_bf16,
+            'Y': self.y_bf16
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
@@ -45,14 +48,27 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
 
+    # elementwise_add grad is just passing upper gradients to either X or Y or both
     def test_check_grad_normal(self):
-        pass
+        self.check_grad(["X", "Y"],
+                        "Out",
+                        check_dygraph=False,
+                        user_defined_grads=[self.x_bf16, self.x_bf16],
+                        user_defined_grad_outputs=[self.x_bf16])
 
     def test_check_grad_ingore_x(self):
-        pass
+        self.check_grad(["Y"],
+                        "Out",
+                        check_dygraph=False,
+                        user_defined_grads=[self.y_bf16],
+                        user_defined_grad_outputs=[self.y_bf16])
 
     def test_check_grad_ingore_y(self):
-        pass
+        self.check_grad(["X"],
+                        "Out",
+                        check_dygraph=False,
+                        user_defined_grads=[self.x_bf16],
+                        user_defined_grad_outputs=[self.x_bf16])
 
 
 if __name__ == '__main__':
