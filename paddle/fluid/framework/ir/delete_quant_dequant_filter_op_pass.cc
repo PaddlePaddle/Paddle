@@ -24,12 +24,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-template <typename T>
-struct Compare {
- public:
-  bool operator()(const T a, const T b) { return (std::abs(a) < std::abs(b)); }
-};
-
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                         \
   GET_IR_NODE(quant_dequant_op_x);        \
@@ -112,9 +106,9 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
         const int64_t channel_size = weight_tensor->numel() / channel;
         for (int64_t i = 0; i < channel; i++) {
           auto* start = quantized_weight_data + i * channel_size;
-          auto* end = quantized_weight_data + (i + 1) * channel_size;
-          weight_scale[i] =
-              std::abs(*(std::max_element(start, end, Compare<float>())));
+          for (int64_t j = 0; j < channel_size; j++) {
+            weight_scale[i] = std::max(std::abs(start[j]), weight_scale[i]);
+          }
         }
       } else if (quant_axis == 1) {
         const int64_t step_i = weight_tensor->numel() / w_dims[0];
@@ -122,9 +116,10 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
         for (int64_t i = 0; i < w_dims[0]; i++) {
           for (int64_t j = 0; j < w_dims[1]; j++) {
             auto* start = quantized_weight_data + i * step_i + j * step_j;
-            auto* end = quantized_weight_data + i * step_i + (j + 1) * step_j;
-            float abs_max =
-                std::abs(*(std::max_element(start, end, Compare<float>())));
+            float abs_max = 0;
+            for (int64_t k = 0; k < step_j; k++) {
+              abs_max = std::max(std::abs(start[k]), abs_max);
+            }
             weight_scale[j] = std::max(weight_scale[j], abs_max);
           }
         }
