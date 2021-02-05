@@ -23,7 +23,7 @@ setup(
     ext_modules=[
         CUDAExtension(
             name='librelu2_op_from_setup',
-            sources=['relu_op.cc', 'relu_op.cu'],
+            sources=['relu_op3.cc', 'relu_op3.cu', 'relu_op.cc', 'relu_op.cu'],
             include_dirs=paddle_includes,
             extra_compile_args=extra_compile_args)
     ],

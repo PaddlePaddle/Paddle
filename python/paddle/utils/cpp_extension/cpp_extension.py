@@ -267,23 +267,21 @@ class BuildExtension(build_ext, object):
         """
         Record custum op inforomation. 
         """
-        # parse op name
-        sources = []
-        for extension in self.extensions:
-            sources.extend(extension.sources)
-
-        sources = [os.path.abspath(s) for s in sources]
-        op_name = parse_op_name_from(sources)
-
         # parse shared library abs path
         outputs = self.get_outputs()
         assert len(outputs) == 1
 
-        build_directory = os.path.abspath(outputs[0])
-        so_name = os.path.basename(build_directory)
-        CustomOpInfo.instance().add(op_name,
-                                    so_name=so_name,
-                                    build_directory=build_directory)
+        # parse op name
+        for i, extension in enumerate(self.extensions):
+            sources = [os.path.abspath(s) for s in extension.sources]
+            op_names = parse_op_name_from(sources)
+
+            build_directory = os.path.abspath(outputs[0])
+            so_name = os.path.basename(build_directory)
+            for op_name in op_names:
+                CustomOpInfo.instance().add(op_name,
+                                            so_name=so_name,
+                                            build_directory=build_directory)
 
 
 class EasyInstallCommand(easy_install, object):
