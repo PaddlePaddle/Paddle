@@ -861,6 +861,16 @@ HOSTDEVICE inline bool(isfinite)(const float16& a) {
   return !((isnan)(a)) && !((isinf)(a));
 }
 
+HOSTDEVICE inline float16(abs)(const float16& a) {
+#if (defined(PADDLE_CUDA_FP16) &&                         \
+     ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
+      (defined(__HIP_DEVICE_COMPILE__))))
+  return float16(::fabs(static_cast<float>(a)));
+#else
+  return float16(std::abs(static_cast<float>(a)));
+#endif
+}
+
 inline std::ostream& operator<<(std::ostream& os, const float16& a) {
   os << static_cast<float>(a);
   return os;
@@ -964,6 +974,11 @@ struct numeric_limits<paddle::platform::float16> {
     return paddle::platform::raw_uint16_to_float16(0x1);
   }
 };
+
+HOSTDEVICE inline paddle::platform::float16 abs(
+    const paddle::platform::float16& a) {
+  return paddle::platform::abs(a);
+}
 
 }  // namespace std
 
