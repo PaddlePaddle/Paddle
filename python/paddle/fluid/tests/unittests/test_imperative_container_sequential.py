@@ -51,10 +51,26 @@ class TestImperativeContainerSequential(unittest.TestCase):
             self.assertEqual(len(model2), 3)
             res2 = model2(data)
             self.assertListEqual(res2.shape, [5, 4])
-
             loss2 = fluid.layers.reduce_mean(res2)
             loss2.backward()
 
+            l1 = fluid.Linear(10, 1)
+            l2 = fluid.Linear(1, 3)
+            l3 = fluid.Linear(3, 1)
+            model3 = fluid.dygraph.Sequential(('l1', l1), ('l2', l2), ('l3', l3))
+            model3[-1] # access l3 layer
+            model3['l1'] # access l1 layer
+            model3[-1] = paddle.nn.Linear(3, 4) # replace l3
+            model4 = model3[1:] # select sub seqs
+            self.assertEqual(len(model4), 2)
+            model3 = fluid.dygraph.Sequential(('l1', l1), ('l2', l2), ('l3', l3))
+            del model3[0] # del l1
+            model3 = fluid.dygraph.Sequential(('l1', l1), ('l2', l2), ('l3', l3))
+            del model3['l1'] # del l1
+            model3 = fluid.dygraph.Sequential(('l1', l1), ('l2', l2), ('l3', l3))
+            del model3[-1] # del l3
+            model3 = fluid.dygraph.Sequential(('l1', l1), ('l2', l2), ('l3', l3))
+            del model3[-2:] # del l2 l3
 
 if __name__ == '__main__':
     unittest.main()
