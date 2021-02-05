@@ -69,7 +69,7 @@ class TestCheckLinux(TestABIBase):
         self.del_environ()
         compiler = 'python'  # fake command
         if utils.OS_NAME.startswith('linux'):
-            # all CI gcc version > 5.4.0
+            # to skip _expected_compiler_current_platform
             def fake():
                 return [compiler]
 
@@ -80,7 +80,7 @@ class TestCheckLinux(TestABIBase):
                 flag = utils.check_abi_compatibility(compiler, verbose=True)
                 # check return False
                 self.assertFalse(flag)
-                # check Compiler Compatibility WARNING
+                # check ABI Compatibility WARNING
                 self.assertTrue(len(error) == 1)
                 self.assertTrue("Failed to check compiler version for" in
                                 str(error[0].message))
@@ -121,6 +121,14 @@ class TestJITCompilerException(unittest.TestCase):
                                      "Failed to check Python interpreter"):
             file_path = os.path.abspath(__file__)
             utils._jit_compile(file_path, interpreter='fake_cmd', verbose=True)
+
+
+class TestRunCMDException(unittest.TestCase):
+    def test_exception(self):
+        for verbose in [True, False]:
+            with self.assertRaisesRegexp(RuntimeError, "Failed to run command"):
+                cmd = "fake cmd"
+                utils.run_cmd(cmd, verbose)
 
 
 if __name__ == '__main__':

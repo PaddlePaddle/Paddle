@@ -230,7 +230,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
     # append compile flags
     extra_compile_args = kwargs.get('extra_compile_args', [])
-    extra_compile_args.extend(['-g'])
+    extra_compile_args.extend(['-g', '-w'])  # diable warnings
     kwargs['extra_compile_args'] = extra_compile_args
 
     # append link flags
@@ -314,16 +314,6 @@ def find_paddle_libraries(use_cuda=False):
         cuda_dirs = find_cuda_includes()
         paddle_lib_dirs.extend(cuda_dirs)
     return paddle_lib_dirs
-
-
-def append_necessary_flags(extra_compile_args, use_cuda=False):
-    """
-    Add necessary compile flags for gcc/nvcc compiler.
-    """
-    necessary_flags = ['-std=c++11']
-
-    if use_cuda:
-        necessary_flags.extend(NVCC_COMPILE_FLAGS)
 
 
 def add_compile_flag(extension, flag):
@@ -615,11 +605,23 @@ def run_cmd(command, verbose=False):
         from subprocess import DEVNULL  # py3
     except ImportError:
         DEVNULL = open(os.devnull, 'wb')
-    if verbose:
-        DEVNULL = subprocess.PIPE
 
-    return subprocess.check_call(
-        command, shell=True, stdout=DEVNULL, stderr=subprocess.PIPE)
+    # execute command
+    try:
+        if verbose:
+            stdout_fileno = 1
+            return subprocess.run(command,
+                                  shell=True,
+                                  stdout=stdout_fileno,
+                                  stderr=subprocess.STDOUT,
+                                  check=True)
+        else:
+            return subprocess.check_call(
+                command, shell=True, stdout=DEVNULL, stderr=subprocess.PIPE)
+    except Exception:
+        _, error, _ = sys.exc_info()
+        raise RuntimeError("Failed to run command: {}, errors: {}".format(
+            compile, error))
 
 
 def check_abi_compatibility(compiler, verbose=False):
