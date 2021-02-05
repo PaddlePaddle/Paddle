@@ -74,7 +74,7 @@ class Sequential(Layer):
                 raise IndexError('index {} is out of range'.format(name))
             elif name < 0 and name >= -len(self._sub_layers):
                 name += len(self._sub_layers)
-            else:
+            elif name < -len(self._sub_layers):
                 raise IndexError('index {} is out of range'.format(name))
             return self._sub_layers[str(name)]
 
