@@ -46,7 +46,7 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
                     tensor, nranks, context));
   } else if (platform::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU_BKCL
-// support xpu about div nranks in the future
+// TODO(liuyuhui) support xpu about div nranks in the future
 #endif
   }
 }

@@ -308,7 +308,7 @@ def _split_tensors(coalesced_grads_and_grad_vars):
 
 
 def scale_loss(loss):
-    # TODO Currently only for xpu. Will be removed in the future.
+    # TODO(liuyuhui) Currently only for xpu. Will be removed in the future.
     if not ParallelEnv().world_size > 1:
         return loss
 
