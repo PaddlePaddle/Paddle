@@ -76,11 +76,11 @@ class Sequential(Layer):
         if isinstance(idx, str):
             return self._sub_layers[idx]
         elif isinstance(idx, slice):
-            return self.__class__(*list(self._sub_layers.items())[idx])
+            return Sequential(*list(self._sub_layers.items())[idx])
         else:
             return self._sub_layers[str(self._get_abs_index(idx))]
 
-    def __setitem__(self, idx, layer): 
+    def __setitem__(self, idx, layer):
         if isinstance(idx, str):
             setattr(self, idx, layer)
         else:
