@@ -78,8 +78,7 @@ class Sequential(Layer):
         elif isinstance(idx, slice):
             return self.__class__(*list(self._sub_layers.items())[idx])
         else:
-            idx = self._get_abs_index(idx)
-            return self._sub_layers[str(idx)]
+            return self._sub_layers[str(self._get_abs_index(idx))]
 
     def __setitem__(self, idx, layer): 
         if isinstance(idx, str):
