@@ -15,12 +15,13 @@
 import unittest
 import paddle
 
+
 class TestDataFeeder(unittest.TestCase):
     def test_lod_level_1_converter(self):
         sequential = paddle.nn.Sequential()
 
         for i in range(10):
-            sequential.add_sublayer(str(i), paddle.nn.Linear(i+1, i+1))
+            sequential.add_sublayer(str(i), paddle.nn.Linear(i + 1, i + 1))
 
         for item in sequential:
             tmp = item
@@ -30,6 +31,7 @@ class TestDataFeeder(unittest.TestCase):
 
         tmp = sequential[-101]
         self.assertEqual(tmp, sequential[9])
+
 
 if __name__ == '__main__':
     unittest.main()
