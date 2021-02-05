@@ -66,17 +66,36 @@ class Sequential(Layer):
             for idx, layer in enumerate(layers):
                 self.add_sublayer(str(idx), layer)
 
-    def __getitem__(self, name):
-        return self._sub_layers[str(name)]
+    def _get_abs_index(self, idx):
+        assert -len(self) <= idx < len(self)
+        if idx < 0:
+            idx += len(self)
+        return idx
 
-    def __setitem__(self, name, layer):
-        assert isinstance(layer, Layer)
-        setattr(self, str(name), layer)
+    def __getitem__(self, idx):
+        if isinstance(idx, str):
+            return self._sub_layers[idx]
+        elif isinstance(idx, slice):
+            return Sequential(*list(self._sub_layers.items())[idx])
+        else:
+            return self._sub_layers[str(self._get_abs_index(idx))]
 
-    def __delitem__(self, name):
-        name = str(name)
-        assert name in self._sub_layers
-        del self._sub_layers[name]
+    def __setitem__(self, idx, layer):
+        if isinstance(idx, str):
+            setattr(self, str(idx), layer)
+        else:
+            key = list(self._sub_layers.keys())[self._get_abs_index(idx)]
+            setattr(self, key, layer)
+
+    def __delitem__(self, idx):
+        if isinstance(idx, slice):
+            for key in list(self._sub_layers.keys())[idx]:
+                delattr(self, key)
+        elif isinstance(idx, int):
+            key = list(self._sub_layers.keys())[self._get_abs_index(idx)]
+            delattr(self, key)
+        else:
+            delattr(self, idx)
 
     def __len__(self):
         return len(self._sub_layers)
