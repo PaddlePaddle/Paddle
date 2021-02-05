@@ -19,13 +19,12 @@ limitations under the License. */
 #include <memory>
 
 namespace paddle {
-
-class CustomTensor{
+class CustomTensorUtils;
+class Tensor{
 public:
-    /// \brief Construct a CustomTensor on None Place for CustomOp.
-    /// Generally it's only used for user to create CustomTensor.
-    explicit CustomTensor(PaddlePlace place);
-    explicit CustomTensor(void* raw_tensor);
+    /// \brief Construct a Tensor on None Place for CustomOp.
+    /// Generally it's only used for user to create Tensor.
+    explicit Tensor(const PlaceType& place);
     /// \brief Reset the shape of the tensor.
     /// Generally it's only used for the input tensor.
     /// Reshape must be called before calling mutable_data() or copy_from_cpu()
@@ -38,7 +37,7 @@ public:
     /// \param place The place of the tensor this will override the original place
     /// of current tensor.
     template <typename T>
-    T* mutable_data(const PaddlePlace& place);
+    T* mutable_data(const PlaceType& place);
 
     /// \brief Get the memory pointer in CPU or GPU with specific data type.
     /// Please Reshape the tensor first before call this.
@@ -80,17 +79,6 @@ public:
     /// \return The data type of the tensor.
     PaddleDType type() const;
 
-
-    /// \brief Share data TO another tensor.
-    /// Use this to pass tensor from op to op
-    /// \return void.
-    void ShareDataTo(void* other);
-
-    /// \brief Share data FROM another tensor.
-    /// Use this to pass tensor from op to op
-    /// \return void.
-    void ShareDataFrom(void* other);
-
     /// \brief Get the size of current tensor.
     /// Use this method to get the size of tensor
     /// \return int64_t.
@@ -99,11 +87,12 @@ public:
     /// \brief Get the place of current tensor.
     /// Use this method to get the place of tensor
     /// \return Place.
-    const PaddlePlace& place() const;
+    const PlaceType& place() const;
 
 private:
+    friend class CustomTensorUtils;
     mutable std::shared_ptr<void> tensor_;
-    mutable PaddlePlace place_;
+    mutable PlaceType place_;
 };
 
 }  // namespace paddle

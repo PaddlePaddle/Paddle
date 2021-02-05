@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/extension/include/tensor.h"
+#include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
@@ -64,10 +65,10 @@ static T* DynLoad(void* handle, std::string name) {
 
 ////////////////// Kernel Define ////////////////////
 // convert PaddlePlace to platform::Place
-platform::Place PaddlePlaceToPlatformPlace(const PaddlePlace& pc){
-    if(pc.GetPlace() == PlaceType::kCPU){
+platform::Place PaddlePlaceToPlatformPlace(const PlaceType& pc){
+    if(pc == PlaceType::kCPU){
         return platform::Place(platform::CPUPlace());
-    }else if(pc.GetPlace() == PlaceType::kGPU){
+    }else if(pc == PlaceType::kGPU){
 #ifdef PADDLE_WITH_CUDA
         return platform::Place(
             platform::CUDAPlace(platform::GetCurrentDeviceId()));
@@ -78,24 +79,24 @@ platform::Place PaddlePlaceToPlatformPlace(const PaddlePlace& pc){
     return platform::Place();
 }
 
-PaddlePlace PlatformPlaceToPaddlePlace(const platform::Place& pc){
+PlaceType PlatformPlaceToPaddlePlace(const platform::Place& pc){
     if(platform::is_cpu_place(pc)){
-        return PaddlePlace(PlaceType::kCPU);
+        return PlaceType::kCPU;
     }else if(platform::is_gpu_place(pc)){
 #ifdef PADDLE_WITH_CUDA
-        return PaddlePlace(PlaceType::kGPU);
+        return PlaceType::kGPU;
 #endif
     }else{
         PADDLE_THROW("Place for CustomOp is undefined in Paddle");
     }
-    return PaddlePlace(PlaceType::kUNK);
+    return PlaceType::kUNK;
 }
 // custom op kernel call function define
 
 static void RunKernelFunc(const framework::ExecutionContext& ctx,
                           paddle::KernelFunc func) {
   VLOG(1) << "Custom Operator: Start run KernelFunc.";
-  std::vector<CustomTensor> custom_ins;
+  std::vector<paddle::Tensor> custom_ins;
   for (auto name : ctx.InNameList()) {
     VLOG(1) << "Custom Operator: input name - " << name;
     auto* x = ctx.Input<Tensor>(name);
@@ -104,8 +105,8 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     PADDLE_ENFORCE_EQ(x->IsInitialized(), true,
                       platform::errors::InvalidArgument(
                           "Input tensor (%s) is not initialized."));
-    auto custom_in = CustomTensor(PlatformPlaceToPaddlePlace(x->place()));
-    custom_in.ShareDataFrom((void *)x);
+    auto custom_in = paddle::Tensor(PlatformPlaceToPaddlePlace(x->place()));
+    CustomTensorUtils::ShareDataFrom((void *)x, custom_in);
     custom_ins.emplace_back(custom_in);
   }
 
@@ -123,7 +124,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
           "Custom operator can only hold 1 output as vector<Tensor>."));
   auto true_outs = ctx.MultiOutput<Tensor>(out_name[0]);
   for (size_t i = 0; i < true_outs.size(); ++i) {
-      outs.at(i).ShareDataTo((true_outs)[i]);
+      paddle::CustomTensorUtils::ShareDataTo(outs.at(i), (true_outs)[i]);
   }
 }
 
@@ -319,7 +320,7 @@ void RegisterOperator(const std::string& name, size_t input_num,
 void RegisterOperatorKernelWithPlace(const std::string& name,
                                      const paddle::KernelFunc& kernel_func,
                                      const proto::VarType::Type type,
-                                     const PaddlePlace& place) {
+                                     const PlaceType& place) {
   OpKernelType key(type, PaddlePlaceToPlatformPlace(place));
   VLOG(1) << "Custom Operator: op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] =
@@ -340,9 +341,9 @@ void RegisterOperatorKernel(const std::string& name,
   // But this is not entirely correct, if user only give a cpu kernel,
   // but call api in gpu device, it will cause error.
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
-                                  PaddlePlace(PlaceType::kCPU));
+                                  PlaceType::kCPU);
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
-                                  PaddlePlace(PlaceType::kGPU));
+                                  PlaceType::kGPU);
 }
 
 void RegisterOperatorWithOpFunctionMap(

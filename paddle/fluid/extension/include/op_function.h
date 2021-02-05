@@ -36,7 +36,7 @@ limitations under the License. */
 
 namespace paddle {
 
-using Tensor = CustomTensor;
+using Tensor = paddle::Tensor;
 
 #define DISABLE_COPY_AND_ASSIGN(classname)         \
  private:                                          \

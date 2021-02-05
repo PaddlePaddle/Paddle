@@ -37,8 +37,8 @@ void relu_cpu_backward_kernel(const data_t* grad_out_data,
   }
 }
 
-std::vector<paddle::CustomTensor> relu_cpu_forward(const paddle::CustomTensor& x) {
-  auto out = paddle::CustomTensor(paddle::PaddlePlace(paddle::PlaceType::kCPU));
+std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
   out.Reshape(x.shape());
 
   PD_DISPATCH_FLOATING_TYPES(
@@ -50,10 +50,10 @@ std::vector<paddle::CustomTensor> relu_cpu_forward(const paddle::CustomTensor& x
   return {out};
 }
 
-std::vector<paddle::CustomTensor> relu_cpu_backward(const paddle::CustomTensor& grad_out,
-                                              const paddle::CustomTensor& out,
-                                              const paddle::CustomTensor& x) {
-  auto grad_x = paddle::CustomTensor(paddle::PaddlePlace(paddle::PlaceType::kCPU));
+std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& grad_out,
+                                              const paddle::Tensor& out,
+                                              const paddle::Tensor& x) {
+  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU);
   grad_x.Reshape(x.shape());
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
@@ -67,29 +67,29 @@ std::vector<paddle::CustomTensor> relu_cpu_backward(const paddle::CustomTensor& 
   return {grad_x};
 }
 
-std::vector<paddle::CustomTensor> relu_cuda_forward(const paddle::CustomTensor& x);
-std::vector<paddle::CustomTensor> relu_cuda_backward(const paddle::CustomTensor& grad_out,
-                                               const paddle::CustomTensor& out,
-                                               const paddle::CustomTensor& x);
+std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x);
+std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& grad_out,
+                                               const paddle::Tensor& out,
+                                               const paddle::Tensor& x);
 
-std::vector<paddle::CustomTensor> ReluForward(const paddle::CustomTensor& x) {
+std::vector<paddle::Tensor> ReluForward(const paddle::Tensor& x) {
   // TODO(chenweihang): Check Input
-    if (x.place().GetPlace() == paddle::PlaceType::kCPU) {
+    if (x.place() == paddle::PlaceType::kCPU) {
         return relu_cpu_forward(x);
-    } else if (x.place().GetPlace() == paddle::PlaceType::kGPU) {
+    } else if (x.place() == paddle::PlaceType::kGPU) {
         return relu_cuda_forward(x);
     } else {
         throw std::runtime_error("Not implemented.");
     }
 }
 
-std::vector<paddle::CustomTensor> ReluBackward(const paddle::CustomTensor& grad_out,
-                                         const paddle::CustomTensor& out,
-                                         const paddle::CustomTensor& x) {
+std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& grad_out,
+                                         const paddle::Tensor& out,
+                                         const paddle::Tensor& x) {
   // TODO(chenweihang): Check Input
-    if (x.place().GetPlace() == paddle::PlaceType::kCPU) {
+    if (x.place() == paddle::PlaceType::kCPU) {
         return relu_cpu_backward(grad_out, out, x);
-    } else if (x.place().GetPlace() == paddle::PlaceType::kGPU) {
+    } else if (x.place() == paddle::PlaceType::kGPU) {
         return relu_cuda_backward(grad_out, out, x);
     } else {
         throw std::runtime_error("Not implemented.");

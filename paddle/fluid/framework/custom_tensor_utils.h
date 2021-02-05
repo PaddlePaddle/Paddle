@@ -13,9 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/extension.h"
+#include <memory>
 
 namespace paddle {
+class CustomTensorUtils{
+public:
+    /// \brief Share data TO another tensor.
+    /// Use this to pass tensor from op to op
+    /// \return void.
+    static void ShareDataTo(const Tensor& src, void* dst);
 
-enum class PlaceType { kUNK = -1, kCPU, kGPU };
-
+    /// \brief Share data FROM another tensor.
+    /// Use this to pass tensor from op to op
+    /// \return void.
+    static void ShareDataFrom(void* src, const Tensor& dst);
+};
 }  // namespace paddle
+
