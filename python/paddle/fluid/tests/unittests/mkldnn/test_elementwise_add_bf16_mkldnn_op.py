@@ -33,10 +33,7 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
         self.x_bf16 = convert_float_to_uint16(self.x)
         self.y_bf16 = convert_float_to_uint16(self.y)
 
-        self.inputs = {
-            'X': self.x_bf16,
-            'Y': self.y_bf16
-        }
+        self.inputs = {'X': self.x_bf16, 'Y': self.y_bf16}
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
@@ -50,25 +47,28 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
 
     # elementwise_add grad is just passing upper gradients to either X or Y or both
     def test_check_grad_normal(self):
-        self.check_grad(["X", "Y"],
-                        "Out",
-                        check_dygraph=False,
-                        user_defined_grads=[self.x_bf16, self.x_bf16],
-                        user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad_with_place(core.CPUPlace(),
+                    ["X", "Y"],
+                    "Out",
+                    check_dygraph=False,
+                    user_defined_grads=[self.x_bf16, self.x_bf16],
+                    user_defined_grad_outputs=[self.x_bf16])
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(["Y"],
-                        "Out",
-                        check_dygraph=False,
-                        user_defined_grads=[self.y_bf16],
-                        user_defined_grad_outputs=[self.y_bf16])
+        self.check_grad(core.CPUPlace(),
+                ["Y"],
+                "Out",
+                check_dygraph=False,
+                user_defined_grads=[self.y_bf16],
+                user_defined_grad_outputs=[self.y_bf16])
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(["X"],
-                        "Out",
-                        check_dygraph=False,
-                        user_defined_grads=[self.x_bf16],
-                        user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad(core.CPUPlace(),
+                ["X"],
+                "Out",
+                check_dygraph=False,
+                user_defined_grads=[self.x_bf16],
+                user_defined_grad_outputs=[self.x_bf16])
 
 
 if __name__ == '__main__':
