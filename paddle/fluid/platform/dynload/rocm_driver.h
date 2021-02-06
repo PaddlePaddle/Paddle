@@ -46,6 +46,7 @@ extern bool HasCUDADriver();
  * include all needed cuda driver functions
  **/
 #define ROCM_ROUTINE_EACH(__macro)                            \
+  __macro(hipDriverGetVersion);                               \
   __macro(hipGetErrorString);                                 \
   __macro(hipModuleLoadData);                                 \
   __macro(hipModuleGetFunction);                              \

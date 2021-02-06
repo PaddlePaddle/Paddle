@@ -16,8 +16,10 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cupti.h"
 #endif
 #include "paddle/fluid/platform/device_context.h"
@@ -92,6 +94,7 @@ bool InitGflags(std::vector<std::string> args) {
   return successed;
 }
 
+#ifdef PADDLE_WITH_CUDA
 void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
@@ -117,14 +120,17 @@ void InitCupti() {
 #undef MULTIPLY_ATTR_VALUE
 #endif
 }
+#endif
 
 void InitDevices() {
-  // CUPTI attribute should be set before any CUDA context is created (see CUPTI
-  // documentation about CUpti_ActivityAttribute).
+// CUPTI attribute should be set before any CUDA context is created (see CUPTI
+// documentation about CUpti_ActivityAttribute).
+#ifdef PADDLE_WITH_CUDA
   InitCupti();
+#endif
   /*Init all available devices by default */
   std::vector<int> devices;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   try {
     // use user specified GPUs in single-node multi-process mode.
     devices = platform::GetSelectedDevices();
@@ -154,7 +160,7 @@ void InitDevices(const std::vector<int> devices) {
       continue;
     }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     places.emplace_back(platform::CUDAPlace(devices[i]));
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -162,7 +168,7 @@ void InitDevices(const std::vector<int> devices) {
 #endif
   }
   places.emplace_back(platform::CPUPlace());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   places.emplace_back(platform::CUDAPinnedPlace());
 #endif
   platform::DeviceContextPool::Init(places);
