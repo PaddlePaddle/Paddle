@@ -1,29 +1,18 @@
 # A image for building paddle binaries
 # Use rocm-terminal base image for both rocm environment
 # When you modify it, please be aware of rocm version
-#
-# Build: ROCM 3.5.1
-# cd Paddle/tools/dockerfile
-# docker build -f Dockerfile.rocm \
-#        --build-arg ROCM_VERSION=3.5.1 \
-#        --build-arg CENTOS_VERSION=7.7.1908 \
-#        -t paddlepaddle/paddle-centos-rocm35-dev:latest .
 # 
-# Build: ROCM 3.9.1
+# Build: ROCM 3.9
 # cd Paddle/tools/dockerfile
 # docker build -f Dockerfile.rocm  \
-#        --build-arg ROCM_VERSION=3.9.1  \
-#        --build-arg CENTOS_VERSION=7.8.2003  \
+#        --build-arg ROCM_VERSION=3.9  \
 #        -t paddlepaddle/paddle-centos-rocm39-dev:latest .
 # 
-# Run: ROCM 3.5.1
 # docker run -it --device=/dev/kfd --device=/dev/dri \
 # --security-opt seccomp=unconfined --group-add video \
-# paddlepaddle/paddle-centos-rocm35-dev:latest /bin/bash
+# paddlepaddle/paddle-centos-rocm39-dev:latest /bin/bash
 
-ARG CENTOS_VERSION
-FROM centos:${CENTOS_VERSION}
-ARG CENTOS_VERSION
+FROM centos:7.8.2003
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 ENV LC_ALL en_US.UTF-8
@@ -34,7 +23,7 @@ RUN yum install -y epel-release deltarpm sudo openssh-server gettext-devel sqlit
         zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz wget curl-devel \
         make bzip2 git patch unzip bison yasm diffutils automake which file kernel-headers kernel-devel
 
-# Install devtoolset-7 for ROCM 3.5/3.9
+# Install devtoolset-7
 RUN yum install -y yum-utils centos-release-scl && \
     yum-config-manager --enable rhel-server-rhscl-7-rpms && \
     yum-config-manager --enable rhel-7-server-rpms && \
@@ -70,10 +59,8 @@ ENV ROCM_PATH=/opt/rocm
 ENV HIP_PATH=/opt/rocm/hip
 ENV HIP_CLANG_PATH=/opt/rocm/llvm/bin
 ENV PATH=/opt/rocm/bin:$PATH
-ENV PATH=/opt/rocm/hcc/bin:$PATH
-ENV PATH=/opt/rocm/hip/bin:$PATH
 ENV PATH=/opt/rocm/opencl/bin:$PATH
-ENV PATH=/opt/rocm/llvm/bin:$PATH
+ENV LD_LIBRARY_PATH=/opt/rocm/lib:$LD_LIBRARY_PATH
 
 # git 2.17.1
 RUN cd /opt && wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
@@ -145,5 +132,13 @@ RUN cd /opt && wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     make -j8 && make install && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache && \
     cd .. && rm -rf ccache-3.7.9.tar.gz && rm -rf ccache-3.7.9
+
+# configure ssh
+RUN sed -i "s/^#PermitRootLogin/PermitRootLogin/" /etc/ssh/sshd_config && \
+    sed -i "s/^#PubkeyAuthentication/PubkeyAuthentication/" /etc/ssh/sshd_config && \
+    sed -i "s/^#RSAAuthentication/RSAAuthentication/" /etc/ssh/sshd_config && \
+    sed -i "s/#UseDNS .*/UseDNS no/" /etc/ssh/sshd_config
+
+RUN ssh-keygen -A
 
 EXPOSE 22
