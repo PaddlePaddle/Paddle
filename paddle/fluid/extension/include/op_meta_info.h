@@ -222,7 +222,7 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
 
 class OpMetaInfo {
  public:
-  explicit OpMetaInfo(const std::string& op_name) { name_ = op_name; }
+  explicit OpMetaInfo(const std::string& op_name) : name_(op_name) {}
   OpMetaInfo& Inputs(std::vector<std::string>&& inputs);
   OpMetaInfo& Outputs(std::vector<std::string>&& outputs);
   OpMetaInfo& SetKernelFn(KernelFunc&& func);

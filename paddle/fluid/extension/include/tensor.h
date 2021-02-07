@@ -21,7 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/extension/include/place.h"
 
 namespace paddle {
+namespace framework {
 class CustomTensorUtils;
+}  // namespace framework
 class Tensor {
  public:
   /// \brief Construct a Tensor on None Place for CustomOp.
@@ -92,7 +94,7 @@ class Tensor {
   const PlaceType& place() const;
 
  private:
-  friend class CustomTensorUtils;
+  friend class framework::CustomTensorUtils;
   mutable std::shared_ptr<void> tensor_;
   mutable PlaceType place_;
 };

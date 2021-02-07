@@ -158,7 +158,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
   VLOG(1) << "Custom Operator: Share outputs into ExecutionContext.";
   for (size_t i = 0; i < outputs.size(); ++i) {
     auto* true_out = ctx.Output<Tensor>(outputs[i]);
-    paddle::CustomTensorUtils::ShareDataTo(outs.at(i), true_out);
+    CustomTensorUtils::ShareDataTo(outs.at(i), true_out);
   }
 }
 

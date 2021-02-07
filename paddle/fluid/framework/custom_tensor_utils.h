@@ -19,18 +19,20 @@ limitations under the License. */
 #include "paddle/fluid/extension/include/tensor.h"
 
 namespace paddle {
+namespace framework {
 
 class CustomTensorUtils {
  public:
   /// \brief Share data TO another tensor.
   /// Use this to pass tensor from op to op
   /// \return void.
-  static void ShareDataTo(const Tensor& src, void* dst);
+  static void ShareDataTo(const paddle::Tensor& src, void* dst);
 
   /// \brief Share data FROM another tensor.
   /// Use this to pass tensor from op to op
   /// \return void.
-  static void ShareDataFrom(void* src, const Tensor& dst);
+  static void ShareDataFrom(void* src, const paddle::Tensor& dst);
 };
 
+}  // namespace framework
 }  // namespace paddle
