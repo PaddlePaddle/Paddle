@@ -543,7 +543,10 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self, const std::string &pass) {
              self.pass_builder()->DeletePass(pass);
            })
-      .def("pass_builder", &AnalysisConfig::pass_builder,
+      .def("pass_builder",
+           [](AnalysisConfig &self) {
+             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
+           },
            py::return_value_policy::reference);
 }
 
