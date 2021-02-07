@@ -87,8 +87,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._as_outer_parallelism = self.user_defined_strategy.sharding_configs[
             "as_outer_parallelism"]
         self._inner_parallelism_size = int(
-            self.user_defined_strategy.sharding_configs[
-                "inner_parallelism_size"])
+            self.user_defined_strategy.sharding_configs["parallelism"])
         self.use_pipeline = self.user_defined_strategy.sharding_configs[
             "use_pipeline"]
 
