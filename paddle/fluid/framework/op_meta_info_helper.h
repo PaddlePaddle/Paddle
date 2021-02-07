@@ -20,16 +20,35 @@ limitations under the License. */
 #include "paddle/fluid/extension/include/op_meta_info.h"
 
 namespace paddle {
+namespace framework {
 
 class OpMetaInfoHelper {
  public:
-  static const std::string& GetOpName(const OpMetaInfo& info);
-  static const std::vector<std::string>& GetInputs(const OpMetaInfo& info);
-  static const std::vector<std::string>& GetOutputs(const OpMetaInfo& info);
-  static const std::vector<std::string>& GetAttrs(const OpMetaInfo& info);
-  static const KernelFunc& GetKernelFn(const OpMetaInfo& info);
-  static const InferShapeFunc& GetInferShapeFn(const OpMetaInfo& info);
-  static const InferDtypeFunc& GetInferDtypeFn(const OpMetaInfo& info);
+  static const std::string& GetOpName(const paddle::OpMetaInfo& info) {
+    return info.name_;
+  }
+  static const std::vector<std::string>& GetInputs(
+      const paddle::OpMetaInfo& info) {
+    return info.inputs_;
+  }
+  static const std::vector<std::string>& GetOutputs(
+      const paddle::OpMetaInfo& info) {
+    return info.outputs_;
+  }
+  static const std::vector<std::string>& GetAttrs(
+      const paddle::OpMetaInfo& info) {
+    return info.attrs_;
+  }
+  static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info) {
+    return info.kernel_fn_;
+  }
+  static const InferShapeFunc& GetInferShapeFn(const paddle::OpMetaInfo& info) {
+    return info.infer_shape_fn_;
+  }
+  static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info) {
+    return info.infer_dtype_fn_;
+  }
 };
 
+}  // namespace framework
 }  // namespace paddle

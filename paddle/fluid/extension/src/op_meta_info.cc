@@ -18,8 +18,6 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/op_meta_info_helper.h"
-
 namespace paddle {
 
 ////////////////////// Op Meta Info //////////////////////
@@ -43,35 +41,6 @@ OpMetaInfo& OpMetaInfo::SetInferShapeFn(InferShapeFunc&& func) {
 OpMetaInfo& OpMetaInfo::SetInferDtypeFn(InferDtypeFunc&& func) {
   infer_dtype_fn_ = func;
   return *this;
-}
-
-////////////////////// Op Meta Info Helper //////////////////////
-
-const std::string& OpMetaInfoHelper::GetOpName(const OpMetaInfo& info) {
-  return info.name_;
-}
-const std::vector<std::string>& OpMetaInfoHelper::GetInputs(
-    const OpMetaInfo& info) {
-  return info.inputs_;
-}
-const std::vector<std::string>& OpMetaInfoHelper::GetOutputs(
-    const OpMetaInfo& info) {
-  return info.outputs_;
-}
-const std::vector<std::string>& OpMetaInfoHelper::GetAttrs(
-    const OpMetaInfo& info) {
-  return info.attrs_;
-}
-const KernelFunc& OpMetaInfoHelper::GetKernelFn(const OpMetaInfo& info) {
-  return info.kernel_fn_;
-}
-const InferShapeFunc& OpMetaInfoHelper::GetInferShapeFn(
-    const OpMetaInfo& info) {
-  return info.infer_shape_fn_;
-}
-const InferDtypeFunc& OpMetaInfoHelper::GetInferDtypeFn(
-    const OpMetaInfo& info) {
-  return info.infer_dtype_fn_;
 }
 
 //////////////// Op Meta Info Map /////////////////

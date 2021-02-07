@@ -30,6 +30,9 @@ limitations under the License. */
  */
 
 namespace paddle {
+namespace framework {
+class OpMetaInfoHelper;
+}  // namespace framework
 
 using Tensor = paddle::Tensor;
 
@@ -227,7 +230,7 @@ class OpMetaInfo {
   OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func);
 
  private:
-  friend class OpMetaInfoHelper;
+  friend class framework::OpMetaInfoHelper;
 
   // 1. desc info
   std::string name_;
