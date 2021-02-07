@@ -25,7 +25,7 @@ import six
 
 import paddle
 from ..layer_helper import LayerHelper
-from ..initializer import Normal, Constant, NumpyArrayInitializer
+from ..initializer import Normal, Constant, NumpyArrayInitializer, ConstantInitializer
 from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
@@ -191,6 +191,7 @@ __all__ = [
     'gather_tree',
     'uniform_random',
     'unbind',
+    'dice',
 ]
 
 
@@ -15163,3 +15164,21 @@ def unbind(input, axis=0):
         outputs={"Out": outs},
         attrs={"axis": axis})
     return outs
+
+
+def dice(input, epsilon=1e-9, name=None, is_test=False):
+    alpha = paddle.static.create_parameter(
+        dtype='float32', 
+        shape=[input.shape[-1]], 
+        default_initializer=ConstantInitializer(value=0.0))
+    scale_attr = ParamAttr(trainable=False)
+    bias_attr = ParamAttr(trainable=False)
+    inputs_normed = batch_norm(
+        input=input, 
+        epsilon=epsilon, 
+        name=name, 
+        param_attr=scale_attr,
+        bias_attr=bias_attr,
+        is_test=is_test)
+    x_p = paddle.nn.functional.sigmoid(inputs_normed)
+    return input * alpha * (1.0 - x_p) + input * x_p

@@ -24,6 +24,7 @@ from .param_attr import ParamAttr
 from . import core
 from six.moves import zip
 from .layer_helper_base import LayerHelperBase
+import paddle
 
 
 class LayerHelper(LayerHelperBase):
@@ -144,6 +145,9 @@ class LayerHelper(LayerHelperBase):
             act = {'type': act}
         else:
             raise TypeError(str(act) + " should be unicode or str")
+
+        if 'dice' == act['type']:
+            return paddle.fluid.layers.dice(input_var)
 
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')
