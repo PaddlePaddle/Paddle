@@ -635,11 +635,8 @@ void Reducer::MarkGroupReady(size_t group_index) {
 #ifdef PADDLE_WITH_XPU_BKCL
         if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
           parallel_ctx_->WaitComm(run_order);
-#else
-        PADDLE_THROW(platform::errors::PreconditionNotMet(
-            "Please recompile or reinstall Paddle with BKCL support."));
-#endif
         }
+#endif
 
         // Start allreduce
         parallel_ctx_->AllReduceByStream(
