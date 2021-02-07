@@ -626,12 +626,18 @@ void Reducer::MarkGroupReady(size_t group_index) {
         // group.dense_tensors ---> group.dense_contents_
         group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
 
-        if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
+// NOTE(liuyuhui): ConcatTensors use communication stream, but BKCL only support
+// default stream for communicating,
+// so there exist some problems in synchronization. And need to add a WaitComm
+// there.
+// TODO(liuyuhui): If BKCL support events, it should be fixed as non-blocking
+// communication.
 #ifdef PADDLE_WITH_XPU_BKCL
+        if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
           parallel_ctx_->WaitComm(run_order);
 #else
-          PADDLE_THROW(platform::errors::PreconditionNotMet(
-              "Please recompile or reinstall Paddle with BKCL support."));
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "Please recompile or reinstall Paddle with BKCL support."));
 #endif
         }
 
