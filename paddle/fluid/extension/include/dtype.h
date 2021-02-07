@@ -16,14 +16,14 @@ limitations under the License. */
 
 namespace paddle {
 
-enum PaddleDType {
-        FLOAT32,
-        FLOAT64,
-        INT64,
-        INT32,
-        UINT8,
-        INT8,
-        // TODO(Superjomn) support more data types if needed.
-    };
+enum DataType {
+  FLOAT32,
+  FLOAT64,
+  INT64,
+  INT32,
+  UINT8,
+  INT8,
+  // TODO(yangjiabin): Add other dtype support in next PR
+};
 
 }  // namespace paddle

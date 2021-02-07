@@ -51,8 +51,8 @@ std::vector<std::string> PD_GetGradOpDescStrs(
     std::unordered_map<std::string, std::string> *grad_to_var,
     const std::vector<paddle::framework::BlockDesc *> &grad_block);
 
-// C-API to get global OpFunctionMap.
-paddle::OpFunctionMap &PD_GetOpFunctionMap();
+// C-API to get global OpMetaInfoMap.
+paddle::OpMetaInfoMap &PD_GetOpMetaInfoMap();
 
 #ifdef __cplusplus
 }

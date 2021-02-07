@@ -12,10 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/fluid/extension/include/op_function.h"
 
-namespace paddle {
-
-enum class PlaceType { kUNK = -1, kCPU, kGPU };
-
-}  // namespace paddle
+namespace paddle {}  // namespace paddle

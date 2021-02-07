@@ -51,9 +51,9 @@ std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
   return {out};
 }
 
-std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& grad_out,
+std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
                                                const paddle::Tensor& out,
-                                               const paddle::Tensor& x) {
+                                               const paddle::Tensor& grad_out) {
   auto grad_x = paddle::Tensor(paddle::PlaceType::kGPU);
   grad_x.Reshape(x.shape());
 

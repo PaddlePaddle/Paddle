@@ -326,17 +326,6 @@ class ExecutionContext {
     return vec_temp;
   }
 
-  virtual std::vector<std::string> OutNameList() const {
-    std::vector<std::string> vec_temp;
-    vec_temp.reserve(ctx_.outputs.size());
-
-    for (auto& output : ctx_.outputs) {
-      vec_temp.emplace_back(output.first);
-    }
-
-    return vec_temp;
-  }
-
   template <typename T>
   const T* Input(const std::string& name) const {
     auto* var = InputVar(name);

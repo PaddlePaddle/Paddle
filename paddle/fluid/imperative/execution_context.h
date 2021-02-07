@@ -118,17 +118,6 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     return vec_temp;
   }
 
-  virtual std::vector<std::string> OutNameList() const {
-    std::vector<std::string> vec_temp;
-    vec_temp.reserve(var_base_map_out_.size());
-
-    for (auto& out : var_base_map_out_) {
-      vec_temp.emplace_back(out.first);
-    }
-
-    return vec_temp;
-  }
-
   bool HasInput(const std::string& name) const override {
     auto it = var_base_map_in_.find(name);
     return (it != var_base_map_in_.end() && it->second.size() > 0);

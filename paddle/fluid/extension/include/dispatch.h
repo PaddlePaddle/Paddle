@@ -32,13 +32,15 @@ namespace paddle {
   [&] {                                                                      \
     const auto& dtype = TYPE;                                                \
     switch (dtype) {                                                         \
-      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::PaddleDType::FLOAT32,             \
-                           float, __VA_ARGS__)                               \
-      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::PaddleDType::FLOAT64,             \
-                           double, __VA_ARGS__)                              \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,         \
+                           __VA_ARGS__)                                      \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,        \
+                           __VA_ARGS__)                                      \
       default:                                                               \
         throw std::runtime_error("function not implemented for this type."); \
     }                                                                        \
   }()
+
+// TODD(chenweihang): implement other DISPATH macros in next PR
 
 }  // namespace paddle

@@ -16,21 +16,22 @@ limitations under the License. */
 
 #include <functional>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <typeindex>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <sstream>
+
 #include <boost/any.hpp>
+
 #include "paddle/fluid/extension/include/tensor.h"
-#include "paddle/fluid/extension/include/device.h"
 
 /**
- * Op Function Related Define.
+ * Op Meta Info Related Define.
  *
- * Used to maintain operator core information independent of the framework.
+ * Used to maintain operator core information.
  *
  */
 
@@ -45,35 +46,19 @@ using Tensor = paddle::Tensor;
   classname& operator=(const classname&) = delete; \
   classname& operator=(classname&&) = delete
 
-//////////////////// Kernel Function traits (PD_TRAITS) ///////////////////
+/// If a variable's name has a certain suffix, it means that the
+/// variable is the gradient of another variable.
+/// e.g. Variable "x@GRAD" is the gradient of variable "x".
+constexpr char kGradVarSuffix[] = "@GRAD";
+constexpr size_t kGradVarSuffixSize = 5U;
 
-// Record forward function traits
-using FuncInfo = std::pair<size_t, size_t>;
-using TraitsFunc = FuncInfo (*)();
-
-template <typename T, typename Enabled = void>
-struct KernelFuncTraits;
-
-template <typename Return, typename... Args>
-struct KernelFuncTraits<Return (*)(Args...)> {
-  static FuncInfo GetFuncInfo() {
-    // TODO(chenweihang): parse tensor args num & attribute num
-    // Now only Tensor is input by default
-    return std::make_pair(Arity, 0);
-  }
-
- private:
-  using ReturnType = Return;
-  using ArgsTuple = std::tuple<Args...>;
-
-  enum : std::size_t { Arity = sizeof...(Args) };
-
-  template <std::size_t Index>
-  using Arg = typename std::tuple_element<Index, ArgsTuple>::type;
-};
-
-#define OP_INFO(...) \
-  ::paddle::KernelFuncTraits<decltype(&__VA_ARGS__)>::GetFuncInfo
+inline std::string Grad(const std::string& var_name) {
+  std::string result;
+  result.reserve(var_name.size() + kGradVarSuffixSize);
+  result += var_name;
+  result += kGradVarSuffix;
+  return result;
+}
 
 ////////////////////// Kernel Function (PD_KERNEL) ////////////////////////
 
@@ -114,7 +99,8 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
-  // for int attribute input (not used now)
+  // TODO(chenweihang): add support for attribute input
+  // int attribute input (not used now)
   template <typename... Tail>
   struct ComputeCallHelper<int, Tail...> {
     template <int in_idx, int attr_idx, typename... PreviousArgs>
@@ -193,110 +179,172 @@ struct InferShapeFuncImpl<Return (*)(Args...), impl_fn> {
 #define PD_INFER_SHAPE(...) \
   ::paddle::InferShapeFuncImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::InferShape
 
-////////////////////// Op Execution Function //////////////////////
+/////////////// InferDataType Function (PD_INFER_DTYPE) ///////////////
 
-class OpFunction {
- public:
-  OpFunction() = default;
+// Record Op Infer dtype core function
+using InferDtypeFunc =
+    std::vector<DataType> (*)(std::vector<DataType> input_dtypes);
 
-  void SetForwardFunc(KernelFunc&& forward_func) {
-    forward_func_ = forward_func;
+template <typename F, F f>
+struct InferDtypeFuncImpl;
+
+template <typename Return, typename... Args, Return (*impl_fn)(Args...)>
+struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
+  static Return InferDtype(std::vector<DataType> input_dtypes) {
+    return InferDtypeCallHelper<Args..., TypeTag<int>>::template InferDtype<0>(
+        input_dtypes);
   }
-  const KernelFunc& GetForwardFunc() const { return forward_func_; }
-
-  void SetBackwardFunc(KernelFunc&& backward_func) {
-    backward_func_ = backward_func;
-  }
-  const KernelFunc& GetBackwardFunc() const { return backward_func_; }
-
-  void SetInferShapeFunc(InferShapeFunc&& infer_shape_func) {
-    infer_shape_func_ = infer_shape_func;
-  }
-  const InferShapeFunc& GetInferShapeFunc() const { return infer_shape_func_; }
-
-  void SetNumTensorArgs(size_t num) { num_tensor_args_ = num; }
-  size_t GetNumTensorArgs() const { return num_tensor_args_; }
-
-  void SetNumAttributes(size_t num) { num_attributes_ = num; }
-  size_t GetNumAttributes() const { return num_attributes_; }
 
  private:
-  // 1. func member
-  KernelFunc forward_func_;
-  KernelFunc backward_func_;
-  InferShapeFunc infer_shape_func_;
+  template <typename... RemainingArgs>
+  struct InferDtypeCallHelper;
 
-  // 2. func traits
-  size_t num_tensor_args_;
-  size_t num_attributes_;
+  // Only one type input now: DataType
+  template <typename... Tail>
+  struct InferDtypeCallHelper<DataType, Tail...> {
+    template <int in_idx, typename... PreviousArgs>
+    static Return InferDtype(std::vector<DataType> input_dtypes,
+                             const PreviousArgs&... pargs) {
+      DataType arg = input_dtypes[in_idx];
+      return InferDtypeCallHelper<Tail...>::template InferDtype<in_idx + 1>(
+          input_dtypes, pargs..., arg);
+    }
+  };
+
+  // end: base template
+  template <typename T>
+  struct InferDtypeCallHelper<TypeTag<T>> {
+    template <int in_idx>
+    static Return InferDtype(std::vector<DataType> input_dtypes,
+                             const Args&... args) {
+      return impl_fn(args...);
+    }
+  };
 };
 
-//////////////////////// Op Execution Function Map //////////////////////////
+#define PD_INFER_DTYPE(...) \
+  ::paddle::InferDtypeFuncImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::InferDtype
 
-class OpFunctionMap {
+////////////////////// Op Meta Info //////////////////////
+
+class OpMetaInfo {
  public:
-  static OpFunctionMap& Instance() {
-    static OpFunctionMap g_custom_op_function_holder;
-    return g_custom_op_function_holder;
+  explicit OpMetaInfo(const std::string& op_name) { name_ = op_name; }
+  OpMetaInfo& Inputs(std::vector<std::string>&& inputs) {
+    inputs_ = inputs;
+    return *this;
+  }
+  OpMetaInfo& Outputs(std::vector<std::string>&& outputs) {
+    outputs_ = outputs;
+    return *this;
+  }
+  OpMetaInfo& SetKernelFn(KernelFunc&& func) {
+    kernel_fn_ = func;
+    return *this;
+  }
+  OpMetaInfo& SetInferShapeFn(InferShapeFunc&& func) {
+    infer_shape_fn_ = func;
+    return *this;
+  }
+  OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func) {
+    infer_dtype_fn_ = func;
+    return *this;
   }
 
-  void Insert(const std::string& op_type, const OpFunction& op_func) {
-    if (map_.find(op_type) != map_.end()) {
-      throw std::runtime_error("Operator `" + op_type +
-                               "` has been registered.");
-    }
-    map_.insert({op_type, op_func});
+  // Maybe need private
+ public:
+  const std::string& GetOpName() const { return name_; }
+  const std::vector<std::string>& GetInputs() const { return inputs_; }
+  const std::vector<std::string>& GetOutputs() const { return outputs_; }
+  const std::vector<std::string>& GetAttrs() const { return attrs_; }
+  const KernelFunc& GetKernelFn() const { return kernel_fn_; }
+  const InferShapeFunc& GetInferShapeFn() const { return infer_shape_fn_; }
+  const InferDtypeFunc& GetInferDtypeFn() const { return infer_dtype_fn_; }
+
+ private:
+  // 1. desc info
+  std::string name_;
+  std::vector<std::string> inputs_;
+  std::vector<std::string> outputs_;
+  std::vector<std::string> attrs_;
+
+  // 2. func info
+  KernelFunc kernel_fn_;
+  InferShapeFunc infer_shape_fn_;
+  InferDtypeFunc infer_dtype_fn_;
+};
+
+class OpMetaInfoMap {
+ public:
+  static OpMetaInfoMap& Instance() {
+    static OpMetaInfoMap g_custom_op_meta_info_map;
+    return g_custom_op_meta_info_map;
   }
 
-  const std::unordered_map<std::string, OpFunction>& GetMap() const {
+  std::vector<OpMetaInfo>& operator[](const std::string& name) {
+    return map_[name];
+  }
+
+  const std::unordered_map<std::string, std::vector<OpMetaInfo>>& GetMap()
+      const {
     return map_;
   }
 
  private:
-  OpFunctionMap() = default;
+  OpMetaInfoMap() = default;
 
-  std::unordered_map<std::string, OpFunction> map_;
+  std::unordered_map<std::string, std::vector<OpMetaInfo>> map_;
 
-  DISABLE_COPY_AND_ASSIGN(OpFunctionMap);
+  DISABLE_COPY_AND_ASSIGN(OpMetaInfoMap);
 };
 
-///////////////// Op Function Registrar ////////////////////////////
-
-class Registrar {
+class OpMetaInfoBuilder {
  public:
-  void Touch() {}
-};
-
-struct OperatorFunctionRegistrar : public Registrar {
-  OperatorFunctionRegistrar(const char* op_type, TraitsFunc&& traits_func,
-                            KernelFunc&& forward_func,
-                            KernelFunc&& backward_func,
-                            InferShapeFunc&& infer_shape_func) {
-    OpFunction op_func;
-    FuncInfo func_info = traits_func();
-
-    op_func.SetNumTensorArgs(func_info.first);
-    op_func.SetNumAttributes(func_info.second);
-
-    op_func.SetForwardFunc(std::forward<KernelFunc>(forward_func));
-    op_func.SetBackwardFunc(std::forward<KernelFunc>(backward_func));
-    op_func.SetInferShapeFunc(std::forward<InferShapeFunc>(infer_shape_func));
-
-    OpFunctionMap::Instance().Insert(op_type, op_func);
+  explicit OpMetaInfoBuilder(std::string&& name)
+      : name_(std::forward<std::string>(name)) {
+    auto& info_vector = OpMetaInfoMap::Instance()[name_];
+    auto op_meta = OpMetaInfo(name_);
+    info_vector.emplace_back(op_meta);
+    info_ptr_ = &(info_vector.back());
   }
+  OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs) {
+    info_ptr_->Inputs(std::forward<std::vector<std::string>>(inputs));
+    return *this;
+  }
+  OpMetaInfoBuilder& Outputs(std::vector<std::string>&& outputs) {
+    info_ptr_->Outputs(std::forward<std::vector<std::string>>(outputs));
+    return *this;
+  }
+  OpMetaInfoBuilder& SetKernelFn(KernelFunc&& func) {
+    info_ptr_->SetKernelFn(std::forward<KernelFunc>(func));
+    return *this;
+  }
+  OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc&& func) {
+    info_ptr_->SetInferShapeFn(std::forward<InferShapeFunc>(func));
+    return *this;
+  }
+  OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc&& func) {
+    info_ptr_->SetInferDtypeFn(std::forward<InferDtypeFunc>(func));
+    return *this;
+  }
+  OpMetaInfoBuilder& SetBackwardOp(std::string&& bwd_op_name) {
+    auto& info_vector = OpMetaInfoMap::Instance()[name_];
+    auto op_meta = OpMetaInfo(std::forward<std::string>(bwd_op_name));
+    info_vector.emplace_back(op_meta);
+    info_ptr_ = &(info_vector.back());
+    return *this;
+  }
+
+ private:
+  std::string name_;
+  // Point to the currently constructed op meta info
+  OpMetaInfo* info_ptr_;
 };
 
 /////////////////////// Op register marco /////////////////////////
 
-#define BUILD_OPERATOR(op_type, traits_func, forward_func, backward_func,      \
-                       infer_shape_func)                                       \
-  static ::paddle::OperatorFunctionRegistrar                                   \
-      __operator_function_registrar_##op_type##__(#op_type, traits_func,       \
-                                                  forward_func, backward_func, \
-                                                  infer_shape_func);           \
-  int TouchOperatorFunctionRegistrar_##op_type() {                             \
-    __operator_function_registrar_##op_type##__.Touch();                       \
-    return 0;                                                                  \
-  }
+#define PD_BUILD_OPERATOR(op_name)                                      \
+  static ::paddle::OpMetaInfoBuilder __op_meta_info_##__COUNTER__##__ = \
+      ::paddle::OpMetaInfoBuilder(op_name)
 
 }  // namespace paddle

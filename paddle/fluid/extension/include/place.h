@@ -14,12 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#if !defined(_MSC_VER) && __cplusplus < 199711L
-#error C++11 or later compatible compiler is required to use Paddle.
-#endif
+namespace paddle {
 
-#include "paddle/fluid/extension/include/dispatch.h"
-#include "paddle/fluid/extension/include/dtype.h"
-#include "paddle/fluid/extension/include/op_function.h"
-#include "paddle/fluid/extension/include/place.h"
-#include "paddle/fluid/extension/include/tensor.h"
+// TODO(yangjiabin): Add other place support in next PR
+enum class PlaceType { kUNK = -1, kCPU, kGPU };
+
+}  // namespace paddle

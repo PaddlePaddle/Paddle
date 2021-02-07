@@ -50,9 +50,9 @@ std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
   return {out};
 }
 
-std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& grad_out,
+std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& x,
                                               const paddle::Tensor& out,
-                                              const paddle::Tensor& x) {
+                                              const paddle::Tensor& grad_out) {
   auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU);
   grad_x.Reshape(x.shape());
 
@@ -68,40 +68,49 @@ std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& grad_out,
 }
 
 std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x);
-std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& grad_out,
+std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
                                                const paddle::Tensor& out,
-                                               const paddle::Tensor& x);
+                                               const paddle::Tensor& grad_out);
 
 std::vector<paddle::Tensor> ReluForward(const paddle::Tensor& x) {
   // TODO(chenweihang): Check Input
-    if (x.place() == paddle::PlaceType::kCPU) {
-        return relu_cpu_forward(x);
-    } else if (x.place() == paddle::PlaceType::kGPU) {
-        return relu_cuda_forward(x);
-    } else {
-        throw std::runtime_error("Not implemented.");
-    }
+  if (x.place() == paddle::PlaceType::kCPU) {
+    return relu_cpu_forward(x);
+  } else if (x.place() == paddle::PlaceType::kGPU) {
+    return relu_cuda_forward(x);
+  } else {
+    throw std::runtime_error("Not implemented.");
+  }
 }
 
-std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& grad_out,
+std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
                                          const paddle::Tensor& out,
-                                         const paddle::Tensor& x) {
+                                         const paddle::Tensor& grad_out) {
   // TODO(chenweihang): Check Input
-    if (x.place() == paddle::PlaceType::kCPU) {
-        return relu_cpu_backward(grad_out, out, x);
-    } else if (x.place() == paddle::PlaceType::kGPU) {
-        return relu_cuda_backward(grad_out, out, x);
-    } else {
-        throw std::runtime_error("Not implemented.");
-    }
+  if (x.place() == paddle::PlaceType::kCPU) {
+    return relu_cpu_backward(x, out, grad_out);
+  } else if (x.place() == paddle::PlaceType::kGPU) {
+    return relu_cuda_backward(x, out, grad_out);
+  } else {
+    throw std::runtime_error("Not implemented.");
+  }
 }
 
 std::vector<std::vector<int64_t>> ReluInferShape(std::vector<int64_t> x_shape) {
   return {x_shape};
 }
 
-BUILD_OPERATOR(relu2,
-               OP_INFO(ReluForward),
-               PD_KERNEL(ReluForward),
-               PD_KERNEL(ReluBackward),
-               PD_INFER_SHAPE(ReluInferShape));
+std::vector<paddle::DataType> ReluInferDType(paddle::DataType x_dtype) {
+  return {x_dtype};
+}
+
+PD_BUILD_OPERATOR("relu2")
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(ReluForward))
+    .SetInferShapeFn(PD_INFER_SHAPE(ReluInferShape))
+    .SetInferDtypeFn(PD_INFER_DTYPE(ReluInferDType))
+    .SetBackwardOp("relu2_grad")
+    .Inputs({"X", "Out", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .SetKernelFn(PD_KERNEL(ReluBackward));

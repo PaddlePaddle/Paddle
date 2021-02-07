@@ -13,21 +13,24 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/extension.h"
+
 #include <memory>
 
+#include "paddle/fluid/extension/include/tensor.h"
+
 namespace paddle {
-class CustomTensorUtils{
-public:
-    /// \brief Share data TO another tensor.
-    /// Use this to pass tensor from op to op
-    /// \return void.
-    static void ShareDataTo(const Tensor& src, void* dst);
 
-    /// \brief Share data FROM another tensor.
-    /// Use this to pass tensor from op to op
-    /// \return void.
-    static void ShareDataFrom(void* src, const Tensor& dst);
+class CustomTensorUtils {
+ public:
+  /// \brief Share data TO another tensor.
+  /// Use this to pass tensor from op to op
+  /// \return void.
+  static void ShareDataTo(const Tensor& src, void* dst);
+
+  /// \brief Share data FROM another tensor.
+  /// Use this to pass tensor from op to op
+  /// \return void.
+  static void ShareDataFrom(void* src, const Tensor& dst);
 };
-}  // namespace paddle
 
+}  // namespace paddle
