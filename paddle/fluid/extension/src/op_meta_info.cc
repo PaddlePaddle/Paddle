@@ -14,4 +14,111 @@ limitations under the License. */
 
 #include "paddle/fluid/extension/include/op_meta_info.h"
 
-namespace paddle {}  // namespace paddle
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+namespace paddle {
+
+////////////////////// Op Meta Info //////////////////////
+
+OpMetaInfo& OpMetaInfo::Inputs(std::vector<std::string>&& inputs) {
+  inputs_ = inputs;
+  return *this;
+}
+OpMetaInfo& OpMetaInfo::Outputs(std::vector<std::string>&& outputs) {
+  outputs_ = outputs;
+  return *this;
+}
+OpMetaInfo& OpMetaInfo::SetKernelFn(KernelFunc&& func) {
+  kernel_fn_ = func;
+  return *this;
+}
+OpMetaInfo& OpMetaInfo::SetInferShapeFn(InferShapeFunc&& func) {
+  infer_shape_fn_ = func;
+  return *this;
+}
+OpMetaInfo& OpMetaInfo::SetInferDtypeFn(InferDtypeFunc&& func) {
+  infer_dtype_fn_ = func;
+  return *this;
+}
+
+const std::string& OpMetaInfo::GetOpName() const { return name_; }
+const std::vector<std::string>& OpMetaInfo::GetInputs() const {
+  return inputs_;
+}
+const std::vector<std::string>& OpMetaInfo::GetOutputs() const {
+  return outputs_;
+}
+const std::vector<std::string>& OpMetaInfo::GetAttrs() const { return attrs_; }
+const KernelFunc& OpMetaInfo::GetKernelFn() const { return kernel_fn_; }
+const InferShapeFunc& OpMetaInfo::GetInferShapeFn() const {
+  return infer_shape_fn_;
+}
+const InferDtypeFunc& OpMetaInfo::GetInferDtypeFn() const {
+  return infer_dtype_fn_;
+}
+
+//////////////// Op Meta Info Map /////////////////
+
+// OpMetaInfoMap& OpMetaInfoMap::Instance() {
+//   static OpMetaInfoMap g_custom_op_meta_info_map;
+//   return g_custom_op_meta_info_map;
+// }
+
+std::vector<OpMetaInfo>& OpMetaInfoMap::operator[](const std::string& name) {
+  return map_[name];
+}
+
+const std::unordered_map<std::string, std::vector<OpMetaInfo>>&
+OpMetaInfoMap::GetMap() const {
+  return map_;
+}
+
+//////////////// Op Meta Info Builder /////////////////
+
+OpMetaInfoBuilder::OpMetaInfoBuilder(std::string&& name) {
+  name_ = std::forward<std::string>(name);
+  auto& info_vector = OpMetaInfoMap::Instance()[name_];
+  auto op_meta = OpMetaInfo(name_);
+  info_vector.emplace_back(op_meta);
+  info_ptr_ = &(info_vector.back());
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::Inputs(
+    std::vector<std::string>&& inputs) {
+  info_ptr_->Inputs(std::forward<std::vector<std::string>>(inputs));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::Outputs(
+    std::vector<std::string>&& outputs) {
+  info_ptr_->Outputs(std::forward<std::vector<std::string>>(outputs));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetKernelFn(KernelFunc&& func) {
+  info_ptr_->SetKernelFn(std::forward<KernelFunc>(func));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferShapeFn(InferShapeFunc&& func) {
+  info_ptr_->SetInferShapeFn(std::forward<InferShapeFunc>(func));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc&& func) {
+  info_ptr_->SetInferDtypeFn(std::forward<InferDtypeFunc>(func));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetBackwardOp(
+    const std::string& bwd_op_name) {
+  auto& info_vector = OpMetaInfoMap::Instance()[name_];
+  auto op_meta = OpMetaInfo(bwd_op_name);
+  info_vector.emplace_back(op_meta);
+  info_ptr_ = &(info_vector.back());
+  return *this;
+}
+
+}  // namespace paddle

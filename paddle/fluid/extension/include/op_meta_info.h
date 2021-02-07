@@ -14,14 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <functional>
-#include <iostream>
-#include <sstream>
 #include <string>
-#include <tuple>
-#include <typeindex>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include <boost/any.hpp>
@@ -46,17 +40,13 @@ using Tensor = paddle::Tensor;
   classname& operator=(const classname&) = delete; \
   classname& operator=(classname&&) = delete
 
-/// If a variable's name has a certain suffix, it means that the
-/// variable is the gradient of another variable.
-/// e.g. Variable "x@GRAD" is the gradient of variable "x".
-constexpr char kGradVarSuffix[] = "@GRAD";
-constexpr size_t kGradVarSuffixSize = 5U;
+///////////////// Util Define and Function ////////////////
 
 inline std::string Grad(const std::string& var_name) {
   std::string result;
-  result.reserve(var_name.size() + kGradVarSuffixSize);
+  result.reserve(var_name.size() + 5U);
   result += var_name;
-  result += kGradVarSuffix;
+  result += "@GRAD";
   return result;
 }
 
@@ -230,36 +220,21 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
 class OpMetaInfo {
  public:
   explicit OpMetaInfo(const std::string& op_name) { name_ = op_name; }
-  OpMetaInfo& Inputs(std::vector<std::string>&& inputs) {
-    inputs_ = inputs;
-    return *this;
-  }
-  OpMetaInfo& Outputs(std::vector<std::string>&& outputs) {
-    outputs_ = outputs;
-    return *this;
-  }
-  OpMetaInfo& SetKernelFn(KernelFunc&& func) {
-    kernel_fn_ = func;
-    return *this;
-  }
-  OpMetaInfo& SetInferShapeFn(InferShapeFunc&& func) {
-    infer_shape_fn_ = func;
-    return *this;
-  }
-  OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func) {
-    infer_dtype_fn_ = func;
-    return *this;
-  }
+  OpMetaInfo& Inputs(std::vector<std::string>&& inputs);
+  OpMetaInfo& Outputs(std::vector<std::string>&& outputs);
+  OpMetaInfo& SetKernelFn(KernelFunc&& func);
+  OpMetaInfo& SetInferShapeFn(InferShapeFunc&& func);
+  OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func);
 
   // Maybe need private
  public:
-  const std::string& GetOpName() const { return name_; }
-  const std::vector<std::string>& GetInputs() const { return inputs_; }
-  const std::vector<std::string>& GetOutputs() const { return outputs_; }
-  const std::vector<std::string>& GetAttrs() const { return attrs_; }
-  const KernelFunc& GetKernelFn() const { return kernel_fn_; }
-  const InferShapeFunc& GetInferShapeFn() const { return infer_shape_fn_; }
-  const InferDtypeFunc& GetInferDtypeFn() const { return infer_dtype_fn_; }
+  const std::string& GetOpName() const;
+  const std::vector<std::string>& GetInputs() const;
+  const std::vector<std::string>& GetOutputs() const;
+  const std::vector<std::string>& GetAttrs() const;
+  const KernelFunc& GetKernelFn() const;
+  const InferShapeFunc& GetInferShapeFn() const;
+  const InferDtypeFunc& GetInferDtypeFn() const;
 
  private:
   // 1. desc info
@@ -274,68 +249,44 @@ class OpMetaInfo {
   InferDtypeFunc infer_dtype_fn_;
 };
 
+//////////////// Op Meta Info Map /////////////////
+
 class OpMetaInfoMap {
  public:
+  // this function's impl should keep in header file.
+  // if move to cc file, meta info can not be added
+  // into map
   static OpMetaInfoMap& Instance() {
     static OpMetaInfoMap g_custom_op_meta_info_map;
     return g_custom_op_meta_info_map;
   }
 
-  std::vector<OpMetaInfo>& operator[](const std::string& name) {
-    return map_[name];
-  }
+  std::vector<OpMetaInfo>& operator[](const std::string& name);
 
   const std::unordered_map<std::string, std::vector<OpMetaInfo>>& GetMap()
-      const {
-    return map_;
-  }
+      const;
 
  private:
   OpMetaInfoMap() = default;
-
   std::unordered_map<std::string, std::vector<OpMetaInfo>> map_;
 
   DISABLE_COPY_AND_ASSIGN(OpMetaInfoMap);
 };
 
+//////////////// Op Meta Info Builder /////////////////
+
 class OpMetaInfoBuilder {
  public:
-  explicit OpMetaInfoBuilder(std::string&& name)
-      : name_(std::forward<std::string>(name)) {
-    auto& info_vector = OpMetaInfoMap::Instance()[name_];
-    auto op_meta = OpMetaInfo(name_);
-    info_vector.emplace_back(op_meta);
-    info_ptr_ = &(info_vector.back());
-  }
-  OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs) {
-    info_ptr_->Inputs(std::forward<std::vector<std::string>>(inputs));
-    return *this;
-  }
-  OpMetaInfoBuilder& Outputs(std::vector<std::string>&& outputs) {
-    info_ptr_->Outputs(std::forward<std::vector<std::string>>(outputs));
-    return *this;
-  }
-  OpMetaInfoBuilder& SetKernelFn(KernelFunc&& func) {
-    info_ptr_->SetKernelFn(std::forward<KernelFunc>(func));
-    return *this;
-  }
-  OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc&& func) {
-    info_ptr_->SetInferShapeFn(std::forward<InferShapeFunc>(func));
-    return *this;
-  }
-  OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc&& func) {
-    info_ptr_->SetInferDtypeFn(std::forward<InferDtypeFunc>(func));
-    return *this;
-  }
-  OpMetaInfoBuilder& SetBackwardOp(std::string&& bwd_op_name) {
-    auto& info_vector = OpMetaInfoMap::Instance()[name_];
-    auto op_meta = OpMetaInfo(std::forward<std::string>(bwd_op_name));
-    info_vector.emplace_back(op_meta);
-    info_ptr_ = &(info_vector.back());
-    return *this;
-  }
+  explicit OpMetaInfoBuilder(std::string&& name);
+  OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs);
+  OpMetaInfoBuilder& Outputs(std::vector<std::string>&& outputs);
+  OpMetaInfoBuilder& SetKernelFn(KernelFunc&& func);
+  OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc&& func);
+  OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc&& func);
+  OpMetaInfoBuilder& SetBackwardOp(const std::string& bwd_op_name);
 
  private:
+  // Forward Op name
   std::string name_;
   // Point to the currently constructed op meta info
   OpMetaInfo* info_ptr_;
