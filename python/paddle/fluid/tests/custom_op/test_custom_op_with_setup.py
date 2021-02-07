@@ -16,6 +16,7 @@ import os
 import unittest
 import numpy as np
 from test_custom_op import CustomOpTest, load_so
+import paddle
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -39,6 +40,9 @@ def relu3(x, name=None):
 
 
 class TestCompileMultiOp(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
     def test_relu3(self):
         raw_data = np.array([[-1, 1, 0], [1, -1, -1]]).astype('float32')
         x = paddle.to_tensor(raw_data, dtype='float32')
@@ -48,6 +52,9 @@ class TestCompileMultiOp(unittest.TestCase):
         self.assertTrue(
             np.array_equal(out.numpy(),
                            np.array([[0, 1, 0], [1, 0, 0]]).astype('float32')))
+
+    def tearDown(self):
+        paddle.enable_static()
 
 
 if __name__ == '__main__':
