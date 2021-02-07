@@ -33,7 +33,7 @@ message ShardingConfig {
   optional bool hybrid_dp = 2 [ default = false ];
   optional int32 sharding_group_size = 3 [ default = 8 ];
   optional bool as_outer_parallelism = 4 [ default = false ];
-  optional int32 inner_parallelism_size = 5 [ default = 8 ];
+  optional int32 parallelism = 5 [ default = 1 ];
   optional bool use_pipeline = 6 [ default = false ];
 }
 
@@ -47,6 +47,8 @@ message AMPConfig {
   repeated string custom_white_list = 7;
   repeated string custom_black_list = 8;
   repeated string custom_black_varnames = 9;
+  optional bool use_pure_fp16 = 10 [ default = false ];
+  optional bool use_fp16_guard = 11 [ default = true ];
 }
 
 message LocalSGDConfig {
@@ -145,7 +147,7 @@ message DistributedStrategy {
   optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
   optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
   optional bool cudnn_exhaustive_search = 21 [ default = true ];
-  optional int32 conv_workspace_size_limit = 22 [ default = 4000 ];
+  optional int32 conv_workspace_size_limit = 22 [ default = 512 ];
   optional bool cudnn_batchnorm_spatial_persistent = 23 [ default = true ];
   optional bool adaptive_localsgd = 24 [ default = false ];
   optional bool fp16_allreduce = 25 [ default = false ];
