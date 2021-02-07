@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(__GNUC__)
-#define EIGEN_STRONG_INLINE __attribute__((noinline))
-#endif
-
 #include "paddle/fluid/operators/reduce_ops/logsumexp_op.h"
 
 namespace ops = paddle::operators;
