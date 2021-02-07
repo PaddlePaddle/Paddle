@@ -303,6 +303,7 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
   return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
       ->Release(place);
 }
+`
 
 }  // namespace allocation
 }  // namespace memory
