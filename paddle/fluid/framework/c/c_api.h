@@ -19,7 +19,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/extension/include/op_function.h"
+#include "paddle/fluid/extension/include/op_meta_info.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_info.h"
