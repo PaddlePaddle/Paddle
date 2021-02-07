@@ -49,6 +49,12 @@ int GetNPUDeviceCount() {
   return dev_cnt;
 }
 
+int NPUCanAccessPeer(int src, int dst) {
+  int can = 0;
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtDeviceCanAccessPeer(&can, src, dst));
+  return can;
+}
+
 // For example, "1.0.1"
 std::string GetNPURuntimeVersion(int id) {
   PADDLE_ENFORCE_LT(id, GetNPUDeviceCount(),
@@ -177,6 +183,21 @@ void NPUMemcpyASync(void *dst, const void *src, size_t count,
 
 void NPUMemcpySync(void *dst, const void *src, size_t count,
                    enum aclrtMemcpyKind kind, size_t dst_max_count) {
+  // NOTE(zhiqiu):  The default max_count is count
+  dst_max_count = dst_max_count ? dst_max_count : count;
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpy(dst, dst_max_count, src, count, kind));
+}
+
+void NPUMemcpyPeerASync(void *dst, int dst_device, const void *src,
+                        size_t count, enum aclrtMemcpyKind kind,
+                        aclrtStream stream, size_t dst_max_count) {
+  dst_max_count = dst_max_count ? dst_max_count : count;
+  PADDLE_ENFORCE_NPU_SUCCESS(
+      aclrtMemcpyAsync(dst, dst_max_count, src, count, kind, stream));
+}
+
+void NPUMemcpyPeerSync(void *dst, int dst_device, const void *src, size_t count,
+                       enum aclrtMemcpyKind kind, size_t dst_max_count) {
   // NOTE(zhiqiu):  The default max_count is count
   dst_max_count = dst_max_count ? dst_max_count : count;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpy(dst, dst_max_count, src, count, kind));

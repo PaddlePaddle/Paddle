@@ -236,6 +236,7 @@ NPUDeviceContext::NPUDeviceContext(NPUPlace place) : place_(place) {
   // ACL creates a default context which contains 1 default stream
   // and 1 sync strean after aclrtSetDevice.
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetCurrentContext(&context_));
+  stream_.reset(new stream::NPUStream(place));
 }
 
 NPUDeviceContext::~NPUDeviceContext() {
@@ -247,6 +248,7 @@ void NPUDeviceContext::Wait() const {
   NPUDeviceGuard guard(place_.device);
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeDevice());
 }
+aclrtStream NPUDeviceContext::stream() const { return stream_->raw_stream(); }
 
 Place NPUDeviceContext::GetPlace() const { return place_; }
 

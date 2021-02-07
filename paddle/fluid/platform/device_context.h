@@ -47,6 +47,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/stream/npu_stream.h"
+#endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
@@ -172,6 +175,9 @@ class NPUDeviceContext : public DeviceContext {
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
+  /*! \brief  Return npu stream in the device context. */
+  aclrtStream stream() const;
+
 #ifdef PADDLE_WITH_ASCEND_HCCL
   /*! \brief  Return bkcl context. */
   HCCLContext_t hccl_context() const { return hccl_context_; }
@@ -191,6 +197,7 @@ class NPUDeviceContext : public DeviceContext {
   // Eventhough eigen_device_ is not used in NPU
   // NOTE(zhiqiu): why need?
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+  std::shared_ptr<stream::NPUStream> stream_;
   DISABLE_COPY_AND_ASSIGN(NPUDeviceContext);
 };
 
