@@ -19,7 +19,7 @@ from .cpp_extension import load, setup
 
 from .extension_utils import parse_op_info
 from .extension_utils import get_build_directory
-from .extension_utils import load_and_register_custom_op
+from .extension_utils import load_op_meta_info_and_register_op
 
 from . import cpp_extension
 from . import extension_utils

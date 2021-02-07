@@ -66,9 +66,9 @@ def bootstrap_context():
     bdist_egg.write_stub = origin_write_stub
 
 
-def load_and_register_custom_op(lib_filename):
+def load_op_meta_info_and_register_op(lib_filename):
     if USING_NEW_CUSTOM_OP_LOAD_METHOD:
-        core.load_and_register_custom_op(lib_filename)
+        core.load_op_meta_info_and_register_op(lib_filename)
     else:
         print("old branch")
         core.load_op_library(lib_filename)
@@ -101,7 +101,7 @@ def custom_write_stub(resource, pyfile):
             assert os.path.exists(so_path)
 
             # load custom op shared library with abs path
-            new_custom_op = paddle.utils.cpp_extension.load_and_register_custom_op(so_path)
+            new_custom_op = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
             assert len(new_custom_op) == 1
             m = inject_ext_module(__name__, new_custom_op[0])
         
@@ -114,7 +114,7 @@ def custom_write_stub(resource, pyfile):
     _, op_info = CustomOpInfo.instance().last()
     so_path = op_info.build_directory
 
-    new_custom_op = load_and_register_custom_op(so_path)
+    new_custom_op = load_op_meta_info_and_register_op(so_path)
     assert len(new_custom_op
                ) == 1, "The number of loaded costom operators is %d" % len(
                    new_custom_op)
@@ -364,7 +364,7 @@ def parse_op_info(op_name):
     from paddle.fluid.framework import OpProtoHolder
     if op_name not in OpProtoHolder.instance().op_proto_map:
         raise ValueError(
-            "Please load {} shared library file firstly by `paddle.utils.cpp_extension.load_and_register_custom_op(...)`".
+            "Please load {} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`".
             format(op_name))
     op_proto = OpProtoHolder.instance().get_op_proto(op_name)
 
@@ -387,7 +387,7 @@ def _import_module_from_library(name, build_directory):
             ext_path))
 
     # load custom op_info and kernels from .so shared library
-    op_names = load_and_register_custom_op(ext_path)
+    op_names = load_op_meta_info_and_register_op(ext_path)
     assert len(op_names) == 1
 
     # generate Python api in ext_path
