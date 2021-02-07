@@ -13,7 +13,6 @@ limitations under the License. */
 #include <float.h>
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
