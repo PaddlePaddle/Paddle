@@ -16,7 +16,7 @@ from paddle.fluid import unique_name, core
 import paddle.fluid as fluid
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper
-from paddle.distributed.fleet.meta_optimizers.common import is_backward_op
+from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op, is_update_op
 from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import MetaOptimizerBase
 from paddle.distributed.fleet.meta_optimizers.sharding.shard import Shard, ProgramSegment
 from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import FP16Utils
@@ -39,6 +39,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             "AMPOptimizer",
             "LarsOptimizer",
             "LambOptimizer",
+            "ModelParallelOptimizer",
         ]
         self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
         self._main_program = None
@@ -50,6 +51,10 @@ class ShardingOptimizer(MetaOptimizerBase):
         # reduced grads to param name
         self._reduced_grads_to_param = {}
         self._shard = Shard()
+
+        # use sharding as outer parallelism (e.g. inner:Megatron & outer sharding)
+        self._as_outer_parallelism = False
+        self._inner_parallelism_size = None
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -79,19 +84,60 @@ class ShardingOptimizer(MetaOptimizerBase):
             "fuse_broadcast_MB"]
         self.hybrid_dp = self.user_defined_strategy.sharding_configs[
             "hybrid_dp"]
+        self._as_outer_parallelism = self.user_defined_strategy.sharding_configs[
+            "as_outer_parallelism"]
+        self._inner_parallelism_size = int(
+            self.user_defined_strategy.sharding_configs[
+                "inner_parallelism_size"])
+        self.use_pipeline = self.user_defined_strategy.sharding_configs[
+            "use_pipeline"]
 
         if self.inner_opt is None:
             raise ValueError(
                 "self.inner_opt of ShardingOptimizer should not be None.")
-        optimize_ops, params_grads = self.inner_opt.minimize(
-            loss, startup_program, parameter_list, no_grad_set)
+        if self.use_pipeline:
+            pp_optimizer = fluid.optimizer.PipelineOptimizer(self.inner_opt)
+            main_program = loss.block.program
+            main_program._pipeline_opt = dict()
+            pp_rank = self.role_maker._worker_index(
+            ) // self.user_defined_strategy.sharding_configs[
+                'sharding_group_size']
+            main_program._pipeline_opt['local_rank'] = pp_rank
+            main_program._pipeline_opt[
+                'global_rank'] = self.role_maker._worker_index()
+            main_program._pipeline_opt['use_sharding'] = True
+            main_program._pipeline_opt['ring_id'] = 1
+            optimize_ops, params_grads, program_list = pp_optimizer.minimize(
+                loss, startup_program, parameter_list, no_grad_set)
+            self.pipeline_nodes = len(program_list)
+        else:
+            optimize_ops, params_grads = self.inner_opt.minimize(
+                loss, startup_program, parameter_list, no_grad_set)
 
         if startup_program is None:
             startup_program = default_startup_program()
-        main_block = loss.block
+        if self.use_pipeline:
+            startup_program = startup_program._pipeline_opt['startup_program']
+            #main_program = main_program._pipeline_opt['section_program']['program']
+            print("pp_rank:", pp_rank)
+            main_program = program_list[pp_rank]['program']
+            with open("main_%d" % self.role_maker._worker_index(), 'w') as f:
+                f.writelines(str(main_program))
+            main_block = main_program.global_block()
+            new_params_grads = []
+            for param, grad in params_grads:
+                if main_block.has_var(param.name):
+                    new_params_grads.append((param, grad))
+            params_grads = new_params_grads
+
+        else:
+            main_block = loss.block
         startup_block = startup_program.global_block()
         self._main_program = main_block.program
         self._startup_program = startup_program
+
+        if self.use_pipeline:
+            pp_optimizer._rename_gradient_var_name(main_block)
 
         # step1: set_up
         self._set_up(params_grads)
@@ -105,17 +151,200 @@ class ShardingOptimizer(MetaOptimizerBase):
         startup_block._sync_with_cpp()
 
         # step4: insert reduce_sum for grad
-        insert_scale_loss_grad_ops(
-            main_block, scale=1.0 / self.role_maker._worker_num())
+        # grad_scale_coeff = self.role_maker._worker_num()
+        # if self._as_outer_parallelism:
+        #     grad_scale_coeff = grad_scale_coeff / self._inner_parallelism_size
+        # insert_scale_loss_grad_ops(main_block, scale=1.0 / grad_scale_coeff)
+        sharding_group_size = self.user_defined_strategy.sharding_configs[
+            'sharding_group_size']
+        insert_scale_loss_grad_ops(main_block, scale=1.0 / sharding_group_size)
         main_block._sync_with_cpp()
 
         # step5: remove unneeded ops and vars from block
         self._prune_main_program(main_block)
         self._prune_startup_program(startup_block)
+        if self.hybrid_dp:
+            self._initialization_broadcast(startup_program)
+
+        if self.use_pipeline:
+            # crop ops
+            for idx, op in reversed(list(enumerate(main_block.ops))):
+                # if op.type == 'fill_constant' and int(op.attr('op_role')) == 16:
+                #     out_name = op.output_arg_names[0]
+                #     if not 'GRAD' in out_name: continue
+                #     param_name = out_name.strip("@GRAD")
+                #     #if main_block.has_var(out_name): continue
+                #     if self._shard.has_param(param_name): continue
+                #     main_block._remove_op(idx)
+                if is_update_op(op):
+                    op_role_var = op.attr('op_role_var')
+                    param_name = op_role_var[0]
+                    if not self._shard.has_param(param_name):
+                        main_block._remove_op(idx)
+
+            param_list = []
+            for param_name, grad_name in params_grads:
+                if self._shard.has_param(param_name):
+                    param_list.append(param_name)
+            #pp_optimizer._clear_gradients(main_block, param_list) 
+            pp_optimizer._accumulate_gradients(main_block)
+            #if not self._shard.has_param(param_name): continue
+            ##if not main_block.has_var(grad_name): continue
+            #assert main_block.has_var(grad_name)
+            #grad_var = main_block.vars[grad_name]
+            #grad_var.persistable = True
+            #main_block._insert_op(
+            #    index=0,
+            #    type='fill_constant',
+            #    inputs={},
+            #    outputs={'Out': [grad_var]},
+            #    attrs={
+            #        'shape': grad_var.shape,
+            #        'dtype': grad_var.dtype,
+            #        'value': float(0),
+            #        #self._op_device_key: device,
+            #        # a trick to run this op once per mini-batch
+            #        'op_role': core.op_proto_and_checker_maker.OpRole.LRSched,
+            #    })
+
+        #def _create_var(block, ref_var, name):
+        #    """
+        #    Create a new var for block, which has the same type,
+        #    shape and dtype as ref_var, then rename it with the
+        #    name `name`.
+        #    """
+        #    new_var = block.create_var(
+        #        name=name,
+        #        shape=ref_var.shape,
+        #        dtype=ref_var.dtype,
+        #        type=ref_var.type,
+        #        lod_level=ref_var.lod_level,
+        #        persistable=ref_var.persistable,
+        #        is_data=ref_var.is_data,
+        #        need_check_feed=ref_var.desc.need_check_feed())
+        #    new_var.stop_gradient = ref_var.stop_gradient
+        #    return new_var
+
+        #def _rename_arg(op, old_name, new_name):
+        #    op_desc = op.desc
+        #    if isinstance(op_desc, tuple):
+        #        op_desc = op_desc[0]
+        #    op_desc._rename_input(old_name, new_name)
+        #    op_desc._rename_output(old_name, new_name)
+
+        #print("params_grads:", params_grads)
+        #for param_name, grad_name in params_grads:
+        #    if not self._shard.has_param(param_name): continue
+        #    #if not main_block.has_var(grad_name): continue
+        #    assert main_block.has_var(grad_name)
+        #    use_fp16 = False
+        #    fp16_grad_name = param_name + '.cast_fp16@GRAD'
+        #    if main_block.has_var(grad_name):
+        #        fp16_grad_var = main_block.vars[fp16_grad_name]
+        #        use_fp16 = True
+        #    grad_var = main_block.vars[grad_name]
+        #    if use_fp16:
+        #        cast_grad_var_name = paddle.fluid.unique_name.generate(
+        #            grad_name)
+        #        cast_var = _create_var(main_block, fp16_grad_var,
+        #                               cast_grad_var_name)
+        #        cast_var.persistable = False
+        #        main_block.append_op(
+        #            #index=offset + 1,
+        #            type='cast',
+        #            inputs={'X': grad_var},
+        #            outputs={'Out': cast_var},
+        #            attrs={
+        #                'in_dtype': grad_var.dtype,
+        #                'out_dtype': cast_var.dtype,
+        #                'op_role':
+        #                core.op_proto_and_checker_maker.OpRole.Backward,
+        #            })
+        #        #offset += 1
+        #        main_block.append_op(
+        #            #index=offset + 1,
+        #            type='sum',
+        #            inputs={'X': [fp16_grad_var, cast_var]},
+        #            outputs={'Out': fp16_grad_var},
+        #            attrs={
+        #                'op_role':
+        #                core.op_proto_and_checker_maker.OpRole.Backward,
+        #                'op_role_var': op_role_var
+        #            })
+
+        # for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
+        #     offset = index
+        #     if is_backward_op(op) and (
+        #             'op_role_var' in op.attr_names):
+        #         op_role_var = op.all_attrs()['op_role_var']
+
+        #         if len(op_role_var) == 0:
+        #             continue
+        #         assert len(op_role_var) % 2 == 0
+        #         offset = index
+        #         for i in range(0, len(op_role_var), 2):
+        #             grad_name = op_role_var[i + 1]
+        #             if not main_block.has_var(grad_name): continue
+        #             grad_var = main_block.vars[grad_name]
+        #             if not 'cast_fp16' in grad_name:
+        #                 new_grad_var_name = paddle.fluid.unique_name.generate(grad_name)
+        #                 new_var = _create_var(main_block, grad_var,
+        #                                            new_grad_var_name)
+        #                 new_var.persistable = False
+        #                 _rename_arg(op, grad_name, new_grad_var_name)
+        #                 main_block._insert_op(
+        #                     index=offset + 1,
+        #                     type='sum',
+        #                     inputs={'X': [grad_var, new_var]},
+        #                     outputs={'Out': grad_var},
+        #                     attrs={
+        #                         'op_role': core.op_proto_and_checker_maker.OpRole.Backward,
+        #                         'op_role_var': op_role_var
+        #                     })
+        #                 offset += 1
+        #             if 'cast_fp16' in grad_name:
+        #                 param_name = op_role_var[i]
+        #                 fp32_grad_var_name = param_name + "@GRAD"
+        #                 fp32_grad_var = main_block.vars[grad_name]
+        #                 cast_grad_var_name = paddle.fluid.unique_name.generate(
+        #                     fp32_grad_var_name)
+        #                 cast_var = _create_var(main_block, grad_var,
+        #                                             cast_grad_var_name)
+        #                 cast_var.persistable = False
+        #                 main_block._insert_op(
+        #                     index=offset + 1,
+        #                     type='cast',
+        #                     inputs={'X': fp32_grad_var},
+        #                     outputs={'Out': cast_var},
+        #                     attrs={
+        #                         'in_dtype': fp32_grad_var.dtype,
+        #                         'out_dtype': cast_var.dtype,
+        #                         'op_role': core.op_proto_and_checker_maker.OpRole.Backward,
+        #                         # self._op_role_var_key: op_role_var
+        #                     })
+        #                 offset += 1
+        #                 main_block._insert_op(
+        #                     index=offset + 1,
+        #                     type='sum',
+        #                     inputs={'X': [grad_var, cast_var]},
+        #                     outputs={'Out': grad_var},
+        #                     attrs={
+        #                         'op_role': core.op_proto_and_checker_maker.OpRole.Backward,
+        #                         'op_role_var': op_role_var})
+        main_block._sync_with_cpp()
+
+        with open("start_sharding_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(startup_block.program))
+        with open("main_sharding_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(main_block.program))
 
         # check op dependecy
         check_broadcast(main_block)
-        check_allreduce_sum(main_block, self._shard, self.dp_ring_id)
+        check_allreduce_sum(main_block, self._shard, self.sharding_ring_id,
+                            self.dp_ring_id)
+        #check_allreduce_sum(main_block, self._shard, self.dp_ring_id)
         self._wait()
         return optimize_ops, params_grads
 
@@ -134,11 +363,23 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._startup_program, self.current_endpoint,
             self.sharding_group_endpoints, self.sharding_rank,
             self.sharding_ring_id, True)
+
+        # inner & outer model parallelism
+        if self._as_outer_parallelism:
+            self._collective_helper._init_communicator(
+                self._startup_program, self.current_endpoint,
+                self.mp_group_endpoints, self.mp_rank, self.mp_group_id, True)
+
         # dp
         if self.hybrid_dp:
             self._collective_helper._init_communicator(
                 self._startup_program, self.current_endpoint,
                 self.dp_group_endpoints, self.dp_rank, self.dp_ring_id, True)
+        # pp
+        if self.use_pipeline:
+            self._collective_helper._init_communicator(
+                self._startup_program, self.current_endpoint,
+                self.pp_group_endpoints, self.pp_rank, self.pp_ring_id, True)
 
         startup_block = self._startup_program.global_block()
         startup_block._sync_with_cpp()
@@ -205,8 +446,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                     for i in range(0, len(op_role_var), 2):
                         param, reduced_grad = op_role_var[i], op_role_var[i + 1]
                         segment._allreduce_vars.append(reduced_grad)
-                        assert (
-                            reduced_grad not in self._reduced_grads_to_param)
+                        #assert (
+                        #    reduced_grad not in self._reduced_grads_to_param)
                         self._reduced_grads_to_param[reduced_grad] = param
 
             # find cast op
@@ -234,9 +475,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         """
         weightdecay_helper = WeightDecayHelper()
         weightdecay_helper.prune_weight_decay(block, self._shard)
+        # NOTE (JZ-LIANG) the sync of FoundInfinite should among one entire Model Parallelism
+        # group. and each Data Parallelism group should have its own sync of FoundInfinite
+        Model_Paramllelism_ring_id = self.sharding_ring_id
+        if self._as_outer_parallelism:
+            Model_Paramllelism_ring_id = self.mp_group_id
         FP16Utils.prune_fp16(block, self._shard, self._reduced_grads_to_param,
-                             self.sharding_ring_id)
-        gradientclip_helper = GradientClipHelper(self.sharding_ring_id)
+                             Model_Paramllelism_ring_id)
+        gradientclip_helper = GradientClipHelper(Model_Paramllelism_ring_id)
         gradientclip_helper.prune_gradient_clip(block, self._shard)
 
         # build prog deps
@@ -264,8 +510,13 @@ class ShardingOptimizer(MetaOptimizerBase):
         # Prune
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type in [
-                    "c_allreduce_sum", "c_sync_comm_stream",
-                    "c_calc_comm_stream", "c_gen_nccl_id", "c_comm_init, c_comm_init_hcom"
+                    "c_allreduce_sum",
+                    "c_sync_comm_stream",
+                    "c_calc_comm_stream",
+                    "c_gen_nccl_id",
+                    "c_comm_init",
+                    'send_v2',
+                    'recv_v2',
             ]:
                 pass
             elif op.type == "conditional_block":
@@ -302,6 +553,14 @@ class ShardingOptimizer(MetaOptimizerBase):
                 if program_deps.should_remove_op(idx):
                     program_deps.remove_op(idx)
 
+        block._sync_with_cpp()
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if op.type == 'concat' and is_optimizer_op(op):
+                # remove inputs that not on this card
+                reserved_x = []
+                for var_name in op.desc.input("X"):
+                    if block.has_var(var_name): reserved_x.append(var_name)
+                op.desc.set_input('X', reserved_x)
         block._sync_with_cpp()
         return
 
@@ -459,6 +718,7 @@ class ShardingOptimizer(MetaOptimizerBase):
     def _init_comm(self):
 
         if self.hybrid_dp:
+            assert self._as_outer_parallelism == False, "hybrid dp is conflict when using sharding as outer parallelism"
             self.sharding_group_size = self.user_defined_strategy.sharding_configs[
                 "sharding_group_size"]
             self.sharding_ring_id = 0
@@ -485,13 +745,109 @@ class ShardingOptimizer(MetaOptimizerBase):
                 self.global_word_size,
                 self.sharding_group_size,
                 self.dp_group_size)
+            self.pp_ring_id = -1
+            self.pp_rank = -1
+            self.pp_group_size = None
+            self.pp_group_endpoints = None
+
+            # sharding parallelism is the only model parallelism in the current setting
+            self.mp_group_id = self.sharding_ring_id
+            self.mp_rank = self.sharding_rank
+            self.mp_group_size = self.sharding_group_size
+            self.mp_group_endpoints = self.sharding_group_endpoints[:]
 
             logging.info("Using Sharing&DP mode !")
         else:
-            self.sharding_ring_id = 0
-            self.sharding_rank = self.global_rank
-            self.sharding_group_size = self.role_maker._worker_num()
-            self.sharding_group_endpoints = self.endpoints
+            if self._as_outer_parallelism:
+                self.sharding_ring_id = 1
+                assert self.global_word_size > self._inner_parallelism_size, \
+                    "global_word_size: {} should be larger than inner_parallelism_size: {}".format(self.global_word_size, self._inner_parallelism_size)
+                assert self.global_word_size % self._inner_parallelism_size == 0, \
+                    "global_word_size: {} should be divisible to the inner_parallelism_size: {}".format(self.global_word_size, self._inner_parallelism_size)
+                self.sharding_rank = self.global_rank // self._inner_parallelism_size
+                self.sharding_group_size = self.role_maker._worker_num(
+                ) // self._inner_parallelism_size
+                _offset = self.global_rank % self._inner_parallelism_size
+                self.sharding_group_endpoints = [
+                    ep for idx, ep in enumerate(self.endpoints)
+                    if idx % self._inner_parallelism_size == _offset
+                ]
+
+                # the current entire model parallelism group is the combination of innert & sharding parallelism
+                self.mp_group_id = 2
+                self.mp_rank = self.global_rank
+                self.mp_group_size = self.role_maker._worker_num()
+                self.mp_group_endpoints = self.endpoints[:]
+                logging.info("Using Sharing as Outer parallelism mode !")
+
+                # print(
+                #     "init the nccl comm for megatron paramllelism, this should be done in Megatron Metaoptimizer"
+                # )
+                # partition_idx = self.global_rank // self._inner_parallelism_size
+                # magetron_endpoints = self.endpoints[
+                #     partition_idx * self._inner_parallelism_size:partition_idx *
+                #     self._inner_parallelism_size + self._inner_parallelism_size]
+                # magetron_rank = self.global_rank % self._inner_parallelism_size
+
+                # self._collective_helper._init_communicator(
+                #     program=self._startup_program,
+                #     current_endpoint=self.current_endpoint,
+                #     endpoints=magetron_endpoints,
+                #     rank=magetron_rank,
+                #     ring_id=0,
+                #     wait_port=True)
+                # logging.info("megatron group size: {}".format(
+                #     self._inner_parallelism_size))
+                # logging.info("megatron rank: {}".format(magetron_rank))
+                # logging.info("megatron endpoints: {}".format(
+                #     magetron_endpoints))
+            if self.use_pipeline:
+                self.sharding_ring_id = 0
+                self.sharding_group_size = self.user_defined_strategy.sharding_configs[
+                    'sharding_group_size']
+                self.sharding_rank = self.global_rank % self.sharding_group_size
+                assert self.sharding_group_size * self.pipeline_nodes == self.role_maker._worker_num(
+                )
+                self.pp_ring_id = 1
+                self.pp_rank = self.global_rank // self.sharding_group_size
+                self.sharding_group_endpoints = [
+                    ep for idx, ep in enumerate(self.endpoints)
+                    if (idx // self.sharding_group_size) == self.pp_rank
+                ]
+                self.pp_group_size = self.pipeline_nodes
+                self.pp_group_endpoints = [
+                    ep for idx, ep in enumerate(self.endpoints)
+                    if (idx % self.sharding_group_size) == self.sharding_rank
+                ]
+                self.dp_ring_id = -1
+                self.dp_rank = -1
+                self.dp_group_size = None
+                self.dp_group_endpoints = None
+
+                logging.info("Using Sharing with pipeline !")
+            else:
+                self.sharding_ring_id = 0
+                self.sharding_rank = self.global_rank
+                self.sharding_group_size = self.role_maker._worker_num()
+                self.sharding_group_endpoints = self.endpoints
+
+                # sharding parallelism is the only model parallelism in the current setting
+                self.mp_group_id = self.sharding_ring_id
+                self.mp_rank = self.sharding_rank
+                self.mp_group_size = self.sharding_group_size
+                self.mp_group_endpoints = self.sharding_group_endpoints[:]
+
+                logging.info("Using Sharing alone mode !")
+
+            self.dp_ring_id = -1
+            self.dp_rank = -1
+            self.dp_group_size = None
+            self.dp_group_endpoints = None
+
+            self.pp_ring_id = -1
+            self.pp_rank = -1
+            self.pp_group_size = None
+            self.pp_group_endpoints = None
             self.dp_ring_id = -1
             self.dp_rank = -1
             self.dp_group_size = None
@@ -503,12 +859,42 @@ class ShardingOptimizer(MetaOptimizerBase):
         logging.info("global rank: {}".format(self.global_rank))
         logging.info("sharding group_size: {}".format(self.sharding_group_size))
         logging.info("sharding rank: {}".format(self.sharding_rank))
+        logging.info("current model parallelism group_size: {}".format(
+            self.mp_group_size))
+        logging.info("current model parallelism rank: {}".format(self.mp_rank))
         logging.info("dp group size: {}".format(self.dp_group_size))
         logging.info("dp rank: {}".format(self.dp_rank))
         logging.info("current endpoint: {}".format(self.current_endpoint))
+        logging.info("global word endpoints: {}".format(self.endpoints))
         logging.info("sharding group endpoints: {}".format(
             self.sharding_group_endpoints))
+        logging.info("current model parallelism group endpoints: {}".format(
+            self.mp_group_endpoints))
         logging.info("dp group endpoints: {}".format(self.dp_group_endpoints))
-        logging.info("global word endpoints: {}".format(self.endpoints))
 
         return
+
+    def _initialization_broadcast(self, startup_prog):
+        """
+        this funtion is to ensure the initialization between dp group to be 
+        identical when hybrid-dp is used.
+        """
+        block = startup_prog.global_block()
+        params = []
+        for param in block.iter_parameters():
+            params.append(param)
+            block.append_op(
+                type='c_broadcast',
+                inputs={'X': param},
+                outputs={'Out': param},
+                attrs={
+                    'ring_id': self.dp_ring_id,
+                    'root': 0,
+                    OP_ROLE_KEY: OpRole.Forward
+                })
+        block.append_op(
+            type='c_sync_comm_stream',
+            inputs={'X': params},
+            outputs={'Out': params},
+            attrs={'ring_id': self.dp_ring_id,
+                   OP_ROLE_KEY: OpRole.Forward})
