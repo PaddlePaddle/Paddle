@@ -1865,7 +1865,7 @@ class Variable(object):
         axes = []
         starts = []
         ends = []
-        max_integer = sys.maxsize
+        max_integer = sys.maxsize / 2
         for dim, slice_item in enumerate(item):
             if isinstance(slice_item, slice):
                 start = slice_item.start

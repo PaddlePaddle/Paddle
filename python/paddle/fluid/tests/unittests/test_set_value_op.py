@@ -168,7 +168,7 @@ create_test_value_fp32(TestSetValueItemSlice4)
 def create_test_value_fp64(parent):
     class TestValueInt(parent):
         def set_value(self):
-            self.value = 2.0**127  # float32:[-2^128, 2^128)
+            self.value = 2.0**129  # float32:[-2^128, 2^128), here set 2.0**129 to verify the accuracy
 
         def set_dtype(self):
             self.dtype = "float64"
@@ -269,7 +269,7 @@ create_test_value_numpy_fp32(TestSetValueItemSlice4)
 def create_test_value_numpy_fp64(parent):
     class TestValueInt(parent):
         def set_value(self):
-            self.value = np.array([2**127]).astype("float64")
+            self.value = np.array([2**128]).astype("float64")
 
         def set_dtype(self):
             self.dtype = "float64"
