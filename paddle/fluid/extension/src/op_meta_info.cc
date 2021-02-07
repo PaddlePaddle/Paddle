@@ -101,3 +101,11 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetBackwardOp(
 }
 
 }  // namespace paddle
+
+extern "C" {
+
+paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
+  return paddle::OpMetaInfoMap::Instance();
+}
+
+}  // end extern "C"

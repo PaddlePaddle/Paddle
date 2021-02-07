@@ -294,3 +294,14 @@ class OpMetaInfoBuilder {
       ::paddle::OpMetaInfoBuilder(op_name)
 
 }  // namespace paddle
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// C-API to get global OpMetaInfoMap.
+paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap();
+
+#ifdef __cplusplus
+}
+#endif
