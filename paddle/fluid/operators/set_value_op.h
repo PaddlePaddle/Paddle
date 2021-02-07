@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/assign_value_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -167,6 +168,12 @@ class SetValueKernel : public framework::OpKernel<T> {
     auto* value_tensor = ctx.Input<framework::LoDTensor>("ValueTensor");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
 
+    auto starts_tensor_list =
+        ctx.MultiInput<framework::Tensor>("StartsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<framework::Tensor>("EndsTensorList");
+    auto steps_tensor_list =
+        ctx.MultiInput<framework::Tensor>("StepsTensorList");
+
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
     auto axes = ctx.Attr<std::vector<int64_t>>("axes");
@@ -174,6 +181,16 @@ class SetValueKernel : public framework::OpKernel<T> {
     auto ends = ctx.Attr<std::vector<int64_t>>("ends");
     auto steps = ctx.Attr<std::vector<int64_t>>("steps");
     auto shape = ctx.Attr<std::vector<int64_t>>("shape");
+
+    if (!starts_tensor_list.empty()) {
+      starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
+    }
+    if (!ends_tensor_list.empty()) {
+      ends = GetDataFromTensorList<int64_t>(ends_tensor_list);
+    }
+    if (!steps_tensor_list.empty()) {
+      steps = GetDataFromTensorList<int64_t>(steps_tensor_list);
+    }
 
     auto in_dims = in->dims();
     CheckAndUpdateSlice(in_dims, axes, &starts, &ends, &steps);

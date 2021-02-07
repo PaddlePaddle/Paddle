@@ -1878,7 +1878,12 @@ class Variable(object):
             #   var[0, ..., 1:2] -> var[0, :, :, 1:2]
 
             item = list(item)
-            ell_count = item.count(Ellipsis)
+
+            # Remove Variable to skip bug when counting Ellipsis
+            item_remove_var = [
+                ele for ele in item if not isinstance(ele, Variable)
+            ]
+            ell_count = item_remove_var.count(Ellipsis)
             if ell_count == 0:
                 return item
             elif ell_count > 1:
@@ -1909,10 +1914,18 @@ class Variable(object):
                 step = 1 if step is None else step
 
                 # TODO: support cases when step < 1
-                if step == 0:
+                if not isinstance(step, Variable) and step == 0:
                     raise ValueError(
                         "When assign a value to a paddle.Tensor, step can not be 0, "
                         "but received step is {}.".format(step))
+
+                if isinstance(step, Variable) and (start is None or
+                                                   end is None):
+                    raise ValueError(
+                        "When assign a value to a paddle.Tensor, it's not supported that "
+                        "the start or end is None when the type of step is paddle.Tensor."
+                    )
+
                 if start is None:
                     start = 0 if step > 0 else max_integer
 
@@ -1928,6 +1941,17 @@ class Variable(object):
             steps.append(step)
 
         attrs = {'axes': axes, 'starts': starts, 'ends': ends, 'steps': steps}
+
+        from . import utils
+        if utils._contain_var(starts):
+            inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
+            del attrs['starts']
+        if utils._contain_var(ends):
+            inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
+            del attrs['ends']
+        if utils._contain_var(steps):
+            inputs['StepsTensorList'] = utils._convert_to_tensor_list(steps)
+            del attrs['steps']
 
         # 2. Parse value
         dtype = self.dtype
@@ -1974,6 +1998,7 @@ class Variable(object):
 
         self.block.append_op(
             type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
+
         return self
 
 

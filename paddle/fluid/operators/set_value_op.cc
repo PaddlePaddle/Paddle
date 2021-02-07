@@ -60,18 +60,55 @@ class SetValue : public framework::OperatorWithKernel {
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
+        var_name == "StepsTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class SetValueMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    // Input
     AddInput("Input", "(Tensor) Input tensor of set_value operator.");
     AddInput("ValueTensor", "(Tensor) Value tensor of set_value operator.")
         .AsDispensable();
+    AddInput("StartsTensorList",
+             "(vector<Tensor<int32>>, optional) If provided, set_value will "
+             "use this."
+             "The shape of the tensor in vector must be [1]."
+             "It has higher priority compare with attr(starts).")
+        .AsDuplicable()
+        .AsDispensable();
+    AddInput("EndsTensorList",
+             "(vector<Tensor<int32>>, optional) If provided, set_value will "
+             "use this."
+             "The shape of the tensor in vector must BE [1]."
+             "It has higher priority compare with attr(ends).")
+        .AsDuplicable()
+        .AsDispensable();
+
+    AddInput("StepsTensorList",
+             "(vector<Tensor<int32>>, optional) If provided, set_value will "
+             "use this."
+             "The shape of the tensor in vector must BE [1]."
+             "It has higher priority compare with attr(steps).")
+        .AsDuplicable()
+        .AsDispensable();
+
+    // Output
     AddOutput("Out",
               "(Tensor) Output tensor of set_value operator. The output is the "
               "same Tensor as input");
 
+    // Attr
     AddAttr<int>("dtype", "data type of input.")
         .InEnum(
             {framework::proto::VarType::BOOL, framework::proto::VarType::INT32,
@@ -82,12 +119,15 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
         "axes", "(list<int64_t>) Axes that `starts` and `ends` apply to.");
     AddAttr<std::vector<int64_t>>(
         "starts",
-        "(list<int64_t>) Starting indices of corresponding axis in `axes`");
+        "(list<int64_t>) Starting indices of corresponding axis in `axes`")
+        .SetDefault({});
     AddAttr<std::vector<int64_t>>(
         "ends",
-        "(list<int64_t>) Ending indices of corresponding axis in `axes`.");
+        "(list<int64_t>) Ending indices of corresponding axis in `axes`.")
+        .SetDefault({});
     AddAttr<std::vector<int64_t>>(
-        "steps", "(list<int64_t>) Stride step from the start to the end.");
+        "steps", "(list<int64_t>) Stride step from the start to the end.")
+        .SetDefault({});
 
     AddAttr<std::vector<int>>("bool_values", "store the bool values")
         .SetDefault({});
