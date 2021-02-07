@@ -13,3 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#include <string>
+#include <vector>
+
+#include "paddle/fluid/extension/include/op_meta_info.h"
+
+namespace paddle {
+
+class OpMetaInfoHelper {
+ public:
+  static const std::string& GetOpName(const OpMetaInfo& info);
+  static const std::vector<std::string>& GetInputs(const OpMetaInfo& info);
+  static const std::vector<std::string>& GetOutputs(const OpMetaInfo& info);
+  static const std::vector<std::string>& GetAttrs(const OpMetaInfo& info);
+  static const KernelFunc& GetKernelFn(const OpMetaInfo& info);
+  static const InferShapeFunc& GetInferShapeFn(const OpMetaInfo& info);
+  static const InferDtypeFunc& GetInferDtypeFn(const OpMetaInfo& info);
+};
+
+}  // namespace paddle

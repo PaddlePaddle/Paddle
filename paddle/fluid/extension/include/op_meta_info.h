@@ -226,17 +226,9 @@ class OpMetaInfo {
   OpMetaInfo& SetInferShapeFn(InferShapeFunc&& func);
   OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func);
 
-  // Maybe need private
- public:
-  const std::string& GetOpName() const;
-  const std::vector<std::string>& GetInputs() const;
-  const std::vector<std::string>& GetOutputs() const;
-  const std::vector<std::string>& GetAttrs() const;
-  const KernelFunc& GetKernelFn() const;
-  const InferShapeFunc& GetInferShapeFn() const;
-  const InferDtypeFunc& GetInferDtypeFn() const;
-
  private:
+  friend class OpMetaInfoHelper;
+
   // 1. desc info
   std::string name_;
   std::vector<std::string> inputs_;

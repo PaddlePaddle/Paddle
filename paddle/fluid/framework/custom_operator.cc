@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/c/c_api.h"
 #include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -383,13 +384,14 @@ void RegisterOperatorWithMetaInfo(
 
   auto& base_op_meta = op_meta_infos.front();
 
-  auto op_name = base_op_meta.GetOpName();
-  auto& op_inputs = base_op_meta.GetInputs();
-  auto& op_outputs = base_op_meta.GetOutputs();
-  auto& op_attrs = base_op_meta.GetAttrs();
-  auto& kernel_fn = base_op_meta.GetKernelFn();
-  auto& infer_shape_func = base_op_meta.GetInferShapeFn();
-  auto& infer_dtype_func = base_op_meta.GetInferDtypeFn();
+  auto op_name = OpMetaInfoHelper::GetOpName(base_op_meta);
+  auto& op_inputs = OpMetaInfoHelper::GetInputs(base_op_meta);
+  auto& op_outputs = OpMetaInfoHelper::GetOutputs(base_op_meta);
+  auto& op_attrs = OpMetaInfoHelper::GetAttrs(base_op_meta);
+  auto& kernel_fn = OpMetaInfoHelper::GetKernelFn(base_op_meta);
+  auto& infer_shape_func = OpMetaInfoHelper::GetInferShapeFn(base_op_meta);
+  auto& infer_dtype_func = OpMetaInfoHelper::GetInferDtypeFn(base_op_meta);
+
   VLOG(1) << "Custom Operator: forward, op name: " << op_name;
   VLOG(1) << "Custom Operator: forward, op inputs: "
           << string::join_strings(op_inputs, ',');
@@ -466,10 +468,11 @@ void RegisterOperatorWithMetaInfo(
   for (size_t i = 1; i < op_meta_infos.size(); ++i) {
     auto& cur_grad_op = op_meta_infos[i];
 
-    auto& grad_op_name = cur_grad_op.GetOpName();
-    auto& grad_op_inputs = cur_grad_op.GetInputs();
-    auto& grad_op_outputs = cur_grad_op.GetOutputs();
-    auto& grad_kernel_fn = cur_grad_op.GetKernelFn();
+    auto& grad_op_name = OpMetaInfoHelper::GetOpName(cur_grad_op);
+    auto& grad_op_inputs = OpMetaInfoHelper::GetInputs(cur_grad_op);
+    auto& grad_op_outputs = OpMetaInfoHelper::GetOutputs(cur_grad_op);
+    auto& grad_kernel_fn = OpMetaInfoHelper::GetKernelFn(cur_grad_op);
+
     VLOG(1) << "Custom Operator: backward, op name: " << grad_op_name;
     VLOG(1) << "Custom Operator: backward, op inputs: "
             << string::join_strings(grad_op_inputs, ',');

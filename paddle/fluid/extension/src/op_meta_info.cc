@@ -18,6 +18,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/op_meta_info_helper.h"
+
 namespace paddle {
 
 ////////////////////// Op Meta Info //////////////////////
@@ -43,28 +45,36 @@ OpMetaInfo& OpMetaInfo::SetInferDtypeFn(InferDtypeFunc&& func) {
   return *this;
 }
 
-const std::string& OpMetaInfo::GetOpName() const { return name_; }
-const std::vector<std::string>& OpMetaInfo::GetInputs() const {
-  return inputs_;
+////////////////////// Op Meta Info Helper //////////////////////
+
+const std::string& OpMetaInfoHelper::GetOpName(const OpMetaInfo& info) {
+  return info.name_;
 }
-const std::vector<std::string>& OpMetaInfo::GetOutputs() const {
-  return outputs_;
+const std::vector<std::string>& OpMetaInfoHelper::GetInputs(
+    const OpMetaInfo& info) {
+  return info.inputs_;
 }
-const std::vector<std::string>& OpMetaInfo::GetAttrs() const { return attrs_; }
-const KernelFunc& OpMetaInfo::GetKernelFn() const { return kernel_fn_; }
-const InferShapeFunc& OpMetaInfo::GetInferShapeFn() const {
-  return infer_shape_fn_;
+const std::vector<std::string>& OpMetaInfoHelper::GetOutputs(
+    const OpMetaInfo& info) {
+  return info.outputs_;
 }
-const InferDtypeFunc& OpMetaInfo::GetInferDtypeFn() const {
-  return infer_dtype_fn_;
+const std::vector<std::string>& OpMetaInfoHelper::GetAttrs(
+    const OpMetaInfo& info) {
+  return info.attrs_;
+}
+const KernelFunc& OpMetaInfoHelper::GetKernelFn(const OpMetaInfo& info) {
+  return info.kernel_fn_;
+}
+const InferShapeFunc& OpMetaInfoHelper::GetInferShapeFn(
+    const OpMetaInfo& info) {
+  return info.infer_shape_fn_;
+}
+const InferDtypeFunc& OpMetaInfoHelper::GetInferDtypeFn(
+    const OpMetaInfo& info) {
+  return info.infer_dtype_fn_;
 }
 
 //////////////// Op Meta Info Map /////////////////
-
-// OpMetaInfoMap& OpMetaInfoMap::Instance() {
-//   static OpMetaInfoMap g_custom_op_meta_info_map;
-//   return g_custom_op_meta_info_map;
-// }
 
 std::vector<OpMetaInfo>& OpMetaInfoMap::operator[](const std::string& name) {
   return map_[name];
