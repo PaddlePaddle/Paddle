@@ -119,6 +119,15 @@ class StreamGarbageCollector : public GarbageCollector {
   cudaStream_t stream_;
   std::unique_ptr<platform::StreamCallbackManager> callback_manager_;
 };
+
+class CUDAPinnedGarbageCollector : public GarbageCollector {
+ public:
+  CUDAPinnedGarbageCollector(const platform::CUDAPinnedPlace &place,
+                             size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
 #endif
 
 template <typename Container>

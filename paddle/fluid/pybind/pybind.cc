@@ -65,6 +65,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_ASCEND
+#include "paddle/fluid/pybind/ascend_wrapper_py.h"
+#endif
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -107,7 +110,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/crypto.h"
 #endif
 
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
@@ -152,6 +155,17 @@ bool SupportsBfloat16() {
   return false;
 #else
   if (platform::MayIUse(platform::cpu_isa_t::avx512_core))
+    return true;
+  else
+    return false;
+#endif
+}
+
+bool SupportsBfloat16FastPerformance() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_bf16))
     return true;
   else
     return false;
@@ -1727,6 +1741,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("supports_bfloat16", SupportsBfloat16);
+  m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
@@ -1948,6 +1963,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
+  m.def("nvprof_nvtx_push", platform::CudaNvtxRangePush);
+  m.def("nvprof_nvtx_pop", platform::CudaNvtxRangePop);
+  m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
+  m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
 #endif
 
@@ -1988,6 +2007,8 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUDA
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
   m.def("get_cublas_switch", platform::AllowTF32Cublas);
+  m.def("set_cudnn_switch", platform::SetAllowTF32Cudnn);
+  m.def("get_cudnn_switch", platform::AllowTF32Cudnn);
 #endif  // PADDLE_WITH_CUDA
 
   using VarQuantScale =
@@ -2835,11 +2856,15 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
+#ifdef PADDLE_WITH_ASCEND
+  BindAscendWrapper(&m);
+  BindAscendGraph(&m);
+#endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
 #endif
 
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
   BindDistFleetWrapper(&m);
   BindPSHost(&m);
   BindCommunicatorContext(&m);

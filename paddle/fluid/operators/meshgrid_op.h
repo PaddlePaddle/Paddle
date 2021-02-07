@@ -50,16 +50,6 @@
 namespace paddle {
 namespace operators {
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-
 template <typename DeviceContext, typename T>
 class MeshgridKernel : public framework::OpKernel<T> {
  public:
@@ -120,9 +110,9 @@ class MeshgridKernel : public framework::OpKernel<T> {
       bcast_dims[i] = 1;
 
       outs[i]->Resize(out_dims);
-      auto x = EigenTensor<T, Rank>::From(reshape_ins_tensor);
+      auto x = framework::EigenTensor<T, Rank>::From(reshape_ins_tensor);
       outs[i]->mutable_data<T>(context.GetPlace());
-      auto y = EigenTensor<T, Rank>::From(*outs[i]);
+      auto y = framework::EigenTensor<T, Rank>::From(*outs[i]);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
       y.device(place) = x.broadcast(bcast_dims);
@@ -159,8 +149,8 @@ class MeshgridGradKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < n; i++) {
       outs[i]->mutable_data<T>(context.GetPlace());
-      auto out_grad_tmp = EigenVector<T>::Flatten(*out_grad[i]);
-      auto in_grad = EigenVector<T>::Flatten(*outs[i]);
+      auto out_grad_tmp = framework::EigenVector<T>::Flatten(*out_grad[i]);
+      auto in_grad = framework::EigenVector<T>::Flatten(*outs[i]);
 
       std::vector<int> reduce_dims_vec;
       std::vector<int> reshape_dims_vec;

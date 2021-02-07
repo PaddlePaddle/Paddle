@@ -20,8 +20,11 @@
 #include <memory>
 #include <string>
 #include <utility>
-
 #include "paddle/fluid/distributed/table/accessor.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -35,6 +38,10 @@ class Table {
 
   virtual int32_t pull_dense(float *values, size_t num) = 0;
   virtual int32_t push_dense(const float *values, size_t num) = 0;
+  // for push global_step
+  virtual int32_t push_dense(const int64_t *values, const int32_t trainer_id) {
+    return 0;
+  }
   virtual int32_t push_dense_param(const float *values, size_t num) {
     return 0;
   }
@@ -64,6 +71,18 @@ class Table {
   // only for barrier table
   virtual int32_t set_table_map(
       std::unordered_map<uint32_t, std::shared_ptr<Table>> *table_map) {
+    return 0;
+  }
+
+  // only for tensor table
+  virtual int32_t set_program_env(
+      framework::Scope *scope, platform::Place place,
+      const std::vector<framework::ProgramDesc> *sub_program) {
+    return 0;
+  }
+
+  virtual int32_t set_global_lr(float *lr) {
+    _global_lr = lr;
     return 0;
   }
 
@@ -105,9 +124,10 @@ class Table {
   size_t _shard_idx;  // table 分片编号
   size_t _shard_num;  // table 分片总数
   TableParameter _config;
+  float *_global_lr = nullptr;
   std::shared_ptr<ValueAccessor> _value_accesor;
 };
-REGISTER_REGISTERER(Table);
+REGISTER_PSCORE_REGISTERER(Table);
 
 class TableManager {
  public:

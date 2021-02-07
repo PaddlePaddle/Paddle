@@ -33,6 +33,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
+namespace distributed {
+class HeterRequestHandler;
+class HeterServer;
+}  // namespace distributed
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 class Executor;
 class ProgramDesc;
@@ -46,8 +53,8 @@ class DeviceContext;
 namespace paddle {
 namespace operators {
 
-using MultiVarMsg = ::paddle::MultiVariableMessage;
-using VarMsg = ::paddle::VariableMessage;
+using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
+using VarMsg = ::paddle::distributed::VariableMessage;
 
 template <class TKey, class TValue>
 class DoubleFindMap : public std::unordered_map<TKey, TValue> {

@@ -13,19 +13,11 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/framework/data_set.h"
-#include <algorithm>
-#include <random>
-#include <unordered_map>
-#include <unordered_set>
-#include "google/protobuf/io/zero_copy_stream_impl.h"
-#include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
-#include "xxhash.h"  // NOLINT
 
 #if defined _WIN32 || defined __APPLE__
 #else

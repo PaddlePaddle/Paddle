@@ -1017,6 +1017,21 @@ struct MatmulWithInputOps : public PatternBase {
   PATTERN_DECL_NODE(matmul_out);
 };
 
+// Flatten2 + Matmul
+// Forward pass.
+struct Flatten2Matmul : public PatternBase {
+  Flatten2Matmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "flatten2_matmul") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(flatten2_in_x);
+  PATTERN_DECL_NODE(flatten2_op);
+  PATTERN_DECL_NODE(matmul_in_x);
+  PATTERN_DECL_NODE(matmul_in_y);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+};
+
 // Concat op
 // Forward pass for concat.
 // concat_out is a result of the operator.
@@ -1447,6 +1462,21 @@ struct DeleteQuantDequantOpPattern : public PatternBase {
   PATTERN_DECL_NODE(any_op2);
 };
 
+struct DeleteQuantDequantFilterOpPattern : public PatternBase {
+  DeleteQuantDequantFilterOpPattern(PDPattern* pattern,
+                                    const std::string& name_scope)
+      : PatternBase(pattern, name_scope,
+                    "delete_quantdequant_filter_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(quant_dequant_op_x);
+  PATTERN_DECL_NODE(quant_dequant_op);
+  PATTERN_DECL_NODE(quant_dequant_op_outscale);
+  PATTERN_DECL_NODE(quant_dequant_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
 // Reshape + Transpose + Matmul
 // named nodes:
 // reshape_op, reshape_out, reshape_xshape,
@@ -1566,6 +1596,41 @@ struct MultiGru : public PatternBase {
   PATTERN_DECL_NODE(wx);
   PATTERN_DECL_NODE(wh);
   PATTERN_DECL_NODE(h);
+};
+
+//
+// \brief   Pattern looking for subgraph representing layer normalization
+//          operation.
+//
+struct LayerNorm : public PatternBase {
+  LayerNorm(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "layer_norm") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(x_mean);
+  PATTERN_DECL_NODE(x_mean_out);
+  PATTERN_DECL_NODE(x_sub_mean);
+  PATTERN_DECL_NODE(x_sub_mean_out);
+  PATTERN_DECL_NODE(sqr_pow);
+  PATTERN_DECL_NODE(x_sub_mean_sqr);
+  PATTERN_DECL_NODE(x_sub_mean_sqr_out);
+  PATTERN_DECL_NODE(std_dev);
+  PATTERN_DECL_NODE(std_dev_out);
+  PATTERN_DECL_NODE(eps);
+  PATTERN_DECL_NODE(std_dev_eps);
+  PATTERN_DECL_NODE(std_dev_eps_out);
+  PATTERN_DECL_NODE(std_dev_eps_sqrt);
+  PATTERN_DECL_NODE(std_dev_eps_sqrt_out);
+  PATTERN_DECL_NODE(division);
+  PATTERN_DECL_NODE(division_out);
+  PATTERN_DECL_NODE(gamma);
+  PATTERN_DECL_NODE(scale);
+  PATTERN_DECL_NODE(scale_out);
+  PATTERN_DECL_NODE(beta);
+  PATTERN_DECL_NODE(shift);
+  PATTERN_DECL_NODE(shift_out);
 };
 
 }  // namespace patterns

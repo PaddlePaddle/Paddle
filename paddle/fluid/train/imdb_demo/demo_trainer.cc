@@ -80,7 +80,7 @@ bool IsPersistable(const paddle::framework::VarDesc* var) {
 }  // namespace paddle
 
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
   std::cerr << "filelist: " << FLAGS_filelist << std::endl;
   std::cerr << "data_proto_desc: " << FLAGS_data_proto_desc << std::endl;

@@ -17,6 +17,22 @@
 #include <string>
 
 namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 
 class SetValue : public framework::OperatorWithKernel {
@@ -78,6 +94,8 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("int32_values", "store the int32 values")
         .SetDefault({});
     AddAttr<std::vector<int64_t>>("int64_values", "store the int64 values")
+        .SetDefault({});
+    AddAttr<std::vector<double>>("fp64_values", "store the float64 values")
         .SetDefault({});
 
     AddAttr<std::vector<int64_t>>("shape", "(vector<int64_t>) Shape of values.")

@@ -47,7 +47,17 @@ struct PADDLE_ALIGN(2) bfloat16 {
   ~bfloat16() = default;
 
   HOSTDEVICE inline explicit bfloat16(float val) {
+#ifdef PADDLE_WITH_HIP
+    uint32_t res = 0;
+    uint32_t* tempRes;
+    // We should be using memcpy in order to respect the strict aliasing rule
+    // but it fails in the HIP environment.
+    tempRes = reinterpret_cast<uint32_t*>(&val);
+    res = *tempRes;
+    x = res >> 16;
+#else
     std::memcpy(&x, reinterpret_cast<char*>(&val) + 2, 2);
+#endif
   }
 
   template <class T>

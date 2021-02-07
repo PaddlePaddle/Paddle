@@ -12,21 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <unistd.h>
 #include <string>
-#include <thread>  // NOLINT
 
-#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/variable.h"
 
 #include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/printf.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -75,7 +72,7 @@ void RunMultiVarMsg(platform::Place place) {
   auto& ctx = *pool.Get(place);
   CreateVarsOnScope(&scope, &place, ctx);
 
-  ::paddle::MultiVariableMessage multi_msg;
+  ::paddle::distributed::MultiVariableMessage multi_msg;
   std::string message_name("se_de_test");
   std::vector<std::string> send_var_name = {"x1", "x2", "x3"};
   std::vector<std::string> recv_var_name = {};

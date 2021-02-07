@@ -14,10 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <string>
 #include <unordered_set>
+
+#include "gflags/gflags.h"
 
 namespace paddle {
 namespace framework {

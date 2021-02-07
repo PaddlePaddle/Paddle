@@ -13,12 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
-#include <vector>
-#include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
 
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/service/communicator.h"
 #endif
 
@@ -49,7 +47,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   VLOG(3) << "worker thread num: " << thread_num_;
   workers_.resize(thread_num_);
 
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
   if (trainer_desc.thread_barrier()) {
     paddle::distributed::Communicator::GetInstance()->BarrierTriggerReset(
         thread_num_);

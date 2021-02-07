@@ -12,17 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <deque>
 #include <functional>
-#include <memory>
-#include <mutex>  // NOLINT
-#include <utility>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 
 DECLARE_double(eager_delete_tensor_gb);
@@ -106,6 +100,15 @@ void StreamGarbageCollector::Wait() const { callback_manager_->Wait(); }
 void StreamGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
   callback_manager_->AddCallback(callback);
+}
+
+CUDAPinnedGarbageCollector::CUDAPinnedGarbageCollector(
+    const platform::CUDAPinnedPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void CUDAPinnedGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback();
 }
 #endif
 

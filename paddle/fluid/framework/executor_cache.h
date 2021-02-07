@@ -28,6 +28,11 @@
 namespace paddle {
 namespace framework {
 
+class ExecutionContext;
+class Executor;
+class ProgramDesc;
+struct ExecutorPrepareContext;
+
 class ExecutorInfoCache {
  public:
   /*

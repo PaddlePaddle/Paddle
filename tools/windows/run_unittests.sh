@@ -37,7 +37,17 @@ fi
 
 # /*==================Fixed Disabled Windows unittests==============================*/
 # TODO: fix these unittest that is bound to fail
-diable_wingpu_test="^test_analysis_predictor$|\
+diable_wingpu_test="^lite_mul_model_test$|\
+^test_analyzer_int8_resnet50$|\
+^test_gradient_clip$|\
+^test_translated_layer$|\
+^test_imperative_resnet$|\
+^test_imperative_resnet_sorted_gradient$|\
+^test_model$|\
+^test_decoupled_py_reader$|\
+^test_generator_dataloader$|\
+^test_multiprocess_dataloader_iterable_dataset_static$|\
+^test_py_reader_using_executor$|\
 ^test_parallel_executor_feed_persistable_var$|\
 ^test_parallel_executor_fetch_isolated_var$|\
 ^test_parallel_executor_inference_feed_partial_data$|\
@@ -51,34 +61,20 @@ diable_wingpu_test="^test_analysis_predictor$|\
 ^test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass$|\
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
-^test_model$|\
 ^test_add_reader_dependency$|\
 ^test_cholesky_op$|\
 ^test_dataloader_early_reset$|\
-^test_decoupled_py_reader$|\
 ^test_decoupled_py_reader_data_check$|\
-^test_eager_deletion_delete_vars$|\
-^test_eager_deletion_while_op$|\
 ^test_fleet_base_single$|\
-^test_fuse_elewise_add_act_pass$|\
 ^test_fuse_optimizer_pass$|\
-^test_generator_dataloader$|\
-^test_ir_memory_optimize_ifelse_op$|\
-^test_lr_scheduler$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
-^test_multiprocess_dataloader_iterable_dataset_static$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
-^test_parallel_executor_drop_scope$|\
-^test_parallel_executor_dry_run$|\
 ^test_partial_eager_deletion_transformer$|\
 ^test_rnn_nets$|\
-^test_prune$|\
 ^test_py_reader_combination$|\
 ^test_py_reader_pin_memory$|\
 ^test_py_reader_push_pop$|\
-^test_py_reader_using_executor$|\
 ^test_reader_reset$|\
-^test_update_loss_scaling_op$|\
 ^test_imperative_se_resnext$|\
 ^test_imperative_static_runner_while$|\
 ^test_fuse_bn_act_pass$|\
@@ -86,18 +82,7 @@ diable_wingpu_test="^test_analysis_predictor$|\
 ^test_gru_rnn_op$|\
 ^test_rnn_op$|\
 ^test_simple_rnn_op$|\
-^test_pass_builder$|\
 ^test_lstm_cudnn_op$|\
-^test_inplace_addto_strategy$|\
-^test_ir_inplace_pass$|\
-^test_ir_memory_optimize_pass$|\
-^test_memory_reuse_exclude_feed_var$|\
-^test_mix_precision_all_reduce_fuse$|\
-^test_parallel_executor_pg$|\
-^test_print_op$|\
-^test_py_func_op$|\
-^test_weight_decay$|\
-^test_conv2d_int8_mkldnn_op$|\
 ^test_crypto$|\
 ^test_program_prune_backward$|\
 ^test_imperative_ocr_attention_model$|\
@@ -221,4 +206,64 @@ long_time_test="^best_fit_allocator_test$|\
 export FLAGS_call_stack_level=2
 export FLAGS_fraction_of_gpu_memory_to_use=0.92
 export CUDA_VISIBLE_DEVICES=0
-ctest -E "$disable_ut_quickly|$diable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release --repeat until-pass:4 after-timeout:4
+
+UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
+echo "Windows 1 card TestCases count is $num"
+output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
+eight_parallel_job=$(echo $output | cut -d ";" -f 1)
+tetrad_parallel_jog=$(echo $output | cut -d ";" -f 2)
+non_parallel_job=$(echo $output | cut -d ";" -f 3)
+
+non_parallel_job_1=$(echo $non_parallel_job | cut -d "," -f 1)
+non_parallel_job_2=$(echo $non_parallel_job | cut -d "," -f 2)
+
+failed_test_lists=''
+tmp_dir=`mktemp -d`
+function collect_failed_tests() {
+    for file in `ls $tmp_dir`; do
+        grep -q 'The following tests FAILED:' $tmp_dir/$file
+        exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            failuretest=''
+        else
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            failed_test_lists="${failed_test_lists}
+            ${failuretest}"
+        fi
+    done
+}
+
+function run_unittest() {
+    test_case=$1
+    parallel_job=$2
+    if [ "$2" == "" ]; then
+        parallel_job=1
+    else
+        parallel_job=$2
+    fi
+    echo "************************************************************************"
+    echo "********These unittests run $parallel_job job each time with 1 GPU**********"
+    echo "************************************************************************"
+    export CUDA_VISIBLE_DEVICES=0
+    tmpfile=$tmp_dir/$RANDOM
+    (ctest -R "$test_case" -E "$disable_ut_quickly|$diable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job --repeat until-pass:4 after-timeout:4 | tee $tmpfile ) &
+    wait;
+}
+
+set +e
+run_unittest $eight_parallel_job 8
+run_unittest $tetrad_parallel_jog 4
+run_unittest $non_parallel_job_1
+run_unittest $non_parallel_job_2
+collect_failed_tests
+set -e
+rm -f $tmp_dir/*
+if [[ "$failed_test_lists" != "" ]]; then
+    echo "========================================"
+    echo "Summary Failed Tests... "
+    echo "========================================"
+    echo "The following tests FAILED: "
+    echo "${failed_test_lists}"
+    exit 8
+fi
