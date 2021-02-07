@@ -267,7 +267,7 @@ void* GetCUDNNDsoHandle() {
       "For instance, download cudnn-10.0-windows10-x64-v7.6.5.32.zip from "
       "NVIDIA's official website, \n"
       "then, unzip it and copy it into C:\\Program Files\\NVIDIA GPU Computing "
-      "Toolkit\\CUDA/v10.0\n"
+      "Toolkit\\CUDA\\v10.0\n"
       "You should do this according to your CUDA installation directory and "
       "CUDNN version.");
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, win_cudnn_lib, true,
