@@ -59,17 +59,11 @@ class Tensor {
 
   /// \brief Copy the host memory to tensor data.
   /// It's usually used to set the input tensor data.
-  /// \param data The pointer of the data, from which
+  /// \param PlaceType of target place, from which
   /// the tensor will copy.
-  template <typename T>
-  Tensor copy_to_gpu();
 
-  /// \brief Copy the tensor data to the host memory.
-  /// It's usually used to get the output tensor data.
-  /// \param[out] data The tensor will copy the data to
-  /// the address.
   template <typename T>
-  Tensor copy_to_cpu();
+  Tensor copy_to(const PlaceType& place);
 
   /// \brief Return the shape of the Tensor.
   std::vector<int> shape() const;
@@ -88,6 +82,9 @@ class Tensor {
   /// Use this method to get the place of tensor
   /// \return Place.
   const PlaceType& place() const;
+
+  /// \brief Cast datatype from one to another
+  Tensor cast(const DataType& target_type);
 
  private:
   friend class framework::CustomTensorUtils;
