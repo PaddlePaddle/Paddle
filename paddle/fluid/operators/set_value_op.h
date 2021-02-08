@@ -60,14 +60,16 @@ inline std::string GetValueName(framework::proto::VarType::Type data_type) {
 
 inline void CheckAndUpdateSlice(const framework::DDim in_dims,
                                 const std::vector<int64_t> axes,
-                                int64_t* starts, int64_t* ends,
-                                int64_t* steps) {
+                                std::vector<int64_t>* starts,
+                                std::vector<int64_t>* ends,
+                                std::vector<int64_t>* steps) {
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes[i];
     int64_t dim_value = in_dims[axis];
 
-    int64_t start = starts[i] < 0 ? (starts[i] + dim_value) : starts[i];
-    int64_t end = ends[i] < 0 ? (ends[i] + dim_value) : ends[i];
+    int64_t start =
+        (*starts)[i] < 0 ? ((*starts)[i] + dim_value) : (*starts)[i];
+    int64_t end = (*ends)[i] < 0 ? ((*ends)[i] + dim_value) : (*ends)[i];
     start = std::max(start, static_cast<int64_t>(0));
     end = std::min(end, dim_value);
 
@@ -76,9 +78,9 @@ inline void CheckAndUpdateSlice(const framework::DDim in_dims,
                                       "received end = %d, start = %d",
                                       end, start));
     // TODO(liym27): deal with steps is less than 1
-    starts[i] = start;
-    ends[i] = end;
-    steps[i] = steps[i];
+    (*starts)[i] = start;
+    (*ends)[i] = end;
+    (*steps)[i] = (*steps)[i];
   }
 }
 
@@ -151,8 +153,7 @@ class SetValueKernel : public framework::OpKernel<T> {
     auto* value_tensor = ctx.Input<framework::LoDTensor>("ValueTensor");
 
     auto in_dims = in->dims();
-    CheckAndUpdateSlice(in_dims, axes, starts.data(), ends.data(),
-                        steps.data());
+    CheckAndUpdateSlice(in_dims, axes, &starts, &ends, &steps);
     auto slice_dims = GetSliceDims(in_dims, axes, starts, ends, steps);
 
     auto place = ctx.GetPlace();
