@@ -307,7 +307,7 @@ function check_op_benchmark_result {
 function summary_problems {
   local op_name exit_code
   exit_code=0
-  if [ ${#BENCHMARK_OP_MAP[*]} -ne 0 ]
+  if [ ${#BENCHMARK_CC_OP_MAP[*]} -ne 0 -o ${#BENCHMARK_CU_OP_MAP[*]} -ne 0 ]
   then
     check_op_benchmark_result
     exit_code=$?
