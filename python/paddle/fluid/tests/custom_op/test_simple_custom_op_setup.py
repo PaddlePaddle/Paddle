@@ -59,6 +59,32 @@ def relu2_static(func, device, dtype, np_x, use_func=True):
     return out_v
 
 
+def relu2_static_pe(func, device, dtype, np_x, use_func=True):
+    paddle.enable_static()
+    paddle.set_device(device)
+
+    places = static.cpu_places() if device is 'cpu' else static.cuda_places()
+    with static.scope_guard(static.Scope()):
+        with static.program_guard(static.Program()):
+            x = static.data(name='X', shape=[None, 8], dtype=dtype)
+            x.stop_gradient = False
+            out = func(x) if use_func else paddle.nn.functional.relu(x)
+            static.append_backward(out)
+
+            exe = static.Executor()
+            exe.run(static.default_startup_program())
+
+            # in static mode, x data has been covered by out
+            compiled_prog = static.CompiledProgram(static.default_main_program(
+            )).with_data_parallel(
+                loss_name=out.name, places=places)
+            out_v = exe.run(compiled_prog,
+                            feed={'X': np_x},
+                            fetch_list=[out.name])
+
+    return out_v
+
+
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def setUp(self):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -92,6 +118,18 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 out = relu2_static(self.custom_op, device, dtype, x)
                 pd_out = relu2_static(self.custom_op, device, dtype, x, False)
+                self.assertTrue(
+                    np.array_equal(out, pd_out),
+                    "custom op out: {},\n paddle api out: {}".format(out,
+                                                                     pd_out))
+
+    def test_static_pe(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
+                out = relu2_static_pe(self.custom_op, device, dtype, x)
+                pd_out = relu2_static_pe(self.custom_op, device, dtype, x,
+                                         False)
                 self.assertTrue(
                     np.array_equal(out, pd_out),
                     "custom op out: {},\n paddle api out: {}".format(out,

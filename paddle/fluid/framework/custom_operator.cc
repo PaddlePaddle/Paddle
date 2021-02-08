@@ -135,7 +135,7 @@ proto::VarType::Type ConvertEnumDTypeToInnerDType(
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported data type code(%d) when casting enum data type into "
           "paddle data type.",
-          dtype));
+          static_cast<int>(dtype)));
   }
 }
 

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/extension.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -27,6 +28,7 @@ paddle::Tensor InitCPUTensorForTest() {
   }
   return t1;
 }
+
 template <typename T>
 void TestCopyTensor() {
   auto t1 = InitCPUTensorForTest<T>();
@@ -50,13 +52,15 @@ void TestCopyTensor() {
 
 void TestAPIPlace() {
   std::vector<int> tensor_shape = {5, 5};
+#ifdef PADDLE_WITH_CUDA
   auto t1 = paddle::Tensor(paddle::PlaceType::kGPU);
   t1.reshape(tensor_shape);
   t1.mutable_data<float>();
+  CHECK((paddle::PlaceType::kGPU == t1.place()));
+#endif
   auto t2 = paddle::Tensor(paddle::PlaceType::kCPU);
   t2.reshape(tensor_shape);
   t2.mutable_data<float>();
-  CHECK((paddle::PlaceType::kGPU == t1.place()));
   CHECK((paddle::PlaceType::kCPU == t2.place()));
 }
 
@@ -102,6 +106,7 @@ void GroupTestCopy() {
   VLOG(0) << "uint8 cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<u_int8_t>();
 }
+
 void GroupTestDtype() {
   CHECK(TestDtype<float>() == paddle::DataType::FLOAT32);
   CHECK(TestDtype<double>() == paddle::DataType::FLOAT64);

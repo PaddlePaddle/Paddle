@@ -55,15 +55,18 @@ T *Tensor::mutable_data() {
     case static_cast<int>(PlaceType::kCPU): {
       return tensor->mutable_data<T>(platform::CPUPlace());
     }
-    case static_cast<int>(PlaceType::kGPU): {
 #ifdef PADDLE_WITH_CUDA
+    case static_cast<int>(PlaceType::kGPU): {
       int device_num = platform::GetCurrentDeviceId();
+      VLOG(1) << "Custom Operator: mutable data cuda device id - "
+              << device_num;
       return tensor->mutable_data<T>(platform::CUDAPlace(device_num));
-#endif
     }
+#endif
     default:
       PADDLE_THROW(platform::errors::Unavailable(
-          "CustomOp unsupported place: %d", static_cast<int>(place_)));
+          "Custom operator unsupported place id(%d)",
+          static_cast<int>(place_)));
   }
 }
 
