@@ -44,11 +44,11 @@ class NPUStream final {
   template <typename Callback>
   void RecordEvent(aclrtEvent ev, Callback callback) const {
     callback();
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtReordEvent(ev, stream_));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(ev, stream_));
   }
 
   void RecordEvent(aclrtEvent ev) const {
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtReordEvent(ev, stream_));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(ev, stream_));
   }
 
   void WaitEvent(aclrtEvent ev) const {
@@ -58,13 +58,13 @@ class NPUStream final {
   void Wait() const;
   void WaitCallback() const { callback_manager_->Wait(); }
 
-  const aclrtStream& raw_stream() const { return stream_; }
+  aclrtStream raw_stream() const { return stream_; }
   void Destroy();
 
  private:
   Place place_;
   aclrtStream stream_{nullptr};
-  std::unique_ptr<StreamCallbackManager> callback_manager_;
+  std::unique_ptr<StreamCallbackManager<aclrtStream>> callback_manager_;
 
   DISABLE_COPY_AND_ASSIGN(NPUStream);
 };

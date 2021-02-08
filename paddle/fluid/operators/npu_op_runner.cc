@@ -67,8 +67,8 @@ aclFormat ConvertToNpuAttr(Attribute attr) {
   return iter->second;
 }
 
-NpuOpRunner::NpuOpRunner(string op_type) : op_type_(op_type) {}
-NpuOpRunner::NpuOpRunner(string op_type, const std::vector<Tensor> &inputs,
+NpuOpRunner::NpuOpRunner(std::string op_type) : op_type_(op_type) {}
+NpuOpRunner::NpuOpRunner(std::string op_type, const std::vector<Tensor> &inputs,
                          const std::vector<Tensor> &outputs,
                          const AttributeMap &attrs)
     : op_type_(op_type) {
@@ -77,7 +77,7 @@ NpuOpRunner::NpuOpRunner(string op_type, const std::vector<Tensor> &inputs,
   AddAttrs(attrs);
 }
 
-const string &NpuOpRunner::Type() { return op_type_; }
+const std::string &NpuOpRunner::Type() { return op_type_; }
 
 NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
                                   const Attribute &attr) {

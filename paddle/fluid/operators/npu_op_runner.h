@@ -31,14 +31,14 @@ using AttributeMap = framework::AttributeMap;
 
 class NpuOpRunner {
  public:
-  explicit NpuOpRunner(string op_type);
-  explicit NpuOpRunner(string op_type, const std::vector<Tensor> &inputs = {},
+  explicit NpuOpRunner(std::string op_type);
+  explicit NpuOpRunner(std::string op_type, const std::vector<Tensor> &inputs = {},
                        const std::vector<Tensor> &outputs = {},
                        const AttributeMap &attrs = {});
 
   virtual ~NpuOpRunner();
 
-  const string &Type();
+  const std::string &Type();
 
   NpuOpRunner &AddAttr(const std::string name, const Attribute &attr);
 

@@ -35,15 +35,15 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
     // TODO(zhiqiu): get the attr infomation of Ascend op and
     // convert paddle AttributeMap to Ascend attrs.
     // Ascend op add has no attribute ?
-    int axis = ctx.Attr<int>("axis");
+    // int axis = ctx.Attr<int>("axis");
 
     // NOTE(zhiqiu): the order of inputs and outputs is important
-    auto runner = NpuOpRunner("Add", {}, {}, {});
+    auto runner = NpuOpRunner("Add", {*x, *y}, {*out}, {});
 
-    auto& stream =
+    auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    runner.run(stream);
+    runner.Run(stream);
   }
 };
 

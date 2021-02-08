@@ -91,7 +91,7 @@ IF(WITH_GPU)
 ENDIF()
 
 IF(WITH_ASCEND_CL)
-    set(NPU_CTX_DEPS npu_stream)
+    set(NPU_CTX_DEPS npu_stream npu_info)
 ENDIF()
 
 IF(WITH_MKLDNN)
@@ -109,6 +109,8 @@ cc_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_t
 ENDIF()
 
 IF(WITH_GPU)
+  set(STREAM_CALLBACK_DEPS stream_callback_manager)
+ELSEIF(WITH_ASCEND_CL)
   set(STREAM_CALLBACK_DEPS stream_callback_manager)
 ELSE()
   set(STREAM_CALLBACK_DEPS)
