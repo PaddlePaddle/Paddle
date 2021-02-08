@@ -37,11 +37,11 @@ USE_OP(elementwise_add);
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = var->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
   tensor_x->Resize({10, 10});
 
   auto y = scope->Var("Y");
-  auto tensor_y = var->GetMutable<f::LoDTensor>();
+  auto tensor_y = y->GetMutable<f::LoDTensor>();
   tensor_y->Resize({10, 10});
 
   std::vector<float> init;
@@ -54,17 +54,17 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out_var->GetMutable<f::LoDTensor>();
-  out_tensor->Resize({10, 10});
-  out_tensor->mutable_data<float>(place);  // allocate
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  tensor_out->Resize({10, 10});
+  tensor_out->mutable_data<float>(place);  // allocate
 
   // run
   f::AttributeMap attrs;
-  auto elementwise_add_op =
+  auto op =
       f::OpRegistry::CreateOp("elementwise_add", {{"X", {"X"}}, {"Y", {"Y"}}},
                               {{"Out", {"Out"}}}, attrs);
 
-  dropout_op->Run(*scope, place);
+  op->Run(*scope, place);
 
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
@@ -77,6 +77,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
 TEST(Dropout, GPUDense) {
   f::Scope scope;
-  p::CUDADeviceContext ctx(p::NPUPlace(0));
-  Compare(scope, ctx);
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  Compare(&scope, ctx);
 }
