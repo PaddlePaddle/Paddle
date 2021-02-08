@@ -240,7 +240,7 @@ class VariableWrapper {
     inplace_version_snapshot_ = new_version;
   }
 
-  bool has_cache_key(const paddle::framework::OpKernelType& key) {
+  bool hasCacheKey(const paddle::framework::OpKernelType& key) {
     return var_cache.find(key) != var_cache.end();
   }
 
