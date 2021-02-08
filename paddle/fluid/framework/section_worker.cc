@@ -99,8 +99,8 @@ void SectionWorker::TrainFiles() {
       VLOG(3) << "Update: running op " << op->Type();
       op->Run(*microbatch_scopes_[num_microbatches_ - 1], place_);
       if (gc) {
-        DeleteUnusedTensors(*microbatch_scopes_[0], op.get(), unused_vars_,
-                            gc.get());
+        DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1],
+                            op.get(), unused_vars_, gc.get());
       }
     }
   }
