@@ -153,6 +153,7 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
   fea_keys->clear();
   fea_keys->resize(0);
   fea_keys->reserve(MAX_FEASIGN_NUM);
+  std::unordered_map<uint64_t, int> sign_to_cnts;
   for (auto name : var_names) {
     Variable* var = scope.FindVar(name);
     if (var == nullptr) {
@@ -167,6 +168,12 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
         continue;
       }
       fea_keys->push_back(static_cast<uint64_t>(ids[i]));
+      auto iter = sign_to_cnts.find(ids[i]);
+      if(iter != sign_to_cnts.end()) {
+        sign_to_cnts[ids[i]] += 1;
+      } else {
+        sign_to_cnts[ids[i]] = 1;
+      }
     }
   }
   fea_values->resize(fea_keys->size() + 1);
@@ -178,7 +185,7 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
     pull_result_ptr.push_back(t.data());
   }
   return pserver_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
+      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size(), sign_to_cnts);
 }
 
 void FleetWrapper::PullSparseVarsSync(
@@ -191,6 +198,7 @@ void FleetWrapper::PullSparseVarsSync(
   fea_keys->clear();
   fea_keys->resize(0);
   fea_keys->reserve(MAX_FEASIGN_NUM);
+  std::unordered_map<uint64_t, int> sign_to_cnts;
   for (size_t var_index = 0; var_index < var_names.size(); ++var_index) {
     const std::string& name = var_names[var_index];
     Variable* var = scope.FindVar(name);
@@ -214,6 +222,12 @@ void FleetWrapper::PullSparseVarsSync(
         continue;
       }
       fea_keys->push_back(static_cast<uint64_t>(ids[i]));
+      auto iter = sign_to_cnts.find(ids[i]);
+      if(iter != sign_to_cnts.end()) {
+        sign_to_cnts[ids[i]] += 1;
+      } else {
+        sign_to_cnts[ids[i]] = 1;
+      }
     }
   }
   fea_values->resize(fea_keys->size() + 1);
@@ -225,7 +239,7 @@ void FleetWrapper::PullSparseVarsSync(
     pull_result_ptr.push_back(t.data());
   }
   auto status = pserver_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
+      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size(), sign_to_cnts);
   pull_sparse_status.push_back(std::move(status));
   for (auto& t : pull_sparse_status) {
     t.wait();
@@ -252,6 +266,7 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
   float* output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
+  std::unordered_map<uint64_t, int> sign_to_cnts;
   for (size_t index = 0; index < inputs->size(); ++index) {
     const framework::LoDTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
@@ -273,13 +288,19 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
                sizeof(float) * fea_dim);
         continue;
       }
+      auto iter = sign_to_cnts.find(real_id);
+      if(iter != sign_to_cnts.end()) {
+        sign_to_cnts[real_id] += 1;
+      } else {
+        sign_to_cnts[real_id] = 1;
+      }
       fea_keys.push_back(real_id);
       pull_result_ptr.push_back(output_data + output_len);
     }
   }
   auto* communicator = Communicator::GetInstance();
   auto status = communicator->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size());
+      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size(), sign_to_cnts);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {

@@ -219,7 +219,7 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
     std::vector<std::vector<float>> kvalues;
     ProcessALine(values, meta, &kvalues);
 
-    auto value_instant = block->Init(id, false);
+    auto value_instant = block->Init(id);
     value_instant->initialize();
 
     if (values.size() == 5) {
@@ -270,7 +270,7 @@ int64_t LoadStatFromBin(const std::string& path, const int pserver_id,
 
       auto shard_id = id % local_shard_num;
       auto block = blocks.at(shard_id);
-      auto value_instant = block->Init(id, false);
+      auto value_instant = block->Init(id);
       value_instant->count_ = *(reinterpret_cast<int*>(ptr));
       ptr += sizeof(int);
       value_instant->unseen_days_ = *(reinterpret_cast<int*>(ptr));
@@ -356,9 +356,10 @@ int32_t CommonSparseTable::initialize_value() {
     std::vector<uint64_t> ids(bucket_feasigns);
     std::copy(feasigns.begin() + buckets[x], feasigns.begin() + buckets[x + 1],
               ids.begin());
+    std::vector<int> batch_cnts(bucket_feasigns, 0);
     std::vector<float> pulls;
     pulls.resize(bucket_feasigns * param_dim_);
-    pull_sparse(pulls.data(), ids.data(), bucket_feasigns);
+    pull_sparse(pulls.data(), ids.data(), bucket_feasigns, batch_cnts);
   }
 
   return 0;
@@ -506,7 +507,7 @@ int32_t CommonSparseTable::pour() {
 }
 
 int32_t CommonSparseTable::pull_sparse(float* pull_values, const uint64_t* keys,
-                                       size_t num) {
+                                       size_t num, std::vector<int>& batch_cnts) {
   rwlock_->RDLock();
 
   std::vector<std::vector<uint64_t>> offset_bucket;
@@ -521,14 +522,16 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values, const uint64_t* keys,
 
   for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
-        [this, shard_id, &keys, &offset_bucket, &pull_values]() -> int {
+        [this, shard_id, &keys, &batch_cnts, &offset_bucket, &pull_values]() -> int {
           auto& block = shard_values_[shard_id];
           auto& offsets = offset_bucket[shard_id];
 
           for (int i = 0; i < offsets.size(); ++i) {
             auto offset = offsets[i];
             auto id = keys[offset];
-            auto val = block->Init(id);
+            block->Init(id);
+            block->PullUpdate(id, batch_cnts[offset]);
+            auto val = block->GetValue(id);
             if(val->is_entry_) {
               std::copy_n(val->data_.data() + param_offset_, param_dim_,
                           pull_values + param_dim_ * offset);
@@ -627,7 +630,7 @@ int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
           for (int i = 0; i < offsets.size(); ++i) {
             auto offset = offsets[i];
             auto id = keys[offset];
-            auto val = block->Init(id, false);
+            auto val = block->Init(id);
             val->initialize();
             std::copy_n(values + param_dim_ * offset, param_dim_,
                         val->data_.data() + param_offset_);

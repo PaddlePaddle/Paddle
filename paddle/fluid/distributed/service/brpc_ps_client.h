@@ -150,7 +150,9 @@ class BrpcPsClient : public PSClient {
 
   virtual std::future<int32_t> pull_sparse(float **select_values,
                                            size_t table_id,
-                                           const uint64_t *keys, size_t num);
+                                           const uint64_t *keys,
+                                           size_t num,
+                                           std::unordered_map<uint64_t, int>& sign_to_cnts);
 
   virtual std::future<int32_t> print_table_stat(uint32_t table_id);
 

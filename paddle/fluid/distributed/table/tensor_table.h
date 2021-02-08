@@ -53,7 +53,7 @@ class TensorTable : public Table {
   int32_t push_dense(const float *values, size_t num) override { return 0; }
 
   int32_t pull_sparse(float *values, const uint64_t *keys,
-                      size_t num) override {
+                      size_t num, std::vector<int>& batch_cnts) override {
     return 0;
   }
   int32_t push_sparse(const uint64_t *keys, const float *values,
@@ -103,7 +103,7 @@ class DenseTensorTable : public TensorTable {
   virtual ~DenseTensorTable() {}
 
   int32_t pull_sparse(float *values, const uint64_t *keys,
-                      size_t num) override {
+                      size_t num, std::vector<int>& batch_cnts) override {
     return 0;
   }
   int32_t push_sparse(const uint64_t *keys, const float *values,
@@ -159,7 +159,7 @@ class GlobalStepTable : public DenseTensorTable {
   virtual ~GlobalStepTable() {}
 
   int32_t pull_sparse(float *values, const uint64_t *keys,
-                      size_t num) override {
+                      size_t num, std::vector<int>& batch_cnts) override {
     return 0;
   }
   int32_t push_sparse(const uint64_t *keys, const float *values,

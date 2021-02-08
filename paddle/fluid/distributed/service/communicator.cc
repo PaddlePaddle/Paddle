@@ -315,6 +315,11 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
   std::vector<uint64_t> sparse_push_keys(sparse_num);
   std::iota(sparse_push_keys.begin(), sparse_push_keys.end(), 0);
 
+  std::unordered_map<uint64_t, int> sign_to_cnts;
+  for(auto i = 0; i < sparse_num; ++i) {
+    sign_to_cnts[sparse_push_keys[i]] = 0;
+  }
+
   std::vector<float *> push_g_vec;
   for (auto i = 0; i < static_cast<int>(sparse_push_keys.size()); ++i) {
     push_g_vec.push_back(tensor->data<float>() + i * dim);
@@ -322,7 +327,7 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
 
   auto status = _worker_ptr->pull_sparse(
       (float **)push_g_vec.data(), table_id,  // NOLINT
-      sparse_push_keys.data(), sparse_push_keys.size());
+      sparse_push_keys.data(), sparse_push_keys.size(), sign_to_cnts);
   status.wait();
   return;
 }

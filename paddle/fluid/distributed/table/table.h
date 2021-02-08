@@ -47,7 +47,7 @@ class Table {
   }
 
   virtual int32_t pull_sparse(float *values, const uint64_t *keys,
-                              size_t num) = 0;
+                              size_t num, std::vector<int>& batch_cnts) = 0;
   virtual int32_t push_sparse(const uint64_t *keys, const float *values,
                               size_t num) = 0;
   virtual int32_t push_sparse_param(const uint64_t *keys, const float *values,

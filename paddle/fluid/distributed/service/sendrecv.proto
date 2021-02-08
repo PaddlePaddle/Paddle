@@ -55,7 +55,8 @@ message PsRequestMessage {
   optional uint32 table_id = 2;
   repeated bytes params = 3;
   optional int32 client_id = 4;
-  optional bytes data = 5;
+  repeated uint32 batch_cnts = 5;
+  optional bytes data = 6;
 };
 
 message PsResponseMessage {

@@ -357,6 +357,14 @@ int32_t BrpcPsService::pull_sparse(Table *table,
   push_sparse_request_buffer.reserve(req_buffer_size);
   const char *data = (const char *)cntl->request_attachment().fetch(
       const_cast<char *>(push_sparse_request_buffer.data()), req_buffer_size);
+
+  std::vector<int> batch_cnts;
+  std::copy(request.batch_cnts().begin(), request.batch_cnts().end(), std::back_inserter(batch_cnts));
+
+  PADDLE_ENFORCE_EQ(batch_cnts.size(), num,
+                    platform::errors::InvalidArgument(
+                    "batch_cnts' size %d  must be equal to %d", batch_cnts.size(), num));
+  
   /*
   Attachment Content:
   |---keysData---|
@@ -365,7 +373,7 @@ int32_t BrpcPsService::pull_sparse(Table *table,
   const uint64_t *keys = (const uint64_t *)data;
   std::vector<float> res_data;
   res_data.resize(num * table->value_accesor()->select_size() / sizeof(float));
-  table->pull_sparse(res_data.data(), keys, num);
+  table->pull_sparse(res_data.data(), keys, num, batch_cnts);
   cntl->response_attachment().append((char *)res_data.data(),
                                      res_data.size() * sizeof(float));
   return 0;

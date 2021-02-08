@@ -173,7 +173,7 @@ class SparseOptimizer {
       auto shard_id = id % shard_num;
       shard_counts[shard_id]++;
       auto block = shard_values[shard_id];
-      auto value = block->Init(id, false);
+      auto value = block->Init(id);
       value->initialize();
 
       // copy param and optimizer param.

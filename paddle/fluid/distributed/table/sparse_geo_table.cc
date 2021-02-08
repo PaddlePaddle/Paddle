@@ -23,7 +23,8 @@ int32_t SparseGeoTable::pull_geo_param(const uint32_t trainer_id,
   geo_recorder->GetAndClear(trainer_id, ids);
   auto dim = _config.common().dims()[0];
   values->resize(ids->size() * dim);
-  CommonSparseTable::pull_sparse(values->data(), ids->data(), ids->size());
+  std::vector<int> batch_cnts(ids->size(), 0);
+  CommonSparseTable::pull_sparse(values->data(), ids->data(), ids->size(), batch_cnts);
   return 0;
 }
 

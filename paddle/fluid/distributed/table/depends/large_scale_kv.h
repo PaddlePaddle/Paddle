@@ -157,23 +157,17 @@ class ValueBlock {
   }
 
   // pull
-  std::shared_ptr<VALUE> Init(const uint64_t &id, const bool with_update = true) {
+  std::shared_ptr<VALUE> Init(const uint64_t &id) {
     if (!Has(id)) {
       values_[id] = std::make_shared<VALUE>(value_length_);
-    }
-
-    auto &value = values_.at(id);
-
-    if (with_update) {
-      AttrUpdate(value);
     }
     return values_[id];
   }
 
-  void AttrUpdate(std::shared_ptr<VALUE> value) {
+  void PullUpdate(const uint64_t &id, int cnt) {
     // update state
     value->unseen_days_ = 0;
-    ++value->count_;
+    value->count_ += cnt;
 
     if (!value->is_entry_) {
       value->is_entry_ = entry_func_(value);
