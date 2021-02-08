@@ -116,7 +116,7 @@ void GroupTestCopy() {
   VLOG(2) << "int8 cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<int8_t>();
   VLOG(2) << "uint8 cpu-cpu-gpu-gpu-cpu";
-  TestCopyTensor<u_int8_t>();
+  TestCopyTensor<uint8_t>();
 }
 
 void GroupTestCast() {
@@ -135,7 +135,7 @@ void GroupTestCast() {
   VLOG(2) << "bool cast";
   TestCast<bool>(paddle::DataType::FLOAT32);
   VLOG(2) << "uint8 cast";
-  TestCast<u_int8_t>(paddle::DataType::FLOAT32);
+  TestCast<uint8_t>(paddle::DataType::FLOAT32);
   VLOG(2) << "float cast";
   TestCast<float>(paddle::DataType::FLOAT32);
 }
@@ -153,7 +153,7 @@ void GroupTestDtype() {
   CHECK(TestDtype<int64_t>() == paddle::DataType::INT64);
   CHECK(TestDtype<int16_t>() == paddle::DataType::INT16);
   CHECK(TestDtype<int8_t>() == paddle::DataType::INT8);
-  CHECK(TestDtype<u_int8_t>() == paddle::DataType::UINT8);
+  CHECK(TestDtype<uint8_t>() == paddle::DataType::UINT8);
 }
 
 TEST(CustomTensor, copyTest) {
