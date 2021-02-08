@@ -88,8 +88,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
           VLOG(3) << "Transform Variable " << var_base->Name() << " from "
                   << kernel_type_for_var << " to " << expected_kernel_key;
 
-          if (GetVariableWrapper(var_base)->hasCacheKey(
-                  expected_kernel_key)) {
+          if (GetVariableWrapper(var_base)->hasCacheKey(expected_kernel_key)) {
             VLOG(3) << "Hit variable_wrapper cache: key="
                     << expected_kernel_key;
             std::shared_ptr<VariableWrapper> cache_var =
