@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
-
 #include "paddle/fluid/extension/include/dtype.h"
 #include "paddle/fluid/extension/include/place.h"
 
@@ -31,21 +30,24 @@ class Tensor {
   explicit Tensor(const PlaceType& place);
   /// \brief Reset the shape of the tensor.
   /// Generally it's only used for the input tensor.
-  /// Reshape must be called before calling mutable_data() or copy_from_cpu()
+  /// Reshape must be called before calling
+  /// mutable_data() or copy_from_cpu()
   /// \param shape The shape to set.
-  void Reshape(const std::vector<int>& shape);
+  void reshape(const std::vector<int>& shape);
 
-  /// \brief Get the memory pointer in CPU or GPU with specific data type.
+  /// \brief Get the memory pointer in CPU or GPU with
+  /// specific data type.
   /// Please Reshape the tensor first before call this.
   /// It's usually used to get input data pointer.
-  /// \param place The place of the tensor this will override the original place
-  /// of current tensor.
+  /// \param place The place of the tensor this will
+  /// override the original place of current tensor.
   template <typename T>
   T* mutable_data(const PlaceType& place);
 
-  /// \brief Get the memory pointer in CPU or GPU with specific data type.
-  /// Please Reshape the tensor first before call this.
-  /// It's usually used to get input data pointer.
+  /// \brief Get the memory pointer in CPU or GPU with
+  /// specific data type. Please Reshape the tensor
+  /// first before call this.It's usually used to get
+  /// input data pointer.
   template <typename T>
   T* mutable_data();
 
@@ -57,26 +59,20 @@ class Tensor {
 
   /// \brief Copy the host memory to tensor data.
   /// It's usually used to set the input tensor data.
-  /// \param data The pointer of the data, from which the tensor will copy.
+  /// \param data The pointer of the data, from which
+  /// the tensor will copy.
   template <typename T>
-  void copy_from_cpu(const T* data);
+  Tensor copy_to_gpu();
 
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.
-  /// \param[out] data The tensor will copy the data to the address.
+  /// \param[out] data The tensor will copy the data to
+  /// the address.
   template <typename T>
-  void copy_to_cpu(T* data);
+  Tensor copy_to_cpu();
 
   /// \brief Return the shape of the Tensor.
   std::vector<int> shape() const;
-
-  /// \brief Set lod info of the tensor.
-  /// More about LOD can be seen here:
-  ///  https://www.paddlepaddle.org.cn/documentation/docs/zh/beginners_guide/basic_concept/lod_tensor.html#lodtensor
-  /// \param x the lod info.
-  void SetLoD(const std::vector<std::vector<size_t>>& x);
-  /// \brief Return the lod info of the tensor.
-  std::vector<std::vector<size_t>> lod() const;
 
   /// \brief Return the data type of the tensor.
   /// It's usually used to get the output tensor data type.
