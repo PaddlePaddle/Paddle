@@ -36,13 +36,13 @@ class NpuOpRunner {
                        const std::vector<Tensor> &outputs = {},
                        const AttributeMap &attrs = {});
 
-  virtual ~NpuOpRunner();
+  ~NpuOpRunner();
 
   const std::string &Type();
 
-  NpuOpRunner &AddAttr(const std::string name, const Attribute &attr);
+  NpuOpRunner &AddAttr(const std::string& name, const Attribute &attr);
 
-  NpuOpRunner &AddAttrs(const AttributeMap &&attrs);
+  NpuOpRunner &AddAttrs(const AttributeMap &attrs);
 
   NpuOpRunner &AddInput(const Tensor &tensor);
 
@@ -67,8 +67,8 @@ class NpuOpRunner {
   void Run(aclrtStream stream);
 
  private:
-  aclTensorDesc *CreateTensorDesc(const Tensor &tensor);
-  aclDataBuffer *CreateDataBuffer(const Tensor &tensor);
+  aclTensorDesc *CreateTensorDesc(Tensor tensor);
+  aclDataBuffer *CreateDataBuffer(Tensor tensor);
 
  private:
   std::string op_type_;

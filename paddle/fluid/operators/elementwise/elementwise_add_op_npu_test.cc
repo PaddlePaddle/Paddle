@@ -33,6 +33,7 @@ namespace p = paddle::platform;
 namespace m = paddle::operators::math;
 
 USE_OP(elementwise_add);
+USE_OP_DEVICE_KERNEL(elementwise_add, NPU);
 
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
@@ -75,7 +76,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   }
 }
 
-TEST(Dropout, GPUDense) {
+TEST(elementwise_add, NPU) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
   Compare(&scope, ctx);

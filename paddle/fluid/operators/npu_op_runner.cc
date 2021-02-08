@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 #include <paddle/fluid/framework/operator.h>
+#include <paddle/fluid/framework/data_type.h>
 
 #include <map>
 #include <string>
@@ -27,11 +27,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static std::map<proto::VarType::Type, aclDataType> DTYPE_2_ACL_DTYPE = {
-    {proto::VarType::BOOL, ACL_BOOL},    {proto::VarType::INT16, ACL_INT16},
-    {proto::VarType::INT32, ACL_INT32},  {proto::VarType::INT64, ACL_INT64},
-    {proto::VarType::FP16, ACL_FLOAT16}, {proto::VarType::FP32, ACL_FLOAT},
-    {proto::VarType::FP64, ACL_DOUBLE},
+static std::map<framework::proto::VarType::Type, aclDataType> DTYPE_2_ACL_DTYPE = {
+    {framework::proto::VarType::BOOL, ACL_BOOL},    {framework::proto::VarType::INT16, ACL_INT16},
+    {framework::proto::VarType::INT32, ACL_INT32},  {framework::proto::VarType::INT64, ACL_INT64},
+    {framework::proto::VarType::FP16, ACL_FLOAT16}, {framework::proto::VarType::FP32, ACL_FLOAT},
+    {framework::proto::VarType::FP64, ACL_DOUBLE},
 };
 
 static std::map<DataLayout, aclFormat> DATA_LAYOUT_2_ACL_FORMAT = {
@@ -40,25 +40,16 @@ static std::map<DataLayout, aclFormat> DATA_LAYOUT_2_ACL_FORMAT = {
     {DataLayout::kAnyLayout, ACL_FORMAT_ND},
 };
 
-aclDataType ConvertToNpuDtype(proto::VarType::Type dtype) {
-  auto iter = PADDLE_DTYPE_2_ACL_DTYPE.find(dtype);
-  PADDLE_ENFORCE_NE(iter, PADDLE_DTYPE_2_ACL_DTYPE.end(),
+aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype) {
+  auto iter = DTYPE_2_ACL_DTYPE.find(dtype);
+  PADDLE_ENFORCE_NE(iter, DTYPE_2_ACL_DTYPE.end(),
                     platform::errors::NotFound(
                         "The data type (%s) can not convert to ACL data type.",
-                        DataTypeTostring(dtype)));
+                        framework::DataTypeToString(dtype)));
   return iter->second;
 }
 
 aclFormat ConvertToNpuFormat(DataLayout layout) {
-  auto iter = DATA_LAYOUT_2_ACL_FORMAT.find(layout);
-  PADDLE_ENFORCE_NE(
-      iter, DATA_LAYOUT_2_ACL_FORMAT.end(),
-      platform::errors::NotFound(
-          "The data type (%s) can not convert to ACL data type.", layout));
-  return iter->second;
-}
-
-aclFormat ConvertToNpuAttr(Attribute attr) {
   auto iter = DATA_LAYOUT_2_ACL_FORMAT.find(layout);
   PADDLE_ENFORCE_NE(
       iter, DATA_LAYOUT_2_ACL_FORMAT.end(),
@@ -77,84 +68,91 @@ NpuOpRunner::NpuOpRunner(std::string op_type, const std::vector<Tensor> &inputs,
   AddAttrs(attrs);
 }
 
+NpuOpRunner::~NpuOpRunner() {
+  //TODO(zhiqiu): handle free
+}
+
 const std::string &NpuOpRunner::Type() { return op_type_; }
 
 NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
                                   const Attribute &attr) {
-  switch (attr.type()) {
-    case typeid(bool):  // NOLINT
-      PADDLE_ENFORCE_NPU_SUCCESS(
-          aclopSetAttrBool(attr_, name.c_str(), BOOST_GET_CONST(bool, attr)));
-      break;
-    case typeid(int):  // NOLINT
-      PADDLE_ENFORCE_NPU_SUCCESS(
-          aclopSetAttrInt(attr_, name.c_str(), BOOST_GET_CONST(int, attr)));
-      break;
-    case typeid(int64_t):  // NOLINT
-      PADDLE_ENFORCE_NPU_SUCCESS(
-          aclopSetAttrInt(attr_, name.c_str(),
-                          static_cast<int>(BOOST_GET_CONST(int64_t, attr))));
-      VLOG(4) << "Downcast attribute (" << name << ") from int64 (" <<
-        BOOST_GET_CONST(int64_t, attr) << ") to int (" <<
-        static_cast<int>(BOOST_GET_CONST(int64_t, attr))) << ")";
-      break;
-    case typeid(float):  // NOLINT
-      PADDLE_ENFORCE_NPU_SUCCESS(
-          aclopSetAttrFloat(attr_, name.c_str(), BOOST_GET_CONST(float, attr)));
-      break;
-    case typeid(std::vector<bool>):
-      auto a = BOOST_GET_CONST(std::vector<bool>, attr);
-      PADDLE_ENFORCE_NPU_SUCCESS(
-          aclopSetAttrListBool(attr_, name.c_str(), a.size(), a.data()));
-      break;
-    case typeid(std::vector<int>):
-      auto a = BOOST_GET_CONST(std::vector<int>, attr);
-      PADDLE_ENFORCE_NPU_SUCCESS(
-          aclopSetAttrListInt(attr_, name.c_str(), a.size(), a.data()));
-      break;
-    case typeid(std::vector<float>):
-      auto a = BOOST_GET_CONST(std::vector<float>, attr);
-      PADDLE_ENFORCE_NPU_SUCCESS(
-          aclopSetAttrListFloat(attr_, name.c_str(), a.size(), a.data()));
-      break;
-    case typeid(std::string):
-      auto a = BOOST_GET_CONST(std::string, attr);
-      PADDLE_ENFORCE_NPU_SUCCESS(
-          aclopSetAttrListFloat(attr_, name.c_str(), a.c_str()));
-      break;
-    case typeid(std::vector<std::string>):
-      auto a = BOOST_GET_CONST(std::vector<std::string>, attr);
-      std::vector<char *> s;
-      for (auto &it : a) {
-        s.push_back(const_cast<char *>(it.data()));
-      }
-      PADDLE_ENFORCE_NPU_SUCCESS(
-          aclopSetAttrListFloat(attr_, name.c_str(), s.size(), s.data()));
-      break;
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Can not convert attribubte '%s' to convert to aclopAttr", name));
+  if (attr.type() == typeid(bool)) {
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclopSetAttrBool(attr_, name.c_str(), BOOST_GET_CONST(bool, attr)));
+  } else if (attr.type() == typeid(int)) {
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclopSetAttrInt(attr_, name.c_str(), BOOST_GET_CONST(int, attr)));
+
+  } else if (attr.type() == typeid(int64_t)) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclopSetAttrInt(
+        attr_, name.c_str(), BOOST_GET_CONST(int64_t, attr)));
+  } else if (attr.type() == typeid(float)) {
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclopSetAttrFloat(attr_, name.c_str(), BOOST_GET_CONST(float, attr)));
+  } else if (attr.type() == typeid(std::vector<bool>)) {
+    auto a = BOOST_GET_CONST(std::vector<bool>, attr);
+    std::vector<uint8_t> cast_a;
+    for(auto it : a) {
+      cast_a.push_back(static_cast<uint8_t>(it));
+    }
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclopSetAttrListBool(attr_, name.c_str(), cast_a.size(), cast_a.data()));
+  } else if (attr.type() == typeid(std::vector<int>)) {
+    auto a = BOOST_GET_CONST(std::vector<int>, attr);
+    std::vector<int64_t> cast_a;
+    for(auto it : a) {
+      cast_a.push_back(static_cast<int64_t>(it));
+    }
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclopSetAttrListInt(attr_, name.c_str(), cast_a.size(), cast_a.data()));
+  } else if (attr.type() == typeid(std::vector<int64_t>)) {
+    auto a = BOOST_GET_CONST(std::vector<int64_t>, attr);
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclopSetAttrListInt(attr_, name.c_str(), a.size(), a.data()));
+  } else if (attr.type() == typeid(std::vector<float>)) {
+    auto a = BOOST_GET_CONST(std::vector<float>, attr);
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclopSetAttrListFloat(attr_, name.c_str(), a.size(), a.data()));
+  } else if (attr.type() == typeid(std::string)) {
+    auto a = BOOST_GET_CONST(std::string, attr);
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclopSetAttrString(attr_, name.c_str(), a.c_str()));
+  } else if (attr.type() == typeid(std::vector<std::string>)) {
+    auto a = BOOST_GET_CONST(std::vector<std::string>, attr);
+    std::vector<const char *> s;
+    for (auto &it : a) {
+      s.push_back(it.data());
+    }
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclopSetAttrListString(attr_, name.c_str(), s.size(), s.data()));
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Can not convert attribubte '%s' to convert to aclopAttr", name));
   }
+  return *this;
 }
 
 NpuOpRunner &NpuOpRunner::AddAttrs(const AttributeMap &attrs) {
   for (const auto &pair : attrs) {
     AddAttr(pair.first, pair.second);
   }
+  return *this;
 }
 
 NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor) {
   // create aclTensorDesc
   input_descs_.emplace_back(CreateTensorDesc(tensor));
   // create aclDataBuffer
-  input_buffers.emplace_back(CreateDataBuffer(tensor));
+  input_buffers_.emplace_back(CreateDataBuffer(tensor));
+  return *this;
 }
 
 NpuOpRunner &NpuOpRunner::AddOutput(const Tensor &tensor) {
   // create aclTensorDesc
   output_descs_.emplace_back(CreateTensorDesc(tensor));
   // create aclDataBuffer
-  output_buffers.emplace_back(CreateDataBuffer(tensor));
+  output_buffers_.emplace_back(CreateDataBuffer(tensor));
+  return *this;
 }
 
 NpuOpRunner &NpuOpRunner::AddInputs(const std::vector<Tensor> &tensors) {
@@ -162,8 +160,9 @@ NpuOpRunner &NpuOpRunner::AddInputs(const std::vector<Tensor> &tensors) {
     // create aclTensorDesc
     input_descs_.emplace_back(CreateTensorDesc(tensor));
     // create aclDataBuffer
-    input_buffers.emplace_back(CreateDataBuffer(tensor));
+    input_buffers_.emplace_back(CreateDataBuffer(tensor));
   }
+  return *this;
 }
 
 NpuOpRunner &NpuOpRunner::AddOutputs(const std::vector<Tensor> &tensors) {
@@ -171,8 +170,9 @@ NpuOpRunner &NpuOpRunner::AddOutputs(const std::vector<Tensor> &tensors) {
     // create aclTensorDesc
     output_descs_.emplace_back(CreateTensorDesc(tensor));
     // create aclDataBuffer
-    output_buffers.emplace_back(CreateDataBuffer(tensor));
+    output_buffers_.emplace_back(CreateDataBuffer(tensor));
   }
+  return *this;
 }
 
 aclTensorDesc *NpuOpRunner::GetInputDesc(size_t index) {
@@ -180,7 +180,7 @@ aclTensorDesc *NpuOpRunner::GetInputDesc(size_t index) {
                     platform::errors::OutOfRange(
                         "The index should be less than the size of inputs of "
                         "operator %s, but got index is %d and size is %d",
-                        Type(), idx, input_descs_.size()));
+                        Type(), index, input_descs_.size()));
   return input_descs_[index];
 }
 
@@ -189,7 +189,7 @@ aclTensorDesc *NpuOpRunner::GetOutputDesc(size_t index) {
                     platform::errors::OutOfRange(
                         "The index should be less than the size of output of "
                         "operator %s, but got index is %d and size is %d",
-                        Type(), idx, output_descs_.size()));
+                        Type(), index, output_descs_.size()));
   return output_descs_[index];
 }
 
@@ -201,14 +201,14 @@ std::vector<aclTensorDesc *> &NpuOpRunner::GetOutputDescs() {
   return output_descs_;
 }
 
-std::vector<aclDataBuffer *> &GetInputBuffers() { return input_buffers_; }
+std::vector<aclDataBuffer *> &NpuOpRunner::GetInputBuffers() { return input_buffers_; }
 
-std::vector<aclDataBuffer *> &GetOutputBuffers() { return output_buffers_; }
+std::vector<aclDataBuffer *> &NpuOpRunner::GetOutputBuffers() { return output_buffers_; }
 
-aclTensorDesc *NpuOpRunner::CreateTensorDesc(const Tensor &tensor) {
+aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
   auto dtype = ConvertToNpuDtype(tensor.type());
-  auto format = ConvertToNpuDtype(tensor.layout());
-  auto dims = tensor.layout();
+  auto format = ConvertToNpuFormat(tensor.layout());
+  auto dims = framework::vectorize(tensor.dims());
 
   auto *desc = aclCreateTensorDesc(dtype, dims.size(), dims.data(), format);
   PADDLE_ENFORCE_NOT_NULL(
@@ -216,16 +216,16 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(const Tensor &tensor) {
   return desc;
 }
 
-aclDataBuffer *NpuOpRunner::CreateDataBuffer(const Tensor &tensor) {
+aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
   auto *buffer =
-      aclCreateDataBuffer(tensor.data<uint8_t>(), tensor.memory_size());
+      aclCreateDataBuffer(tensor.Holder()->ptr(), tensor.memory_size());
   PADDLE_ENFORCE_NOT_NULL(
       buffer, platform::errors::External("Call aclCreateDataBuffer failed."));
   return buffer;
 }
 
 void NpuOpRunner::Run(aclrtStream stream) {
-  aclError ret = aclopExecuteV2(op_type_, input_descs_.size(),
+  aclError ret = aclopExecuteV2(op_type_.c_str(), input_descs_.size(),
                                 input_descs_.data(), input_buffers_.data(),
                                 output_descs_.size(), output_descs_.data(),
                                 output_buffers_.data(), attr_, stream);

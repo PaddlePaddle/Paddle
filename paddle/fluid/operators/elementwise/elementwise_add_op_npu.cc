@@ -52,7 +52,7 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_XPU_KERNEL(
+REGISTER_OP_NPU_KERNEL(
     elementwise_add,
     ops::ElementwiseAddNPUKernel<paddle::platform::NPUDeviceContext, float>);
 #endif
