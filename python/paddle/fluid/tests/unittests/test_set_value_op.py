@@ -65,6 +65,7 @@ class TestSetValueApi(TestSetValueBase):
 # 1. Test different type of item: int, python slice, Ellipsis
 # 1.1 item is int
 
+
 class TestSetValueItemInt(TestSetValueApi):
     def _call_setitem(self, x):
         x[0] = self.value
@@ -107,7 +108,7 @@ class TestSetValueItemSlice4(TestSetValueApi):
         self.data[0:, 1:2, :] = self.value
 
 
-# # 1.2.2 step > 1
+# 1.2.2 step > 1
 class TestSetValueItemSliceStep(TestSetValueApi):
     def set_shape(self):
         self.shape = [5, 5, 5]
@@ -146,8 +147,8 @@ class TestSetValueItemSliceStep4(TestSetValueApi):
         self.data[0:, 1:2:2, :] = self.value
 
 
-
 # 1.3 item is Ellipsis
+
 
 class TestSetValueItemEllipsis1(TestSetValueApi):
     def _call_setitem(self, x):
@@ -183,6 +184,7 @@ class TestSetValueItemEllipsis4(TestSetValueApi):
 
 # 2. Test different type of value: int, float, numpy.ndarray, Tensor
 # 2.1 value is int32, int64, float32, float64, bool
+
 
 def create_test_value_int32(parent):
     class TestValueInt(parent):
