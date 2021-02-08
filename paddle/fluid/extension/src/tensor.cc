@@ -341,7 +341,7 @@ Tensor Tensor::cast(const DataType &target_type) {
       break;
     case framework::proto::VarType::UINT8:
       framework::VisitDataType(
-          dst_type, CastDataType<u_int8_t>(*tensor, rlt_tensor_, ctx));
+          dst_type, CastDataType<uint8_t>(*tensor, rlt_tensor_, ctx));
       break;
     // TODO(JiabinYang): Support Complex later
     default:
