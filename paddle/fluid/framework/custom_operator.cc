@@ -25,8 +25,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/extension/include/all.h"
-
+#include "paddle/fluid/extension/include/tensor.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/c/c_api.h"
 #include "paddle/fluid/framework/custom_tensor_utils.h"
@@ -104,25 +103,59 @@ PlaceType ConvertInnerPlaceToEnumPlace(const platform::Place& pc) {
   return PlaceType::kUNK;
 }
 
-proto::VarType::Type ConvertEnumDTypeToInnerDType(const DataType& dtype) {
+proto::VarType::Type ConvertEnumDTypeToInnerDType(
+    const paddle::DataType& dtype) {
   switch (dtype) {
-    case DataType::FLOAT32:
-      return proto::VarType::FP32;
-    case DataType::FLOAT64:
+    case paddle::DataType::COMPLEX128:
+      return proto::VarType::COMPLEX128;
+    case paddle::DataType::COMPLEX64:
+      return proto::VarType::COMPLEX64;
+    case paddle::DataType::FLOAT64:
       return proto::VarType::FP64;
-    // TODO(chenweihang):
+    case paddle::DataType::FLOAT32:
+      return proto::VarType::FP32;
+    case paddle::DataType::FLOAT16:
+      return proto::VarType::FP16;
+    case paddle::DataType::BFLOAT16:
+      return proto::VarType::BF16;
+    case paddle::DataType::UINT8:
+      return proto::VarType::UINT8;
+    case paddle::DataType::INT8:
+      return proto::VarType::INT8;
+    case paddle::DataType::INT32:
+      return proto::VarType::INT32;
+    case paddle::DataType::INT64:
+      return proto::VarType::INT64;
     default:
       PADDLE_THROW(platform::errors::Unimplemented("Unsupported data type."));
   }
 }
 
-DataType ConvertInnerDTypeToEnumDType(const proto::VarType::Type& dtype) {
+paddle::DataType ConvertInnerDTypeToEnumDType(
+    const proto::VarType::Type& dtype) {
   switch (dtype) {
-    case proto::VarType::FP32:
-      return DataType::FLOAT32;
+    case proto::VarType::COMPLEX128:
+      return paddle::DataType::COMPLEX128;
+    case proto::VarType::COMPLEX64:
+      return paddle::DataType::COMPLEX64;
     case proto::VarType::FP64:
-      return DataType::FLOAT64;
-    // TODO(chenweihang):
+      return paddle::DataType::FLOAT64;
+    case proto::VarType::FP32:
+      return paddle::DataType::FLOAT32;
+    case proto::VarType::FP16:
+      return paddle::DataType::FLOAT16;
+    case proto::VarType::BF16:
+      return paddle::DataType::BFLOAT16;
+    case proto::VarType::INT64:
+      return paddle::DataType::INT64;
+    case proto::VarType::INT32:
+      return paddle::DataType::INT32;
+    case proto::VarType::INT8:
+      return paddle::DataType::INT8;
+    case proto::VarType::UINT8:
+      return paddle::DataType::UINT8;
+    case proto::VarType::INT16:
+      return paddle::DataType::INT16;
     default:
       PADDLE_THROW(platform::errors::Unimplemented("Unsupported data type."));
   }

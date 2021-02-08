@@ -39,7 +39,7 @@ void relu_cpu_backward_kernel(const data_t* grad_out_data,
 
 std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.Reshape(x.shape());
+  out.reshape(x.shape());
 
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "relu_cpu_forward", ([&] {
@@ -54,7 +54,7 @@ std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& x,
                                               const paddle::Tensor& out,
                                               const paddle::Tensor& grad_out) {
   auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU);
-  grad_x.Reshape(x.shape());
+  grad_x.reshape(x.shape());
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
                                relu_cpu_backward_kernel<data_t>(
