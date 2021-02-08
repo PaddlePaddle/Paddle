@@ -13,11 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <thread>
 #include <vector>
 #include "cub/cub.cuh"
 #include "hashtable.h"
 #include "heter_resource.h"
-#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/place.h"
@@ -72,6 +73,10 @@ class HeterComm {
     return ((send_id / 4 != receive_id / 4) && (send_id + 4) % 8 != receive_id);
   }
 
+  // void dump_to_cpu(int index);
+
+  void end_pass();
+
   int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
 
   struct Node {
@@ -110,5 +115,5 @@ class HeterComm {
 
 }  // end namespace framework
 }  // end namespace paddle
-#include "paddle/fluid/framework/fleet/heter_ps/heter_comm.tpp"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm_inl.h"
 #endif

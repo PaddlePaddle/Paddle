@@ -26,7 +26,7 @@ namespace paddle {
 namespace platform {
 namespace stream {
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 enum class Priority : uint8_t {
   kNull = 0x0,
@@ -51,28 +51,55 @@ class CUDAStream final {
   }
 
   template <typename Callback>
+#ifdef PADDLE_WITH_HIP
+  void RecordEvent(hipEvent_t ev, Callback callback) const {
+    callback();
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(ev, stream_));
+  }
+#else
   void RecordEvent(cudaEvent_t ev, Callback callback) const {
     callback();
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
   }
+#endif
 
+#ifdef PADDLE_WITH_HIP
+  void RecordEvent(hipEvent_t ev) const {
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(ev, stream_));
+  }
+#else
   void RecordEvent(cudaEvent_t ev) const {
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
   }
+#endif
 
+#ifdef PADDLE_WITH_HIP
+  void WaitEvent(hipEvent_t ev) const {
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamWaitEvent(stream_, ev, 0));
+  }
+#else
   void WaitEvent(cudaEvent_t ev) const {
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream_, ev, 0));
   }
+#endif
 
   void Wait() const;
   void WaitCallback() const { callback_manager_->Wait(); }
 
+#ifdef PADDLE_WITH_HIP
+  const hipStream_t& raw_stream() const { return stream_; }
+#else
   const cudaStream_t& raw_stream() const { return stream_; }
+#endif
   void Destroy();
 
  private:
   Place place_;
+#ifdef PADDLE_WITH_HIP
+  hipStream_t stream_{nullptr};
+#else
   cudaStream_t stream_{nullptr};
+#endif
   Priority priority_{Priority::kNormal};
   std::unique_ptr<StreamCallbackManager> callback_manager_;
 

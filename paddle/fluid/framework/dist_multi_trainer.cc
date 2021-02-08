@@ -12,13 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
-#include <vector>
-#include "io/fs.h"
-#include "paddle/fluid/framework/data_feed_factory.h"
-#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 
 namespace paddle {

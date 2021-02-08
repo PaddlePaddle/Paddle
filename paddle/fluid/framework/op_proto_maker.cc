@@ -12,9 +12,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
+
 #include <string>
-#include <unordered_set>
-#include <vector>
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

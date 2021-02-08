@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/common_dense_table.h"
-#include "paddle/fluid/distributed/common/utils.h"
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {
@@ -28,6 +29,8 @@ void CommonDenseTable::create_initializer(const std::string& attr,
     initializers_[name] = new FillConstantInitializer(slices);
   } else if (slices[0] == "uniform_random") {
     initializers_[name] = new UniformInitializer(slices);
+  } else if (slices[0] == "truncated_gaussian_random") {
+    initializers_[name] = new TruncatedGaussianInitializer(slices);
   } else {
     PADDLE_THROW(
         platform::errors::InvalidArgument("%s can not be supported", name));

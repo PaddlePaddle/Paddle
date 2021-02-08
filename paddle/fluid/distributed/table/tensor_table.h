@@ -22,11 +22,20 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/device_context.h"
+
+namespace paddle {
+namespace framework {
+class Executor;
+class Scope;
+struct ExecutorPrepareContext;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace distributed {

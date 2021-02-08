@@ -128,15 +128,18 @@ def update_api_info_file(fail_case_list, api_info_file):
     check_path_exists(api_info_file)
 
     # set of case names for performance check failures
-    fail_case_set = set(map(lambda x: x.rsplit('_', 1)[0], fail_case_list))
+    parse_case_id_f = lambda x: x.split()[0].rsplit('_', 1)
+    fail_case_dict = dict(map(parse_case_id_f, fail_case_list))
 
     # list of api infos for performance check failures
     api_info_list = list()
     with open(api_info_file) as f:
         for line in f:
-            case = line.split(',')[0]
-            if case in fail_case_set:
-                api_info_list.append(line)
+            line_list = line.split(',')
+            case = line_list[0].split(':')[0]
+            if case in fail_case_dict:
+                line_list[0] = "%s:%s" % (case, fail_case_dict[case])
+                api_info_list.append(','.join(line_list))
 
     # update api info file
     with open(api_info_file, 'w') as f:

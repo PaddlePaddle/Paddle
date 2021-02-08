@@ -23,10 +23,12 @@ CHANGE_CC_OP_FILES=()
 CHANGE_CU_OP_FILES=()
 
 # ops that will run benchmark test
-declare -A CHANGE_OP_MAP
+declare -A CHANGE_CC_OP_MAP
+declare -A CHANGE_CU_OP_MAP
 
 # ops that benchmark repo has
-declare -A BENCHMARK_OP_MAP
+declare -A BENCHMARK_CC_OP_MAP
+declare -A BENCHMARK_CU_OP_MAP
 
 # searched header files
 declare -A INCLUDE_SEARCH_MAP
@@ -267,9 +269,10 @@ function run_op_benchmark_test {
 
 # check benchmark result
 function check_op_benchmark_result {
-  local api_info_file check_status_code
+  local logs_dir api_info_file check_status_code
   # default 3 times
   [ -z "${RETRY_TIMES}" ] && RETRY_TIMES=3
+  logs_dir=$(pwd)/logs-test_pr
   api_info_file=$(pwd)/api_info.txt
   for retry_time in $(seq 0 ${RETRY_TIMES})
   do
@@ -280,7 +283,7 @@ function check_op_benchmark_result {
       pushd benchmark/api > /dev/null
       bash deploy/main_control.sh tests_v2 \
                                   tests_v2/configs \
-                                  $(pwd)/logs-test_pr \
+                                  ${logs_dir} \
                                   $VISIBLE_DEVICES \
                                   "gpu" \
                                   "speed" \
@@ -309,12 +312,20 @@ function summary_problems {
     check_op_benchmark_result
     exit_code=$?
   fi
-  for op_name in ${!CHANGE_OP_MAP[@]}
+  for op_name in ${!CHANGE_CC_OP_MAP[@]}
   do
-    if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
+    if [ -z "${BENCHMARK_CC_OP_MAP[$op_name]}" ]
     then
       exit_code=8
-      LOG "[ERROR] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
+      LOG "[ERROR] Missing test script of \"${op_name}\"(${CHANGE_CC_OP_MAP[$op_name]}) in benchmark."
+    fi
+  done
+  for op_name in ${!CHANGE_CU_OP_MAP[@]}
+  do
+    if [ -z "${BENCHMARK_CU_OP_MAP[$op_name]}" ]
+    then
+      exit_code=8
+      LOG "[ERROR] Missing test script of \"${op_name}\"(${CHANGE_CU_OP_MAP[$op_name]}) in benchmark."
     fi
   done
   if [ $exit_code -ne 0 ]; then

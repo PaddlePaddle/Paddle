@@ -36,9 +36,9 @@ class AmpOperators {
 
   static AmpOperators& Instance();
 
-  std::shared_ptr<std::unordered_set<std::string>> GetAllowOps();
+  std::shared_ptr<std::unordered_set<std::string>> GetMutableAllowOps();
 
-  std::shared_ptr<std::unordered_set<std::string>> GetBlockOps();
+  std::shared_ptr<std::unordered_set<std::string>> GetMutableBlockOps();
 
  private:
   AmpOperators();  // forbid calling default constructor
@@ -51,6 +51,8 @@ class AmpOperators {
   // dangerous and whose effects may also be observed in downstream ops.
   std::shared_ptr<std::unordered_set<std::string>> block_ops_;
 };
+
+std::ostream& operator<<(std::ostream& os, AmpOperators& ops);
 
 // NOTE(zhiqiu): AutoCastGuard is used for RAII.
 class AutoCastGuard {

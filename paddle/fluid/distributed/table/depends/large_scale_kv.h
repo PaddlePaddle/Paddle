@@ -134,6 +134,9 @@ class ValueBlock {
         } else if (slices[0] == "uniform_random") {
           initializers_.emplace_back(
               std::make_shared<UniformInitializer>(slices));
+        } else if (slices[0] == "truncated_gaussian_random") {
+          initializers_.emplace_back(
+              std::make_shared<TruncatedGaussianInitializer>(slices));
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "%s can not be supported", attr));

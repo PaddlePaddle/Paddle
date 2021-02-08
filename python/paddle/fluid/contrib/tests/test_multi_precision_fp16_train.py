@@ -97,7 +97,7 @@ def train(use_pure_fp16=True, use_nesterov=False, use_adam=False):
         test_program = train_program.clone(for_test=True)
 
         if use_adam:
-            optimizer = paddle.optimizer.Adam(
+            optimizer = paddle.optimizer.AdamW(
                 learning_rate=0.001,
                 epsilon=1e-8,
                 weight_decay=0.0,

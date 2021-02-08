@@ -14,10 +14,12 @@
 
 import unittest
 import os
+import copy
 from launch_function_helper import wait, _find_free_port
 from multiprocessing import Pool, Process
+from threading import Thread
 
-os.environ['GLOG_vmodule'] = str("gen_nccl_id_op*=10")
+os.environ['GLOG_vmodule'] = str("gen_nccl_id_op*=10,gen_comm_id*=10")
 
 import paddle
 from paddle.fluid import core
@@ -60,7 +62,6 @@ def run_gen_ncc_id(attr):
             attrs=attr)
 
     place = paddle.CPUPlace()
-
     exe = paddle.static.Executor(place)
     exe.run(startup_program)
 
@@ -97,6 +98,7 @@ class TestGenNcclIdOp(unittest.TestCase):
         procs = []
         for i in range(nranks):
             attr['trainer_id'] = i
+            # NOTE: multiprocessing cannot be covered by coverage
             p = Process(target=run_gen_ncc_id, args=(attr, ))
             p.start()
             procs.append(p)
@@ -107,6 +109,7 @@ class TestGenNcclIdOp(unittest.TestCase):
         print(">>> test gen flat nccl id")
         self.gen_nccl_id(2)
         print("<<< end test gen flat nccl id")
+        print()
 
     def test_hierarchical(self):
         print(">>> test gen hierarchical nccl id")
