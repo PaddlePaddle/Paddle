@@ -576,16 +576,15 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
           {static_cast<int64_t>(length)});
     } else {
       if (!group_tensor.IsInitialized()) {
-        auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
-        group_tensor.Resize({static_cast<int64_t>(length)});
-        group_tensor.mutable_data(place_, group.dtype_);
-
 #ifdef PADDLE_WITH_XPU_BKCL
         if (platform::is_xpu_place(group_tensor.place())) {
           // TODO(liuyuhui) support XPU set constant
           VLOG(3) << "XPU doesn't support set_constant";
         }
 #else
+        auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+        group_tensor.Resize({static_cast<int64_t>(length)});
+        group_tensor.mutable_data(place_, group.dtype_);
         operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
 #endif
       }
