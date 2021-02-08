@@ -5,7 +5,7 @@ if(WITH_GPU)
 endif(WITH_GPU)
 
 if(WITH_XPU)
-  set(XPU_CTX_DEPS glog xpulib ssl crypto leveldb rt z resolv dl)
+  set(XPU_CTX_DEPS xpulib ssl crypto rt z resolv dl)
 ELSE()
   set(XPU_CTX_DEPS)
 endif(WITH_XPU)
