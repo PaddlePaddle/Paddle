@@ -212,7 +212,7 @@ void Copy<platform::NPUPlace, platform::CPUPlace>(platform::NPUPlace dst_place,
           << dst_place << " by thream(" << stream << ")";
   if (stream) {
     platform::RecordEvent record_event("NpuMemcpyAsync:CPU->NPU");
-    //platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_HOST_TO_DEVICE, stream);
+    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_HOST_TO_DEVICE, stream);
   } else {
     platform::RecordEvent record_event("NpuMemcpySync:CPU->NPU");
     platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_HOST_TO_DEVICE);
@@ -232,7 +232,7 @@ void Copy<platform::CPUPlace, platform::NPUPlace>(platform::CPUPlace dst_place,
           << dst_place << " by thream(" << stream << ")";
   if (stream) {
     platform::RecordEvent record_event("NpuMemcpyAsync:NPU->CPU");
-    //platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST, stream);
+    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST, stream);
   } else {
     platform::RecordEvent record_event("GpuMemcpySync:NPU->CPU");
     platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST);
@@ -253,8 +253,8 @@ void Copy<platform::NPUPlace, platform::NPUPlace>(platform::NPUPlace dst_place,
     platform::SetNPUDeviceId(src_place.device);
     if (stream) {
       platform::RecordEvent record_event("NpuMemcpyAsync(same_npu):NPU->NPU");
-      //platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE,
-      //                         stream);
+      platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE,
+                               stream);
     } else {
       platform::RecordEvent record_event("NpuMemcpySync(same_npu):NPU->NPU");
       platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE);
@@ -267,8 +267,8 @@ void Copy<platform::NPUPlace, platform::NPUPlace>(platform::NPUPlace dst_place,
     if (stream) {
       // TODO(zhiqiu): support peer access?
       platform::RecordEvent record_event("NpuMemcpyPeerAsync:NPU->NPU");
-      //platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE,
-      //                         stream);
+      platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE,
+                               stream);
     } else {
       platform::RecordEvent record_event("NpuMemcpyPeerSync:NPU->NPU");
       platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE);

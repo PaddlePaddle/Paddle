@@ -173,7 +173,7 @@ size_t NPUMaxChunkSize() {
   return max_chunk_size;
 }
 
-void NPUMemcpyASync(void *dst, const void *src, size_t count,
+void NPUMemcpyAsync(void *dst, const void *src, size_t count,
                     enum aclrtMemcpyKind kind, aclrtStream stream,
                     size_t dst_max_count) {
   dst_max_count = dst_max_count ? dst_max_count : count;
