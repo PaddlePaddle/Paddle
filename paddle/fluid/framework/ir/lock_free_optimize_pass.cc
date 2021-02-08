@@ -15,8 +15,6 @@
 #include "paddle/fluid/framework/ir/lock_free_optimize_pass.h"
 
 #include <string>
-#include <unordered_set>
-#include <vector>
 
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_proto_maker.h"

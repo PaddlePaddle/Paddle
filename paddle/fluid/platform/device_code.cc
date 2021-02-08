@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_code.h"
 
 #include <sys/stat.h>
-#include <algorithm>
 #include <set>
-#include <utility>
 
 #include "paddle/fluid/platform/enforce.h"
 

@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/framework/details/gather_op_handle.h"
 
-#include <memory>
-#include <unordered_map>
-
 #include "gtest/gtest.h"
 
 namespace paddle {

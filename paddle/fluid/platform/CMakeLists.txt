@@ -5,7 +5,7 @@ if(WITH_GPU)
 endif(WITH_GPU)
 
 if(WITH_XPU)
-  set(XPU_CTX_DEPS xpulib)
+  set(XPU_CTX_DEPS xpulib ssl crypto rt z resolv dl)
 ELSE()
   set(XPU_CTX_DEPS)
 endif(WITH_XPU)
@@ -58,7 +58,7 @@ cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 if(WITH_XPU)
-cc_library(xpu_info SRCS xpu_info.cc DEPS gflags glog enforce)
+cc_library(xpu_info SRCS xpu_info.cc DEPS gflags glog enforce xpulib)
 endif()
 
 add_subdirectory(dynload)

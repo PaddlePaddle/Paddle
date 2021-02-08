@@ -103,7 +103,10 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
     std::memcpy(static_cast<void *>(input_ptr), pt.data.data(),
                 pt.data.length());
-  } else {
+  } else if (platform::is_gpu_place(place)) {
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place), false,
+                      platform::errors::InvalidArgument(
+                          "Only one choice can be made between CPU and XPU."));
 #ifdef PADDLE_WITH_CUDA
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx =
@@ -116,6 +119,18 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Not compile with CUDA, should not reach here."));
 #endif
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+    auto dst_xpu_place = BOOST_GET_CONST(platform::XPUPlace, place);
+    memory::Copy(dst_xpu_place, static_cast<void *>(input_ptr),
+                 platform::CPUPlace(), pt.data.data(), pt.data.length());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Not compile with XPU, should not reach here."));
+#endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The analysis predictor supports CPU, GPU and XPU now."));
   }
   // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
   framework::LoD lod;
@@ -183,6 +198,12 @@ bool AnalysisPredictor::PrepareScope(
         memory::Release(platform::CUDAPlace(dev_id));
       }
 #endif
+#ifdef PADDLE_WITH_XPU
+      for (int dev_id = 0; dev_id < paddle::platform::GetXPUDeviceCount();
+           ++dev_id) {
+        memory::Release(platform::XPUPlace(dev_id));
+      }
+#endif
       memory::Release(platform::CPUPlace());
     });
     status_is_cloned_ = false;
@@ -219,7 +240,9 @@ bool AnalysisPredictor::PrepareProgram(
 }
 bool AnalysisPredictor::CreateExecutor() {
   if (config_.use_gpu()) {
-    status_use_gpu_ = true;
+    PADDLE_ENFORCE_EQ(config_.use_xpu(), false,
+                      platform::errors::InvalidArgument(
+                          "Only one choice can be made between CPU and XPU."));
     place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
 #ifdef PADDLE_WITH_CUDA
     if (config_.thread_local_stream_enabled()) {
@@ -230,6 +253,30 @@ bool AnalysisPredictor::CreateExecutor() {
       ctx->ResetThreadContext(platform::stream::Priority::kNormal);
     }
 #endif
+  } else if (config_.use_xpu()) {
+    if (config_.lite_engine_enabled()) {
+#ifdef LITE_SUBGRAPH_WITH_XPU
+      // Currently, Paddle-Lite's XPU user interface only supports the transfer
+      // of Host data pointers. If it is currently used as a subgraph, execution
+      // efficiency will be sacrificed, so it is temporarily set to cpu place.
+      // And, the current lite engine of xpu must execute all parts of the
+      // model.
+      place_ = paddle::platform::CPUPlace();
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "You tried to use an XPU lite engine, but Paddle was not compiled "
+          "with it."));
+#endif  // LITE_SUBGRAPH_WITH_XPU
+    } else {
+#ifdef PADDLE_WITH_XPU
+      place_ = paddle::platform::XPUPlace(config_.xpu_device_id());
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "You tried to use XPU forward propagation (inference without lite "
+          "engine), but Paddle was not compiled "
+          "with WITH_XPU."));
+#endif  // PADDLE_WITH_XPU
+    }
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -734,11 +781,22 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
+  } else if (platform::is_xpu_place(place_)) {
+    if (config_.lite_engine_enabled()) {
+      // Currently, Paddle-Lite's XPU user interface only supports the transfer
+      // of host data pointers. If it is currently used as a subgraph, execution
+      // efficiency will be sacrificed, so it is temporarily set to cpu place.
+      // And, the current lite engine of xpu must execute all parts of the
+      // model.
+      res->SetPlace(PaddlePlace::kCPU);
+    } else {
+      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
+    }
   } else {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
-
   return res;
 }
 
@@ -755,6 +813,18 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
+  } else if (platform::is_xpu_place(place_)) {
+    if (config_.lite_engine_enabled()) {
+      // Currently, Paddle-Lite's XPU user interface only supports the transfer
+      // of host data pointers. If it is currently used as a subgraph, execution
+      // efficiency will be sacrificed, so it is temporarily set to cpu place.
+      // And, the current lite engine of xpu must execute all parts of the
+      // model.
+      res->SetPlace(PaddlePlace::kCPU);
+    } else {
+      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
+    }
   } else {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());

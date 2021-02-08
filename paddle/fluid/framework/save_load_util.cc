@@ -14,10 +14,7 @@
 
 #include "paddle/fluid/framework/save_load_util.h"
 
-#include <algorithm>
 #include <fstream>
-#include <iostream>
-#include <memory>
 
 #include "paddle/fluid/imperative/layer.h"
 

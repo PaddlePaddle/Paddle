@@ -305,10 +305,30 @@ TEST(test_tracer, test_expected_place) {
   // default expected place is CPUPlace
   imperative::Tracer tracer;
   ASSERT_EQ(platform::is_cpu_place(tracer.ExpectedPlace()), true);
-  // set to CUDAPlace
-  platform::CUDAPlace gpu_place(0);
-  tracer.SetExpectedPlace(gpu_place);
-  ASSERT_EQ(platform::is_gpu_place(tracer.ExpectedPlace()), true);
+  {
+#ifdef PADDLE_WITH_CUDA
+    // set to CUDAPlace
+    platform::CUDAPlace gpu_place(0);
+    tracer.SetExpectedPlace(gpu_place);
+    ASSERT_EQ(platform::is_gpu_place(tracer.ExpectedPlace()), true);
+
+    // assert throw
+    platform::XPUPlace xpu_place(0);
+    ASSERT_THROW(tracer.SetExpectedPlace(xpu_place), platform::EnforceNotMet);
+#endif
+  }
+  {
+#ifdef PADDLE_WITH_XPU
+    // set to XPUPlace
+    platform::XPUPlace xpu_place(0);
+    tracer.SetExpectedPlace(xpu_place);
+    ASSERT_EQ(platform::is_xpu_place(tracer.ExpectedPlace()), true);
+
+    // assert throw
+    platform::CUDAPlace cuda_place(0);
+    ASSERT_THROW(tracer.SetExpectedPlace(cuda_place), platform::EnforceNotMet);
+#endif
+  }
 }
 
 TEST(test_tracer, test_var_without_grad_var) {

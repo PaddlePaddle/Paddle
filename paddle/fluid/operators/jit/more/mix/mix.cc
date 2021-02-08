@@ -15,7 +15,6 @@
 #include "paddle/fluid/operators/jit/more/mix/mix.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {

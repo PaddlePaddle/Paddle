@@ -14,20 +14,9 @@
 
 #include "paddle/fluid/imperative/reducer.h"
 
-#include <algorithm>
 #include <iostream>
-#include <map>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <utility>
-#include <vector>
 
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/op_base.h"
-#include "paddle/fluid/imperative/variable_wrapper.h"
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/string/string_helper.h"
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
@@ -636,6 +625,18 @@ void Reducer::MarkGroupReady(size_t group_index) {
         // Select common commstream to concat tensors
         // group.dense_tensors ---> group.dense_contents_
         group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
+
+// NOTE(liuyuhui): ConcatTensors use communication stream, but BKCL only support
+// default stream for communicating,
+// so there exist some problems in synchronization. And need to add a WaitComm
+// there.
+// TODO(liuyuhui): If BKCL support events, it should be fixed as non-blocking
+// communication.
+#ifdef PADDLE_WITH_XPU_BKCL
+        if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
+          parallel_ctx_->WaitComm(run_order);
+        }
+#endif
 
         // Start allreduce
         parallel_ctx_->AllReduceByStream(

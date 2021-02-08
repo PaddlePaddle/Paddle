@@ -13,15 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/heter_client.h"
-#include <algorithm>
-#include <utility>
-#include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/split.h"
 
 DECLARE_int32(rpc_deadline);

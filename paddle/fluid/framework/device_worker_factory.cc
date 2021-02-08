@@ -13,9 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker_factory.h"
+
+#include <stdlib.h>
 #include <memory>
 #include <string>
-#include <unordered_map>
 
 namespace paddle {
 namespace framework {

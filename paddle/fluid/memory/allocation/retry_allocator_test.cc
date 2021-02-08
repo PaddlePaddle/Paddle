@@ -14,14 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 
-#include <algorithm>
-#include <chrono>              // NOLINT
-#include <condition_variable>  // NOLINT
-#include <mutex>               // NOLINT
-#include <string>
 #include <thread>  // NOLINT
-#include <vector>
-
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"

@@ -26,6 +26,10 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
+namespace nvinfer1 {
+class ITensor;
+}  // namespace nvinfer1
+
 DECLARE_bool(profile);
 
 namespace paddle {
