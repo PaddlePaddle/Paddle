@@ -44,6 +44,9 @@ def parse_log_file(log_file):
         for line in f.read().strip().split('\n')[::-1]:
             try:
                 result = json.loads(line)
+                # maybe get a string
+                if not isinstance(result, dict):
+                    continue
                 if result.get("disabled", False) == True:
                     return None
                 return result

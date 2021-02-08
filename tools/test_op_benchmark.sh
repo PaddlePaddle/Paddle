@@ -273,7 +273,7 @@ function check_op_benchmark_result {
   # default 3 times
   [ -z "${RETRY_TIMES}" ] && RETRY_TIMES=3
   logs_dir=$(pwd)/logs-test_pr
-  api_info_file=$(pwd)/api_info.txt
+  api_info_file=$(pwd)/cu_api_info.txt
   for retry_time in $(seq 0 ${RETRY_TIMES})
   do
     if [ $retry_time -gt 0 ]; then
