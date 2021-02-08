@@ -53,9 +53,9 @@ static T* DynLoad(void* handle, std::string name) {
   auto errorno = GetLastError();
 #endif  // !_WIN32
   PADDLE_ENFORCE_NOT_NULL(
-      func,
-      platform::errors::NotFound(
-          "Failed to load dynamic operator library, error code(%s).", errorno));
+      func, platform::errors::NotFound(
+                "Failed to load dynamic operator library, error message(%s).",
+                errorno));
   return func;
 }
 
@@ -85,7 +85,10 @@ platform::Place ConvertEnumPlaceToInnerPlace(const PlaceType& pc) {
     return platform::Place(platform::CUDAPlace(platform::GetCurrentDeviceId()));
 #endif
   } else {
-    PADDLE_THROW("Place for CustomOp is undefined in Paddle");
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Unsupported place type code(%d) when "
+                                        "casting enum place to paddle place.",
+                                        static_cast<int>(pc)));
   }
   return platform::Place();
 }
@@ -98,7 +101,9 @@ PlaceType ConvertInnerPlaceToEnumPlace(const platform::Place& pc) {
     return PlaceType::kGPU;
 #endif
   } else {
-    PADDLE_THROW("Place for CustomOp is undefined in Paddle");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported place type `%s` when casting paddle place to enum place.",
+        pc));
   }
   return PlaceType::kUNK;
 }
@@ -127,7 +132,10 @@ proto::VarType::Type ConvertEnumDTypeToInnerDType(
     case paddle::DataType::INT64:
       return proto::VarType::INT64;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented("Unsupported data type."));
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type code(%d) when casting enum data type into "
+          "paddle data type.",
+          dtype));
   }
 }
 
@@ -157,7 +165,10 @@ paddle::DataType ConvertInnerDTypeToEnumDType(
     case proto::VarType::INT16:
       return paddle::DataType::INT16;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented("Unsupported data type."));
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type `%s` when casting paddle data type into enum "
+          "data type.",
+          DataTypeToString(dtype)));
   }
 }
 
@@ -340,6 +351,11 @@ class CustomGradOpMaker<imperative::OpBase>
         outputs_(outputs) {}
 
  protected:
+  // TODO(chenweihang): The code is duplicated with the previous one, because
+  // ere OpMaker's Input, Output and other methods are protected. Putting the
+  // function implementation outside the class will cause the method to be
+  // uncallable,
+  // so it is still implemented in the class for the time being.
   void Apply(GradOpPtr<imperative::OpBase> grad_op) const override {
     grad_op->SetType(name_);
 
@@ -398,11 +414,10 @@ void RegisterOperatorKernel(const std::string& name,
                             const std::vector<std::string>& inputs,
                             const std::vector<std::string>& outputs) {
   VLOG(1) << "Custom Operator: op name in kernel: " << name;
-  // Dummy op kernel key
-  // TODO(chenweihang): Because engine need get device context based
+  // NOTE [ Dummy Op Kernel Key ]
+  // TODO(chenweihang): Because execute engine need get device context based
   // op_kernel_key.place_, so we should register kernel for each
-  // device.
-  // But this is not entirely correct, if user only give a cpu kernel,
+  // device. But this is not entirely correct, if user only give a cpu kernel,
   // but call api in gpu device, it will cause error.
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
                                   PlaceType::kCPU, inputs, outputs);
@@ -452,6 +467,11 @@ void RegisterOperatorWithMetaInfo(
           op_name, info.proto_->InitializationErrorString()));
 
   // InferShape
+  PADDLE_ENFORCE_NOT_NULL(
+      infer_shape_func,
+      platform::errors::PreconditionNotMet(
+          "InferShapeFn is nullptr. Need to set the InferShapeFn of custom "
+          "operator by .SetInferShapeFn(PD_INFER_SHAPE(...))"));
   info.infer_shape_ = [op_inputs, op_outputs,
                        infer_shape_func](InferShapeContext* ctx) {
     std::vector<std::vector<int64_t>> input_shapes;
@@ -473,6 +493,11 @@ void RegisterOperatorWithMetaInfo(
   };
 
   // Infer Dtype
+  PADDLE_ENFORCE_NOT_NULL(
+      infer_dtype_func,
+      platform::errors::PreconditionNotMet(
+          "InferDtypeFn is nullptr. Need to set the InferDtypeFn of custom "
+          "operator by .SetInferDtypeFn(PD_INFER_DTYPE(...))"));
   info.infer_var_type_ = [op_inputs, op_outputs,
                           infer_dtype_func](InferVarTypeContext* ctx) {
     std::vector<DataType> input_dtypes;
@@ -548,7 +573,7 @@ void RegisterOperatorWithMetaInfo(
       return new CustomOperator(type, inputs, outputs, attrs);
     };
 
-    // Grad InferShape
+    // Grad InferShape (gradient's shape is same with forward input default)
     grad_info.infer_shape_ = [grad_op_outputs](InferShapeContext* ctx) {
       for (auto& out_name : grad_op_outputs) {
         ctx->ShareDim(detail::NoGrad(out_name), out_name);
@@ -572,13 +597,13 @@ void RegisterOperatorWithMetaInfoMap(
     const paddle::OpMetaInfoMap& op_meta_info_map) {
   auto& meta_info_map = op_meta_info_map.GetMap();
 
+  PADDLE_ENFORCE_EQ(meta_info_map.empty(), false,
+                    platform::errors::PreconditionNotMet(
+                        "No custom operator that needs to be registered."));
   VLOG(1) << "Custom Operator: size of op meta info map - "
           << meta_info_map.size();
+  // pair: {op_type, OpMetaInfo}
   for (auto& pair : meta_info_map) {
-    // pair.first: op_type
-    // pair.second: OpMetaInfo
-
-    // 1. register op
     VLOG(1) << "Custom Operator: pair first -> op name: " << pair.first;
     RegisterOperatorWithMetaInfo(pair.second);
   }

@@ -253,10 +253,10 @@ const PlaceType &Tensor::place() const {
   } else if (platform::is_gpu_place(tensor->place())) {
     place_ = PlaceType::kGPU;
   } else {
-    PADDLE_THROW(
+    PADDLE_THROW(platform::errors::Unimplemented(
         "Current Tensor hold unsupported Place Type, Please Init it"
         "using Tensor::mutable_data<T>(PaddlePlace) which T is"
-        "either Place::kCPU or Place::kGPU");
+        "either Place::kCPU or Place::kGPU"));
   }
   return place_;
 }
