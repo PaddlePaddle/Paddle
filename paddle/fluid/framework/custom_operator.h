@@ -16,11 +16,17 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/extension/include/op_meta_info.h"
+
 namespace paddle {
 namespace framework {
 
-// Load custom op api: used after user compiled
+// Load custom op api: register op after user compiled
 void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name);
+
+// Register custom op api: register op directly
+void RegisterOperatorWithMetaInfoMap(
+    const paddle::OpMetaInfoMap& op_meta_info_map);
 
 }  // namespace framework
 }  // namespace paddle

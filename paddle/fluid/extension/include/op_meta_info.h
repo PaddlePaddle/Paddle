@@ -287,13 +287,21 @@ class OpMetaInfoBuilder {
   OpMetaInfo* info_ptr_;
 };
 
-/////////////////////// Op register marco /////////////////////////
+/////////////////////// Op register API /////////////////////////
+
+// For inference: compile directly with framework
+// Call after PD_BUILD_OPERATOR(...)
+void RegisterAllCustomOperator();
+
+/////////////////////// Op register Macro /////////////////////////
 
 #define PD_BUILD_OPERATOR(op_name)                                      \
   static ::paddle::OpMetaInfoBuilder __op_meta_info_##__COUNTER__##__ = \
       ::paddle::OpMetaInfoBuilder(op_name)
 
 }  // namespace paddle
+
+///////////////////// C API ///////////////////
 
 #ifdef __cplusplus
 extern "C" {

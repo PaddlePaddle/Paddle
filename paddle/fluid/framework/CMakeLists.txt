@@ -324,7 +324,7 @@ cc_library(custom_tensor SRCS ../extension/src/tensor.cc DEPS lod_tensor)
 cc_library(op_meta_info SRCS ../extension/src/op_meta_info.cc DEPS custom_tensor)
 cc_library(custom_operator SRCS custom_operator.cc DEPS operator op_registry device_context dynamic_loader custom_tensor op_meta_info)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader)
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 cc_library(paddle_framework_shared

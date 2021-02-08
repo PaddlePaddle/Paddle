@@ -18,6 +18,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/custom_operator.h"
+
 namespace paddle {
 
 ////////////////////// Op Meta Info //////////////////////
@@ -98,6 +100,13 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetBackwardOp(
   info_vector.emplace_back(op_meta);
   info_ptr_ = &(info_vector.back());
   return *this;
+}
+
+/////////////////////// Op register API /////////////////////////
+
+void RegisterAllCustomOperator() {
+  auto& op_meta_info_map = OpMetaInfoMap::Instance();
+  framework::RegisterOperatorWithMetaInfoMap(op_meta_info_map);
 }
 
 }  // namespace paddle
