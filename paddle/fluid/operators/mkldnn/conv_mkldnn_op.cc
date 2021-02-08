@@ -186,7 +186,7 @@ class ConvMKLDNNHandlerT
       const auto src_tz = paddle::framework::vectorize(input->dims());
 
       auto weights_tz = paddle::framework::vectorize(filter->dims());
-      platform::GetWeightsTz(weights_tz, groups);
+      platform::GetGroupConvWeightsTz(weights_tz, groups);
 
       const auto dst_tz = paddle::framework::vectorize(output->dims());
 
@@ -310,7 +310,7 @@ class ConvMKLDNNHandlerT
     } else {
       const K* filter_data = filter->data<K>();
       auto weights_tz = framework::vectorize(filter->dims());
-      platform::GetWeightsTz(weights_tz, groups);
+      platform::GetGroupConvWeightsTz(weights_tz, groups);
 
       auto user_src_md = platform::MKLDNNMemDesc(
           weights_tz, platform::MKLDNNGetDataType<K>(),
@@ -628,7 +628,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto weights_tz = paddle::framework::vectorize(filter->dims());
       int g = std::max(groups, 1);
 
-      platform::GetWeightsTz(weights_tz, g);
+      platform::GetGroupConvWeightsTz(weights_tz, g);
       auto dst_tz = paddle::framework::vectorize(output->dims());
 
       std::transform(dilations.begin(), dilations.end(), dilations.begin(),
@@ -947,7 +947,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto weights_tz = paddle::framework::vectorize(filter->dims());
 
     int g = std::max(groups, 1);
-    platform::GetWeightsTz(weights_tz, g);
+    platform::GetGroupConvWeightsTz(weights_tz, g);
     auto dst_tz = paddle::framework::vectorize(output_grad->dims());
 
     auto src_format = input->format();

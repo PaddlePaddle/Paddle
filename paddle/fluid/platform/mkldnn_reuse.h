@@ -246,7 +246,7 @@ class MKLDNNHandlerT {
       const mkldnn::memory::desc& user_md,
       const mkldnn::memory::desc& target_md, void* ptr,
       const std::string& suffix, bool is_persistent = false,
-      std::function<std::shared_ptr<F>(const F*)> custom_func = {}) {
+      std::function<std::shared_ptr<F>(const F*)> custom_reorder_func = {}) {
     const auto target_key = key_ + suffix + "_target";
     const auto key_reorder_p = key_ + suffix + "reorder_p";
     const auto user_key = key_ + suffix + "_user";
@@ -255,8 +255,9 @@ class MKLDNNHandlerT {
         std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(target_key));
 
     if (target_memory_p == nullptr) {
-      if (custom_func) {
-        auto reordered_data = custom_func(reinterpret_cast<const F*>(ptr));
+      if (custom_reorder_func) {
+        auto reordered_data =
+            custom_reorder_func(reinterpret_cast<const F*>(ptr));
         dev_ctx_.SetBlob(key_reorder_p + "-custom_reorder", reordered_data);
         ptr = reinterpret_cast<void*>(reordered_data.get());
       }
@@ -1490,18 +1491,5 @@ static void SetDstMemoryQuantized(
   dst_memory.reset(
       new mkldnn::memory(*dst_md, engine, to_void_cast<T>(output_data)));
 }
-
-inline void GetWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
-                         const int groups) {
-  if (groups > 1) {
-    // if (is_conv3d) [o, i, d, h, w]->[g, o/g, i, d, h, w]
-    // else [o, i, h, w] -> [g, o/g, i, h, w]
-    weights_tz.push_back(0);
-    std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
-    weights_tz[0] = groups;
-    weights_tz[1] = weights_tz[1] / groups;
-  }
-}
-
 }  // namespace platform
 }  // namespace paddle

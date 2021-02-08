@@ -25,6 +25,19 @@ namespace operators {
 using Tensor = framework::Tensor;
 using framework::DataLayout;
 
+inline mkldnn::memory::dims GetWeightsTz(const Tensor* filter,
+                                         const int groups) {
+  auto iohw_weights_tz = paddle::framework::vectorize(filter->dims());
+  auto weights_tz = iohw_weights_tz;
+
+  // IOHW -> OIHW
+  weights_tz[0] = iohw_weights_tz[1];
+  weights_tz[1] = iohw_weights_tz[0];
+  int g = std::max(groups, 1);
+  platform::GetGroupConvWeightsTz(weights_tz, g);
+  return weights_tz;
+}
+
 template <typename T, typename K, typename T_out>
 class ConvTransposeMKLDNNHandlerT
     : public platform::MKLDNNHandlerT<T, mkldnn::deconvolution_forward> {
@@ -39,145 +52,139 @@ class ConvTransposeMKLDNNHandlerT
             dev_ctx, mkldnn_engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
                                 unique_name)) {
-    const bool is_test = ctx.Attr<bool>("is_test");
-    PADDLE_ENFORCE_EQ(is_test, true,
-                      platform::errors::InvalidArgument(
-                          "ConvTransposeMKLDNN works only for inference. "
-                          "Set is_test = True. but got is_test=False ."));
-
-    PADDLE_ENFORCE_EQ(
-        input->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument(
-            "Got wrong layout = %d for Input tensor.", input->layout()));
-    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Got wrong format for Input tensor."));
-
-    PADDLE_ENFORCE_EQ(
-        filter->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument(
-            "The filter tensor's laytout should be %d, but got %d.",
-            DataLayout::kMKLDNN, filter->layout()));
-    PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Got wrong formats for Filter tensor."));
-
-    PADDLE_ENFORCE_EQ(
-        input->dims().size(), 4,
-        platform::errors::InvalidArgument(
-            "Input must be with 4 dimensions, i.e. NCHW. but got dimension =%d",
-            input->dims().size()));
-    PADDLE_ENFORCE_EQ(
-        filter->dims().size(), 4,
-        platform::errors::InvalidArgument("Filter must be with 4 dimensions, "
-                                          "i.e. OIHW, but got dimension =%d",
-                                          filter->dims().size()));
-
-    if (bias) {
-      PADDLE_ENFORCE_EQ(
-          bias->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument(
-              "The bias tensor's laytout should be %d, but got %d.",
-              DataLayout::kMKLDNN, bias->layout()));
-      PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::undef,
+    if (!this->isCached()) {
+      const bool is_test = ctx.Attr<bool>("is_test");
+      PADDLE_ENFORCE_EQ(is_test, true,
                         platform::errors::InvalidArgument(
-                            "Got wrong format for Bias tensor."));
+                            "ConvTransposeMKLDNN works only for inference. "
+                            "The attribute \'is_test\' value should be set to "
+                            "True, but got is_test=False."));
 
       PADDLE_ENFORCE_EQ(
-          bias->dims().size(), 1,
-          platform::errors::InvalidArgument("Bias must only have 1 dimension, "
-                                            "i.e. X, but got dimension = %d .",
-                                            bias->dims().size()));
-    }
+          input->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument(
+              "Got wrong layout = %d for Input tensor.", input->layout()));
+      PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
+                        platform::errors::InvalidArgument(
+                            "Got wrong format for Input tensor."));
 
-    std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
-    std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
+      PADDLE_ENFORCE_EQ(
+          filter->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument(
+              "The filter tensor's laytout should be %d, but got %d.",
+              DataLayout::kMKLDNN, filter->layout()));
+      PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
+                        platform::errors::InvalidArgument(
+                            "Got wrong formats for Filter tensor."));
 
-    std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
-    std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
+      PADDLE_ENFORCE_EQ(
+          input->dims().size(), 4,
+          platform::errors::InvalidArgument("Input must be with 4 dimensions, "
+                                            "i.e. NCHW. but got dimension =%d",
+                                            input->dims().size()));
+      PADDLE_ENFORCE_EQ(
+          filter->dims().size(), 4,
+          platform::errors::InvalidArgument("Filter must be with 4 dimensions, "
+                                            "i.e. OIHW, but got dimension =%d",
+                                            filter->dims().size()));
 
-    std::vector<int> dilations_temp = ctx.Attr<std::vector<int>>("dilations");
-    std::vector<int64_t> dilations(begin(dilations_temp), end(dilations_temp));
+      if (bias) {
+        PADDLE_ENFORCE_EQ(
+            bias->layout(), DataLayout::kMKLDNN,
+            platform::errors::InvalidArgument(
+                "The bias tensor's laytout should be %d, but got %d.",
+                DataLayout::kMKLDNN, bias->layout()));
+        PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::undef,
+                          platform::errors::InvalidArgument(
+                              "Got wrong format for Bias tensor."));
 
-    int groups = ctx.Attr<int>("groups");
-    std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
+        PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
+                          platform::errors::InvalidArgument(
+                              "Bias must only have 1 dimension, "
+                              "i.e. X, but got dimension = %d .",
+                              bias->dims().size()));
+      }
 
-    PADDLE_ENFORCE_EQ(
-        strides.size(), 2,
-        platform::errors::Unimplemented(
-            "Now we only support 2d oneDNN convolution transpose op"));
+      std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
+      mkldnn::memory::dims strides(begin(strides_temp), end(strides_temp));
 
-    auto input_dims = input->dims();
-    auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
-    auto filter_dims = filter->dims();
-    auto filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+      std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
+      mkldnn::memory::dims paddings(begin(paddings_temp), end(paddings_temp));
 
-    auto ksize = framework::vectorize(filter_data_dims);
+      std::vector<int> dilations_temp = ctx.Attr<std::vector<int>>("dilations");
+      mkldnn::memory::dims dilations(begin(dilations_temp),
+                                     end(dilations_temp));
 
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             data_dims, strides, ksize);
+      int groups = ctx.Attr<int>("groups");
+      std::string padding_algorithm =
+          ctx.Attr<std::string>("padding_algorithm");
 
-    std::transform(dilations.begin(), dilations.end(), dilations.begin(),
-                   [](int64_t i) { return i - 1; });
+      PADDLE_ENFORCE_EQ(
+          strides.size(), 2,
+          platform::errors::Unimplemented(
+              "Now we only support 2d oneDNN convolution transpose op"));
 
-    const auto src_tz = paddle::framework::vectorize(input->dims());
+      auto input_dims = input->dims();
+      auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
+      auto filter_dims = filter->dims();
+      auto filter_data_dims =
+          framework::slice_ddim(filter_dims, 2, filter_dims.size());
 
-    auto iohw_weights_tz =
-        paddle::framework::vectorize<int64_t>(filter->dims());
-    auto weights_tz = iohw_weights_tz;
+      auto ksize = framework::vectorize(filter_data_dims);
 
-    // IOHW -> OIHW
-    weights_tz[0] = iohw_weights_tz[1];
-    weights_tz[1] = iohw_weights_tz[0];
-    int g = std::max(groups, 1);
-    platform::GetWeightsTz(weights_tz, g);
+      UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                               data_dims, strides, ksize);
 
-    auto dst_tz = paddle::framework::vectorize<int64_t>(output->dims());
+      std::transform(dilations.begin(), dilations.end(), dilations.begin(),
+                     [](int64_t i) { return i - 1; });
 
-    const mkldnn::memory::dims stride_dims = strides;
-    const auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
-    const mkldnn::memory::dims dilations_dims = dilations;
+      const auto src_tz = paddle::framework::vectorize(input->dims());
 
-    /* create memory descriptor for convolution without specified format
-     * ('any') which lets a primitive (convolution in this case) choose
-     * the memory format preferred for best performance
-     */
-    auto chosen_memory_format = MKLDNNMemoryFormat::any;
-    std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
-    float fuse_alpha = ctx.Attr<float>("fuse_alpha");
-    float fuse_beta = ctx.Attr<float>("fuse_beta");
+      auto weights_tz = GetWeightsTz(filter, groups);
 
-    auto data_type = mkldnn::memory::data_type::f32;
-    if (ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16" ||
-        std::is_same<T_out, platform::bfloat16>::value)
-      data_type = mkldnn::memory::data_type::bf16;
+      auto dst_tz = paddle::framework::vectorize(output->dims());
+      const auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
 
-    auto src_md =
-        platform::MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
-    auto weights_md =
-        platform::MKLDNNMemDesc(weights_tz, data_type, chosen_memory_format);
-    std::vector<int64_t> bias_tz;
-    auto dst_md = platform::MKLDNNMemDesc(
-        dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
+      /* create memory descriptor for convolution without specified format
+       * ('any') which lets a primitive (convolution in this case) choose
+       * the memory format preferred for best performance
+       */
+      auto chosen_memory_format = MKLDNNMemoryFormat::any;
+      std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
+      float fuse_alpha = ctx.Attr<float>("fuse_alpha");
+      float fuse_beta = ctx.Attr<float>("fuse_beta");
 
-    const mkldnn::primitive_attr conv_trans_attr =
-        CreatePostOps(fuse_activation, fuse_alpha, fuse_beta);
-    auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
-                                 : mkldnn::prop_kind::forward_training;
-    if (bias) {
-      bias_tz = paddle::framework::vectorize<int64_t>(bias->dims());
-      auto bias_md =
-          platform::MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
-      this->AcquireForwardPrimitiveDescriptor(
-          conv_trans_attr, fwd_prop_kind, dnnl::algorithm::deconvolution_direct,
-          src_md, weights_md, bias_md, dst_md, stride_dims, dilations_dims,
-          mkldnn_paddings[0], mkldnn_paddings[1]);
-    } else {
-      this->AcquireForwardPrimitiveDescriptor(
-          conv_trans_attr, fwd_prop_kind, dnnl::algorithm::deconvolution_direct,
-          src_md, weights_md, dst_md, stride_dims, dilations_dims,
-          mkldnn_paddings[0], mkldnn_paddings[1]);
+      auto data_type = mkldnn::memory::data_type::f32;
+      if (ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16" ||
+          std::is_same<T_out, platform::bfloat16>::value)
+        data_type = mkldnn::memory::data_type::bf16;
+
+      auto src_md =
+          platform::MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
+      auto weights_md =
+          platform::MKLDNNMemDesc(weights_tz, data_type, chosen_memory_format);
+      auto dst_md = platform::MKLDNNMemDesc(
+          dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
+
+      const mkldnn::primitive_attr conv_trans_attr =
+          CreatePostOps(fuse_activation, fuse_alpha, fuse_beta);
+      auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
+                                   : mkldnn::prop_kind::forward_training;
+      if (bias) {
+        std::vector<int64_t> bias_tz =
+            paddle::framework::vectorize(bias->dims());
+        auto bias_md =
+            platform::MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
+        this->AcquireForwardPrimitiveDescriptor(
+            conv_trans_attr, fwd_prop_kind,
+            dnnl::algorithm::deconvolution_direct, src_md, weights_md, bias_md,
+            dst_md, strides, dilations, mkldnn_paddings[0], mkldnn_paddings[1]);
+      } else {
+        this->AcquireForwardPrimitiveDescriptor(
+            conv_trans_attr, fwd_prop_kind,
+            dnnl::algorithm::deconvolution_direct, src_md, weights_md, dst_md,
+            strides, dilations, mkldnn_paddings[0], mkldnn_paddings[1]);
+      }
     }
   }
 
@@ -238,20 +245,14 @@ class ConvTransposeMKLDNNHandlerT
       return weights_mem_p;
     } else {
       const K* filter_data = filter->data<K>();
-      auto iohw_weights_tz =
-          paddle::framework::vectorize<int64_t>(filter->dims());
-      auto weights_tz = iohw_weights_tz;
-
-      // IOHW -> OIHW
-      weights_tz[0] = iohw_weights_tz[1];
-      weights_tz[1] = iohw_weights_tz[0];
+      auto weights_tz = GetWeightsTz(filter, groups);
       int g = std::max(groups, 1);
-      platform::GetWeightsTz(weights_tz, g);
 
       auto user_src_md = platform::MKLDNNMemDesc(
           weights_tz, platform::MKLDNNGetDataType<K>(),
           (g == 1) ? filter->format() : MKLDNNMemoryFormat::goihw);
 
+      auto iohw_weights_tz = paddle::framework::vectorize(filter->dims());
       // Custom Reorder from IOHW to OIHW
       auto iohw2oihw_reorder =
           [&iohw_weights_tz](const K* filter_data) -> std::shared_ptr<K> {
