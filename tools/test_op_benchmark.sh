@@ -219,7 +219,7 @@ function compile_install_paddlepaddle {
 
 # run op benchmark test
 function run_op_benchmark_test {
-  [ ${#BENCHMARK_OP_MAP[*]} -eq 0 ] && return
+  [ ${#BENCHMARK_CC_OP_MAP[*]} -eq 0 -a ${#BENCHMARK_CU_OP_MAP[*]} -eq 0 ] && return
   local task device logs_dir op_name branch_name api_info_file cu_api_info_file cc_api_info_file
   [ -z "$VISIBLE_DEVICES" ] && export VISIBLE_DEVICES=0
   [ "$BENCHMARK_PRINT_FAIL_LOG" != "1" ] && export BENCHMARK_PRINT_FAIL_LOG=1
@@ -250,7 +250,7 @@ function run_op_benchmark_test {
     do
       if [ "${device}" == "gpu" ]
       then
-        task="bost" && api_info_file=$cu_api_info_file
+        task="both" && api_info_file=$cu_api_info_file
       else
         task="accuracy" && api_info_file=$cc_api_info_file
       fi
