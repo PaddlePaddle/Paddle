@@ -16,6 +16,7 @@ from paddle.fluid.optimizer import Optimizer
 import paddle.fluid.core as core
 import numpy as np
 from paddle.distributed import fleet
+from functools import reduce
 
 registerd_op = {## forwards
                 "elementwise_add": "AddParser",
