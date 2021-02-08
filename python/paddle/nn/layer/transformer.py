@@ -106,7 +106,7 @@ class MultiHeadAttention(Layer):
         weight_attr(ParamAttr, optional):  To specify the weight parameter property.
             Default: None, which means the default weight parameter property is used.
             See usage for details in :code:`ParamAttr` .
-        bias_attr (ParamAttr, optional): To specify the bias parameter property.
+        bias_attr (ParamAttr|bool, optional): To specify the bias parameter property.
             Default: None, which means the default bias parameter property is used.
             If it is set to False, this layer will not have trainable bias parameter.
             See usage for details in :code:`ParamAttr` .
