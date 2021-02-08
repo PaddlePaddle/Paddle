@@ -35,7 +35,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -76,102 +75,6 @@ inline bool IsMemberOf(const std::vector<std::string>& vec,
 
 }  // namespace detail
 
-// PaddlePlace <-> platform::Place
-platform::Place ConvertEnumPlaceToInnerPlace(const PlaceType& pc) {
-  if (pc == PlaceType::kCPU) {
-    return platform::Place(platform::CPUPlace());
-  } else if (pc == PlaceType::kGPU) {
-#ifdef PADDLE_WITH_CUDA
-    return platform::Place(platform::CUDAPlace(platform::GetCurrentDeviceId()));
-#endif
-  } else {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Unsupported place type code(%d) when "
-                                        "casting enum place to paddle place.",
-                                        static_cast<int>(pc)));
-  }
-  return platform::Place();
-}
-
-PlaceType ConvertInnerPlaceToEnumPlace(const platform::Place& pc) {
-  if (platform::is_cpu_place(pc)) {
-    return PlaceType::kCPU;
-  } else if (platform::is_gpu_place(pc)) {
-#ifdef PADDLE_WITH_CUDA
-    return PlaceType::kGPU;
-#endif
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupported place type `%s` when casting paddle place to enum place.",
-        pc));
-  }
-  return PlaceType::kUNK;
-}
-
-proto::VarType::Type ConvertEnumDTypeToInnerDType(
-    const paddle::DataType& dtype) {
-  switch (dtype) {
-    case paddle::DataType::COMPLEX128:
-      return proto::VarType::COMPLEX128;
-    case paddle::DataType::COMPLEX64:
-      return proto::VarType::COMPLEX64;
-    case paddle::DataType::FLOAT64:
-      return proto::VarType::FP64;
-    case paddle::DataType::FLOAT32:
-      return proto::VarType::FP32;
-    case paddle::DataType::FLOAT16:
-      return proto::VarType::FP16;
-    case paddle::DataType::BFLOAT16:
-      return proto::VarType::BF16;
-    case paddle::DataType::UINT8:
-      return proto::VarType::UINT8;
-    case paddle::DataType::INT8:
-      return proto::VarType::INT8;
-    case paddle::DataType::INT32:
-      return proto::VarType::INT32;
-    case paddle::DataType::INT64:
-      return proto::VarType::INT64;
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported data type code(%d) when casting enum data type into "
-          "paddle data type.",
-          dtype));
-  }
-}
-
-paddle::DataType ConvertInnerDTypeToEnumDType(
-    const proto::VarType::Type& dtype) {
-  switch (dtype) {
-    case proto::VarType::COMPLEX128:
-      return paddle::DataType::COMPLEX128;
-    case proto::VarType::COMPLEX64:
-      return paddle::DataType::COMPLEX64;
-    case proto::VarType::FP64:
-      return paddle::DataType::FLOAT64;
-    case proto::VarType::FP32:
-      return paddle::DataType::FLOAT32;
-    case proto::VarType::FP16:
-      return paddle::DataType::FLOAT16;
-    case proto::VarType::BF16:
-      return paddle::DataType::BFLOAT16;
-    case proto::VarType::INT64:
-      return paddle::DataType::INT64;
-    case proto::VarType::INT32:
-      return paddle::DataType::INT32;
-    case proto::VarType::INT8:
-      return paddle::DataType::INT8;
-    case proto::VarType::UINT8:
-      return paddle::DataType::UINT8;
-    case proto::VarType::INT16:
-      return paddle::DataType::INT16;
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported data type `%s` when casting paddle data type into enum "
-          "data type.",
-          DataTypeToString(dtype)));
-  }
-}
-
 ////////////////// Kernel Define ////////////////////
 
 // custom op kernel call function define
@@ -189,8 +92,9 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     PADDLE_ENFORCE_EQ(x->IsInitialized(), true,
                       platform::errors::InvalidArgument(
                           "Input tensor (%s) is not initialized."));
-    auto custom_in = paddle::Tensor(ConvertInnerPlaceToEnumPlace(x->place()));
-    CustomTensorUtils::ShareDataFrom((void*)x, custom_in);  // NOLINT
+    auto custom_in = paddle::Tensor(
+        CustomTensorUtils::ConvertInnerPlaceToEnumPlace(x->place()));
+    CustomTensorUtils::ShareDataFrom(static_cast<const void*>(x), custom_in);
     custom_ins.emplace_back(custom_in);
   }
 
@@ -400,7 +304,8 @@ void RegisterOperatorKernelWithPlace(const std::string& name,
                                      const PlaceType& place,
                                      const std::vector<std::string>& inputs,
                                      const std::vector<std::string>& outputs) {
-  OpKernelType key(type, ConvertEnumPlaceToInnerPlace(place));
+  OpKernelType key(type,
+                   CustomTensorUtils::ConvertEnumPlaceToInnerPlace(place));
   VLOG(1) << "Custom Operator: op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] =
       [kernel_func, inputs, outputs](const framework::ExecutionContext& ctx) {
@@ -505,7 +410,8 @@ void RegisterOperatorWithMetaInfo(
     VLOG(1) << "Custom Operator: InferDtype - get input dtype.";
     for (auto& in_name : op_inputs) {
       auto dtype = ctx->GetInputDataType(in_name);
-      input_dtypes.emplace_back(ConvertInnerDTypeToEnumDType(dtype));
+      input_dtypes.emplace_back(
+          CustomTensorUtils::ConvertInnerDTypeToEnumDType(dtype));
     }
 
     VLOG(1) << "Custom Operator: InferDtype - infer output dtype.";
@@ -513,8 +419,9 @@ void RegisterOperatorWithMetaInfo(
 
     VLOG(1) << "Custom Operator: InferDtype - set output dtype.";
     for (size_t i = 0; i < op_outputs.size(); ++i) {
-      ctx->SetOutputDataType(op_outputs[i],
-                             ConvertEnumDTypeToInnerDType(output_dtypes[i]));
+      ctx->SetOutputDataType(
+          op_outputs[i],
+          CustomTensorUtils::ConvertEnumDTypeToInnerDType(output_dtypes[i]));
     }
   };
 

@@ -32,6 +32,7 @@ enum DataType {
   INT16,
   UINT8,
   INT8,
+  BOOL,
   // TODO(JiabinYang) support more data types if needed.
 };
 
