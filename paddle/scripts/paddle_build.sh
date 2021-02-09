@@ -621,7 +621,7 @@ EOF
             need_retry_ut_count=${#need_retry_ut_arr[@]}
             read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
-                while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
+                while ( [ $exec_times -lt $retry_time ] )
                     do
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}"`
@@ -1207,7 +1207,7 @@ set +x
             need_retry_ut_count=${#need_retry_ut_arr[@]}
             read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
-                while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
+                while ( [ $exec_times -lt $retry_time ] )
                     do
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
