@@ -23,7 +23,7 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class ElementwiseSubNPUKernel : public framework::OpKernel<T> {
+class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::LoDTensor>("X");
@@ -31,7 +31,7 @@ class ElementwiseSubNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("Sub", {*x, *y}, {*out}, {});
+    auto runner = NpuOpRunner("Add", {*x, *y}, {*out}, {});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -46,5 +46,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     elementwise_add,
-    ops::ElementwiseSubNPUKernel<paddle::platform::NPUDeviceContext, float>);
+    ops::ElementwiseAddNPUKernel<paddle::platform::NPUDeviceContext, float>);
 #endif

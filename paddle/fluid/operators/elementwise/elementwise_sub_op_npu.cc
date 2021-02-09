@@ -16,14 +16,14 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
+class ElementwiseSubNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::LoDTensor>("X");
@@ -48,5 +48,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     elementwise_sub,
-    ops::ElementwiseAddNPUKernel<paddle::platform::NPUDeviceContext, float>);
+    ops::ElementwiseSubNPUKernel<paddle::platform::NPUDeviceContext, float>);
 #endif
