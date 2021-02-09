@@ -63,16 +63,22 @@ elseif(WITH_ASCEND_CL)
   set(ASCEND_ACL_DIR ${ASCEND_DIR}/acllib/lib64)
   set(STATIC_ACL_LIB ${ASCEND_ACL_DIR})
 
-  set(ATLAS_ACL_DIR ${ASCEND_DIR}/ascend-toolkit/latest/acllib/lib64)
-  set(ATLAS_ATC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/atc/lib64)
+  set(ATLAS_ACL_DIR ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/lib64)
+  set(ATLAS_ATC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/lib64)
   
   set(atlas_acl_lib ${ATLAS_ACL_DIR}/libascendcl.so)
-  set(ATLAS_ACL_INC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/acllib/include)
+  set(atlas_acl_op_compiler_lib ${ATLAS_ACL_DIR}/libacl_op_compiler.so)
+  set(ATLAS_ACL_INC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/include)
+
   message(STATUS "ATLAS_ACL_INC_DIR ${ATLAS_ACL_INC_DIR}")
   message(STATUS "ATLAS_ACL_LIB_DIR ${ATLAS_ACL_DIR}")
   INCLUDE_DIRECTORIES(${ATLAS_ACL_INC_DIR})
 
   ADD_LIBRARY(atlas_acl SHARED IMPORTED GLOBAL)
   SET_PROPERTY(TARGET atlas_acl PROPERTY IMPORTED_LOCATION ${atlas_acl_lib})
-  add_custom_target(extern_ascend DEPENDS atlas_acl)
+
+  ADD_LIBRARY(atlas_acl_op_compiler SHARED IMPORTED GLOBAL)
+  SET_PROPERTY(TARGET atlas_acl_op_compiler PROPERTY IMPORTED_LOCATION ${atlas_acl_op_compiler_lib})
+  add_custom_target(extern_ascend DEPENDS atlas_acl atlas_acl_op_compiler)
+
 endif()

@@ -59,12 +59,14 @@ class AscendInstance {
 
   std::map<AscendString, AscendString> _GetDefaultInitSessionOptions() {
     std::map<AscendString, AscendString> init_options;
-    //init_options["a"] = "b";
-    //init_options["ge.trainFlag"] = "1";
+    // init_options["a"] = "b";
+    // init_options["ge.trainFlag"] = "1";
     return init_options;
   }
 
-  ge::Status InitGEForUT() { return ge::GEInitialize(_GetDefaultInitOptions()); }
+  ge::Status InitGEForUT() {
+    return ge::GEInitialize(_GetDefaultInitOptions());
+  }
 
   void InitGlobalResouces() {
     LOG(INFO) << "Begin ascend InitGlobalResouces";

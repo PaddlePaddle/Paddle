@@ -31,9 +31,14 @@ int GetNPUDeviceCount();
 
 //! Get the runtime version of the ith NPU
 std::string GetNPURuntimeVersion(int id);
+//! Check if this device can access peer or not.
+int NPUCanAccessPeer(int src, int dst);
 
 //! Get the current NPU device id in system.
 int GetCurrentNPUDeviceId();
+
+//! Get the current NPU stream.
+int GetCurrentStream();
 
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedNPUDevices();
@@ -78,6 +83,15 @@ void NPUMemcpySync(void *dst, const void *src, size_t count,
 //! Set memory dst with value count size asynchronously
 void NPUMemsetAsync(void *dst, int value, size_t count, aclrtStream stream,
                     size_t max_count = 0);
+
+//! Copy memory from one device to another device asynchronously.
+void NPUMemcpyPeerAsync(void *dst, int dst_device, const void *src,
+                        int src_device, size_t count, aclrtStream stream,
+                        size_t max_count = 0);
+
+//! Copy memory from one device to another device synchronously.
+void NPUMemcpyPeerSync(void *dst, int dst_device, const void *src,
+                       int src_device, size_t count, size_t max_count = 0);
 
 //! Blocks until stream has completed all operations.
 void NPUStreamSync(aclrtStream stream);

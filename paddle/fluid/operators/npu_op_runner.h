@@ -32,7 +32,8 @@ using AttributeMap = framework::AttributeMap;
 class NpuOpRunner {
  public:
   explicit NpuOpRunner(std::string op_type);
-  explicit NpuOpRunner(std::string op_type, const std::vector<Tensor> &inputs = {},
+  explicit NpuOpRunner(std::string op_type,
+                       const std::vector<Tensor> &inputs = {},
                        const std::vector<Tensor> &outputs = {},
                        const AttributeMap &attrs = {});
 
@@ -40,7 +41,7 @@ class NpuOpRunner {
 
   const std::string &Type();
 
-  NpuOpRunner &AddAttr(const std::string& name, const Attribute &attr);
+  NpuOpRunner &AddAttr(const std::string &name, const Attribute &attr);
 
   NpuOpRunner &AddAttrs(const AttributeMap &attrs);
 
@@ -76,7 +77,7 @@ class NpuOpRunner {
   std::vector<aclDataBuffer *> output_buffers_;
   std::vector<aclTensorDesc *> input_descs_;
   std::vector<aclTensorDesc *> output_descs_;
-  aclopAttr *attr_;
+  aclopAttr *attr_{nullptr};
 };
 
 }  // namespace operators
