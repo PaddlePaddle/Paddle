@@ -77,7 +77,7 @@ class NpuOpRunner {
   std::vector<aclDataBuffer *> output_buffers_;
   std::vector<aclTensorDesc *> input_descs_;
   std::vector<aclTensorDesc *> output_descs_;
-  aclopAttr *attr_;
+  aclopAttr *attr_{nullptr};
 };
 
 }  // namespace operators

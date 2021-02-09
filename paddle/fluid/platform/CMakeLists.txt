@@ -77,7 +77,7 @@ if(WITH_ASCEND)
 endif()
 
 if(WITH_ASCEND_CL)
-    cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor atlas_acl)
+    cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor atlas_acl atlas_acl_op_compiler)
 endif()
 
 add_subdirectory(dynload)

@@ -39,11 +39,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
-  tensor_x->Resize({10, 10});
 
   auto y = scope->Var("Y");
   auto tensor_y = y->GetMutable<f::LoDTensor>();
-  tensor_y->Resize({10, 10});
 
   std::vector<float> init;
   for (int64_t i = 0; i < 10 * 10; ++i) {
@@ -51,7 +49,11 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   }
 
   TensorFromVector(init, ctx, tensor_x);
+  tensor_x->Resize({10, 10});
   TensorFromVector(init, ctx, tensor_y);
+  tensor_y->Resize({10, 10});
+
+  ctx.Wait();
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
@@ -69,6 +71,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
+
+  ctx.Wait();
 
   EXPECT_EQ(out_vec.size(), init.size());
   for (uint32_t i = 0; i < out_vec.size(); i++) {

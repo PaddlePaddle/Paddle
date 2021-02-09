@@ -22,6 +22,8 @@ limitations under the License. */
 #include <vector>
 
 #include "acl/acl.h"
+#include "acl/acl_op_compiler.h"
+
 #include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
@@ -62,11 +64,15 @@ aclFormat ConvertToNpuFormat(DataLayout layout) {
   return iter->second;
 }
 
-NpuOpRunner::NpuOpRunner(std::string op_type) : op_type_(op_type) {}
+NpuOpRunner::NpuOpRunner(std::string op_type) : op_type_(op_type) {
+  attr_ = aclopCreateAttr();
+}
+
 NpuOpRunner::NpuOpRunner(std::string op_type, const std::vector<Tensor> &inputs,
                          const std::vector<Tensor> &outputs,
                          const AttributeMap &attrs)
     : op_type_(op_type) {
+  attr_ = aclopCreateAttr();
   AddInputs(inputs);
   AddOutputs(outputs);
   AddAttrs(attrs);
@@ -218,6 +224,9 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
 
+  VLOG(4) << dtype << " " << dims.size() << " " << dims[0] << "," << dims[1]
+          << " " << format;
+
   auto *desc = aclCreateTensorDesc(dtype, dims.size(), dims.data(), format);
   PADDLE_ENFORCE_NOT_NULL(
       desc, platform::errors::External("Call aclCreateTensorDesc failed."));
@@ -225,18 +234,26 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
 }
 
 aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
-  auto *buffer =
-      aclCreateDataBuffer(tensor.Holder()->ptr(), tensor.memory_size());
+  void *ptr = tensor.data<void>();
+  VLOG(4) << "ptr: " << ptr << ", size: " << tensor.memory_size();
+  auto *buffer = aclCreateDataBuffer(ptr, tensor.memory_size());
   PADDLE_ENFORCE_NOT_NULL(
       buffer, platform::errors::External("Call aclCreateDataBuffer failed."));
   return buffer;
 }
 
 void NpuOpRunner::Run(aclrtStream stream) {
-  aclError ret = aclopExecuteV2(op_type_.c_str(), input_descs_.size(),
-                                input_descs_.data(), input_buffers_.data(),
-                                output_descs_.size(), output_descs_.data(),
-                                output_buffers_.data(), attr_, stream);
+  VLOG(4) << "op_type: " << op_type_;
+  VLOG(4) << "input_desc.size: " << input_descs_.size();
+  VLOG(4) << "output_desc.size: " << output_descs_.size();
+  VLOG(4) << "stream: " << stream;
+  VLOG(4) << "attr: " << attr_;
+  aclError ret = aclopCompileAndExecute(
+      op_type_.c_str(), input_descs_.size(), input_descs_.data(),
+      input_buffers_.data(), output_descs_.size(), output_descs_.data(),
+      output_buffers_.data(), attr_, ACL_ENGINE_SYS, ACL_COMPILE_SYS, NULL,
+      stream);
+  VLOG(4) << "after aclopCompileAndExecute";
   PADDLE_ENFORCE_NPU_SUCCESS(ret);
 }
 }  // namespace operators
