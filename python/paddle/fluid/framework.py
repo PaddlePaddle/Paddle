@@ -1942,7 +1942,7 @@ class Variable(object):
 
         attrs = {'axes': axes, 'starts': starts, 'ends': ends, 'steps': steps}
 
-        from . import utils
+        from .layers import utils
         if utils._contain_var(starts):
             inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
             del attrs['starts']
