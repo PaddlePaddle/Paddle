@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/string/split.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -70,6 +71,7 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
+std::once_flag npu_init_flag;
 
 bool InitGflags(std::vector<std::string> args) {
   bool successed = false;
@@ -149,6 +151,17 @@ void InitDevices() {
     LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
   }
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
+  platform::AclInstance::Instance();  // NOLINT
+  try {
+    // use user specified XPUs in single-node multi-process mode.
+    devices = platform::GetSelectedNPUDevices();
+  } catch (const std::exception &exp) {
+    LOG(WARNING)
+        << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found in runtime.";
+  }
+#endif
   InitDevices(devices);
 }
 
@@ -168,6 +181,9 @@ void InitDevices(const std::vector<int> devices) {
 #endif
 #ifdef PADDLE_WITH_XPU
     places.emplace_back(platform::XPUPlace(devices[i]));
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+    places.emplace_back(platform::NPUPlace(devices[i]));
 #endif
   }
   places.emplace_back(platform::CPUPlace());

@@ -102,6 +102,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/npu_info.h"
+#endif
+
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
@@ -486,6 +490,11 @@ PYBIND11_MODULE(core_noavx, m) {
     return vectorize(operators::details::BroadcastTwoDims(
         make_ddim(x_dim), make_ddim(y_dim), -1));
   });
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  m.def("_npu_finalize",
+        []() { platform::AclInstance::Instance().Finalize(); });
+#endif
 
   m.def(
       "_append_python_callable_object_and_return_id",
@@ -1447,7 +1456,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::CUDAPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
-  
   py::class_<platform::XPUPlace>(m, "XPUPlace", R"DOC(
     **Note**:
     Examples:

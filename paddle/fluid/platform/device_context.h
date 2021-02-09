@@ -47,6 +47,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/stream/npu_stream.h"
+#endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
@@ -57,6 +60,11 @@ struct GpuDevice;
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_header.h"
 #include "paddle/fluid/platform/xpu_info.h"
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "acl/acl.h"
+#include "paddle/fluid/platform/npu_info.h"
 #endif
 
 namespace paddle {
@@ -77,11 +85,13 @@ enum DeviceType {
   CPU = 0,
   CUDA = 1,
   XPU = 2,
+  NPU = 3,
 };
 
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
+constexpr DeviceType kNPU = DeviceType::NPU;
 
 class DeviceContext {
  public:
@@ -150,6 +160,51 @@ class XPUDeviceContext : public DeviceContext {
 template <>
 struct DefaultDeviceContextType<platform::XPUPlace> {
   using TYPE = XPUDeviceContext;
+};
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+class NPUDeviceContext : public DeviceContext {
+ public:
+  explicit NPUDeviceContext(NPUPlace place);
+  virtual ~NPUDeviceContext();
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  Place GetPlace() const override;
+  aclrtContext* context() const;
+
+  /*! \brief  Wait for all operations completion in the stream. */
+  void Wait() const override;
+
+  /*! \brief  Return npu stream in the device context. */
+  aclrtStream stream() const;
+
+#ifdef PADDLE_WITH_ASCEND_HCCL
+  /*! \brief  Return bkcl context. */
+  HCCLContext_t hccl_context() const { return hccl_context_; }
+
+  /*! \brief  Set bkcl context. */
+  void set_hccl_context(HCCLContext_t context) { hccl_context_ = context; }
+#endif
+
+ private:
+  NPUPlace place_;
+  aclrtContext context_;
+#ifdef PADDLE_WITH_ASCEND_HCCL
+  HCCLContext_t hccl_context_;
+#endif
+
+  // Need to be the same with other DeviceContext,
+  // Eventhough eigen_device_ is not used in NPU
+  // NOTE(zhiqiu): why need?
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+  std::shared_ptr<stream::NPUStream> stream_;
+
+  DISABLE_COPY_AND_ASSIGN(NPUDeviceContext);
+};
+
+template <>
+struct DefaultDeviceContextType<platform::NPUPlace> {
+  using TYPE = NPUDeviceContext;
 };
 #endif
 
