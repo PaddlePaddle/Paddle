@@ -83,6 +83,7 @@ bool AllowTF32Cudnn() { return allow_tf32_cudnn; }
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
+  VLOG(4) << "DeviceContextPool Get: " << place;
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
