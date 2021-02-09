@@ -2,11 +2,15 @@ include(ExternalProject)
 
 cc_library(memory_block SRCS memory_block.cc memory_block_desc.cc meta_cache.cc DEPS place)
 
+set(system_allocator_DEPS gflags cpu_info place)
+
 if(${WITH_GPU})
   nv_library(system_allocator SRCS system_allocator.cc DEPS gflags cpu_info gpu_info place)
-else(${WITH_GPU})
+elseif(${WITH_ASCEND_CL})
+  cc_library(system_allocator SRCS system_allocator.cc DEPS gflags cpu_info npu_info place)
+else()
   cc_library(system_allocator SRCS system_allocator.cc DEPS gflags cpu_info place)
-endif(${WITH_GPU})
+endif()
 
 cc_test(system_allocator_test SRCS system_allocator_test.cc DEPS system_allocator)
 
