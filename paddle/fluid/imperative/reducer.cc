@@ -179,6 +179,9 @@ void Reducer::InitializeDenseGroups(
 
     p_group->length_.push_back(size);
 
+    // for concat operator
+    p_group->dense_tensors_.push_back(framework::Tensor());
+
     // check the dtype and place, it must be same.
     auto dtype = var->DataType();
     auto place = var->Place();
@@ -200,6 +203,7 @@ void Reducer::InitializeDenseGroups(
       place_ = place;
     }
   }
+  p_group->all_length_ = all_length;
 }
 
 // Each parameter will be initialized according to the group information.
@@ -234,6 +238,9 @@ void Reducer::InitializeGroups(
     } else {
       // process the dense gradient.
       InitializeDenseGroups(variable_indices_, &group);
+      auto tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
+      tensor->Resize(framework::make_ddim({group.all_length_}))
+          .mutable_data(place_, group.dtype_);
     }
 
     // map variables to this group by VariableLocator
@@ -295,9 +302,6 @@ void Reducer::PrepareForBackward(
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
     group.pending_ = group.variable_indices_.size();
-    group.all_length_ = 0;
-    group.dense_tensors_.clear();
-    group.dense_tensors_.reserve(group.pending_);
     group.sparse_contents_ = nullptr;
   });
 
@@ -423,22 +427,35 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
   auto group_index = var_locator.group_index;
   auto &group = groups_[group_index];
 
-  if (is_used_var) {
-    auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
-    if (!group.is_sparse_) {
-      auto grad = var_warpper->MutableVar();
-      auto inside_group_index = var_locator.inside_group_index;
-      auto length = group.length_[inside_group_index];
-
-      auto tensor = grad->GetMutable<framework::LoDTensor>();
-      framework::Tensor tmp;
-      tmp.ShareDataWith(*tensor).Resize({static_cast<int64_t>(length)});
-      group.dense_tensors_.push_back(std::move(tmp));
-      group.all_length_ += length;
+  if (!group.is_sparse_) {
+    // process dense group
+    auto inside_group_index = var_locator.inside_group_index;
+    auto length = group.length_[inside_group_index];
+    auto &group_tensor = group.dense_tensors_[inside_group_index];
+    if (is_used_var) {
+      auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
+      auto tensor =
+          var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
+      group_tensor.ShareDataWith(*tensor).Resize(
+          {static_cast<int64_t>(length)});
     } else {
+      if (!group_tensor.IsInitialized()) {
+        group_tensor.Resize({static_cast<int64_t>(length)});
+        group_tensor.mutable_data(place_, group.dtype_);
+        auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+        operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
+      }
+    }
+  } else {
+    // process sparse group
+    if (is_used_var) {
+      auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
       group.sparse_contents_ = var_warpper->MutableVar();
+    } else {
+      group.sparse_contents_ = nullptr;
     }
   }
+
   if (--group.pending_ == 0) {
     // can start allreduce
     MarkGroupReady(group_index);
@@ -478,24 +495,19 @@ void Reducer::MarkGroupReady(size_t group_index) {
                 << "] has no var to allreduce";
       }
     } else {
-      if (!group.dense_tensors_.empty()) {
-        VLOG(3) << "dense group [" << next_group_
-                << "] start allreduce in ring[" << run_order << "]";
-        // Select common commstream to concat tensors
-        // group.dense_tensors ---> group.dense_contents_
-        group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
+      VLOG(3) << "dense group [" << next_group_ << "] start allreduce in ring["
+              << run_order << "]";
+      // Select common commstream to concat tensors
+      // group.dense_tensors ---> group.dense_contents_
+      group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
 
-        // Start allreduce
-        parallel_ctx_->AllReduceByStream(
-            group.dense_contents_, &(group.dense_contents_), run_order, false);
+      // Start allreduce
+      parallel_ctx_->AllReduceByStream(
+          group.dense_contents_, &(group.dense_contents_), run_order, false);
 
-        // Select common commstream to split tensors
-        // group.dense_contents_ ---> group.dense_tensors
-        group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
-      } else {
-        VLOG(3) << "The dense group[" << next_group_
-                << "] has no var to allreduce";
-      }
+      // Select common commstream to split tensors
+      // group.dense_contents_ ---> group.dense_tensors
+      group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
     }
   }
 }
