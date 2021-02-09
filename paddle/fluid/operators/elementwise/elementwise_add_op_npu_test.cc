@@ -42,23 +42,24 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto y = scope->Var("Y");
   auto tensor_y = y->GetMutable<f::LoDTensor>();
+  int size=1024;
 
   std::vector<float> init;
-  for (int64_t i = 0; i < 10 * 10; ++i) {
+  for (int64_t i = 0; i < size * size; ++i) {
     init.push_back(1.0);
   }
 
   TensorFromVector(init, ctx, tensor_x);
-  tensor_x->Resize({10, 10});
+  tensor_x->Resize({size, size});
   TensorFromVector(init, ctx, tensor_y);
-  tensor_y->Resize({10, 10});
+  tensor_y->Resize({size, size});
 
   ctx.Wait();
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
-  tensor_out->Resize({10, 10});
+  tensor_out->Resize({size, size});
   tensor_out->mutable_data<float>(place);  // allocate
 
   // run
@@ -67,7 +68,14 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
       f::OpRegistry::CreateOp("elementwise_add", {{"X", {"X"}}, {"Y", {"Y"}}},
                               {{"Out", {"Out"}}}, attrs);
 
-  op->Run(*scope, place);
+  struct timeval start, end;
+  for(int i=0;i<100;i++){
+    gettimeofday(&start, NULL);
+    op->Run(*scope, place);
+    gettimeofday(&end, NULL);
+    long micros = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
+    printf("idx:%d, time:%d\n", i, micros);
+  }
 
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
