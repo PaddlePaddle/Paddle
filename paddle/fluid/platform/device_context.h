@@ -57,6 +57,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/stream/npu_stream.h"
+#endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {

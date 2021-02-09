@@ -209,6 +209,16 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
       platform::SetXPUDeviceId(dev_id);
 #endif
+    } else if (platform::is_npu_place(place)) {
+#ifndef PADDLE_WITH_ASCEND_CL
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Cannot run operator on place %s, please recompile paddle or "
+          "reinstall Paddle with NPU support.",
+          place));
+#else
+      auto dev_id = BOOST_GET_CONST(platform::NPUPlace, place).device;
+      platform::SetNPUDeviceId(dev_id);
+#endif
     }
 
     {

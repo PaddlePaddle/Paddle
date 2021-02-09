@@ -82,9 +82,8 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   if (it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
-        "with WITH_GPU or WITH_XPU option or check that your train process "
-        "hold the "
-        "correct gpu_id if you use Executor.",
+        "with WITH_GPU, WITH_XPU or WITH_ASCEND_CL option or check that "
+        "your train process set the correct device id if you use Executor.",
         place));
   }
   return it->second.get().get();
@@ -145,6 +144,14 @@ DeviceContextPool::DeviceContextPool(
       PADDLE_THROW(
           platform::errors::Unimplemented("XPUPlace is not supported. Please "
                                           "re-compile with WITH_XPU option."));
+#endif
+    } else if (platform::is_npu_place(p)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      EmplaceDeviceContext<NPUDeviceContext, NPUPlace>(&device_contexts_, p);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "NPUPlace is not supported. Please "
+          "re-compile with WITH_ASCEND_CL option."));
 #endif
     }
   }
@@ -732,6 +739,5 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 }
 
 #endif
-
 }  // namespace platform
 }  // namespace paddle
