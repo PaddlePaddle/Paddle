@@ -25,23 +25,23 @@ namespace paddle {
 ////////////////////// Op Meta Info //////////////////////
 
 OpMetaInfo& OpMetaInfo::Inputs(std::vector<std::string>&& inputs) {
-  inputs_ = inputs;
+  inputs_ = std::forward<std::vector<std::string>>(inputs);
   return *this;
 }
 OpMetaInfo& OpMetaInfo::Outputs(std::vector<std::string>&& outputs) {
-  outputs_ = outputs;
+  outputs_ = std::forward<std::vector<std::string>>(outputs);
   return *this;
 }
 OpMetaInfo& OpMetaInfo::SetKernelFn(KernelFunc&& func) {
-  kernel_fn_ = func;
+  kernel_fn_ = std::forward<KernelFunc>(func);
   return *this;
 }
 OpMetaInfo& OpMetaInfo::SetInferShapeFn(InferShapeFunc&& func) {
-  infer_shape_fn_ = func;
+  infer_shape_fn_ = std::forward<InferShapeFunc>(func);
   return *this;
 }
 OpMetaInfo& OpMetaInfo::SetInferDtypeFn(InferDtypeFunc&& func) {
-  infer_dtype_fn_ = func;
+  infer_dtype_fn_ = std::forward<InferDtypeFunc>(func);
   return *this;
 }
 
@@ -62,7 +62,7 @@ OpMetaInfoBuilder::OpMetaInfoBuilder(std::string&& name) {
   name_ = std::forward<std::string>(name);
   auto& info_vector = OpMetaInfoMap::Instance()[name_];
   auto op_meta = OpMetaInfo(name_);
-  info_vector.emplace_back(op_meta);
+  info_vector.emplace_back(std::move(op_meta));
   info_ptr_ = &(info_vector.back());
 }
 
@@ -97,7 +97,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetBackwardOp(
     const std::string& bwd_op_name) {
   auto& info_vector = OpMetaInfoMap::Instance()[name_];
   auto op_meta = OpMetaInfo(bwd_op_name);
-  info_vector.emplace_back(op_meta);
+  info_vector.emplace_back(std::move(op_meta));
   info_ptr_ = &(info_vector.back());
   return *this;
 }

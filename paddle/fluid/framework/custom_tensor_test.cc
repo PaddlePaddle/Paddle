@@ -20,7 +20,7 @@
 
 template <typename T>
 paddle::Tensor InitCPUTensorForTest() {
-  std::vector<int> tensor_shape = {5, 5};
+  std::vector<int> tensor_shape{5, 5};
   auto t1 = paddle::Tensor(paddle::PlaceType::kCPU);
   t1.reshape(tensor_shape);
   auto* p_data_ptr = t1.mutable_data<T>(paddle::PlaceType::kCPU);
