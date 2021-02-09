@@ -43,7 +43,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   auto y = scope->Var("Y");
   auto tensor_y = y->GetMutable<f::LoDTensor>();
   int dim1=1024;
-  int dim2=int(size/dim1 + 1);
+  int dim2=int(size/dim1);
 
   std::vector<float> init;
   for (int64_t i = 0; i < dim1 * dim2; ++i) {
@@ -81,7 +81,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   gettimeofday(&end, NULL);
   int micros = (((end.tv_sec - start.tv_sec) * 1000000) + end.tv_usec) - (start.tv_usec);
   //printf("idx:%d, time:%d\n", i, micros/100);
-  printf("size:%d time:%d\n", size, micros/100);
+  printf("%d,%d\n", size/dim1, micros/100);
 
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
