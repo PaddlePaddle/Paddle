@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
 #include <glog/logging.h>
 #include <mutex>  // NOLINT
@@ -186,3 +187,5 @@ CUDNN_DNN_ROUTINE_EACH_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
+
+#endif
