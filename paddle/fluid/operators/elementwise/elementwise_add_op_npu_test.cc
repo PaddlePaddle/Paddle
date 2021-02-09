@@ -35,7 +35,7 @@ namespace m = paddle::operators::math;
 USE_OP(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, NPU);
 
-void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
+void Compare(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   // init
   auto x = scope->Var("X");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
@@ -43,7 +43,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto y = scope->Var("Y");
   auto tensor_y = y->GetMutable<f::LoDTensor>();
   int dim1=1024;
-  int dim2=5120;
+  int dim2=int(size/dim1 + 1);
 
   std::vector<float> init;
   for (int64_t i = 0; i < dim1 * dim2; ++i) {
@@ -81,7 +81,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   gettimeofday(&end, NULL);
   int micros = (((end.tv_sec - start.tv_sec) * 1000000) + end.tv_usec) - (start.tv_usec);
   //printf("idx:%d, time:%d\n", i, micros/100);
-  printf("time:%d\n", micros/100);
+  printf("size:%d time:%d\n", size, micros/100);
 
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
@@ -97,5 +97,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 TEST(elementwise_add, NPU) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare(&scope, ctx);
+  int size=1024;
+  for(int i=0;i<18;i++){
+    Compare(&scope, ctx, size);
+    size *= 2;
+  }
 }
