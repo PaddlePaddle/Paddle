@@ -14,7 +14,8 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/extension.h"
+#include "paddle/fluid/extension/include/all.h"
+#include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 
 template <typename T>
@@ -156,6 +157,79 @@ void GroupTestDtype() {
   CHECK(TestDtype<uint8_t>() == paddle::DataType::UINT8);
 }
 
+void GroupTestDtypeConvert() {
+  // enum -> proto
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::COMPLEX128) ==
+        paddle::framework::proto::VarType::COMPLEX128);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::COMPLEX64) ==
+        paddle::framework::proto::VarType::COMPLEX64);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::FLOAT64) ==
+        paddle::framework::proto::VarType::FP64);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::FLOAT32) ==
+        paddle::framework::proto::VarType::FP32);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::FLOAT16) ==
+        paddle::framework::proto::VarType::FP16);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::BFLOAT16) ==
+        paddle::framework::proto::VarType::BF16);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::UINT8) ==
+        paddle::framework::proto::VarType::UINT8);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::INT8) == paddle::framework::proto::VarType::INT8);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::INT32) ==
+        paddle::framework::proto::VarType::INT32);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::INT64) ==
+        paddle::framework::proto::VarType::INT64);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::INT16) ==
+        paddle::framework::proto::VarType::INT16);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::BOOL) == paddle::framework::proto::VarType::BOOL);
+  // proto -> enum
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::COMPLEX128) ==
+        paddle::DataType::COMPLEX128);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::COMPLEX64) ==
+        paddle::DataType::COMPLEX64);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::FP64) ==
+        paddle::DataType::FLOAT64);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::FP32) ==
+        paddle::DataType::FLOAT32);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::FP16) ==
+        paddle::DataType::FLOAT16);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::BF16) ==
+        paddle::DataType::BFLOAT16);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::INT64) ==
+        paddle::DataType::INT64);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::INT32) ==
+        paddle::DataType::INT32);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::INT8) == paddle::DataType::INT8);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::UINT8) ==
+        paddle::DataType::UINT8);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::INT16) ==
+        paddle::DataType::INT16);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::BOOL) == paddle::DataType::BOOL);
+}
+
 TEST(CustomTensor, copyTest) {
   VLOG(2) << "TestCopy";
   GroupTestCopy();
@@ -167,4 +241,6 @@ TEST(CustomTensor, copyTest) {
   TestAPIPlace();
   VLOG(2) << "TestCast";
   GroupTestCast();
+  VLOG(2) << "TestDtypeConvert";
+  GroupTestDtypeConvert();
 }

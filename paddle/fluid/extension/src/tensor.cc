@@ -82,7 +82,8 @@ void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
     memory::Copy(gpu_place, static_cast<void *>(dst), platform::CPUPlace(), src,
                  ele_size, dev_ctx->stream());
   } else {
-    PADDLE_THROW("Only GPU related Copy can reach this func.");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Only GPU related Copy can reach this func."));
   }
   cudaStreamSynchronize(dev_ctx->stream());
 #endif

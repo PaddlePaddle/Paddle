@@ -59,6 +59,8 @@ class CustomTensorUtils {
         return framework::proto::VarType::INT32;
       case paddle::DataType::INT64:
         return framework::proto::VarType::INT64;
+      case paddle::DataType::INT16:
+        return framework::proto::VarType::INT16;
       case paddle::DataType::BOOL:
         return framework::proto::VarType::BOOL;
       default:
