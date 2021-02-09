@@ -13,9 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/placement_pass_base.h"
-#include <memory>
 #include <string>
-#include <vector>
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {

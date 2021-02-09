@@ -959,7 +959,7 @@ class Layer(core.Layer):
                 for prefix, layer in model.named_sublayers():
                     print(prefix, layer)
         """
-        assert isinstance(sublayer, core.Layer)
+        assert (isinstance(sublayer, core.Layer) or sublayer == None)
 
         self._sub_layers[name] = sublayer
         return sublayer

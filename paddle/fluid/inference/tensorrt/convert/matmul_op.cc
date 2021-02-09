@@ -17,6 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class Scope;
+
 namespace proto {
 class OpDesc;
 }  // namespace proto
@@ -40,20 +41,20 @@ class MatMulOpConverter : public OpConverter {
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
-    
+
     bool transpose_X = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_X"));
     bool transpose_Y = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
 
     auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1), transpose_X,
-        *const_cast<nvinfer1::ITensor*>(input2), transpose_Y);
+        engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1),
+        transpose_X, *const_cast<nvinfer1::ITensor*>(input2), transpose_Y);
 
     float alpha = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
     auto output_name = op_desc.Output("Out")[0];
     if (fabs(alpha - 1.0) < std::numeric_limits<float>::epsilon()) {
       engine_->SetITensor(output_name, layer->getOutput(0));
     } else {
-      auto create_weights = [&](float data, const std::string &type) -> float* {
+      auto create_weights = [&](float data, const std::string& type) -> float* {
         std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
         tmp_tensor->Resize({1});
         auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
@@ -72,8 +73,7 @@ class MatMulOpConverter : public OpConverter {
       TensorRTEngine::Weight nv_power{nvinfer1::DataType::kFLOAT,
                                       static_cast<void*>(power_data), 1};
       auto* scale_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Scale, *layer->getOutput(0), 
-          nvinfer1::ScaleMode::kUNIFORM,
+          engine_, Scale, *layer->getOutput(0), nvinfer1::ScaleMode::kUNIFORM,
           nv_shift.get(), nv_alpha.get(), nv_power.get());
       engine_->SetITensor(output_name, scale_layer->getOutput(0));
     }

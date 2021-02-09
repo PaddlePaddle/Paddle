@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <limits>
 #include <mutex>  // NOLINT
 #include <random>
 #include <string>
@@ -207,7 +206,7 @@ void EnableProfiler(ProfilerState state) {
   g_state = state;
   should_send_profile_state = true;
   GetDeviceTracer()->Enable();
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (g_state == ProfilerState::kCUDA || g_state == ProfilerState::kAll ||
       g_state == ProfilerState::kCPU) {
     // Generate some dummy events first to reduce the startup overhead.

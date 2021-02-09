@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/c/c_api.h"
 
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+
 extern "C" {
 
 paddle::framework::OpInfoMap &PD_GetOpInfoMap() {

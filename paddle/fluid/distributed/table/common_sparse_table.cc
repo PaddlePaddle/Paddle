@@ -13,13 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
-#include <algorithm>
+
 #include <sstream>
-#include "paddle/fluid/distributed/common/utils.h"
-#include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
-#include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/string_helper.h"
+
+#include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace distributed {
+class ValueBlock;
+}  // namespace distributed
+}  // namespace paddle
 
 #define PSERVER_SAVE_SUFFIX "_txt"
 namespace paddle {

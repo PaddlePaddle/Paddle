@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/distributed/table/table.h"
 
-#include <boost/preprocessor/repetition/repeat_from_to.hpp>
-#include <boost/preprocessor/seq/elem.hpp>
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 
