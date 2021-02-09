@@ -95,11 +95,11 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 TEST(elementwise_add, NPU) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare(&scope, ctx);
+  Compare(&scope, ctx, "elementwise_add");
 }
 
 TEST(elementwise_sub, NPU) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare(&scope, ctx);
+  Compare(&scope, ctx, "elementwise_sub");
 }
