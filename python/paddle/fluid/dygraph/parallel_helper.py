@@ -48,5 +48,10 @@ def _broadcast_parameters(parameters):
         # so we could not broadcast these parameters.
         if param.is_distributed: continue
 
+        if core.is_compiled_with_xpu():
+            if rank != 0:
+                param = 0
+            collective._c_allreduce(param)
+
         if isinstance(param, Parameter) and param.trainable:
             collective._broadcast(param, 0, sync_mode=True)

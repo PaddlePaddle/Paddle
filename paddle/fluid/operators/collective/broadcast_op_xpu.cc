@@ -77,7 +77,7 @@ class BKCLBroadcastOpKernel : public framework::OpKernel<T> {
       static std::ofstream stored0_buffer;
       stored0_buffer.open("send_recv_buffer0.log");
       // recvfile.open("xpu_1_recv.log");
-      memory::Copy(platform::CPUPlace(), reinterpret_cast<void*> send_cpu,
+      memory::Copy(platform::CPUPlace(), reinterpret_cast<void*>(send_cpu),
                    BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
                    reinterpret_cast<void*>(send_recv_buffer),
                    (static_cast<size_t>(in->numel()) * scale) * sizeof(float));
@@ -92,7 +92,7 @@ class BKCLBroadcastOpKernel : public framework::OpKernel<T> {
     } else {
       static std::ofstream stored1_buffer;
       stored1_buffer.open("send_recv_buffer1.log");
-      memory::Copy(platform::CPUPlace(), reinterpret_cast<void*> send_cpu,
+      memory::Copy(platform::CPUPlace(), reinterpret_cast<void*>(send_cpu),
                    BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
                    reinterpret_cast<void*>(send_recv_buffer),
                    (static_cast<size_t>(in->numel()) * scale) * sizeof(float));
