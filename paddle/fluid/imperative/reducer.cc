@@ -22,11 +22,6 @@ std::shared_ptr<Reducer> Reducer::s_instance_ = NULL;
 
 // context is used to select the stream for concat
 void Group::ConcatTensors(const platform::CUDADeviceContext &context) {
-  VLOG(3) << "Before concat, set output tensor size is " << all_length_;
-  auto tensor = dense_contents_.GetMutable<framework::LoDTensor>();
-  tensor->Resize(framework::make_ddim({all_length_}))
-      .mutable_data(context.GetPlace(), dtype_);
-
   switch (dtype_) {
     case framework::proto::VarType::FP16:
       ConcatTensorsForAllReduce<platform::float16>(context, dense_tensors_,
