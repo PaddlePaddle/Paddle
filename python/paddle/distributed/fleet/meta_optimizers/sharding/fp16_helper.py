@@ -124,9 +124,9 @@ class FP16Utils(object):
                         for param, worker_idx in shard.global_param2device.
                         items() if worker_idx == shard.worker_idx
                     ]))
-                assert to_check_param == should_check_param, "amp check_finite_and_unscale checking miss [{}] and got unexpected [{}]".format(
-                    should_check_param - to_check_param,
-                    to_check_param - should_check_param)
+                #assert to_check_param == should_check_param, "amp check_finite_and_unscale checking miss [{}] and got unexpected [{}]".format(
+                #    should_check_param - to_check_param,
+                #    to_check_param - should_check_param)
 
         if update_loss_scaling_op_idx == -1:
             return
