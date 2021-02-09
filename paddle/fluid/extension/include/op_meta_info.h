@@ -36,7 +36,7 @@ class OpMetaInfoHelper;
 
 using Tensor = paddle::Tensor;
 
-#define DISABLE_COPY_AND_ASSIGN(classname)         \
+#define PD_DISABLE_COPY_AND_ASSIGN(classname)      \
  private:                                          \
   classname(const classname&) = delete;            \
   classname(classname&&) = delete;                 \
@@ -265,7 +265,7 @@ class OpMetaInfoMap {
   OpMetaInfoMap() = default;
   std::unordered_map<std::string, std::vector<OpMetaInfo>> map_;
 
-  DISABLE_COPY_AND_ASSIGN(OpMetaInfoMap);
+  PD_DISABLE_COPY_AND_ASSIGN(OpMetaInfoMap);
 };
 
 //////////////// Op Meta Info Builder /////////////////
