@@ -27,7 +27,7 @@ using framework::DataLayout;
 
 inline mkldnn::memory::dims GetWeightsTz(const Tensor* filter,
                                          const int groups) {
-  auto iohw_weights_tz = paddle::framework::vectorize(filter->dims());
+  auto iohw_weights_tz = framework::vectorize(filter->dims());
   auto weights_tz = iohw_weights_tz;
 
   // IOHW -> OIHW
@@ -42,7 +42,7 @@ template <typename T, typename K, typename T_out>
 class ConvTransposeMKLDNNHandlerT
     : public platform::MKLDNNHandlerT<T, mkldnn::deconvolution_forward> {
  public:
-  ConvTransposeMKLDNNHandlerT(const paddle::framework::ExecutionContext& ctx,
+  ConvTransposeMKLDNNHandlerT(const framework::ExecutionContext& ctx,
                               const platform::MKLDNNDeviceContext& dev_ctx,
                               const mkldnn::engine mkldnn_engine,
                               platform::Place cpu_place, const Tensor* input,
@@ -138,11 +138,11 @@ class ConvTransposeMKLDNNHandlerT
       std::transform(dilations.begin(), dilations.end(), dilations.begin(),
                      [](int64_t i) { return i - 1; });
 
-      const auto src_tz = paddle::framework::vectorize(input->dims());
+      const auto src_tz = framework::vectorize(input->dims());
 
       auto weights_tz = GetWeightsTz(filter, groups);
 
-      auto dst_tz = paddle::framework::vectorize(output->dims());
+      auto dst_tz = framework::vectorize(output->dims());
       const auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
 
       /* create memory descriptor for convolution without specified format
@@ -171,8 +171,7 @@ class ConvTransposeMKLDNNHandlerT
       auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
                                    : mkldnn::prop_kind::forward_training;
       if (bias) {
-        std::vector<int64_t> bias_tz =
-            paddle::framework::vectorize(bias->dims());
+        std::vector<int64_t> bias_tz = framework::vectorize(bias->dims());
         auto bias_md =
             platform::MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
         this->AcquireForwardPrimitiveDescriptor(
@@ -252,7 +251,7 @@ class ConvTransposeMKLDNNHandlerT
           weights_tz, platform::MKLDNNGetDataType<K>(),
           (g == 1) ? filter->format() : MKLDNNMemoryFormat::goihw);
 
-      auto iohw_weights_tz = paddle::framework::vectorize(filter->dims());
+      auto iohw_weights_tz = framework::vectorize(filter->dims());
       // Custom Reorder from IOHW to OIHW
       auto iohw2oihw_reorder =
           [&iohw_weights_tz](const K* filter_data) -> std::shared_ptr<K> {
@@ -299,11 +298,11 @@ class ConvTransposeMKLDNNHandlerT
 };
 
 template <typename T, typename K>
-class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
+class ConvTransposeMKLDNNOpKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                      paddle::platform::errors::PreconditionNotMet(
+                      platform::errors::PreconditionNotMet(
                           "Operator DNNL ConvTranspose must use CPUPlace"));
     bool is_bfloat16 = ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16";
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
@@ -318,9 +317,9 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   }
 
   template <typename T_out>
-  void Execute(const paddle::framework::ExecutionContext& ctx) const {
+  void Execute(const framework::ExecutionContext& ctx) const {
     auto& dev_ctx =
-        ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+        ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -330,9 +329,12 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto* bias =
         ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
+    const std::string unique_name = ctx.InputName("Input") +
+                                    ctx.InputName("Filter") +
+                                    (bias ? ctx.InputName("Bias") : "");
     ConvTransposeMKLDNNHandlerT<T, K, T_out> handler(
         ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, filter, bias,
-        output, ctx.InputName("Input") + ctx.InputName("Filter"));
+        output, unique_name);
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
     auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
         filter, ctx.Attr<int>("groups"), is_test);
