@@ -23,23 +23,15 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
+class ElementwiseSubNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
-
     out->mutable_data<T>(ctx.GetPlace());
 
-    // TODO(zhiqiu): get the attr infomation of Ascend op and
-    // convert paddle AttributeMap to Ascend attrs.
-    // Ascend op add has no attribute ?
-    // int axis = ctx.Attr<int>("axis");
-
-    // NOTE(zhiqiu): the order of inputs and outputs is important
-    auto runner = NpuOpRunner("Add", {*x, *y}, {*out}, {});
-
+    auto runner = NpuOpRunner("Sub", {*x, *y}, {*out}, {});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -54,5 +46,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     elementwise_add,
-    ops::ElementwiseAddNPUKernel<paddle::platform::NPUDeviceContext, float>);
+    ops::ElementwiseSubNPUKernel<paddle::platform::NPUDeviceContext, float>);
 #endif
