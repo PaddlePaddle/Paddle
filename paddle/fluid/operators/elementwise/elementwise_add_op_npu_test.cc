@@ -69,7 +69,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   op->Run(*scope, place);
 
-
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
 

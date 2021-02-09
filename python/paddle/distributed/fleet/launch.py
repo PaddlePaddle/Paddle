@@ -121,8 +121,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--run_mode",
         type=str,
         default="collective",
-        help="run mode of job, can be:collective/ps/ps-heter"
-    )
+        help="run mode of job, can be:collective/ps/ps-heter")
 
     base_group.add_argument(
         "--ascend_npus",
@@ -132,7 +131,6 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "For example:"
         "--ascend_npus=\"0,1,2,3\" will launch four training processes each bound to one gpu."
     )
-
 
     base_group.add_argument("--selected_gpus", dest="gpus")
 
@@ -249,6 +247,9 @@ def launch_collective(args):
         training_script_args=args.training_script_args,
         log_dir=args.log_dir,
         envs=global_envs)
+
+    for idx, proc in enumerate(procs):
+        print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
 
     while True:
         alive = watch_local_trainers(procs, cluster.trainers_nranks())

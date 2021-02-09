@@ -31,7 +31,6 @@ int GetNPUDeviceCount();
 
 //! Get the runtime version of the ith NPU
 std::string GetNPURuntimeVersion(int id);
-
 //! Check if this device can access peer or not.
 int NPUCanAccessPeer(int src, int dst);
 

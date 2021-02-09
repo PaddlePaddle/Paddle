@@ -50,29 +50,37 @@ class AscendInstance {
   virtual ~AscendInstance() {}
   AscendInstance() {}
 
-  std::map<AscendString, AscendString> GetDefaultInitOptions() {
+  std::map<AscendString, AscendString> _GetDefaultInitOptions() {
     std::map<AscendString, AscendString> init_options;
     init_options["ge.exec.deviceId"] = "0";
     init_options["ge.graphRunMode"] = "1";
     return init_options;
   }
 
-  std::map<AscendString, AscendString> GetDefaultInitSessionOptions() {
+  std::map<AscendString, AscendString> _GetDefaultInitSessionOptions() {
     std::map<AscendString, AscendString> init_options;
-    init_options["a"] = "b";
-    init_options["ge.trainFlag"] = "1";
+    // init_options["a"] = "b";
+    // init_options["ge.trainFlag"] = "1";
     return init_options;
   }
 
-  ge::Status InitGEForUT() { return ge::GEInitialize(GetDefaultInitOptions()); }
+  ge::Status InitGEForUT() {
+    return ge::GEInitialize(_GetDefaultInitOptions());
+  }
 
   void InitGlobalResouces() {
-    LOG(INFO) << "Begin InitGlobalResouces";
-    session_.reset(new ge::Session(GetDefaultInitSessionOptions()));
+    LOG(INFO) << "Begin ascend InitGlobalResouces";
+    session_.reset(new ge::Session(_GetDefaultInitSessionOptions()));
     if (session_ == nullptr) {
       LOG(FATAL) << "new session error:" << session_;
     }
-    LOG(INFO) << "End InitGlobalResouces";
+    LOG(INFO) << "End ascend InitGlobalResouces";
+  }
+
+  void DestroyGlobalResouces() {
+    LOG(INFO) << "Begin ascend DestroyGlobalResouces";
+    session_ = nullptr;
+    LOG(INFO) << "Begin ascend DestroyGlobalResouces";
   }
 
   static std::shared_ptr<AscendInstance> GetInstance() {

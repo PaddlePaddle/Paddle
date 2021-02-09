@@ -182,9 +182,14 @@ class AscendOptimizer(Optimizer):
     def __init__(self, optimizer, fetch_list=[]):
         self.inner_opt = optimizer
         self.fetch_list = fetch_list
+        self.ascend_instance = None
 
     def __del__(self):
+        print("begin AscendOptimizer del")
+        if self.ascend_instance is not None:
+            self.ascend_instance.destroy_global_resources()
         core.ge_finalize()
+        print("end AscendOptimizer del")
 
     def _can_apply(self):
         if not self.user_defined_strategy.ascend:

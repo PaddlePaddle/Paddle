@@ -198,6 +198,7 @@ class NPUDeviceContext : public DeviceContext {
   // NOTE(zhiqiu): why need?
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
   std::shared_ptr<stream::NPUStream> stream_;
+
   DISABLE_COPY_AND_ASSIGN(NPUDeviceContext);
 };
 

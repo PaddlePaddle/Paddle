@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/npu_op_runner.h"
 
-#include <paddle/fluid/framework/operator.h>
 #include <paddle/fluid/framework/data_type.h>
+#include <paddle/fluid/framework/operator.h>
 
 #include <map>
 #include <string>
@@ -23,16 +23,21 @@ limitations under the License. */
 
 #include "acl/acl.h"
 #include "acl/acl_op_compiler.h"
+
 #include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
 namespace operators {
 
-static std::map<framework::proto::VarType::Type, aclDataType> DTYPE_2_ACL_DTYPE = {
-    {framework::proto::VarType::BOOL, ACL_BOOL},    {framework::proto::VarType::INT16, ACL_INT16},
-    {framework::proto::VarType::INT32, ACL_INT32},  {framework::proto::VarType::INT64, ACL_INT64},
-    {framework::proto::VarType::FP16, ACL_FLOAT16}, {framework::proto::VarType::FP32, ACL_FLOAT},
-    {framework::proto::VarType::FP64, ACL_DOUBLE},
+static std::map<framework::proto::VarType::Type, aclDataType>
+    DTYPE_2_ACL_DTYPE = {
+        {framework::proto::VarType::BOOL, ACL_BOOL},
+        {framework::proto::VarType::INT16, ACL_INT16},
+        {framework::proto::VarType::INT32, ACL_INT32},
+        {framework::proto::VarType::INT64, ACL_INT64},
+        {framework::proto::VarType::FP16, ACL_FLOAT16},
+        {framework::proto::VarType::FP32, ACL_FLOAT},
+        {framework::proto::VarType::FP64, ACL_DOUBLE},
 };
 
 static std::map<DataLayout, aclFormat> DATA_LAYOUT_2_ACL_FORMAT = {
@@ -59,7 +64,10 @@ aclFormat ConvertToNpuFormat(DataLayout layout) {
   return iter->second;
 }
 
-NpuOpRunner::NpuOpRunner(std::string op_type) : op_type_(op_type) {attr_ = aclopCreateAttr();}
+NpuOpRunner::NpuOpRunner(std::string op_type) : op_type_(op_type) {
+  attr_ = aclopCreateAttr();
+}
+
 NpuOpRunner::NpuOpRunner(std::string op_type, const std::vector<Tensor> &inputs,
                          const std::vector<Tensor> &outputs,
                          const AttributeMap &attrs)
@@ -71,7 +79,7 @@ NpuOpRunner::NpuOpRunner(std::string op_type, const std::vector<Tensor> &inputs,
 }
 
 NpuOpRunner::~NpuOpRunner() {
-  //TODO(zhiqiu): handle free
+  // TODO(zhiqiu): handle free
 }
 
 const std::string &NpuOpRunner::Type() { return op_type_; }
@@ -86,23 +94,23 @@ NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
         aclopSetAttrInt(attr_, name.c_str(), BOOST_GET_CONST(int, attr)));
 
   } else if (attr.type() == typeid(int64_t)) {
-    PADDLE_ENFORCE_NPU_SUCCESS(aclopSetAttrInt(
-        attr_, name.c_str(), BOOST_GET_CONST(int64_t, attr)));
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclopSetAttrInt(attr_, name.c_str(), BOOST_GET_CONST(int64_t, attr)));
   } else if (attr.type() == typeid(float)) {
     PADDLE_ENFORCE_NPU_SUCCESS(
         aclopSetAttrFloat(attr_, name.c_str(), BOOST_GET_CONST(float, attr)));
   } else if (attr.type() == typeid(std::vector<bool>)) {
     auto a = BOOST_GET_CONST(std::vector<bool>, attr);
     std::vector<uint8_t> cast_a;
-    for(auto it : a) {
+    for (auto it : a) {
       cast_a.push_back(static_cast<uint8_t>(it));
     }
-    PADDLE_ENFORCE_NPU_SUCCESS(
-        aclopSetAttrListBool(attr_, name.c_str(), cast_a.size(), cast_a.data()));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclopSetAttrListBool(
+        attr_, name.c_str(), cast_a.size(), cast_a.data()));
   } else if (attr.type() == typeid(std::vector<int>)) {
     auto a = BOOST_GET_CONST(std::vector<int>, attr);
     std::vector<int64_t> cast_a;
-    for(auto it : a) {
+    for (auto it : a) {
       cast_a.push_back(static_cast<int64_t>(it));
     }
     PADDLE_ENFORCE_NPU_SUCCESS(
@@ -203,15 +211,22 @@ std::vector<aclTensorDesc *> &NpuOpRunner::GetOutputDescs() {
   return output_descs_;
 }
 
-std::vector<aclDataBuffer *> &NpuOpRunner::GetInputBuffers() { return input_buffers_; }
+std::vector<aclDataBuffer *> &NpuOpRunner::GetInputBuffers() {
+  return input_buffers_;
+}
 
-std::vector<aclDataBuffer *> &NpuOpRunner::GetOutputBuffers() { return output_buffers_; }
+std::vector<aclDataBuffer *> &NpuOpRunner::GetOutputBuffers() {
+  return output_buffers_;
+}
 
 aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
   auto dtype = ConvertToNpuDtype(tensor.type());
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
-  VLOG(4) << dtype << " " << dims.size() << " " << dims[0] << "," << dims[1] << " " << format;
+
+  VLOG(4) << dtype << " " << dims.size() << " " << dims[0] << "," << dims[1]
+          << " " << format;
+
   auto *desc = aclCreateTensorDesc(dtype, dims.size(), dims.data(), format);
   PADDLE_ENFORCE_NOT_NULL(
       desc, platform::errors::External("Call aclCreateTensorDesc failed."));
@@ -219,10 +234,9 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
 }
 
 aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
-  void* ptr = tensor.data<void>();
+  void *ptr = tensor.data<void>();
   VLOG(4) << "ptr: " << ptr << ", size: " << tensor.memory_size();
-  auto *buffer =
-      aclCreateDataBuffer(ptr, tensor.memory_size());
+  auto *buffer = aclCreateDataBuffer(ptr, tensor.memory_size());
   PADDLE_ENFORCE_NOT_NULL(
       buffer, platform::errors::External("Call aclCreateDataBuffer failed."));
   return buffer;
@@ -234,10 +248,11 @@ void NpuOpRunner::Run(aclrtStream stream) {
   VLOG(4) << "output_desc.size: " << output_descs_.size();
   VLOG(4) << "stream: " << stream;
   VLOG(4) << "attr: " << attr_;
-  aclError ret = aclopCompileAndExecute(op_type_.c_str(), input_descs_.size(),
-                                input_descs_.data(), input_buffers_.data(),
-                                output_descs_.size(), output_descs_.data(),
-                                output_buffers_.data(), attr_, ACL_ENGINE_SYS, ACL_COMPILE_SYS, NULL, stream);
+  aclError ret = aclopCompileAndExecute(
+      op_type_.c_str(), input_descs_.size(), input_descs_.data(),
+      input_buffers_.data(), output_descs_.size(), output_descs_.data(),
+      output_buffers_.data(), attr_, ACL_ENGINE_SYS, ACL_COMPILE_SYS, NULL,
+      stream);
   VLOG(4) << "after aclopCompileAndExecute";
   PADDLE_ENFORCE_NPU_SUCCESS(ret);
 }
