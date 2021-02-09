@@ -119,6 +119,11 @@ if (WITH_ASCEND)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} ascend_wrapper)
 endif()
 
+if (WITH_ASCEND_CL)
+  cc_library(npu_op_runner SRCS npu_op_runner.cc DEPS operator npu_info)
+  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner)
+endif()
+
 # FIXME(typhoonzero): operator deps may not needed.
 # op_library(lod_tensor_to_array_op DEPS lod_rank_table_op)
 # op_library(array_to_lod_tensor_op DEPS lod_rank_table_op)

@@ -182,6 +182,9 @@ void InitDevices(const std::vector<int> devices) {
 #ifdef PADDLE_WITH_XPU
     places.emplace_back(platform::XPUPlace(devices[i]));
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+    places.emplace_back(platform::NPUPlace(devices[i]));
+#endif
   }
   places.emplace_back(platform::CPUPlace());
 #ifdef PADDLE_WITH_CUDA
