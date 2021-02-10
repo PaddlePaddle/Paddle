@@ -25,6 +25,7 @@ from setuptools.command.build_ext import build_ext
 from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag, bootstrap_context
 from .extension_utils import is_cuda_file, prepare_unix_cflags, add_std_without_repeat, get_build_directory
 from .extension_utils import _import_module_from_library, CustomOpInfo, _write_setup_file, _jit_compile, parse_op_name_from
+from .extension_utils import use_new_custom_op_load_method
 
 IS_WINDOWS = os.name == 'nt'
 CUDA_HOME = find_cuda_home()
@@ -132,6 +133,9 @@ class BuildExtension(build_ext, object):
         super(BuildExtension, self).__init__(*args, **kwargs)
         self.no_python_abi_suffix = kwargs.get("no_python_abi_suffix", True)
         self.output_dir = kwargs.get("output_dir", None)
+        # for compatible two custom op define method
+        use_new_custom_op_load_method(
+            kwargs.get("use_new_method", use_new_custom_op_load_method()))
 
     def initialize_options(self):
         super(BuildExtension, self).initialize_options()

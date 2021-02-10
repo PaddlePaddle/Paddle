@@ -29,6 +29,7 @@ from setuptools.command import bdist_egg
 
 from .. import load_op_library
 from ...fluid import core
+from ...fluid.framework import OpProtoHolder
 from ...sysconfig import get_include, get_lib
 
 OS_NAME = platform.system()
@@ -37,6 +38,20 @@ NVCC_COMPILE_FLAGS = [
     '-ccbin', 'cc', '-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU', '-DPADDLE_USE_DSO',
     '-Xcompiler', '-fPIC', '-w', '--expt-relaxed-constexpr', '-O3', '-DNVCC'
 ]
+
+USING_NEW_CUSTOM_OP_LOAD_METHOD = True
+
+
+# NOTE(chenweihang): In order to be compatible with 
+# the two custom op define method, after removing 
+# old method, we can remove them together
+def use_new_custom_op_load_method(*args):
+    global USING_NEW_CUSTOM_OP_LOAD_METHOD
+    if len(args) == 0:
+        return USING_NEW_CUSTOM_OP_LOAD_METHOD
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        USING_NEW_CUSTOM_OP_LOAD_METHOD = args[0]
 
 
 @contextmanager
@@ -49,6 +64,15 @@ def bootstrap_context():
     yield
 
     bdist_egg.write_stub = origin_write_stub
+
+
+def load_op_meta_info_and_register_op(lib_filename):
+    if USING_NEW_CUSTOM_OP_LOAD_METHOD:
+        core.load_op_meta_info_and_register_op(lib_filename)
+    else:
+        print("old branch")
+        core.load_op_library(lib_filename)
+    return OpProtoHolder.instance().update_op_proto()
 
 
 def custom_write_stub(resource, pyfile):
@@ -77,7 +101,7 @@ def custom_write_stub(resource, pyfile):
             assert os.path.exists(so_path)
 
             # load custom op shared library with abs path
-            new_custom_op = paddle.utils.load_op_library(so_path)
+            new_custom_op = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
             assert len(new_custom_op) == 1
             m = inject_ext_module(__name__, new_custom_op[0])
         
@@ -90,8 +114,10 @@ def custom_write_stub(resource, pyfile):
     _, op_info = CustomOpInfo.instance().last()
     so_path = op_info.build_directory
 
-    new_custom_op = load_op_library(so_path)
-    assert len(new_custom_op) == 1
+    new_custom_op = load_op_meta_info_and_register_op(so_path)
+    assert len(new_custom_op
+               ) == 1, "The number of loaded costom operators is %d" % len(
+                   new_custom_op)
 
     # NOTE: To avoid importing .so file instead of python file because they have same name,
     # we rename .so shared library to another name, see EasyInstallCommand.
@@ -338,7 +364,7 @@ def parse_op_info(op_name):
     from paddle.fluid.framework import OpProtoHolder
     if op_name not in OpProtoHolder.instance().op_proto_map:
         raise ValueError(
-            "Please load {} shared library file firstly by `paddle.utils.load_op_library(...)`".
+            "Please load {} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`".
             format(op_name))
     op_proto = OpProtoHolder.instance().get_op_proto(op_name)
 
@@ -361,7 +387,7 @@ def _import_module_from_library(name, build_directory):
             ext_path))
 
     # load custom op_info and kernels from .so shared library
-    op_names = load_op_library(ext_path)
+    op_names = load_op_meta_info_and_register_op(ext_path)
     assert len(op_names) == 1
 
     # generate Python api in ext_path
@@ -473,7 +499,8 @@ def _write_setup_file(name, sources, file_path, include_dirs, compile_flags,
                 extra_link_args={extra_link_args})],
         cmdclass={{"build_ext" : BuildExtension.with_options(
             output_dir=get_build_directory(),
-            no_python_abi_suffix=True)
+            no_python_abi_suffix=True,
+            use_new_method={use_new_method})
         }})""").lstrip()
 
     with_cuda = False
@@ -486,7 +513,8 @@ def _write_setup_file(name, sources, file_path, include_dirs, compile_flags,
         sources=list2str(sources),
         include_dirs=list2str(include_dirs),
         extra_compile_args=list2str(compile_flags),
-        extra_link_args=list2str(link_args))
+        extra_link_args=list2str(link_args),
+        use_new_method=use_new_custom_op_load_method())
     with open(file_path, 'w') as f:
         f.write(content)
 
@@ -517,7 +545,10 @@ def parse_op_name_from(sources):
     """
 
     def regex(content):
-        pattern = re.compile(r'REGISTER_OPERATOR\(([^,]+),')
+        if USING_NEW_CUSTOM_OP_LOAD_METHOD:
+            pattern = re.compile(r'BUILD_OPERATOR\(([^,]+),')
+        else:
+            pattern = re.compile(r'REGISTER_OPERATOR\(([^,]+),')
 
         content = re.sub(r'\s|\t|\n', '', content)
         op_name = pattern.findall(content)
@@ -532,7 +563,9 @@ def parse_op_name_from(sources):
             op_names |= regex(content)
 
     # TODO(Aurelius84): Support register more customs op at once
-    assert len(op_names) == 1
+    assert len(
+        op_names) == 1, "The number of registered costom operators is %d" % len(
+            op_names)
     return list(op_names)[0]
 
 

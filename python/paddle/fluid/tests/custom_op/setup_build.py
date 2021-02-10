@@ -15,6 +15,10 @@ import os
 
 from utils import paddle_includes, extra_compile_args
 from paddle.utils.cpp_extension import CppExtension, CUDAExtension, BuildExtension, setup
+from paddle.utils.cpp_extension.extension_utils import use_new_custom_op_load_method
+
+# switch to old custom op method
+use_new_custom_op_load_method(False)
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
 
