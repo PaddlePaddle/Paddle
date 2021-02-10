@@ -73,6 +73,7 @@ from paddle.distributed.fleet import launch_utils
 # TODO(danleifeng): Don't import * from a module
 from paddle.distributed.fleet.launch_utils import *
 import paddle.distributed.fleet.cloud_utils as cloud_utils
+import paddle.distributed.fleet.ascend_utils as ascend_utils
 
 
 def _print_arguments(args):
@@ -129,7 +130,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         default=None,
         help="It's for ascend npu training."
         "For example:"
-        "--ascend_npus=\"0,1,2,3\" will launch four training processes each bound to one gpu."
+        "--ascend_npus=\"0,1,2,3\" will launch four training processes each bound to one npu."
     )
 
     base_group.add_argument("--selected_gpus", dest="gpus")
@@ -227,6 +228,13 @@ def launch_collective(args):
         cluster, pod = cloud_utils.get_cloud_cluster(
             args.ips, device_mode, devices_per_proc, start_port)
         logger.debug("get cluster from cloud:{}".format(cluster))
+    elif device_mode == DeviceMode.ASCEND_NPU:
+        # for ascend
+        assert os.environ.get("RANK_TABLE_FILE") is not None, "ascend need RANK_TABLE_FILE env arguments"
+        cluster, pod = ascend_utils.get_cloud_cluster(
+                os.environ.get("RANK_TABLE_FILE"), 
+                device_mode,
+                devices_per_proc)
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
         cluster, pod = get_cluster_from_args(args, device_mode,
