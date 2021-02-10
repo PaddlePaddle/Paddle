@@ -66,7 +66,8 @@ class ConvTransposeMKLDNNHandlerT
               "Got wrong layout = %d for Input tensor.", input->layout()));
       PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
                         platform::errors::InvalidArgument(
-                            "Got wrong format for Input tensor."));
+                            "Got wrong format for Input tensor. The input "
+                            "format is undefined."));
 
       PADDLE_ENFORCE_EQ(
           filter->layout(), DataLayout::kMKLDNN,

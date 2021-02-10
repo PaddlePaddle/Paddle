@@ -35,7 +35,7 @@ def conv2d_bias_naive(out, bias):
                  "place does not support BF16 evaluation")
 class TestConv2DTransposeBF16MKLDNNOp(OpTest):
     def test_check_output(self):
-        self.check_output(check_dygraph=(self.use_mkldnn == False))
+        self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad(self):
         pass
