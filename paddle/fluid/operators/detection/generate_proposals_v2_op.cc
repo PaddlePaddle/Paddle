@@ -280,6 +280,9 @@ class GenerateProposalsV2OpMaker : public framework::OpProtoAndCheckerMaker {
                    "Proposal height and width both need to be greater "
                    "than this min_size.");
     AddAttr<float>("eta", "The parameter for adaptive NMS.");
+    AddAttr<bool>("pixel_offset", "(bool, default True),",
+                  "If true, im_shape pixel offset is 1.")
+        .SetDefault(true);
     AddComment(R"DOC(
 This operator is the second version of generate_proposals op to generate 
 bounding box proposals for Faster RCNN.
@@ -312,3 +315,8 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(generate_proposals_v2,
                        ops::GenerateProposalsV2Kernel<float>,
                        ops::GenerateProposalsV2Kernel<double>);
+REGISTER_OP_VERSION(generate_proposals_v2)
+    .AddCheckpoint(
+        R"ROC(Registe generate_proposals_v2 for adding the attribute of pixel_offset)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "pixel_offset", "If true, im_shape pixel offset is 1.", true));

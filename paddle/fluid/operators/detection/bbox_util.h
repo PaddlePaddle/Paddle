@@ -31,7 +31,7 @@ struct RangeInitFunctor {
 };
 
 template <typename T>
-inline HOSTDEVICE T RoIArea(const T* box, bool normalized) {
+inline HOSTDEVICE T RoIArea(const T* box, bool pixel_offset = true) {
   if (box[2] < box[0] || box[3] < box[1]) {
     // If coordinate values are is invalid
     // (e.g. xmax < xmin or ymax < ymin), return 0.
@@ -39,11 +39,11 @@ inline HOSTDEVICE T RoIArea(const T* box, bool normalized) {
   } else {
     const T w = box[2] - box[0];
     const T h = box[3] - box[1];
-    if (normalized) {
-      return w * h;
-    } else {
+    if (pixel_offset) {
       // If coordinate values are not within range [0, 1].
       return (w + 1) * (h + 1);
+    } else {
+      return w * h;
     }
   }
 }

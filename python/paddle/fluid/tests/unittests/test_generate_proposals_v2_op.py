@@ -112,13 +112,14 @@ def proposal_for_one_image(im_shape, all_anchors, variances, bbox_deltas,
     return proposals, scores
 
 
-def filter_boxes(boxes, min_size, im_shape):
+def filter_boxes(boxes, min_size, im_shape, pixel_offset):
     """Only keep boxes with both sides >= min_size and center within the image.
     """
     # Scale min_size to match image scale
     min_size = max(min_size, 1.0)
-    ws = boxes[:, 2] - boxes[:, 0] + 1
-    hs = boxes[:, 3] - boxes[:, 1] + 1
+    offset = 1 if pixel_offset else 0
+    ws = boxes[:, 2] - boxes[:, 0] + offset
+    hs = boxes[:, 3] - boxes[:, 1] + offset
     x_ctr = boxes[:, 0] + ws / 2.
     y_ctr = boxes[:, 1] + hs / 2.
     keep = np.where((ws >= min_size) & (hs >= min_size) & (x_ctr < im_shape[1])
@@ -144,7 +145,8 @@ class TestGenerateProposalsV2Op(OpTest):
             'post_nms_topN': self.post_nms_topN,
             'nms_thresh': self.nms_thresh,
             'min_size': self.min_size,
-            'eta': self.eta
+            'eta': self.eta,
+            'pixel_offset': self.pixel_offset,
         }
 
         self.outputs = {
@@ -165,6 +167,7 @@ class TestGenerateProposalsV2Op(OpTest):
         self.nms_thresh = 0.7
         self.min_size = 3.0
         self.eta = 1.
+        self.pixel_offset = True
 
     def init_test_input(self):
         batch_size = 1
@@ -231,6 +234,16 @@ class TestGenerateProposalsV2OpNoBoxLeft(TestGenerateProposalsV2Op):
         self.nms_thresh = 0.7
         self.min_size = 1000.0
         self.eta = 1.
+
+
+class TestGenerateProposalsV2OpNoOffset(TestGenerateProposalsV2Op):
+    def init_test_params(self):
+        self.pre_nms_topN = 12000  # train 12000, test 2000
+        self.post_nms_topN = 5000  # train 6000, test 1000
+        self.nms_thresh = 0.7
+        self.min_size = 3.0
+        self.eta = 1.
+        self.pixel_offset = False
 
 
 if __name__ == '__main__':
