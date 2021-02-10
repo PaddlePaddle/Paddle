@@ -29,6 +29,7 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/string_helper.h"
 
 #if defined(PADDLE_WITH_NCCL)
@@ -201,7 +202,8 @@ class Reducer {
   int nrings_ = 1;
 
   // Following variables are to help rebuild group
-  bool has_rebuilt_group_{false};
+  // TODO(shenliang03): Support rebuild in the future.
+  bool has_rebuilt_group_{true};
   std::vector<std::shared_ptr<imperative::VarBase>> rebuild_vars_;
   std::vector<int64_t> rebuild_var_indices_;
   const std::vector<size_t> group_size_limits_;
