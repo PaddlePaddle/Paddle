@@ -14,13 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/scope.h"
 
-#include <memory>  // for unique_ptr
-#include <queue>
-#include <set>
-#include <unordered_set>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/string/printf.h"
 
 DECLARE_bool(benchmark);
 

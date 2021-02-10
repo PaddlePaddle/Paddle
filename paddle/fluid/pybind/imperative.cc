@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
+#include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -582,26 +583,82 @@ void BindImperative(py::module *m_ptr) {
               py::object &value_obj) {
              auto self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
-             auto self_numpy = TensorToPyArray(*self_tensor);
+             PyObject *index_ptr = !PyTuple_Check(_index.ptr())
+                                       ? PyTuple_Pack(1, _index.ptr())
+                                       : _index.ptr();
+             // 1. Check argumnets
+             // 1.1 Check whether _index can be parsed.
+             bool parse_index = true;
+             const int size = PyTuple_GET_SIZE(index_ptr);
+             for (int dim = 0; dim < size; ++dim) {
+               PyObject *slice_item = PyTuple_GetItem(index_ptr, dim);
+               if (!(PyCheckInteger(slice_item) || PySlice_Check(slice_item))) {
+                 parse_index = false;
+                 break;
+               }
+             }
 
+             // 1.2 Check whether stride is 1.
+             std::vector<int> axes, starts, ends, strides, decrease_axis,
+                 infer_flags;
+
+             bool stride_is_1 = true;
+             if (parse_index) {
+               ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
+                                  &strides, &decrease_axis, &infer_flags);
+               stride_is_1 =
+                   std::all_of(strides.cbegin(), strides.cend(),
+                               [](int64_t stride) { return stride == 1; });
+             }
+
+             // 1.3 Check whether value obj is a tensor.
+             bool value_is_tensor = true;
              if (py::isinstance<py::array>(value_obj) ||
                  py::isinstance<py::int_>(value_obj) ||
                  py::isinstance<py::float_>(value_obj)) {
-               auto value_numpy = value_obj;
-               self_numpy[_index] = value_numpy;
-               SetTensorFromPyArray(self_tensor, self_numpy,
-                                    self_tensor->place(), true);
+               value_is_tensor = false;
+             }
 
-             } else {
-               auto value =
-                   value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+             // 2. Call op set_value to speed up if the condition is met,
+             // otherwise call TensorToPyArray.
+             // TODO(liym27): Try not to call TensorToPyArray because it always
+             // copys data to cpu place, which reduces performance.
+             if (parse_index && stride_is_1 && value_is_tensor) {
+               framework::AttributeMap attrs = {
+                   {"axes", axes}, {"starts", starts}, {"ends", ends}};
+
+               imperative::NameVarBaseMap ins = {{"Input", {self}}};
+               imperative::NameVarBaseMap outs = {{"Out", {self}}};
+
                auto value_tensor =
-                   value->MutableVar()->GetMutable<framework::LoDTensor>();
-               auto value_numpy = TensorToPyArray(*value_tensor);
+                   value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+               ins.insert({"ValueTensor", {value_tensor}});
 
-               self_numpy[_index] = value_numpy;
-               SetTensorFromPyArray(self_tensor, self_numpy,
-                                    self_tensor->place(), true);
+               const auto &tracer = imperative::GetCurrentTracer();
+               {
+                 // Release gil and do tracing
+                 py::gil_scoped_release release;
+                 tracer->TraceOp("set_value", ins, outs, std::move(attrs));
+               }
+             } else {
+               auto self_numpy = TensorToPyArray(*self_tensor);
+
+               if (value_is_tensor) {
+                 auto value =
+                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+                 auto value_tensor =
+                     value->MutableVar()->GetMutable<framework::LoDTensor>();
+                 auto value_numpy = TensorToPyArray(*value_tensor);
+
+                 self_numpy[_index] = value_numpy;
+                 SetTensorFromPyArray(self_tensor, self_numpy,
+                                      self_tensor->place(), true);
+               } else {
+                 auto value_numpy = value_obj;
+                 self_numpy[_index] = value_numpy;
+                 SetTensorFromPyArray(self_tensor, self_numpy,
+                                      self_tensor->place(), true);
+               }
              }
              // NOTE(liym27):
              // Increase the version of VarBase self because __setitem__ is an
@@ -1206,15 +1263,6 @@ void BindImperative(py::module *m_ptr) {
             if (py::isinstance<platform::CUDAPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPlace *>();
               self.SetExpectedPlace(*p);
-
-// NOTE(zhiqiu): When switching cuda place, we need to set the
-// cuda device id.
-// Otherwise, some cuda API may be launched at other cuda place,
-// which may cost hundreds of MB of GPU memory due to the cuda
-// lib.
-#ifdef PADDLE_WITH_CUDA
-              platform::SetDeviceId(p->device);
-#endif
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
             } else if (py::isinstance<platform::XPUPlace>(obj)) {
@@ -1235,13 +1283,6 @@ void BindImperative(py::module *m_ptr) {
             } else if (py::isinstance<platform::Place>(obj)) {
               auto p = obj.cast<platform::Place *>();
               self.SetExpectedPlace(*p);
-              if (platform::is_gpu_place(*p)) {
-// NOTE(zhiqu): same as obj is CUDAPlace.
-#ifdef PADDLE_WITH_CUDA
-                platform::SetDeviceId(
-                    BOOST_GET_CONST(platform::CUDAPlace, *p).device);
-#endif
-              }
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
             } else {
@@ -1377,29 +1418,18 @@ void BindImperative(py::module *m_ptr) {
       },
       py::call_guard<py::gil_scoped_release>());
 
-#if defined(PADDLE_WITH_NCCL)
+#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_XPU_BKCL)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
-  py::class_<imperative::NCCLParallelContext, imperative::ParallelContext,
-             std::shared_ptr<imperative::NCCLParallelContext>>(
-      m, "NCCLParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::CUDAPlace &>())
-      .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
 
   py::class_<imperative::Reducer, std::shared_ptr<imperative::Reducer>>(
       m, "Reducer", R"DOC()DOC")
-      .def(py::init([](
-          const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
-          const std::vector<std::vector<size_t>> &group_indices,
-          const std::vector<bool> &is_sparse_gradient,
-          std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-          const std::vector<size_t> &group_size_limits, bool find_unused_vars) {
-        return imperative::Reducer::SetInstance(
-            vars, group_indices, is_sparse_gradient, parallel_ctx,
-            group_size_limits, find_unused_vars);
-      }))
+      .def(py::init<const std::vector<std::shared_ptr<imperative::VarBase>> &,
+                    const std::vector<std::vector<size_t>> &,
+                    const std::vector<bool> &,
+                    std::shared_ptr<imperative::ParallelContext>,
+                    const std::vector<size_t> &, bool>())
       .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
            py::arg("vars"), py::call_guard<py::gil_scoped_release>());
 
@@ -1408,6 +1438,24 @@ void BindImperative(py::module *m_ptr) {
         py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
         py::arg("tensor_indices") = std::vector<int64_t>{},
         py::call_guard<py::gil_scoped_release>());
+#endif
+
+#if defined(PADDLE_WITH_NCCL)
+  py::class_<imperative::NCCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::NCCLParallelContext>>(
+      m, "NCCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::CUDAPlace &>())
+      .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+  py::class_<imperative::BKCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::BKCLParallelContext>>(
+      m, "BKCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::XPUPlace &>())
+      .def("init", [](imperative::BKCLParallelContext &self) { self.Init(); });
 #endif
 }
 

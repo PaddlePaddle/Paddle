@@ -15,13 +15,14 @@
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
 #include <string>
-#include <unordered_set>
-#include <utility>
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/controlflow/op_variant.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/string/string_helper.h"
+
+namespace paddle {
+namespace framework {
+class BlockDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

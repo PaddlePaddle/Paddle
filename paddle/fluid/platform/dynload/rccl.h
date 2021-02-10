@@ -59,6 +59,18 @@ extern void* rccl_dso_handle;
 
 RCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 
+#if NCCL_VERSION_CODE >= 2212
+#define RCCL_RAND_ROUTINE_EACH_AFTER_2212(__macro) __macro(ncclBroadcast);
+RCCL_RAND_ROUTINE_EACH_AFTER_2212(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
+#endif
+
+#if NCCL_VERSION_CODE >= 2703
+#define RCCL_RAND_ROUTINE_EACH_AFTER_2703(__macro) \
+  __macro(ncclSend);                               \
+  __macro(ncclRecv);
+RCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

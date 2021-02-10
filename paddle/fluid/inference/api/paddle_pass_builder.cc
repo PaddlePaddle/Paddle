@@ -17,6 +17,7 @@
 #include <cudnn.h>
 #endif
 #include <glog/logging.h>
+#include <sstream>
 
 namespace paddle {
 
@@ -161,7 +162,8 @@ void GpuPassStrategy::EnableMkldnnBfloat16() {
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
-  passes_.assign({"simplify_with_basic_ops_pass",   //
+  passes_.assign({"simplify_with_basic_ops_pass",  //
+                  "layer_norm_fuse_pass",
                   "attention_lstm_fuse_pass",       //
                   "seqconv_eltadd_relu_fuse_pass",  //
                   // "seqpool_concat_fuse_pass",    //

@@ -13,15 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/fleet.h"
-#include <algorithm>
-#include <utility>
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/distributed/table/table.h"
-#include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace distributed {

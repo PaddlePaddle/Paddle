@@ -124,7 +124,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
       dst_memory->set_data_handle(output->mutable_data<float>(ctx.GetPlace()));
     }
 
-    mkldnn::stream astream(engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     reorder_p->execute(astream, *src_memory, *dst_memory);
     astream.wait();
 

@@ -28,6 +28,8 @@
 namespace paddle {
 namespace distributed {
 
+class DenseOptimizer;
+
 class CommonDenseTable : public DenseTable {
  public:
   explicit CommonDenseTable() {}

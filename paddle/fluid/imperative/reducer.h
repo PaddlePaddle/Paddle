@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace platform {
@@ -44,7 +45,7 @@ class VariableWrapper;
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL)
+#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_XPU_BKCL)
 class Group {
  public:
   // Here, we use dense_contents_ & sparse_contents_ to
@@ -108,43 +109,15 @@ class Reducer {
 
   void AddDistHook(size_t var_index);
 
-  // void MarkDenseVarReady(size_t var_index);
-
-  // void MarkSparseVarReady(size_t var_index);
-
   void MarkVarReady(const size_t var_index, const bool is_used_var);
 
   void MarkGroupReady(size_t group_index);
 
   void FinalizeBackward();
 
-  void ReleaseReducer();
-
   std::vector<std::vector<size_t>> RebuildGruops();
 
   inline bool NeedRebuildGroup() { return !has_rebuilt_group_; }
-
-  // Reducer Singleton
-  static std::shared_ptr<Reducer> SetInstance(
-      const std::vector<std::shared_ptr<imperative::VarBase>>& vars,
-      const std::vector<std::vector<size_t>>& group_indices,
-      const std::vector<bool>& is_sparse_gradient,
-      std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-      const std::vector<size_t>& group_size_limits, bool find_unused_vars) {
-    if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::imperative::Reducer(
-          vars, group_indices, is_sparse_gradient, parallel_ctx,
-          group_size_limits, find_unused_vars));
-    }
-    return s_instance_;
-  }
-
-  static std::shared_ptr<Reducer> GetInstance() {
-    PADDLE_ENFORCE_EQ(
-        s_instance_ != NULL, true,
-        platform::errors::InvalidArgument("Reducer is not initialized."));
-    return s_instance_;
-  }
 
  private:
   std::vector<std::shared_ptr<imperative::VarBase>> vars_;
@@ -161,7 +134,8 @@ class Reducer {
   int nrings_ = 1;
 
   // Following variables are to help rebuild group
-  bool has_rebuilt_group_{false};
+  // TODO(shenliang03): Support rebuild in the future.
+  bool has_rebuilt_group_{true};
   std::vector<std::shared_ptr<imperative::VarBase>> rebuild_vars_;
   std::vector<int64_t> rebuild_var_indices_;
   const std::vector<size_t> group_size_limits_;
