@@ -144,8 +144,9 @@ class ValueBlock {
     pts.reserve(value_names.size());
     auto &values = values_.at(id);
     for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
-      PADDLE_ENFORCE_EQ(value_dims[i], value_dims_[i],platform::errors::InvalidArgument("value dims is not match")
-                        );
+      PADDLE_ENFORCE_EQ(
+          value_dims[i], value_dims_[i],
+          platform::errors::InvalidArgument("value dims is not match"));
       pts.push_back(values->data_.data() +
                     value_offsets_.at(value_idx_.at(value_names[i])));
     }
