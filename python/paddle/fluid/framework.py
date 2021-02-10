@@ -249,8 +249,8 @@ def _fake_interface_only_(func):
             "'%s' should be called by imperative Varible in imperative mode, please run it in dygraph "
             "mode. You can turn off paddle.enable_static() if you are in static mode, or turn off "
             "ProgramTranslator if you are using @paddle.jit.to_static. If you have to run ProgramTranslator, "
-            "please use other API to replace '%s'" % func.__name__,
-            func.__name__)
+            "please use other API to replace '%s'" % (func.__name__,
+                                                      func.__name__))
 
     return __impl__
 
