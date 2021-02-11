@@ -15,6 +15,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -228,9 +231,18 @@ class ReshapeOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
+                                   library_);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -269,6 +281,9 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
         "It has the lowest priority compare with Input(Shape) and "
         " Input(ShapeTensor).")
         .SetDefault({});
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Reshape Operator.
 
@@ -346,34 +361,7 @@ class ReshapeKernel {
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("X");
 
-    framework::DDim out_dims = out->dims();
-
-    auto list_new_shape_tensor =
-        ctx.MultiInput<framework::Tensor>("ShapeTensor");
-    if (list_new_shape_tensor.size() > 0) {
-      // have shape tensor
-      auto new_shape = get_new_shape(list_new_shape_tensor);
-      out_dims = ReshapeOp::ValidateShape(new_shape, in->dims());
-
-    } else {
-      auto *shape_tensor = ctx.HasInput("Shape")
-                               ? ctx.Input<framework::LoDTensor>("Shape")
-                               : nullptr;
-
-      if (shape_tensor) {
-        auto *shape_data = shape_tensor->data<int>();
-        framework::Tensor cpu_shape_tensor;
-        if (platform::is_gpu_place(shape_tensor->place()) ||
-            platform::is_xpu_place(shape_tensor->place())) {
-          TensorCopySync(*shape_tensor, platform::CPUPlace(),
-                         &cpu_shape_tensor);
-          shape_data = cpu_shape_tensor.data<int>();
-        }
-        auto shape =
-            std::vector<int>(shape_data, shape_data + shape_tensor->numel());
-        out_dims = ReshapeOp::ValidateShape(shape, in->dims());
-      }
-    }
+    auto out_dims = YieldShape(ctx, out, in);
 
     out->Resize(out_dims);
     out->mutable_data(ctx.GetPlace(), in->type());
@@ -404,7 +392,70 @@ class ReshapeKernel {
 #endif
     out->Resize(out_dims);
   }
+
+ protected:
+  framework::DDim YieldShape(const framework::ExecutionContext &ctx,
+                             const framework::LoDTensor *out,
+                             const framework::LoDTensor *in) const {
+    framework::DDim out_dims = out->dims();
+    auto list_new_shape_tensor =
+        ctx.MultiInput<framework::Tensor>("ShapeTensor");
+    if (list_new_shape_tensor.size() > 0) {
+      // have shape tensor
+      auto new_shape = get_new_shape(list_new_shape_tensor);
+      out_dims = ReshapeOp::ValidateShape(new_shape, in->dims());
+
+    } else {
+      auto *shape_tensor = ctx.HasInput("Shape")
+                               ? ctx.Input<framework::LoDTensor>("Shape")
+                               : nullptr;
+
+      if (shape_tensor) {
+        auto *shape_data = shape_tensor->data<int>();
+        framework::Tensor cpu_shape_tensor;
+        if (platform::is_gpu_place(shape_tensor->place()) ||
+            platform::is_xpu_place(shape_tensor->place())) {
+          TensorCopySync(*shape_tensor, platform::CPUPlace(),
+                         &cpu_shape_tensor);
+          shape_data = cpu_shape_tensor.data<int>();
+        }
+        auto shape =
+            std::vector<int>(shape_data, shape_data + shape_tensor->numel());
+        out_dims = ReshapeOp::ValidateShape(shape, in->dims());
+      }
+    }
+    return out_dims;
+  }
 };
+
+#ifdef PADDLE_WITH_MKLDNN
+class ReshapeMKLDNNKernel : public ReshapeKernel {
+ public:
+  void operator()(const framework::ExecutionContext &ctx) const {
+    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    auto *in = ctx.Input<framework::LoDTensor>("X");
+
+    auto out_dims = YieldShape(ctx, out, in);
+
+    // Get create MD for input
+    auto md = mkldnn::memory::desc(framework::vectorize(in->dims()),
+                                   platform::MKLDNNGetDataType(in->type()),
+                                   in->format());
+    // Make a reshape of input MD to get output MD
+    auto out_md = md.reshape(framework::vectorize(out_dims));
+    // copy data
+    out->mutable_data(ctx.GetPlace(), in->type(), out_md.get_size());
+    framework::TensorCopy(
+        *in, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), out);
+    // TensorCopy resize target tesnor to match source one so we need to resize
+    // again to target shape
+    out->Resize(out_dims);
+    out->set_layout(framework::DataLayout::kMKLDNN);
+    out->set_format(platform::GetMKLDNNFormat(out_md));
+  }
+};
+#endif
 
 class ReshapeGradKernel {
  public:
@@ -651,6 +702,19 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(
     ops::ReshapeDoubleGradKernel, paddle::platform::complex64,
     ops::ReshapeDoubleGradKernel, paddle::platform::complex128,
     ops::ReshapeDoubleGradKernel);
+
+#ifdef PADDLE_WITH_MKLDNN
+REGISTER_OP_MKLDNN_KERNEL_FUNCTOR(reshape, float, ops::ReshapeMKLDNNKernel,
+                                  paddle::platform::bfloat16,
+                                  ops::ReshapeMKLDNNKernel, uint8_t,
+                                  ops::ReshapeMKLDNNKernel, int8_t,
+                                  ops::ReshapeMKLDNNKernel);
+REGISTER_OP_MKLDNN_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeMKLDNNKernel,
+                                  paddle::platform::bfloat16,
+                                  ops::ReshapeMKLDNNKernel, uint8_t,
+                                  ops::ReshapeMKLDNNKernel, int8_t,
+                                  ops::ReshapeMKLDNNKernel);
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,

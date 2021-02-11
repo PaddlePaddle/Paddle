@@ -334,6 +334,12 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 
+#define REGISTER_OP_MKLDNN_KERNEL_FUNCTOR(op_type, ...)                  \
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, MKLDNN, ::paddle::platform::CPUPlace, DEFAULT_TYPE,       \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
+
 #define REGISTER_OP_XPU_KERNEL_FUNCTOR(op_type, ...)                  \
   REGISTER_OP_KERNEL_EX(                                              \
       op_type, XPU, ::paddle::platform::XPUPlace, DEFAULT_TYPE,       \

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "mkldnn.hpp"
@@ -155,6 +156,23 @@ inline void DontClearMKLDNNCache(const platform::Place& place) {
         (platform::MKLDNNDeviceContext*)pool.Get(place);
     dev_ctx->BlockNextCacheClearing();
   }
+}
+
+inline mkldnn::memory::data_type MKLDNNGetDataType(
+    framework::proto::VarType::Type dt) {
+  std::unordered_map<framework::proto::VarType::Type, mkldnn::memory::data_type>
+      mapping = {
+          {framework::proto::VarType::FP32, mkldnn::memory::data_type::f32},
+          {framework::proto::VarType::INT32, mkldnn::memory::data_type::s32},
+          {framework::proto::VarType::INT8, mkldnn::memory::data_type::s8},
+          {framework::proto::VarType::UINT8, mkldnn::memory::data_type::u8},
+          {framework::proto::VarType::BF16, mkldnn::memory::data_type::bf16}};
+  PADDLE_ENFORCE_EQ(
+      mapping.find(dt) != mapping.end(), true,
+      platform::errors::InvalidArgument(
+          "Requested data type is not supported by oneDNN integration"));
+
+  return mapping[dt];
 }
 
 template <typename Type>

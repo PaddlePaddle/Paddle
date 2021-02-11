@@ -2200,8 +2200,7 @@ PDNode *patterns::Bfloat16Placement::operator()(
   }
   auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
   op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<bool>("use_mkldnn") ||
-           node->Op()->Type() == "reshape2";
+    return node->Op()->GetAttrIfExists<bool>("use_mkldnn");
   });
   return op;
 }

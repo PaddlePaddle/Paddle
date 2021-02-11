@@ -22,13 +22,43 @@ import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle import enable_static
 
+class TestReshapeMKLDNNOp(OpTest):
+    def setUp(self):
+        self.op_type = "reshape2"
+        self.use_mkldnn = True
+        self.mkldnn_data_type = "float32"
+        self.init_data()
+        self.init_input_data()
+
+        self.inputs = {'X': self.input_data}
+        self.attrs = {
+            'shape': self.new_shape,
+            'use_mkldnn': self.use_mkldnn,
+            'mkldnn_data_type': self.mkldnn_data_type
+        }
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype(np.float32)
+        }
+
+    def init_data(self):
+        self.ori_shape = (10, 2, 6)
+        self.new_shape = (10, 0, 3, -1)
+        self.infered_shape = (10, 2, 3, -1)
+
+    def init_input_data(self):
+        self.input_data = np.random.random(self.ori_shape).astype(np.float32)
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), no_check_set=['XShape'])
+
 
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
-class TestReshapeBf16Op(OpTest):
+class TestReshapeMKLDNNBf16Op(OpTest):
     def setUp(self):
         self.op_type = "reshape2"
-        self.use_mkldnn = False
+        self.use_mkldnn = True
         self.mkldnn_data_type = "bfloat16"
         self.init_data()
         self.init_input_data()
