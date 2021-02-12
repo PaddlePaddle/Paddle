@@ -22,6 +22,7 @@ import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle import enable_static
 
+
 class TestReshapeMKLDNNOp(OpTest):
     def setUp(self):
         self.op_type = "reshape2"
