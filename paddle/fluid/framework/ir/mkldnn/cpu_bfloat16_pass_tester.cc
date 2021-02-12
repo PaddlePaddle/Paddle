@@ -26,8 +26,7 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs, bool use_mkldnn,
-           const std::string& mkldnn_data_type = "float32",
-           const bool force_fp32_output = false) {
+           const std::string& mkldnn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
@@ -37,7 +36,6 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
-    op->SetAttr("force_fp32_output", force_fp32_output);
   } else if (type == "pool2d" || type == "transpose2" || type == "reshape2" ||
              type == "dropout") {
     op->SetInput("X", {inputs[0]});
@@ -47,7 +45,6 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
-    op->SetAttr("force_fp32_output", force_fp32_output);
   } else if (type == "concat" || type == "sum") {
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
@@ -58,7 +55,6 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", {outputs[0]});
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
-    if (type == "matmul") op->SetAttr("force_fp32_output", force_fp32_output);
   } else if (type == "layer_norm") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Y", {outputs[0]});
@@ -79,8 +75,8 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
   *current_nodes_num = (*graph)->Nodes().size();
 }
 
-void MainTest(const ProgramDesc& prog, int quant_count, int dequant_count,
-              int force_fp32_count, int added_nodes_count) {
+void MainTest(const ProgramDesc& prog, const int& quant_count,
+              const int& dequant_count, const int& added_nodes_count) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
   int original_nodes_num, current_nodes_num;
   PreparePass(&graph, prog, variable_names, &original_nodes_num,
@@ -88,7 +84,6 @@ void MainTest(const ProgramDesc& prog, int quant_count, int dequant_count,
 
   int quantize_nodes_count = 0;
   int dequantize_nodes_count = 0;
-  int force_fp32_nodes_count = 0;
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       auto* op = node->Op();
@@ -96,16 +91,11 @@ void MainTest(const ProgramDesc& prog, int quant_count, int dequant_count,
         quantize_nodes_count++;
       } else if (op->Type() == "dequantize") {
         dequantize_nodes_count++;
-      } else if (op->Type() == "conv2d" || op->Type() == "matmul" ||
-                 op->Type() == "fc") {
-        if (op->GetAttrIfExists<bool>("force_fp32_output"))
-          force_fp32_nodes_count++;
       }
     }
   }
   EXPECT_EQ(quantize_nodes_count, quant_count);
   EXPECT_EQ(dequantize_nodes_count, dequant_count);
-  EXPECT_EQ(force_fp32_nodes_count, force_fp32_count);
   EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
 }
 
@@ -125,9 +115,10 @@ ProgramDesc BuildProgramDescConv(bool use_mkldnn) {
 
 TEST(CpuBfloat16Pass, convolution) {
   bool use_mkldnn = true;
-  // 0 added + 1 force_fp32_output
-  int added_nodes = 0;
-  MainTest(BuildProgramDescConv(use_mkldnn), 0, 0, 1, added_nodes);
+  int quant_op = 3;
+  int dequant_op = 3;
+  int added_nodes = quant_op * 2 + dequant_op * 2;
+  MainTest(BuildProgramDescConv(use_mkldnn), quant_op, dequant_op, added_nodes);
 }
 
 ProgramDesc BuildProgramDescDoubleInput(bool use_mkldnn) {
@@ -147,9 +138,11 @@ ProgramDesc BuildProgramDescDoubleInput(bool use_mkldnn) {
 
 TEST(CpuBfloat16Pass, double_input_ops) {
   bool use_mkldnn = true;
-  // 2 quant + 2 quant out
-  int added_nodes = 4;
-  MainTest(BuildProgramDescDoubleInput(use_mkldnn), 2, 0, 0, added_nodes);
+  int quant_op = 4;
+  int dequant_op = 3;
+  int added_nodes = quant_op * 2 + dequant_op * 2;
+  MainTest(BuildProgramDescDoubleInput(use_mkldnn), quant_op, dequant_op,
+           added_nodes);
 }
 
 ProgramDesc BuildProgramDescDuplicatedInput(bool use_mkldnn) {
@@ -169,9 +162,11 @@ ProgramDesc BuildProgramDescDuplicatedInput(bool use_mkldnn) {
 
 TEST(CpuBfloat16Pass, duplicated_input_ops) {
   bool use_mkldnn = true;
-  // 3 quant + 3 quant out
-  int added_nodes = 6;
-  MainTest(BuildProgramDescDuplicatedInput(use_mkldnn), 3, 0, 0, added_nodes);
+  int quant_op = 5;
+  int dequant_op = 3;
+  int added_nodes = quant_op * 2 + dequant_op * 2;
+  MainTest(BuildProgramDescDuplicatedInput(use_mkldnn), quant_op, dequant_op,
+           added_nodes);
 }
 
 ProgramDesc BuildProgramDescDoubleOutputs(bool use_mkldnn) {
@@ -193,9 +188,11 @@ ProgramDesc BuildProgramDescDoubleOutputs(bool use_mkldnn) {
 
 TEST(CpuBfloat16Pass, double_outputs_ops) {
   bool use_mkldnn = true;
-  // 3 dequant + 3 dequant out
-  int added_nodes = 6;
-  MainTest(BuildProgramDescDoubleOutputs(use_mkldnn), 0, 3, 0, added_nodes);
+  int quant_op = 3;
+  int dequant_op = 3;
+  int added_nodes = quant_op * 2 + dequant_op * 2;
+  MainTest(BuildProgramDescDoubleOutputs(use_mkldnn), quant_op, dequant_op,
+           added_nodes);
 }
 
 }  // namespace ir
