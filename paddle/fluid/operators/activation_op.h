@@ -321,8 +321,9 @@ template <typename T>
 struct ReluCPUFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(
-        [](T v) { return v > static_cast<T>(0) ? v : static_cast<T>(0); });
+    out.device(d) = x.unaryExpr([] HOSTDEVICE(T v) {
+      return v > static_cast<T>(0) ? v : static_cast<T>(0);
+    });
   }
 };
 
