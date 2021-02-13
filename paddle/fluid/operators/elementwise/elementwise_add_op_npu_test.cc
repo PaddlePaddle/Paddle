@@ -76,8 +76,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   gettimeofday(&start, NULL);
   for(int i=0;i<100;i++){
     op->Run(*scope, place);
-    ctx.Wait();
   }
+  ctx.Wait();
   gettimeofday(&end, NULL);
   int micros = (((end.tv_sec - start.tv_sec) * 1000000) + end.tv_usec) - (start.tv_usec);
   //printf("idx:%d, time:%d\n", i, micros/100);
