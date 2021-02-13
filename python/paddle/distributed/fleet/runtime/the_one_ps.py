@@ -78,6 +78,7 @@ class CommonAccessor:
                                  ("Moment2", None), ("Beta1Pow", 1),
                                  ("Beta2Pow", 1), ("LearningRate", 1)]
         opt_input_map["adagrad"] = [("Param", None), ("Moment", None), ("LearningRate", 1)]
+        opt_input_map["decayed_adagrad"] = [("Param", None), ("Moment", None), ("LearningRate", 1)]
         opt_input_map["sum"] = [("Param", None)]
 
         opt_attr_map = {}
@@ -86,6 +87,7 @@ class CommonAccessor:
         opt_attr_map["adam"] = [("beta1", "f"), ("beta2", "f"),
                                 ("epsilon", "f")]
         opt_attr_map["adagrad"] = [("epsilon", "f")]
+        opt_attr_map["decayed_adagrad"] = [("epsilon", "f"), ("decay", "f")]
 
         opt_init_map = {}
         opt_init_map["gaussian_random"] = ["seed", "mean", "std"]

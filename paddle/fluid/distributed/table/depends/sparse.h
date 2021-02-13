@@ -413,9 +413,9 @@ class SAdam : public SparseOptimizer {
     std::ifstream beta2_fin(prefix + "." + "beta2_pow.block" + std::to_string(shard_idx), std::ios::binary);
     beta2_fin.read(reinterpret_cast<char *>(&beta2_pow), sizeof(float));
 
-    std::vector<std::string> var_names{ prefix + "." + "param.block" + std::to_string(shard_idx),
+    std::vector<std::string> var_names{prefix + "." + "param.block" + std::to_string(shard_idx),
                                        prefix + "." + "moment1.block" + std::to_string(shard_idx),
-                                       prefix + "." + "moment2.block" + std::to_string(shard_idx) };
+                                       prefix + "." + "moment2.block" + std::to_string(shard_idx)};
     std::vector<int> offsets {param_offset, m1_offset, m2_offset};
 
     LoadFromBin(var_names, offsets, shard_values);
@@ -461,6 +461,7 @@ class SAdagrad : public SparseOptimizer {
     auto blas = GetBlas<float>();
     for (auto x : offsets) {
       auto id = keys[x];
+      if (!block->GetEntry(id)) continue;
       auto* values = block->Get(id);
       float lr_ = (*global_learning_rate_) * (*(values + lr_offset));
       float* param = values + param_offset;
@@ -475,6 +476,86 @@ class SAdagrad : public SparseOptimizer {
       blas.VCOPY(update_numel, update_values + x * update_numel, grad2.data());
       blas.VSQUARE(update_numel, grad2.data(), grad2.data());
 
+      blas.VADD(update_numel, moment, grad2.data(), moment);
+ 
+      float* tmp_ = tmp.data();
+      SQRT<float>(update_numel, moment, tmp_);
+      ADD<float>(update_numel, tmp_, epsilon, tmp_);
+
+      blas.VDIV(update_numel, grad.data(), tmp_, tmp_);
+      blas.SCAL(update_numel, lr_, tmp_);
+      blas.VSUB(update_numel, param, tmp_, param);
+    }
+  }
+
+  int64_t save(const int mode,
+               const int shard_idx,
+               const std::string prefix,
+               const std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
+    std::vector<std::string> var_names{prefix + "." + "param.block" + std::to_string(shard_idx), 
+                                       prefix + "." + "moment.block" + std::to_string(shard_idx)};
+    std::vector<int> offsets {param_offset, m_offset};
+    return SaveToBin(mode, var_names, offsets, shard_values);
+  }
+
+  void load(const int shard_idx,
+            const std::string prefix,
+            std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
+    std::vector<std::string> var_names{prefix + "." + "param.block" + std::to_string(shard_idx),
+                                       prefix + "." + "moment.block" + std::to_string(shard_idx)};
+    std::vector<int> offsets {param_offset, m_offset};
+    LoadFromBin(var_names, offsets, shard_values);
+  }
+
+  int lr_offset;
+  int m_offset;
+  float epsilon;
+};
+
+class SDecayedAdagrad : public SparseOptimizer {
+ public:
+  explicit SDecayedAdagrad(const std::vector<std::string>& value_names,
+                           const std::vector<int>& value_dims,
+                           const std::vector<int>& value_offsets,
+                           const std::unordered_map<std::string, int>& value_idx)
+      : SparseOptimizer(value_names, value_dims, value_offsets, value_idx) {
+    auto idx = value_idx.at("Param");
+    param_offset = value_offsets.at(idx);
+    update_numel = value_dims.at(idx);
+
+    idx = value_idx.at("LearningRate");
+    lr_offset = value_offsets.at(idx);
+
+    idx = value_idx.at("Moment");
+    m_offset = value_offsets.at(idx);
+
+    // add attr later
+    epsilon = 1.0e-6;
+    decay = 1.0;
+  }
+
+  void update(const uint64_t* keys, const float* update_values, size_t num,
+              const std::vector<uint64_t>& offsets,
+              ValueBlock* block) override {
+    auto blas = GetBlas<float>();
+    for (auto x : offsets) {
+      auto id = keys[x];
+      if (!block->GetEntry(id)) continue;
+      auto* values = block->Get(id);
+      float lr_ = (*global_learning_rate_) * (*(values + lr_offset));
+      float* param = values + param_offset;
+      float* moment = values + m_offset;
+
+      std::vector<float> grad, grad2, tmp;
+      grad.resize(update_numel);
+      grad2.resize(update_numel);
+      tmp.resize(update_numel);
+
+      blas.VCOPY(update_numel, update_values + x * update_numel, grad.data());
+      blas.VCOPY(update_numel, update_values + x * update_numel, grad2.data());
+      blas.VSQUARE(update_numel, grad2.data(), grad2.data());
+      blas.SCAL(update_numel, decay, moment);
+ 
       blas.VADD(update_numel, moment, grad2.data(), moment);
       
       float* tmp_ = tmp.data();
@@ -491,7 +572,7 @@ class SAdagrad : public SparseOptimizer {
                const int shard_idx,
                const std::string prefix,
                const std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
-    std::vector<std::string> var_names{ prefix + "." + "param.block" + std::to_string(shard_idx), 
+    std::vector<std::string> var_names{prefix + "." + "param.block" + std::to_string(shard_idx), 
                                        prefix + "." + "moment.block" + std::to_string(shard_idx)};
     std::vector<int> offsets {param_offset, m_offset};
     return SaveToBin(mode, var_names, offsets, shard_values);
@@ -500,7 +581,7 @@ class SAdagrad : public SparseOptimizer {
   void load(const int shard_idx,
             const std::string prefix,
             std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
-    std::vector<std::string> var_names{ prefix + "." + "param.block" + std::to_string(shard_idx),
+    std::vector<std::string> var_names{prefix + "." + "param.block" + std::to_string(shard_idx),
                                        prefix + "." + "moment.block" + std::to_string(shard_idx)};
     std::vector<int> offsets {param_offset, m_offset};
     LoadFromBin(var_names, offsets, shard_values);
@@ -509,6 +590,7 @@ class SAdagrad : public SparseOptimizer {
   int lr_offset;
   int m_offset;
   float epsilon;
+  float decay;
 };
 
 }  // namespace distributed

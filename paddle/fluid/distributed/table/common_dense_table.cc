@@ -94,6 +94,9 @@ int32_t CommonDenseTable::initialize_optimizer() {
   } else if (name == "adagrad") {
     optimizer_ = std::make_shared<DAdagrad>(common, &values_);
     optimizer_->set_global_lr(_global_lr);
+  } else if (name == "decayed_adagrad") {
+    optimizer_ = std::make_shared<DDecayedAdagrad>(common, &values_);
+    optimizer_->set_global_lr(_global_lr);
   } else {
     VLOG(0) << "init optimizer failed";
   }

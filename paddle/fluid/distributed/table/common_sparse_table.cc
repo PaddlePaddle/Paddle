@@ -384,6 +384,10 @@ int32_t CommonSparseTable::initialize_optimizer() {
     optimizer_ = std::make_shared<SAdagrad>(value_names_, value_dims_,
                                             value_offsets_, value_idx_);
     optimizer_->set_global_lr(_global_lr);
+  } else if (name == "decayed_adagrad") {
+    optimizer_ = std::make_shared<SDecayedAdagrad>(value_names_, value_dims_,
+                                                   value_offsets_, value_idx_);
+    optimizer_->set_global_lr(_global_lr);
   } else {
     VLOG(0) << "init optimizer failed";
   }

@@ -240,5 +240,62 @@ class DAdagrad : public DenseOptimizer {
   float epsilon;
 };
 
+class DDecayedAdagrad : public DenseOptimizer {
+ public:
+  explicit DDecayedAdagrad(const CommonAccessorParameter& accessor,
+                 std::vector<std::vector<float>>* values) {
+    auto& names = accessor.params();
+    for (int x = 0; x < static_cast<int>(names.size()); ++x) {
+      if (names[x] == "LearningRate") {
+        learning_rate = (*values)[x].data();
+      }
+      if (names[x] == "Param") {
+        param = (*values)[x].data();
+      }
+      if (names[x] == "Moment") {
+        moment = (*values)[x].data();
+      }
+    }
+
+    // add attr later
+    epsilon = 1.0e-6;
+    decay = 1.0;
+  }
+
+  void update(const float* update_values, size_t num, int begin,
+              int end) override {
+    auto update_numel = end - begin;
+    std::vector<float> grad, grad2, tmp;
+    grad.resize(update_numel);
+    grad2.resize(update_numel);
+    tmp.resize(update_numel);
+
+    auto blas = GetBlas<float>();
+    blas.VCOPY(update_numel, update_values + begin, grad.data());
+    blas.VCOPY(update_numel, update_values + begin, grad2.data());
+
+    blas.VSQUARE(update_numel, grad2.data(), grad2.data());
+    blas.SCAL(update_numel, decay, moment + begin);
+    blas.VADD(update_numel, moment + begin, grad2.data(), moment + begin);
+
+    float lr_ = (*global_learning_rate_) * (*learning_rate);
+    float* tmp_ = tmp.data();
+
+    SQRT<float>(update_numel, moment + begin, tmp_);
+    ADD<float>(update_numel, tmp_, epsilon, tmp_);
+
+    blas.VDIV(update_numel, grad.data() + begin, tmp_, tmp_);
+    blas.SCAL(update_numel, lr_, tmp_);
+    blas.VSUB(update_numel, param + begin, tmp_, param + begin);
+  }
+
+  float* learning_rate;
+
+  float* param;
+  float* moment;
+  float epsilon;
+  float decay;
+};
+
 }  // namespace distributed
 }  // namespace paddle

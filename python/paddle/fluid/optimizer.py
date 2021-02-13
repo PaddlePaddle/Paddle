@@ -2450,7 +2450,7 @@ class DecayedAdagradOptimizer(Optimizer):
 
     def __init__(self,
                  learning_rate,
-                 decay=0.95,
+                 decay=1.0,
                  epsilon=1.0e-6,
                  parameter_list=None,
                  regularization=None,
