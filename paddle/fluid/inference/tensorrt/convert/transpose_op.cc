@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <bitset>
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -27,18 +26,6 @@ class OpDesc;
 namespace paddle {
 namespace inference {
 namespace tensorrt {
-
-// Permutation is valid if it has nbDims unique values from range [0, nbDims-1]
-bool IsValidPermutation(int dims, const nvinfer1::Permutation& permutation) {
-  std::bitset<nvinfer1::Dims::MAX_DIMS> found;
-  for (int i = 0; i < dims; ++i) {
-    const int x = permutation.order[i];
-    if ((x < 0) || (x >= dims) || found[x])
-      return false;  // Out of bounds or duplicate
-    found.set(x);
-  }
-  return true;
-}
 
 /*
  * TransposeOp
@@ -64,10 +51,6 @@ class TransposeOpConverter : public OpConverter {
       int j = engine_->with_dynamic_shape() ? i : i + 1;
       perm.order[i] = axis[j];
     }
-    PADDLE_ENFORCE_EQ(IsValidPermutation(dims, perm), true,
-                      platform::errors::InvalidArgument(
-                          "Invalid permutation in transpose. Input tensor: %s",
-                          op_desc.Input("X")[0]));
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     layer->setFirstTranspose(perm);
 

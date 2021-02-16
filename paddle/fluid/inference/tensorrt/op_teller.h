@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
@@ -65,8 +66,8 @@ class OpTeller {
     return *x;
   }
 
-  bool Tell(const std::string& op_type, const framework::OpDesc& desc,
-            bool use_no_calib_int8 = false, bool with_dynamic_shape = false);
+  bool Tell(const framework::ir::Node* node, bool use_no_calib_int8 = false,
+            bool with_dynamic_shape = false);
 
  private:
   OpTeller();

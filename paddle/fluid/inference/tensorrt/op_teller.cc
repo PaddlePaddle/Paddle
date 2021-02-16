@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include <bitset>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 
@@ -110,8 +111,10 @@ struct SimpleOpTypeSetTeller : public Teller {
   };
 };
 
-bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
-                    bool use_no_calib_int8, bool with_dynamic_shape) {
+bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
+                    bool with_dynamic_shape) {
+  const std::string op_type = node->Op()->Type();
+  const framework::OpDesc desc = *node->Op();
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
        BOOST_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
@@ -141,6 +144,30 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
         if (!with_dynamic_shape && axis[0] != 0) return false;
         if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+        if (!with_dynamic_shape) {
+          for (size_t i = 1; i < axis.size(); i++) {
+            axis[i]--;
+          }
+        }
+        nvinfer1::Permutation perm;
+        for (int i = 0; i < dims; i++) {
+          int j = with_dynamic_shape ? i : i + 1;
+          perm.order[i] = axis[j];
+        }
+        // Permutation is valid if it has nbDims unique values from range [0,
+        // nbDims-1]
+        auto is_valid_permutation = [&](
+            int dims, const nvinfer1::Permutation& permutation) {
+          std::bitset<nvinfer1::Dims::MAX_DIMS> found;
+          for (int i = 0; i < dims; ++i) {
+            const int x = permutation.order[i];
+            if ((x < 0) || (x >= dims) || found[x])
+              return false;  // Out of bounds or duplicate
+            found.set(x);
+          }
+          return true;
+        };
+        return is_valid_permutation();
       }
     }
     if (op_type == "flatten2" || op_type == "flatten") {
