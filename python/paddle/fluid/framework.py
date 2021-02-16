@@ -5365,6 +5365,8 @@ class Parameter(Variable):
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
         self.regularizer = kwargs.get('regularizer', None)
+   
+        self.optimizer = kwargs.get('optimizer', None)
 
         self.do_model_average = kwargs.get('do_model_average', None)
 

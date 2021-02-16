@@ -663,9 +663,14 @@ class Optimizer(object):
         start = len(target_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
         self._update_param_device_map(parameters_and_grads, target_block)
-        self._create_accumulators(
-            target_block,
-            [p[0] for p in parameters_and_grads if p[0].trainable])
+        for param_and_grad in parameters_and_grads:
+            if param_and_grad[0].trainable:
+                if param_and_grad[0].optimizer is not None:
+                   param_and_grad[0].optimizer.helper = LayerHelper(param_and_grad[0].optimizer.__class__.__name__)
+                   param_and_grad[0].optimizer._create_accumulators(global_block, [param_and_grad[0]])
+                   param_and_grad[0].optimizer._create_global_learning_rate()
+                else:
+                  self._create_accumulators(global_block, [param_and_grad[0]])
         self._create_global_learning_rate()
 
         if framework.in_dygraph_mode():
@@ -684,9 +689,12 @@ class Optimizer(object):
                         device = self._get_device_for_param(param_and_grad[0]
                                                             .name)
                         with device_guard(device):
-                            optimize_op = self._append_optimize_op(
-                                target_block, param_and_grad)
-
+                            if param_and_grad[0].optimizer is not None:
+                                optimize_op = param_and_grad[0].optimizer._append_optimize_op(global_block,
+                                                                                              param_and_grad)
+                            else:
+                                optimize_op = self._append_optimize_op(global_block,
+                                                                   param_and_grad)
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
         self._finish_update(target_block, parameters_and_grads)

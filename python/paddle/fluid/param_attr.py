@@ -77,6 +77,7 @@ class ParamAttr(object):
 
     def __init__(self,
                  name=None,
+                 optimizer=None,
                  initializer=None,
                  learning_rate=1.0,
                  regularizer=None,
@@ -102,6 +103,7 @@ class ParamAttr(object):
             raise ValueError("name of ParamAttr can not be empty str")
 
         self.initializer = initializer
+        self.optimizer = optimizer
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
@@ -179,6 +181,8 @@ class ParamAttr(object):
             return ParamAttr(name=arg)
         elif isinstance(arg, Initializer):
             return ParamAttr(initializer=arg)
+        elif isinstance(arg, Optimizer):
+            return ParamAttr(optimizer=arg)
         elif isinstance(arg, WeightDecayRegularizer):
             return ParamAttr(regularizer=arg)
         elif isinstance(arg, bool):
@@ -208,6 +212,7 @@ class ParamAttr(object):
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
+        kwargs['optimizer'] = self.optimizer
         return kwargs
 
 
