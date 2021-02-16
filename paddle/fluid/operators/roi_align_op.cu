@@ -116,7 +116,7 @@ __global__ void GPUROIAlignForward(
     const T* offset_input_rois = input_rois + n * kROISize;
     int roi_batch_ind = roi_batch_id_data[n];
 
-    T roi_offset = continuous_coordinate ? T(0.5) : 0;
+    T roi_offset = continuous_coordinate ? static_cast<T>(0.5) : 0;
     T roi_xmin = offset_input_rois[0] * spatial_scale - roi_offset;
     T roi_ymin = offset_input_rois[1] * spatial_scale - roi_offset;
     T roi_xmax = offset_input_rois[2] * spatial_scale - roi_offset;

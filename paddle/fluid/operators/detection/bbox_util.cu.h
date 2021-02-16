@@ -77,7 +77,7 @@ struct BoxDecodeAndClipFunctor {
   const T *var;
   const int *index;
   const T *im_info;
-  const bool *pixel_offset;
+  const bool pixel_offset;
 
   T *proposals;
 
@@ -89,8 +89,8 @@ struct BoxDecodeAndClipFunctor {
         var(var),
         index(index),
         im_info(im_info),
-        pixel_offset(pixel_offset),
-        proposals(proposals) {}
+        proposals(proposals),
+        pixel_offset(pixel_offset) {}
 
   T bbox_clip_default{static_cast<T>(kBBoxClipDefault)};
 
@@ -101,7 +101,7 @@ struct BoxDecodeAndClipFunctor {
     T axmax = anchor[k + 2];
     T aymax = anchor[k + 3];
 
-    T offset = pixel_offset ? T(1.0) : 0;
+    T offset = pixel_offset ? static_cast<T>(1.0) : 0;
     T w = axmax - axmin + offset;
     T h = aymax - aymin + offset;
     T cx = axmin + 0.5 * w;
@@ -162,9 +162,9 @@ static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
     T ymin = bboxes[k + 1];
     T xmax = bboxes[k + 2];
     T ymax = bboxes[k + 3];
-
-    T w = xmax - xmin;
-    T h = ymax - ymin;
+    T offset = pixel_offset ? static_cast<T>(1.0) : 0;
+    T w = xmax - xmin + offset;
+    T h = ymax - ymin + offset;
     if (pixel_offset) {
       T cx = xmin + w / 2.;
       T cy = ymin + h / 2.;
