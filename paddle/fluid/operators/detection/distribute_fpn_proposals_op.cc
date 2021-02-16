@@ -137,8 +137,8 @@ REGISTER_OP_VERSION(distribute_fpn_proposals)
             .NewOutput("MultiLevelRoisNum",
                        "The RoIs' number of each image on multiple "
                        "levels. The number on each level has the shape of (B),"
-                       "B is the number of images."));
-.AddCheckpoint(
-    R"ROC(Register distribute_fpn_proposals for adding the attribute of pixel_offset)ROC",
-    paddle::framework::compatible::OpVersionDesc().NewAttr(
-        "pixel_offset", "If true, im_shape pixel offset is 1.", true));
+                       "B is the number of images."))
+    .AddCheckpoint(
+        R"ROC(Register distribute_fpn_proposals for adding the attribute of pixel_offset)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "pixel_offset", "If true, im_shape pixel offset is 1.", true));

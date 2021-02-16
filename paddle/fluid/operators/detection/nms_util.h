@@ -46,7 +46,7 @@ static inline void GetMaxScoreIndex(
 }
 
 template <class T>
-static inline T BBoxArea(const T* box, const bool normalized) {
+static inline T BBoxArea(const T* box, const bool pixel_offset = true) {
   if (box[2] < box[0] || box[3] < box[1]) {
     // If coordinate values are is invalid
     // (e.g. xmax < xmin or ymax < ymin), return 0.
@@ -54,18 +54,18 @@ static inline T BBoxArea(const T* box, const bool normalized) {
   } else {
     const T w = box[2] - box[0];
     const T h = box[3] - box[1];
-    if (normalized) {
-      return w * h;
-    } else {
+    if (pixel_offset) {
       // If coordinate values are not within range [0, 1].
       return (w + 1) * (h + 1);
+    } else {
+      return w * h;
     }
   }
 }
 
 template <class T>
 static inline T JaccardOverlap(const T* box1, const T* box2,
-                               const bool normalized) {
+                               const bool pixel_offset = true) {
   if (box2[0] > box1[2] || box2[2] < box1[0] || box2[1] > box1[3] ||
       box2[3] < box1[1]) {
     return static_cast<T>(0.);
@@ -74,12 +74,12 @@ static inline T JaccardOverlap(const T* box1, const T* box2,
     const T inter_ymin = std::max(box1[1], box2[1]);
     const T inter_xmax = std::min(box1[2], box2[2]);
     const T inter_ymax = std::min(box1[3], box2[3]);
-    T norm = normalized ? static_cast<T>(0.) : static_cast<T>(1.);
-    T inter_w = inter_xmax - inter_xmin + norm;
-    T inter_h = inter_ymax - inter_ymin + norm;
+    T offset = pixel_offset ? static_cast<T>(1.) : static_cast<T>(0.);
+    T inter_w = inter_xmax - inter_xmin + offset;
+    T inter_h = inter_ymax - inter_ymin + offset;
     const T inter_area = inter_w * inter_h;
-    const T bbox1_area = BBoxArea<T>(box1, normalized);
-    const T bbox2_area = BBoxArea<T>(box2, normalized);
+    const T bbox1_area = BBoxArea<T>(box1, pixel_offset);
+    const T bbox2_area = BBoxArea<T>(box2, pixel_offset);
     return inter_area / (bbox1_area + bbox2_area - inter_area);
   }
 }
@@ -130,7 +130,7 @@ static inline framework::Tensor VectorToTensor(
 template <class T>
 framework::Tensor NMS(const platform::DeviceContext& ctx,
                       framework::Tensor* bbox, framework::Tensor* scores,
-                      T nms_threshold, float eta) {
+                      T nms_threshold, float eta, bool pixel_offset = true) {
   int64_t num_boxes = bbox->dims()[0];
   // 4: [xmin ymin xmax ymax]
   int64_t box_size = bbox->dims()[1];
@@ -149,8 +149,9 @@ framework::Tensor NMS(const platform::DeviceContext& ctx,
     bool flag = true;
     for (int kept_idx : selected_indices) {
       if (flag) {
-        T overlap = JaccardOverlap<T>(bbox_data + idx * box_size,
-                                      bbox_data + kept_idx * box_size, false);
+        T overlap =
+            JaccardOverlap<T>(bbox_data + idx * box_size,
+                              bbox_data + kept_idx * box_size, pixel_offset);
         flag = (overlap <= adaptive_threshold);
       } else {
         break;
