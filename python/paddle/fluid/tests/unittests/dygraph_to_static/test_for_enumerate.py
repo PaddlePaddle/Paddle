@@ -250,6 +250,7 @@ def for_tuple_as_iter_var(x_array):
     return a_result, b_result, c_result
 
 
+@paddle.jit.to_static
 def for_tuple_as_enumerate_iter(x_array):
     x = paddle.to_tensor(x_array)
     x_list = [x, x, x]
@@ -262,6 +263,7 @@ def for_tuple_as_enumerate_iter(x_array):
     return a_result
 
 
+@paddle.jit.to_static
 def for_tuple_as_enumerate_value(x_array):
     x = paddle.to_tensor(x_array)
     x_list = [x, x, x]

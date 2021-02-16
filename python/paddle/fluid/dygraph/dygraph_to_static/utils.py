@@ -869,27 +869,29 @@ class ForLoopTuplePreTransformer(gast.NodeTransformer):
                                 type_comment=None)
                     ],
                     ctx=gast.Store())
-                node.body[0:0] = gast.Assign(
-                    targets=[
-                        gast.Name(
-                            id=out_tuple_name,
-                            ctx=gast.Store(),
-                            annotation=None,
-                            type_comment=None)
-                    ],
-                    value=gast.Tuple(
-                        elts=[
+                node.body.insert(
+                    0,
+                    gast.Assign(
+                        targets=[
                             gast.Name(
-                                id=tuple_iter_name,
-                                ctx=gast.Load(),
+                                id=out_tuple_name,
+                                ctx=gast.Store(),
                                 annotation=None,
-                                type_comment=None), gast.Name(
-                                    id=tuple_var_name,
+                                type_comment=None)
+                        ],
+                        value=gast.Tuple(
+                            elts=[
+                                gast.Name(
+                                    id=tuple_iter_name,
                                     ctx=gast.Load(),
                                     annotation=None,
-                                    type_comment=None)
-                        ],
-                        ctx=gast.Load()))
+                                    type_comment=None), gast.Name(
+                                        id=tuple_var_name,
+                                        ctx=gast.Load(),
+                                        annotation=None,
+                                        type_comment=None)
+                            ],
+                            ctx=gast.Load())))
             elif isinstance(node.target, (
                     gast.List,
                     gast.Tuple)) and len(node.target.elts) >= 2 and isinstance(
