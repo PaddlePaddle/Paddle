@@ -26,8 +26,7 @@ from paddle.fluid.tests.unittests.test_fusion_lstm_op import TestFusionLSTMOp, f
 #                 "place does not support BF16 evaluation")
 class TestFusionLSTMBF16ONEDNNOp(OpTest):
     def set_confs(self):
-        pass
-        #self.mkldnn_data_type = False
+        self.mkldnn_data_type = False
 
 
     def test_check_output(self):
@@ -92,8 +91,8 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
 
         hidden_bf16 = convert_float_to_uint16(hidden)
 
-        print("\n\n", x, "\n\n")
-        print("\n\n", x_bf16, "\n\n")
+        #print("\n\n", x, "\n\n")
+        #print("\n\n", x_bf16, "\n\n")
 
         self.inputs = {
             'X': (x_bf16, self.lod),

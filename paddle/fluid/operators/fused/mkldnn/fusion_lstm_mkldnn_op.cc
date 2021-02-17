@@ -81,7 +81,7 @@ class LSTMMKLDNNHandler
                                      MKLDNNMemoryFormat::tnc);
       auto h0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<T>(),
                                  MKLDNNMemoryFormat::ldnc);
-      auto c0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<T>(),
+      auto c0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<float>(), // Vanilla LSTM and LSTM with peepoles has c0 as flp
                                  MKLDNNMemoryFormat::ldnc);
 
       // Create LSTM oneDNN primitive

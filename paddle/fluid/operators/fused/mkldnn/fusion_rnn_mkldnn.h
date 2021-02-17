@@ -189,9 +189,9 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
       if (h0) {
         user_h0_memory =
             dnnl::memory({{1, 1, N, OC},
-                          MKLDNNGetDataType<float>(),
+                          MKLDNNGetDataType<T>(),
                           MKLDNNMemoryFormat::ldnc},
-                         this->engine_, to_void_cast(h0->data<float>()));
+                         this->engine_, to_void_cast(h0->data<T>()));
       } else {
         user_h0_memory = dnnl::memory({{1, 1, N, OC},
                                        MKLDNNGetDataType<float>(),
