@@ -3,12 +3,12 @@ set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapp
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator)
 
-if (WITH_GPU)
+if (WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
 endif()
 
-if (WITH_NCCL)
+if (WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
 endif()
@@ -21,7 +21,7 @@ endif()
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
   set(PYBIND_DEPS ${PYBIND_DEPS} mmap_allocator)
-  if (WITH_NCCL)
+  if (WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
   endif()
 endif(NOT WIN32)
@@ -71,7 +71,7 @@ if (WITH_PSCORE)
   list(APPEND PYBIND_SRCS fleet_py.cc)
 endif()
 
-if (WITH_NCCL)
+if (WITH_NCCL OR WITH_RCCL)
   list(APPEND PYBIND_SRCS nccl_wrapper_py.cc)
 endif()
 
@@ -81,9 +81,9 @@ if(WITH_PYTHON)
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
 
-  if(WITH_NCCL)
+  if (WITH_NCCL OR WITH_RCCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
-  endif(WITH_NCCL)
+  endif()
 
   if(WITH_XPU_BKCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
@@ -93,6 +93,9 @@ if(WITH_PYTHON)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(op_function_generator ${os_dependency_modules})
+  if(WITH_ROCM)
+    target_link_libraries(op_function_generator ${ROCM_HIPRTC_LIB})
+  endif()
 
   set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h)
   set(tmp_impl_file ${impl_file}.tmp)
@@ -164,20 +167,17 @@ if(WITH_PYTHON)
     endif(WITH_MKLDNN)
   endif(WIN32)
 
-  if(WITH_ROCM_PLATFORM)
-    cc_library(paddle_pybind SHARED
-      SRCS ${PYBIND_SRCS}
-      DEPS ${PYBIND_DEPS}
-      ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
-  else()
-    cc_library(paddle_pybind SHARED
-      SRCS ${PYBIND_SRCS}
-      DEPS ${PYBIND_DEPS}
-      ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
-    if(NOT APPLE AND NOT WIN32)
-      target_link_libraries(paddle_pybind rt)
-    endif(NOT APPLE AND NOT WIN32)
-  endif(WITH_ROCM_PLATFORM)
+  cc_library(paddle_pybind SHARED
+  SRCS ${PYBIND_SRCS}
+  DEPS ${PYBIND_DEPS}
+  ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+  if(NOT APPLE AND NOT WIN32)
+    target_link_libraries(paddle_pybind rt)
+  endif(NOT APPLE AND NOT WIN32)
+
+  if(WITH_ROCM)
+    target_link_libraries(paddle_pybind ${ROCM_HIPRTC_LIB})
+  endif()
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})
