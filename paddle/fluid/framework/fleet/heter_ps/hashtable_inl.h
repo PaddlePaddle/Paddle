@@ -87,7 +87,7 @@ void HashTable<KeyType, ValType>::show() {
 
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
-                                      size_t len, cudaStream_t stream) {
+                                      size_t len, gpuStream_t stream) {
   if (len == 0) {
     return;
   }
@@ -99,7 +99,7 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                          const ValType* d_vals, size_t len,
-                                         cudaStream_t stream) {
+                                         gpuStream_t stream) {
   if (len == 0) {
     return;
   }
@@ -147,7 +147,7 @@ template <typename KeyType, typename ValType>
 template <typename GradType, typename Sgd>
 void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
                                          const GradType* d_grads, size_t len,
-                                         Sgd sgd, cudaStream_t stream) {
+                                         Sgd sgd, gpuStream_t stream) {
   if (len == 0) {
     return;
   }

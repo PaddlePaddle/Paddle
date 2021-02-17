@@ -14,7 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
 
 #include <algorithm>
 #include <map>

@@ -25,7 +25,7 @@ __global__ void fill_idx(T* idx, size_t len) {
 }
 
 template <typename T>
-void show_tensor(T* input, size_t len, cudaStream_t stream, std::string name) {
+void show_tensor(T* input, size_t len, gpuStream_t stream, std::string name) {
   T tmp[len];
   cudaMemcpyAsync(&tmp, input, sizeof(T) * len, cudaMemcpyDeviceToHost, stream);
   cudaStreamSynchronize(stream);
@@ -270,7 +270,7 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
   std::vector<std::shared_ptr<memory::Allocation>> d_key_bufs;
   std::vector<std::shared_ptr<memory::Allocation>> d_val_bufs;
 
-  cudaStream_t streams[stream_num];
+  gpuStream_t streams[stream_num];
   for (int i = 0; i < stream_num; ++i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&(streams[i])));
     auto d_k_buf = memory::AllocShared(place, chunk_size * sizeof(KeyType));
