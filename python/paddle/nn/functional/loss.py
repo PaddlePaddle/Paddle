@@ -1275,7 +1275,8 @@ def cross_entropy(input,
     fluid.data_feeder.check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'softmax_cross_entropy')
     fluid.data_feeder.check_variable_and_dtype(
-        label, 'label', ['int32', 'int64'], 'softmax_cross_entropy')
+        label, 'label', ['int32', 'int64', 'float32', 'float64'],
+        'softmax_cross_entropy')
     out = softmax_with_cross_entropy(
         input,
         label,

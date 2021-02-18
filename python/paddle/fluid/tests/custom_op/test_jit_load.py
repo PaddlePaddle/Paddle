@@ -18,13 +18,20 @@ import paddle
 import numpy as np
 from paddle.utils.cpp_extension import load
 from utils import paddle_includes, extra_compile_args
+from paddle.utils.cpp_extension.extension_utils import use_new_custom_op_load_method
+
+# switch to old custom op method
+use_new_custom_op_load_method(False)
 
 # Compile and load custom op Just-In-Time.
 relu2 = load(
     name='relu2',
     sources=['relu_op.cc', 'relu_op.cu'],
+    interpreter='python',  # add for unittest
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cflags=extra_compile_args)  # add for Coverage CI
+    extra_cflags=extra_compile_args,  # add for Coverage CI
+    verbose=True  # add for unittest
+)
 
 
 class TestJITLoad(unittest.TestCase):
