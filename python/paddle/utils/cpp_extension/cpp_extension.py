@@ -25,6 +25,7 @@ from setuptools.command.build_ext import build_ext
 from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag, bootstrap_context
 from .extension_utils import is_cuda_file, prepare_unix_cflags, add_std_without_repeat, get_build_directory
 from .extension_utils import _import_module_from_library, CustomOpInfo, _write_setup_file, _jit_compile, parse_op_name_from
+from .extension_utils import check_abi_compatibility, log_v
 from .extension_utils import use_new_custom_op_load_method
 
 IS_WINDOWS = os.name == 'nt'
@@ -44,10 +45,6 @@ def setup(**attr):
         cmdclass['build_ext'] = BuildExtension.with_options(
             no_python_abi_suffix=True)
         attr['cmdclass'] = cmdclass
-    # elif not isinstance(cmdclass['build_ext'], BuildExtension):
-    #     raise ValueError(
-    #         "Require paddle.utils.cpp_extension.BuildExtension in setup(cmdclass={'build_ext: ...'}), but received {}".
-    #         format(type(cmdclass['build_ext'])))
 
     # Add rename .so hook in easy_install
     assert 'easy_install' not in cmdclass
@@ -236,6 +233,8 @@ class BuildExtension(build_ext, object):
             self.compiler.object_filenames, self.build_lib)
 
         self._record_op_info()
+
+        print("Compiling user custom op, it will cost a few seconds.....")
         build_ext.build_extensions(self)
 
     def get_ext_filename(self, fullname):
@@ -255,8 +254,18 @@ class BuildExtension(build_ext, object):
         return ext_name
 
     def _check_abi(self):
-        # TODO(Aurelius84): Enhance abi check
-        pass
+        """
+        Check ABI Compatibility.
+        """
+        if hasattr(self.compiler, 'compiler_cxx'):
+            compiler = self.compiler.compiler_cxx[0]
+        elif IS_WINDOWS:
+            compiler = os.environ.get('CXX', 'cl')
+            raise NotImplementedError("We don't support Windows Currently.")
+        else:
+            compiler = os.environ.get('CXX', 'c++')
+
+        check_abi_compatibility(compiler)
 
     def _record_op_info(self):
         """
@@ -315,29 +324,78 @@ def load(name,
          extra_ldflags=None,
          extra_include_paths=None,
          build_directory=None,
+         interpreter=None,
          verbose=False):
+    """
+    An Interface to automatically compile C++/CUDA source files Just-In-Time
+    and return callable python function as other Paddle layers API. It will
+    append user defined custom op in background.
 
-    # TODO(Aurelius84): It just contains main logic codes, more details
-    # will be added later.
+    This module will perform compiling, linking, api generation and module loading
+    processes for users. It does not require CMake or Ninja environment and only
+    g++/nvcc on Linux and clang++ on MacOS. Moreover, ABI compatibility will be
+    checked to ensure that compiler version on local machine is compatible with
+    pre-installed Paddle whl in python site-packages. For example if Paddle is built
+    with GCC5.4, the version of user's local machine should satisfy GCC >= 5.4.
+    Otherwise, a fatal error will occur because  ABI compatibility.
+
+    Args:
+        name(str): generated shared library file name.
+        sources(list[str]): custom op source files name with .cc/.cu suffix.
+        extra_cflag(list[str]): additional flags used to compile CPP files. By default
+                               all basic and framework related flags have been included.
+                               If your pre-insall Paddle supported MKLDNN, please add
+                               '-DPADDLE_WITH_MKLDNN'. Default None.
+        extra_cuda_cflags(list[str]): additonal flags used to compile CUDA files. See
+                                https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html
+                                for details. Default None.
+        extra_ldflags(list[str]): additonal flags used to link shared library. See
+                                https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html for details.
+                                Default None.
+        extra_include_paths(list[str]): additional include path used to search header files.
+                                        Default None.
+        build_directory(str): specific directory path to put shared library file. If set None,
+                            it will use `PADDLE_EXTENSION_DIR` from os.environ. Use 
+                            `paddle.utils.cpp_extension.get_build_directory()` to see the location.
+        interpreter(str): alias or full interpreter path to specific which one to use if have installed multiple.
+                           If set None, will use `python` as default interpreter.
+        verbose(bool): whether to verbose compiled log information
+
+    Returns:
+        custom api: A callable python function with same signature as CustomOp Kernel defination.
+
+    Example:
+
+        >> from paddle.utils.cpp_extension import load
+        >> relu2 = load(name='relu2',
+                        sources=['relu_op.cc', 'relu_op.cu'])
+        >> x = paddle.rand([4, 10]], dtype='float32')
+        >> out = relu2(x)
+    """
+
     if build_directory is None:
-        build_directory = get_build_directory()
+        build_directory = get_build_directory(verbose)
+
     # ensure to use abs path
     build_directory = os.path.abspath(build_directory)
-    file_path = os.path.join(build_directory, "setup.py")
+    log_v("build_directory: {}".format(build_directory), verbose)
 
+    file_path = os.path.join(build_directory, "setup.py")
     sources = [os.path.abspath(source) for source in sources]
 
     # TODO(Aurelius84): split cflags and cuda_flags
     if extra_cflags is None: extra_cflags = []
     if extra_cuda_cflags is None: extra_cuda_cflags = []
     compile_flags = extra_cflags + extra_cuda_cflags
+    log_v("additonal compile_flags: [{}]".format(' '.join(compile_flags)),
+          verbose)
 
     # write setup.py file and compile it 
     _write_setup_file(name, sources, file_path, extra_include_paths,
-                      compile_flags, extra_ldflags)
-    _jit_compile(file_path)
+                      compile_flags, extra_ldflags, verbose)
+    _jit_compile(file_path, interpreter, verbose)
 
     # import as callable python api
-    custom_op_api = _import_module_from_library(name, build_directory)
+    custom_op_api = _import_module_from_library(name, build_directory, verbose)
 
     return custom_op_api
