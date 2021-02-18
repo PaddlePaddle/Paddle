@@ -56,6 +56,8 @@ class TestReshapeBf16Op(OpTest):
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), no_check_set=['XShape'])
 
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
 
 if __name__ == '__main__':
     enable_static()
