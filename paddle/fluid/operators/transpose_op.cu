@@ -206,6 +206,141 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
   }
 }
 
+// Reference to https://www.cs.colostate.edu/~cs675/MatrixTranspose.pdf
+template <typename T, int BlockDimX, int BlockDimY, int TileDim, int PadSize>
+__global__ void TilingSwapDim1And2Diagonal(const T* __restrict__ input,
+                                           Dim3 input_dims,
+                                           T* __restrict__ output) {
+  static_assert(BlockDimX == TileDim);
+  static_assert(PadSize >= 0);
+  assert(BlockDimX == blockDim.x);
+  assert(BlockDimY == blockDim.y);
+
+  __shared__ T tile_sm[TileDim][TileDim + PadSize];
+
+  const int width = input_dims[2], height = input_dims[1];
+  const int tile_num = (input_dims[1] + TileDim - 1) / TileDim;
+
+  int dim0_id = blockIdx.x / tile_num;
+  int block_y = blockIdx.x % tile_num;
+  int base = dim0_id * width * height;
+
+  int bidx, bidy;
+  if (height == width) {
+    bidy = blockIdx.y;
+    bidx = (blockIdx.y + block_y) % gridDim.y;
+  } else {
+    int bid = blockIdx.y + gridDim.y * block_y;
+    bidy = bid % tile_num;
+    bidx = ((bid / tile_num) + bidy) % gridDim.y;
+  }
+
+  bool full_tile = true;
+  int real_width = width < TileDim ? width : width - bidx * TileDim;
+  int real_height = height < TileDim ? height : height - bidy * TileDim;
+
+  if (real_width < TileDim)
+    full_tile = false;
+  else
+    real_width = TileDim;
+  if (real_height < TileDim)
+    full_tile = false;
+  else
+    real_height = TileDim;
+
+  int xi = bidx * TileDim + threadIdx.x;
+  int yi = bidy * TileDim + threadIdx.y;
+  int ini = xi + yi * width + base;
+
+  if (xi > width && yi > height) return;
+
+  if (full_tile) {
+#pragma unroll
+    for (int i = 0; i < TileDim; i += BlockDimY) {
+      tile_sm[threadIdx.y + i][threadIdx.x] = input[ini + i * width];
+    }
+  } else {
+    if (threadIdx.x < real_width && threadIdx.y < real_height) {
+      for (int i = 0; i < real_height; i += BlockDimY) {
+        tile_sm[threadIdx.y + i][threadIdx.x] = input[ini + i * width];
+      }
+    }
+  }
+
+  __syncthreads();
+
+  xi = bidy * TileDim + threadIdx.x;
+  yi = bidx * TileDim + threadIdx.y;
+  int outi = xi + yi * height + base;
+
+  if (xi > height && yi > width) return;
+
+  if (full_tile) {
+#pragma unroll
+    for (int i = 0; i < TileDim; i += BlockDimY) {
+      output[outi + i * height] = tile_sm[threadIdx.x][threadIdx.y + i];
+    }
+  } else {
+    if (threadIdx.x < real_height && threadIdx.y < real_width) {
+      const int width_bound = real_width - threadIdx.y;
+      for (int i = 0; i < width_bound; i += BlockDimY) {
+        output[outi + i * height] = tile_sm[threadIdx.x][threadIdx.y + i];
+      }
+    }
+  }
+}
+
+template <typename T>
+void LaunchTransposeDim1And2(const platform::CUDADeviceContext& d,
+                             const T* input, const Dim3& input_dims,
+                             T* output) {
+  // If input is large square, such as 32X32, use SM to do copy.
+  // suppose 32 X 32 gives best performance, and 8 warp in block.
+  constexpr int kTileSize = 32;
+  constexpr int kNumThreads = 256;
+
+  Dim3 input_dims_aligned = {
+      input_dims[0],
+      framework::CeilOrFloor<int, true>(input_dims[1], kTileSize),
+      framework::CeilOrFloor<int, true>(input_dims[2], kTileSize),
+  };
+
+  int total_tiles_count =
+      input_dims_aligned[0] * input_dims_aligned[1] * input_dims_aligned[2];
+
+  TilingSwapDim1And2<
+      T, kNumThreads, kTileSize,
+      kTileSize><<<total_tiles_count, kNumThreads, 0, d.stream()>>>(
+      input, input_dims, output);
+}
+
+template <>
+void LaunchTransposeDim1And2<paddle::platform::float16>(
+    const platform::CUDADeviceContext& d,
+    const paddle::platform::float16* input, const Dim3& input_dims,
+    paddle::platform::float16* output) {
+  // Kernel "TilingSwapDim1And2" exist bank conflict for fp16 type
+  // New Kernel avoid this problem by using tile size 64 with padding 2
+  constexpr int kTileSize = 64;
+  constexpr int kBlockDimX = 64;
+  constexpr int kBlockDimY = 4;
+  constexpr int kPaddingSize = 2;
+
+  dim3 threads(kBlockDimX, kBlockDimY);
+  Dim3 input_dims_aligned = {
+      input_dims[0],
+      framework::CeilOrFloor<int, true>(input_dims[1], kTileSize),
+      framework::CeilOrFloor<int, true>(input_dims[2], kTileSize),
+  };
+  dim3 grids(input_dims_aligned[0] * input_dims_aligned[1],
+             input_dims_aligned[2]);
+
+  TilingSwapDim1And2Diagonal<paddle::platform::float16, kBlockDimX, kBlockDimY,
+                             kTileSize,
+                             kPaddingSize><<<grids, threads, 0, d.stream()>>>(
+      input, input_dims, output);
+}
+
 // This function will find combination of long_side X short_side in backups
 template <int TSIZE>
 bool SelectProperTileSize(std::vector<std::pair<int, int>>* tiles) {
@@ -488,25 +623,7 @@ void SendSwapDim1And2InTranspose(const platform::CUDADeviceContext& d,
   bool narrow_tile = input_dims[1] >= kMinNarrowTileSize ||
                      input_dims[2] >= kMinNarrowTileSize;
   if (large_tile) {
-    // If input is large square, such as 32X32, use SM to do copy.
-    // suppose 32 X 32 gives best performance, and 8 warp in block.
-    constexpr int kTileSize = 32;
-    constexpr int kNumThreads = 256;
-
-    Dim3 input_dims_aligned = {
-        input_dims[0],
-        framework::CeilOrFloor<int, true>(input_dims[1], kTileSize),
-        framework::CeilOrFloor<int, true>(input_dims[2], kTileSize),
-    };
-
-    int total_tiles_count =
-        input_dims_aligned[0] * input_dims_aligned[1] * input_dims_aligned[2];
-
-    TilingSwapDim1And2<
-        T, kNumThreads, kTileSize,
-        kTileSize><<<total_tiles_count, kNumThreads, 0, d.stream()>>>(
-        input, input_dims, output);
-
+    LaunchTransposeDim1And2<T>(d, input, input_dims, output);
   } else if (narrow_tile) {
     // If input shape is like Rect, such as 2X100, use Narrow tile size.
     // It makes things complicated, because need to find a tile can coverr
