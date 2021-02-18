@@ -21,16 +21,16 @@ from utils import paddle_includes, extra_compile_args
 from test_simple_custom_op_setup import relu2_dynamic, relu2_static
 
 # Compile and load custom op Just-In-Time.
-simple_relu2 = load(
+custom_module = load(
     name='simple_jit_relu2',
-    sources=['relu_op_simple.cc', 'relu_op_simple.cu'],
+    sources=['relu_op_simple.cc', 'relu_op_simple.cu', 'relu_op3_simple.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cflags=extra_compile_args)  # add for Coverage CI
 
 
 class TestJITLoad(unittest.TestCase):
     def setUp(self):
-        self.custom_op = simple_relu2
+        self.custom_ops = [custom_module.relu2, custom_module.relu3]
         self.dtypes = ['float32', 'float64']
         self.devices = ['cpu', 'gpu']
 
@@ -38,28 +38,30 @@ class TestJITLoad(unittest.TestCase):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-                out = relu2_static(self.custom_op, device, dtype, x)
-                pd_out = relu2_static(self.custom_op, device, dtype, x, False)
-                self.assertTrue(
-                    np.array_equal(out, pd_out),
-                    "custom op out: {},\n paddle api out: {}".format(out,
-                                                                     pd_out))
+                for custom_op in self.custom_ops:
+                    out = relu2_static(custom_op, device, dtype, x)
+                    pd_out = relu2_static(custom_op, device, dtype, x, False)
+                    self.assertTrue(
+                        np.array_equal(out, pd_out),
+                        "custom op out: {},\n paddle api out: {}".format(
+                            out, pd_out))
 
     def test_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-                out, x_grad = relu2_dynamic(self.custom_op, device, dtype, x)
-                pd_out, pd_x_grad = relu2_dynamic(self.custom_op, device, dtype,
-                                                  x, False)
-                self.assertTrue(
-                    np.array_equal(out, pd_out),
-                    "custom op out: {},\n paddle api out: {}".format(out,
-                                                                     pd_out))
-                self.assertTrue(
-                    np.array_equal(x_grad, pd_x_grad),
-                    "custom op x grad: {},\n paddle api x grad: {}".format(
-                        x_grad, pd_x_grad))
+                for custom_op in self.custom_ops:
+                    out, x_grad = relu2_dynamic(custom_op, device, dtype, x)
+                    pd_out, pd_x_grad = relu2_dynamic(custom_op, device, dtype,
+                                                      x, False)
+                    self.assertTrue(
+                        np.array_equal(out, pd_out),
+                        "custom op out: {},\n paddle api out: {}".format(
+                            out, pd_out))
+                    self.assertTrue(
+                        np.array_equal(x_grad, pd_x_grad),
+                        "custom op x grad: {},\n paddle api x grad: {}".format(
+                            x_grad, pd_x_grad))
 
 
 if __name__ == '__main__':
