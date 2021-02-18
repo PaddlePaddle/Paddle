@@ -83,8 +83,20 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
                         input, shape.size()));
   if (!with_dynamic_shape) {
     if (shape.size() == 4UL) {
+      if (shape[2] == -1 || shape[3] == -1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The input height or width of trt subgraph is -1, please enable "
+            "trt dynamic_shape mode: SetTRTDynamicShapeInfo(min_input_shape, "
+            "max_input_shape, opt_input_shape)"));
+      }
       return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
     } else if (shape.size() == 3UL) {
+      if (shape[1] == -1 || shape[2] == -1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The input height or width of trt subgraph is -1, please enable "
+            "trt dynamic_shape mode: SetTRTDynamicShapeInfo(min_input_shape, "
+            "max_input_shape, opt_input_shape)"));
+      }
       return nvinfer1::Dims2(shape[1], shape[2]);
     }
     return nvinfer1::DimsCHW(shape[1], 1, 1);
