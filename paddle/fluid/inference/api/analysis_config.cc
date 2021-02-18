@@ -261,6 +261,10 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
   if (platform::MayIUse(platform::cpu_isa_t::avx512_core)) {
     use_mkldnn_bfloat16_ = true;
+    LOG(INFO) << "Hardware support for BFLOAT16"
+              << (platform::MayIUse(platform::cpu_isa_t::avx512_bf16)
+                      ? " is enabled"
+                      : " is disabled. Simulation will be used");
   } else {
     LOG(INFO) << "CPU does not support BFLOAT16 calculations";
     use_mkldnn_bfloat16_ = false;

@@ -248,8 +248,9 @@ def _fake_interface_only_(func):
         raise AssertionError(
             "'%s' should be called by imperative Varible in imperative mode, please run it in dygraph "
             "mode. You can turn off paddle.enable_static() if you are in static mode, or turn off "
-            "ProgramTranslator if you are using @paddle.jit.to_static" %
-            func.__name__)
+            "ProgramTranslator if you are using @paddle.jit.to_static. If you have to run ProgramTranslator, "
+            "please use other API to replace '%s'" % (func.__name__,
+                                                      func.__name__))
 
     return __impl__
 
@@ -1866,6 +1867,35 @@ class Variable(object):
         starts = []
         ends = []
         max_integer = sys.maxsize
+
+        def replace_ellipsis(item):
+            # Use slice(None) to replace Ellipsis.
+            # For var, var.shape = [3,4,5,6]
+            #
+            #   var[..., 1:2] -> var[:, :, :, 1:2]
+            #   var[0, ...] -> var[0]
+            #   var[0, ..., 1:2] -> var[0, :, :, 1:2]
+
+            item = list(item)
+            ell_count = item.count(Ellipsis)
+            if ell_count == 0:
+                return item
+            elif ell_count > 1:
+                raise IndexError(
+                    "An index can only have a single ellipsis ('...')")
+
+            ell_idx = item.index(Ellipsis)
+
+            if ell_idx == len(item) - 1:
+                return item[:-1]
+            else:
+                item[ell_idx:ell_idx + 1] = [slice(None)] * (
+                    len(self.shape) - len(item) + 1)
+
+            return item
+
+        item = replace_ellipsis(item)
+
         for dim, slice_item in enumerate(item):
             if isinstance(slice_item, slice):
                 start = slice_item.start
@@ -2057,9 +2087,9 @@ class Operator(object):
         'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
-        'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
-        'c_sync_comm_stream', 'queue_generator', 'dequeue', 'enqueue',
-        'heter_listen_and_serv'
+        'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id',
+        'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
+        'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv'
     }
 
     def __init__(self,

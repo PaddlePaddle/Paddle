@@ -15,13 +15,18 @@ import os
 
 from utils import paddle_includes, extra_compile_args
 from paddle.utils.cpp_extension import CUDAExtension, setup
+from paddle.utils.cpp_extension.extension_utils import use_new_custom_op_load_method
+
+# switch to old custom op method
+use_new_custom_op_load_method(False)
 
 setup(
     name='custom_relu2',
     ext_modules=[
         CUDAExtension(
             name='custom_relu2',
-            sources=['relu_op.cc', 'relu_op.cu'],
+            sources=['relu_op.cc', 'relu_op.cu', 'relu_op3.cc',
+                     'relu_op3.cu'],  # test for multi ops
             include_dirs=paddle_includes,
             extra_compile_args=extra_compile_args)
     ])
