@@ -35,6 +35,8 @@ def compile_so():
     run_cmd(cmd)
 
 
+# `setup.py build` only produce .so file containing multi operators.
+#  Python Interface should be added manually. `relu2` api is in `test_custom_op.py`
 def relu3(x, name=None):
     helper = LayerHelper("relu3", **locals())
     out = helper.create_variable(

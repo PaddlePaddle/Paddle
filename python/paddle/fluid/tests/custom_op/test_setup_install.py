@@ -58,7 +58,6 @@ class TestSetUpInstall(unittest.TestCase):
         out3 = custom_relu2.relu3(x)
 
         self.assertTrue(np.array_equal(out.numpy(), gt_data))
-
         self.assertTrue(np.array_equal(out3.numpy(), gt_data))
 
 

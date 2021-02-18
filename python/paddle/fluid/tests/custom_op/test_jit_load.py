@@ -44,7 +44,6 @@ class TestJITLoad(unittest.TestCase):
         out3 = custom_module.relu3(x)
 
         self.assertTrue(np.array_equal(out.numpy(), gt_data))
-
         self.assertTrue(np.array_equal(out3.numpy(), gt_data))
 
 

@@ -274,18 +274,18 @@ class BuildExtension(build_ext, object):
         # parse shared library abs path
         outputs = self.get_outputs()
         assert len(outputs) == 1
+        # multi operators built into same one .so file
+        so_path = os.path.abspath(outputs[0])
+        so_name = os.path.basename(so_path)
 
-        # parse op name
         for i, extension in enumerate(self.extensions):
             sources = [os.path.abspath(s) for s in extension.sources]
             op_names = parse_op_name_from(sources)
 
-            build_directory = os.path.abspath(outputs[0])
-            so_name = os.path.basename(build_directory)
             for op_name in op_names:
                 CustomOpInfo.instance().add(op_name,
                                             so_name=so_name,
-                                            build_directory=build_directory)
+                                            build_directory=so_path)
 
 
 class EasyInstallCommand(easy_install, object):

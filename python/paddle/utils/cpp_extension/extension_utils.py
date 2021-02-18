@@ -414,6 +414,7 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
     """
     Load .so shared library and import it as callable python module.
     """
+    # TODO(Aurelius84): Consider file suffix is .dll on Windows Platform.
     ext_path = os.path.join(build_directory, module_name + '.so')
     if not os.path.exists(ext_path):
         raise FileNotFoundError("Extension path: {} does not exist.".format(

@@ -29,6 +29,8 @@ std::vector<std::vector<int64_t>> ReluInferShape(std::vector<int64_t> x_shape);
 
 std::vector<paddle::DataType> ReluInferDType(paddle::DataType x_dtype);
 
+// Reuse codes in `relu_op_simple.cc/cu` to register another custom operator
+// to test jointly compile multi operators at same time.
 PD_BUILD_OPERATOR("relu3")
     .Inputs({"X"})
     .Outputs({"Out"})
