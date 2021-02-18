@@ -27,7 +27,8 @@
 namespace paddle {
 namespace imperative {
 
-#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
 template <typename DeviceContext, typename T>
 static void ConcatTensorsForAllReduce(
     const DeviceContext &context,
@@ -183,7 +184,7 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 void Group::ConcatTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
   if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ConcatTensorsWithType(
         static_cast<const platform::CUDADeviceContext &>(context),
         dense_tensors_, &dense_contents_, dtype_);
@@ -215,7 +216,7 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
 void Group::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
   if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     SplitTensorsWithType(
         static_cast<const platform::CUDADeviceContext &>(context),
         &dense_contents_, &dense_tensors_, dtype_);

@@ -195,7 +195,7 @@ TEST(test_tracer, test_track_backward_input) {
   ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(vout->GradVarBase()->GradOpNum(), 1UL);
 }
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   // Doing an mul
   imperative::Tracer tracer;
@@ -521,7 +521,7 @@ static void TestVarOpDestructionMain(const platform::Place& place,
 
 TEST(test_tracer, test_var_op_destruction) {
   TestVarOpDestructionMain(platform::CPUPlace());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   TestVarOpDestructionMain(platform::CUDAPlace(0));
 #endif
 }

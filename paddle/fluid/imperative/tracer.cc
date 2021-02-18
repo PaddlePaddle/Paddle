@@ -201,7 +201,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 void Tracer::SetExpectedPlace(platform::Place place) {
   // NOTE(wangxi): set device id before launch device kernel
   if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::SetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place).device);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
