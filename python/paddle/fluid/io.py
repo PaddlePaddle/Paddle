@@ -1714,7 +1714,7 @@ def _load_persistable_nodes(executor, dirname, graph):
 def _unpack_saved_dict(saved_obj, protocol):
     temp_saved_obj = {}
     unpack_infor = {}
-    if isinstance(saved_obj, core.VarBase):
+    if isinstance(saved_obj, np.ndarray):
         saved_obj = {'UnpackFakeVarBase@@': saved_obj}
     if 1 < protocol < 4:
         if isinstance(saved_obj, dict):
