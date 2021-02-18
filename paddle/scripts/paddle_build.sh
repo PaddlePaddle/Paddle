@@ -995,19 +995,20 @@ function card_test() {
     fi
 
     testcases=$1
+    parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
     if (( $# > 1 )); then
         cardnumber=$2
         if (( $cardnumber > $CUDA_DEVICE_COUNT )); then
             cardnumber=$CUDA_DEVICE_COUNT
         fi
         if (( $# > 2 )); then
-            parallel_job=$3
+            parallel_job=`expr $3 \* $parallel_level_base`
         else
-            parallel_job=1
+            parallel_job=$parallel_level_base
         fi
     else
         cardnumber=$CUDA_DEVICE_COUNT
-        parallel_job=1
+        parallel_job=$parallel_level_base
     fi
 
     if [[ "$testcases" == "" ]]; then
