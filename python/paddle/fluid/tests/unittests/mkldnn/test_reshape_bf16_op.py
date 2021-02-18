@@ -62,7 +62,10 @@ class TestReshapeBf16Op(OpTest):
             "Out",
             check_dygraph=False,
             user_defined_grads=[self.inputs["X"]],
-            user_defined_grad_outputs=[self.inputs["X"].reshape(self.infered_shape)])
+            user_defined_grad_outputs=[
+                self.inputs["X"].reshape(self.infered_shape)
+            ])
+
 
 if __name__ == '__main__':
     enable_static()
