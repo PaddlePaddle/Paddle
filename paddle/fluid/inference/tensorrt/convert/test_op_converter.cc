@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 #include <gtest/gtest.h>  // NOLINT
+
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {

@@ -19,6 +19,10 @@ from test_custom_op import CustomOpTest, load_so
 import paddle
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.utils.cpp_extension.extension_utils import use_new_custom_op_load_method
+
+# switch to old custom op method
+use_new_custom_op_load_method(False)
 
 
 def compile_so():

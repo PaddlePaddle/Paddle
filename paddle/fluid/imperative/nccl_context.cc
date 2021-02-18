@@ -14,22 +14,20 @@
 
 #include "paddle/fluid/imperative/nccl_context.h"
 
-#include <string>
-#include <utility>
-#include <vector>
-
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #endif
 
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
-#include "paddle/fluid/string/string_helper.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace imperative {

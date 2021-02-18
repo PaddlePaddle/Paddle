@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {

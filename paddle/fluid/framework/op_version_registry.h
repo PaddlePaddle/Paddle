@@ -20,8 +20,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include <boost/none.hpp>
-#include <boost/variant.hpp>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_version_proto.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -29,6 +27,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace compatible {
+
+namespace pb {
+class OpVersionMap;
+}  // namespace pb
 
 using OpAttrVariantT =
     boost::variant<bool,                     /* AttrType::BOOL */

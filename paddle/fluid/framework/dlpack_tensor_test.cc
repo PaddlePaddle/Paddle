@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <vector>
 
 namespace paddle {
 namespace platform {

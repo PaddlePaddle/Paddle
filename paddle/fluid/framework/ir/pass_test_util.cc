@@ -175,10 +175,11 @@ bool RunPassAndAssert(Graph* graph, const std::string& pass_name,
 }
 
 template <typename T>
-void InitLoDTensorHolder(Scope* scope, const paddle::platform::Place& place,
+void InitLoDTensorHolder(const Scope& scope,
+                         const paddle::platform::Place& place,
                          const std::string& var_name,
                          const std::vector<int64_t>& dims, const T* data) {
-  auto var = scope->Var(var_name);
+  auto var = scope.FindLocalVar(var_name);
   auto tensor = var->GetMutable<LoDTensor>();
   auto* tensor_mem_ptr = tensor->mutable_data<T>(make_ddim(dims), place);
   if (data != nullptr) {
@@ -189,14 +190,16 @@ void InitLoDTensorHolder(Scope* scope, const paddle::platform::Place& place,
 }
 
 // Instantiate for below data types.
-template void InitLoDTensorHolder<float>(Scope*, const paddle::platform::Place&,
+template void InitLoDTensorHolder<float>(const Scope&,
+                                         const paddle::platform::Place&,
                                          const std::string&,
                                          const std::vector<int64_t>&,
                                          const float*);
-template void InitLoDTensorHolder<int>(Scope*, const paddle::platform::Place&,
+template void InitLoDTensorHolder<int>(const Scope&,
+                                       const paddle::platform::Place&,
                                        const std::string&,
                                        const std::vector<int64_t>&, const int*);
-template void InitLoDTensorHolder<double>(Scope*,
+template void InitLoDTensorHolder<double>(const Scope&,
                                           const paddle::platform::Place&,
                                           const std::string&,
                                           const std::vector<int64_t>&,
@@ -205,7 +208,13 @@ template void InitLoDTensorHolder<double>(Scope*,
 OpDesc* GetOp(const ProgramDesc& prog, const std::string& op_type,
               const std::string& output_name,
               const std::string& output_arg_name) {
-  auto all_ops = prog.Block(0).AllOps();
+  return GetOp(prog.Block(0), op_type, output_name, output_arg_name);
+}
+
+OpDesc* GetOp(const BlockDesc& block_desc, const std::string& op_type,
+              const std::string& output_name,
+              const std::string& output_arg_name) {
+  auto all_ops = block_desc.AllOps();
   for (auto* op_desc : all_ops) {
     if (op_desc->Type() == op_type && op_desc->HasOutput(output_name)) {
       const auto& arg_names = op_desc->Outputs().at(output_name);
