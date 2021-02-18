@@ -83,6 +83,35 @@ def _convert_param_attr_to_list(param_attr, n):
     return param_attrs
 
 
+def _convert_attention_mask(attn_mask, dtype):
+    """
+    Convert the attention mask to the target dtype we expect.
+
+    Parameters:
+        attn_mask (Tensor, optional): A tensor used in multi-head attention
+                to prevents attention to some unwanted positions, usually the
+                paddings or the subsequent positions. It is a tensor with shape
+                broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
+                When the data type is bool, the unwanted positions have `False` 
+                values and the others have `True` values. When the data type is 
+                int, the unwanted positions have 0 values and the others have 1 
+                values. When the data type is float, the unwanted positions have 
+                `-INF` values and the others have 0 values. It can be None when 
+                nothing wanted or needed to be prevented attention to. Default None.
+        dtype (VarType): The target type of `attn_mask` we expect.
+
+    Returns:
+        Tensor: A Tensor with shape same as input `attn_mask`, with data type `dtype`.
+    """
+    if attn_mask is not None and attn_mask.dtype != dtype:
+        attn_mask_dtype = convert_dtype(attn_mask.dtype)
+        if attn_mask_dtype == 'bool' or 'int' in attn_mask_dtype:
+            attn_mask = (paddle.cast(attn_mask, dtype) - 1.0) * 1e9
+        else:
+            attn_mask = paddle.cast(attn_mask, dtype)
+    return attn_mask
+
+
 class MultiHeadAttention(Layer):
     """
     Attention mapps queries and a set of key-value pairs to outputs, and
@@ -334,8 +363,8 @@ class MultiHeadAttention(Layer):
                 paddings or the subsequent positions. It is a tensor with shape
                 broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
                 When the data type is bool, the unwanted positions have `False` 
-                values and the others have 'True' values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 0 
+                values and the others have `True` values. When the data type is 
+                int, the unwanted positions have 0 values and the others have 1 
                 values. When the data type is float, the unwanted positions have 
                 `-INF` values and the others have 0 values. It can be None when 
                 nothing wanted or needed to be prevented attention to. Default None.
@@ -378,11 +407,7 @@ class MultiHeadAttention(Layer):
             x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
         if attn_mask is not None:
             # Support bool or int mask
-            attn_mask_dtype = convert_dtype(attn_mask.dtype)
-            if attn_mask_dtype == 'bool' or 'int' in attn_mask_dtype:
-                attn_mask = (paddle.cast(attn_mask, product.dtype) - 1.0) * 1e9
-            else:
-                attn_mask = paddle.cast(attn_mask, product.dtype)
+            attn_mask = _convert_attention_mask(attn_mask, product.dtype)
             product = product + attn_mask
         weights = F.softmax(product)
         if self.dropout:
@@ -519,8 +544,8 @@ class TransformerEncoderLayer(Layer):
                 paddings or the subsequent positions. It is a tensor with shape
                 broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
                 When the data type is bool, the unwanted positions have `False` 
-                values and the others have 'True' values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 0 
+                values and the others have `True` values. When the data type is 
+                int, the unwanted positions have 0 values and the others have 1 
                 values. When the data type is float, the unwanted positions have 
                 `-INF` values and the others have 0 values. It can be None when 
                 nothing wanted or needed to be prevented attention to. Default None.
@@ -538,6 +563,8 @@ class TransformerEncoderLayer(Layer):
                 incremental length. See `MultiHeadAttention.gen_cache` and \
                 `MultiHeadAttention.forward` for more details.
         """
+        src_mask = _convert_attention_mask(src_mask, src.dtype)
+
         residual = src
         if self.normalize_before:
             src = self.norm1(src)
@@ -634,8 +661,8 @@ class TransformerEncoder(Layer):
                 paddings or the subsequent positions. It is a tensor with shape
                 broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
                 When the data type is bool, the unwanted positions have `False` 
-                values and the others have 'True' values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 0 
+                values and the others have `True` values. When the data type is 
+                int, the unwanted positions have 0 values and the others have 1 
                 values. When the data type is float, the unwanted positions have 
                 `-INF` values and the others have 0 values. It can be None when 
                 nothing wanted or needed to be prevented attention to. Default None.
@@ -653,6 +680,8 @@ class TransformerEncoder(Layer):
                 See `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
         """
+        src_mask = _convert_attention_mask(src_mask, src.dtype)
+
         output = src
         new_caches = []
         for i, mod in enumerate(self.layers):
@@ -822,8 +851,8 @@ class TransformerDecoderLayer(Layer):
                 the subsequent positions. It is a tensor with shape broadcasted
                 to `[batch_size, n_head, target_length, target_length]`.
                 When the data type is bool, the unwanted positions have `False` 
-                values and the others have 'True' values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 0 
+                values and the others have `True` values. When the data type is 
+                int, the unwanted positions have 0 values and the others have 1 
                 values. When the data type is float, the unwanted positions have 
                 `-INF` values and the others have 0 values. It can be None when 
                 nothing wanted or needed to be prevented attention to. Default None.
@@ -832,8 +861,8 @@ class TransformerDecoderLayer(Layer):
                 usually the paddings. It is a tensor with shape broadcasted to 
                 `[batch_size, n_head, target_length, source_length]`. When the 
                 data type is bool, the unwanted positions have `False` values 
-                and the others have 'True' values. When the data type is int, 
-                the unwanted positions have 0 values and the others have 0 
+                and the others have `True` values. When the data type is int, 
+                the unwanted positions have 0 values and the others have 1 
                 values. When the data type is float, the unwanted positions have 
                 `-INF` values and the others have 0 values. It can be None when 
                 nothing wanted or needed to be prevented attention to. Default None.
@@ -853,6 +882,9 @@ class TransformerDecoderLayer(Layer):
                 See `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
         """
+        tgt_mask = _convert_attention_mask(tgt_mask, tgt.dtype)
+        memory_mask = _convert_attention_mask(memory_mask, memory.dtype)
+
         residual = tgt
         if self.normalize_before:
             tgt = self.norm1(tgt)
@@ -977,8 +1009,8 @@ class TransformerDecoder(Layer):
                 the subsequent positions. It is a tensor with shape broadcasted
                 to `[batch_size, n_head, target_length, target_length]`. When 
                 the data type is bool, the unwanted positions have `False` 
-                values and the others have 'True' values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 0 
+                values and the others have `True` values. When the data type is 
+                int, the unwanted positions have 0 values and the others have 1 
                 values. When the data type is float, the unwanted positions have 
                 `-INF` values and the others have 0 values. It can be None when 
                 nothing wanted or needed to be prevented attention to. Default None.
@@ -987,8 +1019,8 @@ class TransformerDecoder(Layer):
                 usually the paddings. It is a tensor with shape broadcasted to
                 `[batch_size, n_head, target_length, source_length]`. When the 
                 data type is bool, the unwanted positions have `False` values 
-                and the others have 'True' values. When the data type is int, 
-                the unwanted positions have 0 values and the others have 0 
+                and the others have `True` values. When the data type is int, 
+                the unwanted positions have 0 values and the others have 1 
                 values. When the data type is float, the unwanted positions have 
                 `-INF` values and the others have 0 values. It can be None when 
                 nothing wanted or needed to be prevented attention to. Default None.
@@ -1006,6 +1038,9 @@ class TransformerDecoder(Layer):
                 See `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
         """
+        tgt_mask = _convert_attention_mask(tgt_mask, tgt.dtype)
+        memory_mask = _convert_attention_mask(memory_mask, memory.dtype)
+
         output = tgt
         new_caches = []
         for i, mod in enumerate(self.layers):
@@ -1244,13 +1279,23 @@ class Transformer(Layer):
             memory (Tensor): The output of Transformer encoder. It is a tensor
                 with shape `[batch_size, source_length, d_model]`. The data type
                 should be float32 or float64.
+            src_mask (Tensor, optional): A tensor used in multi-head attention
+                to prevents attention to some unwanted positions, usually the
+                paddings or the subsequent positions. It is a tensor with shape
+                broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
+                When the data type is bool, the unwanted positions have `False` 
+                values and the others have `True` values. When the data type is 
+                int, the unwanted positions have 0 values and the others have 1 
+                values. When the data type is float, the unwanted positions have 
+                `-INF` values and the others have 0 values. It can be None when 
+                nothing wanted or needed to be prevented attention to. Default None.
             tgt_mask (Tensor, optional): A tensor used in self attention
                 to prevents attention to some unwanted positions, usually the
                 the subsequent positions. It is a tensor with shape broadcasted
                 to `[batch_size, n_head, target_length, target_length]`. When 
                 the data type is bool, the unwanted positions have `False` 
-                values and the others have 'True' values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 0 
+                values and the others have `True` values. When the data type is 
+                int, the unwanted positions have 0 values and the others have 1 
                 values. When the data type is float, the unwanted positions have 
                 `-INF` values and the others have 0 values. It can be None when 
                 nothing wanted or needed to be prevented attention to. Default None.
@@ -1259,8 +1304,8 @@ class Transformer(Layer):
                 usually the paddings. It is a tensor with shape broadcasted to
                 `[batch_size, n_head, target_length, source_length]`. When the 
                 data type is bool, the unwanted positions have `False` values 
-                and the others have 'True' values. When the data type is int, 
-                the unwanted positions have 0 values and the others have 0 
+                and the others have `True` values. When the data type is int, 
+                the unwanted positions have 0 values and the others have 1 
                 values. When the data type is float, the unwanted positions have 
                 `-INF` values and the others have 0 values. It can be None when 
                 nothing wanted or needed to be prevented attention to. Default None.
@@ -1269,7 +1314,11 @@ class Transformer(Layer):
             Tensor: It is a tensor that has the same shape and data type \
                 as `tgt`, representing the output of Transformer decoder.
         """
+        src_mask = _convert_attention_mask(src_mask, src.dtype)
         memory = self.encoder(src, src_mask=src_mask)
+
+        tgt_mask = _convert_attention_mask(tgt_mask, tgt.dtype)
+        memory_mask = _convert_attention_mask(memory_mask, memory.dtype)
         output = self.decoder(
             tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask)
         return output
