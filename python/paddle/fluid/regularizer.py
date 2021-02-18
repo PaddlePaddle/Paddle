@@ -100,8 +100,11 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
                         "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                         % regularization.__str__())
                 with param.block.program._optimized_guard([param, grad]):
-                    new_grad = _create_regularization_of_grad(param, grad,
-                                                              regularization)
+                    if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+                        new_grad = grad
+                    else:
+                        new_grad = _create_regularization_of_grad(param, grad,
+                                                              regularization) 
                     params_and_grads.append((param, new_grad))
     return params_and_grads
 
