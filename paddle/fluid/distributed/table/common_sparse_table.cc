@@ -318,6 +318,13 @@ int32_t CommonSparseTable::initialize() {
     offset += dim;
   }
 
+  int opt_attr_size = static_cast<int>(common.optimizer_attrs().size());
+  for(int x = 0; x < opt_attr_size; ++x) {
+    auto& attr = common.optimizer_attrs()[x];
+    auto pairs = paddle::string::split_string<std::string>(attr, "&");
+    optimizer_attrs_[pairs[0]] = std::stof(pairs[1]);
+  }
+
   initialize_value();
   initialize_optimizer();
   initialize_recorder();
@@ -371,22 +378,27 @@ int32_t CommonSparseTable::initialize_optimizer() {
 
   if (name == "sgd") {
     optimizer_ = std::make_shared<SSGD>(value_names_, value_dims_,
-                                        value_offsets_, value_idx_);
+                                        value_offsets_, value_idx_,
+                                        optimizer_attrs_);
     optimizer_->set_global_lr(_global_lr);
   } else if (name == "adam") {
     optimizer_ = std::make_shared<SAdam>(value_names_, value_dims_,
-                                         value_offsets_, value_idx_);
+                                         value_offsets_, value_idx_,
+                                         optimizer_attrs_);
     optimizer_->set_global_lr(_global_lr);
   } else if (name == "sum") {
     optimizer_ = std::make_shared<SSUM>(value_names_, value_dims_,
-                                        value_offsets_, value_idx_);
+                                        value_offsets_, value_idx_,
+                                        optimizer_attrs_);
   } else if (name == "adagrad") {
     optimizer_ = std::make_shared<SAdagrad>(value_names_, value_dims_,
-                                            value_offsets_, value_idx_);
+                                            value_offsets_, value_idx_,
+                                            optimizer_attrs_);
     optimizer_->set_global_lr(_global_lr);
   } else if (name == "decayed_adagrad") {
     optimizer_ = std::make_shared<SDecayedAdagrad>(value_names_, value_dims_,
-                                                   value_offsets_, value_idx_);
+                                                   value_offsets_, value_idx_,
+                                                   optimizer_attrs_);
     optimizer_->set_global_lr(_global_lr);
   } else {
     VLOG(0) << "init optimizer failed";

@@ -36,11 +36,13 @@ class SparseOptimizer {
   explicit SparseOptimizer(
       const std::vector<std::string>& value_names,
       const std::vector<int>& value_dims, const std::vector<int>& value_offsets,
-      const std::unordered_map<std::string, int>& value_idx)
+      const std::unordered_map<std::string, int>& value_idx,
+      const std::unordered_map<std::string, float>& optimizer_attrs)
       : value_names_(value_names),
         value_dims_(value_dims),
         value_offsets_(value_offsets),
-        value_idx_(value_idx) {}
+        value_idx_(value_idx),
+        optimizer_attrs_(optimizer_attrs) {}
 
   virtual void update(const uint64_t* keys, const float* update_values,
                       size_t num, const std::vector<uint64_t>& offsets,
@@ -192,6 +194,7 @@ class SparseOptimizer {
   const std::vector<int>& value_dims_;
   const std::vector<int>& value_offsets_;
   const std::unordered_map<std::string, int>& value_idx_;
+  const std::unordered_map<std::string, float>& optimizer_attrs_;
   int param_offset = 0;
   int update_numel = 0;
 
@@ -205,8 +208,9 @@ class SSUM : public SparseOptimizer {
   explicit SSUM(const std::vector<std::string>& value_names,
                 const std::vector<int>& value_dims,
                 const std::vector<int>& value_offsets,
-                const std::unordered_map<std::string, int>& value_idx)
-      : SparseOptimizer(value_names, value_dims, value_offsets, value_idx) {
+                const std::unordered_map<std::string, int>& value_idx,
+                const std::unordered_map<std::string, float>& optimizer_attrs)
+      : SparseOptimizer(value_names, value_dims, value_offsets, value_idx, optimizer_attrs) {
     auto idx = value_idx.at("Param");
     param_offset = value_offsets.at(idx);
     update_numel = value_dims.at(idx);
@@ -249,8 +253,9 @@ class SSGD : public SparseOptimizer {
   explicit SSGD(const std::vector<std::string>& value_names,
                 const std::vector<int>& value_dims,
                 const std::vector<int>& value_offsets,
-                const std::unordered_map<std::string, int>& value_idx)
-      : SparseOptimizer(value_names, value_dims, value_offsets, value_idx) {
+                const std::unordered_map<std::string, int>& value_idx,
+                const std::unordered_map<std::string, float>& optimizer_attrs)
+      : SparseOptimizer(value_names, value_dims, value_offsets, value_idx, optimizer_attrs) {
     auto idx = value_idx.at("Param");
     param_offset = value_offsets.at(idx);
     update_numel = value_dims.at(idx);
@@ -306,8 +311,9 @@ class SAdam : public SparseOptimizer {
   explicit SAdam(const std::vector<std::string>& value_names,
                  const std::vector<int>& value_dims,
                  const std::vector<int>& value_offsets,
-                 const std::unordered_map<std::string, int>& value_idx)
-      : SparseOptimizer(value_names, value_dims, value_offsets, value_idx) {
+                 const std::unordered_map<std::string, int>& value_idx,
+                 const std::unordered_map<std::string, float>& optimizer_attrs)
+      : SparseOptimizer(value_names, value_dims, value_offsets, value_idx, optimizer_attrs) {
     auto idx = value_idx.at("Param");
     param_offset = value_offsets.at(idx);
     update_numel = value_dims.at(idx);
@@ -328,11 +334,11 @@ class SAdam : public SparseOptimizer {
     beta2_pow_offset = value_offsets.at(idx);
 
     // add attr later
-    beta1 = 0.9;
-    beta2 = 0.999;
     beta1_pow = 1.0;
     beta2_pow = 1.0;
-    epsilon = 1.0e-8;
+    beta1 = optimizer_attrs_.at("beta1");
+    beta2 = optimizer_attrs_.at("beta2");
+    epsilon = optimizer_attrs_.at("epsilon");
   }
 
   void update(const uint64_t* keys, const float* update_values, size_t num,
@@ -439,8 +445,9 @@ class SAdagrad : public SparseOptimizer {
   explicit SAdagrad(const std::vector<std::string>& value_names,
                  const std::vector<int>& value_dims,
                  const std::vector<int>& value_offsets,
-                 const std::unordered_map<std::string, int>& value_idx)
-      : SparseOptimizer(value_names, value_dims, value_offsets, value_idx) {
+                 const std::unordered_map<std::string, int>& value_idx,
+                 const std::unordered_map<std::string, float>& optimizer_attrs)
+      : SparseOptimizer(value_names, value_dims, value_offsets, value_idx, optimizer_attrs) {
     auto idx = value_idx.at("Param");
     param_offset = value_offsets.at(idx);
     update_numel = value_dims.at(idx);
@@ -452,7 +459,7 @@ class SAdagrad : public SparseOptimizer {
     m_offset = value_offsets.at(idx);
 
     // add attr later
-    epsilon = 1.0e-6;
+    epsilon = optimizer_attrs_.at("epsilon"); 
   }
 
   void update(const uint64_t* keys, const float* update_values, size_t num,
@@ -517,8 +524,9 @@ class SDecayedAdagrad : public SparseOptimizer {
   explicit SDecayedAdagrad(const std::vector<std::string>& value_names,
                            const std::vector<int>& value_dims,
                            const std::vector<int>& value_offsets,
-                           const std::unordered_map<std::string, int>& value_idx)
-      : SparseOptimizer(value_names, value_dims, value_offsets, value_idx) {
+                           const std::unordered_map<std::string, int>& value_idx,
+                           const std::unordered_map<std::string, float>& optimizer_attrs)
+      : SparseOptimizer(value_names, value_dims, value_offsets, value_idx, optimizer_attrs) {
     auto idx = value_idx.at("Param");
     param_offset = value_offsets.at(idx);
     update_numel = value_dims.at(idx);
@@ -530,8 +538,8 @@ class SDecayedAdagrad : public SparseOptimizer {
     m_offset = value_offsets.at(idx);
 
     // add attr later
-    epsilon = 1.0e-6;
-    decay = 1.0;
+    epsilon = optimizer_attrs_.at("epsilon");
+    decay = optimizer_attrs_.at("decay");
   }
 
   void update(const uint64_t* keys, const float* update_values, size_t num,

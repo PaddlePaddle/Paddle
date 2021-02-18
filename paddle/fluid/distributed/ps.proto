@@ -140,9 +140,10 @@ message CommonAccessorParameter {
   repeated string params = 4;
   repeated uint32 dims = 5;
   repeated string initializers = 6;
-  optional string entry = 7;
+  repeated string optimizer_attrs = 7;
   optional int32 trainer_num = 8;
   optional bool sync = 9;
+  optional string entry_attr = 10;
 }
 
 message TableAccessorSaveParameter {

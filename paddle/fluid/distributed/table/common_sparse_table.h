@@ -91,6 +91,7 @@ class CommonSparseTable : public SparseTable {
   int param_offset_ = 0;
 
   std::unordered_map<std::string, int> value_idx_;
+  std::unordered_map<std::string, float> optimizer_attrs_;
   std::vector<std::string> value_names_;
   std::vector<int> value_dims_;
   std::vector<int> value_offsets_;

@@ -43,9 +43,18 @@ int32_t CommonDenseTable::initialize() {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
   }
 
-  sync = _config.common().sync();
-  VLOG(1) << "table " << _config.common().table_name() << " is sync: " << sync;
+  auto common = _config.common();
+
+  sync = common.sync();
+  VLOG(1) << "table " << common.table_name() << " is sync: " << sync;
   _global_lr = new float(1.0);
+  
+  int opt_attr_size = static_cast<int>(common.optimizer_attrs().size());
+  for(int x = 0; x < opt_attr_size; ++x) {
+    auto& attr = common.optimizer_attrs()[x];
+    auto pairs = paddle::string::split_string<std::string>(attr, "&");
+    optimizer_attrs_[pairs[0]] = std::stof(pairs[1]);
+  }
 
   initialize_value();
   initialize_optimizer();
@@ -84,18 +93,18 @@ int32_t CommonDenseTable::initialize_optimizer() {
   auto attrs = common.attributes();
 
   if (name == "sgd") {
-    optimizer_ = std::make_shared<DSGD>(common, &values_);
+    optimizer_ = std::make_shared<DSGD>(common, &values_, optimizer_attrs_);
     optimizer_->set_global_lr(_global_lr);
   } else if (name == "adam") {
-    optimizer_ = std::make_shared<DAdam>(common, &values_);
+    optimizer_ = std::make_shared<DAdam>(common, &values_, optimizer_attrs_);
     optimizer_->set_global_lr(_global_lr);
   } else if (name == "sum") {
-    optimizer_ = std::make_shared<DSUM>(common, &values_);
+    optimizer_ = std::make_shared<DSUM>(common, &values_, optimizer_attrs_);
   } else if (name == "adagrad") {
-    optimizer_ = std::make_shared<DAdagrad>(common, &values_);
+    optimizer_ = std::make_shared<DAdagrad>(common, &values_, optimizer_attrs_);
     optimizer_->set_global_lr(_global_lr);
   } else if (name == "decayed_adagrad") {
-    optimizer_ = std::make_shared<DDecayedAdagrad>(common, &values_);
+    optimizer_ = std::make_shared<DDecayedAdagrad>(common, &values_, optimizer_attrs_);
     optimizer_->set_global_lr(_global_lr);
   } else {
     VLOG(0) << "init optimizer failed";

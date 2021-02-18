@@ -33,20 +33,25 @@ class DenseOptimizer {
  public:
   DenseOptimizer() {}
   explicit DenseOptimizer(const CommonAccessorParameter& accessor,
-                          std::vector<std::vector<float>>* values) {}
+                          std::vector<std::vector<float>>* values,
+                          const std::unordered_map<std::string, float>& optimizer_attrs)
+           : optimizer_attrs_(optimizer_attrs) {}
   virtual void update(const float* update_values, size_t num, int begin,
                       int end) = 0;
   virtual void set_global_lr(float* lr) { global_learning_rate_ = lr; }
 
  protected:
   float* global_learning_rate_;
+  std::unordered_map<std::string, float> optimizer_attrs_;
 };
 
 // sum calc for dense tensor
 class DSUM : public DenseOptimizer {
  public:
   explicit DSUM(const CommonAccessorParameter& accessor,
-                std::vector<std::vector<float>>* values) {
+                std::vector<std::vector<float>>* values,
+                const std::unordered_map<std::string, float>& optimizer_attrs)
+    : DenseOptimizer(accessor, values, optimizer_attrs) {
     auto& names = accessor.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
       if (names[x] == "Param") {
@@ -69,7 +74,9 @@ class DSUM : public DenseOptimizer {
 class DSGD : public DenseOptimizer {
  public:
   explicit DSGD(const CommonAccessorParameter& accessor,
-                std::vector<std::vector<float>>* values) {
+                std::vector<std::vector<float>>* values,
+                const std::unordered_map<std::string, float>& optimizer_attrs) 
+    : DenseOptimizer(accessor, values, optimizer_attrs) {
     auto& names = accessor.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
       if (names[x] == "LearningRate") {
@@ -103,7 +110,9 @@ class DSGD : public DenseOptimizer {
 class DAdam : public DenseOptimizer {
  public:
   explicit DAdam(const CommonAccessorParameter& accessor,
-                 std::vector<std::vector<float>>* values) {
+                 std::vector<std::vector<float>>* values,
+                const std::unordered_map<std::string, float>& optimizer_attrs)
+    : DenseOptimizer(accessor, values, optimizer_attrs) {
     auto& names = accessor.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
       if (names[x] == "LearningRate") {
@@ -127,9 +136,9 @@ class DAdam : public DenseOptimizer {
     }
 
     // add attr later
-    beta1 = 0.9;
-    beta2 = 0.999;
-    epsilon = 1.0e-8;
+    beta1 = optimizer_attrs_.at("beta1");
+    beta2 = optimizer_attrs_.at("beta2");
+    epsilon = optimizer_attrs_.at("epsilon");
   }
 
   void update(const float* update_values, size_t num, int begin,
@@ -189,7 +198,9 @@ class DAdam : public DenseOptimizer {
 class DAdagrad : public DenseOptimizer {
  public:
   explicit DAdagrad(const CommonAccessorParameter& accessor,
-                 std::vector<std::vector<float>>* values) {
+                 std::vector<std::vector<float>>* values,
+                const std::unordered_map<std::string, float>& optimizer_attrs)
+    : DenseOptimizer(accessor, values, optimizer_attrs) {
     auto& names = accessor.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
       if (names[x] == "LearningRate") {
@@ -204,7 +215,7 @@ class DAdagrad : public DenseOptimizer {
     }
 
     // add attr later
-    epsilon = 1.0e-6;
+    epsilon = optimizer_attrs_.at("epsilon");
   }
 
   void update(const float* update_values, size_t num, int begin,
@@ -243,7 +254,9 @@ class DAdagrad : public DenseOptimizer {
 class DDecayedAdagrad : public DenseOptimizer {
  public:
   explicit DDecayedAdagrad(const CommonAccessorParameter& accessor,
-                 std::vector<std::vector<float>>* values) {
+                 std::vector<std::vector<float>>* values,
+                const std::unordered_map<std::string, float>& optimizer_attrs)
+    : DenseOptimizer(accessor, values, optimizer_attrs) {
     auto& names = accessor.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
       if (names[x] == "LearningRate") {
@@ -258,8 +271,8 @@ class DDecayedAdagrad : public DenseOptimizer {
     }
 
     // add attr later
-    epsilon = 1.0e-6;
-    decay = 1.0;
+    epsilon = optimizer_attrs_.at("epsilon");
+    decay = optimizer_attrs_.at("decay");
   }
 
   void update(const float* update_values, size_t num, int begin,

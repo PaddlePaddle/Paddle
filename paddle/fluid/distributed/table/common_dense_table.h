@@ -77,6 +77,7 @@ class CommonDenseTable : public DenseTable {
   ReservoirValue<float> pull_reservoir_;
   std::unordered_map<std::string, Initializer*> initializers_;
   std::unordered_map<std::string, int> names_index_;
+  std::unordered_map<std::string, float> optimizer_attrs_;
 };
 
 }  // namespace distributed

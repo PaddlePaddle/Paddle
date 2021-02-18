@@ -66,6 +66,8 @@ class CommonAccessor:
         self.trainer_num = 0
         self.sync = "false"
         self.initializers = []
+        self.entry_attr = None
+        self.optimizer_attrs = []
         self.opt_input_map = {}
         self.opt_attr_map = {}
         self.opt_init_map = {}
@@ -129,6 +131,13 @@ class CommonAccessor:
             else:
                 return 0
 
+    def get_entry_attr(self, name, program):
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_sparse_op
+        sparse_op_list = ["lookup_table", "lookup_table_v2", "distributed_lookup_table"]
+        for op in program.global_block().ops:
+            if op.type in sparse_op_list and name == op.input("W")[0]:
+                return op.attr('entry')
+
     def get_initializer_attr(self, value_name, o_startup_program):
         l_in = "&"
         attr_str = ""
@@ -164,7 +173,7 @@ class CommonAccessor:
 
         params = []
         dims = []
-        attrs = []
+        optimizer_attrs = []
         initializers = []
 
         self.trainer_num = compiled_strategy.get_trainers()
@@ -197,12 +206,15 @@ class CommonAccessor:
 
         for (attr_varname, type_) in attr_varnames:
             value = oop.attr(attr_varname)
-            attrs.append("&".join([attr_varname, type_, str(value)]))
+            optimizer_attrs.append("&".join([attr_varname, str(value)]))
+   
+        if is_sparse:
+            self.entry_attr = self.get_entry_attr(param_name, main_program)
 
         self.params = params
         self.dims = dims
         self.initializers = initializers
-        self.attrs = attrs
+        self.optimizer_attrs = optimizer_attrs
 
     def to_string(self, indent):
         accessor_str = "{}common {{{}\n{}}}"
@@ -216,6 +228,9 @@ class CommonAccessor:
             attrs += "entry: \"{}\" ".format(self.entry)
         attrs += "trainer_num: {} ".format(self.trainer_num)
         attrs += "sync: {} ".format(self.sync)
+
+        for attr in self.optimizer_attrs:
+            attrs += "optimizer_attrs:  \"{}\" ".format(attr)
 
         for param in self.params:
             attrs += "params: \"{}\" ".format(param)
