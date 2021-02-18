@@ -18,9 +18,9 @@ import six
 import sys
 import copy
 import glob
+import logging
 import collections
 import textwrap
-import platform
 import warnings
 import subprocess
 
@@ -32,13 +32,52 @@ from ...fluid import core
 from ...fluid.framework import OpProtoHolder
 from ...sysconfig import get_include, get_lib
 
-OS_NAME = platform.system()
-IS_WINDOWS = OS_NAME == 'Windows'
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger("utils.cpp_extension")
+
+OS_NAME = sys.platform
+IS_WINDOWS = OS_NAME.startswith('win')
 NVCC_COMPILE_FLAGS = [
     '-ccbin', 'cc', '-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU', '-DPADDLE_USE_DSO',
     '-Xcompiler', '-fPIC', '-w', '--expt-relaxed-constexpr', '-O3', '-DNVCC'
 ]
 
+GCC_MINI_VERSION = (5, 4, 0)
+# Give warning if using wrong compiler
+WRONG_COMPILER_WARNING = '''
+                        *************************************
+                        *  Compiler Compatibility WARNING  *
+                        *************************************
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+Found that your compiler ({user_compiler}) is not compatible with the compiler 
+built Paddle for this platform, which is {paddle_compiler} on {platform}. Please
+use {paddle_compiler} to compile your custom op. Or you may compile Paddle from
+source using {user_compiler}, and then also use it compile your custom op.
+
+See https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/zh/2.0/install/compile/linux-compile.html
+for help with compiling Paddle from source.
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+'''
+# Give warning if used compiler version is incompatible
+ABI_INCOMPATIBILITY_WARNING = '''
+                            **********************************
+                            *    ABI Compatibility WARNING   *
+                            **********************************
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+Found that your compiler ({user_compiler} == {version}) may be ABI-incompatible with pre-insalled Paddle!
+Please use compiler that is ABI-compatible with GCC >= 5.4 (Recommended 8.2).
+
+See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html for ABI Compatibility
+information
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+'''
 USING_NEW_CUSTOM_OP_LOAD_METHOD = True
 
 
@@ -83,13 +122,14 @@ def custom_write_stub(resource, pyfile):
     _stub_template = textwrap.dedent("""
         import os
         import sys
+        import types
         import paddle
         
         def inject_ext_module(module_name, api_name):
             if module_name in sys.modules:
                 return sys.modules[module_name]
 
-            new_module = imp.new_module(module_name)
+            new_module = types.ModuleType(module_name)
             setattr(new_module, api_name, eval(api_name))
 
             return new_module
@@ -217,7 +257,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
     # append compile flags
     extra_compile_args = kwargs.get('extra_compile_args', [])
-    extra_compile_args.extend(['-g'])
+    extra_compile_args.extend(['-g', '-w'])  # diable warnings
     kwargs['extra_compile_args'] = extra_compile_args
 
     # append link flags
@@ -303,16 +343,6 @@ def find_paddle_libraries(use_cuda=False):
     return paddle_lib_dirs
 
 
-def append_necessary_flags(extra_compile_args, use_cuda=False):
-    """
-    Add necessary compile flags for gcc/nvcc compiler.
-    """
-    necessary_flags = ['-std=c++11']
-
-    if use_cuda:
-        necessary_flags.extend(NVCC_COMPILE_FLAGS)
-
-
 def add_compile_flag(extension, flag):
     extra_compile_args = copy.deepcopy(extension.extra_compile_args)
     if isinstance(extra_compile_args, dict):
@@ -332,23 +362,22 @@ def is_cuda_file(path):
     return items[-1] in cuda_suffix
 
 
-def get_build_directory():
+def get_build_directory(verbose=False):
     """
     Return paddle extension root directory, default specific by `PADDLE_EXTENSION_DIR`
     """
     root_extensions_directory = os.environ.get('PADDLE_EXTENSION_DIR')
     if root_extensions_directory is None:
         dir_name = "paddle_extensions"
-        if OS_NAME == 'Linux':
+        if OS_NAME.startswith('linux'):
             root_extensions_directory = os.path.join(
                 os.path.expanduser('~/.cache'), dir_name)
         else:
             # TODO(Aurelius84): consider wind32/macOs
             raise NotImplementedError("Only support Linux now.")
 
-        warnings.warn(
-            "$PADDLE_EXTENSION_DIR is not set, using path: {} by default.".
-            format(root_extensions_directory))
+        log_v("$PADDLE_EXTENSION_DIR is not set, using path: {} by default.".
+              format(root_extensions_directory), verbose)
 
     if not os.path.exists(root_extensions_directory):
         os.makedirs(root_extensions_directory)
@@ -377,7 +406,7 @@ def parse_op_info(op_name):
     return in_names, out_infos
 
 
-def _import_module_from_library(name, build_directory):
+def _import_module_from_library(name, build_directory, verbose=False):
     """
     Load .so shared library and import it as callable python module.
     """
@@ -387,18 +416,20 @@ def _import_module_from_library(name, build_directory):
             ext_path))
 
     # load custom op_info and kernels from .so shared library
+    log_v('loading shared library from: {}'.format(ext_path), verbose)
     op_names = load_op_meta_info_and_register_op(ext_path)
     assert len(op_names) == 1
 
     # generate Python api in ext_path
-    return _generate_python_module(op_names[0], build_directory)
+    return _generate_python_module(op_names[0], build_directory, verbose)
 
 
-def _generate_python_module(op_name, build_directory):
+def _generate_python_module(op_name, build_directory, verbose=False):
     """
     Automatically generate python file to allow import or load into as module
     """
     api_file = os.path.join(build_directory, op_name + '.py')
+    log_v("generate api file: {}".format(api_file), verbose)
 
     # write into .py file
     api_content = _custom_api_content(op_name)
@@ -406,7 +437,7 @@ def _generate_python_module(op_name, build_directory):
         f.write(api_content)
 
     # load module
-    custom_api = _load_module_from_file(op_name, api_file)
+    custom_api = _load_module_from_file(op_name, api_file, verbose)
     return custom_api
 
 
@@ -444,7 +475,7 @@ def _custom_api_content(op_name):
     return api_content
 
 
-def _load_module_from_file(op_name, api_file_path):
+def _load_module_from_file(op_name, api_file_path, verbose=False):
     """
     Load module from python file.
     """
@@ -453,6 +484,7 @@ def _load_module_from_file(op_name, api_file_path):
             api_file_path))
 
     # Unique readable module name to place custom api.
+    log_v('import module from file: {}'.format(api_file_path), verbose)
     ext_name = "_paddle_cpp_extension_"
     if six.PY2:
         import imp
@@ -479,8 +511,13 @@ def _get_api_inputs_str(op_name):
     return params_str, ins_str
 
 
-def _write_setup_file(name, sources, file_path, include_dirs, compile_flags,
-                      link_args):
+def _write_setup_file(name,
+                      sources,
+                      file_path,
+                      include_dirs,
+                      compile_flags,
+                      link_args,
+                      verbose=False):
     """
     Automatically generate setup.py and write it into build directory.
     """
@@ -506,6 +543,7 @@ def _write_setup_file(name, sources, file_path, include_dirs, compile_flags,
     with_cuda = False
     if any([is_cuda_file(source) for source in sources]):
         with_cuda = True
+    log_v("with_cuda: {}".format(with_cuda), verbose)
 
     content = template.format(
         name=name,
@@ -515,6 +553,8 @@ def _write_setup_file(name, sources, file_path, include_dirs, compile_flags,
         extra_compile_args=list2str(compile_flags),
         extra_link_args=list2str(link_args),
         use_new_method=use_new_custom_op_load_method())
+
+    log_v('write setup.py into {}'.format(file_path), verbose)
     with open(file_path, 'w') as f:
         f.write(content)
 
@@ -529,14 +569,33 @@ def list2str(args):
     return '[' + ','.join(args) + ']'
 
 
-def _jit_compile(file_path):
+def _jit_compile(file_path, interpreter=None, verbose=False):
     """
     Build shared library in subprocess
     """
     ext_dir = os.path.dirname(file_path)
     setup_file = os.path.basename(file_path)
-    compile_cmd = 'cd {} && python {} build'.format(ext_dir, setup_file)
-    run_cmd(compile_cmd)
+
+    if interpreter is None:
+        interpreter = 'python'
+    try:
+        py_path = subprocess.check_output(['which', interpreter])
+        py_version = subprocess.check_output([interpreter, '-V'])
+        if six.PY3:
+            py_path = py_path.decode()
+            py_version = py_version.decode()
+        log_v("Using Python interpreter: {}, version: {}".format(
+            py_path.strip(), py_version.strip()), verbose)
+    except Exception:
+        _, error, _ = sys.exc_info()
+        raise RuntimeError(
+            'Failed to check Python interpreter with `{}`, errors: {}'.format(
+                interpreter, error))
+
+    compile_cmd = 'cd {} && {} {} build'.format(ext_dir, interpreter,
+                                                setup_file)
+    print("Compiling user custom op, it will cost a few seconds.....")
+    run_cmd(compile_cmd, verbose)
 
 
 def parse_op_name_from(sources):
@@ -569,8 +628,95 @@ def parse_op_name_from(sources):
     return list(op_names)[0]
 
 
-def run_cmd(command, wait=True):
+def run_cmd(command, verbose=False):
     """
     Execute command with subprocess.
     """
-    return subprocess.check_call(command, shell=True)
+    # logging
+    log_v("execute command: {}".format(command), verbose)
+    try:
+        from subprocess import DEVNULL  # py3
+    except ImportError:
+        DEVNULL = open(os.devnull, 'wb')
+
+    # execute command
+    try:
+        if verbose:
+            return subprocess.check_call(
+                command, shell=True, stderr=subprocess.STDOUT)
+        else:
+            return subprocess.check_call(command, shell=True, stdout=DEVNULL)
+    except Exception:
+        _, error, _ = sys.exc_info()
+        raise RuntimeError("Failed to run command: {}, errors: {}".format(
+            compile, error))
+
+
+def check_abi_compatibility(compiler, verbose=False):
+    """
+    Check whether GCC version on user local machine is compatible with Paddle in
+    site-packages.
+    """
+    # TODO(Aurelius84): After we support windows, remove IS_WINDOWS in following code.
+    if os.environ.get('PADDLE_SKIP_CHECK_ABI') in ['True', 'true', '1'
+                                                   ] or IS_WINDOWS:
+        return True
+
+    cmd_out = subprocess.check_output(
+        ['which', compiler], stderr=subprocess.STDOUT)
+    compiler_path = os.path.realpath(cmd_out.decode()
+                                     if six.PY3 else cmd_out).strip()
+    # step 1. if not found any suitable compiler, raise error
+    if not any(name in compiler_path
+               for name in _expected_compiler_current_platform()):
+        warnings.warn(
+            WRONG_COMPILER_WARNING.format(
+                user_compiler=compiler,
+                paddle_compiler=_expected_compiler_current_platform()[0],
+                platform=OS_NAME))
+        return False
+
+    # clang++ have no ABI compatibility problem
+    if OS_NAME.startswith('darwin'):
+        return True
+    try:
+        if OS_NAME.startswith('linux'):
+            version_info = subprocess.check_output(
+                [compiler, '-dumpfullversion'])
+            if six.PY3:
+                version_info = version_info.decode()
+            version = version_info.strip().split('.')
+            assert len(version) == 3
+            # check version compatibility
+            if tuple(map(int, version)) >= GCC_MINI_VERSION:
+                return True
+            else:
+                warnings.warn(
+                    ABI_INCOMPATIBILITY_WARNING.format(
+                        user_compiler=compiler, version=version_info.strip()))
+        # TODO(Aurelius84): check version compatibility on windows
+        elif IS_WINDOWS:
+            warnings.warn("We don't support Windows now.")
+    except Exception:
+        _, error, _ = sys.exc_info()
+        warnings.warn('Failed to check compiler version for {}: {}'.format(
+            compiler, error))
+
+    return False
+
+
+def _expected_compiler_current_platform():
+    """
+    Returns supported compiler string on current platform
+    """
+    expect_compilers = ['clang', 'clang++'] if OS_NAME.startswith(
+        'darwin') else ['gcc', 'g++', 'gnu-c++', 'gnu-cc']
+    return expect_compilers
+
+
+def log_v(info, verbose):
+    """
+    Print log information on stdout.
+    """
+    if verbose:
+        logging.info(info)
