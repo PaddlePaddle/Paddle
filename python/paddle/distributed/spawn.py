@@ -73,7 +73,7 @@ def _py_supported_check():
 
 def _options_valid_check(options):
     # `print_config` keeped as a debug options, not show to users
-    supported_options = ['start_method', 'ips', 'gpus', 'print_config']
+    supported_options = ['start_method', 'ips', 'gpus', 'xpus', 'print_config']
     deprecated_options = [
         'selected_gpus', 'started_port', 'cluster_node_ips', 'node_ip',
         'use_paddlecloud'
@@ -159,9 +159,9 @@ def _get_subprocess_env_list(nprocs, options):
                                      (card_id, ",".join(env_devices_list)))
 
     if core.is_compiled_with_xpu():
-        args.selected_xpus = options.get('xpus', None)
+        args.selected_gpus = options.get('xpus', None)
         if args.selected_xpus is None:
-            args.selected_xpus = options.get('selected_xpus', None)
+            args.selected_gpus = options.get('selected_gpus', None)
         env_devices = os.getenv("XPU_VISIBLE_DEVICES", None)
         if env_devices is None or env_devices == "":
             env_devices_list = [
@@ -169,7 +169,7 @@ def _get_subprocess_env_list(nprocs, options):
             ]
         else:
             env_devices_list = env_devices.split(',')
-        if args.selected_xpus is None:
+        if args.selected_gpus is None:
             if len(env_devices_list) < nprocs:
                 raise RuntimeError(
                     "the number of visible devices(%d) is less than the number "
@@ -177,17 +177,17 @@ def _get_subprocess_env_list(nprocs, options):
                     "`nprocs` argument is passed or the environment variable "
                     "`XPU_VISIBLE_DEVICES` is correctly configured." %
                     (len(env_devices_list), nprocs))
-            args.selected_xpus = ",".join(
+            args.selected_gpus = ",".join(
                 [str(env_devices_list[x]) for x in range(0, nprocs)])
         else:
-            selected_xpu_list = args.selected_xpus.split(',')
-            if len(selected_xpu_list) != nprocs:
+            selected_gpu_list = args.selected_gpus.split(',')
+            if len(selected_gpu_list) != nprocs:
                 raise ValueError(
                     "The number of selected gpus(%s) is not equal to "
                     "the number of spawn processes(%d), please ensure that the "
                     "correct `nprocs` and `gpus` arguments are passed." %
-                    (len(selected_xpu_list), nprocs))
-            for card_id in selected_xpu_list:
+                    (len(selected_gpu_list), nprocs))
+            for card_id in selected_gpu_list:
                 if card_id not in env_devices_list:
                     raise ValueError("The selected gpu card %s cannot found in "
                                      "XPU_VISIBLE_DEVICES (%s)." %

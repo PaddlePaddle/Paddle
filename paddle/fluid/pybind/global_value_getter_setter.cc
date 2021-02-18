@@ -87,6 +87,10 @@ DECLARE_uint64(reallocate_gpu_memory_in_mb);
 // others
 DECLARE_bool(sync_nccl_allreduce);
 #endif
+#ifdef PADDLE_WITH_XPU
+// device management
+DECLARE_string(selected_xpus);
+#endif
 #ifdef PADDLE_WITH_DISTRIBUTE
 DECLARE_int32(rpc_send_thread_num);
 DECLARE_int32(rpc_get_thread_num);
@@ -364,6 +368,9 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_fraction_of_gpu_memory_to_use, FLAGS_initial_gpu_memory_in_mb,
       FLAGS_reallocate_gpu_memory_in_mb, FLAGS_enable_cublas_tensor_op_math,
       FLAGS_selected_gpus, FLAGS_sync_nccl_allreduce);
+#endif
+#ifdef PADDLE_WITH_XPU
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_selected_xpus);
 #endif
 #ifdef PADDLE_WITH_DITRIBUTE
   REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_send_thread_num,
