@@ -31,7 +31,6 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
 
-
 namespace paddle {
 namespace platform {
 class DeviceContext;
@@ -111,6 +110,7 @@ class Group {
   // context is used to select the stream for split
   void SplitTensors(const platform::DeviceContext& context);
 
+  // use it in CUDA
   void DivNRanks(framework::Tensor* tensor, int64_t nranks,
                  const platform::DeviceContext& context);
 
