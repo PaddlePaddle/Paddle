@@ -37,7 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
@@ -60,7 +60,7 @@ static std::once_flag gProfileOnce;
 static bool gProfileStarted = false;
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 std::once_flag p2p_init_flag;
 #endif
 
@@ -132,7 +132,7 @@ class ParallelExecutorPrivate {
     }
   }
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
     VLOG(1) << "nccl comm num:" << bst.nccl_comm_num_ << ", nranks:" << nranks_
             << ", num_trainers:" << bst.num_trainers_
@@ -371,7 +371,7 @@ class ParallelExecutorPrivate {
 
   std::unordered_map<std::string, bool> is_persistable_;
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #elif defined(PADDLE_WITH_XPU_BKCL)
   platform::BKCLCommunicator *bkcl_ctxs_{nullptr};
@@ -483,7 +483,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     }
     std::unique_ptr<GarbageCollector> gc;
     if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
             BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
@@ -572,7 +572,7 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
 }
 
 void InitP2P(const std::vector<platform::Place> &places) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::call_once(p2p_init_flag, [&]() {
     int count = places.size();
     if (count <= 1) return;
@@ -590,14 +590,24 @@ void InitP2P(const std::vector<platform::Place> &places) {
       for (int j = 0; j < count; ++j) {
         if (devices[i] == devices[j]) continue;
         int can_acess = -1;
+#ifdef PADDLE_WITH_HIP
+        hipError_t ret =
+            hipDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
+        if (ret != hipSuccess || can_acess != 1) {
+#else
         cudaError_t ret =
             cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
         if (ret != cudaSuccess || can_acess != 1) {
+#endif
           LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
                        << " to " << devices[j];
         } else {
           platform::CUDADeviceGuard guard(devices[i]);
+#ifdef PADDLE_WITH_HIP
+          hipDeviceEnablePeerAccess(devices[j], 0);
+#else
           cudaDeviceEnablePeerAccess(devices[j], 0);
+#endif
         }
       }
     }
@@ -630,7 +640,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         BuildStrategy::ReduceStrategy::kAllReduce;
     member_->use_all_reduce_ = true;
   }
-#if defined(PADDLE_WITH_CUDA) && defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && defined(_WIN32)
   if (member_->IsUseCUDA(member_->use_device_)) {
     PADDLE_ENFORCE_EQ(
         places.size(), 1,
@@ -638,7 +648,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_NCCL)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL))
   if (member_->IsUseCUDA(member_->use_device_)) {
     PADDLE_ENFORCE_EQ(
         places.size(), 1,
@@ -710,7 +721,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 
   if (member_->IsUseCUDA(member_->use_device_) && member_->nranks_ > 1) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     member_->InitOrGetNCCLCommunicator(scope, &member_->build_strategy_);
 
     // Initialize device context's nccl comm, will be used by normal
@@ -774,7 +785,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
   std::vector<ir::Graph *> async_graphs(places.size());
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use local async mode";
     graph = member_->build_strategy_.Apply(
@@ -885,7 +896,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     final_graphs = async_graphs;
   } else if (member_->build_strategy_.enable_parallel_graph_) {
     VLOG(3) << "use ParallelSSAGraphExecutor";
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     // TODO(Yancey1989): Remove passing in the main_program when
     // allreduce_seq_pass doesn't need it as the attr.
     bool is_inference = details::IsDataParallelInferenceGraph(*graph);
@@ -996,7 +1007,7 @@ void ParallelExecutor::BCastParamsToDevices(
     }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
