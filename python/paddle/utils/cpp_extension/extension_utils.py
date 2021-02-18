@@ -47,7 +47,7 @@ GCC_MINI_VERSION = (5, 4, 0)
 # Give warning if using wrong compiler
 WRONG_COMPILER_WARNING = '''
                         *************************************
-                        *  Compiler Compatibility WARNING  *
+                        *  Compiler Compatibility WARNING   *
                         *************************************
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -70,7 +70,7 @@ ABI_INCOMPATIBILITY_WARNING = '''
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-Found that your compiler ({user_compiler} == {version}) may be ABI-incompatible with pre-insalled Paddle!
+Found that your compiler ({user_compiler} == {version}) may be ABI-incompatible with pre-installed Paddle!
 Please use compiler that is ABI-compatible with GCC >= 5.4 (Recommended 8.2).
 
 See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html for ABI Compatibility
@@ -125,12 +125,13 @@ def custom_write_stub(resource, pyfile):
         import types
         import paddle
         
-        def inject_ext_module(module_name, api_name):
+        def inject_ext_module(module_name, api_names):
             if module_name in sys.modules:
                 return sys.modules[module_name]
 
             new_module = types.ModuleType(module_name)
-            setattr(new_module, api_name, eval(api_name))
+            for api_name in api_names:
+                setattr(new_module, api_name, eval(api_name))
 
             return new_module
 
@@ -141,9 +142,8 @@ def custom_write_stub(resource, pyfile):
             assert os.path.exists(so_path)
 
             # load custom op shared library with abs path
-            new_custom_op = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
-            assert len(new_custom_op) == 1
-            m = inject_ext_module(__name__, new_custom_op[0])
+            new_custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+            m = inject_ext_module(__name__, new_custom_ops)
         
         __bootstrap__()
 
@@ -154,21 +154,25 @@ def custom_write_stub(resource, pyfile):
     _, op_info = CustomOpInfo.instance().last()
     so_path = op_info.build_directory
 
-    new_custom_op = load_op_meta_info_and_register_op(so_path)
-    assert len(new_custom_op
-               ) == 1, "The number of loaded costom operators is %d" % len(
-                   new_custom_op)
+    new_custom_ops = load_op_meta_info_and_register_op(so_path)
+    assert len(
+        new_custom_ops
+    ) > 0, "Required at least one custom operators, but received len(custom_op) =  %d" % len(
+        new_custom_ops)
 
     # NOTE: To avoid importing .so file instead of python file because they have same name,
     # we rename .so shared library to another name, see EasyInstallCommand.
     filename, ext = os.path.splitext(resource)
     resource = filename + "_pd_" + ext
 
+    api_content = []
+    for op_name in new_custom_ops:
+        api_content.append(_custom_api_content(op_name))
+
     with open(pyfile, 'w') as f:
         f.write(
             _stub_template.format(
-                resource=resource,
-                custom_api=_custom_api_content(new_custom_op[0])))
+                resource=resource, custom_api='\n\n'.join(api_content)))
 
 
 OpInfo = collections.namedtuple('OpInfo',
@@ -406,11 +410,12 @@ def parse_op_info(op_name):
     return in_names, out_infos
 
 
-def _import_module_from_library(name, build_directory, verbose=False):
+def _import_module_from_library(module_name, build_directory, verbose=False):
     """
     Load .so shared library and import it as callable python module.
     """
-    ext_path = os.path.join(build_directory, name + '.so')
+    # TODO(Aurelius84): Consider file suffix is .dll on Windows Platform.
+    ext_path = os.path.join(build_directory, module_name + '.so')
     if not os.path.exists(ext_path):
         raise FileNotFoundError("Extension path: {} does not exist.".format(
             ext_path))
@@ -418,27 +423,30 @@ def _import_module_from_library(name, build_directory, verbose=False):
     # load custom op_info and kernels from .so shared library
     log_v('loading shared library from: {}'.format(ext_path), verbose)
     op_names = load_op_meta_info_and_register_op(ext_path)
-    assert len(op_names) == 1
 
     # generate Python api in ext_path
-    return _generate_python_module(op_names[0], build_directory, verbose)
+    return _generate_python_module(module_name, op_names, build_directory,
+                                   verbose)
 
 
-def _generate_python_module(op_name, build_directory, verbose=False):
+def _generate_python_module(module_name,
+                            op_names,
+                            build_directory,
+                            verbose=False):
     """
     Automatically generate python file to allow import or load into as module
     """
-    api_file = os.path.join(build_directory, op_name + '.py')
+    api_file = os.path.join(build_directory, module_name + '.py')
     log_v("generate api file: {}".format(api_file), verbose)
 
     # write into .py file
-    api_content = _custom_api_content(op_name)
+    api_content = [_custom_api_content(op_name) for op_name in op_names]
     with open(api_file, 'w') as f:
-        f.write(api_content)
+        f.write('\n\n'.join(api_content))
 
     # load module
-    custom_api = _load_module_from_file(op_name, api_file, verbose)
-    return custom_api
+    custom_module = _load_module_from_file(api_file, verbose)
+    return custom_module
 
 
 def _custom_api_content(op_name):
@@ -475,7 +483,7 @@ def _custom_api_content(op_name):
     return api_content
 
 
-def _load_module_from_file(op_name, api_file_path, verbose=False):
+def _load_module_from_file(api_file_path, verbose=False):
     """
     Load module from python file.
     """
@@ -494,8 +502,7 @@ def _load_module_from_file(op_name, api_file_path, verbose=False):
         loader = machinery.SourceFileLoader(ext_name, api_file_path)
         module = loader.load_module()
 
-    assert hasattr(module, op_name)
-    return getattr(module, op_name)
+    return module
 
 
 def _get_api_inputs_str(op_name):
@@ -621,11 +628,7 @@ def parse_op_name_from(sources):
             content = f.read()
             op_names |= regex(content)
 
-    # TODO(Aurelius84): Support register more customs op at once
-    assert len(
-        op_names) == 1, "The number of registered costom operators is %d" % len(
-            op_names)
-    return list(op_names)[0]
+    return list(op_names)
 
 
 def run_cmd(command, verbose=False):
