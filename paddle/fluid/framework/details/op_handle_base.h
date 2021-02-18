@@ -35,6 +35,7 @@ namespace paddle {
 namespace framework {
 
 class Scope;
+
 namespace details {
 struct VarHandleBase;
 }  // namespace details

@@ -35,6 +35,8 @@
 namespace paddle {
 namespace distributed {
 
+class SparseOptimizer;
+
 class CommonSparseTable : public SparseTable {
  public:
   CommonSparseTable() { rwlock_.reset(new framework::RWLock); }

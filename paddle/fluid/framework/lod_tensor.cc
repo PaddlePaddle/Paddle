@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
+
 #include <stdint.h>
-#include <algorithm>
+
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {

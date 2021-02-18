@@ -99,7 +99,7 @@ class Tracer {
 
   platform::Place ExpectedPlace() const { return expected_place_; }
 
-  void SetExpectedPlace(platform::Place place) { expected_place_ = place; }
+  void SetExpectedPlace(platform::Place place);
 
   bool HasGrad() const { return has_grad_; }
 

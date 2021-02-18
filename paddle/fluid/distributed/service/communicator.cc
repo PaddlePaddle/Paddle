@@ -15,24 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/distributed/service/communicator.h"
 
 #include <google/protobuf/text_format.h>
-#include <paddle/fluid/framework/program_desc.h>
-
-#include <algorithm>
-#include <chrono>  // NOLINT
-#include <map>
-#include <thread>  // NOLINT
-#include <unordered_set>
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/distributed/table/table.h"
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/split.h"
+#include "paddle/fluid/string/string_helper.h"
 
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 #define STEP_COUNTER "@PS_STEP_COUNTER@"
@@ -290,7 +277,7 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
   auto dim = tensor->value().dims()[1];
   std::transform(tensor->rows().begin(), tensor->rows().end(),
                  std::back_inserter(sparse_push_keys),
-                 [&](int id) { return static_cast<uint64_t>(id); });
+                 [&](int64_t id) { return static_cast<uint64_t>(id); });
 
   for (auto i = 0; i < static_cast<int>(sparse_push_keys.size()); ++i) {
     push_g_vec.push_back(tensor->mutable_value()->data<float>() + i * dim);
