@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/framework.pb.h"
@@ -22,6 +21,7 @@
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace framework {
@@ -30,34 +30,57 @@ namespace ir {
 // cpplint complaints (wrong!) for not included <string> header in below line.
 using string::PrettyLogDetail;  // NOLINT
 
+#define CHECK_TRUE(expr, err_msg) \
+  do {                            \
+    int e_ = (expr);              \
+    if (!e_) {                    \
+      VLOG(4) << err_msg;         \
+      return;                     \
+    }                             \
+  } while (0)
+
+#define EXPECT_TRUE(expr, err_msg) \
+  do {                             \
+    int e_ = (expr);               \
+    if (!e_) {                     \
+      VLOG(4) << err_msg;          \
+      return false;                \
+    }                              \
+  } while (0)
+
 namespace {
-void validateReduceOpAttrs(const Node* node, const std::string& name) {
+
+bool validateReduceOpAttrs(const Node* node, const std::string& name) {
   const auto* op = node->Op();
   if (op->HasAttr("dim")) {
     auto dims = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
-    PADDLE_ENFORCE_EQ(dims.size(), 1, platform::errors::PreconditionNotMet(
-                                          "The LayerNorm fusion ", name,
-                                          " reduction must happen only over "
-                                          "single dimension."));
-    PADDLE_ENFORCE_EQ(dims.front(), -1, platform::errors::PreconditionNotMet(
-                                            "The LayerNorm fusion ", name,
-                                            " reduction must happen over last "
-                                            "dimension."));
+    EXPECT_TRUE(
+        dims.size() == 1,
+        ::paddle::string::Sprintf(
+            "The LayerNorm fusion %s reduction must happen only over single "
+            "dimension.",
+            name));
+    EXPECT_TRUE(dims.front() == -1,
+                ::paddle::string::Sprintf("The LayerNorm fusion %s reduction "
+                                          "must happen over last dimension.",
+                                          name));
   }
   if (op->HasAttr("reduce_all")) {
-    PADDLE_ENFORCE(!BOOST_GET_CONST(bool, op->GetAttr("reduce_all")),
-                   platform::errors::PreconditionNotMet(
-                       "The LayerNorm fusion ", name,
-                       " reduction must have "
-                       "\'reduce_all\' attribute set to false."));
+    EXPECT_TRUE(
+        !BOOST_GET_CONST(bool, op->GetAttr("reduce_all")),
+        ::paddle::string::Sprintf(
+            "The LayerNorm fusion %s"
+            "reduction must have \'reduce_all\' attribute set to false.",
+            name));
   }
   if (op->HasAttr("keep_dim")) {
-    PADDLE_ENFORCE(BOOST_GET_CONST(bool, op->GetAttr("keep_dim")),
-                   platform::errors::PreconditionNotMet(
-                       "The LayerNorm fusion ", name,
-                       " reduction must have "
-                       "\'keep_dim\' attribute set to true."));
+    EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("keep_dim")),
+                ::paddle::string::Sprintf(
+                    "The LayerNorm fusion %s"
+                    " reduction must have \'keep_dim\' attribute set to true.",
+                    name));
   }
+  return true;
 }
 
 void setIntermediateOut(OpDesc* desc, const std::string& out_name,
@@ -129,48 +152,46 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     auto* eps_tensor = scope->FindVar(eps->Name())->GetMutable<LoDTensor>();
 
     // ------------------ subgraph node's validation ---------------------------
-    PADDLE_ENFORCE_EQ(
-        eps_tensor->numel(), 1,
-        platform::errors::InvalidArgument(
-            "The LayerNorm divisor "
-            "epsilon value must be one-element tensor, but has %s "
-            "elements.",
+    CHECK_TRUE(
+        eps_tensor->numel() == 1,
+        ::paddle::string::Sprintf(
+            "The LayerNorm divisor epsilon value must be one-element tensor, "
+            "but has %s elements.",
             eps_tensor->numel()));
-    PADDLE_ENFORCE_EQ(eps_tensor->type(), proto::VarType::FP32,
-                      platform::errors::InvalidArgument(
-                          "The LayerNorm divisor "
-                          "epsilon value must be of FP32 data type, but is %s.",
-                          eps_tensor->type()));
+    CHECK_TRUE(
+        eps_tensor->type() == proto::VarType::FP32,
+        ::paddle::string::Sprintf("The LayerNorm divisor epsilon value "
+                                  "must be of FP32 data type, but is %s.",
+                                  eps_tensor->type()));
 
     const auto& gamma_shape = gamma->Var()->GetShape();
     const auto& beta_shape = beta->Var()->GetShape();
     const auto& x_shape = x->Var()->GetShape();
     int64_t x_last_dim = x_shape.back();
 
-    PADDLE_ENFORCE_EQ(gamma_shape.size(), 1,
-                      platform::errors::InvalidArgument(
-                          "The LayerNorm gamma "
-                          "(scale) tensor shape must be one-dimensional, "
-                          "but is %s.",
-                          gamma_shape.size()));
-    PADDLE_ENFORCE_EQ(beta_shape.size(), 1,
-                      platform::errors::InvalidArgument(
-                          "The LayerNorm beta "
-                          "(shift) tensor shape must be one-dimensional, "
-                          "but is %s.",
-                          beta_shape.size()));
-    PADDLE_ENFORCE_EQ(beta_shape, gamma_shape,
-                      platform::errors::InvalidArgument(
-                          "The LayerNorm beta "
-                          "and gamma tensors shapes' must be equal."));
-    PADDLE_ENFORCE_EQ(gamma_shape.front(), x_last_dim,
-                      platform::errors::InvalidArgument(
-                          "The LayerNorm beta "
-                          "and gamma tensors shapes' must be equal to the last "
-                          "input's dimension size."));
+    CHECK_TRUE(
+        gamma_shape.size() == 1,
+        ::paddle::string::Sprintf("The LayerNorm gamma (scale) tensor "
+                                  "shape must be one-dimensional, but is %s.",
+                                  gamma_shape.size()));
+    CHECK_TRUE(
+        beta_shape.size() == 1,
+        ::paddle::string::Sprintf("The LayerNorm beta (shift) tensor "
+                                  "shape must be one-dimensional, but is %s.",
+                                  beta_shape.size()));
+    CHECK_TRUE(beta_shape == gamma_shape,
+               ::paddle::string::Sprintf("The LayerNorm beta and gamma tensors "
+                                         "shapes' must be equal."));
+    CHECK_TRUE(
+        gamma_shape.front() == x_last_dim,
+        ::paddle::string::Sprintf(
+            "The LayerNorm beta and gamma tensors "
+            "shapes' must be equal to the last input's dimension size."));
 
-    validateReduceOpAttrs(x_mean, "input mean");
-    validateReduceOpAttrs(std_dev, "std_dev mean");
+    CHECK_TRUE(validateReduceOpAttrs(x_mean, "input mean"),
+               "Validation of input mean node failed.");
+    CHECK_TRUE(validateReduceOpAttrs(std_dev, "std_dev mean"),
+               "Validation of standard deviation node failed.");
 
     // ------------------ op creation and placement ---------------------------
 
@@ -212,6 +233,9 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
+
+#undef CHECK_TRUE
+#undef EXPECT_TRUE
 
 REGISTER_PASS(layer_norm_fuse_pass, paddle::framework::ir::LayerNormFusePass);
 REGISTER_PASS_CAPABILITY(layer_norm_fuse_pass)

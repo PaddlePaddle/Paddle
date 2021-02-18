@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/fleet.h"
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -31,10 +30,6 @@ class OpBase;
 
 namespace paddle {
 namespace operators {
-
-namespace distributed {
-class RPCClient;
-}  // namespace distributed
 
 class SendOp : public framework::OperatorBase {
  public:

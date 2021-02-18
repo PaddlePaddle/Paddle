@@ -128,7 +128,8 @@ bool RunPassAndAssert(Graph* graph, const std::string& pass_name,
 /// @tparam     T         Tensor data type.
 ///
 template <typename T>
-void InitLoDTensorHolder(Scope* scope, const paddle::platform::Place& place,
+void InitLoDTensorHolder(const Scope& scope,
+                         const paddle::platform::Place& place,
                          const std::string& var_name,
                          const std::vector<int64_t>& dims,
                          const T* data = nullptr);
@@ -145,6 +146,10 @@ void InitLoDTensorHolder(Scope* scope, const paddle::platform::Place& place,
 /// @return     The operator descriptor.
 ///
 OpDesc* GetOp(const ProgramDesc& prog, const std::string& op_type,
+              const std::string& output_name,
+              const std::string& output_arg_name);
+
+OpDesc* GetOp(const BlockDesc& block_desc, const std::string& op_type,
               const std::string& output_name,
               const std::string& output_arg_name);
 

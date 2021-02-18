@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/init.h"
 
+#ifdef PADDLE_WITH_CUDA
 constexpr auto saxpy_code = R"(
 extern "C" __global__
 void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
@@ -27,8 +28,22 @@ void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
   }
 }
 )";
+#endif
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_HIP
+constexpr auto saxpy_code = R"(
+#include <hip/hip_runtime.h>
+extern "C" __global__
+void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
+  for (size_t tid = blockIdx.x * blockDim.x + threadIdx.x; tid < n;
+       tid += blockDim.x * gridDim.x) {
+    z[tid] = a * x[tid] + y[tid];
+  }
+}
+)";
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(DeviceCode, cuda) {
   if (!paddle::platform::dynload::HasNVRTC() ||
       !paddle::platform::dynload::HasCUDADriver()) {

@@ -13,8 +13,12 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <string>
+
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {

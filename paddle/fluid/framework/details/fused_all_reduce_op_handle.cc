@@ -13,11 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/fused_all_reduce_op_handle.h"
 
-#include <algorithm>
-#include <utility>
-
 #include "paddle/fluid/framework/details/container_cast.h"
-#include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
 #include "paddle/fluid/platform/profiler.h"

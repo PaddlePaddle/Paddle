@@ -197,9 +197,9 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   int gpu_device_id() const { return gpu_device_id_; }
   ///
-  /// \brief Get the GPU device id.
+  /// \brief Get the XPU device id.
   ///
-  /// \return int The GPU device id.
+  /// \return int The XPU device id.
   ///
   int xpu_device_id() const { return xpu_device_id_; }
   ///

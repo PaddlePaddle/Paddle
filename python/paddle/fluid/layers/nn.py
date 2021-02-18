@@ -2792,12 +2792,6 @@ def batch_norm(input,
                              'batch_norm')
     dtype = helper.input_dtype()
 
-    has_reserve_space = False
-    if data_layout == 'NHWC':
-        flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
-        if flag is not None and flag.lower() in ['true', '1']:
-            has_reserve_space = True
-
     # use fp32 for bn parameter
     if dtype == core.VarDesc.VarType.FP16:
         dtype = core.VarDesc.VarType.FP32
@@ -2845,17 +2839,16 @@ def batch_norm(input,
     # create output
     # mean and mean_out share the same memory
     mean_out = mean
-    # variance and variance out share the same memory
+    # variance and variance_out share the same memory
     variance_out = variance
     saved_mean = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
-
     reserve_space = None
-    if has_reserve_space:
+    if not is_test:
         reserve_space = helper.create_variable_for_type_inference(
-            dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
+            dtype=helper.input_dtype(), stop_gradient=True)
 
     batch_norm_out = input if in_place else \
             helper.create_variable_for_type_inference(dtype)
@@ -2998,12 +2991,6 @@ def inplace_abn(input,
                              'inplace_abn')
     dtype = helper.input_dtype()
 
-    has_reserve_space = False
-    if data_layout == 'NHWC':
-        flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
-        if flag is not None and flag.lower() in ['true', '1']:
-            has_reserve_space = True
-
     input_shape = input.shape
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
@@ -3053,12 +3040,8 @@ def inplace_abn(input,
         dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
-
-    reserve_space = None
-    if has_reserve_space:
-        reserve_space = helper.create_variable_for_type_inference(
-            dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
-
+    reserve_space = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
     batch_norm_out = input
 
     inputs = {
@@ -3082,7 +3065,6 @@ def inplace_abn(input,
         inputs['MomemtumTensor'] = momentum
     else:
         attrs['momentum'] = momentum
-
     outputs = {
         "Y": batch_norm_out,
         "MeanOut": mean_out,

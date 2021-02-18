@@ -41,7 +41,11 @@ TEST(Device, CUDADeviceContext) {
     CUDADeviceContext* device_context = new CUDADeviceContext(CUDAPlace(i));
     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
     ASSERT_NE(nullptr, gpu_device);
+#ifdef PADDLE_WITH_HIP
+    miopenHandle_t cudnn_handle = device_context->cudnn_handle();
+#else
     cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
+#endif
     ASSERT_NE(nullptr, cudnn_handle);
     delete device_context;
   }
