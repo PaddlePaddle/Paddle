@@ -16,6 +16,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
 #endif
+#ifdef PADDLE_WITH_HIP
+#include <miopen/miopen.h>
+#endif
 #include <glog/logging.h>
 #include <sstream>
 

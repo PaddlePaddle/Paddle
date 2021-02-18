@@ -107,7 +107,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     PADDLE_ENFORCE_EQ(platform::is_xpu_place(place), false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
@@ -192,7 +192,7 @@ bool AnalysisPredictor::PrepareScope(
     paddle::framework::InitDevices();
     scope_.reset(new paddle::framework::Scope(), [](framework::Scope *scope) {
       delete scope;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       for (int dev_id = 0; dev_id < paddle::platform::GetCUDADeviceCount();
            ++dev_id) {
         memory::Release(platform::CUDAPlace(dev_id));
@@ -244,7 +244,7 @@ bool AnalysisPredictor::CreateExecutor() {
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
     place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (config_.thread_local_stream_enabled()) {
       auto *ctx = static_cast<platform::CUDADeviceContext *>(
           platform::DeviceContextPool::Instance().Get(place_));
