@@ -16,8 +16,19 @@
 
 #include "paddle/fluid/imperative/all_reduce.h"
 
+#include <nccl.h>
+
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/imperative/parallel_context.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/string/string_helper.h"
+
 namespace paddle {
 namespace imperative {
+
 static const platform::Place &GetVarPlace(const framework::Variable &src) {
   if (src.IsType<framework::LoDTensor>()) {
     return src.Get<framework::LoDTensor>().place();

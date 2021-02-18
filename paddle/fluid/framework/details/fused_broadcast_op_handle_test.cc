@@ -14,12 +14,11 @@
 
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
 
-#include <memory>
-#include <unordered_map>
-
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle_test.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -32,6 +31,7 @@ namespace framework {
 namespace details {
 
 struct VarHandle;
+
 using DeviceType = paddle::platform::DeviceType;
 
 struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {

@@ -139,6 +139,7 @@ write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/f
 packages=['paddle',
           'paddle.libs',
           'paddle.utils',
+          'paddle.utils.cpp_extension',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
@@ -278,11 +279,12 @@ else:
         # copy the openblas.dll
         shutil.copy('${OPENBLAS_SHARED_LIB}', libs_path)
         package_data['paddle.libs'] += ['openblas' + ext_name]
-    elif os.name == 'posix' and platform.machine() == 'aarch64':
+    elif os.name == 'posix' and platform.machine() == 'aarch64' and '${OPENBLAS_LIB}'.endswith('so'):
         # copy the libopenblas.so on linux+aarch64
         # special: core_noavx.so depends on 'libopenblas.so.0', not 'libopenblas.so'
-        shutil.copy('${OPENBLAS_LIB}' + '.0', libs_path)
-        package_data['paddle.libs'] += ['libopenblas.so.0']
+        if os.path.exists('${OPENBLAS_LIB}' + '.0'):
+            shutil.copy('${OPENBLAS_LIB}' + '.0', libs_path)
+            package_data['paddle.libs'] += ['libopenblas.so.0']
 
 if '${WITH_LITE}' == 'ON':
     shutil.copy('${LITE_SHARED_LIB}', libs_path)
@@ -378,6 +380,8 @@ def find_files(pattern, root):
           yield os.path.join(dirpath, filename)
 
 headers = (
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/framework')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/imperative')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/memory')) +
@@ -400,7 +404,7 @@ headers = (
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
-if '${WITH_GPU}' == 'ON':
+if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     headers += list(find_files('*.pb', '${cudaerror_INCLUDE_DIR}'))   # errorMessage.pb for errormessage
 
 class InstallCommand(InstallCommandBase):
@@ -461,7 +465,7 @@ class InstallHeaders(Command):
     def run(self):
         # only copy third_party/cudaErrorMessage.pb for cudaErrorMessage on mac or windows
         if os.name == 'nt' or sys.platform == 'darwin':
-            if '${WITH_GPU}' == 'ON':
+            if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
                 self.mkdir_and_copy_file('${cudaerror_INCLUDE_DIR}/cudaErrorMessage.pb')
             return
         hdrs = self.distribution.headers
@@ -494,12 +498,30 @@ else:
     def redirect_stdout():
         yield
 
+# Log for PYPI
+if sys.version_info > (3,0):
+    with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r", encoding='UTF-8') as f:
+        long_description = f.read()
+else:
+    with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r")as f:
+        long_description = unicode(f.read(), 'UTF-8')
+
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',
         version='${PADDLE_VERSION}',
         description='Parallel Distributed Deep Learning',
-        install_requires=setup_requires,
+        long_description=long_description,
+        long_description_content_type="text/markdown",
+        author_email="Paddle-better@baidu.com",
+        maintainer="PaddlePaddle",
+        maintainer_email="Paddle-better@baidu.com",
+        project_urls = {
+            'Homepage': 'https://www.paddlepaddle.org.cn/',
+            'Downloads': 'https://github.com/paddlepaddle/paddle'
+        }, 
+        license='Apache Software License',
         packages=packages,
+        install_requires=setup_requires,
         ext_modules=ext_modules,
         package_data=package_data,
         package_dir=package_dir,
@@ -514,7 +536,21 @@ with redirect_stdout():
             'console_scripts': [
                 'fleetrun = paddle.distributed.fleet.launch:launch'
             ]
-        }
+        },
+        classifiers=[
+            'Development Status :: 5 - Production/Stable',
+            'Operating System :: OS Independent',
+            'Intended Audience :: Developers',
+            'Intended Audience :: Education',
+            'Intended Audience :: Science/Research',
+            'License :: OSI Approved :: Apache Software License',
+            'Programming Language :: C++',
+            'Programming Language :: Python :: 2.7',
+            'Programming Language :: Python :: 3.5',
+            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
+            'Programming Language :: Python :: 3.8',
+        ],
     )
 
 # As there are a lot of files in purelib which causes many logs,

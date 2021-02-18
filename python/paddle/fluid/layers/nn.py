@@ -2792,12 +2792,6 @@ def batch_norm(input,
                              'batch_norm')
     dtype = helper.input_dtype()
 
-    has_reserve_space = False
-    if data_layout == 'NHWC':
-        flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
-        if flag is not None and flag.lower() in ['true', '1']:
-            has_reserve_space = True
-
     # use fp32 for bn parameter
     if dtype == core.VarDesc.VarType.FP16:
         dtype = core.VarDesc.VarType.FP32
@@ -2845,17 +2839,16 @@ def batch_norm(input,
     # create output
     # mean and mean_out share the same memory
     mean_out = mean
-    # variance and variance out share the same memory
+    # variance and variance_out share the same memory
     variance_out = variance
     saved_mean = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
-
     reserve_space = None
-    if has_reserve_space:
+    if not is_test:
         reserve_space = helper.create_variable_for_type_inference(
-            dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
+            dtype=helper.input_dtype(), stop_gradient=True)
 
     batch_norm_out = input if in_place else \
             helper.create_variable_for_type_inference(dtype)
@@ -2998,12 +2991,6 @@ def inplace_abn(input,
                              'inplace_abn')
     dtype = helper.input_dtype()
 
-    has_reserve_space = False
-    if data_layout == 'NHWC':
-        flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
-        if flag is not None and flag.lower() in ['true', '1']:
-            has_reserve_space = True
-
     input_shape = input.shape
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
@@ -3053,12 +3040,8 @@ def inplace_abn(input,
         dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
-
-    reserve_space = None
-    if has_reserve_space:
-        reserve_space = helper.create_variable_for_type_inference(
-            dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
-
+    reserve_space = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
     batch_norm_out = input
 
     inputs = {
@@ -3082,7 +3065,6 @@ def inplace_abn(input,
         inputs['MomemtumTensor'] = momentum
     else:
         attrs['momentum'] = momentum
-
     outputs = {
         "Y": batch_norm_out,
         "MeanOut": mean_out,
@@ -14984,46 +14966,47 @@ def gather_tree(ids, parents):
                              [9 0]]]
 
     Args:
-        ids(Variable): A Tensor with shape :attr:`[length, batch_size, beam_size]`
+        ids(Tensor): A Tensor with shape :attr:`[length, batch_size, beam_size]`
             and data type :attr:`int32` or :attr:`int64`. It contains the selected
             ids of all time steps.
-        parents(Variable): A Tensor with the same shape and data type as :attr:`ids`,
+        parents(Tensor): A Tensor with the same shape and data type as :attr:`ids`,
             It contains the parents corresponding to selected ids when searching
             among beams.
 
     Returns:
-        Variable: A Tensor with the same shape and data type as :attr:`ids`. \
+            A Tensor with the same shape and data type as :attr:`ids`. \
             It contains the full sequences. The sequences are collected from \
             :attr:`ids` by backtracing according to :attr:`parents`.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
-            ids = fluid.layers.data(name='ids',
-                                    shape=[5, 2, 2],
-                                    dtype='int64',
-                                    append_batch_size=False)
-            parents = fluid.layers.data(name='parents',
-                                        shape=[5, 2, 2],
-                                        dtype='int64',
-                                        append_batch_size=False)
-            final_sequences = fluid.layers.gather_tree(ids, parents)
+            ids = paddle.to_tensor([[[2, 2], [6, 1]], [[3, 9], [6, 1]], [[0, 1], [9, 0]]])
+
+            parents = paddle.to_tensor([[[0, 0], [1, 1]], [[1, 0], [1, 0]], [[0, 0], [0, 1]]])
+
+            final_sequences = paddle.nn.functional.gather_tree(ids, parents)
+            # [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
+
     """
-    helper = LayerHelper('gather_tree', **locals())
-    check_variable_and_dtype(ids, 'ids', ['int32', 'int64'], 'gather_tree')
-    check_variable_and_dtype(parents, 'parents', ['int32', 'int64'],
-                             'gather_tree')
-    out = helper.create_variable_for_type_inference(dtype=ids.dtype)
+    if in_dygraph_mode():
+        return core.ops.gather_tree(ids, parents)
+    else:
+        helper = LayerHelper('gather_tree', **locals())
+        check_variable_and_dtype(ids, 'ids', ['int32', 'int64'], 'gather_tree')
+        check_variable_and_dtype(parents, 'parents', ['int32', 'int64'],
+                                 'gather_tree')
+        out = helper.create_variable_for_type_inference(dtype=ids.dtype)
 
-    helper.append_op(
-        type="gather_tree",
-        inputs={"Ids": ids,
-                "Parents": parents},
-        outputs={"Out": out})
+        helper.append_op(
+            type="gather_tree",
+            inputs={"Ids": ids,
+                    "Parents": parents},
+            outputs={"Out": out})
 
-    return out
+        return out
 
 
 @deprecated(since="2.0.0", update_to="paddle.uniform")

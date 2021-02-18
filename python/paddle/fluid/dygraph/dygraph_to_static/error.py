@@ -143,9 +143,12 @@ class ErrorData(object):
             message_lines.append(traceback_frame.formated_message())
 
         # Step3: Adds error message like "TypeError: dtype must be int32, but received float32".
-        error_message = " " * 4 + traceback.format_exception_only(
-            self.error_type, self.error_value)[0].strip("\n")
-        message_lines.append(error_message)
+        # NOTE: `format_exception` is a list, its length is 1 in most cases, but sometimes its length
+        # is gather than 1, for example, the error_type is IndentationError.
+        format_exception = traceback.format_exception_only(self.error_type,
+                                                           self.error_value)
+        error_message = [" " * 4 + line for line in format_exception]
+        message_lines.extend(error_message)
 
         return '\n'.join(message_lines)
 

@@ -15,15 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/build_strategy.h"
 
 #include <glog/logging.h>
-#include <memory>
-#include <unordered_set>
-#include <utility>
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
-#include "paddle/fluid/framework/ir/graph_to_program_pass.h"
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
 DECLARE_bool(use_mkldnn);

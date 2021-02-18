@@ -21,7 +21,6 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/imperative/basic_engine.h"
@@ -63,10 +62,12 @@ class Tracer {
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
-               const platform::Place& place, bool trace_bacward);
+               const platform::Place& place, bool trace_bacward,
+               const std::map<std::string, std::string>& inplace_map = {});
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
-               const NameVarBaseMap& outs, framework::AttributeMap attrs);
+               const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const std::map<std::string, std::string>& inplace_map = {});
 
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs, bool trace_backward);
@@ -98,7 +99,7 @@ class Tracer {
 
   platform::Place ExpectedPlace() const { return expected_place_; }
 
-  void SetExpectedPlace(platform::Place place) { expected_place_ = place; }
+  void SetExpectedPlace(platform::Place place);
 
   bool HasGrad() const { return has_grad_; }
 

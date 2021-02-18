@@ -14,10 +14,6 @@
 
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
 
-#include <algorithm>
-#include <map>
-#include <set>
-
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -25,7 +21,6 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
-#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -320,6 +315,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   min_input_shape, max_input_shape, opt_input_shape,
                   disable_trt_plugin_fp16);
   trt_engine->SetUseOSS(Get<bool>("use_oss"));
+  trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
+  trt_engine->SetDLACore(Get<int>("trt_dla_core"));
 
   trt_engine->SetWithErnie(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&

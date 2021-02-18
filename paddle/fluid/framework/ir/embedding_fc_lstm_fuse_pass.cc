@@ -13,17 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/embedding_fc_lstm_fuse_pass.h"
-#include <algorithm>
+
 #include <string>
-#include <unordered_set>
-#include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
-
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/platform/cpu_info.h"
-
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace framework {

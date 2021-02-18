@@ -27,8 +27,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/bfloat16.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
@@ -278,6 +282,11 @@ void SetTensorFromPyArrayT(
     }
   } else if (paddle::platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
+    // NOTE(wangxi): When copying data to the accelerator card,
+    // we need set_device(dev_id) first.
+    platform::Place tmp_place = place;
+    platform::XPUDeviceGuard guard(
+        BOOST_GET_CONST(platform::XPUPlace, tmp_place).device);
     auto dst = self->mutable_data<T>(place);
     xpu_memcpy(dst, array.data(), array.nbytes(),
                XPUMemcpyKind::XPU_HOST_TO_DEVICE);
@@ -289,10 +298,15 @@ void SetTensorFromPyArrayT(
   } else {
 #ifdef PADDLE_WITH_CUDA
     if (paddle::platform::is_gpu_place(place)) {
-      // TODO(zhiqiu): set SetDeviceId before calling cuda APIs.
+      // NOTE(wangxi): When copying data to the accelerator card,
+      // we need set_device(dev_id) first.
+      platform::Place tmp_place = place;
+      platform::CUDADeviceGuard guard(
+          BOOST_GET_CONST(platform::CUDAPlace, tmp_place).device);
       auto dst = self->mutable_data<T>(place);
       paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
                                       cudaMemcpyHostToDevice);
+
     } else if (paddle::platform::is_cuda_pinned_place(place)) {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
@@ -706,8 +720,9 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
-    paddle::platform::GpuMemcpySync(py_arr.mutable_data(), tensor_buf_ptr,
-                                    copy_bytes, cudaMemcpyDeviceToHost);
+    auto p = BOOST_GET_CONST(platform::CUDAPlace, tensor.place());
+    paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
+                         tensor_buf_ptr, copy_bytes, nullptr);
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
