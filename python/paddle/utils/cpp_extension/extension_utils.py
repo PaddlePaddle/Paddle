@@ -47,7 +47,7 @@ GCC_MINI_VERSION = (5, 4, 0)
 # Give warning if using wrong compiler
 WRONG_COMPILER_WARNING = '''
                         *************************************
-                        *  Compiler Compatibility WARNING  *
+                        *  Compiler Compatibility WARNING   *
                         *************************************
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -70,7 +70,7 @@ ABI_INCOMPATIBILITY_WARNING = '''
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-Found that your compiler ({user_compiler} == {version}) may be ABI-incompatible with pre-insalled Paddle!
+Found that your compiler ({user_compiler} == {version}) may be ABI-incompatible with pre-installed Paddle!
 Please use compiler that is ABI-compatible with GCC >= 5.4 (Recommended 8.2).
 
 See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html for ABI Compatibility
