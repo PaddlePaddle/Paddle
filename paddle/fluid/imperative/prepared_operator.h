@@ -123,6 +123,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
 
               GetVariableWrapper(var_base)->setCacheValue(
                   expected_kernel_key, GetVariableWrapper(tmp_var));
+              VLOG(3) << "Set cache to variable_wrapper: key=" << expected_kernel_key;
             } else {
               // if dtype is same, transform inplace will not change the
               // original
