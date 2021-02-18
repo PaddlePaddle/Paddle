@@ -142,9 +142,8 @@ def custom_write_stub(resource, pyfile):
             assert os.path.exists(so_path)
 
             # load custom op shared library with abs path
-            new_custom_op = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
-            assert len(new_custom_op) == 1
-            m = inject_ext_module(__name__, new_custom_op[0])
+            new_custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+            m = inject_ext_module(__name__, new_custom_ops)
         
         __bootstrap__()
 
@@ -155,10 +154,11 @@ def custom_write_stub(resource, pyfile):
     _, op_info = CustomOpInfo.instance().last()
     so_path = op_info.build_directory
 
-    new_custom_op = load_op_meta_info_and_register_op(so_path)
-    assert len(new_custom_op
-               ) == 1, "The number of loaded costom operators is %d" % len(
-                   new_custom_op)
+    new_custom_ops = load_op_meta_info_and_register_op(so_path)
+    assert len(
+        new_custom_ops
+    ) > 0, "Required at least one custom operators, but received len(custom_op) =  %d" % len(
+        new_custom_ops)
 
     # NOTE: To avoid importing .so file instead of python file because they have same name,
     # we rename .so shared library to another name, see EasyInstallCommand.
